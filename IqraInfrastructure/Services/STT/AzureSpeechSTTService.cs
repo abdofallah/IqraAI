@@ -34,7 +34,7 @@ namespace IqraInfrastructure.Services.STT
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
             speechConfig.SpeechRecognitionLanguage = _language;
-            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300"); // make it dynamic with some kind of maths
+            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "800"); // make it dynamic with some kind of maths
 
             _pushStream = AudioInputStream.CreatePushStream();
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);

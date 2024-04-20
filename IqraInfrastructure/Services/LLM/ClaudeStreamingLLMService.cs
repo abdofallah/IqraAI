@@ -2,10 +2,7 @@
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using IqraCore.Interfaces.AI;
-using System.Diagnostics;
 using System.Text;
-using Twilio.Rest.Api.V2010.Account.Usage.Record;
-using static System.Collections.Specialized.BitVector32;
 
 namespace IqraInfrastructure.Services
 {
@@ -22,8 +19,9 @@ namespace IqraInfrastructure.Services
         private List<Message> _messagesMemory;
 
         private string _systemPrompt;
+        private Dictionary<string, string> _systemPromptVariables;
 
-        public event EventHandler<string> MessageStreamed;
+        public event EventHandler<object> MessageStreamed;
 
         public ClaudeStreamingLLMService(string apiKey)
         {
@@ -38,256 +36,61 @@ namespace IqraInfrastructure.Services
             _messagesMemory = new List<Message>();
 
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
+            _systemPromptVariables = new Dictionary<string, string>();
         }
 
-        public async Task<string> ProcessInputAsync(string input, CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
         {
-            _messagesMemory.Add(
-                new Message {
-                    Role = RoleType.User,
-                    Content = input
-                }
-            );
+            var finalMessages = _initialMessages
+                .Concat(_messagesMemory)
+                .Concat(
+                    new List<Message> {
+                        new Message
+                        {
+                            Role = RoleType.User,
+                            Content = input
+                        }
+                    }
+            ).ToList();
 
-            var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
+            string processedSystemPrompt = _systemPrompt;
+            if (_systemPromptVariables.Count > 0)
+            {
+                foreach (var variable in _systemPromptVariables)
+                {
+                    processedSystemPrompt = processedSystemPrompt.Replace($"{{{variable.Key}}}", variable.Value);
+                }
+            }
+            processedSystemPrompt = processedSystemPrompt.Replace("{{INITIAL_MESSAGE}}", _initialMessages[1].Content);
 
             var parameters = new MessageParameters
             {
-                SystemMessage = _systemPrompt,
+                SystemMessage = processedSystemPrompt,
                 Messages = finalMessages,
                 MaxTokens = _maxTokens,
                 Model = _model,
                 Stream = true,
                 Temperature = _temperature,
-            };
-
-            var fullOutputBuilder = new StringBuilder();
-            var sectionedOutputBuilder = new StringBuilder();
-
-            int charactersConverted = 0;
+            }; 
             
             try
             {
                 await foreach (var res in _client.Messages.StreamClaudeMessageAsync(parameters, cancellationToken))
                 {
-                    if (res.Delta != null)
-                    {
-                        if (res.Delta.StopReason == "end_turn")
-                        {
-                            string remainingString = sectionedOutputBuilder.ToString();
-                            if (remainingString.Length > 0)
-                            {
-                                MessageStreamed?.Invoke(this, remainingString);
-                            }
-
-                            break;
-                        }
-
-                        if (string.IsNullOrEmpty(res.Delta.Text))
-                        {
-                            continue;
-                        }
-
-                        fullOutputBuilder.Append(res.Delta.Text);
-                        sectionedOutputBuilder.Append(res.Delta.Text);
-
-                        var currentText = sectionedOutputBuilder.ToString();
-
-                        var (sections, remaining) = SeparateTextIntoSections2(currentText, ref charactersConverted);
-                        sectionedOutputBuilder = remaining;
-                        foreach (var section in sections)
-                        {
-                            if (cancellationToken.IsCancellationRequested) { break; }
-
-                            charactersConverted += section.Length;
-
-                            MessageStreamed?.Invoke(this, section);
-                        }
-
-                    }
+                    MessageStreamed?.Invoke(this, res);
                 }
             }
             catch (Exception ex)
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
-                    Console.WriteLine(ex);
+                    Console.WriteLine("ProcessInputAsync Cancelled");
                 }
                 else
                 {
-                    fullOutputBuilder.Append(".... It seems you have spoken over while i was speaking so I will let you speak.");
-                    var spokenoverResult = fullOutputBuilder.ToString();
-
-                    _messagesMemory.Add(
-                        new Message
-                        {
-                            Role = RoleType.Assistant,
-                            Content = spokenoverResult
-                        }
-                    );
-
-                    return spokenoverResult;
+                    Console.WriteLine(ex.Message);
                 }
             }
-
-            var aiAssitantMessage = fullOutputBuilder.ToString();
-
-            _messagesMemory.Add(
-                new Message
-                {
-                    Role = RoleType.Assistant,
-                    Content = aiAssitantMessage
-                }
-            );
-
-            return aiAssitantMessage;
-        }
-
-        private (List<string>, StringBuilder?) SeparateTextIntoSections2(string text, ref int charactersConverted)
-        {
-            var sections = new List<string>();
-            var remainingSection = new StringBuilder();
-
-            List<int> seperatorIndexes = new List<int>();
-            for (int i = 0; i < text.Length; i++)
-            {
-                char character = text[i];
-            
-                if (IsSectionSeparator(character))
-                {
-                    seperatorIndexes.Add(i);
-                }
-            }
-
-            if (seperatorIndexes.Count == 0)
-            {
-                remainingSection.Append(text);
-                return (sections, remainingSection);
-            }
-
-            int lastSeperatorIndex = -1;
-            bool useLastSeperator = charactersConverted > 27; // make this dynamic
-
-            if (useLastSeperator)
-            {
-                if (seperatorIndexes.Count >= 2) // make this dynamic
-                {
-                    lastSeperatorIndex = seperatorIndexes[seperatorIndexes.Count - 1];
-                }
-                else
-                {
-                    remainingSection.Append(text);
-                    return (sections, remainingSection);
-                }
-            }
-            else
-            {
-                lastSeperatorIndex = seperatorIndexes[0];
-            }
-
-            string textTillLastSeperator = text.Substring(0, lastSeperatorIndex + 1);
-
-            if (textTillLastSeperator.EndsWith("Muscat,")) // make this dynamic
-            {
-                if (useLastSeperator)
-                {
-                    lastSeperatorIndex = seperatorIndexes[seperatorIndexes.Count - 2];
-                }
-                else
-                {
-                    remainingSection.Append(text);
-                    return (sections, remainingSection);
-                }
-            }
-
-            string remainingTextAfterSeperator = text.Substring(lastSeperatorIndex + 1);
-
-            sections.Add(textTillLastSeperator);
-            remainingSection.Append(remainingTextAfterSeperator);
-
-            if (useLastSeperator)
-            {
-                charactersConverted = 0;
-            }
-
-            return (sections, remainingSection);
-        }
-
-        private (List<string>, StringBuilder?) SeparateTextIntoSections(string text, ref int charactersConverted)
-        {
-            var sections = new List<string>();
-            var remainingSection = new StringBuilder();
-
-            bool useLastSeperator = charactersConverted > 27; // make this dynamic
-
-            int seperatorCount = 0;
-            int lastSeperatorIndex = -1;
-
-            int characterIndex = useLastSeperator ? (text.Length - 1) : 0;
-            while (true)
-            {
-                char character = text[characterIndex];
-
-                if (useLastSeperator)
-                {
-                    characterIndex -= 1;
-
-                    if (characterIndex < 0)
-                    {
-                        remainingSection.Append(text);
-                        break;
-                    }
-
-                    if (IsSectionSeparator(character))
-                    {
-                        seperatorCount++;
-
-                        if (lastSeperatorIndex == -1)
-                        {
-                            lastSeperatorIndex = characterIndex;
-                        }
-
-                        if (seperatorCount >= 2)
-                        {
-                            string textTillLastSeperator = text.Substring(0, lastSeperatorIndex + 2);
-                            string remainingTextAfterSeperator = text.Substring(lastSeperatorIndex + 2);
-
-                            sections.Add(textTillLastSeperator);
-                            remainingSection.Append(remainingTextAfterSeperator);
-
-                            charactersConverted = 0;
-                            break;
-                        }
-                    }   
-                }
-                else
-                {
-                    remainingSection.Append(character);
-                    if (IsSectionSeparator(character))
-                    {
-                        var section = remainingSection.ToString().Trim();
-                        if (!string.IsNullOrEmpty(section))
-                        {
-                            sections.Add(section);
-                        }
-                        remainingSection.Clear();
-                    }
-
-                    characterIndex += 1;
-
-                    if (characterIndex >= text.Length)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            return (sections, remainingSection);
-        }
-
-        private bool IsSectionSeparator(char character)
-        {
-            return character == '.' || character == '!' || character == '?' || character == ',';
         }
 
         public void SetModel(string model)
@@ -310,6 +113,16 @@ namespace IqraInfrastructure.Services
             _systemPrompt = systemPrompt;
         }
 
+        public void SetSystemPromptVariables(Dictionary<string, string> systemPromptVariables)
+        {
+            _systemPromptVariables = systemPromptVariables;
+        }
+
+        public Dictionary<string, string> GetSystemPromptVariables()
+        {
+            return _systemPromptVariables;
+        }
+
         public void SetInitialMessage(string initialMessage)
         {
             _initialMessages = new List<Message>()
@@ -317,14 +130,36 @@ namespace IqraInfrastructure.Services
                 new Message
                 {
                     Role = RoleType.User,
-                    Content = "Hello"
+                    Content = "call_started"
                 },
                 new Message
                 {
                     Role = RoleType.Assistant,
-                    Content = initialMessage
+                    Content = $"response_to_customer: {initialMessage}"
                 }
             };
+        }
+
+        public void AddUserMessage(string message)
+        {
+            _messagesMemory.Add(
+                new Message
+                {
+                    Role = RoleType.User,
+                    Content = message
+                }
+            );
+        }
+
+        public void AddAssistantMessage(string message)
+        {
+            _messagesMemory.Add(
+                new Message
+                {
+                    Role = RoleType.Assistant,
+                    Content = message
+                }
+            );
         }
     }
 }

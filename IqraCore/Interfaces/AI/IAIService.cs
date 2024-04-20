@@ -5,12 +5,16 @@ namespace IqraCore.Interfaces.AI
 {
     public interface IAIService
     {
-        Task<string> ProcessInputAsync(string input, CancellationToken cancellationToken);
+        Task ProcessInputAsync(string input, CancellationToken cancellationToken);
         void SetModel(string model);
         void SetTemperature(decimal temperature);
         void SetMaxTokens(int maxTokens);
         void SetSystemPrompt(string systemPrompt);
+        void SetSystemPromptVariables(Dictionary<string, string> systemPromptVariables);
+        Dictionary<string, string> GetSystemPromptVariables();
         void SetInitialMessage(string initialMessage);
-        event EventHandler<string> MessageStreamed;
+        void AddUserMessage(string message);
+        void AddAssistantMessage(string message);
+        event EventHandler<object> MessageStreamed;
     }
 }
