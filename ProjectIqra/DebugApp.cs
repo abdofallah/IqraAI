@@ -1,27 +1,27 @@
 ﻿using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces;
-using IqraInfrastructure.Services.Audio;
 using IqraInfrastructure.Services.STT;
 using IqraInfrastructure.Services;
 using IqraInfrastructure.Services.TTS;
 using IqraCore.Utilities;
 using Anthropic.SDK.Messaging;
 using System.Text;
+using IqraInfrastructure.Services.Audio.Device;
 
 namespace ProjectIqra
 {
     public class DebugApp
     {
-        private string _currentLanguage = "en-US";
-        private string _currentSpeakerName = "en-US-JennyNeural";
+        private string _currentLanguage;
+        private string _currentSpeakerName;
 
         private readonly IAudioCache _audioCache;
 
-        private readonly IAudioInputService _audioInputService;
-        private readonly IAudioOutputService _audioOutputService;
-        private readonly ISTTService _sttService;
-        private readonly ITTSService _ttsService;
-        private readonly IAIService _aiService;
+        private IAudioInputService _audioInputService;
+        private IAudioOutputService _audioOutputService;
+        private ISTTService _sttService;
+        private ITTSService _ttsService;
+        private IAIService _aiService;
 
         private Task? _aiTask;
         private CancellationTokenSource _aiCancellationTokenSource;
@@ -40,15 +40,9 @@ namespace ProjectIqra
 
         private bool _isInitialMessagePlayingEnabled;
 
-        public DebugApp(string subscriptionKey, string region, string claudeApiKey, IAudioCache audioCache)
+        public DebugApp(IAudioCache audioCache)
         {
             _audioCache = audioCache;
-
-            _audioInputService = new DeviceMicrophoneInputService();
-            _audioOutputService = new DeviceSpeakerOutputService();
-            _sttService = new AzureSpeechSTTService(subscriptionKey, region, _currentLanguage);
-            _ttsService = new AzureSpeechTTSService(subscriptionKey, region, _currentLanguage, _currentSpeakerName);
-            _aiService = new ClaudeStreamingLLMService(claudeApiKey);
 
             _ttsTasks = new List<Task>();
             _ttsCancellationTokenSource = new CancellationTokenSource();
@@ -61,6 +55,25 @@ namespace ProjectIqra
             _currentSectionedCharactersCount = 0;
 
             _isInitialMessagePlayingEnabled = true; // todo
+        }
+
+        public void SetLanguage(string language)
+        {
+            _currentLanguage = language;
+        }
+
+        public void SetSpeakerName(string speakerName)
+        {
+            _currentSpeakerName = speakerName;
+        }
+        
+        public void SetServices(IAudioInputService audioInputService, IAudioOutputService audioOutputService, ISTTService sttService, ITTSService ttsService, IAIService aiService)
+        {
+            _audioInputService = audioInputService;
+            _audioOutputService = audioOutputService;
+            _sttService = sttService;
+            _ttsService = ttsService;
+            _aiService = aiService;
         }
 
         public void Initialize()
@@ -142,10 +155,10 @@ namespace ProjectIqra
         }
 
         // USER VOICE TO TEXT
-        private void OnAudioDataReceived(object? sender, byte[] audioData)
+        private void OnAudioDataReceived(object? sender, (byte[], int) result)
         {
             // Send input audio to speech to text service
-            _sttService.WriteTranscriptionAudioData(audioData);
+            _sttService.WriteTranscriptionAudioData(result.Item1);
         }
 
         // USER VOICE TEXT TO AI

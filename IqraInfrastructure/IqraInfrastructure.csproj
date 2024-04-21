@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Anthropic.SDK" Version="3.0.1" />
+    <PackageReference Include="Anthropic.SDK" Version="3.1.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.37.0" />
-    <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
+    <PackageReference Include="MongoDB.Driver" Version="2.25.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Serilog" Version="3.1.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
+    <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>
 
 </Project>

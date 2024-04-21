@@ -1,0 +1,199 @@
+﻿<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | ProjectIqra</title>
+    <link href="~/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/style.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
+    <style>
+        body {
+            background-color: #f8f8f8;
+        }
+
+        .login-container {
+            width: 400px;
+            max-width: 80%;
+            padding: 20px 40px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            width: 130px;
+            max-width: 100%;
+            margin: auto;
+            text-align: center;
+        }
+
+        .form-label {
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #3d3d3d;
+        }
+
+        .forget-password {
+            font-weight: 500;
+            color: #8a8a8a;
+        }
+
+        .forget-password:hover {
+            color: #585858;
+        }
+
+        button {
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button span {
+            font-weight: 500;
+        }
+
+        #errorMessage {
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container d-flex justify-content-center align-items-center vh-100">
+        <div class="login-container">
+            <div class="text-center mb-3">
+                <img src="~/img/logo.png" alt="Logo" class="logo">
+            </div>
+
+            <h6 class="text-center mb-4">ProjectIqra</h6>
+            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+            </div>
+            <div class="alert alert-success d-none fade mb-4" id="successMessage">
+            </div>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-Mail</label>
+                    <input type="email" class="form-control" id="email" required>
+                    <div class="invalid-feedback">Invalid Input</div>
+                </div>
+                <div class="mb-2">
+                    <label for="password" class="form-label">Passwort</label>
+                    <input type="password" class="form-control" id="password" required>
+                    <div class="invalid-feedback">Invalid Input</div>
+                </div>
+                <div class="mb-4">
+                    <a href="#" class="text-decoration-none forget-password">Forgot Password?</a>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <span>Login</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Helper function to set a cookie
+        function setCookie(name, value, hours) {
+            var expires = '';
+            if (hours) {
+                var date = new Date();
+                date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
+                expires = '; expires=' + date.toUTCString();
+            }
+            document.cookie = name + '=' + (value || '') + expires + '; path=/';
+        }
+
+        $(document).ready(() => {
+            $('#loginForm').on('submit', (event) => {
+                event.preventDefault();
+
+                var email = $('#email').val();
+                var password = $('#password').val();
+
+                if (email && password) {
+                    $.ajax({
+                        url: '/auth/login',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ email: email, password: password }),
+                        success: (response) => {
+                            // Handle successful login
+                            console.log('Login successful');
+
+                            // Save session ID and authentication key in cookies
+                            setCookie('userEmail', email, 24);
+                            setCookie('sessionId', response.sessionId, 24);
+                            setCookie('authKey', response.authKey, 24);
+
+                            // Redirect to a logged-in page or update the UI accordingly
+                            window.location.href = '/';
+                        },
+                        error: (xhr, status, error) => {
+                            console.error('Login error:', error);
+                            // Display an error message to the user
+                            $('#errorMessage').removeClass('d-none');
+                            setTimeout(() => {
+                                $('#errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
+                            }, 10);
+                        }
+                    });
+                } else {
+                    $('#loginForm').addClass('was-validated');
+                }
+            });
+
+            $('#email, #password').on('input', (event) => {
+                $('#loginForm').removeClass('was-validated');
+                $(event.currentTarget).removeClass('is-invalid');
+
+                $('#errorMessage').removeClass('show');
+                setTimeout(() => {
+                    $('#errorMessage').addClass('d-none');
+                }, 200);
+
+                $('#successMessage').removeClass('show');
+                setTimeout(() => {
+                    $('#successMessage').addClass('d-none');
+                }, 200);
+            });
+
+            // on forget-password click check if email filled, if yes then make ajax call to /reset password
+            $('.forget-password').on('click', (event) => {
+                event.preventDefault();
+
+                var email = $('#email').val();
+
+                if (email) {
+                    $.ajax({
+                        url: '/auth/request-reset-password',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ email: email }),
+                        success: (response) => {
+                            // Handle password reset email sent
+
+                            $('#successMessage').removeClass('d-none');
+                            setTimeout(() => {
+                                $('#successMessage').addClass('show').html('<span>A password reset email has been sent to you.</span>');
+                            }, 10);
+                        },
+                        error: (xhr, status, error) => {
+                            console.error('Password reset error:', error);
+
+                            // Display an error message to the user
+                            $('#errorMessage').removeClass('d-none');
+                            setTimeout(() => {
+                                $('#errorMessage').addClass('show').html('<span>Password reset email could not be sent. Please try again.</span>');
+                            }, 10);
+                        }
+                    });
+                } else {
+                    $('#email').addClass('is-invalid');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

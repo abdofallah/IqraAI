@@ -1,0 +1,6 @@
+@ProjectIqraBackend_HostAddress = http://localhost:5044
+
+GET {{ProjectIqraBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

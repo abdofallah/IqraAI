@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Reflection.Metadata.Ecma335;
-using System.Threading;
+﻿using System.Collections.Concurrent;
 using IqraCore.Interfaces;
 using NAudio.Wave;
 
-namespace IqraInfrastructure.Services.Audio
+namespace IqraInfrastructure.Services.Audio.Device
 {
     public class DeviceSpeakerOutputService : IAudioOutputService
     {
@@ -61,7 +58,7 @@ namespace IqraInfrastructure.Services.Audio
 
         public bool IsBufferEmpty()
         {
-            return (_bufferedWaveProvider.BufferedBytes == 0);
+            return _bufferedWaveProvider.BufferedBytes == 0;
         }
 
         public TimeSpan BufferAudioDataDuration()
