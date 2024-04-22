@@ -7,7 +7,6 @@
         void StartPlayback();
         void StopPlayback();
         bool IsBufferEmpty();
-        TimeSpan BufferAudioDataDuration();
         void ClearAudioData();
     }
 }

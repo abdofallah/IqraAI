@@ -2,7 +2,6 @@
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using IqraCore.Interfaces.AI;
-using System.Text;
 
 namespace IqraInfrastructure.Services
 {
@@ -53,19 +52,9 @@ namespace IqraInfrastructure.Services
                     }
             ).ToList();
 
-            string processedSystemPrompt = _systemPrompt;
-            if (_systemPromptVariables.Count > 0)
-            {
-                foreach (var variable in _systemPromptVariables)
-                {
-                    processedSystemPrompt = processedSystemPrompt.Replace($"{{{variable.Key}}}", variable.Value);
-                }
-            }
-            processedSystemPrompt = processedSystemPrompt.Replace("{{INITIAL_MESSAGE}}", _initialMessages[1].Content);
-
             var parameters = new MessageParameters
             {
-                SystemMessage = processedSystemPrompt,
+                SystemMessage = _systemPrompt,
                 Messages = finalMessages,
                 MaxTokens = _maxTokens,
                 Model = _model,

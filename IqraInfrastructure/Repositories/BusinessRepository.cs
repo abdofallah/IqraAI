@@ -13,6 +13,23 @@ namespace IqraInfrastructure.Repositories
             _businessCollection = database.GetCollection<Business>("businesses");
         }
 
+        public async Task<List<Business>> GetBusinessesMetadataAsync()
+        {
+            var projection = Builders<Business>.Projection.Include(b => b.BusinessId).Include(b => b.BusinessName).Include(b => b.BusinessPhoneNumber);
+            return await _businessCollection.Find(_ => true).Project<Business>(projection).ToListAsync();
+        }
+
+        public async Task<Business?> GetBusinessByPhoneNumberAsync(string phoneNumber)
+        {
+            var filter = Builders<Business>.Filter.Eq(b => b.BusinessPhoneNumber, phoneNumber);
+            return await _businessCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Business>> GetBusinessesAsync()
+        {
+            return await _businessCollection.Find(_ => true).ToListAsync();
+        }
+
         public async Task<Business?> GetBusinessAsync(long businessId)
         {
             var filter = Builders<Business>.Filter.Eq(b => b.BusinessId, businessId);

@@ -10,10 +10,12 @@
 
         public string BusinessPhoneNumber { get; set; }
 
-        public Dictionary<string, string> BusinessSystemPrompt { get; set; }
+        public Dictionary<string, Dictionary<string, string>> TemplateVariables { get; set; }
         public Dictionary<string, string> BusinessInitialMessage { get; set; }
+        public Dictionary<string, string> BusinessSystemPrompt { get; set; }
 
 
         public BusinessAzureSettings? BusinessAzureSettings { get; set; }
+        public string BusinessClaudeApiKey { get; set; }
     }
 }

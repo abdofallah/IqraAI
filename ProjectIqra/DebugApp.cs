@@ -1,17 +1,16 @@
 ﻿using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces;
-using IqraInfrastructure.Services.STT;
-using IqraInfrastructure.Services;
-using IqraInfrastructure.Services.TTS;
 using IqraCore.Utilities;
 using Anthropic.SDK.Messaging;
 using System.Text;
-using IqraInfrastructure.Services.Audio.Device;
+using IqraCore.Entities.Business;
 
 namespace ProjectIqra
 {
     public class DebugApp
     {
+        private readonly Business _business;
+
         private string _currentLanguage;
         private string _currentSpeakerName;
 
@@ -32,6 +31,7 @@ namespace ProjectIqra
         private string _initialMessage;
         private string _systemPrompt;
 
+        /** Dynamic Variables For Runtime **/
         private string _currentUserAudioInputTranscribedText;
         private string _currentAIResponseType;
         private StringBuilder _currentAIResponseGeneratedFull;
@@ -39,9 +39,12 @@ namespace ProjectIqra
         private int _currentSectionedCharactersCount;
 
         private bool _isInitialMessagePlayingEnabled;
+        /** END - Dynamic Variables **/
 
-        public DebugApp(IAudioCache audioCache)
+        public DebugApp(IAudioCache audioCache, Business business)
         {
+            _business = business;
+
             _audioCache = audioCache;
 
             _ttsTasks = new List<Task>();
@@ -78,23 +81,11 @@ namespace ProjectIqra
 
         public void Initialize()
         {
-            // Context Related
-            Dictionary<string, string> SystemPromptVariables = new Dictionary<string, string>()
-            {
-                {"COMPANY_NAME", "Harub Dental Surgery"},
-                {"DATETIME_TODAY", DateTime.Now.ToString() },
-                {"DATE_TODAY", DateTime.Now.ToString("dd-MM-yyyy") },
-                {"FULL_MONTH_TODAY", DateTime.Now.ToString("MMMM") },
-                {"DATE_AND_FULL_DAY_TODAY", DateTime.Now.ToString("dddd, d") },
-                {"YEAR_TODAY", DateTime.Now.ToString("yyyy") },
-                {"TIME_RIGHT_NOW", DateTime.Now.ToString("HH:mm") }
-            };
-
-            _initialMessage = File.ReadAllText("TestInitialMessages.txt").Replace("{{COMPANY_NAME}}", SystemPromptVariables["COMPANY_NAME"]);
-            _systemPrompt = File.ReadAllText("TestSystemPrompt.txt");
+            _initialMessage = ApplyTemplateVariablesToString(_business.BusinessInitialMessage[_currentLanguage], _business.TemplateVariables[_currentLanguage]);
+            _systemPrompt = ApplyTemplateVariablesToString(_business.BusinessSystemPrompt[_currentLanguage], _business.TemplateVariables[_currentLanguage]);
 
             _aiService.SetSystemPrompt(_systemPrompt);
-            _aiService.SetSystemPromptVariables(SystemPromptVariables);
+            _aiService.SetSystemPromptVariables(_business.TemplateVariables[_currentLanguage]);
             _aiService.SetInitialMessage(_initialMessage);  
 
             // Services Related
@@ -112,7 +103,7 @@ namespace ProjectIqra
 
             
             _aiService.SetMaxTokens(128);
-            _aiService.SetModel(Anthropic.SDK.Constants.AnthropicModels.Claude3Haiku); // change back to haiku
+            _aiService.SetModel(Anthropic.SDK.Constants.AnthropicModels.Claude3Haiku);
         }
 
         public async void Start()
@@ -221,13 +212,7 @@ namespace ProjectIqra
                 _currentAIResponseType = "streaming";
 
                 // Reset the dynamic timings system prompt variables
-                var SystemPromptVariables = _aiService.GetSystemPromptVariables();
-                SystemPromptVariables["DATETIME_TODAY"] = DateTime.Now.ToString();
-                SystemPromptVariables["DATE_TODAY"] = DateTime.Now.ToString("dd-MM-yyyy");
-                SystemPromptVariables["FULL_MONTH_TODAY"] = DateTime.Now.ToString("MMMM");
-                SystemPromptVariables["DATE_AND_FULL_DAY_TODAY"] = DateTime.Now.ToString("dddd, d");
-                SystemPromptVariables["YEAR_TODAY"] = DateTime.Now.ToString("yyyy");
-                SystemPromptVariables["TIME_RIGHT_NOW"] = DateTime.Now.ToString("HH:mm");
+                var SystemPromptVariables = AddDynamicVariablesToTemplateVariables();
                 _aiService.SetSystemPromptVariables(SystemPromptVariables);
 
                 // Start the AI streaming api call
@@ -370,6 +355,8 @@ namespace ProjectIqra
             }
         }       
 
+        /** Helpers **/
+
         private void CancelAllTasksAndResetBeforeProcessing()
         {
             // stop the recording from mic
@@ -401,6 +388,35 @@ namespace ProjectIqra
             // clear any audio pending for speaker
             _audioOutputService.ClearAudioData();
             _audioOutputService.StartPlayback();
+        }
+
+        private Dictionary<string, string> AddDynamicVariablesToTemplateVariables()
+        {
+            var SystemPromptVariables = _aiService.GetSystemPromptVariables();
+            SystemPromptVariables["DATETIME_TODAY"] = DateTime.Now.ToString();
+            SystemPromptVariables["DATE_TODAY"] = DateTime.Now.ToString("dd-MM-yyyy");
+            SystemPromptVariables["FULL_MONTH_TODAY"] = DateTime.Now.ToString("MMMM");
+            SystemPromptVariables["DATE_AND_FULL_DAY_TODAY"] = DateTime.Now.ToString("dddd, d");
+            SystemPromptVariables["YEAR_TODAY"] = DateTime.Now.ToString("yyyy");
+            SystemPromptVariables["TIME_RIGHT_NOW"] = DateTime.Now.ToString("HH:mm");
+
+            return SystemPromptVariables;
+        }
+
+        private string ApplyTemplateVariablesToString(string template, Dictionary<string, string> variables)
+        {
+            string result = template;
+
+            // do something about these variables maybe
+            result.Replace("{{INITIAL_MESSAGE}}", _initialMessage);
+            result.Replace("{{COMPANY_NAME}}", _business.BusinessName[_currentLanguage]);
+
+            foreach (var variable in variables)
+            {
+                result = result.Replace($"{{{{{variable.Key}}}}}", variable.Value);
+            } 
+
+            return result;
         }
     }
 }

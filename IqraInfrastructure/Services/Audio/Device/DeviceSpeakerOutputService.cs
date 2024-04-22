@@ -61,13 +61,8 @@ namespace IqraInfrastructure.Services.Audio.Device
             return _bufferedWaveProvider.BufferedBytes == 0;
         }
 
-        public TimeSpan BufferAudioDataDuration()
-        {
-            return _bufferedWaveProvider.BufferDuration;
-        }
-
         private void PlaybackLoop()
-        {
+        { 
             while (_isPlaybackRunning)
             {
                 if (_audioDataQueue.TryDequeue(out byte[] data))
@@ -76,17 +71,18 @@ namespace IqraInfrastructure.Services.Audio.Device
 
                     while (offset < data.Length)
                     {
-                        int chunkSize = Math.Min(BufferSize, data.Length - offset);
-                        while (_bufferedWaveProvider.BufferedBytes + chunkSize > _bufferedWaveProvider.BufferLength)
+                        if (_isPlaybackRunning == false)
                         {
-                            Thread.Sleep(10);
+                            break;
                         }
+
+                        int chunkSize = Math.Min(BufferSize, data.Length - offset);
                         _bufferedWaveProvider.AddSamples(data, offset, chunkSize);
                         offset += chunkSize;
+
+                        Thread.Sleep(10);
                     }
                 }
-
-                Thread.Sleep(10);
             }
         }
 

@@ -3,15 +3,15 @@ using RJCP.IO.Ports;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SimcomModuleManager
+namespace SimcomModuleManager.Ports
 {
-    public class Modem
+    public class ModemPort
     {
         private readonly DeviceInstance _instance;
 
         private readonly SerialPortStream _serialPort;
 
-        public Modem(DeviceInstance portInstance)
+        public ModemPort(DeviceInstance portInstance)
         {
             _instance = portInstance;
 
@@ -35,7 +35,7 @@ namespace SimcomModuleManager
 
         public async Task WriteCommand(string Command)
         {
-            Byte[] commandBuffer = Encoding.UTF8.GetBytes(Command + Environment.NewLine);
+            byte[] commandBuffer = Encoding.UTF8.GetBytes(Command + Environment.NewLine);
 
             await _serialPort.WriteAsync(commandBuffer, 0, commandBuffer.Length, CancellationToken.None);
             await Task.Delay(100);
@@ -44,7 +44,7 @@ namespace SimcomModuleManager
         public async Task<string> ReadBuffer()
         {
             int buffSize = _serialPort.ReadBufferSize;
-            Byte[] buffer = new Byte[buffSize];
+            byte[] buffer = new byte[buffSize];
             int commandResultBytes = await _serialPort.ReadAsync(buffer, CancellationToken.None);
 
             if (commandResultBytes > 0)

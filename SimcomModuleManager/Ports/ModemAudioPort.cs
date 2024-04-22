@@ -7,15 +7,15 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace SimcomModuleManager
+namespace SimcomModuleManager.Ports
 {
-    public class ModemAudio
+    public class ModemAudioPort
     {
         private readonly DeviceInstance _instance;
 
         private readonly SerialPortStream _serialPort;
 
-        public ModemAudio(DeviceInstance portInstance)
+        public ModemAudioPort(DeviceInstance portInstance)
         {
             _instance = portInstance;
 
@@ -37,7 +37,7 @@ namespace SimcomModuleManager
             _serialPort.WriteTimeout = 3000;
         }
 
-        public async Task WriteData(Byte[] buffer, int length, CancellationToken cancellationToken)
+        public async Task WriteData(byte[] buffer, int length, CancellationToken cancellationToken)
         {
             try
             {
@@ -80,6 +80,18 @@ namespace SimcomModuleManager
             }
 
             return (buffer, dataResultbytes);
+        }
+
+        public void ClearReadBuffer()
+        {
+            try
+            {
+                _serialPort.DiscardInBuffer();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         public bool OpenModemSerialConnection()

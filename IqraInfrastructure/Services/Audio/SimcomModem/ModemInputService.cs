@@ -1,11 +1,11 @@
 ﻿using IqraCore.Interfaces;
-using SimcomModuleManager;
+using SimcomModuleManager.Ports;
 
 namespace IqraInfrastructure.Services.Audio.SimcomModem
 {
     public class ModemInputService : IAudioInputService
     {
-        private ModemAudio _modemAudio;
+        private ModemAudioPort _modemAudio;
         private event EventHandler<(byte[], int)> _audioDataReceived;
 
         private Task? _recordingLoopTask;
@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
             _recordingLoopTask = null;
         }
 
-        public void SetModemAudioModule(ModemAudio modemAudio)
+        public void SetModemAudioModule(ModemAudioPort modemAudio)
         {
             _modemAudio = modemAudio;
         }
@@ -77,7 +77,18 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("StartRecordingLoop: " + ex.Message);
+                    if (ex.GetType() == typeof(TimeoutException))
+                    {
+                        Console.WriteLine("StartRecordingLoop: Timeout so breaking loop" + ex.Message);
+
+                        _recordingLoopCancellationToken.Cancel(); // no need but just in case
+                        Task.Run(() => { StopRecording(); });
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("StartRecordingLoop: " + ex.Message);
+                    }
                 }
             }
         }
