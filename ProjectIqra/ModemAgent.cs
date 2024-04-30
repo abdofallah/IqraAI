@@ -7,6 +7,7 @@ using IqraCore.Interfaces;
 using ProjectIqraBackend.App.Entities;
 using IqraCore.Entities.App.Agent;
 using IqraCore.Entities.Business;
+using IqraInfrastructure.Services.Audio.Device;
 
 namespace ProjectIqra
 {
@@ -24,8 +25,8 @@ namespace ProjectIqra
         private DebugApp _debugApp;
 
         /** Dynamic Variables for Runtime **/
-        private Task _StartCheckingForCallTask;
-        private CancellationTokenSource _StartCheckingForCallCancellationTokenSource;
+        private Task _StartCheckingForIncomingCallTask;
+        private CancellationTokenSource _StartCheckingForIncomingCallCancellationTokenSource;
         private bool _isRecivingIncomingCall;
 
         private Task _StartCheckingForCallBeginTask;
@@ -42,7 +43,7 @@ namespace ProjectIqra
             _business = business;
 
             _modemInstance = modemInstance;
-            _modemManager = new SimcomModemManager(_modemInstance.CompositeInstance, _modemInstance.ATInstance, _modemInstance.AudioInstance);
+            _modemManager = modemInstance.SimcomModemManager;
 
             _audioChache = audioCache;
 
@@ -53,22 +54,23 @@ namespace ProjectIqra
 
         public async Task<bool> Initialize()
         {
-            if (!await _modemManager.Initialize())
-            {
-                Console.WriteLine("Error initializing modem.");
-                _agentStatus = AgentStatus.InitializedFailed;
-                return false;
-            }
+            _debugApp.OnEndCallEvent += OnCallEndRecieved;
+            _debugApp.OnLowerVolumeEvent += OnLowerVolumeRecieved;
+            _debugApp.OnIncreaseVolumeEvent += OnIncreaseVolumeRecieved;
 
             _modemManager.OnRingingCommandReceived += OnIncomingVoiceCallRecieved;
             _modemManager.OnCallBeginCommandReceived += OnVoiceCallBeginRecieved;
             _modemManager.OnCallEndCommandReceived += OnVoiceCallEndRecieved;
+            _modemManager.OnDMTFKeyPressRecieved += OnDMTFKeyPressRecieved;
 
             ModemInputService audioInputService = new ModemInputService();
             audioInputService.SetModemAudioModule(_modemManager.sim7600ModemAudio);
 
             ModemOutputService audioOutputService = new ModemOutputService();
             audioOutputService.SetModemAudioModule(_modemManager.sim7600ModemAudio);
+
+            //DeviceMicrophoneInputService audioInputService = new DeviceMicrophoneInputService();
+            //DeviceSpeakerOutputService audioOutputService = new DeviceSpeakerOutputService();
 
             BusinessAzureSettings? businessAzureSettings = _business.BusinessAzureSettings;
             if (businessAzureSettings == null)
@@ -78,7 +80,7 @@ namespace ProjectIqra
                 return false;
             }
 
-            string businessDefaultLanguage = _business.LanguagesEnabled[0];
+            string businessDefaultLanguage = _business.BusinessPromptData.LanguagesEnabled[0];
 
             AzureSpeechSTTService sttService = new AzureSpeechSTTService(businessAzureSettings.SubscriptionKey, businessAzureSettings.RegionCode, businessDefaultLanguage);
             AzureSpeechTTSService ttsService = new AzureSpeechTTSService(businessAzureSettings.SubscriptionKey, businessAzureSettings.RegionCode, businessDefaultLanguage, businessAzureSettings.SpeakerName[businessDefaultLanguage]);
@@ -111,8 +113,8 @@ namespace ProjectIqra
             _hasVoiceCallBegined = false;
             _isCallEnded = false;
 
-            _StartCheckingForCallCancellationTokenSource = new CancellationTokenSource();
-            _StartCheckingForCallTask = _modemManager.StartCheckingForCallBeginLoop(_StartCheckingForCallCancellationTokenSource.Token);
+            _StartCheckingForIncomingCallCancellationTokenSource = new CancellationTokenSource();
+            _StartCheckingForIncomingCallTask = _modemManager.StartCheckingRingCommandLoop(_StartCheckingForIncomingCallCancellationTokenSource.Token);
 
             _agentStatus = AgentStatus.CheckingForRingCommand;
         }
@@ -122,8 +124,8 @@ namespace ProjectIqra
             if (_isRecivingIncomingCall) return;
             _isRecivingIncomingCall = true;
 
-            _StartCheckingForCallCancellationTokenSource.Cancel();
-            await Task.WhenAll(_StartCheckingForCallTask);
+            _StartCheckingForIncomingCallCancellationTokenSource.Cancel();
+            await Task.WhenAll(_StartCheckingForIncomingCallTask);
 
             _StartCheckingForCallBeginCancellationTokenSource = new CancellationTokenSource();
             _StartCheckingForCallBeginTask = _modemManager.StartCheckingForCallBeginLoop(_StartCheckingForCallBeginCancellationTokenSource.Token);
@@ -141,10 +143,14 @@ namespace ProjectIqra
             _StartCheckingForCallBeginCancellationTokenSource.Cancel();
             await Task.WhenAll(_StartCheckingForCallBeginTask);
 
+            await _modemManager.EnableModemAudioTransfer();
+            await _modemManager.EnableDTMFTones();
+
             _StartCheckingForCallEndCancellationTokenSource = new CancellationTokenSource();
             _StartCheckingForCallEndTask = _modemManager.StartCheckingForCallEndLoop(_StartCheckingForCallEndCancellationTokenSource.Token);
 
-            _debugApp.Start(); // make it into a task i think for voice call end to make sure it has been stopped fully
+            string randomSessionId = Guid.NewGuid().ToString();
+            _debugApp.Start(randomSessionId); // make it into a task i think for voice call end to make sure it has been stopped fully
 
             _agentStatus = AgentStatus.OnCall;
         }
@@ -159,6 +165,7 @@ namespace ProjectIqra
             await Task.WhenAll(new List<Task>() { _StartCheckingForCallBeginTask, _StartCheckingForCallEndTask });
 
             _debugApp.Stop();
+            await _debugApp.CancelTasksAndRenewTokens();
 
             await _modemManager.DropOngoingCall();
             if (await _modemManager.DisableEnableSerialPort() == false)
@@ -170,8 +177,28 @@ namespace ProjectIqra
             }
 
             _agentStatus = AgentStatus.Idle;
+        }
 
-            StartCheckingForIncomingCall();
+        private void OnDMTFKeyPressRecieved(object? sender, string key)
+        {
+            _debugApp.OnCallKeyPressEvent?.Invoke(this, key);
+        }
+
+        /** Debug App Events **/
+
+        private void OnCallEndRecieved(object? sender, object? result)
+        {
+            OnVoiceCallEndRecieved(this, true);
+        }
+
+        private async void OnIncreaseVolumeRecieved(object? sender, EventArgs e)
+        {
+            
+        }
+
+        private async void OnLowerVolumeRecieved(object? sender, EventArgs e)
+        {
+            
         }
     }
 }

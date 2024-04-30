@@ -40,5 +40,10 @@ namespace IqraInfrastructure.Services.Audio.Device
             Array.Copy(e.Buffer, buffer, e.BytesRecorded);
             _audioDataReceived?.Invoke(this, (buffer, e.BytesRecorded));
         }
+
+        public void ClearBuffer()
+        {
+            // nothing
+        }
     }
 }

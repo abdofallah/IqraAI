@@ -1,4 +1,5 @@
-﻿using ProjectIqraBackend.App.Entities;
+﻿using IqraCore.Entities.App.Agent;
+using ProjectIqraBackend.App.Entities;
 using RJCP.IO.DeviceMgr;
 using SimcomModuleManager;
 
@@ -36,7 +37,11 @@ namespace IqraInfrastructure.Services.App
                         }
 
                         SimcomModemManager simcomModemManager = new SimcomModemManager(deviceInstance, ATDeviceInstance, AudioDeviceInstance);
-                        await simcomModemManager.Initialize();
+                        if (!await simcomModemManager.Initialize())
+                        {
+                            Console.WriteLine($"Error initializing modem for {deviceInstance.DeviceDescription} | {deviceInstance.BaseContainerId}");
+                            continue;
+                        }
 
                         string? modemPhoneNumber = await simcomModemManager.GetModulePhoneNumber();
                         if (modemPhoneNumber == null)
@@ -57,9 +62,6 @@ namespace IqraInfrastructure.Services.App
                     }
                 }
             }
-
-
-            await _devices[0].SimcomModemManager.StartCheckingRingCommandLoop(CancellationToken.None);
         }
 
 

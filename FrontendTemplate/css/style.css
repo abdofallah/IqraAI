@@ -1,0 +1,243 @@
+﻿:root {
+     --tcolor-light-cream: rgb(241, 236, 232);
+     --tcolor-cream: #d1bfae;
+     --tcolor-lighter-green: #e7f88f;
+     --tcolor-light-green: #CBE54E;
+     --tcolor-dark-green: #94B447;
+     --tcolor-dark: #1a1a1a;
+}
+
+::selection, ::-moz-selection {
+  color: var(--tcolor-dark);
+  background: var(--tcolor-light-green);
+}
+
+.btn-primary {
+     background-color: var(--tcolor-light-green);
+     border-color: var(--tcolor-light-green);
+     color: var(--tcolor-dark);
+}
+
+a {
+     color: var(--tcolor-light-green);
+     transition: 0.15s;
+}
+
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:focus {
+     background-color: var(--tcolor-dark-green) !important;
+     border-color: var(--tcolor-dark-green) !important;
+     color: var(--tcolor-dark) !important;
+}
+
+a:hover,
+a:active,
+a:focus {
+     color: var(--tcolor-dark-green) !important;
+}
+
+.tab-title span {
+     line-height: normal;
+     vertical-align: middle;
+}
+
+.tab-title i {
+     vertical-align: middle;
+
+}
+
+.header_toggle,
+.tab-title,
+.nav_icon,
+.nav_name {
+     color: var(--tcolor-light-cream) !important;
+}
+
+.l-navbar .nav_link.active {
+     border-color: var(--tcolor-light-green);
+}
+
+.l-navbar .nav_link.active .nav_name,
+.l-navbar .nav_link.active .nav_icon {
+     color: var(--tcolor-light-green) !important;
+}
+
+.l-navbar .nav_link.active:before {
+     background-color: var(--tcolor-light-green) !important;
+}
+
+.l-navbar .nav_link:not(.active):hover .nav_name,
+.l-navbar .nav_link:not(.active):hover .nav_icon {
+     color: var(--tcolor-lighter-green) !important;
+}
+
+.business-card {
+     padding: 2em;
+     background-color: var(--tcolor-light-green);
+     width: 100%;
+     border-radius: 16px;
+     margin-bottom: 30px;
+     color: var(--tcolor-dark);
+     border: 3px solid var(--tcolor-lighter-green);
+     transition: 0.15s ease-in-out;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     text-rendering: optimizeLegibility;
+     cursor: pointer;
+     z-index: 9999;
+     position: relative;
+}
+
+.business-card img {
+     max-width: 100%;
+     width: 60px;
+     background-color: var(--tcolor-lighter-green);
+     border-radius: 10px;
+     padding: 8px;
+     transition: 1s;
+}
+
+.business-card h4 {
+     margin: 0;
+     margin-left: 20px;
+     font-weight: 700;
+     line-height: normal;
+}
+
+.business-card .h5-info {
+     margin-bottom: 0;
+     font-weight: 600;
+}
+
+.business-card .h5-info:not(:last-child) {
+     margin-bottom: 20px;
+}
+
+.business-card .h5-info i {
+     font-size: 26px;
+     vertical-align: middle;
+     width: 30px;
+}
+
+.business-card .h5-info span {
+     line-height: normal;
+     vertical-align: middle;
+}
+
+.business-card:hover {
+     transform: scale(1.02);
+     box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
+
+.business-card:hover img {
+     transform: rotate(360deg);
+}
+
+#billing-inner-tabs .nav-link {
+     color: rgba(255, 255, 255, 0.8) !important;
+     border-bottom: 3px solid rgba(255, 255, 255, 0.1);
+     transition: 0.15s;
+     font-weight: 500;
+}
+
+#billing-inner-tabs .nav-link:not(:last-of-type) {
+     margin-right: 10px;
+}
+
+#billing-inner-tabs .nav-link.active {
+     color: var(--tcolor-light-green) !important;
+     border-bottom-color: var(--tcolor-light-green);
+}
+
+#billing-inner-tabs .nav-link:not(.active):hover {
+     color: var(--tcolor-lighter-green) !important;
+}
+
+#billing-invoices-table.table>:not(caption)>*>*
+{
+     background-color: transparent;
+     padding: 14px 5px;
+     vertical-align: middle;
+}
+
+#billing-invoices-table.table-hover>tbody>tr:hover>* {
+     cursor: pointer;
+}
+
+#billing-invoices-table td.invoice-paid span,
+#billing-invoices-table td.invoice-unpaid span {
+     padding: 8px 0px;
+     border-radius: 12px;
+     width: 80px;
+     display: inline-block;
+     text-align: center;
+     font-weight: 500;
+}
+
+:root {
+     --invoice-unpaid-color: rgba(252, 23, 23, 0.6);
+     --invoice-paid-color: rgba(38, 255, 38, 0.6);
+}
+
+#billing-invoices-table td.invoice-paid span {
+     background-color: var(--invoice-paid-color) !important;
+     color: rgb(130, 255, 130);
+}
+
+#billing-invoices-table td.invoice-unpaid span {
+     background-color: var(--invoice-unpaid-color) !important;
+     color: rgb(255, 165, 165);
+}
+
+#billing-invoices-table tr.invoice-paid,
+#billing-invoices-table tr.invoice-unpaid {
+     border-left: 5px solid;
+}
+
+#billing-invoices-table tr.invoice-paid {
+     border-left-color: var(--invoice-paid-color) !important;
+}
+
+#billing-invoices-table tr.invoice-unpaid {
+     border-left-color: var(--invoice-unpaid-color) !important;
+}
+
+#billing-invoices-table tbody tr td:first-of-type {
+     padding-left: 10px;
+}
+
+.billing-method-card {
+     padding: 1.5em;
+     border-radius: 16px;
+     background-color: #5c74bc;
+}
+
+.billing-method-card .method-type-icon {
+     background-color: white;
+     padding: 0px 20px;
+     border-radius: 12px;
+}
+
+.billing-method-card .method-type-icon img {
+     height: 50px;
+}
+
+.billing-method-card .label {
+     color: white;
+     font-weight: 600;
+     margin-bottom: 4px;
+}
+
+.billing-method-card h6 {
+     margin-bottom: 0px;
+}
+
+.payment-method-cards-buttons i {
+     vertical-align: middle;
+}
+
+.payment-method-cards-buttons span {
+     line-height: normal;
+     vertical-align: middle;
+}

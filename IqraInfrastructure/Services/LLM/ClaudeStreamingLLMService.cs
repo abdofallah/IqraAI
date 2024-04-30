@@ -102,7 +102,7 @@ namespace IqraInfrastructure.Services
             _systemPrompt = systemPrompt;
         }
 
-        public void SetSystemPromptVariables(Dictionary<string, string> systemPromptVariables)
+        public void SetTemplateVariables(Dictionary<string, string> systemPromptVariables)
         {
             _systemPromptVariables = systemPromptVariables;
         }

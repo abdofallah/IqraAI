@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities;
+﻿using IqraCore.Entities.Session;
 using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 

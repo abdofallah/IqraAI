@@ -1,4 +1,5 @@
 using ProjectIqraBackend.App;
+using System.Security.Principal;
 
 namespace ProjectIqraBackend
 {
@@ -6,6 +7,11 @@ namespace ProjectIqraBackend
     {
         public static async Task Main(string[] args)
         {
+            if (!IsAdministrator())
+            {
+                throw new Exception("The program must be run as Administrator.");
+            }
+
             var builder = WebApplication.CreateBuilder(args);
 
             /** Services START **/
@@ -30,6 +36,13 @@ namespace ProjectIqraBackend
 
             app.MapControllers();
             app.Run();
+        }
+
+        static bool IsAdministrator()
+        {
+            var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
     }
 }

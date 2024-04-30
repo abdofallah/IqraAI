@@ -9,5 +9,6 @@ namespace IqraCore.Interfaces
         void StopTranscription();
         void WriteTranscriptionAudioData(byte[] data);
         event EventHandler<string> TranscriptionResultReceived;
+        event EventHandler<object> OnRecoginizingRecieved;
     }
 }

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Interfaces;
 using SimcomModuleManager.Ports;
+using System.Diagnostics;
 
 namespace IqraInfrastructure.Services.Audio.SimcomModem
 {
@@ -58,6 +59,8 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
         {
             while (true)
             {
+                await Task.Delay(50);
+
                 if (_recordingLoopCancellationToken.IsCancellationRequested)
                 {
                     break;
@@ -67,7 +70,7 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
                 {
                     var result = await _modemAudio.ReadData(_recordingLoopCancellationToken.Token);
 
-                    var buffer = result.Item1;
+                    var buffer = new Span<byte>(result.Item1, 0, result.Item2).ToArray();
                     var bytesRead = result.Item2;
 
                     if (bytesRead > 0)
@@ -79,8 +82,6 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
                 {
                     if (ex.GetType() == typeof(TimeoutException))
                     {
-                        Console.WriteLine("StartRecordingLoop: Timeout so breaking loop" + ex.Message);
-
                         _recordingLoopCancellationToken.Cancel(); // no need but just in case
                         Task.Run(() => { StopRecording(); });
                         break;
@@ -91,6 +92,24 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
                     }
                 }
             }
+        }
+
+        private TimeSpan GetAudioBufferDuration16k16bit(int audioBytesLength, double downSampleFactor = 1.0)
+        {
+            int sampleRate = 16000; // 16,000 Hz
+            int bitsPerSample = 16; // 16 bits
+
+            int bytesPerSample = bitsPerSample / 8; // 2 bytes for 16-bit audio
+            int numberOfSamples = audioBytesLength / bytesPerSample;
+
+            double durationInSeconds = ((double)numberOfSamples / sampleRate) * downSampleFactor;
+
+            return TimeSpan.FromSeconds(durationInSeconds);
+        }
+
+        public async void ClearBuffer()
+        {
+            var result = await _modemAudio.ReadData(_recordingLoopCancellationToken.Token);
         }
     }
 }

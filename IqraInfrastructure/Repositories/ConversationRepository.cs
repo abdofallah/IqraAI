@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using IqraCore.Entities;
+using IqraCore.Entities.Session.Conversation;
 using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 

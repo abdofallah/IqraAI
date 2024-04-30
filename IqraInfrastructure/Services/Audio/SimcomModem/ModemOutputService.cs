@@ -14,7 +14,7 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
 
         private bool _isPlaybackRunning;
 
-        private const int BufferSize = 8192;
+        private const int BufferSize = 16384;
 
         private CancellationTokenSource _readingCancellationToken;
 
@@ -42,13 +42,20 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
         {
             _readingCancellationToken = new CancellationTokenSource();
             _isPlaybackRunning = true;
-            PlaybackLoop();
+
+            _playbackThread = new Thread(PlaybackLoop);
+            _playbackThread.Start();
         }
 
         public void StopPlayback()
         {
             _readingCancellationToken.Cancel();
             _isPlaybackRunning = false;
+            if (_playbackThread != null)
+            {
+                _playbackThread.Join();
+                _playbackThread = null;
+            }
         }
 
         public void ClearAudioData()
@@ -59,7 +66,7 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
 
         public bool IsBufferEmpty()
         {
-            return _isWritingData;
+            return !_isWritingData;
         }
 
         private void PlaybackLoop()
@@ -73,12 +80,12 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
 
                 if (_audioDataQueue.TryDequeue(out byte[] data))
                 {
+                    _isWritingData = true;
+
                     int offset = FindFirstNonZeroOffset(data);
 
                     while (offset < data.Length)
                     {
-                        _isWritingData = true;
-
                         if (_readingCancellationToken.IsCancellationRequested)
                         {
                             break;
@@ -92,11 +99,13 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
 
                         offset += chunkSize;
 
-                        Thread.Sleep(10);
+                        Thread.Sleep(GetAudioBufferDuration16k16bit(chunkSize,0.99));
                     }
                 }
-
-                _isWritingData = false;
+                else
+                {
+                    _isWritingData = false;
+                }   
             }
         }
 
@@ -110,6 +119,19 @@ namespace IqraInfrastructure.Services.Audio.SimcomModem
                 }
             }
             return data.Length;
+        }
+
+        private TimeSpan GetAudioBufferDuration16k16bit(int audioBytesLength, double downSampleFactor = 1.0)
+        {
+            int sampleRate = 16000; // 16,000 Hz
+            int bitsPerSample = 16; // 16 bits
+
+            int bytesPerSample = bitsPerSample / 8; // 2 bytes for 16-bit audio
+            int numberOfSamples = audioBytesLength / bytesPerSample;
+
+            double durationInSeconds = ((double)numberOfSamples / sampleRate) * downSampleFactor;
+
+            return TimeSpan.FromSeconds(durationInSeconds);
         }
     }
 }

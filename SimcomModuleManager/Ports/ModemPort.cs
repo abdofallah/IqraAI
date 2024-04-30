@@ -26,18 +26,31 @@ namespace SimcomModuleManager.Ports
             _serialPort.StopBits = StopBits.One;
             _serialPort.Handshake = Handshake.None;
 
-            _serialPort.ReadBufferSize = 4096;
-            _serialPort.WriteBufferSize = 4096;
+            _serialPort.ReadBufferSize = 16384;
+            _serialPort.WriteBufferSize = 16384;
 
-            _serialPort.ReadTimeout = 3000;
-            _serialPort.WriteTimeout = 3000;
+            _serialPort.ReadTimeout = 100;
+            _serialPort.WriteTimeout = 100;
+
+            try
+            {
+                _serialPort.Open();
+            }
+            catch (Exception ex) { }
         }
 
         public async Task WriteCommand(string Command)
         {
             byte[] commandBuffer = Encoding.UTF8.GetBytes(Command + Environment.NewLine);
 
-            await _serialPort.WriteAsync(commandBuffer, 0, commandBuffer.Length, CancellationToken.None);
+            try
+            {
+                await _serialPort.WriteAsync(commandBuffer, 0, commandBuffer.Length, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
             await Task.Delay(100);
         }
 
@@ -53,7 +66,7 @@ namespace SimcomModuleManager.Ports
             }
             else
             {
-                return "Buffer_Empty";
+                return "";
             }
         }
 
@@ -62,21 +75,6 @@ namespace SimcomModuleManager.Ports
             await WriteCommand(Command);
 
             return await ReadBuffer();
-        }
-
-        public bool OpenModemSerialConnection()
-        {
-            try
-            {
-                _serialPort.Open();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                return false;
-            }
-
-            return true;
         }
 
         public bool CloseModemSerialConnection()

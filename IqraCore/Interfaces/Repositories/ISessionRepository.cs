@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using IqraCore.Entities;
+using IqraCore.Entities.Session;
 
 namespace IqraCore.Interfaces.Repositories
 {

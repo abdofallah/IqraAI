@@ -18,6 +18,7 @@ namespace SimcomModuleManager
         public EventHandler<string> OnRingingCommandReceived;
         public EventHandler<bool> OnCallBeginCommandReceived;
         public EventHandler<bool> OnCallEndCommandReceived;
+        public EventHandler<string> OnDMTFKeyPressRecieved;
 
         public SimcomModemManager(DeviceInstance modemCompositeInstance, DeviceInstance modemATPortInstance, DeviceInstance modemAudioInstance)
         {
@@ -31,17 +32,7 @@ namespace SimcomModuleManager
         public async Task<bool> Initialize()
         {
             sim7600Modem = new ModemPort(_modemATPortInstance);
-            sim7600ModemAudio = new ModemAudioPort(_modemAudioInstance);
-
-            if (!sim7600Modem.OpenModemSerialConnection())
-            {
-                return false;
-            }
-
-            if (!sim7600ModemAudio.OpenModemSerialConnection())
-            {
-                return false;
-            }
+            sim7600ModemAudio = new ModemAudioPort(_modemAudioInstance);   
 
             await RunInitialModemCommands();
 
@@ -88,8 +79,7 @@ namespace SimcomModuleManager
                                     Console.WriteLine("Incoming Call: " + phoneNumberCalling);
                                     OnRingingCommandReceived?.Invoke(this, phoneNumberCalling);
 
-                                    await Task.Delay(invokeDelay);
-                                    continue;
+                                    break;
                                 }
                             }
                         }
@@ -116,6 +106,7 @@ namespace SimcomModuleManager
                     if (currentResult.Contains("VOICE CALL: BEGIN"))
                     {
                         OnCallBeginCommandReceived?.Invoke(this, true);
+                        break;
                     }
                 }
 
@@ -127,22 +118,41 @@ namespace SimcomModuleManager
         {
             while (true)
             {
+                await Task.Delay(loopDelay);
+
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }
 
-                string currentResult = await sim7600Modem.ReadBuffer();
+                string currentResult = await sim7600Modem.WriteCommandGetResult("AT+CLCC");
+                if (string.IsNullOrWhiteSpace(currentResult)) continue;
 
-                if (!string.IsNullOrWhiteSpace(currentResult))
+                if (currentResult.Contains("+CLCC:"))
                 {
-                    if (currentResult.Contains("VOICE CALL: END"))
+                    string CLCCResult = currentResult.Substring(currentResult.IndexOf("+CLCC:"));
+
+                    string[] currentCallDetails = CLCCResult.Split(",");
+                    if (currentCallDetails.Length >= 7)
                     {
-                        OnCallEndCommandReceived?.Invoke(this, true);
+                        if (
+                            currentCallDetails[1] == "1"  // mobile terminated (MT) call
+                            && currentCallDetails[2] == "0" // active (MT call)
+                            && currentCallDetails[3] == "0" // voice
+                        )
+                        {
+                            if (currentResult.Contains("+RXDTMF:"))
+                            {
+                                string DTMFResult = currentResult.Substring(currentResult.IndexOf("+RXDTMF:")).Split(":")[1].Split(Environment.NewLine)[0].Trim();
+                                OnDMTFKeyPressRecieved?.Invoke(this, DTMFResult);
+                            }
+
+                            continue;
+                        }
                     }
                 }
 
-                await Task.Delay(loopDelay);
+                OnCallEndCommandReceived?.Invoke(this, true); 
             }
         }
 
@@ -158,12 +168,28 @@ namespace SimcomModuleManager
 
         public async Task DropOngoingCall()
         {
-            string result = await sim7600Modem.WriteCommandGetResult("ATH");
+            string result = await sim7600Modem.WriteCommandGetResult("AT+CVHU=0");
+            result = await sim7600Modem.WriteCommandGetResult("ATH");
         }
 
         public async Task DisableModemAudioTransfer()
         {
             string result = await sim7600Modem.WriteCommandGetResult("AT+CPCMREG=0");
+        }
+
+        public async Task EnableDTMFTones()
+        {
+            string result = await sim7600Modem.WriteCommandGetResult("AT+VTS=1");
+        }
+
+        public async Task<bool> SetMicrophoneGain(int gain)
+        {
+            if (gain < 0 || gain > 8) return false;
+
+            string result = await sim7600Modem.WriteCommandGetResult($"AT+CMICGAIN={gain}");
+            result = await sim7600Modem.WriteCommandGetResult($"AT+COUTGAIN={gain}");
+
+            return true;
         }
 
         public async Task<bool> DisableEnableSerialPort()
@@ -204,10 +230,14 @@ namespace SimcomModuleManager
             await sim7600Modem.WriteCommandGetResult("ATE1"); // enable echo
 
             await sim7600Modem.WriteCommandGetResult("AT+CPCMFRM=1"); // set audio format to 16k
-            await sim7600Modem.WriteCommandGetResult("AT+CLVL=5"); // set speaker volume
-            await sim7600Modem.WriteCommandGetResult("AT+CMICGAIN=5"); // set mic gain
+
+            await sim7600Modem.WriteCommandGetResult("AT+CECRX=1"); // VOICE_MOD_ENABLE
+
+            await sim7600Modem.WriteCommandGetResult("AT+CMICGAIN=0"); // set mic gain
+            await sim7600Modem.WriteCommandGetResult("AT+COUTGAIN=0"); // set out gain
+            await sim7600Modem.WriteCommandGetResult("AT+CTXVOL=0x0000"); // set TX voice mic volume
+
             await sim7600Modem.WriteCommandGetResult("AT+CPCMREG=0"); // disable audio transfer
-            await sim7600Modem.WriteCommandGetResult("AT+MORING=0"); // disable report mo ring urc
 
             await sim7600Modem.WriteCommandGetResult("AT"); // clear all previous commands
         }

@@ -4,21 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | ProjectIqra</title>
-    <link href="~/css/bootstrap.min.css" rel="stylesheet">
-    <link href="~/css/style.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
     <style>
         body {
-            background-color: #f8f8f8;
+            position: relative;
+            background-color: black;
         }
 
-        .login-container {
+            body::before {
+                content: '';
+                position: absolute;
+                background: url('img/9116f7fd184238ada99fdff9e2f2e3ac.gif');
+                background-size: cover;
+                background-position-x: center;
+                background-position-y: center;
+                width: 100%;
+                height: 100%;
+                z-index: 10;
+                opacity: 0.1;
+            }
+
+        .login-container,
+        .register-container,
+        .forget-container {
             width: 400px;
             max-width: 80%;
             padding: 20px 40px;
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 1);
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 20;
         }
 
         .logo {
@@ -34,22 +51,25 @@
             color: #3d3d3d;
         }
 
-        .forget-password {
+        a {
             font-weight: 500;
+        }
+
+        .forget-password {
             color: #8a8a8a;
         }
 
-        .forget-password:hover {
-            color: #585858;
-        }
+            .forget-password:hover {
+                color: #444444;
+            }
 
         button {
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
         }
 
-        button span {
-            font-weight: 500;
-        }
+            button span {
+                font-weight: 500;
+            }
 
         #errorMessage {
             font-weight: 600;
@@ -58,13 +78,15 @@
 </head>
 
 <body>
-    <div class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="login-container">
+    <div class="container d-flex justify-content-center align-items-center vh-100 main-container">
+        <!-- Login Container -->
+        <div class="login-container d-none fade">
             <div class="text-center mb-3">
-                <img src="~/img/logo.png" alt="Logo" class="logo">
+                <img src="img/Badal-Logo-Black.png" alt="Logo" class="logo">
             </div>
 
-            <h6 class="text-center mb-4">ProjectIqra</h6>
+            <h2 class="text-center mb-0">IQRA</h2>
+            <h6 class="text-center mb-4">AI Assistant</h6>
             <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
             </div>
             <div class="alert alert-success d-none fade mb-4" id="successMessage">
@@ -76,24 +98,90 @@
                     <div class="invalid-feedback">Invalid Input</div>
                 </div>
                 <div class="mb-2">
-                    <label for="password" class="form-label">Passwort</label>
+                    <label for="password" class="form-label">Password</label>
                     <input type="password" class="form-control" id="password" required>
                     <div class="invalid-feedback">Invalid Input</div>
                 </div>
                 <div class="mb-4">
-                    <a href="#" class="text-decoration-none forget-password">Forgot Password?</a>
+                    <a href="#" class="text-decoration-none forget-password" id="switchToForget">Forgot Password?</a>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">
+                <button type="submit" class="btn btn-primary w-100 mb-4">
                     <span>Login</span>
                 </button>
+
+                <p>Don't have an account? <a href="#" id="switchToRegister" class="text-decoration-none">Register</a></p>
             </form>
         </div>
+
+        <!-- Register Container-->
+        <div class="register-container d-none fade">
+            <div class="text-center mb-3">
+                <img src="img/Badal-Logo-Black.png" alt="Logo" class="logo">
+            </div>
+
+            <h2 class="text-center mb-0">IQRA</h2>
+            <h6 class="text-center mb-4">AI Assistant</h6>
+            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+            </div>
+            <div class="alert alert-success d-none fade mb-4" id="successMessage">
+            </div>
+            <form id="registerForm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-Mail</label>
+                    <input type="email" class="form-control" id="email" required>
+                    <div class="invalid-feedback">Invalid Input</div>
+                </div>
+                <div class="mb-2">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                    <div class="invalid-feedback">Password must be at least 8 characters.</div>
+                </div>
+                <div class="mb-4">
+                    <label for="confirm-password" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirm-password" required>
+                    <div class="invalid-feedback">Passwords do not match.</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-4">
+                    <span>Register</span>
+                </button>
+
+                <p>Already have an account? <a href="#" id="switchToLoginCancel" class="text-decoration-none">Login</a></p>
+            </form>
+        </div>
+
+        <!-- Forget Container -->
+        <div class="forget-container d-none fade">
+            <div class="text-center mb-3">
+                <img src="img/Badal-Logo-Black.png" alt="Logo" class="logo">
+            </div>
+
+            <h2 class="text-center mb-0">IQRA</h2>
+            <h6 class="text-center mb-4">AI Assistant</h6>
+            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+            </div>
+            <div class="alert alert-success d-none fade mb-4" id="successMessage">
+            </div>
+            <form id="forgetForm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-Mail</label>
+                    <input type="email" class="form-control" id="email" required>
+                    <div class="invalid-feedback">Invalid Input</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mb-4">
+                    <span>Reset Password</span>
+                </button>
+
+                <p class="text-center"><a href="#" id="switchToLogin" class="text-decoration-none">Cancel</a></p>
+            </form>
+        </div>
+
     </div>
 
-    <script src="~/js/jquery-3.7.1.min.js"></script>
-    <script src="~/js/bootstrap.bundle.min.js"></script>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src="js/bootstrap.bundle.min.js"></script>
+
+    <!-- Helper functions -->
     <script>
-        // Helper function to set a cookie
         function setCookie(name, value, hours) {
             var expires = '';
             if (hours) {
@@ -103,13 +191,96 @@
             }
             document.cookie = name + '=' + (value || '') + expires + '; path=/';
         }
+    </script>
 
+    <!-- Set Initial Auth Type -->
+    <script>
+        var titleTemplate = '{{authType}} | Iqra Assistant';
+
+        var currentAuthType = 'login';
+
+        $(document).ready(() => {
+            var URLPath = window.location.pathname;
+
+            if (URLPath === '/register') {
+                setAuthType('register');
+            }
+            else if (URLPath === '/forget') {
+                setAuthType('forget');
+            }
+            else if (URLPath === '/login') {
+                setAuthType('login');
+            }
+            else {
+                setAuthType(currentAuthType);
+            }
+
+            $("#switchToRegister").on('click', (event) => {
+                event.preventDefault();
+
+                setAuthType('register');
+            });
+
+            $("#switchToLogin").on('click', (event) => {
+                event.preventDefault();
+
+                setAuthType('login');
+            });
+
+            $("#switchToLoginCancel").on('click', (event) => {
+                event.preventDefault();
+
+                setAuthType('login');
+            });
+
+            $("#switchToForget").on('click', (event) => {
+                event.preventDefault();
+
+                setAuthType('forget');
+            });
+        });
+
+        function setAuthType(authType) {
+            var containerId = '.' + authType + '-container';
+
+            $(".main-container").children().each((index, element) => {
+                if (element.classList.contains(containerId.replace('.', ''))) {
+                    return;
+                }
+
+                element.classList.remove('show');
+                setTimeout(() => {
+                    element.classList.add('d-none');
+                }, 100);
+            });
+
+            $(containerId + " #successMessage").addClass('d-none').removeClass('show');
+            $(containerId + " #errorMessage").addClass('d-none').removeClass('show');
+
+            $(containerId + " input").removeClass('is-valid').removeClass('is-invalid').val("");
+
+            setTimeout(() => {
+                $(containerId).removeClass('d-none');
+                setTimeout(() => {
+                    $(containerId).addClass('show');
+                }, 10)
+
+                let currentTitle = titleTemplate.replace('{{authType}}', authType);
+                //window.history.pushState(authType, currentTitle, ('/' + authType));
+                document.title = currentTitle;
+            }, 100);
+
+        }
+    </script>
+
+    <!-- Login Container -->
+    <script>
         $(document).ready(() => {
             $('#loginForm').on('submit', (event) => {
                 event.preventDefault();
 
-                var email = $('#email').val();
-                var password = $('#password').val();
+                var email = $('.login-container #email').val();
+                var password = $('.login-container #password').val();
 
                 if (email && password) {
                     $.ajax({
@@ -132,9 +303,9 @@
                         error: (xhr, status, error) => {
                             console.error('Login error:', error);
                             // Display an error message to the user
-                            $('#errorMessage').removeClass('d-none');
+                            $('.login-container #errorMessage').removeClass('d-none');
                             setTimeout(() => {
-                                $('#errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
+                                $('.login-container #errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
                             }, 10);
                         }
                     });
@@ -143,26 +314,99 @@
                 }
             });
 
-            $('#email, #password').on('input', (event) => {
+            $('.login-container #email, .login-container #password').on('input', (event) => {
                 $('#loginForm').removeClass('was-validated');
                 $(event.currentTarget).removeClass('is-invalid');
 
-                $('#errorMessage').removeClass('show');
+                $('.login-container #errorMessage').removeClass('show');
                 setTimeout(() => {
-                    $('#errorMessage').addClass('d-none');
+                    $('.login-container #errorMessage').addClass('d-none');
                 }, 200);
 
-                $('#successMessage').removeClass('show');
+                $('.login-container #successMessage').removeClass('show');
                 setTimeout(() => {
-                    $('#successMessage').addClass('d-none');
+                    $('.login-container #successMessage').addClass('d-none');
                 }, 200);
             });
+        });
+    </script>
 
-            // on forget-password click check if email filled, if yes then make ajax call to /reset password
-            $('.forget-password').on('click', (event) => {
+    <!-- Register Container -->
+    <script>
+        $('#registerForm').on('submit', (event) => {
+            event.preventDefault();
+
+            var email = $('.register-container #email').val();
+            var password = $('.register-container #password').val();
+            var confirmPassword = $('.register-container #confirm-password').val();
+
+            if (
+                email
+                && password
+                && confirmPassword
+                && password === confirmPassword
+                && password.length >= 8
+            ) {
+                $.ajax({
+                    url: '/auth/register',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ email: email, password: password }),
+                    success: (response) => {
+                        // Handle successful register
+                        console.log('register successful');
+
+                        // Save session ID and authentication key in cookies
+                        setCookie('userEmail', email, 24);
+                        setCookie('sessionId', response.sessionId, 24);
+                        setCookie('authKey', response.authKey, 24);
+
+                        // Redirect to a logged-in page or update the UI accordingly
+                        window.location.href = '/';
+                    },
+                    error: (xhr, status, error) => {
+                        console.error('register error:', xhr);
+                        // Display an error message to the user
+                        $('.register-container #errorMessage').removeClass('d-none');
+                        setTimeout(() => {
+                            $('.register-container #errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
+                        }, 10);
+                    }
+                });
+            } else {
+                if (!email) {
+                    $('.register-container #email').addClass('is-invalid');
+                }
+                else {
+                    $('.register-container #email').addClass('is-valid');
+                }
+
+                if (!password) {
+                    $('.register-container #password').addClass('is-invalid');
+                }
+                else {
+                    if (password.length < 8) {
+                        $('.register-container #password').addClass('is-invalid');
+                    }
+                    else {
+                        $('.register-container #password').addClass('is-valid');
+                    }
+                }
+
+                if (password !== confirmPassword) {
+                    $('.register-container #confirm-password').addClass('is-invalid');
+                }
+            }
+        });
+    </script>
+
+    <!-- Reset Password Container -->
+    <script>
+        $(document).ready(() => {
+            $('#forgetForm').on('submit', (event) => {
                 event.preventDefault();
 
-                var email = $('#email').val();
+                var email = $('.forget-container #email').val();
 
                 if (email) {
                     $.ajax({
@@ -173,23 +417,24 @@
                         success: (response) => {
                             // Handle password reset email sent
 
-                            $('#successMessage').removeClass('d-none');
+                            $('.forget-container #successMessage').removeClass('d-none');
                             setTimeout(() => {
-                                $('#successMessage').addClass('show').html('<span>A password reset email has been sent to you.</span>');
+                                $('.forget-container #successMessage').addClass('show').html('<span>A password reset email has been sent to you.</span>');
                             }, 10);
                         },
                         error: (xhr, status, error) => {
                             console.error('Password reset error:', error);
 
                             // Display an error message to the user
-                            $('#errorMessage').removeClass('d-none');
+                            $('.forget-container #errorMessage').removeClass('d-none');
                             setTimeout(() => {
-                                $('#errorMessage').addClass('show').html('<span>Password reset email could not be sent. Please try again.</span>');
+                                $('.forget-container #errorMessage').addClass('show').html('<span>Password reset email could not be sent. Please try again.</span>');
                             }, 10);
                         }
                     });
-                } else {
-                    $('#email').addClass('is-invalid');
+                }
+                else {
+                    $('.forget-container #email').addClass('is-invalid');
                 }
             });
         });

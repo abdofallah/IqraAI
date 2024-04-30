@@ -22,6 +22,7 @@ namespace IqraInfrastructure.Services.STT
             add { _transcriptionResultReceived += value; }
             remove { _transcriptionResultReceived -= value; }
         }
+        public event EventHandler<object> OnRecoginizingRecieved;
 
         public AzureSpeechSTTService(string subscriptionKey, string region, string language)
         {
@@ -34,7 +35,7 @@ namespace IqraInfrastructure.Services.STT
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
             speechConfig.SpeechRecognitionLanguage = _language;
-            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "800"); // make it dynamic with some kind of maths
+            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "600"); // make it dynamic with some kind of maths
 
             _pushStream = AudioInputStream.CreatePushStream();
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);
@@ -65,6 +66,7 @@ namespace IqraInfrastructure.Services.STT
         private void OnRecognizing(object? sender, SpeechRecognitionEventArgs e)
         {
             Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
+            OnRecoginizingRecieved?.Invoke(this, e);
         }
 
         private void OnRecognized(object? sender, SpeechRecognitionEventArgs e)

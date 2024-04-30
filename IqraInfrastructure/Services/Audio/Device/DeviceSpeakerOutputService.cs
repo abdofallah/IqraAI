@@ -77,7 +77,14 @@ namespace IqraInfrastructure.Services.Audio.Device
                         }
 
                         int chunkSize = Math.Min(BufferSize, data.Length - offset);
-                        _bufferedWaveProvider.AddSamples(data, offset, chunkSize);
+                        try
+                        {     
+                            _bufferedWaveProvider.AddSamples(data, offset, chunkSize);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message);
+                        }
                         offset += chunkSize;
 
                         Thread.Sleep(10);
