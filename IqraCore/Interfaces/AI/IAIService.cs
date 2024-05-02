@@ -10,8 +10,6 @@ namespace IqraCore.Interfaces.AI
         void SetTemperature(decimal temperature);
         void SetMaxTokens(int maxTokens);
         void SetSystemPrompt(string systemPrompt);
-        void SetTemplateVariables(Dictionary<string, string> templateVariables);
-        Dictionary<string, string> GetSystemPromptVariables();
         void SetInitialMessage(string initialMessage);
         void AddUserMessage(string message);
         void AddAssistantMessage(string message);

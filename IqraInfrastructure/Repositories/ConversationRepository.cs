@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using IqraCore.Entities.Session.Conversation;
+﻿using IqraCore.Entities;
 using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
@@ -8,22 +6,33 @@ namespace IqraInfrastructure.Repositories
 {
     public class ConversationRepository : IConversationRepository
     {
-        private readonly IMongoCollection<Conversation> _conversationsCollection;
+        private readonly IMongoCollection<SessionConversation> _conversationsCollection;
 
         public ConversationRepository(IMongoDatabase database)
         {
-            _conversationsCollection = database.GetCollection<Conversation>("conversations");
+            _conversationsCollection = database.GetCollection<SessionConversation>("conversations");
         }
 
-        public async Task AddConversationAsync(Conversation conversation)
+        public async Task AddSessionConversationAsync(SessionConversation conversation)
         {
             await _conversationsCollection.InsertOneAsync(conversation);
         }
 
-        public async Task<IEnumerable<Conversation>> GetConversationsBySessionAsync(string sessionId)
+        public async Task<SessionConversation> GetSessionConversation(string sessionId)
         {
-            var filter = Builders<Conversation>.Filter.Eq(c => c.SessionId, sessionId);
-            return await _conversationsCollection.Find(filter).ToListAsync();
+            var filter = Builders<SessionConversation>.Filter.Eq(c => c.SessionId, sessionId);
+            return await _conversationsCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> AddChatToConversationList(string sessionId, ConversationData conversationData)
+        {
+            var update = Builders<SessionConversation>.Update
+                .Push(c => c.ConversationList, conversationData);
+
+            var result = await _conversationsCollection
+                .UpdateOneAsync(c => c.SessionId == sessionId, update);
+
+            return result.ModifiedCount > 0;
         }
     }
 }

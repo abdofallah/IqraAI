@@ -1,6 +1,7 @@
 ﻿using HardwareHelperLib;
 using RJCP.IO.DeviceMgr;
 using SimcomModuleManager.Ports;
+using System.Diagnostics;
 
 namespace SimcomModuleManager
 {
@@ -116,6 +117,8 @@ namespace SimcomModuleManager
 
         public async Task StartCheckingForCallEndLoop(CancellationToken cancellationToken, int loopDelay = 50)
         {
+            string currentResult = await sim7600Modem.WriteCommandGetResult("AT", 250);
+
             while (true)
             {
                 await Task.Delay(loopDelay);
@@ -125,7 +128,7 @@ namespace SimcomModuleManager
                     break;
                 }
 
-                string currentResult = await sim7600Modem.WriteCommandGetResult("AT+CLCC");
+                currentResult = await sim7600Modem.WriteCommandGetResult("AT+CLCC");
                 if (string.IsNullOrWhiteSpace(currentResult)) continue;
 
                 if (currentResult.Contains("+CLCC:"))
@@ -194,7 +197,21 @@ namespace SimcomModuleManager
 
         public async Task<bool> DisableEnableSerialPort()
         {
-            if (!(await _hwh.DisableThenEnableDevice(_modemCompositeInstance.HardwareIds[0], 10)))
+            if (!(await _hwh.DisableThenEnableDevice(_modemCompositeInstance.HardwareIds[0], 500)))
+            {
+                return false;
+            }
+
+            await Task.Delay(500);
+
+            if (!(await _hwh.DisableThenEnableDevice(_modemAudioInstance.HardwareIds[0], 500)))
+            {
+                return false;
+            }
+
+            await Task.Delay(500);
+
+            if (!(await _hwh.DisableThenEnableDevice(_modemATPortInstance.HardwareIds[0], 500)))
             {
                 return false;
             }
@@ -240,6 +257,14 @@ namespace SimcomModuleManager
             await sim7600Modem.WriteCommandGetResult("AT+CPCMREG=0"); // disable audio transfer
 
             await sim7600Modem.WriteCommandGetResult("AT"); // clear all previous commands
+        }
+
+        public async Task ForwardIncomingCall(string numberToForwardTo)
+        {
+            string result = await sim7600Modem.WriteCommandGetResult($"AT+CHLD=2");
+            //result = await sim7600Modem.WriteCommandGetResult($"ATD{numberToForwardTo};");
+            //result = await sim7600Modem.WriteCommandGetResult($"AT+CHLD=3");
+            Console.WriteLine(result);
         }
     }
 }

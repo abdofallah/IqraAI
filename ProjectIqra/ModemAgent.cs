@@ -45,15 +45,15 @@ namespace ProjectIqra
             _modemInstance = modemInstance;
             _modemManager = modemInstance.SimcomModemManager;
 
-            _audioChache = audioCache;
-
-            _debugApp = new DebugApp(_audioChache, _business);
+            _audioChache = audioCache;            
 
             _agentStatus = AgentStatus.Created;
         }
 
         public async Task<bool> Initialize()
         {
+            _debugApp = new DebugApp(_audioChache, _business);
+
             _debugApp.OnEndCallEvent += OnCallEndRecieved;
             _debugApp.OnLowerVolumeEvent += OnLowerVolumeRecieved;
             _debugApp.OnIncreaseVolumeEvent += OnIncreaseVolumeRecieved;
@@ -123,9 +123,13 @@ namespace ProjectIqra
         {
             if (_isRecivingIncomingCall) return;
             _isRecivingIncomingCall = true;
-
+            
             _StartCheckingForIncomingCallCancellationTokenSource.Cancel();
             await Task.WhenAll(_StartCheckingForIncomingCallTask);
+
+            //temp below
+            await _modemManager.ForwardIncomingCall("+96895730626");
+            return;
 
             _StartCheckingForCallBeginCancellationTokenSource = new CancellationTokenSource();
             _StartCheckingForCallBeginTask = _modemManager.StartCheckingForCallBeginLoop(_StartCheckingForCallBeginCancellationTokenSource.Token);
@@ -157,6 +161,11 @@ namespace ProjectIqra
 
         private async void OnVoiceCallEndRecieved(object? sender, bool recieved)
         {
+            await OnVoiceCallEndFunction();
+        }
+
+        private async Task OnVoiceCallEndFunction()
+        {
             if (_isCallEnded) return;
             _isCallEnded = true;
 
@@ -168,6 +177,8 @@ namespace ProjectIqra
             await _debugApp.CancelTasksAndRenewTokens();
 
             await _modemManager.DropOngoingCall();
+
+            await Task.Delay(3000);
             if (await _modemManager.DisableEnableSerialPort() == false)
             {
                 // create an alert here so there is fast support to fix this
@@ -176,7 +187,19 @@ namespace ProjectIqra
                 return;
             }
 
+            Console.WriteLine($"Voice call ended for {_business.BusinessId} | {_modemInstance.PhoneNumber}");
             _agentStatus = AgentStatus.Idle;
+
+            if (await this.Initialize())
+            {
+                Console.WriteLine($"Re-initializing debug class after call end for {_business.BusinessId} | {_modemInstance.PhoneNumber}");
+                StartCheckingForIncomingCall();
+            }
+            else
+            {
+                _agentStatus = AgentStatus.Error;
+                Console.WriteLine($"Error re-initializing debug class after call end for {_business.BusinessId} | {_modemInstance.PhoneNumber}");
+            }
         }
 
         private void OnDMTFKeyPressRecieved(object? sender, string key)
@@ -186,9 +209,9 @@ namespace ProjectIqra
 
         /** Debug App Events **/
 
-        private void OnCallEndRecieved(object? sender, object? result)
+        private async void OnCallEndRecieved(object? sender, object? result)
         {
-            OnVoiceCallEndRecieved(this, true);
+            await OnVoiceCallEndFunction();
         }
 
         private async void OnIncreaseVolumeRecieved(object? sender, EventArgs e)

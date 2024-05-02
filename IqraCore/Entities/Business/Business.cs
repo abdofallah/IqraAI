@@ -11,6 +11,7 @@ namespace IqraCore.Entities.Business
         public long BusinessId { get; set; }
         public string BusinessName { get; set; }
         public string BusinessPhoneNumber { get; set; }
+        public string BusinessCountry { get; set; }
 
         public BusinessPromptData BusinessPromptData { get; set; }
 

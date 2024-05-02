@@ -39,7 +39,7 @@ namespace SimcomModuleManager.Ports
             catch (Exception ex) { }
         }
 
-        public async Task WriteCommand(string Command)
+        public async Task WriteCommand(string Command, int delay = 100)
         {
             byte[] commandBuffer = Encoding.UTF8.GetBytes(Command + Environment.NewLine);
 
@@ -51,7 +51,7 @@ namespace SimcomModuleManager.Ports
             {
                 Console.WriteLine(ex.Message);
             }
-            await Task.Delay(100);
+            await Task.Delay(delay);
         }
 
         public async Task<string> ReadBuffer()
@@ -70,9 +70,9 @@ namespace SimcomModuleManager.Ports
             }
         }
 
-        public async Task<string> WriteCommandGetResult(string Command)
+        public async Task<string> WriteCommandGetResult(string Command, int delay = 100)
         {
-            await WriteCommand(Command);
+            await WriteCommand(Command, delay);
 
             return await ReadBuffer();
         }

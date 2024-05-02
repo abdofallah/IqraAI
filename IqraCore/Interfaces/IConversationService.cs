@@ -1,6 +1,5 @@
 ﻿using System.Threading.Tasks;
 using IqraCore.Entities;
-using IqraCore.Entities.Session.Conversation;
 
 namespace IqraCore.Interfaces
 {

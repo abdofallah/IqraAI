@@ -4,8 +4,6 @@ using IqraCore.Utilities;
 using Anthropic.SDK.Messaging;
 using System.Text;
 using IqraCore.Entities.Business;
-using System.IO;
-using IqraCore.Entities;
 
 namespace ProjectIqra
 {
@@ -32,6 +30,7 @@ namespace ProjectIqra
         private List<Task> _ttsTasks;
         private CancellationTokenSource _ttsCancellationTokenSource;
 
+        private Dictionary<string, string> _templateVariables;
         private string _initialMessage;
         private string _systemPrompt;
 
@@ -70,7 +69,7 @@ namespace ProjectIqra
             _currentUnprocessedAIResponse = new StringBuilder();
             _currentSectionedCharactersCount = 0;
 
-            _isInitialMessagePlayingEnabled = false; // todo
+            _isInitialMessagePlayingEnabled = true; // todo
         }
 
         public void SetLanguage(string language)
@@ -94,11 +93,12 @@ namespace ProjectIqra
 
         public void Initialize()
         {
-            _aiService.SetTemplateVariables(_business.BusinessPromptData.TemplateVariables[_currentLanguage]);
+            _templateVariables = _business.BusinessPromptData.TemplateVariables[_currentLanguage];
+            _templateVariables["COMPANY_NAME"] = _business.BusinessName;
+            _templateVariables["COMPANY_COUNTRY"] = _business.BusinessCountry;
 
-            var dynamicVariablesWithTemplateVariables = SetDynamicVariablesToTemplateVariables();
-            _initialMessage = ApplyTemplateVariablesToString(_business.BusinessInitialMessage[_currentLanguage], dynamicVariablesWithTemplateVariables);
-            _systemPrompt = ApplyTemplateVariablesToString(_business.BusinessSystemPrompt[_currentLanguage], dynamicVariablesWithTemplateVariables);
+            _initialMessage = PromptCompiler.ApplyTemplateVariablesToString(_business.BusinessPromptData.BusinessInitialMessage[_currentLanguage], _templateVariables);
+            _systemPrompt = PromptCompiler.CompilePromptFromBusiness(_business, _currentLanguage, _templateVariables, _initialMessage);
 
             _aiService.SetInitialMessage(_initialMessage);
             _aiService.SetSystemPrompt(_systemPrompt);
@@ -124,7 +124,8 @@ namespace ProjectIqra
         public async void Start(string sessionId)
         {
             _sessionId = sessionId;
-            using (var fileStream = new FileStream($"{sessionId}.raw", FileMode.CreateNew))
+            if (!Directory.Exists("sessionAudio")) Directory.CreateDirectory("sessionAudio");
+            using (var fileStream = new FileStream($"sessionAudio/{_sessionId}.raw", FileMode.CreateNew))
             {
                 fileStream.Dispose();
             }
@@ -225,8 +226,8 @@ namespace ProjectIqra
                 _currentAIResponseType = "streaming";
 
                 // Reset the dynamic timings system prompt variables
-                var SystemPromptVariables = SetDynamicVariablesToTemplateVariables();
-                _aiService.SetTemplateVariables(SystemPromptVariables);
+                string compliedPromptWithDynamicVariables = PromptCompiler.ApplyTemplateVariablesToString(_systemPrompt, PromptCompiler.GetDynamicTimeVariables());
+                _aiService.SetSystemPrompt(compliedPromptWithDynamicVariables);
 
                 // Start the AI streaming api call
                 _aiTask = _aiService.ProcessInputAsync(result, _aiCancellationTokenSource.Token);
@@ -293,9 +294,9 @@ namespace ProjectIqra
                         // todo - implement sending the response to an actual system
                         // block any input speaking while the speaker plays the response and then wait till task has ended
 
-                        OnTranscriptionResultReceived(null, "respone_from_system: successful: booking appointment successful");
+                        await WaitTillAudioIsDone(500);
 
-                        await WaitTillAudioIsDone(100);
+                        OnTranscriptionResultReceived(null, "respone_from_system: successful: booking appointment successful");  
 
                         _sstAcceptBuffer = true;
                     }
@@ -423,38 +424,6 @@ namespace ProjectIqra
             // reset the cancellation tokens
             _ttsCancellationTokenSource = new CancellationTokenSource();
             _aiCancellationTokenSource = new CancellationTokenSource();
-        }
-
-        private Dictionary<string, string> SetDynamicVariablesToTemplateVariables()
-        {
-            var SystemPromptVariables = _aiService.GetSystemPromptVariables();
-            SystemPromptVariables["DATETIME_TODAY"] = DateTime.Now.ToString();
-            SystemPromptVariables["DATE_TODAY"] = DateTime.Now.ToString("dd-MM-yyyy");
-            SystemPromptVariables["FULL_MONTH_TODAY"] = DateTime.Now.ToString("MMMM");
-            SystemPromptVariables["DATE_AND_FULL_DAY_TODAY"] = DateTime.Now.ToString("dddd, d");
-            SystemPromptVariables["YEAR_TODAY"] = DateTime.Now.ToString("yyyy");
-            SystemPromptVariables["TIME_RIGHT_NOW"] = DateTime.Now.ToString("HH:mm");
-
-            return SystemPromptVariables;
-        }
-
-        private string ApplyTemplateVariablesToString(string template, Dictionary<string, string> variables)
-        {
-            string result = template;
-
-            // do something about these variables maybe
-            if (!string.IsNullOrWhiteSpace(_initialMessage))
-            {
-                result.Replace("{{INITIAL_MESSAGE}}", _initialMessage);
-            }
-            result.Replace("{{COMPANY_NAME}}", _business.BusinessName[_currentLanguage]);
-
-            foreach (var variable in variables)
-            {
-                result = result.Replace($"{{{{{variable.Key}}}}}", variable.Value);
-            } 
-
-            return result;
         }
 
         private async Task WaitTillAudioIsDone(int initialDelay = 100)

@@ -8,7 +8,6 @@ namespace IqraInfrastructure.Services
     public class ClaudeStreamingLLMService : IAIService
     {
         private readonly AnthropicClient _client;
-        private readonly string _apiKey;
 
         private int _maxTokens;
         private string _model;
@@ -18,13 +17,11 @@ namespace IqraInfrastructure.Services
         private List<Message> _messagesMemory;
 
         private string _systemPrompt;
-        private Dictionary<string, string> _systemPromptVariables;
 
         public event EventHandler<object> MessageStreamed;
 
         public ClaudeStreamingLLMService(string apiKey)
         {
-            _apiKey = apiKey;
             _client = new AnthropicClient(apiKey);
 
             _maxTokens = 128;
@@ -35,7 +32,6 @@ namespace IqraInfrastructure.Services
             _messagesMemory = new List<Message>();
 
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
-            _systemPromptVariables = new Dictionary<string, string>();
         }
 
         public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
@@ -100,16 +96,6 @@ namespace IqraInfrastructure.Services
         public void SetSystemPrompt(string systemPrompt)
         {
             _systemPrompt = systemPrompt;
-        }
-
-        public void SetTemplateVariables(Dictionary<string, string> systemPromptVariables)
-        {
-            _systemPromptVariables = systemPromptVariables;
-        }
-
-        public Dictionary<string, string> GetSystemPromptVariables()
-        {
-            return _systemPromptVariables;
         }
 
         public void SetInitialMessage(string initialMessage)

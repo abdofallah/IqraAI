@@ -1,12 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using IqraCore.Entities.Session.Conversation;
+﻿using IqraCore.Entities;
 
 namespace IqraCore.Interfaces.Repositories
 {
     public interface IConversationRepository
     {
-        Task AddConversationAsync(Conversation conversation);
-        Task<IEnumerable<Conversation>> GetConversationsBySessionAsync(string sessionId);
+        Task AddSessionConversationAsync(SessionConversation conversation);
+        Task<SessionConversation> GetSessionConversation(string sessionId);
+        Task<bool> AddChatToConversationList(string sessionId, ConversationData conversationData);
     }
 }
