@@ -4,6 +4,7 @@
      --tcolor-lighter-green: #e7f88f;
      --tcolor-light-green: #CBE54E;
      --tcolor-dark-green: #94B447;
+     --tcolor-darker-green: #5f6833;
      --tcolor-dark: #1a1a1a;
 }
 
@@ -13,10 +14,35 @@
      background: var(--tcolor-light-green);
 }
 
+.nav-pills .nav-link {
+     background-color: var(--tcolor-light-cream);
+     color: var(--tcolor-dark);
+}
+
+.nav-pills .nav-link:not(.active):hover {
+     background-color: var(--tcolor-lighter-green);
+     color: var(--tcolor-dark);
+}
+
+.nav-pills .nav-link.active, .nav-pills .show>.nav-link
+{
+     background-color: var(--tcolor-light-green);
+     border-color: var(--tcolor-light-green);
+     color: var(--tcolor-dark);
+}
+
 .btn-primary {
      background-color: var(--tcolor-light-green);
      border-color: var(--tcolor-light-green);
      color: var(--tcolor-dark);
+}
+
+.btn-primary.disabled, .btn-primary:disabled, fieldset:disabled .btn-primary {
+    color: var(--tcolor-dark);
+    pointer-events: none;
+    background-color: var(--tcolor-light-green);
+    border-color: var(--tcolor-light-green);
+    opacity: var(--bs-btn-disabled-opacity);
 }
 
 a {
@@ -322,24 +348,28 @@ a:focus {
      color: black;
 }
 
-#customToolsTable {
+#customToolsTable,
+#branchesTable {
      table-layout: fixed;
     overflow-wrap:break-word;
 }
 
-#customToolsTable.table>:not(caption)>*>* {
+#customToolsTable.table>:not(caption)>*>*,
+#branchesTable.table>:not(caption)>*>* {
      padding: 14px 20px;
      vertical-align: middle;
 }
 
-#customToolsTable.table>thead>*>* {
+#customToolsTable.table>thead>*>*,
+#branchesTable.table>thead>*>* {
      background-color: var(--tcolor-lighter-green);
      color: black;
 }
 
 @media (max-width: 768px)
 {
-     #customToolsTable {
+     #customToolsTable,
+     #branchesTable {
           overflow-x: scroll;
           display: inline-block;
           table-layout: auto;
@@ -470,5 +500,42 @@ a:focus {
 
 .error-result-container ul li
 {
-     color: orange
+     color: orange;
+}
+
+.brandingBranchBox {
+     background-color: var(--tcolor-light-cream);
+     color: var(--tcolor-dark);
+     padding: 1em;
+     border-radius: 6px;
+     cursor: pointer;
+     font-weight: 500;
+}
+
+.brandingBranchBox.active {
+     background-color: var(--tcolor-light-green);
+}
+
+#brandingBranchInformationList {
+     max-height: 300px;
+     overflow-y: scroll;
+}
+
+.branchOpeningHoursDayBox {
+     background-color: #3a3a3a;
+     padding: 0.5em;
+     border-radius: 6px;
+     border: 1px solid var(--tcolor-darker-green);
+}
+
+.workingHoursTimingList {
+     max-height: 120px;
+     overflow-y: scroll;
+}
+
+.editBranchTeamBox {
+     background-color: #3a3a3a;
+     padding: 0.5em;
+     border-radius: 6px;
+     border: 1px solid var(--tcolor-darker-green);
 }

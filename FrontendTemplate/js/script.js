@@ -34,8 +34,16 @@ $(document).ready(() =>
           let currentElement = $(event.currentTarget);
           let forTab = currentElement.attr('for');
 
+          let activeElement = $('.l-navbar .nav_link.active');
+          let activeElementFor  = activeElement.attr('for');
+
+          if (activeElementFor === forTab)
+          {
+               return;
+          }
+
           // hide previous tab and link
-          $('.l-navbar .nav_link').removeClass("active");
+          activeElement.removeClass("active");
           $("#tabs-list .main-container.show").each((index, element) =>
           {
                $(element).removeClass("show");

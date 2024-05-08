@@ -61,9 +61,9 @@
                                    <span class="nav_name">Conversations</span>
                               </a>
                               <span class="mt-4 nav-category-label">Setup</span>
-                              <a href="#" class="nav_link" for="branding-tab">
+                              <a href="#" class="nav_link" for="context-tab">
                                    <i class='bx bx-text nav_icon'></i>
-                                   <span class="nav_name">Branding</span>
+                                   <span class="nav_name">Context</span>
                               </a>
                               <a href="#" class="nav_link" for="knowledge-base-tab">
                                    <i class='bx bx-data nav_icon'></i>
@@ -230,11 +230,234 @@
 
                -->
 
-               <!-- Branding Container -->
-               <div class="main-container fade d-none w-100" id="branding-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-text'></i> <span>Branding</span></h3>
+               <!-- Context Container -->
+               <div class="main-container fade show w-100" id="context-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-text'></i> <span>Context</span></h3>
                     <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
+                         <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                              <ul class="nav nav-pills" id="context-inner-tab" role="tablist">
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="context-inner-branding-tab" data-bs-toggle="pill" data-bs-target="#context-inner-branding" type="button" role="tab" aria-controls="context-inner-branding" aria-selected="true">Branding</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="context-inner-branches-tab" data-bs-toggle="pill" data-bs-target="#context-inner-branches" type="button" role="tab" aria-controls="context-inner-branches" aria-selected="true">Branches</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="context-inner-services-tab" data-bs-toggle="pill" data-bs-target="#context-inner-services" type="button" role="tab" aria-controls="context-inner-services" aria-selected="true">Services</button>
+                                   </li>
+                                   <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="context-inner-products-tab" data-bs-toggle="pill" data-bs-target="#context-inner-products" type="button" role="tab" aria-controls="context-inner-products" aria-selected="true">Products</button>
+                                   </li>
+                              </ul>
+                              <select class="form-select" style="max-width: 300px">
+                                   <option value="en-us" selected>English | EN-US</option>
+                                   <option value="en-ar">Arabic | AR-OM</option>
+                              </select>
+                         </div>
+                         <hr>
+                         <div class="tab-content" id="context-inner-tabContent w-100">
+                              <!-- Branding -->
+                              <div class="tab-pane fade show active w-100" id="context-inner-branding" role="tabpanel" aria-labelledby="context-inner-branding-tab" tabindex="0">
+                                   <div class="mb-3">
+                                        <div class="mb-3">
+                                             <label for="brandingBrandNameInput" class="form-label">Name</label>
+                                             <input type="text" class="form-control" id="brandingBrandNameInput" placeholder="Brand Name">
+                                        </div>
+                                        <div class="mb-3">
+                                             <label for="brandingBrandCountryInput" class="form-label">Country</label>
+                                             <input type="text" class="form-control" id="brandingBrandCountryInput" placeholder="Brand Country">
+                                        </div>
+                                        <div class="mb-3">
+                                             <label for="brandingGlobalContactInput" class="form-label">Global Contact Email</label>
+                                             <input type="email" class="form-control" id="brandingGlobalContactInput" placeholder="Brand Global Contact Email">
+                                        </div>
+                                        <div class="mb-3">
+                                             <label for="brandingGlobalPhoneInput" class="form-label">Global Contact Phone</label>
+                                             <input type="tel" class="form-control" id="brandingGlobalPhoneInput" placeholder="Brand Global Contact Phone">
+                                        </div>
+                                        <div class="mb-3">
+                                             <label for="brandingGlobalWebsiteInput" class="form-label">Global Website</label>
+                                             <input type="text" class="form-control" id="brandingGlobalWebsiteInput" placeholder="Brand Global Website">
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align d-block">
+                                                  <span>Brand Information</span>
+
+                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as about, mission, vision, etc.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
+                                             <button class="btn btn-light btn-sm" id="addNewBrandInformation">
+                                                  <span>Add Information</span>
+                                             </button>
+                                             <div class="" id="brandingBranchInformationList">
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                              <!-- Branches -->
+                              <div class="tab-pane fade w-100" id="context-inner-branches" role="tabpanel" aria-labelledby="context-inner-branches-tab" tabindex="0">
+                                   <!-- Branches List Tab -->
+                                   <div class="fade show w-100" id="branchesListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                             <div style="min-width: 200px" class="me-4">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBranchButton">
+                                                       <span>+ Add New Branch</span>
+                                                  </button>
+                                             </div>
+                                             <div class="input-group w-100">
+                                                  <input type="text" class="form-control" placeholder="Branch Name" aria-label="Branch Name" aria-describedby="searchBranchButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchBranchButton">
+                                                       <i class='bx bx-search'></i>
+                                                  </button>
+                                             </div>
+                                        </div>
+                                        <div>
+                                             <table id="branchesTable" class="table w-100">
+                                                  <thead>
+                                                       <tr>
+                                                            <th scope="col">Name</th>
+                                                            <th scope="col">Actions</th>
+                                                       </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Qurum Branch</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Azaiba Shop</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Ruwi Office</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                  </tbody>
+                                             </table>
+                                        </div>
+                                   </div>
+                                   <!-- Branches Manager Tab -->
+                                   <div class="fade d-none w-100" id="branchesManagerTab">
+                                        <div class="mb-2 d-flex flex-row align-items-center justify-content-between">
+                                             <nav aria-label="breadcrumb">
+                                                  <ol class="breadcrumb mb-0">
+                                                       <li class="breadcrumb-item"><a href="#" id="switchBackToBranchesTab">Branches</a></li>
+                                                       <li class="breadcrumb-item active" aria-current="page"><span id="currentBranchName">Branch</span></li>
+                                                  </ol>
+                                             </nav>
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveBranchButton" disabled>
+                                                  <i class='bx bx-save'></i>
+                                                  <span> Save</span>
+                                             </button>
+                                        </div>
+
+
+                                        <ul class="nav nav-pills mb-3" id="branding-branch-manager-tab" role="tablist">
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link active" id="branding-branch-manager-general-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-general" type="button" role="tab" aria-controls="branding-branch-manager-general" aria-selected="true">General</button>
+                                             </li>
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link" id="branding-branch-manager-working-hours-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-working-hours" type="button" role="tab" aria-controls="branding-branch-manager-working-hours" aria-selected="true">Working Hours</button>
+                                             </li>
+                                             <li class="nav-item" role="presentation">
+                                                  <button class="nav-link" id="branding-branch-manager-team-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-team" type="button" role="tab" aria-controls="branding-branch-manager-team" aria-selected="true">Team</button>
+                                             </li>
+                                        </ul>
+                                        <div class="tab-content w-100" id="branding-branch-manager-tabContent">
+                                             <!-- General Edit -->
+                                             <div class="tab-pane fade show active w-100" id="branding-branch-manager-general" role="tabpanel" aria-labelledby="branding-branch-manager-general-tab" tabindex="0">
+                                                  <div class="mb-3">
+                                                       <label for="editBranchUniqueIDInput" class="form-label">Branch Unique ID</label>
+                                                       <input type="text" class="form-control" id="editBranchUniqueIDInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label for="editBranchNameInput" class="form-label">Branch Name</label>
+                                                       <input type="text" class="form-control" id="editBranchNameInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label class="form-label btn-ic-span-align d-block" for="editBranchAddressInput">
+                                                            <span>Branch Address</span>
+
+                                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Avoid words like (no. instead of number) as AI will read them as (n o .). Use human readable format.">
+                                                                 <i class="bx bx-help-circle"></i>
+                                                            </a>
+                                                       </label>
+                                                       <input type="text" class="form-control" id="editBranchAddressInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label for="editBranchPhoneInput" class="form-label">Branch Phone</label>
+                                                       <input type="tel" class="form-control" id="editBranchPhoneInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label for="editBranchEmailInput" class="form-label">Branch Email</label>
+                                                       <input type="text" class="form-control" id="editBranchEmailInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label for="editBranchWebsiteInput" class="form-label">Branch Website</label>
+                                                       <input type="text" class="form-control" id="editBranchWebsiteInput">
+                                                  </div>
+                                             </div>
+                                             <!-- Working Hours Edit -->
+                                             <div class="tab-pane fade w-100" id="branding-branch-manager-working-hours" role="tabpanel" aria-labelledby="branding-branch-manager-working-hours-tab" tabindex="0">
+                                                  <div>
+                                                       <label class="form-label">Branch Opening Hours</label>
+                                                       <div id="editBranchOpeningHoursInputs" class="row">
+                                                            <!-- dynamically generated -->
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                             <!-- Team Edit -->
+                                             <div class="tab-pane fade w-100" id="branding-branch-manager-team" role="tabpanel" aria-labelledby="branding-branch-manager-team-tab" tabindex="0">
+                                                  <div class="mb-3">
+                                                       <label class="form-label d-block mb-1">Branch Team</label>
+                                                       <button class="btn btn-light btn-sm mb-0" id="editBranchAddTeamMember">
+                                                            <span>Add Team Member</span>
+                                                       </button>
+                                                       <div id="editBranchTeamInputs" class="row">
+                                                            <!-- dynamically generated -->
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                              <!-- Services -->
+                              <div class="tab-pane fade w-100" id="context-inner-services" role="tabpanel" aria-labelledby="context-inner-services-tab" tabindex="0">
+                                   services
+                              </div>
+                              <!-- Products -->
+                              <div class="tab-pane fade w-100" id="context-inner-products" role="tabpanel" aria-labelledby="context-inner-products-tab" tabindex="0">
+                                   products
+                              </div>
+                         </div>
                     </div>
                </div>
 
@@ -247,10 +470,10 @@
                </div>
 
                <!-- Tools Container -->
-               <div class="main-container fade show w-100" id="tools-tab">
+               <div class="main-container fade d-none w-100" id="tools-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-wrench'></i> <span>Tools</span></h3>
                     <!-- Tools List Tab -->
-                    <div class="inner-container fade d-none w-100" id="toolListTab">
+                    <div class="inner-container fade show w-100" id="toolListTab">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                               <div style="min-width: 200px" class="me-4">
                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
@@ -335,7 +558,7 @@
                          </div>
                     </div>
                     <!-- Tools Manager Tab -->
-                    <div class="inner-container fade show w-100" id="toolManagerTab">
+                    <div class="inner-container fade d-none w-100" id="toolManagerTab">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                               <nav aria-label="breadcrumb">
                                    <ol class="breadcrumb mb-0">
@@ -344,7 +567,7 @@
                                    </ol>
                               </nav>
                               <div>
-                                   <button class="btn btn-light btn-sm btn-ic-span-align">
+                                   <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
                                         <i class='bx bx-wrench text-dark'></i>
                                         <span> Debug</span>
                                    </button>
@@ -454,7 +677,7 @@
                                              <span>Add Key/Value</span>
                                         </button>
                                         <div id="toolBodyKeyValueViewList">
-                                        
+
                                         </div>
                                    </div>
                                    <div id="toolBodyRawView" class="d-none">
@@ -568,6 +791,195 @@
                });
           </script>
 
+          <!-- Context Tab -->
+          <script>
+               const DAYS = [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ];
+
+               $(document).ready(() =>
+               {
+                    const tooltipTriggerList = document.querySelectorAll('#context-tab [data-bs-toggle="tooltip"]');
+                    const tooltipList = [ ...tooltipTriggerList ].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+                    const addNewBrandInformationButton = $("#addNewBrandInformation");
+                    const brandingBranchInformationList = $("#brandingBranchInformationList");
+
+                    const addNewBranchButton = $("#addNewBranchButton");
+                    const branchesListTab = $("#branchesListTab");
+                    const branchesManagerTab = $("#branchesManagerTab");
+
+                    const currentBranchName = $("#currentBranchName");
+
+                    const switchBackToBranchesTab = $("#switchBackToBranchesTab");
+
+                    const editBranchOpeningHoursInputsList = $("#editBranchOpeningHoursInputs");
+
+                    const editBranchAddTeamMember = $("#editBranchAddTeamMember");
+                    const editBranchTeamInputsList = $("#editBranchTeamInputs");
+
+                    DAYS.forEach((day) =>
+                    {
+                         editBranchOpeningHoursInputsList.append(`
+                         <div class="col-12">
+                              <div class="mb-2 branchOpeningHoursDayBox">
+                                   <div class="d-flex flex-row gap-2 align-items-center mb-2">
+                                        <label class="form-label fw-bold my-auto">${ day }</label>
+                                        <div class="">
+                                             <input type="checkbox" class="form-check-input" id="editBranchOpeningHours${ day }Input" checkbox-type="branchWorkingHourIsClosed" day-value="${ day }">
+                                             <label for="editBranchOpeningHours${ day }Input" class="form-check-label">is closed?</label>
+                                        </div>
+                                   </div>
+                                   
+                                   <label class="form-label d-block mb-1">Timings</label>
+                                   <button class="btn btn-light btn-sm mb-2" button-type="addBranchWorkingHour" day-value="${ day }">Add Timing</button>
+                                   <div class="workingHoursTimingList" day-value="${ day }">
+                                   </div>
+                              </div>
+                         </div>
+                         `);
+                    });
+
+                    addNewBrandInformationButton.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         brandingBranchInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="brandingInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='bx bx-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="brandingInformationRemove"]', (event) =>
+                    {
+                         event.preventDefault();
+
+                         $(event.currentTarget).parent().parent().remove();
+                    });
+
+                    addNewBranchButton.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         currentBranchName.text("New Branch");
+
+                         branchesListTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              branchesListTab.addClass("d-none");
+
+                              branchesManagerTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   branchesManagerTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    switchBackToBranchesTab.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         branchesManagerTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              branchesManagerTab.addClass("d-none");
+
+                              branchesListTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   branchesListTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    $(document).on('click', '[checkbox-type="branchWorkingHourIsClosed"]', (event) =>
+                    {
+                         let dayValue = $(event.currentTarget).attr('day-value');
+                         let isChecked = $(event.currentTarget).is(':checked');
+
+                         $(`[button-type="addBranchWorkingHour"][day-value="${ dayValue }"]`).prop('disabled', isChecked);
+
+                         let dayTimingsList = $(`.workingHoursTimingList[day-value="${ dayValue }"]`);
+                         if (isChecked)
+                         {
+                              dayTimingsList.addClass('d-none');
+                         }
+                         else
+                         {
+                              dayTimingsList.removeClass('d-none');
+                         }
+                    });
+
+                    $(document).on('click', '[button-type="addBranchWorkingHour"]', (event) =>
+                    {
+                         let dayValue = $(event.currentTarget).attr('day-value');
+
+                         let dayTimingsList = $(`.workingHoursTimingList[day-value="${ dayValue }"]`);
+
+                         dayTimingsList.append(`
+                              <div class="d-flex flex-row mt-1">
+                                   <input type="time" class="form-control" time-type="from" style="border-top-right-radius: 0; border-bottom-right-radius: 0">
+                                   <input type="time" class="form-control" time-type="to" style="border-radius: 0; border-left: none;">
+                                   <button class="btn btn-danger" button-type="removeBranchWorkingHour" style="border-top-left-radius: 0; border-bottom-left-radius: 0">
+                                        <i class="bx bx-trash"></i>
+                                   </button>
+                              </div>
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="removeBranchWorkingHour"]', (event) =>
+                    {
+                         $(event.currentTarget).parent().remove();
+                    });
+
+                    editBranchAddTeamMember.on('click', (event) => {
+                       event.preventDefault();
+
+                         editBranchTeamInputsList.append(`
+                              <div class="col-12 col-md-6 mt-3">
+                                   <div class="editBranchTeamBox">
+                                        <div class="d-flex flex-row gap-2 mb-2">
+                                             <div class="w-100">
+                                                  <label for="editBranchTeamNameInput" class="form-label">Name</label>
+                                                  <input type="text" class="form-control" id="editBranchTeamNameInput" placeholder="Name">
+                                             </div>
+                                             <div class="w-100">
+                                                  <label for="editBranchTeamRoleInput" class="form-label">Role</label>
+                                                  <input type="text" class="form-control" id="editBranchTeamRoleInput" placeholder="Role">
+                                             </div>
+                                        </div>
+                                        <div class="d-flex flex-row gap-2 mb-2">
+                                             <div class="w-100">
+                                                  <label for="editBranchTeamEmailInput" class="form-label">Email</label>
+                                                  <input type="text" class="form-control" id="editBranchTeamEmailInput" placeholder="Email">
+                                             </div>
+                                             <div class="w-100">
+                                                  <label for="editBranchTeamPhoneInput" class="form-label">Phone</label>
+                                                  <input type="tel" class="form-control" id="editBranchTeamPhoneInput" placeholder="Phone">
+                                             </div>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                             <label for="editBranchTeamInformationInput" class="form-label">Information</label>
+                                             <textarea class="form-control" id="editBranchTeamInformationInput" placeholder="Information" style="min-height: 70px"></textarea>
+                                        </div>
+
+                                        <button class="btn btn-danger w-100" button-type="removeEditBranchTeam">
+                                             <i class="bx bx-trash"></i>
+                                        </button>
+                                   </div>
+                              </div>
+                         `);
+                    });
+               });
+          </script>
+
           <!-- Tools Tab -->
           <script>
                const HTTPStatusCodeList = [
@@ -595,7 +1007,7 @@
 
                          const currentToolName = $("#currentToolName");
 
-                         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                         const tooltipTriggerList = document.querySelectorAll('#tools-tab [data-bs-toggle="tooltip"]');
                          const tooltipList = [ ...tooltipTriggerList ].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
                          const addToolInputArgumentButton = $("#addToolInputArgument");
@@ -663,7 +1075,7 @@
                                    function hasReturnStatement (node)
                                    {
                                         let result = null;
-                                        
+
                                         if (node.type === 'ReturnStatement')
                                         {
                                              result = node.argument !== null;
@@ -672,7 +1084,8 @@
 
                                         if (node.type === 'BlockStatement' || node.type === 'TryStatement')
                                         {
-                                             node.body.forEach((subNode) => {
+                                             node.body.forEach((subNode) =>
+                                             {
                                                   result = hasReturnStatement(subNode);
                                              });
                                         }
@@ -694,7 +1107,7 @@
                                                        result = false;
                                                   }
                                              }
-                                             
+
                                         }
 
                                         return result;
@@ -754,19 +1167,19 @@
                                    {
                                         list.html(`
                                              <span class="btn-ic-span-align"><i class="bx bx-error-alt"></i> <span>${ listData.length } Errors</span></span>
-                                             ${listData.join("")}
+                                             ${ listData.join("") }
                                         `);
-                                   } 
+                                   }
                                    else
                                    {
                                         list.html('');
-                                   }                                  
+                                   }
                               });
 
                               responseStatusMonacoEditors.push({ statusType: statusType, editor: editor });
                          }
 
-                         function resetOrClearEverything()
+                         function resetOrClearEverything ()
                          {
                               toolInputArguementsList.children().remove();
                               toolHeadersList.children().remove();
