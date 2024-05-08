@@ -4,8 +4,10 @@
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Dashboard | Iqra AI</title>
-          <link href="css/bootstrap.min.css" rel="stylesheet">
-          <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
+
+          <link href="libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+          <link href="libs/boxicons-2.1.4/css/boxicons.min.css" rel="stylesheet">
+
           <link href="css/structure.css" rel="stylesheet">
           <link href="css/style.css" rel="stylesheet">
 
@@ -25,7 +27,7 @@
 
           <div class="l-navbar" id="nav-bar">
                <nav class="nav">
-                    <div>
+                    <div class="upper-navigation">
                          <a href="/" class="nav_logo">
                               <i class='bx bx-bot nav_logo-icon'></i>
                               <span class="nav_logo-name">IQRA AI</span>
@@ -45,7 +47,7 @@
                               </a>
                          </div>
                     </div>
-                    <div>
+                    <div class="bottom-navigation">
                          <a href="/logout" class="nav_link mt-0">
                               <i class='bx bx-log-out nav_icon'></i>
                               <span class="nav_name">Log out</span>
@@ -55,16 +57,18 @@
                </nav>
           </div>
 
-          <div class="height-100 w-100 main-container-wrapper" id="tabs-list">
+          <div class="w-100 main-container-wrapper" id="tabs-list">
                <!-- Bussiness Container -->
                <div class="main-container fade show w-100" id="business-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-briefcase'></i> <span>Businesses</span></h3>
                     <div class="inner-container">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                              <div>
-                                   <a href="#" class="w-100 mb-0 text-decoration-none fw-bold">+ Add New Business</a>
+                              <div style="min-width: 200px" class="me-4">
+                                   <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary">
+                                        <span>+ Add New Business</span>
+                                   </button>
                               </div>
-                              <div class="input-group w-50">
+                              <div class="input-group w-100">
                                    <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton">
                                    <button class="input-group-button btn btn-primary" id="searchBusinessButton">
                                         <i class='bx bx-search'></i>
@@ -205,8 +209,11 @@
                </div>
           </div>
 
+          <!-- Libraries -->
           <script src="js/jquery-3.7.1.min.js"></script>
-          <script src="js/bootstrap.bundle.min.js"></script>
+          <script src="libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+
+          <!-- Custom Scripts -->
           <script src="js/script.js"></script>
 
           <script>

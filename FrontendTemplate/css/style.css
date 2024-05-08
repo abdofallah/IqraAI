@@ -7,9 +7,10 @@
      --tcolor-dark: #1a1a1a;
 }
 
-::selection, ::-moz-selection {
-  color: var(--tcolor-dark);
-  background: var(--tcolor-light-green);
+::selection,
+::-moz-selection {
+     color: var(--tcolor-dark);
+     background: var(--tcolor-light-green);
 }
 
 .btn-primary {
@@ -25,7 +26,8 @@ a {
 
 .btn-primary:hover,
 .btn-primary:active,
-.btn-primary:focus {
+.btn-primary:focus,
+.btn-check:checked+.btn, .btn.active, .btn.show, .btn:first-child:active, :not(.btn-check)+.btn:active {
      background-color: var(--tcolor-dark-green) !important;
      border-color: var(--tcolor-dark-green) !important;
      color: var(--tcolor-dark) !important;
@@ -154,8 +156,7 @@ a:focus {
      color: var(--tcolor-lighter-green) !important;
 }
 
-#billing-invoices-table.table>:not(caption)>*>*
-{
+#billing-invoices-table.table>:not(caption)>*>* {
      background-color: transparent;
      padding: 14px 5px;
      vertical-align: middle;
@@ -240,4 +241,234 @@ a:focus {
 .payment-method-cards-buttons span {
      line-height: normal;
      vertical-align: middle;
+}
+
+.analytics-card {
+     border: 1px solid black;
+     padding: 20px;
+     border-radius: 6px;
+     color: black;
+     background-color: var(--tcolor-lighter-green);
+     display: flex;
+     flex-direction: column;
+     justify-content: space-between;
+     align-items: start;
+     height: calc(140px + 12px);
+     width: 100%;
+}
+
+.analytics-card.half-card {
+     height: 70px;
+     flex-direction: row;
+     justify-content: center;
+     align-items: center;
+}
+
+.analytics-card .d-flex {
+     width: 100%;
+}
+
+.analytics-card h6 {
+     font-size: 20px;
+     opacity: 0.8;
+}
+
+.analytics-card h4 {
+     line-height: normal;
+     font-weight: 600;
+}
+
+.analytics-card.half-card:not(:last-of-type) {
+     margin-bottom: 12px;
+}
+
+.analytics-card .percentage {
+     line-height: normal;
+     background-color: var(--tcolor-dark);
+     padding: 4px 5px;
+     border-radius: 6px;
+     ;
+}
+
+.analytics-card .percentage-positive {
+     color: greenyellow;
+}
+
+.analytics-card .percentage-negative {
+     color: rgb(255, 104, 104);
+}
+
+.analytics-card .percentage span,
+.analytics-card .percentage i {
+     font-weight: 500;
+     line-height: normal;
+     vertical-align: middle;
+}
+
+.analytics-second-section {
+     height: 400px;
+}
+
+#analyticsChart {
+     padding: 20px;
+     border-radius: 6px;
+     background-color: var(--tcolor-light-cream);
+}
+
+.analytics-acitivity {
+     padding: 20px;
+     border-radius: 6px;
+     background-color: var(--tcolor-light-cream);
+     color: black;
+}
+
+#customToolsTable {
+     table-layout: fixed;
+    overflow-wrap:break-word;
+}
+
+#customToolsTable.table>:not(caption)>*>* {
+     padding: 14px 20px;
+     vertical-align: middle;
+}
+
+#customToolsTable.table>thead>*>* {
+     background-color: var(--tcolor-lighter-green);
+     color: black;
+}
+
+@media (max-width: 768px)
+{
+     #customToolsTable {
+          overflow-x: scroll;
+          display: inline-block;
+          table-layout: auto;
+     }
+}
+
+/* Chrome, Edge and Safari */
+*::-webkit-scrollbar {
+     height: 6px;
+     width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+     border-radius: 4px;
+     background-color: #F1ECE8;
+}
+
+*::-webkit-scrollbar-track:hover {
+     background-color: #F1ECE8;
+}
+
+*::-webkit-scrollbar-track:active {
+     background-color: #F1ECE8;
+}
+
+*::-webkit-scrollbar-thumb {
+     border-radius: 0px;
+     background-color: #CBE54E;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+     background-color: #94B447;
+}
+
+*::-webkit-scrollbar-thumb:active {
+     background-color: #94B447;
+}
+
+/* Chrome, Edge and Safari */
+.l-navbar::-webkit-scrollbar {
+     height: 4px;
+     width: 4px;
+}
+
+.l-navbar::-webkit-scrollbar-track {
+     border-radius: 0px;
+     background-color: #F1ECE8;
+}
+
+.l-navbar::-webkit-scrollbar-track:hover {
+     background-color: #F1ECE8;
+}
+
+.l-navbar::-webkit-scrollbar-track:active {
+     background-color: #F1ECE8;
+}
+
+.l-navbar::-webkit-scrollbar-thumb {
+     border-radius: 4px;
+     background-color: #CBE54E;
+}
+
+.l-navbar::-webkit-scrollbar-thumb:hover {
+     background-color: #94B447;
+}
+
+.l-navbar::-webkit-scrollbar-thumb:active {
+     background-color: #94B447;
+}
+
+.btn-ic-span-align span,
+.btn-ic-span-align i,
+.btn-ic-span-align.dropdown-toggle::after {
+     vertical-align: middle;
+     line-height: normal;
+}
+
+#publishToolDropdown button {
+     width: 160px;
+}
+
+#publishToolDropdown .dropdown-menu {
+     width: 260px;
+}
+
+#toolHeadersList,
+#toolInputArguementsList {
+     max-height: 300px;
+     overflow-y: scroll;
+}
+
+.responseStatusBox {
+     background-color: #1a1a1a;
+     padding: 1em;
+     border-radius: 6px;
+}
+
+.mon-editor {
+     min-height: 100px !important;
+     width:100%;
+     height:300px;
+     border:1px solid grey;
+     resize: vertical;
+     overflow-x: auto;
+}
+
+.error-result-container ul {
+     height: 90px;
+     overflow-y: scroll;
+     margin: 0;
+     margin-top: 10px;
+     background-color: #2a2a2a;
+     padding-top: 10px;
+     padding-bottom: 10px;
+     border-radius: 6px;
+}
+
+.returnAlert {
+     color: rgb(247, 86, 86);
+     font-weight: 600;
+}
+
+.error-result-container ul span:first-child
+{
+     color: rgb(247, 86, 86);
+     font-weight: 600;
+}
+
+.error-result-container ul li
+{
+     color: orange
 }

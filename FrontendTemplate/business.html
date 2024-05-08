@@ -4,8 +4,10 @@
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Dashboard | Iqra AI</title>
-          <link href="css/bootstrap.min.css" rel="stylesheet">
-          <link href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css" rel="stylesheet">
+
+          <link href="libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+          <link href="libs/boxicons-2.1.4/css/boxicons.min.css" rel="stylesheet">
+
           <link href="css/structure.css" rel="stylesheet">
           <link href="css/style.css" rel="stylesheet">
 
@@ -25,47 +27,60 @@
 
           <div class="l-navbar" id="nav-bar">
                <nav class="nav">
-                    <div>
+                    <div class="upper-navigation">
                          <a href="/" class="nav_logo">
                               <i class='bx bx-bot nav_logo-icon'></i>
                               <span class="nav_logo-name">IQRA AI</span>
                          </a>
                          <div class="nav_list">
-                              <a href="#" class="nav_link active" for="business-tab">
+                              <a href="#" class="nav_link active" for="overview-tab">
                                    <i class='bx bx-chalkboard nav_icon'></i>
                                    <span class="nav_name">Overview</span>
                               </a>
-                              <span class="mt-4" style="padding: 0em 1em; opacity: 0.3;">Actions</span>
-                              <a href="#" class="nav_link" for="billing-tab">
+                              <span class="mt-4 nav-category-label">Agents</span>
+                              <a href="#" class="nav_link" for="routing-tab">
+                                   <i class='bx bx-git-repo-forked nav_icon'></i>
+                                   <span class="nav_name">Routing</span>
+                              </a>
+                              <a href="#" class="nav_link" for="agents-tab">
+                                   <i class='bx bx-support nav_icon'></i>
+                                   <span class="nav_name">Agents</span>
+                              </a>
+                              <span class="mt-4 nav-category-label">Actions</span>
+                              <a href="#" class="nav_link" for="make-calls-tab">
                                    <i class='bx bx-phone-call nav_icon'></i>
                                    <span class="nav_name">Make Calls</span>
                               </a>
-                              <span class="mt-4" style="padding: 0em 1em; opacity: 0.3;">Analytics</span>
-                              <a href="#" class="nav_link" for="billing-tab">
+                              <span class="mt-4 nav-category-label">Analytics</span>
+                              <a href="#" class="nav_link" for="appointments-tab">
                                    <i class='bx bx-time-five nav_icon'></i>
                                    <span class="nav_name">Appointments</span>
                               </a>
-                              <a href="#" class="nav_link" for="billing-tab">
+                              <a href="#" class="nav_link" for="conversations-tab">
                                    <i class='bx bx-conversation nav_icon'></i>
                                    <span class="nav_name">Conversations</span>
                               </a>
-                              <span class="mt-4" style="padding: 0em 1em; opacity: 0.3;">Information</span>
-                              <a href="#" class="nav_link" for="billing-tab">
-                                   <i class='bx bx-data nav_icon'></i>
-                                   <span class="nav_name">Company Information</span>
+                              <span class="mt-4 nav-category-label">Setup</span>
+                              <a href="#" class="nav_link" for="branding-tab">
+                                   <i class='bx bx-text nav_icon'></i>
+                                   <span class="nav_name">Branding</span>
                               </a>
-                              <a href="#" class="nav_link" for="billing-tab">
+                              <a href="#" class="nav_link" for="knowledge-base-tab">
+                                   <i class='bx bx-data nav_icon'></i>
+                                   <span class="nav_name">Knowledge Base</span>
+                              </a>
+                              <a href="#" class="nav_link" for="tools-tab">
                                    <i class='bx bx-wrench nav_icon'></i>
                                    <span class="nav_name">Tools</span>
                               </a>
-                              <span class="mt-4" style="padding: 0em 1em; opacity: 0.3;">Other</span>
+                              <span class="mt-4 nav-category-label">Other</span>
                               <a href="#" class="nav_link mb-0" for="settings-tab">
                                    <i class='bx bx-cog nav_icon'></i>
                                    <span class="nav_name">Settings</span>
                               </a>
                          </div>
                     </div>
-                    <div>
+                    <div class="bottom-navigation">
                          <a href="/logout" class="nav_link mt-0">
                               <i class='bx bx-log-out nav_icon'></i>
                               <span class="nav_name">Log out</span>
@@ -75,146 +90,407 @@
                </nav>
           </div>
 
-          <div class="height-100 w-100 main-container-wrapper" id="tabs-list">
-               <!-- Bussiness Container -->
-               <div class="main-container fade show w-100" id="business-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-briefcase'></i> <span>Businesses</span></h3>
+          <div class="w-100 main-container-wrapper" id="tabs-list">
+               <!-- Overview Container -->
+               <div class="main-container fade d-none w-100" id="overview-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-chalkboard'></i> <span>Overview</span></h3>
                     <div class="inner-container">
-                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                              <div>
-                                   <a href="#" class="w-100 mb-0 text-decoration-none fw-bold">+ Add New Business</a>
+                         <div class="row mb-4">
+                              <!-- Total Calls-->
+                              <div class="col-12 col-md-3">
+                                   <div class="analytics-card">
+                                        <h6>Total Calls</h6>
+                                        <div class="d-flex flex-row justify-content-between align-items-end">
+                                             <h4 class="m-0">103</h4>
+                                             <span class="m-0 percentage percentage-positive">
+                                                  <span>+5%</span>
+                                                  <i class="bx bx-up-arrow-alt"></i>
+                                             </span>
+                                        </div>
+                                   </div>
                               </div>
-                              <div class="input-group w-50">
-                                   <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton">
-                                   <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                              <!-- Average Call Time -->
+                              <div class="col-12 col-md-4">
+                                   <div class="analytics-card">
+                                        <h6>Average Call Time</h6>
+                                        <div class="d-flex flex-row justify-content-between align-items-end">
+                                             <h4 class="m-0">3min 30sec</h4>
+                                             <span class="m-0 percentage percentage-negative">
+                                                  <span>-10%</span>
+                                                  <i class="bx bx-down-arrow-alt"></i>
+                                             </span>
+                                        </div>
+                                   </div>
+                              </div>
+                              <!-- Appointments/Orders -->
+                              <div class="col-12 col-md-5">
+                                   <div class="analytics-card half-card">
+                                        <h6 class="w-100 mb-0">Appointments Booked</h6>
+                                        <div class="d-flex flex-row justify-content-between align-items-end">
+                                             <h4 class="m-0">10</h4>
+                                             <span class="m-0 percentage percentage-positive">
+                                                  <span>+53%</span>
+                                                  <i class="bx bx-up-arrow-alt"></i>
+                                             </span>
+                                        </div>
+                                   </div>
+
+                                   <div class="analytics-card half-card">
+                                        <h6 class="w-100 mb-0">Orders Placed</h6>
+                                        <div class="d-flex flex-row justify-content-between align-items-end">
+                                             <h4 class="m-0">41</h4>
+                                             <span class="m-0 percentage percentage-positive">
+                                                  <span>+13%</span>
+                                                  <i class="bx bx-up-arrow-alt"></i>
+                                             </span>
+                                        </div>
+                                   </div>
+                              </div>
+
+                         </div>
+                         <div class="row mb-2 analytics-second-section">
+                              <div class="col-12 col-md-8">
+                                   <canvas id="analyticsChart"></canvas>
+                              </div>
+                              <div class="col-12 col-md-4">
+                                   <div class="analytics-acitivity h-100">
+                                        <h4 class="mb-4">Upcoming</h4>
+                                        <div>
+                                             <div>
+
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                         </div>
+                    </div>
+               </div>
+
+               <!--
+
+                    Agents
+
+               -->
+
+               <!-- Routing Container -->
+               <div class="main-container fade d-none w-100" id="routing-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-git-repo-forked'></i> <span>Routing</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!-- Agents Container -->
+               <div class="main-container fade d-none w-100" id="agents-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-support'></i> <span>Agents</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!--
+
+                    Tools
+
+               -->
+
+               <!-- Make Calls Container -->
+               <div class="main-container fade d-none w-100" id="make-calls-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-phone-call'></i> <span>Make Calls</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!--
+
+                    Analytics
+
+               -->
+
+               <!-- Appointments Container -->
+               <div class="main-container fade d-none w-100" id="appointments-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-time-five'></i> <span>Appointments</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!-- Conversations Container -->
+               <div class="main-container fade d-none w-100" id="conversations-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-conversation'></i> <span>Conversations</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!--
+
+                    Setup
+
+               -->
+
+               <!-- Branding Container -->
+               <div class="main-container fade d-none w-100" id="branding-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-text'></i> <span>Branding</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!-- Knowledge Base Container -->
+               <div class="main-container fade d-none w-100" id="knowledge-base-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-data'></i> <span>Knowledge Base</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!-- Tools Container -->
+               <div class="main-container fade show w-100" id="tools-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-wrench'></i> <span>Tools</span></h3>
+                    <!-- Tools List Tab -->
+                    <div class="inner-container fade d-none w-100" id="toolListTab">
+                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                              <div style="min-width: 200px" class="me-4">
+                                   <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
+                                        <span>+ Add New Tool</span>
+                                   </button>
+                              </div>
+                              <div class="input-group w-100">
+                                   <input type="text" class="form-control" placeholder="Tool Name" aria-label="Tool Name" aria-describedby="searchToolButton">
+                                   <button class="input-group-button btn btn-primary" id="searchToolButton">
                                         <i class='bx bx-search'></i>
                                    </button>
                               </div>
                          </div>
-                         <div class="row">
-                              <div class="col-lg-4 col-md-6 col-12">
-                                   <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="41851">
-                                        <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                                             <img src="img/Badal-Logo-Black.png">
-                                             <h4>Badal Technologies</h4>
-                                        </div>
-                                        <div>
-                                             <h5 class="h5-info master-number">
-                                                  <i class='bx bx-phone'></i>
-                                                  <span>+968 7223 33384</span>
-                                             </h5>
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
-                    </div>
-               </div>
-
-               <!-- Billing Container -->
-               <div class="main-container fade w-100 d-none" id="billing-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-credit-card nav_icon'></i> <span>Billing</span></h3>
-                    <div class="inner-container">
-                         <nav class="mb-4">
-                              <div class="nav" id="billing-inner-tabs" role="tablist">
-                                   <button class="nav-link active" id="nav-invoice-tab" data-bs-toggle="tab" data-bs-target="#nav-invoice" type="button" role="tab" aria-controls="nav-invoice" aria-selected="true">
-                                        Invoice
-                                   </button>
-
-                                   <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-controls="nav-method" aria-selected="false">
-                                        Method
-                                   </button>
-                              </div>
-                         </nav>
-                         <div class="tab-content w-100" id="billing-inner-tabContent">
-                              <div class="tab-pane fade show active w-100" id="nav-invoice" role="tabpanel" aria-labelledby="nav-invoice-tab" tabindex="0">
-                                   <table class="table table-hover w-100" id="billing-invoices-table">
-                                        <thead>
-                                             <tr>
-                                                  <th scope="col">Date</th>
-                                                  <th scope="col">Invoice-Number</th>
-                                                  <th scope="col">Cost</th>
-                                                  <th scope="col">Status</th>
-                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                             <tr class="invoice-unpaid">
-                                                  <td>4/27/2024</td>
-                                                  <td>112512</td>
-                                                  <td>$504.23</td>
-                                                  <td class="invoice-unpaid">
-                                                       <span>Unpaid</span>
-                                                  </td>
-                                             </tr>
-                                             <tr class="invoice-paid">
-                                                  <td>3/26/2024</td>
-                                                  <td>523324</td>
-                                                  <td>$204.23</td>
-                                                  <td class="invoice-paid">
-                                                       <span>Paid</span>
-                                                  </td>
-                                             </tr>
-                                             <tr class="invoice-paid">
-                                                  <td>2/24/2024</td>
-                                                  <td>967545</td>
-                                                  <td>$14.23</td>
-                                                  <td class="invoice-paid">
-                                                       <span>Paid</span>
-                                                  </td>
-                                             </tr>
-                                        </tbody>
-                                   </table>
-                              </div>
-                              <div class="tab-pane fade w-100" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab" tabindex="0">
-                                   <div class="row">
-                                        <div class="col-md-6 col-12">
-                                             <div class="billing-method-card d-flex flex-column align-items-center justify-content-center mb-2">
-                                                  <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
-                                                       <div class="method-type-icon icon-visa">
-                                                            <img src="img/visa-svgrepo-com.svg">
-                                                       </div>
-
-                                                       <button class="btn btn-outline-light" type="button" disabled>Primary</button>
-                                                  </div>
-                                                  <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
-                                                       <div>
-                                                            <h6 class="label">Card Number</h6>
-                                                            <h6>•••• •••• •••• 1539</h6>
-                                                       </div>
-
-                                                       <div>
-                                                            <h6 class="label">Expires</h6>
-                                                            <h6>04/24</h6>
-                                                       </div>
-
-                                                       <div>
-                                                            <h6 class="label">CVV</h6>
-                                                            <h6>•••</h6>
-                                                       </div>
-                                                  </div>
-                                                  <div class="d-flex flex-row align-items-center justify-content-between w-100">
-                                                       <div>
-                                                            <h6 class="label">Card Name</h6>
-                                                            <h6>John Doe</h6>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                             <div class="d-flex flex-row align-items-center justify-content-between w-100 payment-method-cards-buttons">
-                                                  <button class="btn btn-light w-100 me-3">
+                         <div>
+                              <table id="customToolsTable" class="table w-100">
+                                   <thead>
+                                        <tr>
+                                             <th scope="col">Status</th>
+                                             <th scope="col">Name</th>
+                                             <th scope="col">Type</th>
+                                             <th scope="col">Service</th>
+                                             <th scope="col">Actions</th>
+                                        </tr>
+                                   </thead>
+                                   <tbody>
+                                        <tr>
+                                             <th scope="row">
+                                                  <span class="badge bg-success">Active</span>
+                                             </th>
+                                             <td>
+                                                  <b>Make Appointment</b>
+                                             </td>
+                                             <td>POST</td>
+                                             <td>Badal System</td>
+                                             <td>
+                                                  <button class="btn btn-info btn-sm">
+                                                       <i class="bx bx-edit"></i>
+                                                  </button>
+                                                  <button class="btn btn-danger btn-sm">
                                                        <i class="bx bx-trash"></i>
-                                                       <span>Delete</span>
                                                   </button>
-
-                                                  <button class="btn btn-light w-100">
-                                                       <i class="bx bx-pencil"></i>
-                                                       <span>Edit</span>
+                                             </td>
+                                        </tr>
+                                        <tr>
+                                             <th scope="row">
+                                                  <span class="badge bg-danger">Disabled</span>
+                                             </th>
+                                             <td>
+                                                  <b>Make Appointment</b>
+                                             </td>
+                                             <td>POST</td>
+                                             <td>Google Calendar</td>
+                                             <td>
+                                                  <button class="btn btn-info btn-sm">
+                                                       <i class="bx bx-edit"></i>
                                                   </button>
+                                                  <button class="btn btn-danger btn-sm">
+                                                       <i class="bx bx-trash"></i>
+                                                  </button>
+                                             </td>
+                                        </tr>
+                                        <tr>
+                                             <th scope="row">
+                                                  <span class="badge bg-danger">Disabled</span>
+                                             </th>
+                                             <td>
+                                                  <b>Make Appointment</b>
+                                             </td>
+                                             <td>POST</td>
+                                             <td>Calendar.com</td>
+                                             <td>
+                                                  <button class="btn btn-info btn-sm">
+                                                       <i class="bx bx-edit"></i>
+                                                  </button>
+                                                  <button class="btn btn-danger btn-sm">
+                                                       <i class="bx bx-trash"></i>
+                                                  </button>
+                                             </td>
+                                        </tr>
+                                   </tbody>
+                              </table>
+                         </div>
+                    </div>
+                    <!-- Tools Manager Tab -->
+                    <div class="inner-container fade show w-100" id="toolManagerTab">
+                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                              <nav aria-label="breadcrumb">
+                                   <ol class="breadcrumb mb-0">
+                                        <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
+                                   </ol>
+                              </nav>
+                              <div>
+                                   <button class="btn btn-light btn-sm btn-ic-span-align">
+                                        <i class='bx bx-wrench text-dark'></i>
+                                        <span> Debug</span>
+                                   </button>
+                                   <div class="btn-group" id="publishToolDropdown">
+                                        <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                             <i class='bx bx-wrench'></i>
+                                             <span> Publish</span>
+                                        </button>
+                                        <div class="dropdown-menu p-3">
+                                             <div class="mb-2">
+                                                  <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
+                                                  <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">Published 20 minutes ago</p>
                                              </div>
+                                             <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton">
+                                                  <span>Update</span>
+                                             </button>
                                         </div>
+                                   </div>
+                              </div>
+                         </div>
+                         <div>
+                              <div class="mb-3">
+                                   <label for="inputToolName" class="form-label">Name</label>
+                                   <input type="text" class="form-control" id="inputToolName" placeholder="Tool Name">
+                              </div>
+                              <div class="mb-3">
+                                   <label for="inputToolShortDescription" class="form-label">Short Description</label>
+                                   <input type="text" class="form-control" id="inputToolShortDescription" placeholder="Tool Description for AI">
+                              </div>
+                              <div class="mb-3">
+                                   <label class="form-label d-block">Input Schemea</label>
+                                   <button class="btn btn-light btn-sm m-0 mb-2" id="addToolInputArgument">
+                                        <span>Add Input Argument</span>
+                                   </button>
+                                   <div id="toolInputArguementsList">
+                                   </div>
+                              </div>
+                              <div class="mb-3">
+                                   <label for="inputToolType" class="form-label">Request Type</label>
+                                   <select class="form-select mb-3" id="inputToolType">
+                                        <option value="0" selected>GET</option>
+                                        <option value="1">POST</option>
+                                        <option value="2">PUT</option>
+                                        <option value="3">DELETE</option>
+                                        <option value="4">PATCH</option>
+                                        <option value="5">HEAD</option>
+                                        <option value="6">OPTIONS</option>
+                                   </select>
+                              </div>
+                              <div class="mb-3 d-flex flex-row align-items-center justify-content-center w-100">
+                                   <div class="w-100 me-3">
+                                        <label for="inputToolURL" class="form-label btn-ic-span-align">
+                                             <span>URL (Endpoint)</span>
+                                        </label>
+                                        <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
+                                   </div>
+                                   <div class="w-100">
+                                        <label for="inputToolServiceName" class="form-label btn-ic-span-align">
+                                             <span>Service Name</span>
+
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Friendly service name is shown instead of the URL/Endpoint where needed.">
+                                                  <i class="bx bx-help-circle"></i>
+                                             </a>
+                                        </label>
+                                        <input type="text" class="form-control w-100" id="inputToolServiceName" placeholder="Friendly Service Name">
+                                   </div>
+                              </div>
+                              <div class="mb-3">
+                                   <label class="form-label d-block">Headers</label>
+                                   <button class="btn btn-light btn-sm m-0 mb-2" id="addToolHeader">
+                                        <span>Add Header</span>
+                                   </button>
+                                   <div id="toolHeadersList">
+                                   </div>
+                              </div>
+                              <div class="mb-3">
+                                   <label class="form-label btn-ic-span-align">
+                                        <span>Body</span>
+
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="To use values of the input arguements in body, use the template {{Arguement Name}} (double bracket in start and end with argurment name in between), which will be replaced with its value automatically at runtime.">
+                                             <i class="bx bx-help-circle"></i>
+                                        </a>
+                                   </label>
+                                   <div class="mb-2">
+                                        <div class="form-check form-check-inline me-3">
+                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="none" id="toolBodyTypeNone" checked>
+                                             <label class="form-check-label" for="toolBodyTypeNone">none</label>
+                                        </div>
+                                        <div class="form-check form-check-inline me-3">
+                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="form-data" id="toolBodyTypeFormData">
+                                             <label class="form-check-label" for="toolBodyTypeFormData">form-data</label>
+                                        </div>
+                                        <div class="form-check form-check-inline me-3">
+                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="x-www-form-urlencoded" id="toolBodyTypeXWwwFormUrlEncoded">
+                                             <label class="form-check-label" for="toolBodyTypeXWwwFormUrlEncoded">x-www-form-urlencoded</label>
+                                        </div>
+                                        <div class="form-check form-check-inline me-3">
+                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="raw" id="toolBodyTypeRaw">
+                                             <label class="form-check-label" for="toolBodyTypeRaw">raw</label>
+                                        </div>
+                                   </div>
+                                   <div id="toolBodyNone">
+                                        <label style="opacity: 0.7;">This request does not have a body. Change body type.</label>
+                                   </div>
+                                   <div id="toolBodyKeyValueView" class="d-none">
+                                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolBodyKeyValue">
+                                             <span>Add Key/Value</span>
+                                        </button>
+                                        <div id="toolBodyKeyValueViewList">
+                                        
+                                        </div>
+                                   </div>
+                                   <div id="toolBodyRawView" class="d-none">
+                                        <textarea class="form-control" placeholder="" id="toolBodyRawTextarea" rows="5"></textarea>
+                                   </div>
+                              </div>
+                              <div class="mb-3">
+                                   <label class="form-label btn-ic-span-align">
+                                        <span>Response </span>
+
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Javascript code to convert request response of each status type into AI readable format. Response data is available within predefined variable called 'responseData'.">
+                                             <i class="bx bx-help-circle"></i>
+                                        </a>
+                                   </label>
+                                   <div class="input-group mb-2">
+                                        <select class="form-select" id="toolResponseStatusSelect">
+                                        </select>
+                                        <button class="btn btn-light" id="addToolResponseStatusType">
+                                             <span>Add Response Code</span>
+                                        </button>
+                                   </div>
+
+                                   <div class="mb-2" id="toolResponseStatusTypeListButtons">
+                                   </div>
+                                   <div id="toolResponseStatusTypeList">
                                    </div>
                               </div>
                          </div>
                     </div>
                </div>
+
+               <!--
+
+                    Other
+
+               -->
 
                <!-- Settings Container -->
                <div class="main-container fade w-100 d-none" id="settings-tab">
@@ -225,48 +501,623 @@
                </div>
           </div>
 
+          <!-- Libraries -->
           <script src="js/jquery-3.7.1.min.js"></script>
-          <script src="js/bootstrap.bundle.min.js"></script>
+          <script src="libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+          <script src="libs/esprima-4.0.1/dist/esprima.js"></script>
+          <script src="libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
+          <script src="libs/chart.js-4.4.2/package/dist/chart.umd.js"></script>
+
+          <!-- Custom Scripts -->
           <script src="js/script.js"></script>
 
+          <!-- Overview Tab -->
           <script>
-               var isBusinessAnimationEnabled = true;
+               $(document).ready(() =>
+               {
+
+                    const analyticsChart = document.getElementById('analyticsChart');
+
+                    new Chart(analyticsChart, {
+                         type: 'bar',
+                         data: {
+                              datasets: [
+                                   {
+                                        label: 'Orders Placed',
+                                        data: [ 7, 24, 5, 23, 12, 1, 5 ],
+                                        borderWidth: 1,
+                                        backgroundColor: 'red',
+                                        barThickness: '20'
+                                   },
+                                   {
+                                        label: 'Appointments Booked',
+                                        data: [ 4, 19, 3, 32, 20, 17, 12 ],
+                                        borderWidth: 1,
+                                        backgroundColor: 'lightblue',
+                                        barThickness: '20'
+                                   },
+                                   {
+                                        label: 'Total Calls',
+                                        data: [ 10, 32, 11, 42, 33, 25, 23 ],
+                                        borderWidth: 1,
+                                        backgroundColor: 'green',
+                                        barThickness: '20',
+                                        borderRadius: {
+                                             topRight: '6',
+                                             topLeft: '6'
+                                        }
+                                   }
+                              ],
+                              labels: [ 'Jan 1', 'Jan 2', 'Jan 3', 'Jan 4', 'Jan 5', 'Jan 6', 'Jan 7' ],
+                         },
+                         options: {
+                              scales: {
+                                   y: {
+                                        beginAtZero: true,
+                                        stacked: true,
+                                   },
+                                   x: {
+                                        stacked: true,
+                                   }
+                              },
+                              responsive: true,
+                              maintainAspectRatio: false
+                         }
+                    });
+
+               });
           </script>
 
+          <!-- Tools Tab -->
           <script>
-               $(document).ready(()=> {
-                    $(document).on("click", ".business-card", (event) => {
-                         let currentCardElement = $(event.currentTarget);
-                         let businessDataId = currentCardElement.attr("data-business-id");
-                         
-                         if (!businessDataId || !businessDataId.length) {
-                              return;
-                         }
+               const HTTPStatusCodeList = [
+                    { "code": 100, "name": "Continue" }, { "code": 101, "name": "Switching Protocols" }, { "code": 102, "name": "Processing (WebDAV)" }, { "code": 103, "name": "Early Hints" }, { "code": 200, "name": "OK" }, { "code": 201, "name": "Created" }, { "code": 202, "name": "Accepted" }, { "code": 203, "name": "Non-Authoritative Information" }, { "code": 204, "name": "No Content" }, { "code": 205, "name": "Reset Content" }, { "code": 206, "name": "Partial Content" }, { "code": 207, "name": "Multi-Status (WebDAV)" }, { "code": 208, "name": "Already Reported (WebDAV)" }, { "code": 226, "name": "IM Used (HTTP Delta encoding)" }, { "code": 300, "name": "Multiple Choices" }, { "code": 301, "name": "Moved Permanently" }, { "code": 302, "name": "Found" }, { "code": 303, "name": "See Other" }, { "code": 304, "name": "Not Modified" }, { "code": 305, "name": "Use Proxy Deprecated" }, { "code": 307, "name": "Temporary Redirect" }, { "code": 308, "name": "Permanent Redirect" }, { "code": 400, "name": "Bad Request" }, { "code": 401, "name": "Unauthorized" }, { "code": 402, "name": "Payment Required Experimental" }, { "code": 403, "name": "Forbidden" }, { "code": 404, "name": "Not Found" }, { "code": 405, "name": "Method Not Allowed" }, { "code": 406, "name": "Not Acceptable" }, { "code": 407, "name": "Proxy Authentication Required" }, { "code": 408, "name": "Request Timeout" }, { "code": 409, "name": "Conflict" }, { "code": 410, "name": "Gone" }, { "code": 411, "name": "Length Required" }, { "code": 412, "name": "Precondition Failed" }, { "code": 413, "name": "Payload Too Large" }, { "code": 414, "name": "URI Too Long" }, { "code": 415, "name": "Unsupported Media Type" }, { "code": 416, "name": "Range Not Satisfiable" }, { "code": 417, "name": "Expectation Failed" }, { "code": 418, "name": "I'm a teapot" }, { "code": 421, "name": "Misdirected Request" }, { "code": 422, "name": "Unprocessable Content (WebDAV)" }, { "code": 423, "name": "Locked (WebDAV)" }, { "code": 424, "name": "Failed Dependency (WebDAV)" }, { "code": 425, "name": "Too Early Experimental" }, { "code": 426, "name": "Upgrade Required" }, { "code": 428, "name": "Precondition Required" }, { "code": 429, "name": "Too Many Requests" }, { "code": 431, "name": "Request Header Fields Too Large" }, { "code": 451, "name": "Unavailable For Legal Reasons" }, { "code": 500, "name": "Internal Server Error" }, { "code": 501, "name": "Not Implemented" }, { "code": 502, "name": "Bad Gateway" }, { "code": 503, "name": "Service Unavailable" }, { "code": 504, "name": "Gateway Timeout" }, { "code": 505, "name": "HTTP Version Not Supported" }, { "code": 506, "name": "Variant Also Negotiates" }, { "code": 507, "name": "Insufficient Storage (WebDAV)" }, { "code": 508, "name": "Loop Detected (WebDAV)" }, { "code": 510, "name": "Not Extended" }, { "code": 511, "name": "Network Authentication Required" }
+               ];
 
-                         if (isBusinessAnimationEnabled)
+               var responseStatusMonacoEditors = []; // { statusType: xxx, editor: xyz}
+
+               require.config({
+                    paths: {
+                         vs: 'libs/monaco-editor-0.48.0/package/min/vs',
+                         esprima: 'libs/esprima-4.0.1/dist/esprima.js'
+                    },
+               });
+
+               require([ 'vs/editor/editor.main', 'esprima' ], function (_, parser)
+               {
+                    $(document).ready(() =>
+                    {
+                         const addNewToolbutton = $("#addNewToolButton");
+                         const switchBackToToolsTab = $("#switchBackToToolsTab");
+
+                         const toolListTab = $("#toolListTab");
+                         const toolManagerTab = $("#toolManagerTab");
+
+                         const currentToolName = $("#currentToolName");
+
+                         const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                         const tooltipList = [ ...tooltipTriggerList ].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+                         const addToolInputArgumentButton = $("#addToolInputArgument");
+                         const toolInputArguementsList = $("#toolInputArguementsList");
+
+                         const toolHeadersList = $("#toolHeadersList");
+                         const addToolHeaderButton = $("#addToolHeader");
+
+                         const toolBodyType = $('[name="toolBodyTypeCheckbox"]');
+                         const toolBodyNone = $("#toolBodyNone");
+                         const toolBodyKeyValueView = $("#toolBodyKeyValueView");
+                         const toolBodyKeyValueViewList = $("#toolBodyKeyValueViewList");
+                         const toolBodyRawView = $("#toolBodyRawView");
+                         const addToolBodyKeyValueButton = $("#addToolBodyKeyValue");
+
+                         const toolResponseStatusTypeListButtons = $("#toolResponseStatusTypeListButtons");
+                         const toolResponseStatusTypeList = $("#toolResponseStatusTypeList");
+                         const toolResponseStatusSelect = $("#toolResponseStatusSelect");
+                         const addToolResponseStatusTypeButton = $("#addToolResponseStatusType");
+
+                         function addResponseStatusOptions ()
                          {
-                              $("body").css("overflow", "hidden");
+                              toolResponseStatusSelect.children().remove();
 
-                              let transitionTimeMS = 1000
-
-                              currentCardElement.css("transition", `all ${transitionTimeMS}ms ease`);
-                              currentCardElement.css("transform", "scale(40)");
-                              currentCardElement.css("background-color", "#1a1a1a");
-                              currentCardElement.css("color", "#1a1a1a");
-
-                              setTimeout(() => {
-                                   MoveToBusinessPage(businessDataId);
-                              }, (transitionTimeMS/1.1));
+                              HTTPStatusCodeList.forEach((element) =>
+                              {
+                                   toolResponseStatusSelect.append(`<option value="${ element.code }">${ element.code } | ${ element.name }</option>`);
+                              });
                          }
-                         else
+
+                         function initResponseCodeEditor (statusType, containerId)
                          {
-                              MoveToBusinessPage(businessDataId);
+                              monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+                                   noSemanticValidation: false,
+                                   noSyntaxValidation: false,
+                                   diagnosticCodesToIgnore: [ 1108 ]
+                              });
+
+                              monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+                                   target: monaco.languages.typescript.ScriptTarget.ES2015,
+                                   allowNonTsExtensions: true,
+                              });
+
+                              var libUri = `ts:filename/response${ statusType }.d.ts`;
+                              var libSource = "const responseData = any";
+                              monaco.languages.typescript.javascriptDefaults.addExtraLib(libSource, libUri);
+                              monaco.editor.createModel(libSource, "typescript", monaco.Uri.parse(libUri));
+
+                              var editor = monaco.editor.create($(`#${ containerId } .mon-editor`)[ 0 ], {
+                                   theme: "vs-dark",
+                                   value: 'return responseData;',
+                                   language: 'javascript',
+                                   automaticLayout: true,
+
+                                   scrollBeyondLastLine: false
+                              });
+
+                              function validateCode ()
+                              {
+                                   var code = editor.getValue();
+                                   var ast = esprima.parseScript(code, { tolerant: true });
+
+                                   var returnStatements = [];
+
+                                   function hasReturnStatement (node)
+                                   {
+                                        let result = null;
+                                        
+                                        if (node.type === 'ReturnStatement')
+                                        {
+                                             result = node.argument !== null;
+                                             returnStatements.push(result);
+                                        }
+
+                                        if (node.type === 'BlockStatement' || node.type === 'TryStatement')
+                                        {
+                                             node.body.forEach((subNode) => {
+                                                  result = hasReturnStatement(subNode);
+                                             });
+                                        }
+
+                                        if (node.type === 'IfStatement')
+                                        {
+                                             result = hasReturnStatement(node.consequent);
+
+                                             if (node.alternate)
+                                             {
+                                                  result = hasReturnStatement(node.alternate);
+                                                  returnStatements.push(result);
+                                             }
+                                             else
+                                             {
+                                                  if (result !== null)
+                                                  {
+                                                       returnStatements.push(false);
+                                                       result = false;
+                                                  }
+                                             }
+                                             
+                                        }
+
+                                        return result;
+                                   }
+
+                                   ast.body.forEach(hasReturnStatement);
+
+                                   return returnStatements.length > 0 && returnStatements.every(Boolean);
+                              }
+
+                              // Validate the code whenever the content changes
+                              editor.onDidChangeModelContent(function (changes)
+                              {
+                                   var isValid = validateCode();
+
+                                   var alert = $(`#${ containerId } .error-result-container .returnAlert`);
+
+                                   if (!isValid)
+                                   {
+                                        alert.removeClass("d-none");
+                                   }
+                                   else
+                                   {
+                                        alert.addClass("d-none");
+                                   }
+
+
+                              });
+
+                              monaco.editor.onDidChangeMarkers(([ uri ]) =>
+                              {
+                                   if (uri.scheme !== "inmemory") return;
+                                   let thisModel = monaco.editor.getModel(uri);
+                                   let editorsList = monaco.editor.getEditors(uri);
+
+                                   var thisEditorParent;
+                                   editorsList.forEach((editor) =>
+                                   {
+                                        if (editor.getModel() !== thisModel) return;
+                                        thisEditorParent = editor.getContainerDomNode().parentNode;
+                                   });
+                                   if (!thisEditorParent) return;
+
+                                   if ($(thisEditorParent).attr('element-type') !== "toolResponseStatusElement") return;
+                                   const markers = monaco.editor.getModelMarkers({ resource: uri });
+
+                                   var list = $(thisEditorParent).find(`.error-result-container ul`);
+                                   var listData = markers.map(
+                                        ({ message, startLineNumber, startColumn, endLineNumber, endColumn }) =>
+                                        {
+                                             if (!message || message.trim() == "") return;
+                                             return `<li>${ message } [${ startLineNumber }:${ startColumn }-${ endLineNumber }:${ endColumn }]</li>`;
+                                        }
+                                   );
+
+                                   if (listData.length > 0)
+                                   {
+                                        list.html(`
+                                             <span class="btn-ic-span-align"><i class="bx bx-error-alt"></i> <span>${ listData.length } Errors</span></span>
+                                             ${listData.join("")}
+                                        `);
+                                   } 
+                                   else
+                                   {
+                                        list.html('');
+                                   }                                  
+                              });
+
+                              responseStatusMonacoEditors.push({ statusType: statusType, editor: editor });
                          }
-                         
-                         function MoveToBusinessPage(BusinessId) {
-                              window.location.href = "/business/" + BusinessId;
+
+                         function resetOrClearEverything()
+                         {
+                              toolInputArguementsList.children().remove();
+                              toolHeadersList.children().remove();
+
+                              toolResponseStatusTypeListButtons.children().remove();
+                              toolResponseStatusTypeList.children().remove();
+                              responseStatusMonacoEditors.forEach((data) =>
+                              {
+                                   data.editor.dispose();
+                              });
+                              responseStatusMonacoEditors = [];
+
+                              let allMonacoModels = monaco.editor.getModels();
+                              allMonacoModels.forEach((model) =>
+                              {
+                                   model.dispose();
+                              });
+
+                              $("#toolBodyTypeNone").click();
+                              toolBodyKeyValueViewList.children().remove();
+                              $("#toolBodyRawTextarea").val("");
+
+                              $("#inputToolType").val(0).change();
+
+                              $("#inputToolName").val("");
+                              $("#inputToolShortDescription").val("");
+                              $("#inputToolURL").val("");
+                              $("#inputToolServiceName").val("");
                          }
-                    })
+
+                         addNewToolbutton.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              currentToolName.text("New Tool");
+                              addResponseStatusOptions();
+
+                              toolListTab.removeClass("show");
+                              setTimeout(() =>
+                              {
+                                   toolListTab.addClass("d-none");
+
+                                   toolManagerTab.removeClass("d-none");
+                                   setTimeout(() =>
+                                   {
+                                        toolManagerTab.addClass("show");
+                                   }, 10);
+                              }, 150);
+                         });
+
+                         switchBackToToolsTab.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              toolManagerTab.removeClass("show");
+
+                              setTimeout(() =>
+                              {
+                                   toolManagerTab.addClass("d-none");
+
+                                   resetOrClearEverything();
+
+                                   toolListTab.removeClass("d-none");
+                                   setTimeout(() =>
+                                   {
+                                        toolListTab.addClass("show");
+                                   }, 10);
+                              }, 150);
+                         });
+
+                         addToolInputArgumentButton.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              let dateTimeNow = Date.now();
+                              console.log(dateTimeNow);
+                              toolInputArguementsList.append(`
+                              <div class="toolInputArguementBox input-group mt-1">
+                                   <div style="width: calc(100% - 50px)">
+                                        <div class="input-group">
+                                             <input type="text" class="form-control" data-type="name" placeholder="Argument Name" style="max-width: 250px; border-bottom-left-radius: 0; border-bottom: none;">
+                                             <input type="text" class="form-control" data-type="description" placeholder="Description (explanation for AI)" style="border-bottom-right-radius: 0; border-top-right-radius: 0; border-bottom: none;">
+                                        </div>
+                                        <div class="input-group">
+                                             <select class="form-select" data-type="typeSelect" select-type="toolInputArgumentTypeSelect" style="border-top-left-radius: 0;">
+                                                  <option value="string">String</option>
+                                                  <option value="number">Number</option>
+                                                  <option value="boolean">Boolean</option>
+                                                  <option value="datetime">Datetime</option>
+                                             </select>
+                                             <input type="text" class="form-control d-none" data-type="datetime-format" placeholder="Datetime Format (Example YYYY-MM-DD)">
+                                             <div class="form-check d-flex flex-row align-items-center justify-content-center m-0" style="background-color: #1a1a1a; border: 1px solid var(--bs-border-color); border-left: none">
+                                                  <div class="px-3">
+                                                       <input class="form-check-input" type="checkbox" data-type="required" id="toolInputArguementArray${ dateTimeNow }">
+                                                       <label class="form-check-label" for="toolInputArguementArray${ dateTimeNow }">
+                                                            Array?
+                                                       </label>
+                                                  </div>
+                                             </div>
+                                             <div class="form-check d-flex flex-row align-items-center justify-content-center m-0" style="background-color: #1a1a1a; border: 1px solid var(--bs-border-color); border-left: none; border-top-right-radius: 0;">
+                                                  <div class="px-3">
+                                                       <input class="form-check-input" type="checkbox" data-type="required" id="toolInputArguementRequired${ dateTimeNow }">
+                                                       <label class="form-check-label" for="toolInputArguementRequired${ dateTimeNow }">
+                                                            Required?
+                                                       </label>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   </div>
+                                   <button class="btn btn-danger" button-type="removeToolInputArgument" style="width: 50px;">
+                                        <i class="bx bx-trash"></i>
+                                   </button>
+                              </div>
+                         `);
+                         });
+
+                         $(document).on('change', '[select-type="toolInputArgumentTypeSelect" ]', (event) =>
+                         {
+                              let target = $(event.currentTarget);
+
+                              let selectedValue = target.val();
+
+                              if (selectedValue === "datetime")
+                              {
+                                   target.parent().find('[data-type="datetime-format"]').removeClass("d-none");
+                              }
+                              else
+                              {
+                                   target.parent().find('[data-type="datetime-format"]').addClass("d-none");
+                              }
+                         });
+
+                         $(document).on('click', '[button-type="removeToolInputArgument"]', (event) =>
+                         {
+                              event.preventDefault();
+
+                              $(event.currentTarget).parent().remove();
+                         });
+
+                         addToolHeaderButton.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              toolHeadersList.append(`
+                              <div class="input-group mt-1">
+                                   <input type="text" class="form-control" data-type="key" placeholder="Key"> 
+                                   <input type="text" class="form-control" data-type="value" placeholder="Value">
+                                   <button class="btn btn-danger" button-type="removeToolHeader">
+                                        <i class="bx bx-trash"></i>
+                                   </button>
+                              </div>
+                         `);
+                         });
+
+                         $(document).on('click', '[button-type="removeToolHeader"]', (event) =>
+                         {
+                              event.preventDefault();
+
+                              $(event.currentTarget).parent().remove();
+                         });
+
+                         toolBodyType.on('change', (event) =>
+                         {
+                              let target = $(event.currentTarget);
+                              let value = target.val();
+
+                              if (
+                                   value === "form-data"
+                                   ||
+                                   value === "x-www-form-urlencoded"
+                              )
+                              {
+                                   toolBodyNone.addClass("d-none");
+                                   toolBodyRawView.addClass("d-none");
+
+                                   toolBodyKeyValueView.removeClass("d-none");
+                              }
+                              else if (
+                                   value === "raw"
+                              )
+                              {
+                                   toolBodyNone.addClass("d-none");
+                                   toolBodyKeyValueView.addClass("d-none");
+
+                                   toolBodyRawView.removeClass("d-none");
+                              }
+                              else
+                              {
+                                   toolBodyKeyValueView.addClass("d-none");
+                                   toolBodyRawView.addClass("d-none");
+
+                                   toolBodyNone.removeClass("d-none");
+                              }
+                         });
+
+                         addToolBodyKeyValueButton.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              toolBodyKeyValueViewList.append(`
+                              <div class="input-group mt-1">
+                                   <input type="text" class="form-control" data-type="key" placeholder="Key"> 
+                                   <input type="text" class="form-control" data-type="value" placeholder="Value">
+                                   <button class="btn btn-danger" button-type="removeToolBodyKeyValue">
+                                        <i class="bx bx-trash"></i>
+                                   </button>
+                              </div>
+                         `);
+                         });
+
+                         $(document).on('click', '[button-type="removeToolBodyKeyValue"]', (event) =>
+                         {
+                              event.preventDefault();
+
+                              $(event.currentTarget).parent().remove();
+                         });
+
+                         addToolResponseStatusTypeButton.on('click', (event) =>
+                         {
+                              event.preventDefault();
+
+                              addToolResponseStatusTypeButton.prop('disabled', true);
+                              setTimeout(() =>
+                              {
+                                   addToolResponseStatusTypeButton.prop('disabled', false);
+                              }, (toolResponseStatusTypeListButtons.children().length === 0 ? 500 : 100));
+
+                              let selectedResponseType = toolResponseStatusSelect.val();
+                              let selectedOptionElementChild = toolResponseStatusSelect.children();
+
+                              let selectedOptionElement = null;
+                              selectedOptionElementChild.each((index, element) =>
+                              {
+                                   if ($(element).val() === selectedResponseType)
+                                   {
+                                        selectedOptionElement = $(element);
+                                   }
+                              });
+
+                              if (!selectedOptionElement)
+                              {
+                                   alert("Please select a valid status code");
+                                   return;
+                              }
+
+                              $('.responseStatusBox').addClass('d-none');
+
+                              let editorId = `responseStatus${ selectedResponseType }CodeInput`;
+                              toolResponseStatusTypeList.append(`
+                              <div class="responseStatusBox" status-type="${ selectedResponseType }">
+                                   <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                                        <h6 class="my-auto">${ selectedResponseType } Response Javascript Code</h6>
+                                        <button class="btn btn-danger" button-type="removeToolResponseStatusType" status-type="${ selectedResponseType }">
+                                             <i class="bx bx-trash"></i>
+                                        </button>
+                                   </div>
+                                   <div id="${ editorId }" element-type="toolResponseStatusElement" status-code="${ selectedResponseType }">
+                                        <div class="mon-editor"></div>
+                                        <div class="error-result-container">
+                                             <p class="returnAlert d-none m-0 mt-2">
+                                                  <span class="d-block"><i class="bx bx-error"></i> Does not contain a return statement.<br>Make sure a value is returned in every possible scenario.</span>
+                                                  <span style="color: orange" class="d-block">- Every If condition that is returning a value must have an else statement returning a value too. Even if the condition will always be true.<br>- Wrapping or using IIFE in the code is not supported: <code>(() => { ... })()</code></span>
+                                             </p>
+                                             
+                                             <ul></ul>
+                                        </div>
+                                   </div>
+                              </div>
+                              
+                         `);
+                              initResponseCodeEditor(selectedResponseType, editorId);
+
+                              $('[button-type="selectToolResponseStatusType"]').removeClass('active');
+                              toolResponseStatusTypeListButtons.append(`
+                              <button class="btn btn-light me-2 active" button-type="selectToolResponseStatusType" status-type="${ selectedResponseType }">
+                                   ${ selectedResponseType }
+                              </button>
+                         `);
+
+                              selectedOptionElement.remove();
+                         });
+
+                         $(document).on('click', '[button-type="removeToolResponseStatusType"]', (event) =>
+                         {
+                              event.preventDefault();
+
+                              let statusType = $(event.currentTarget).attr("status-type");
+
+                              let thisStatusMonacoEditorIndex = responseStatusMonacoEditors.findIndex(x => x.statusType === statusType);
+                              if (thisStatusMonacoEditorIndex === -1)
+                              {
+                                   alert("Please select a valid status code. Error 0");
+                                   return;
+                              }
+
+                              let thisStatusMonacoEditor = responseStatusMonacoEditors[ thisStatusMonacoEditorIndex ];
+
+                              thisStatusMonacoEditor.editor.dispose();
+                              let allMonacoModels = monaco.editor.getModels();
+                              const thisEditorModelIndex = allMonacoModels.findIndex(x => x._associatedResource._formatted === `ts:filename/response${ statusType }.d.ts`);
+                              if (thisEditorModelIndex === -1)
+                              {
+                                   alert("Please select a valid status code. Error 1");
+                                   return;
+                              }
+                              allMonacoModels[ thisEditorModelIndex ].dispose();
+
+                              responseStatusMonacoEditors.splice(thisStatusMonacoEditorIndex, 1);
+                              toolResponseStatusTypeList.find(`[status-type="${ statusType }"]`).remove();
+
+                              let statusTypeData = HTTPStatusCodeList.find(x => x.code === parseInt(statusType));
+                              toolResponseStatusSelect.children().each((index, element) =>
+                              {
+                                   if (parseInt($(element).val()) > parseInt(statusType))
+                                   {
+                                        $(`<option value="${ statusTypeData.code }">${ statusTypeData.code } | ${ statusTypeData.name }</option>`).insertBefore(element);
+                                        return false;
+                                   }
+
+                                   if ((index + 1) === toolResponseStatusSelect.children().length)
+                                   {
+                                        $(`<option value="${ statusTypeData.code }">${ statusTypeData.code } | ${ statusTypeData.name }</option>`).insertAfter(element);
+                                        return false;
+                                   }
+                              });
+
+                              $(`[button-type="selectToolResponseStatusType"][status-type="${ statusType }"]`).remove();
+
+                              if (toolResponseStatusTypeListButtons.children().length > 0)
+                              {
+                                   toolResponseStatusTypeListButtons.children()[ 0 ].click();
+                              }
+                         });
+
+                         $(document).on('click', '[button-type="selectToolResponseStatusType"]', (event) =>
+                         {
+                              event.preventDefault();
+
+                              let statusType = $(event.currentTarget).attr("status-type");
+
+                              $('.responseStatusBox').addClass('d-none');
+
+                              $(`.responseStatusBox[status-type="${ statusType }"]`).removeClass('d-none');
+
+                              $('[button-type="selectToolResponseStatusType"]').removeClass('active');
+                              $(event.currentTarget).addClass('active');
+                         });
+
+                         // init
+                         addResponseStatusOptions();
+                    });
                });
           </script>
      </body>
