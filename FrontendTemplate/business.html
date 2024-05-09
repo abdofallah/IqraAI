@@ -25,6 +25,7 @@
                <div class="header_toggle"> <i class='bx bx-menu' id="header-toggle"></i> </div>
           </header>
 
+          <!-- Sidebar -->
           <div class="l-navbar" id="nav-bar">
                <nav class="nav">
                     <div class="upper-navigation">
@@ -38,25 +39,25 @@
                                    <span class="nav_name">Overview</span>
                               </a>
                               <span class="mt-4 nav-category-label">Agents</span>
-                              <a href="#" class="nav_link" for="routing-tab">
+                              <a href="#" class="nav_link disabled" for="routing-tab">
                                    <i class='bx bx-git-repo-forked nav_icon'></i>
                                    <span class="nav_name">Routing</span>
                               </a>
-                              <a href="#" class="nav_link" for="agents-tab">
+                              <a href="#" class="nav_link disabled" for="agents-tab">
                                    <i class='bx bx-support nav_icon'></i>
                                    <span class="nav_name">Agents</span>
                               </a>
                               <span class="mt-4 nav-category-label">Actions</span>
-                              <a href="#" class="nav_link" for="make-calls-tab">
+                              <a href="#" class="nav_link disabled" for="make-calls-tab">
                                    <i class='bx bx-phone-call nav_icon'></i>
                                    <span class="nav_name">Make Calls</span>
                               </a>
                               <span class="mt-4 nav-category-label">Analytics</span>
-                              <a href="#" class="nav_link" for="appointments-tab">
+                              <a href="#" class="nav_link disabled" for="appointments-tab">
                                    <i class='bx bx-time-five nav_icon'></i>
                                    <span class="nav_name">Appointments</span>
                               </a>
-                              <a href="#" class="nav_link" for="conversations-tab">
+                              <a href="#" class="nav_link disabled" for="conversations-tab">
                                    <i class='bx bx-conversation nav_icon'></i>
                                    <span class="nav_name">Conversations</span>
                               </a>
@@ -65,7 +66,7 @@
                                    <i class='bx bx-text nav_icon'></i>
                                    <span class="nav_name">Context</span>
                               </a>
-                              <a href="#" class="nav_link" for="knowledge-base-tab">
+                              <a href="#" class="nav_link disabled" for="knowledge-base-tab">
                                    <i class='bx bx-data nav_icon'></i>
                                    <span class="nav_name">Knowledge Base</span>
                               </a>
@@ -74,7 +75,7 @@
                                    <span class="nav_name">Tools</span>
                               </a>
                               <span class="mt-4 nav-category-label">Other</span>
-                              <a href="#" class="nav_link mb-0" for="settings-tab">
+                              <a href="#" class="nav_link mb-0 disabled" for="settings-tab">
                                    <i class='bx bx-cog nav_icon'></i>
                                    <span class="nav_name">Settings</span>
                               </a>
@@ -92,7 +93,7 @@
 
           <div class="w-100 main-container-wrapper" id="tabs-list">
                <!-- Overview Container -->
-               <div class="main-container fade d-none w-100" id="overview-tab">
+               <div class="main-container fade show w-100" id="overview-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-chalkboard'></i> <span>Overview</span></h3>
                     <div class="inner-container">
                          <div class="row mb-4">
@@ -231,12 +232,12 @@
                -->
 
                <!-- Context Container -->
-               <div class="main-container fade show w-100" id="context-tab">
+               <div class="main-container fade d-none w-100" id="context-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-text'></i> <span>Context</span></h3>
                     <div class="inner-container">
                          <!-- Tabs Buttons -->
                          <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                              <ul class="nav nav-pills" id="context-inner-tab" role="tablist">
+                              <ul class="nav" id="context-inner-tab" role="tablist">
                                    <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link active" id="context-inner-branding-tab" data-bs-toggle="pill" data-bs-target="#context-inner-branding" type="button" role="tab" aria-controls="context-inner-branding" aria-selected="true">Branding</button>
                                    </li>
@@ -381,7 +382,7 @@
                                         </div>
 
 
-                                        <ul class="nav nav-pills mb-3" id="branding-branch-manager-tab" role="tablist">
+                                        <ul class="nav mb-3" id="branding-branch-manager-tab" role="tablist">
                                              <li class="nav-item me-2" role="presentation">
                                                   <button class="nav-link active" id="branding-branch-manager-general-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-general" type="button" role="tab" aria-controls="branding-branch-manager-general" aria-selected="true">General</button>
                                              </li>
@@ -424,6 +425,20 @@
                                                   <div class="mb-3">
                                                        <label for="editBranchWebsiteInput" class="form-label">Branch Website</label>
                                                        <input type="text" class="form-control" id="editBranchWebsiteInput">
+                                                  </div>
+                                                  <div class="mb-3">
+                                                       <label class="form-label btn-ic-span-align d-block">
+                                                            <span>Branch Information</span>
+
+                                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as about, opening year, etc.">
+                                                                 <i class="bx bx-help-circle"></i>
+                                                            </a>
+                                                       </label>
+                                                       <button class="btn btn-light btn-sm" id="addContextBranchInformation">
+                                                            <span>Add Information</span>
+                                                       </button>
+                                                       <div class="" id="contextBranchInformationList">
+                                                       </div>
                                                   </div>
                                              </div>
                                              <!-- Working Hours Edit -->
@@ -1088,6 +1103,9 @@
 
                     const switchBackToBranchesTab = $("#switchBackToBranchesTab");
 
+                    const addContextBranchInformationButton = $("#addContextBranchInformation");
+                    const contextBranchInformationList = $("#contextBranchInformationList");
+
                     const editBranchOpeningHoursInputsList = $("#editBranchOpeningHoursInputs");
 
                     const editBranchAddTeamMember = $("#editBranchAddTeamMember");
@@ -1134,6 +1152,8 @@
                          $('#editBranchPhoneInput').val("");
                          $('#editBranchEmailInput').val("");
                          $('#editBranchWebsiteInput').val("");
+
+                         contextBranchInformationList.children().remove();
 
                          DAYS.forEach((day) =>
                          {
@@ -1257,6 +1277,28 @@
                          }, 150);
                     });
 
+                    addContextBranchInformationButton.on('click', (event) => {
+                         event.preventDefault();
+
+                         contextBranchInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="contextBranchInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='bx bx-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="contextBranchInformationRemove"]', (event) => {
+                         event.preventDefault();
+
+                         $(event.currentTarget).parent().parent().remove();
+                    });
+
                     $(document).on('click', '[checkbox-type="branchWorkingHourIsClosed"]', (event) =>
                     {
                          let dayValue = $(event.currentTarget).attr('day-value');
@@ -1336,6 +1378,11 @@
                                    </div>
                               </div>
                          `);
+                    });
+
+                    $(document).on('click', '[button-type="removeEditBranchTeam"]', (event) =>
+                    {
+                         $(event.currentTarget).parent().parent().remove();
                     });
 
                     addNewServiceButton.on('click', (event) =>
@@ -1447,7 +1494,7 @@
                                         </button>
                                    </div>
                                    <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>    
+                              </div>
                          `);
                     });
 

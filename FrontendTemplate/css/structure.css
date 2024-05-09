@@ -157,6 +157,12 @@ body {
      border: 1px solid transparent;
 }
 
+.l-navbar .nav .nav_link.disabled {
+     color: var(--first-color-light);
+     opacity: 0.7;
+     cursor: default;
+}
+
 .l-navbar .nav .nav_link:hover {
      color: var(--white-color)
 }
@@ -167,6 +173,24 @@ body {
 
 .l-navbar.show {
      left: 0
+}
+
+.l-navbar .nav_link.active {
+     border-color: var(--tcolor-light-green) !important;
+}
+
+.l-navbar .nav_link.active .nav_name,
+.l-navbar .nav_link.active .nav_icon {
+     color: var(--tcolor-light-green) !important;
+}
+
+.l-navbar .nav_link.active:before {
+     background-color: var(--tcolor-light-green) !important;
+}
+
+.l-navbar .nav_link:not(.active):not(.disabled):hover .nav_name,
+.l-navbar .nav_link:not(.active):not(.disabled):hover .nav_icon {
+     color: var(--tcolor-lighter-green) !important;
 }
 
 .body-pd {

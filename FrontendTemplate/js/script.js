@@ -42,6 +42,11 @@ $(document).ready(() =>
                return;
           }
 
+          if (currentElement.hasClass("disabled"))
+          {
+               return;
+          }
+
           // hide previous tab and link
           activeElement.removeClass("active");
           $("#tabs-list .main-container.show").each((index, element) =>
