@@ -53,7 +53,7 @@ a {
 .btn-primary:hover,
 .btn-primary:active,
 .btn-primary:focus,
-.btn-check:checked+.btn, .btn.active, .btn.show, .btn:first-child:active, :not(.btn-check)+.btn:active {
+.btn-check:checked+.btn-primary, .btn-primary.active, .btn-primary.show, .btn-primary:first-child:active, :not(.btn-check)+.btn-primary:active {
      background-color: var(--tcolor-dark-green) !important;
      border-color: var(--tcolor-dark-green) !important;
      color: var(--tcolor-dark) !important;
@@ -349,19 +349,25 @@ a:focus {
 }
 
 #customToolsTable,
-#branchesTable {
+#branchesTable,
+#contextServicesTable,
+#contextProductsTable {
      table-layout: fixed;
     overflow-wrap:break-word;
 }
 
 #customToolsTable.table>:not(caption)>*>*,
-#branchesTable.table>:not(caption)>*>* {
+#branchesTable.table>:not(caption)>*>*,
+#contextServicesTable.table>:not(caption)>*>*,
+#contextProductsTable.table>:not(caption)>*>* {
      padding: 14px 20px;
      vertical-align: middle;
 }
 
 #customToolsTable.table>thead>*>*,
-#branchesTable.table>thead>*>* {
+#branchesTable.table>thead>*>*,
+#contextServicesTable.table>thead>*>*,
+#contextProductsTable.table>thead>*>* {
      background-color: var(--tcolor-lighter-green);
      color: black;
 }
@@ -369,7 +375,9 @@ a:focus {
 @media (max-width: 768px)
 {
      #customToolsTable,
-     #branchesTable {
+     #branchesTable,
+     #contextServicesTable,
+     #contextProductsTable {
           overflow-x: scroll;
           display: inline-block;
           table-layout: auto;

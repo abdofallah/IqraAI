@@ -234,6 +234,7 @@
                <div class="main-container fade show w-100" id="context-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-text'></i> <span>Context</span></h3>
                     <div class="inner-container">
+                         <!-- Tabs Buttons -->
                          <div class="d-flex flex-row align-items-center justify-content-between mb-3">
                               <ul class="nav nav-pills" id="context-inner-tab" role="tablist">
                                    <li class="nav-item me-2" role="presentation">
@@ -451,11 +452,287 @@
                               </div>
                               <!-- Services -->
                               <div class="tab-pane fade w-100" id="context-inner-services" role="tabpanel" aria-labelledby="context-inner-services-tab" tabindex="0">
-                                   services
+                                   <!-- Services List Tab -->
+                                   <div class="fade show w-100" id="contextServicesListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                             <div style="min-width: 200px" class="me-4">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewServiceButton">
+                                                       <span>+ Add New Service</span>
+                                                  </button>
+                                             </div>
+                                             <div class="input-group w-100">
+                                                  <input type="text" class="form-control" placeholder="Service Name" aria-label="Service Name" aria-describedby="searchServiceButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchServiceButton">
+                                                       <i class='bx bx-search'></i>
+                                                  </button>
+                                             </div>
+                                        </div>
+                                        <div>
+                                             <table id="contextServicesTable" class="table w-100">
+                                                  <thead>
+                                                       <tr>
+                                                            <th scope="col">Name</th>
+                                                            <th scope="col">Actions</th>
+                                                       </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Intelligent Automation</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Custom Software Engineering</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>Strategic Consultation</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                  </tbody>
+                                             </table>
+                                        </div>
+                                   </div>
+                                   <!-- Services Manager Tab -->
+                                   <div class="fade d-none w-100" id="contextServicesManagerTab">
+                                        <div class="mb-2 d-flex flex-row align-items-center justify-content-between">
+                                             <nav aria-label="breadcrumb">
+                                                  <ol class="breadcrumb mb-0">
+                                                       <li class="breadcrumb-item"><a href="#" id="switchBackToContextServicesTab">Services</a></li>
+                                                       <li class="breadcrumb-item active" aria-current="page"><span id="currentContextServiceName">Service</span></li>
+                                                  </ol>
+                                             </nav>
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveContextServicesButton" disabled>
+                                                  <i class='bx bx-save'></i>
+                                                  <span> Save</span>
+                                             </button>
+                                        </div>
+                                        <div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextServiceName">Name</label>
+                                                  <input type="text" class="form-control" id="inputContextServiceName" placeholder="Service Name">
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextServiceShortDescription">Short Description</label>
+                                                  <input type="text" class="form-control" id="inputContextServiceShortDescription" placeholder="Summarized Description">
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextServiceFullDescription">Full Description</label>
+                                                  <textarea class="form-control" id="inputContextServiceFullDescription" placeholder="Detailed Description"></textarea>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label d-block" for="linkContextServiceBranchSelect">Available At Branches</label>
+                                                  <div class="input-group">
+                                                       <select class="form-select" id="linkContextServiceBranchSelect">
+                                                       </select>
+                                                       <button class="btn btn-light btn-sm" id="linkContextServiceBranch">
+                                                            <span>Add Branch</span>
+                                                       </button>
+                                                  </div>
+                                                  <ul class="list-group mt-1" id="linkedContextServiceBranchesList">
+                                                       <li class="list-group-item" branch-id="123">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li>
+                                                       <li class="list-group-item"  branch-id="421">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li> 
+                                                  </ul>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label d-block" for="linkContextServiceProductSelect">Related Products</label>
+                                                  <div class="input-group">
+                                                       <select class="form-select" id="linkContextServiceProductSelect">
+                                                       </select>
+                                                       <button class="btn btn-light btn-sm" id="linkContextServiceProduct">
+                                                            <span>Add Product</span>
+                                                       </button>
+                                                  </div>
+                                                  <ul class="list-group mt-1" id="linkedContextServiceProductsList">
+                                                       <li class="list-group-item" product-id="123">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li>
+                                                       <li class="list-group-item"  product-id="421">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li> 
+                                                  </ul>
+                                             </div>
+                                             <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align d-block">
+                                                  <span>Additional Information</span>
+
+                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
+                                             <button class="btn btn-light btn-sm" id="addNewContextServiceInformation">
+                                                  <span>Add Information</span>
+                                             </button>
+                                             <div class="" id="contextServiceInformationList">
+                                             </div>
+                                        </div>
+                                        </div>
+                                   </div>
                               </div>
                               <!-- Products -->
                               <div class="tab-pane fade w-100" id="context-inner-products" role="tabpanel" aria-labelledby="context-inner-products-tab" tabindex="0">
-                                   products
+                                   <!-- Products List Tab -->
+                                   <div class="fade show w-100" id="contextProductsListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                             <div style="min-width: 200px" class="me-4">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewProductButton">
+                                                       <span>+ Add New Product</span>
+                                                  </button>
+                                             </div>
+                                             <div class="input-group w-100">
+                                                  <input type="text" class="form-control" placeholder="Product Name" aria-label="Product Name" aria-describedby="searchProductButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchProductButton">
+                                                       <i class='bx bx-search'></i>
+                                                  </button>
+                                             </div>
+                                        </div>
+                                        <div>
+                                             <table id="contextProductsTable" class="table w-100">
+                                                  <thead>
+                                                       <tr>
+                                                            <th scope="col">Name</th>
+                                                            <th scope="col">Actions</th>
+                                                       </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                       <tr>
+                                                            <td>
+                                                                 <b>4G Complete GSM Module</b>
+                                                            </td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="bx bx-edit"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                  </tbody>
+                                             </table>
+                                        </div>
+                                   </div>
+                                   <!-- Products Manager Tab -->
+                                   <div class="fade d-none w-100" id="contextProductsManagerTab">
+                                        <div class="mb-2 d-flex flex-row align-items-center justify-content-between">
+                                             <nav aria-label="breadcrumb">
+                                                  <ol class="breadcrumb mb-0">
+                                                       <li class="breadcrumb-item"><a href="#" id="switchBackToContextProductsTab">Products</a></li>
+                                                       <li class="breadcrumb-item active" aria-current="page"><span id="currentContextProductName">Product</span></li>
+                                                  </ol>
+                                             </nav>
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveContextProductsButton" disabled>
+                                                  <i class='bx bx-save'></i>
+                                                  <span> Save</span>
+                                             </button>
+                                        </div>
+                                        <div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextProductName">Name</label>
+                                                  <input type="text" class="form-control" id="inputContextProductName" placeholder="Product Name">
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextProductShortDescription">Short Description</label>
+                                                  <input type="text" class="form-control" id="inputContextProductShortDescription" placeholder="Summarized Description">
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="inputContextProductFullDescription">Full Description</label>
+                                                  <textarea class="form-control" id="inputContextProductFullDescription" placeholder="Detailed Description"></textarea>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label d-block" for="linkContextProductBranchSelect">Available At Branches</label>
+                                                  <div class="input-group">
+                                                       <select class="form-select" id="linkContextProductBranchSelect">
+                                                       </select>
+                                                       <button class="btn btn-light btn-sm" id="linkContextProductBranch">
+                                                            <span>Add Branch</span>
+                                                       </button>
+                                                  </div>
+                                                  <ul class="list-group mt-1" id="linkedContextProductBranchesList">
+                                                       <li class="list-group-item" branch-id="123">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li>
+                                                       <li class="list-group-item"  branch-id="421">
+                                                            <div class="d-flex flex-row align-items-center justify-content-between">
+                                                                 <span>An item</span>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="bx bx-trash"></i>
+                                                                 </button>
+                                                            </div>
+                                                       </li> 
+                                                  </ul>
+                                             </div>
+                                             <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align d-block">
+                                                  <span>Additional Information</span>
+
+                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
+                                             <button class="btn btn-light btn-sm" id="addNewContextProductInformation">
+                                                  <span>Add Information</span>
+                                             </button>
+                                             <div class="" id="contextProductInformationList">
+                                             </div>
+                                        </div>
+                                        </div>
+                                   </div>
                               </div>
                          </div>
                     </div>
@@ -816,6 +1093,86 @@
                     const editBranchAddTeamMember = $("#editBranchAddTeamMember");
                     const editBranchTeamInputsList = $("#editBranchTeamInputs");
 
+                    const contextServicesListTab = $("#contextServicesListTab");
+                    const contextServicesManagerTab = $("#contextServicesManagerTab");
+
+                    const addNewServiceButton = $("#addNewServiceButton");
+
+                    const switchBackToContextServicesTab = $("#switchBackToContextServicesTab");
+                    const currentContextServiceName = $("#currentContextServiceName");
+
+                    const linkContextServiceBranchSelect = $("#linkContextServiceBranchSelect");
+                    const linkContextServiceBranchButton = $("#linkContextServiceBranch");
+                    const linkedContextServiceBranchesList = $("#linkedContextServiceBranchesList");
+
+                    const linkContextServiceProductSelect = $("#linkContextServiceProductSelect");
+                    const linkContextServiceProductButton = $("#linkContextServiceProduct");
+                    const linkedContextServiceProductsList = $("#linkedContextServiceProductsList");
+
+                    const addNewContextServiceInformationButton = $("#addNewContextServiceInformation");
+                    const contextServiceInformationList = $("#contextServiceInformationList");
+
+                    const contextProductsListTab = $("#contextProductsListTab");
+                    const contextProductsManagerTab = $("#contextProductsManagerTab");
+
+                    const addNewProductButton = $("#addNewProductButton");
+
+                    const switchBackToContextProductsTab = $("#switchBackToContextProductsTab");
+                    const currentContextProductName = $("#currentContextProductName");         
+
+                    const linkContextProductBranchSelect = $("#linkContextProductBranchSelect");
+                    const linkedContextProductBranchesList = $("#linkedContextProductBranchesList");
+
+                    const addNewContextProductInformationButton = $("#addNewContextProductInformation");
+                    const contextProductInformationList = $("#contextProductInformationList");
+ 
+                    function resetOrClearBranchManager()
+                    {
+                         $('#editBranchUniqueIDInput').val("");
+                         $('#editBranchNameInput').val("");
+                         $('#editBranchAddressInput').val("");
+                         $('#editBranchPhoneInput').val("");
+                         $('#editBranchEmailInput').val("");
+                         $('#editBranchWebsiteInput').val("");
+
+                         DAYS.forEach((day) =>
+                         {
+                              editBranchOpeningHoursInputsList.find(`#editBranchOpeningHours${day}Input`).prop("checked", false);
+                              editBranchOpeningHoursInputsList.find(`[button-type="addBranchWorkingHour"][day-value="${ day }"]`).prop("disabled", false);
+                              editBranchOpeningHoursInputsList.find(`.workingHoursTimingList[day-value="${ day }"]`).children().remove();
+                         });
+
+                         editBranchTeamInputsList.children().remove();
+                         $("#branding-branch-manager-general-tab").click();
+                    }
+           
+                    function resetOrClearServiceManager()
+                    {
+                         $("#inputContextServiceName").val("");
+                         $("#inputContextServiceShortDescription").val("");
+                         $("#inputContextServiceFullDescription").val("");
+
+                         linkContextServiceBranchSelect.children().remove();
+                         linkedContextServiceBranchesList.children().remove();
+
+                         linkContextServiceProductSelect.children().remove();
+                         linkedContextServiceProductsList.children().remove();
+
+                         contextServiceInformationList.children().remove()
+                    }
+
+                    function resetOrClearProductManager()
+                    {
+                         $("#inputContextProductName").val("");
+                         $("#inputContextProductShortDescription").val("");
+                         $("#inputContextProductFullDescription").val("");
+
+                         linkContextProductBranchSelect.children().remove();
+                         linkedContextProductBranchesList.children().remove();
+
+                         contextProductInformationList.children().remove()
+                    }
+
                     DAYS.forEach((day) =>
                     {
                          editBranchOpeningHoursInputsList.append(`
@@ -888,6 +1245,8 @@
                          branchesManagerTab.removeClass("show");
                          setTimeout(() =>
                          {
+                              resetOrClearBranchManager();
+
                               branchesManagerTab.addClass("d-none");
 
                               branchesListTab.removeClass("d-none");
@@ -938,8 +1297,9 @@
                          $(event.currentTarget).parent().remove();
                     });
 
-                    editBranchAddTeamMember.on('click', (event) => {
-                       event.preventDefault();
+                    editBranchAddTeamMember.on('click', (event) =>
+                    {
+                         event.preventDefault();
 
                          editBranchTeamInputsList.append(`
                               <div class="col-12 col-md-6 mt-3">
@@ -977,6 +1337,123 @@
                               </div>
                          `);
                     });
+
+                    addNewServiceButton.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         currentContextServiceName.text("New Service");
+
+                         contextServicesListTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              contextServicesListTab.addClass("d-none");
+
+                              contextServicesManagerTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   contextServicesManagerTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    switchBackToContextServicesTab.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         contextServicesManagerTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              resetOrClearServiceManager();
+
+                              contextServicesManagerTab.addClass("d-none");
+
+                              contextServicesListTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   contextServicesListTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    addNewContextServiceInformationButton.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         contextServiceInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="contextServiceInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='bx bx-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="contextServiceInformationRemove"]', (event) =>
+                    {
+                         $(event.currentTarget).parent().parent().remove();
+                    });
+               
+                    addNewProductButton.on('click', (event) =>
+                    {
+                         event.preventDefault();
+
+                         currentContextProductName.text("New Product");
+
+                         contextProductsListTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              contextProductsListTab.addClass("d-none");
+
+                              contextProductsManagerTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   contextProductsManagerTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    switchBackToContextProductsTab.on('click', (event) => {
+                         event.preventDefault();
+
+                         contextProductsManagerTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              resetOrClearProductManager();
+
+                              contextProductsManagerTab.addClass("d-none");
+
+                              contextProductsListTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   contextProductsListTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    addNewContextProductInformationButton.on('click', (event) => {
+                         event.preventDefault();
+
+                         contextProductInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="contextProductInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='bx bx-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>    
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="contextProductInformationRemove"]', (event) => {
+                         $(event.currentTarget).parent().parent().remove();
+                    })
                });
           </script>
 
