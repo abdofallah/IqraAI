@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Dependencies\openai-master\OpenAI.SDK\OpenAI.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
     <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>

@@ -14,5 +14,7 @@ namespace IqraCore.Interfaces.AI
         void AddUserMessage(string message);
         void AddAssistantMessage(string message);
         event EventHandler<object> MessageStreamed;
+
+        string GetProviderName();
     }
 }

@@ -43,7 +43,7 @@
                                    <i class='bx bx-git-repo-forked nav_icon'></i>
                                    <span class="nav_name">Routing</span>
                               </a>
-                              <a href="#" class="nav_link disabled" for="agents-tab">
+                              <a href="#" class="nav_link" for="agents-tab">
                                    <i class='bx bx-support nav_icon'></i>
                                    <span class="nav_name">Agents</span>
                               </a>
@@ -93,7 +93,7 @@
 
           <div class="w-100 main-container-wrapper" id="tabs-list">
                <!-- Overview Container -->
-               <div class="main-container fade show w-100" id="overview-tab">
+               <div class="main-container fade d-none w-100" id="overview-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-chalkboard'></i> <span>Overview</span></h3>
                     <div class="inner-container">
                          <div class="row mb-4">
@@ -182,16 +182,574 @@
                </div>
 
                <!-- Agents Container -->
-               <div class="main-container fade d-none w-100" id="agents-tab">
+               <div class="main-container fade show w-100" id="agents-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-support'></i> <span>Agents</span></h3>
                     <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
+                         <!-- Agents List Tab -->
+                         <div class="fade d-none w-100" id="agentsListTab">
+                              <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                   <div style="min-width: 200px" class="me-4">
+                                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentButton">
+                                             <span>+ Add New Agent</span>
+                                        </button>
+                                   </div>
+                                   <div class="input-group w-100">
+                                        <input type="text" class="form-control" placeholder="Agent Name" aria-label="Agent Name" aria-describedby="searchAgentButton">
+                                        <button class="input-group-button btn btn-primary" id="searchAgentButton">
+                                             <i class='bx bx-search'></i>
+                                        </button>
+                                   </div>
+                              </div>
+                              <div class="row">
+                                   <div class="col-lg-4 col-md-6 col-12">
+                                        <div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="51221">
+                                             <div class="d-flex flex-row align-items-center justify-content-start mb-4">
+                                                  <span class="agent-icon">🤖</span>
+                                                  <h4>Opening Agent</h4>
+                                             </div>
+                                             <div>
+                                                  <h5 class="h5-info agent-description">
+                                                       <span>Checks kind of agent to transfer call to</span>
+                                                  </h5>
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                         </div>
+                         <!-- Agents Manager Tab -->
+                         <div class="fade show w-100" id="agentsManagerTab">
+                              <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                   <nav aria-label="breadcrumb">
+                                        <ol class="breadcrumb mb-0">
+                                             <li class="breadcrumb-item"><a href="#" id="switchBackToAgentsTab">Agents</a></li>
+                                             <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentName">Agent</span></li>
+                                        </ol>
+                                   </nav>
+                                   <div>
+                                        <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="agentDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
+                                             <i class='bx bx-wrench text-dark'></i>
+                                             <span> Debug</span>
+                                        </button>
+                                        <div class="btn-group" id="publishAgentDropdown">
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                  <i class='bx bx-wrench'></i>
+                                                  <span> Publish</span>
+                                             </button>
+                                             <div class="dropdown-menu p-3">
+                                                  <div class="mb-2">
+                                                       <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
+                                                       <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">Published 20 minutes ago</p>
+                                                  </div>
+                                                  <button class="btn btn-primary btn-sm w-100" id="confirmPublishAgentButton">
+                                                       <span>Update</span>
+                                                  </button>
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                              <div>
+                                   <!-- Manager Inner Tabs -->
+                                   <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                        <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
+                                             </li>
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link" id="agents-manager-personality-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-personality" type="button" role="tab" aria-controls="agents-manager-personality" aria-selected="true">Personality</button>
+                                             </li>
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
+                                             </li>
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
+                                             </li>
+                                             <li class="nav-item" role="presentation">
+                                                  <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
+                                             </li>
+                                        </ul>
+                                        <select class="form-select" style="max-width: 300px">
+                                             <option value="en-us" selected>English | EN-US</option>
+                                             <option value="en-ar">Arabic | AR-OM</option>
+                                        </select>
+                                   </div>
+
+                                   <div class="tab-content w-100" id="agents-manager-tabContent">
+                                        <!-- General -->
+                                        <div class="tab-pane fade w-100" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="editAgentIdentifierInput">Identifier</label>
+                                                  <div class="input-group">
+                                                       <button class="btn btn-light" id="editAgentIconButton">🤖</button>
+                                                       <input type="text" class="form-control" id="editAgentIdentifierInput" placeholder="Agent Identifier Name">
+                                                  </div>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="editAgentDescriptionInput">Description</label>
+                                                  <input type="text" class="form-control" id="editAgentDescriptionInput" placeholder="Agent Description">
+                                             </div>
+                                        </div>
+                                        <!-- Personality -->
+                                        <div class="tab-pane fade w-100" id="agents-manager-personality" role="tabpanel" aria-labelledby="agents-manager-personality-tab" tabindex="0">
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="editAgentPersonalityInput">Name</label>
+                                                  <input type="text" class="form-control" id="editAgentPersonalityInput" placeholder="Agent Name">
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label btn-ic-span-align d-block">
+                                                       <span>Capabilities</span>
+
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Tasks, abilities, or skills the AI can perform.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">Add Value</button>
+                                                  <div id="editAgentPersonalityValueInputs">
+
+                                                  </div>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label btn-ic-span-align d-block">
+                                                       <span>Ethics</span>
+
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Specify the moral principles, ethical guidelines, and values that shape the AI's decision-making and actions.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">Add Value</button>
+                                                  <div id="editAgentPersonalityValueInputs">
+
+                                                  </div>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label btn-ic-span-align d-block">
+                                                       <span>Tone</span>
+
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="The AI's personality traits, emotional patterns, communication style, and overall demeanor.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">Add Value</button>
+                                                  <div id="editAgentPersonalityValueInputs">
+
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <!-- Scripts -->
+                                        <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
+                                             <!-- Scripts List Tab -->
+                                             <div class="fade d-none w-100" id="agentScriptsListTab">
+                                                  <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                       <div style="min-width: 200px" class="me-4">
+                                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentScriptButton">
+                                                                 <span>+ Add New Script</span>
+                                                            </button>
+                                                       </div>
+                                                       <div class="input-group w-100">
+                                                            <input type="text" class="form-control" placeholder="Script Name" aria-label="Script Name" aria-describedby="searchAgentScriptButton">
+                                                            <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
+                                                                 <i class='bx bx-search'></i>
+                                                            </button>
+                                                       </div>
+                                                  </div>
+                                                  <table id="customToolsTable" class="table w-100">
+                                                       <thead>
+                                                            <tr>
+                                                                 <th scope="col">Order</th>
+                                                                 <th scope="col">Name</th>
+                                                                 <th scope="col">Actions</th>
+                                                            </tr>
+                                                       </thead>
+                                                       <tbody>
+                                                            <tr>
+                                                                 <td>1</td>
+                                                                 <td>
+                                                                      <b>About myself</b>
+                                                                 </td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="bx bx-edit"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="bx bx-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                            <tr>
+                                                                 <td>2</td>
+                                                                 <td>
+                                                                      <b>About the company</b>
+                                                                 </td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="bx bx-edit"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="bx bx-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                            <tr>
+                                                                 <td>3</td>
+                                                                 <td>
+                                                                      <b>Transfer To Sales</b>
+                                                                 </td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="bx bx-edit"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="bx bx-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                            <tr>
+                                                                 <td>4</td>
+                                                                 <td>
+                                                                      <b>Transfer to Technical</b>
+                                                                 </td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="bx bx-edit"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="bx bx-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                            <tr>
+                                                                 <td>5</td>
+                                                                 <td>
+                                                                      <b>Transfer to Human</b>
+                                                                 </td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="bx bx-edit"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="bx bx-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                       </tbody>
+                                                  </table>
+                                             </div>
+                                             <!-- Agent Scripts Manager Tab -->
+                                             <div class="fade show w-100" id="agentScriptsManagerTab">
+                                                  <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                       <nav aria-label="breadcrumb">
+                                                            <ol class="breadcrumb mb-0">
+                                                                 <li class="breadcrumb-item"><a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a></li>
+                                                                 <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
+                                                            </ol>
+                                                       </nav>
+                                                       <div>
+                                                            <div class="btn-group" id="publishAgentDropdown">
+                                                                 <button class="btn btn-primary btn-sm btn-ic-span-align">
+                                                                      <i class='bx bx-save'></i>
+                                                                      <span> Save</span>
+                                                                 </button>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <div>
+                                                       <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
+                                                            <li class="nav-item me-2" role="presentation">
+                                                                 <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
+                                                            </li>
+                                                            <li class="nav-item me-2" role="presentation">
+                                                                 <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
+                                                            </li>
+                                                       </ul>
+                                                       <div class="tab-content w-100" id="agents-manager-tabContent">
+                                                            <!-- General -->
+                                                            <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="inputAgentScriptName">Name</label>
+                                                                      <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="inputAgentScriptDescription">Description</label>
+                                                                      <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block">
+                                                                           <span>Conditions</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">Add Condition</button>
+                                                                      <div id="editAgentScriptConditionValueInputs">
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                            <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
+                                                                 <div class="mb-3" id="editAgentScriptConversationContainer">
+                                                                      <span class="no-messages-conversation">No messages in the conversation yet...</span>
+                                                                      <div class="agentScriptConversationMessages">
+                                                                           
+                                                                      </div>
+                                                                      <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">Add New Message</button>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <!-- Integrations -->
+                                        <div class="tab-pane fade show active w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
+                                             <ul class="nav mb-3" id="agents-manager-integrations-inner-tab" role="tablist">
+                                                  <li class="nav-item" role="presentation">
+                                                       <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">Speech-To-Text</button>
+                                                  </li>
+                                                  <li class="nav-item me-2" role="presentation">
+                                                       <button class="nav-link" id="agents-manager-integrations-inner-llm-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-llm" type="button" role="tab" aria-controls="agents-manager-integrations-inner-llm" aria-selected="true">Large Language Model</button>
+                                                  </li>
+                                                  <li class="nav-item" role="presentation">
+                                                       <button class="nav-link" id="agents-manager-integrations-inner-tts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-tts" type="button" role="tab" aria-controls="agents-manager-integrations-inner-tts" aria-selected="true">Text-To-Speech</button>
+                                                  </li>
+                                             </ul>
+                                             <div class="tab-content w-100" id="agents-manager-integrations-inner-tabContent">
+                                                  <!-- SST Config -->
+                                                  <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-stt-tab" tabindex="0">
+                                                       <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationSTTProviderSelect">Selected Provider</label>
+                                                            <select class="form-select" id="editAgentIntegrationSTTProviderSelect">
+                                                                 <option value="microsoft_azure_speech_services" selected>Microsoft Azure</option>
+                                                                 <option value="google_cloud_speech" disabled>Google Cloud</option>
+                                                                 <option value="deepgram" disabled>Deepgram</option>
+                                                                 <option value="openai_whisper" disabled>OpenAI Whisper</option>
+                                                                 <option value="assemblyai" disabled>AssemblyAI</option>
+                                                                 <option value="revai" disabled>Rev AI</option>
+                                                            </select>
+                                                       </div>
+                                                       <div class="mb-3" id="editAgentIntegrationSTTConfigurationList">
+                                                            <div class="w-100 fade show" div-type="sstconfigbox" config-for="microsoft_azure_speech_services">
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block">
+                                                                           <span>Regioncode</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="text" class="form-control" id="sstConfigAzureRegionCode" value="uaenorth" disabled>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="sstConfigAzureAPIKey">API Key</label>
+                                                                      <input type="text" class="form-control" id="sstConfigAzureAPIKey">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block">
+                                                                           <span>Silence Timeout (ms)</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long of silence to wait before considering user to stop speaking. 600ms is a golden default, lower values may cause incomplete sentences and higher values will increase latency.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="number" class="form-control" id="sstConfigAzureSilenceTimeout" value="600">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureSpeakerDiarization">
+                                                                           <span>Speaker diarization</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Diarization is the process of separating speakers in audio data if there are multiple speakers. When enabled, the number of speakers is automatically detected and labeled in the results.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <div class="form-check form-switch">
+                                                                           <input type="checkbox" role="switch" class="form-check-input" id="sstConfigAzureSpeakerDiarization">
+                                                                      </div>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzurePhraseList">
+                                                                           <span>Phrase list</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-title="<span><a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2183433' class='ms-Link root-500' tabindex='0'>Phrase list</a> are used to identify known phrases in audio data, like a person's name or a specific location. By providing a list of phrases, you improve the accuracy of speech recognition. See <a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2231353' class='ms-Link root-500' tabindex='-1'>supported languages</a> of phrase list.</span>">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <textarea class="form-control" id="sstConfigAzurePhraseList" rows="3" placeholder="Enter words or phrases to improve accuracy (seperated by comma or semicolon)"></textarea>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureCustomEndpointSelect">
+                                                                           <span>Choose a custom endpoint</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <div class="input-group">
+                                                                           <select class="form-select" id="sstConfigAzureCustomEndpointSelect" disabled>
+                                                                                <option selected>Refresh to get all available endpoints</option>
+                                                                           </select>
+                                                                           <button class="btn btn-light" id="sstConfigAzureCustomEndpointRefreshButton">Refresh List</button>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <!-- LLM Config -->
+                                                  <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-llm" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-llm-tab" tabindex="0">
+                                                       <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationLLMProviderSelect">Selected Provider</label>
+                                                            <select class="form-select" id="editAgentIntegrationLLMProviderSelect">
+                                                                 <option value="anthropic_claude" selected>Anthropic Claude</option>
+                                                                 <option value="openai_gpt">OpenAI GPT</option>
+                                                                 <option value="groq" disabled>Groq</option>
+                                                                 <option value="cohere" disabled>Cohere</option>
+                                                                 <option value="open_router" disabled>OpenRouter</option>
+                                                                 <option value="custom_openai_spec" disabled>Custom OpenAI Spec</option>
+                                                            </select>
+                                                       </div>
+                                                       <div class="mb-3" id="editAgentIntegrationLLMConfigurationList">
+                                                            <div class="w-100 fade show" div-type="llmconfigbox" config-for="anthropic_claude">
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeModelSelect">Model</label>
+                                                                      <select class="form-select" id="editAgentIntegrationLLMAntrhopicClaudeModelSelect">
+                                                                           <option value="claude-3-haiku" selected>Claude 3 Haiku</option>
+                                                                           <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                                                                           <option value="claude-3-opus">Claude 3 Opus</option>
+                                                                      </select>
+                                                                 </div>
+                                                            </div>
+                                                            <div class="w-100 fade d-none" div-type="llmconfigbox" config-for="openai_gpt">
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="editAgentIntegrationLLMOpenAIGPTModelSelect">Model</label>
+                                                                      <select class="form-select" id="editAgentIntegrationLLMOpenAIGPTModelSelect">
+                                                                           <option value="gpt-4o" selected>GPT-4o</option>
+                                                                           <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                                                           <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                                                      </select>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                       <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeTemperature">Temperature</label>
+                                                            <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeTemperature" value="0.7" max="1" min="0">
+                                                       </div>
+                                                       <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeMaxTokens">Max Tokens</label>
+                                                            <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeMaxTokens" value="500" max="4000" min="1">
+                                                       </div>
+
+                                                  </div>
+                                                  <!-- TTS Config -->
+                                                  <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-tts" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-tts-tab" tabindex="0">
+                                                       <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationTTSProviderSelect">Selected Provider</label>
+                                                            <select class="form-select" id="editAgentIntegrationTTSProviderSelect">
+                                                                 <option value="microsoft_azure_speech_services" selected>Microsoft Azure</option>
+                                                                 <option value="google_cloud_speech" disabled>Google Cloud</option>
+                                                                 <option value="deepgram" disabled>Deepgram</option>
+                                                                 <option value="elevenlabs" disabled>ElevenLabs</option>
+                                                                 <option value="playht" disabled>PlayHT</option>
+                                                                 <option value="openai_whisper" disabled>OpenAI Whisper</option>
+                                                                 <option value="assemblyai" disabled>AssemblyAI</option>
+                                                                 <option value="custom" disabled>Custom TTS API</option>
+                                                            </select>
+                                                       </div>
+                                                       <div class="mb-3" id="editAgentIntegrationTTSConfigurationList">
+                                                            <div class="w-100 fade show" div-type="ttsconfigbox" config-for="microsoft_azure_speech_services">
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureRegionCode">
+                                                                           <span>Regioncode</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="text" class="form-control" id="ttsConfigAzureRegionCode" value="uaenorth" disabled>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label" for="ttsConfigAzureAPIKey">API Key</label>
+                                                                      <input type="text" class="form-control" id="ttsConfigAzureAPIKey">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureLanguageSpeakerSelect">
+                                                                           <span>Choose a speaker for language</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <div class="input-group">
+                                                                           <select class="form-select" id="sstConfigAzureLanguageSpeakerSelect" disabled>
+                                                                                <option selected>Refresh to get all available speakers</option>
+                                                                           </select>
+                                                                           <button class="btn btn-light" id="sstConfigAzureLanguageSpeakerRefreshButton">Refresh List</button>
+                                                                      </div>
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSpeedRate">
+                                                                           <span>Speed rate</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="used to slow up or speed up the overall speaking speed. 100% is default speed.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="number" class="form-control" id="ttsConfigAzureSpeedRate" value="100" max="+500" min="-500">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureVolume">
+                                                                           <span>Volume</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker volume. 100% is default volume.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="number" class="form-control" id="ttsConfigAzureVolume" value="100" max="+500" min="-500">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzurePitch">
+                                                                           <span>Pitch</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker pitch. 100% is default pitch.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <input type="number" class="form-control" id="ttsConfigAzurePitch" value="100" max="+500" min="-500">
+                                                                 </div>
+                                                                 <div class="mb-3">
+                                                                      <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceTypeSelect">
+                                                                           <span>Silence</span>
+
+                                                                           <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Change the break/silence/pauses between different sentences/phrases.">
+                                                                                <i class="bx bx-help-circle"></i>
+                                                                           </a>
+                                                                      </label>
+                                                                      <div class="input-group">
+                                                                           <select class="form-select" id="ttsConfigAzureSilenceTypeSelect" style="border-bottom-left-radius: 0;">
+                                                                                <option value="none" selected disabled>Select silence type</option>
+                                                                                <option value="leading">Leading - Additional at beginning of a paragraph</option>
+                                                                                <option value="sentenceboundary_exact">SentenceBoundary-exact - Between adjacent sentences</option>
+                                                                                <option value="sentence_boundary">SentenceBoundary - Additional between adjacent sentences</option>
+                                                                                <option value="trailing_exact">Trailing-exact - End of a paragraph</option>
+                                                                                <option value="trailing">Trailing - Additional at the end of a paragraph</option>
+                                                                                <option value="comma_exact">Comma-exact - At the comma in a half/full-width format</option>
+                                                                                <option value="semicolon_exact">Semicolon-exact - At the semicolon in a half/full-width format</option>
+                                                                                <option value="enumerationcomma_exact">Enumerationcomma-exact - At the enumeration comma in full-width format</option>
+                                                                           </select>
+                                                                           <button class="btn btn-light" id="addTTSConfigAzureSilenceType" style="border-bottom-right-radius: 0;" disabled>Add</button>
+                                                                      </div>
+                                                                      <div id="ttsConfigAzureSilenceTypeList">
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   </div>
+                              </div>
+                         </div>
                     </div>
                </div>
 
                <!--
 
-                    Tools
+                    Actions
 
                -->
 
@@ -579,14 +1137,14 @@
                                                                  </button>
                                                             </div>
                                                        </li>
-                                                       <li class="list-group-item"  branch-id="421">
+                                                       <li class="list-group-item" branch-id="421">
                                                             <div class="d-flex flex-row align-items-center justify-content-between">
                                                                  <span>An item</span>
                                                                  <button class="btn btn-danger btn-sm">
                                                                       <i class="bx bx-trash"></i>
                                                                  </button>
                                                             </div>
-                                                       </li> 
+                                                       </li>
                                                   </ul>
                                              </div>
                                              <div class="mb-3">
@@ -607,30 +1165,30 @@
                                                                  </button>
                                                             </div>
                                                        </li>
-                                                       <li class="list-group-item"  product-id="421">
+                                                       <li class="list-group-item" product-id="421">
                                                             <div class="d-flex flex-row align-items-center justify-content-between">
                                                                  <span>An item</span>
                                                                  <button class="btn btn-danger btn-sm">
                                                                       <i class="bx bx-trash"></i>
                                                                  </button>
                                                             </div>
-                                                       </li> 
+                                                       </li>
                                                   </ul>
                                              </div>
                                              <div class="mb-3">
-                                             <label class="form-label btn-ic-span-align d-block">
-                                                  <span>Additional Information</span>
+                                                  <label class="form-label btn-ic-span-align d-block">
+                                                       <span>Additional Information</span>
 
-                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
-                                                       <i class="bx bx-help-circle"></i>
-                                                  </a>
-                                             </label>
-                                             <button class="btn btn-light btn-sm" id="addNewContextServiceInformation">
-                                                  <span>Add Information</span>
-                                             </button>
-                                             <div class="" id="contextServiceInformationList">
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <button class="btn btn-light btn-sm" id="addNewContextServiceInformation">
+                                                       <span>Add Information</span>
+                                                  </button>
+                                                  <div class="" id="contextServiceInformationList">
+                                                  </div>
                                              </div>
-                                        </div>
                                         </div>
                                    </div>
                               </div>
@@ -722,30 +1280,30 @@
                                                                  </button>
                                                             </div>
                                                        </li>
-                                                       <li class="list-group-item"  branch-id="421">
+                                                       <li class="list-group-item" branch-id="421">
                                                             <div class="d-flex flex-row align-items-center justify-content-between">
                                                                  <span>An item</span>
                                                                  <button class="btn btn-danger btn-sm">
                                                                       <i class="bx bx-trash"></i>
                                                                  </button>
                                                             </div>
-                                                       </li> 
+                                                       </li>
                                                   </ul>
                                              </div>
                                              <div class="mb-3">
-                                             <label class="form-label btn-ic-span-align d-block">
-                                                  <span>Additional Information</span>
+                                                  <label class="form-label btn-ic-span-align d-block">
+                                                       <span>Additional Information</span>
 
-                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
-                                                       <i class="bx bx-help-circle"></i>
-                                                  </a>
-                                             </label>
-                                             <button class="btn btn-light btn-sm" id="addNewContextProductInformation">
-                                                  <span>Add Information</span>
-                                             </button>
-                                             <div class="" id="contextProductInformationList">
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <button class="btn btn-light btn-sm" id="addNewContextProductInformation">
+                                                       <span>Add Information</span>
+                                                  </button>
+                                                  <div class="" id="contextProductInformationList">
+                                                  </div>
                                              </div>
-                                        </div>
                                         </div>
                                    </div>
                               </div>
@@ -1022,6 +1580,7 @@
           <script src="libs/esprima-4.0.1/dist/esprima.js"></script>
           <script src="libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
           <script src="libs/chart.js-4.4.2/package/dist/chart.umd.js"></script>
+          <script src="js/vanillaEmojiPicker.js"></script>
 
           <!-- Custom Scripts -->
           <script src="js/script.js"></script>
@@ -1083,6 +1642,486 @@
                });
           </script>
 
+          <!-- Agents Tab -->
+          <script>
+               $(document).ready(() =>
+               {
+                    const agentIconPicker = new EmojiPicker({
+                         trigger: [
+                              {
+                                   selector: '#editAgentIconButton',
+                                   insertInto: '#editAgentIconButton'
+                              }
+                         ],
+                         closeButton: true,
+                         closeOnInsert: true
+                    });
+
+                    const tooltipTriggerList = document.querySelectorAll('#agents-tab [data-bs-toggle="tooltip"]');
+                    const tooltipList = [ ...tooltipTriggerList ].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+                    const addNewAgentButton = $("#addNewAgentButton");
+
+                    const agentsListTab = $("#agentsListTab");
+                    const agentsManagerTab = $("#agentsManagerTab");
+
+                    const switchBackToAgentsTab = $("#switchBackToAgentsTab");
+
+                    const currentAgentName = $("#currentAgentName");
+
+                    const addNewAgentScriptButton = $("#addNewAgentScriptButton");
+
+                    const agentScriptsListTab = $("#agentScriptsListTab");
+                    const agentScriptsManagerTab = $("#agentScriptsManagerTab");
+
+                    const switchBackToAgentsScriptManagerTab = $("#switchBackToAgentsScriptManagerTab");
+
+                    const currentAgentScriptName = $("#currentAgentScriptName");
+
+                    const addAgentScriptConditionValueButton = $("#addAgentScriptConditionValue");
+                    const editAgentScriptConditionValueInputs = $("#editAgentScriptConditionValueInputs");
+
+                    const addAgentScriptConversationMessageButton = $("#addAgentScriptConversationMessage");
+
+                    const agentScriptConversationMessages = $(".agentScriptConversationMessages");
+
+                    const noMessagesInConversationAlert = $(".no-messages-conversation");
+
+                    const editAgentIntegrationSTTProviderSelect = $("#editAgentIntegrationSTTProviderSelect");
+                    const editAgentIntegrationSTTConfigurationList = $("#editAgentIntegrationSTTConfigurationList");
+
+                    const editAgentIntegrationLLMProviderSelect = $("#editAgentIntegrationLLMProviderSelect");
+                    const editAgentIntegrationLLMConfigurationList = $("#editAgentIntegrationLLMConfigurationList");
+
+                    const ttsConfigAzureSilenceTypeSelect = $("#ttsConfigAzureSilenceTypeSelect");
+                    const addTTSConfigAzureSilenceTypeButton = $("#addTTSConfigAzureSilenceType");
+                    const ttsConfigAzureSilenceTypeList = $("#ttsConfigAzureSilenceTypeList");
+
+                    addNewAgentButton.on("click", (event) =>
+                    {
+                         event.preventDefault();
+
+                         currentAgentName.text("New Agent");
+
+                         agentsListTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              agentsListTab.addClass("d-none");
+
+                              agentsManagerTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   agentsManagerTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    switchBackToAgentsTab.on("click", (event) =>
+                    {
+                         event.preventDefault();
+
+                         agentsManagerTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              agentsManagerTab.addClass("d-none");
+
+                              agentsListTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   agentsListTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+               
+                    addNewAgentScriptButton.on("click", (event) =>
+                    {
+                         event.preventDefault();
+
+                         currentAgentScriptName.text("New Script");
+               
+                         agentScriptsListTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              agentScriptsListTab.addClass("d-none");
+               
+                              agentScriptsManagerTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   agentScriptsManagerTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    switchBackToAgentsScriptManagerTab.on("click", (event) =>
+                    {
+                         event.preventDefault();
+               
+                         agentScriptsManagerTab.removeClass("show");
+                         setTimeout(() =>
+                         {
+                              agentScriptsManagerTab.addClass("d-none");
+               
+                              agentScriptsListTab.removeClass("d-none");
+                              setTimeout(() =>
+                              {
+                                   agentScriptsListTab.addClass("show");
+                              }, 10);
+                         }, 150);
+                    });
+
+                    addAgentScriptConditionValueButton.on("click", (event) => {
+                         event.preventDefault();
+
+                         editAgentScriptConditionValueInputs.append(`
+                              <div class="input-group mb-1">
+                                   <input type="text" class="form-control" placeholder="Script Condition" aria-label="Condition Value" value="">
+                                   <button class="btn btn-danger" button-type="editAgentScriptConditionValueRemove">
+                                        <i class='bx bx-trash'></i>
+                                   </button>
+                              </div>
+                         `);
+                    });
+
+                    $(document).on('click', '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
+                         event.preventDefault();
+                         event.stopPropagation();
+                         event.stopImmediatePropagation();
+
+                         $(event.currentTarget).parent().remove();
+                    });
+               
+                    addAgentScriptConversationMessageButton.on("click", (event) => {
+                         // todo try to make the options of functions static
+                        
+                         agentScriptConversationMessages.append(`
+                              <div class="conversationMessage">    
+                                   <div class="user-message singleMessage">
+                                        <div class="input-group">
+                                             <button class="btn btn-danger btn-sm" button-type="editAgentScriptConversationMessageRemove">
+                                                  <i class='bx bx-trash'></i>
+                                             </button>
+                                             <textarea class="form-control" placeholder="Type the user message..." rows="1"></textarea>
+                                        </div>
+                                        <div class="message-icon">
+                                             <i class='bx bx-user'></i>
+                                        </div>
+                                   </div>
+                                   <div class="ai-message">
+                                        <div class="singleMessage">
+                                             <div class="message-icon">
+                                                  <i class='bx bx-user'></i>
+                                             </div>
+                                             <div class="input-group">
+                                                  <select class="form-select" style="max-width: 180px" select-type="set-ai-response-type">
+                                                       <option value="response_to_user" selected>User Reply</option>
+                                                       <option value="response_to_system">Execute Tool</option>
+                                                  </select>
+                                                  <textarea textarea-type="set-ai-response-text-area" class="form-control" placeholder="Type the abstract AI message..." rows="1"></textarea>
+                                                  <select class="form-select d-none" select-type="set-ai-response-tool" previous-value="none">
+                                                       <option value="none" can-continue="true" is-custom-tool="false" selected>Select Tool Function</option>
+                                                       <option value="make_appointment" can-continue="true" is-custom-tool="true">Make Appointment</option>
+                                                       <option value="transfer_to_agent" can-continue="false" is-custom-tool="false">Transfer to Agent</option>
+                                                       <option value="transfer_to_human" can-continue="false" is-custom-tool="false">Transfer to Human</option>
+                                                       <option value="end_call" can-continue="false" is-custom-tool="false">End Call</option>
+                                                       ${(
+                                                            // todo
+                                                            ""
+                                                       )}
+                                                  </select>
+                                             </div>
+                                        </div>
+                                        <div class="d-none mt-2" data-type="transfer-to-agent-type">
+                                             <label class="form-label mb-1">Transfer to Agent</label>
+                                             <select class="form-select" select-type="transfer-to-agent-type-select">
+                                                  <option value="-1">Select Agent</option>
+                                                  <option value="21412">Sales Agent</option>
+                                                  <option value="412512">Technical Agent</option>
+                                             </select>
+                                        </div>
+                                        <div class="d-none mt-2" data-type="tool-status-conditional-conversation">
+                                             <label class="form-label mb-1">Tool Status Conditional Conversation</label>
+                                              <select class="form-select" select-type="set-ai-tool-status-type">
+                                                  <option value="-1">All Status</option>
+                                                  <option value="200">200</option>
+                                                  <option value="500">500</option>
+                                             </select>
+                                        </div>
+                                   </div>
+                              </div> 
+                         `);
+
+                         agentScriptConversationMessages.stop().animate({scrollTop: agentScriptConversationMessages[0].scrollHeight}, 500, 'linear', ()=> {});
+
+                         noMessagesInConversationAlert.addClass("d-none");
+                    });
+
+                    $(document).on('click', '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
+                         event.preventDefault();
+                         event.stopPropagation();
+                         event.stopImmediatePropagation();
+
+                         let actualParent = $(event.currentTarget).parent().parent().parent();
+
+                         let toolType = actualParent.find('[select-type="set-ai-response-type"]').val();
+
+                         if (toolType === "response_to_system")
+                         {
+                              let selectedToolValue = actualParent.find('[select-type="set-ai-response-tool"]').val();
+                              let selectedToolOption = actualParent.find('[select-type="set-ai-response-tool"] option[value="' + selectedToolValue + '"]');
+                              
+                              let isToolThatCanContinue = selectedToolOption.attr('can-continue');
+
+                              if (
+                                   typeof (isToolThatCanContinue) !== "undefined"
+                                   && 
+                                   (isToolThatCanContinue == "false" || isToolThatCanContinue == "false")
+                              )
+                              {
+                                   addAgentScriptConversationMessageButton.prop("disabled", false);
+                              }
+                         }
+
+                         actualParent.remove();
+
+                         if (agentScriptConversationMessages.children().length === 0)
+                         {
+                              noMessagesInConversationAlert.removeClass("d-none");
+                         }
+                    });
+
+                    $(document).on('change', '[select-type="set-ai-response-type"]', (event) => {
+                         event.stopPropagation();
+                         event.stopImmediatePropagation();
+
+                         let target = $(event.currentTarget);
+                         let selectedValue = target.val();
+
+                         let parent = target.parent();
+                         let textAreaForUserResponse = parent.find('[textarea-type="set-ai-response-text-area"]');
+                         let toolForUserResponse = parent.find('[select-type="set-ai-response-tool"]');
+
+                         let toolStatusElement = parent.parent().parent().find('[data-type="tool-status-conditional-conversation"]');
+
+                         let transferToAgentElement = parent.parent().parent().find('[data-type="transfer-to-agent-type"]');
+                         let transferToAgentElementSelect = transferToAgentElement.find('[select-type="transfer-to-agent-type-select"]');
+
+                         if (selectedValue === "response_to_user")
+                         {
+                              textAreaForUserResponse.removeClass("d-none");
+                              toolForUserResponse.addClass("d-none");
+
+                              toolStatusElement.addClass("d-none");
+                              transferToAgentElement.addClass("d-none");
+
+                              addAgentScriptConversationMessageButton.prop("disabled", false);
+
+                              toolForUserResponse.val("none");
+                              toolForUserResponse.change();
+
+                              transferToAgentElementSelect.val("-1");
+                              transferToAgentElementSelect.change();
+                         }
+                         else if (selectedValue === "response_to_system")
+                         {
+                              textAreaForUserResponse.addClass("d-none");
+                              toolForUserResponse.removeClass("d-none");
+
+                              toolForUserResponse.change();
+                         }
+                    });
+
+                    $(document).on('change', '[select-type="set-ai-response-tool"]', (event) => {
+                         event.stopPropagation();
+                         event.stopImmediatePropagation();
+
+                         let target = $(event.currentTarget);
+                         let selectedValue = target.val();
+
+                         let selectedOption = target.find('option[value="' + selectedValue + '"]');
+
+                         let canContinueAfterTool = selectedOption.attr("can-continue");
+                         let isCustomTool = selectedOption.attr("is-custom-tool");
+
+                         let messagesListLength = agentScriptConversationMessages.children().length;
+                         let messagePositionInConversationList = target.parent().parent().parent().parent().index();
+
+                         let customToolStatusConditionalConversationElement = target.parent().parent().parent().find('[data-type="tool-status-conditional-conversation"]');
+                         let transferToAgentElement = target.parent().parent().parent().find('[data-type="transfer-to-agent-type"]');
+
+                         if (
+                              typeof(canContinueAfterTool) !== "undefined"
+                              &&
+                              (canContinueAfterTool == "false" || canContinueAfterTool == false)
+                         )
+                         {
+                              if (messagesListLength > (messagePositionInConversationList + 1))
+                              {
+                                   if (!confirm("Using this tool will ignore the rest of the conversation. Are you sure you want to continue?\n\n Confirming will delete every other message after this message."))
+                                   {
+                                        event.preventDefault();
+                                        target.val(target.attr("previous-value"));
+                                        return false;
+                                   }
+                                   else
+                                   {
+                                        agentScriptConversationMessages.children().each((index, data) => {
+                                             if (index > messagePositionInConversationList) data.remove();
+                                        });
+                                   }
+                              }
+                              
+                              messagesListLength = agentScriptConversationMessages.children().length;
+
+                              if (messagesListLength === (messagePositionInConversationList + 1))
+                              {
+                                   addAgentScriptConversationMessageButton.prop("disabled", true);
+                              }
+                         }
+                         else
+                         {
+                              if (messagesListLength === (messagePositionInConversationList + 1))
+                              {
+                                   addAgentScriptConversationMessageButton.prop("disabled", false);
+                              }
+                         }
+
+                         if (
+                              typeof(isCustomTool) !== "undefined"
+                              &&
+                              (isCustomTool == "true" || isCustomTool == true)
+                         )
+                         {
+                              customToolStatusConditionalConversationElement.removeClass("d-none");
+                         }
+                         else
+                         {
+                              customToolStatusConditionalConversationElement.addClass("d-none");
+                         }
+
+                         if (selectedValue === "transfer_to_agent")
+                         {
+                              transferToAgentElement.removeClass("d-none");
+                         }
+                         else
+                         {
+                              transferToAgentElement.addClass("d-none");
+                         }
+
+                         target.attr("previous-value", selectedValue);
+                    });
+               
+                    editAgentIntegrationSTTProviderSelect.on('change', (event) => { 
+                         let selectedValue = editAgentIntegrationSTTProviderSelect.val();
+
+                         let activeConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"].show');
+                         let activeConfigElementFor = activeConfigElement.attr('config-for');
+
+                         if (activeConfigElementFor === selectedValue) return;
+
+                         let selectedConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"][config-for="' + selectedValue + '"]');
+
+                         activeConfigElement.removeClass('show');
+                         setTimeout(() => {
+                              activeConfigElement.addClass('d-none');
+
+                              selectedConfigElement.removeClass('d-none');
+                              setTimeout(() => {
+                                   selectedConfigElement.addClass('show');
+                              }, 10);
+                         }, 150);
+                    });
+               
+                    editAgentIntegrationLLMProviderSelect.on('change', (event)=> {
+                         let selectedValue = editAgentIntegrationLLMProviderSelect.val();
+
+                         let activeConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"].show');
+                         let activeConfigElementFor = activeConfigElement.attr('config-for');
+
+                         if (activeConfigElementFor === selectedValue) return;
+
+                         let selectedConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"][config-for="' + selectedValue + '"]');
+
+                         activeConfigElement.removeClass('show');
+                         setTimeout(() => {
+                              activeConfigElement.addClass('d-none');
+
+                              selectedConfigElement.removeClass('d-none');
+                              setTimeout(() => {
+                                   selectedConfigElement.addClass('show');
+                              }, 10);
+                         }, 150);
+                    });
+
+                    ttsConfigAzureSilenceTypeSelect.on('change', (event) => {
+                         let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
+                         if (!selectedValue) return;
+
+                         addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
+                    });
+               
+                    addTTSConfigAzureSilenceTypeButton.on('click', (event) => {
+                         let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
+                         if (!selectedValue) return;
+
+                         let selectedOption = ttsConfigAzureSilenceTypeSelect.find('option[value="' + selectedValue + '"]');
+                         let selectedOptionTextSplit = selectedOption.text().split(' - ');
+
+                         let newElement = $(`
+                              <div class="mt-1">
+                                   <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceType${selectedValue}">
+                                        <span>${selectedOptionTextSplit[0]}</span>
+
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${selectedOptionTextSplit[1]}">
+                                             <i class="bx bx-help-circle"></i>
+                                        </a>
+                                   </label>
+                                   <div class="input-group" silence-type="${selectedValue}">
+                                        <input type="number" class="form-control" id="ttsConfigAzureSilenceType${selectedValue}" value="750">
+                                        <button class="btn btn-danger" button-type="removeTTSConfigAzureSilenceType">
+                                             <i class='bx bx-trash'></i>
+                                        </button>
+                                   </div>
+                              </div>
+                         `);
+
+                         let toolTip = new bootstrap.Tooltip(newElement.find('[data-bs-toggle="tooltip"]')[0]);
+
+                         ttsConfigAzureSilenceTypeList.append(newElement);
+
+                         selectedOption.remove();
+
+                         if (ttsConfigAzureSilenceTypeSelect.children().length === 1)
+                         {
+                              ttsConfigAzureSilenceTypeSelect.val("none");
+                              ttsConfigAzureSilenceTypeSelect.change();
+                              addTTSConfigAzureSilenceTypeButton.prop("disabled", true);
+                         }
+                    })
+
+                    $(document).on('click', '[button-type="removeTTSConfigAzureSilenceType"]', (event) => {
+                         let target = $(event.currentTarget);
+                         let parent = target.parent();
+                         let parentToRemove = parent.parent();
+
+                         let silenceType = parent.attr("silence-type");
+
+                         let labelValue = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] span`).text();
+                         let toolTipDescription = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] a`).attr("data-bs-title");
+
+                         ttsConfigAzureSilenceTypeSelect.append(
+                              `<option value="${silenceType}">${labelValue} - ${toolTipDescription}</option>`
+                         );
+
+                         parentToRemove.remove();
+
+                         if (ttsConfigAzureSilenceTypeSelect.children().length > 1)
+                         {
+                              addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
+                         }
+                    });
+               });
+          </script>
+
           <!-- Context Tab -->
           <script>
                const DAYS = [ "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" ];
@@ -1136,15 +2175,15 @@
                     const addNewProductButton = $("#addNewProductButton");
 
                     const switchBackToContextProductsTab = $("#switchBackToContextProductsTab");
-                    const currentContextProductName = $("#currentContextProductName");         
+                    const currentContextProductName = $("#currentContextProductName");
 
                     const linkContextProductBranchSelect = $("#linkContextProductBranchSelect");
                     const linkedContextProductBranchesList = $("#linkedContextProductBranchesList");
 
                     const addNewContextProductInformationButton = $("#addNewContextProductInformation");
                     const contextProductInformationList = $("#contextProductInformationList");
- 
-                    function resetOrClearBranchManager()
+
+                    function resetOrClearBranchManager ()
                     {
                          $('#editBranchUniqueIDInput').val("");
                          $('#editBranchNameInput').val("");
@@ -1157,7 +2196,7 @@
 
                          DAYS.forEach((day) =>
                          {
-                              editBranchOpeningHoursInputsList.find(`#editBranchOpeningHours${day}Input`).prop("checked", false);
+                              editBranchOpeningHoursInputsList.find(`#editBranchOpeningHours${ day }Input`).prop("checked", false);
                               editBranchOpeningHoursInputsList.find(`[button-type="addBranchWorkingHour"][day-value="${ day }"]`).prop("disabled", false);
                               editBranchOpeningHoursInputsList.find(`.workingHoursTimingList[day-value="${ day }"]`).children().remove();
                          });
@@ -1165,8 +2204,8 @@
                          editBranchTeamInputsList.children().remove();
                          $("#branding-branch-manager-general-tab").click();
                     }
-           
-                    function resetOrClearServiceManager()
+
+                    function resetOrClearServiceManager ()
                     {
                          $("#inputContextServiceName").val("");
                          $("#inputContextServiceShortDescription").val("");
@@ -1178,10 +2217,10 @@
                          linkContextServiceProductSelect.children().remove();
                          linkedContextServiceProductsList.children().remove();
 
-                         contextServiceInformationList.children().remove()
+                         contextServiceInformationList.children().remove();
                     }
 
-                    function resetOrClearProductManager()
+                    function resetOrClearProductManager ()
                     {
                          $("#inputContextProductName").val("");
                          $("#inputContextProductShortDescription").val("");
@@ -1190,7 +2229,7 @@
                          linkContextProductBranchSelect.children().remove();
                          linkedContextProductBranchesList.children().remove();
 
-                         contextProductInformationList.children().remove()
+                         contextProductInformationList.children().remove();
                     }
 
                     DAYS.forEach((day) =>
@@ -1277,7 +2316,8 @@
                          }, 150);
                     });
 
-                    addContextBranchInformationButton.on('click', (event) => {
+                    addContextBranchInformationButton.on('click', (event) =>
+                    {
                          event.preventDefault();
 
                          contextBranchInformationList.append(`
@@ -1293,7 +2333,8 @@
                          `);
                     });
 
-                    $(document).on('click', '[button-type="contextBranchInformationRemove"]', (event) => {
+                    $(document).on('click', '[button-type="contextBranchInformationRemove"]', (event) =>
+                    {
                          event.preventDefault();
 
                          $(event.currentTarget).parent().parent().remove();
@@ -1444,7 +2485,7 @@
                     {
                          $(event.currentTarget).parent().parent().remove();
                     });
-               
+
                     addNewProductButton.on('click', (event) =>
                     {
                          event.preventDefault();
@@ -1464,7 +2505,8 @@
                          }, 150);
                     });
 
-                    switchBackToContextProductsTab.on('click', (event) => {
+                    switchBackToContextProductsTab.on('click', (event) =>
+                    {
                          event.preventDefault();
 
                          contextProductsManagerTab.removeClass("show");
@@ -1482,7 +2524,8 @@
                          }, 150);
                     });
 
-                    addNewContextProductInformationButton.on('click', (event) => {
+                    addNewContextProductInformationButton.on('click', (event) =>
+                    {
                          event.preventDefault();
 
                          contextProductInformationList.append(`
@@ -1498,9 +2541,10 @@
                          `);
                     });
 
-                    $(document).on('click', '[button-type="contextProductInformationRemove"]', (event) => {
+                    $(document).on('click', '[button-type="contextProductInformationRemove"]', (event) =>
+                    {
                          $(event.currentTarget).parent().parent().remove();
-                    })
+                    });
                });
           </script>
 

@@ -5,7 +5,7 @@ using IqraCore.Interfaces.AI;
 
 namespace IqraInfrastructure.Services
 {
-    public class ClaudeStreamingLLMService : IAIService
+    public class AnthropicClaudeStreamingLLMService : IAIService
     {
         private readonly AnthropicClient _client;
 
@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Services
 
         public event EventHandler<object> MessageStreamed;
 
-        public ClaudeStreamingLLMService(string apiKey)
+        public AnthropicClaudeStreamingLLMService(string apiKey)
         {
             _client = new AnthropicClient(apiKey);
 
@@ -135,6 +135,11 @@ namespace IqraInfrastructure.Services
                     Content = message
                 }
             );
+        }
+
+        public string GetProviderName()
+        {
+            return "anthropic_claude";
         }
     }
 }

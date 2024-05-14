@@ -84,7 +84,7 @@ namespace ProjectIqra
 
             AzureSpeechSTTService sttService = new AzureSpeechSTTService(businessAzureSettings.SubscriptionKey, businessAzureSettings.RegionCode, businessDefaultLanguage);
             AzureSpeechTTSService ttsService = new AzureSpeechTTSService(businessAzureSettings.SubscriptionKey, businessAzureSettings.RegionCode, businessDefaultLanguage, businessAzureSettings.SpeakerName[businessDefaultLanguage]);
-            ClaudeStreamingLLMService aiService = new ClaudeStreamingLLMService(_business.BusinessClaudeApiKey);
+            AnthropicClaudeStreamingLLMService aiService = new AnthropicClaudeStreamingLLMService(_business.BusinessClaudeApiKey);
 
             _debugApp.SetLanguage(businessDefaultLanguage);
             _debugApp.SetSpeakerName(businessAzureSettings.SpeakerName[businessDefaultLanguage]);

@@ -146,7 +146,9 @@ a:focus {
 
 #billing-inner-tabs .nav-link,
 #context-inner-tab .nav-link,
-#branding-branch-manager-tab .nav-link {
+#branding-branch-manager-tab .nav-link,
+#agents-manager-tab .nav-link,
+#agents-manager-integrations-inner-tab .nav-link {
      color: rgba(255, 255, 255, 0.8) !important;
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
      transition: 0.15s;
@@ -155,20 +157,26 @@ a:focus {
 
 #billing-inner-tabs .nav-link:not(:last-of-type),
 #context-inner-tab .nav-link:not(:last-of-type),
-#branding-branch-manager-tab .nav-link:not(:last-of-type) {
+#branding-branch-manager-tab .nav-link:not(:last-of-type),
+#agents-manager-tab .nav-link:not(:last-of-type),
+#agents-manager-integrations-inner-tab .nav-link:not(:last-of-type) {
      margin-right: 10px;
 }
 
 #billing-inner-tabs .nav-link.active,
 #context-inner-tab .nav-link.active,
-#branding-branch-manager-tab .nav-link.active {
+#branding-branch-manager-tab .nav-link.active,
+#agents-manager-tab .nav-link.active,
+#agents-manager-integrations-inner-tab .nav-link.active {
      color: var(--tcolor-light-green) !important;
      border-bottom-color: var(--tcolor-light-green);
 }
 
 #billing-inner-tabs .nav-link:not(.active):hover,
 #context-inner-tab .nav-link:not(.active):hover,
-#branding-branch-manager-tab .nav-link:not(.active):hover {
+#branding-branch-manager-tab .nav-link:not(.active):hover,
+#agents-manager-tab .nav-link:not(.active):hover,
+#agents-manager-integrations-inner-tab .nav-link:not(.active):hover {
      color: var(--tcolor-lighter-green) !important;
 }
 
@@ -553,3 +561,146 @@ a:focus {
      overflow-y: scroll;
 }
 
+
+.agent-card {
+     padding: 2em;
+     background-color: var(--tcolor-light-green);
+     width: 100%;
+     border-radius: 16px;
+     margin-bottom: 30px;
+     color: var(--tcolor-dark);
+     border: 3px solid var(--tcolor-lighter-green);
+     transition: 0.15s ease-in-out;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     text-rendering: optimizeLegibility;
+     cursor: pointer;
+     z-index: 9999;
+     position: relative;
+}
+
+.agent-card:hover {
+     transform: scale(1.02);
+     box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
+
+.agent-card .agent-icon {
+     max-width: 100%;
+     width: 60px;
+     text-align: center;
+     font-size: 28px;
+     background-color: var(--tcolor-lighter-green);
+     border-radius: 10px;
+     padding: 8px;
+     transition: 1s;
+}
+
+.agent-card:hover .agent-icon {
+     transform: rotate(360deg);
+}
+
+.agent-card h4 {
+     margin: 0;
+     margin-left: 20px;
+     font-weight: 700;
+     line-height: normal;
+}
+
+.agent-card .h5-info {
+     margin-bottom: 0;
+     font-weight: 600;
+     opacity: 0.7;
+     font-size: 18px;
+     max-width: 220px;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+}
+
+#editAgentScriptConditionValueInputs {
+     max-height: 300px;
+     overflow-y: scroll;
+}
+
+#editAgentScriptConversationContainer {
+     background-color: #3a3a3a;
+     padding: 1em;
+     border-radius: 6px;
+     position: relative;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages {
+     height: 50vh;
+     min-height: 500px;
+     overflow-y: scroll;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage {
+     background-color: #4a4a4a;
+     padding: 1em;
+     border-radius: 6px;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage {
+     display: flex;
+     flex-direction: row;
+     align-items: center;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage:not(:last-child){
+     margin-bottom: 10px;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message textarea {
+     width: calc(100% - 55px); 
+     max-height: 100px;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage .message-icon {
+     width: 40px;
+     background-color: #5c74bc;
+     border-radius: 40px;
+     text-align: center;
+     padding: 10px;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message {
+     margin-bottom: 5px;
+     justify-content: end;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message .message-icon {
+     margin-left: 10px;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage {
+     justify-content: start;
+}
+
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage .message-icon {
+     margin-right: 10px;
+}
+
+.no-messages-conversation {
+     position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto;
+    width: fit-content;
+    height: fit-content;
+}
+
+#ttsConfigAzureSilenceTypeList {
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+     max-height: 300px;
+     overflow-y: scroll;
+}
+
+#ttsConfigAzureSilenceTypeList:has(div)
+{
+     padding: 0.5em;
+     background-color: #3a3a3a;
+}
