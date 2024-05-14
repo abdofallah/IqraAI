@@ -127,10 +127,6 @@ namespace ProjectIqra
             _StartCheckingForIncomingCallCancellationTokenSource.Cancel();
             await Task.WhenAll(_StartCheckingForIncomingCallTask);
 
-            //temp below
-            await _modemManager.ForwardIncomingCall("+96895730626");
-            return;
-
             _StartCheckingForCallBeginCancellationTokenSource = new CancellationTokenSource();
             _StartCheckingForCallBeginTask = _modemManager.StartCheckingForCallBeginLoop(_StartCheckingForCallBeginCancellationTokenSource.Token);
 

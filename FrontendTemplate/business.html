@@ -30,22 +30,38 @@
                <nav class="nav">
                     <div class="upper-navigation">
                          <a href="/" class="nav_logo">
-                              <i class='bx bx-bot nav_logo-icon'></i>
-                              <span class="nav_logo-name">IQRA AI</span>
+                              <img class="nav_logo-icon" src="img/logo/logo-colored-light.png">
                          </a>
                          <div class="nav_list">
                               <a href="#" class="nav_link active" for="overview-tab">
                                    <i class='bx bx-chalkboard nav_icon'></i>
                                    <span class="nav_name">Overview</span>
-                              </a>
-                              <span class="mt-4 nav-category-label">Agents</span>
+                              </a>           
+                              <span class="mt-4 nav-category-label">Routing</span>
                               <a href="#" class="nav_link disabled" for="routing-tab">
                                    <i class='bx bx-git-repo-forked nav_icon'></i>
                                    <span class="nav_name">Routing</span>
                               </a>
+                              <a href="#" class="nav_link" for="phone-numbers-tab">
+                                   <i class='bx bx-phone nav_icon'></i>
+                                   <span class="nav_name">Numbers</span>
+                              </a>
+                              <span class="mt-4 nav-category-label">Setup</span>
                               <a href="#" class="nav_link" for="agents-tab">
                                    <i class='bx bx-support nav_icon'></i>
                                    <span class="nav_name">Agents</span>
+                              </a>
+                              <a href="#" class="nav_link" for="context-tab">
+                                   <i class='bx bx-text nav_icon'></i>
+                                   <span class="nav_name">Context</span>
+                              </a>
+                              <a href="#" class="nav_link disabled" for="knowledge-base-tab">
+                                   <i class='bx bx-data nav_icon'></i>
+                                   <span class="nav_name">Knowledge Base</span>
+                              </a>
+                              <a href="#" class="nav_link" for="tools-tab">
+                                   <i class='bx bx-wrench nav_icon'></i>
+                                   <span class="nav_name">Tools</span>
                               </a>
                               <span class="mt-4 nav-category-label">Actions</span>
                               <a href="#" class="nav_link disabled" for="make-calls-tab">
@@ -60,19 +76,6 @@
                               <a href="#" class="nav_link disabled" for="conversations-tab">
                                    <i class='bx bx-conversation nav_icon'></i>
                                    <span class="nav_name">Conversations</span>
-                              </a>
-                              <span class="mt-4 nav-category-label">Setup</span>
-                              <a href="#" class="nav_link" for="context-tab">
-                                   <i class='bx bx-text nav_icon'></i>
-                                   <span class="nav_name">Context</span>
-                              </a>
-                              <a href="#" class="nav_link disabled" for="knowledge-base-tab">
-                                   <i class='bx bx-data nav_icon'></i>
-                                   <span class="nav_name">Knowledge Base</span>
-                              </a>
-                              <a href="#" class="nav_link" for="tools-tab">
-                                   <i class='bx bx-wrench nav_icon'></i>
-                                   <span class="nav_name">Tools</span>
                               </a>
                               <span class="mt-4 nav-category-label">Other</span>
                               <a href="#" class="nav_link mb-0 disabled" for="settings-tab">
@@ -169,7 +172,7 @@
 
                <!--
 
-                    Agents
+                    Routing
 
                -->
 
@@ -181,12 +184,38 @@
                     </div>
                </div>
 
+               <!-- Phone Numbers Container -->
+               <div class="main-container fade show w-100" id="phone-numbers-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-phone'></i> <span>Numbers</span></h3>
+                    <div class="inner-container">
+                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                              <div style="min-width: 200px" class="me-4">
+                                   <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewNumberButton">
+                                        <span>+ Add New Number</span>
+                                   </button>
+                              </div>
+                              <div class="input-group w-100">
+                                   <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchNumberButton">
+                                   <button class="input-group-button btn btn-primary" id="searchNumberButton">
+                                        <i class='bx bx-search'></i>
+                                   </button>
+                              </div>
+                         </div>
+                    </div>
+               </div>
+
+               <!--
+
+                    Setup
+
+               -->
+
                <!-- Agents Container -->
-               <div class="main-container fade show w-100" id="agents-tab">
+               <div class="main-container fade d-none w-100" id="agents-tab">
                     <h3 class="fw-bold tab-title"><i class='bx bx-support'></i> <span>Agents</span></h3>
                     <div class="inner-container">
                          <!-- Agents List Tab -->
-                         <div class="fade d-none w-100" id="agentsListTab">
+                         <div class="fade show w-100" id="agentsListTab">
                               <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                    <div style="min-width: 200px" class="me-4">
                                         <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentButton">
@@ -217,7 +246,7 @@
                               </div>
                          </div>
                          <!-- Agents Manager Tab -->
-                         <div class="fade show w-100" id="agentsManagerTab">
+                         <div class="fade d-none w-100" id="agentsManagerTab">
                               <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                    <nav aria-label="breadcrumb">
                                         <ol class="breadcrumb mb-0">
@@ -264,7 +293,7 @@
                                                   <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
                                              </li>
                                              <li class="nav-item" role="presentation">
-                                                  <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
+                                                  <button class="nav-link disabled" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
                                              </li>
                                         </ul>
                                         <select class="form-select" style="max-width: 300px">
@@ -275,7 +304,7 @@
 
                                    <div class="tab-content w-100" id="agents-manager-tabContent">
                                         <!-- General -->
-                                        <div class="tab-pane fade w-100" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
+                                        <div class="tab-pane fade show active w-100" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
                                              <div class="mb-3">
                                                   <label class="form-label" for="editAgentIdentifierInput">Identifier</label>
                                                   <div class="input-group">
@@ -337,7 +366,7 @@
                                         <!-- Scripts -->
                                         <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
                                              <!-- Scripts List Tab -->
-                                             <div class="fade d-none w-100" id="agentScriptsListTab">
+                                             <div class="fade show w-100" id="agentScriptsListTab">
                                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                        <div style="min-width: 200px" class="me-4">
                                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentScriptButton">
@@ -434,7 +463,7 @@
                                                   </table>
                                              </div>
                                              <!-- Agent Scripts Manager Tab -->
-                                             <div class="fade show w-100" id="agentScriptsManagerTab">
+                                             <div class="fade d-none w-100" id="agentScriptsManagerTab">
                                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                        <nav aria-label="breadcrumb">
                                                             <ol class="breadcrumb mb-0">
@@ -498,7 +527,7 @@
                                              </div>
                                         </div>
                                         <!-- Integrations -->
-                                        <div class="tab-pane fade show active w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
+                                        <div class="tab-pane fade w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
                                              <ul class="nav mb-3" id="agents-manager-integrations-inner-tab" role="tablist">
                                                   <li class="nav-item" role="presentation">
                                                        <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">Speech-To-Text</button>
@@ -512,7 +541,7 @@
                                              </ul>
                                              <div class="tab-content w-100" id="agents-manager-integrations-inner-tabContent">
                                                   <!-- SST Config -->
-                                                  <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-stt-tab" tabindex="0">
+                                                  <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-stt-tab" tabindex="0">
                                                        <div class="mb-3">
                                                             <label class="form-label" for="editAgentIntegrationSTTProviderSelect">Selected Provider</label>
                                                             <select class="form-select" id="editAgentIntegrationSTTProviderSelect">
@@ -591,7 +620,7 @@
                                                        </div>
                                                   </div>
                                                   <!-- LLM Config -->
-                                                  <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-llm" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-llm-tab" tabindex="0">
+                                                  <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-llm" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-llm-tab" tabindex="0">
                                                        <div class="mb-3">
                                                             <label class="form-label" for="editAgentIntegrationLLMProviderSelect">Selected Provider</label>
                                                             <select class="form-select" id="editAgentIntegrationLLMProviderSelect">
@@ -741,53 +770,16 @@
                                                   </div>
                                              </div>
                                         </div>
+
+                                        <!-- Settings -->
+                                        <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
+                                             <h6>Ah! This page is currently under development.</h6>
+                                        </div>
                                    </div>
                               </div>
                          </div>
                     </div>
                </div>
-
-               <!--
-
-                    Actions
-
-               -->
-
-               <!-- Make Calls Container -->
-               <div class="main-container fade d-none w-100" id="make-calls-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-phone-call'></i> <span>Make Calls</span></h3>
-                    <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
-                    </div>
-               </div>
-
-               <!--
-
-                    Analytics
-
-               -->
-
-               <!-- Appointments Container -->
-               <div class="main-container fade d-none w-100" id="appointments-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-time-five'></i> <span>Appointments</span></h3>
-                    <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
-                    </div>
-               </div>
-
-               <!-- Conversations Container -->
-               <div class="main-container fade d-none w-100" id="conversations-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-conversation'></i> <span>Conversations</span></h3>
-                    <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
-                    </div>
-               </div>
-
-               <!--
-
-                    Setup
-
-               -->
 
                <!-- Context Container -->
                <div class="main-container fade d-none w-100" id="context-tab">
@@ -1556,6 +1548,42 @@
                                    </div>
                               </div>
                          </div>
+                    </div>
+               </div>
+               
+               <!--
+
+                    Actions
+
+               -->
+
+               <!-- Make Calls Container -->
+               <div class="main-container fade d-none w-100" id="make-calls-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-phone-call'></i> <span>Make Calls</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!--
+
+                    Analytics
+
+               -->
+
+               <!-- Appointments Container -->
+               <div class="main-container fade d-none w-100" id="appointments-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-time-five'></i> <span>Appointments</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
+                    </div>
+               </div>
+
+               <!-- Conversations Container -->
+               <div class="main-container fade d-none w-100" id="conversations-tab">
+                    <h3 class="fw-bold tab-title"><i class='bx bx-conversation'></i> <span>Conversations</span></h3>
+                    <div class="inner-container">
+                         <h6>Ah! This page is currently under development.</h6>
                     </div>
                </div>
 

@@ -275,104 +275,111 @@ namespace ProjectIqra
         // Process AI Streaming Messages
         private async void OnAIResponseStreaming(object? sender, object responseObject)
         {
-            MessageResponse res = (MessageResponse)responseObject;
-
-            if (res.Delta != null)
+            if (_aiService.GetProviderName() == "anthropic_claude")
             {
-                if (res.Delta.StopReason == "end_turn")
+                MessageResponse res = (MessageResponse)responseObject;
+
+                if (res.Delta != null)
                 {
+                    if (res.Delta.StopReason == "end_turn")
+                    {
+                        if (_currentAIResponseType == "response_to_customer")
+                        {
+                            string remainingString = _currentUnprocessedAIResponse.ToString();
+                            if (remainingString.Length > 0)
+                            {
+                                OnAITextToOuputDevice(remainingString);
+                            }
+                        }
+                        else if (_currentAIResponseType == "response_to_system")
+                        {
+                            // todo - implement sending the response to an actual system
+                            // block any input speaking while the speaker plays the response and then wait till task has ended
+
+                            await WaitTillAudioIsDone(500);
+
+                            OnTranscriptionResultReceived(null, "respone_from_system: successful: booking appointment successful");
+
+                            _sstAcceptBuffer = true;
+                        }
+                        else if (_currentAIResponseType == "end_call")
+                        {
+                            // todo - implement ending call feature
+                            // block any input speaking while the speaker plays the response and then wait till task has ended and end the session or call
+                            // set any necessary ending data here
+                            OnAITextToOuputDevice("Thank you for contacting us! If you have any more questions, do not hesitate to get back to us. Have a nice day!"); // make this message dynamic | based on time? nice day? good night?
+
+                            await WaitTillAudioIsDone(500);
+
+                            OnEndCallEvent.Invoke(this, EventArgs.Empty); // todo add more data
+                        }
+                        else if (_currentAIResponseType == "streaming" || string.IsNullOrWhiteSpace(_currentAIResponseType))
+                        {
+                            throw new Exception("Unknown response type recieved: " + _currentUnprocessedAIResponse.ToString());
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(res.Delta.Text))
+                    {
+                        return;
+                    }
+
+                    _currentAIResponseGeneratedFull.Append(res.Delta.Text);
+                    _currentUnprocessedAIResponse.Append(res.Delta.Text);
+
+                    if (_currentAIResponseType == "streaming")
+                    {
+                        var responseTemplateSection = _currentUnprocessedAIResponse.ToString().Split(":");
+                        if (responseTemplateSection.Length >= 2)
+                        {
+                            switch (responseTemplateSection[0])
+                            {
+                                case "response_to_customer":
+                                    _currentAIResponseType = "response_to_customer";
+                                    _currentUnprocessedAIResponse.Replace("response_to_customer:", "");
+                                    break;
+
+                                case "response_to_system":
+                                    _currentAIResponseType = "response_to_system";
+                                    _currentUnprocessedAIResponse.Replace("response_to_system:", "");
+
+                                    _sstAcceptBuffer = false;
+
+                                    OnAITextToOuputDevice("Please give me a moment while I make a booking to the system.");
+                                    break;
+
+                                case "end_call":
+                                    _currentAIResponseType = "end_call";
+                                    _currentUnprocessedAIResponse.Replace("end_call:", "");
+
+                                    _sstAcceptBuffer = false;
+
+                                    break;
+
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+
                     if (_currentAIResponseType == "response_to_customer")
                     {
-                        string remainingString = _currentUnprocessedAIResponse.ToString();
-                        if (remainingString.Length > 0)
+                        var currentText = _currentUnprocessedAIResponse.ToString();
+
+                        var (sections, remaining) = AIResponseHelper.SeparateTextIntoSectionsNew(currentText, ref _currentSectionedCharactersCount);
+                        _currentUnprocessedAIResponse = remaining;
+                        foreach (var section in sections)
                         {
-                            OnAITextToOuputDevice(remainingString);
+                            _currentSectionedCharactersCount += section.Length;
+
+                            OnAITextToOuputDevice(section);
                         }
                     }
-                    else if (_currentAIResponseType == "response_to_system")
-                    {
-                        // todo - implement sending the response to an actual system
-                        // block any input speaking while the speaker plays the response and then wait till task has ended
-
-                        await WaitTillAudioIsDone(500);
-
-                        OnTranscriptionResultReceived(null, "respone_from_system: successful: booking appointment successful");  
-
-                        _sstAcceptBuffer = true;
-                    }
-                    else if (_currentAIResponseType == "end_call")
-                    {
-                        // todo - implement ending call feature
-                        // block any input speaking while the speaker plays the response and then wait till task has ended and end the session or call
-                        // set any necessary ending data here
-                        OnAITextToOuputDevice("Thank you for contacting us! If you have any more questions, do not hesitate to get back to us. Have a nice day!"); // make this message dynamic | based on time? nice day? good night?
-
-                        await WaitTillAudioIsDone(500);
-
-                        OnEndCallEvent.Invoke(this, EventArgs.Empty); // todo add more data
-                    }
-                    else if (_currentAIResponseType == "streaming" || string.IsNullOrWhiteSpace(_currentAIResponseType))
-                    {
-                        throw new Exception("Unknown response type recieved: " + _currentUnprocessedAIResponse.ToString());
-                    }
                 }
-
-                if (string.IsNullOrEmpty(res.Delta.Text))
-                {
-                    return;
-                }
-
-                _currentAIResponseGeneratedFull.Append(res.Delta.Text);
-                _currentUnprocessedAIResponse.Append(res.Delta.Text);
-
-                if (_currentAIResponseType == "streaming")
-                {
-                    var responseTemplateSection = _currentUnprocessedAIResponse.ToString().Split(":");
-                    if (responseTemplateSection.Length >= 2)
-                    {
-                        switch (responseTemplateSection[0])
-                        {
-                            case "response_to_customer":
-                                _currentAIResponseType = "response_to_customer";
-                                _currentUnprocessedAIResponse.Replace("response_to_customer:", "");
-                                break;
-
-                            case "response_to_system":
-                                _currentAIResponseType = "response_to_system";
-                                _currentUnprocessedAIResponse.Replace("response_to_system:", "");
-
-                                _sstAcceptBuffer = false;
-
-                                OnAITextToOuputDevice("Please give me a moment while I make a booking to the system.");
-                                break;
-
-                            case "end_call":
-                                _currentAIResponseType = "end_call";
-                                _currentUnprocessedAIResponse.Replace("end_call:", "");
-
-                                _sstAcceptBuffer = false;
-
-                                break;
-
-                            default:
-                                break;
-                        }
-                    }
-                }  
-
-                if (_currentAIResponseType == "response_to_customer")
-                {
-                    var currentText = _currentUnprocessedAIResponse.ToString();
-
-                    var (sections, remaining) = AIResponseHelper.SeparateTextIntoSectionsNew(currentText, ref _currentSectionedCharactersCount);
-                    _currentUnprocessedAIResponse = remaining;
-                    foreach (var section in sections)
-                    {
-                        _currentSectionedCharactersCount += section.Length;
-
-                        OnAITextToOuputDevice(section);
-                    }
-                }
+            }
+            else if (_aiService.GetProviderName() == "openai_gpt")
+            {
+                throw new Exception("Not implemented yet");
             }
         }       
 

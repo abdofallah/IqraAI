@@ -178,6 +178,16 @@ a:focus {
 #agents-manager-tab .nav-link:not(.active):hover,
 #agents-manager-integrations-inner-tab .nav-link:not(.active):hover {
      color: var(--tcolor-lighter-green) !important;
+     border-bottom-color: var(--tcolor-lighter-green);
+}
+
+#billing-inner-tabs .nav-link.disabled,
+#context-inner-tab .nav-link.disabled,
+#branding-branch-manager-tab .nav-link.disabled,
+#agents-manager-tab .nav-link.disabled,
+#agents-manager-integrations-inner-tab .nav-link.disabled {
+     color: var(--bs-nav-link-disabled-color) !important;
+     border-bottom-color: var(--bs-nav-link-disabled-color) !important;
 }
 
 #billing-invoices-table.table>:not(caption)>*>* {
