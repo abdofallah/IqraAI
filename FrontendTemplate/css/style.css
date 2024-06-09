@@ -827,7 +827,7 @@ a:focus {
      padding: 10px;
 }
 
-.route-agent-background-audio-box {
+.agent-background-audio-box {
      background-color: #1a1a1a;
 
      border-bottom-left-radius: 6px;
@@ -837,4 +837,21 @@ a:focus {
      border-top: none;
 
      padding: 10px;
+}
+
+.custom-tool-input-arguments {
+     background-color: #1a1a1a;
+
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: none;
+
+     padding: 10px;
+}
+
+#editRouteActionToolRingingInputArgumentsList {
+     max-height: 300px;
+     overflow-y: scroll;
 }

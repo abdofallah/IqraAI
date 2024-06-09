@@ -256,7 +256,10 @@
                                              <button class="nav-link" id="routing-manager-number-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-number" type="button" role="tab" aria-controls="routing-manager-number" aria-selected="true">Number</button>
                                         </li>
                                         <li class="nav-item me-2" role="presentation">
-                                             <button class="nav-link active" id="routing-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-agent" type="button" role="tab" aria-controls="routing-manager-agent" aria-selected="true">Agent</button>
+                                             <button class="nav-link" id="routing-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-agent" type="button" role="tab" aria-controls="routing-manager-agent" aria-selected="true">Agent</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                             <button class="nav-link active" id="routing-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-actions" type="button" role="tab" aria-controls="routing-manager-actions" aria-selected="true">Actions</button>
                                         </li>
                                    </ul>
                               </div>
@@ -421,7 +424,7 @@
                                         </div>
                                    </div>
                                    <!-- Agent -->
-                                   <div class="tab-pane fade show active w-100" id="routing-manager-agent" role="tabpanel" aria-labelledby="routing-manager-agent-tab" tabindex="0">
+                                   <div class="tab-pane fade w-100" id="routing-manager-agent" role="tabpanel" aria-labelledby="routing-manager-agent-tab" tabindex="0">
                                         <div class="mb-3">
                                              <label class="form-label" for="editSelectedRouteAgentName">Selected Agent</label>
                                              <div class="input-group">
@@ -481,48 +484,6 @@
                                                        </a>
                                                   </label>
                                                   <input type="number" class="form-control" id="editRouteAgentConversationTypeInterruptibleMaxWords" value="3">
-                                             </div>
-                                        </div>
-                                        <div class="mb-3">
-                                             <label class="form-label btn-ic-span-align" for="editRouteAgentBackgroundAudioSelect">
-                                                  <span>Background Audio </span>
-
-                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Audio to be played in the background of the call on repeat.">
-                                                       <i class="bx bx-help-circle"></i>
-                                                  </a>
-                                             </label>
-                                             <select class="form-select" id="editRouteAgentBackgroundAudioSelect">
-                                                  <option value="none">None</option>
-                                                  <option value="custom">Custom (Upload)</option>
-                                                  <option value="office">Office (Keyboard)</option>
-                                                  <option value="call_center">Call Center (People + Keyboard)</option>
-                                                  <option value="coffee_shop">Coffee Shop (People + Music)</option>
-                                                  <option value="restaurant">Restaurant (People + Plates/Spoons + Music)</option>
-                                                  <option value="driving">Driving (Road + Engine)</option>
-                                                  <option value="city">City (Traffic + People)</option>
-                                                  <option value="forest">Forest (Birds + Water + Wind)</option>
-                                             </select>
-                                             <div class="w-100 route-agent-background-audio-box d-none">
-                                                  <div class="">
-                                                       <label class="form-label btn-ic-span-align" for="editRouteAgentBackgroundAudioVolume">
-                                                            <span>Audio Volume </span>
-
-                                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                                 <i class="bx bx-help-circle"></i>
-                                                            </a>
-                                                       </label>
-                                                       <input type="number" class="form-control" id="editRouteAgentBackgroundAudioVolume" value="10">
-                                                  </div>
-                                                  <div class="route-agent-background-custom-audio-box d-none mt-3">
-                                                       <label class="form-label btn-ic-span-align" for="editRouteAgentCustomBackgroundAudio">
-                                                            <span>Upload Custom Audio </span>
-
-                                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                                 <i class="bx bx-help-circle"></i>
-                                                            </a>
-                                                       </label>
-                                                       <input type="file" class="form-control" id="editRouteAgentCustomBackgroundAudio" accept="audio/mp3, audio/wav">
-                                                  </div>
                                              </div>
                                         </div>
                                         <div class="mb-3">
@@ -603,6 +564,64 @@
                                                        <i class="bx bx-help-circle"></i>
                                                   </a>
                                              </div>
+                                        </div>
+                                   </div>
+                                   <!-- Actions -->
+                                   <div class="tab-pane fade show active w-100" id="routing-manager-actions" role="tabpanel" aria-labelledby="routing-manager-actions-tab" tabindex="0">
+                                        <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align" for="editRouteActionToolRinging">
+                                                  <span>Ringing Action </span>
+
+                                                  <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is ringing.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
+                                             <select class="form-select" id="editRouteActionToolRinging">
+                                                  <option value="-1" selected>None</option>
+                                                  <option value="make_appointment" is-custom-tool="true">Make Appointment</option>
+                                             </select>
+                                             <div class="custom-tool-input-arguments">
+                                                  <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolRinging">
+                                                       <span>Input Arguments </span>
+
+                                                       <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <div class="input-group">
+                                                       <select class="form-select" id="editRouteActionToolRingingInputArgumentsSelect">
+                                                            <option value="-1">Select Input Argument</option>
+                                                       </select>
+                                                       <button class="btn btn-light" id="editRouteActionToolRingingInputArgumentsSelectButton" disabled>Add Input Argument</button>
+                                                  </div>
+                                                  <div class="mt-1" id="editRouteActionToolRingingInputArgumentsList">
+                                                       <div class="input-group">
+                                                            <span class="input-group-text">Appointment Time</span>
+                                                            <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
+                                                            <button class="btn btn-danger">
+                                                                 <i class="bx bx-trash"></i>
+                                                            </button>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align" for="editRouteActionToolPicked">
+                                                  <span>Call Picked Action </span>
+
+                                                  <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is picked up.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align" for="editRouteActionToolEnded">
+                                                  <span>Call Ended Action </span>
+
+                                                  <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call has been finished.">
+                                                       <i class="bx bx-help-circle"></i>
+                                                  </a>
+                                             </label>
                                         </div>
                                    </div>
                               </div>
@@ -693,6 +712,9 @@
                                              <li class="nav-item me-2" role="presentation">
                                                   <button class="nav-link" id="agents-manager-personality-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-personality" type="button" role="tab" aria-controls="agents-manager-personality" aria-selected="true">Personality</button>
                                              </li>
+                                             <li class="nav-item" role="presentation">
+                                                  <button class="nav-link" id="agents-manager-utterances-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-utterances" type="button" role="tab" aria-controls="agents-manager-utterances" aria-selected="true">Utterances</button>
+                                             </li>
                                              <li class="nav-item me-2" role="presentation">
                                                   <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
                                              </li>
@@ -700,7 +722,7 @@
                                                   <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
                                              </li>
                                              <li class="nav-item" role="presentation">
-                                                  <button class="nav-link disabled" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
+                                                  <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
                                              </li>
                                         </ul>
                                         <select class="form-select" style="max-width: 300px">
@@ -722,6 +744,30 @@
                                              <div class="mb-3">
                                                   <label class="form-label" for="editAgentDescriptionInput">Description</label>
                                                   <input type="text" class="form-control" id="editAgentDescriptionInput" placeholder="Agent Description">
+                                             </div>
+                                        </div>
+                                        <!-- Utterances -->
+                                        <div class="tab-pane fade w-100" id="agents-manager-utterances" role="tabpanel" aria-labelledby="agents-manager-utterances-tab" tabindex="0">
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="editAgentGreetingStartTypeInput">Opening Type</label>
+                                                  <select class="form-select" id="editAgentGreetingStartTypeInput">
+                                                       <option value="ai_first" selected>Agent Greets Right Away</option>
+                                                       <option value="user_first">Wait for User To Speak Before Greeting</option>
+                                                  </select>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label" for="editAgentPersonalityGreetingInput">Greeting Message</label>
+                                                  <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
+                                             </div>
+                                             <div class="mb-3">
+                                                  <label class="form-label btn-ic-span-align" for="editAgentPhrasesBeforeReply">
+                                                       <span>Phrases Before Reply </span>
+
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Phrases to be spoken before the agent reply.<br>This is spoken while AI is generating reply hence decreasing the reply silence time.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <textarea class="form-control" id="editAgentPhrasesBeforeReply" rows="3" style="resize: none" placeholder="Enter phrases to be spoken before reply seperated by commas"></textarea>
                                              </div>
                                         </div>
                                         <!-- Personality -->
@@ -1177,10 +1223,50 @@
                                                   </div>
                                              </div>
                                         </div>
-
                                         <!-- Settings -->
                                         <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
-                                             <h6>Ah! This page is currently under development.</h6>
+                                             <div class="mb-3">
+                                                  <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioSelect">
+                                                       <span>Background Audio </span>
+
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Audio to be played in the background of the call on repeat.">
+                                                            <i class="bx bx-help-circle"></i>
+                                                       </a>
+                                                  </label>
+                                                  <select class="form-select" id="editAgentBackgroundAudioSelect">
+                                                       <option value="none">None</option>
+                                                       <option value="custom">Custom (Upload)</option>
+                                                       <option value="office">Office (Keyboard)</option>
+                                                       <option value="call_center">Call Center (People + Keyboard)</option>
+                                                       <option value="coffee_shop">Coffee Shop (People + Music)</option>
+                                                       <option value="restaurant">Restaurant (People + Plates/Spoons + Music)</option>
+                                                       <option value="driving">Driving (Road + Engine)</option>
+                                                       <option value="city">City (Traffic + People)</option>
+                                                       <option value="forest">Forest (Birds + Water + Wind)</option>
+                                                  </select>
+                                                  <div class="w-100 agent-background-audio-box d-none">
+                                                       <div class="">
+                                                            <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioVolume">
+                                                                 <span>Audio Volume </span>
+
+                                                                 <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
+                                                                      <i class="bx bx-help-circle"></i>
+                                                                 </a>
+                                                            </label>
+                                                            <input type="number" class="form-control" id="editAgentBackgroundAudioVolume" value="10">
+                                                       </div>
+                                                       <div class="agent-background-custom-audio-box d-none mt-3">
+                                                            <label class="form-label btn-ic-span-align" for="editAgentCustomBackgroundAudio">
+                                                                 <span>Upload Custom Audio </span>
+
+                                                                 <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
+                                                                      <i class="bx bx-help-circle"></i>
+                                                                 </a>
+                                                            </label>
+                                                            <input type="file" class="form-control" id="editAgentCustomBackgroundAudio" accept="audio/mp3, audio/wav">
+                                                       </div>
+                                                  </div>
+                                             </div>
                                         </div>
                                    </div>
                               </div>
@@ -2106,8 +2192,6 @@
 
                     const editRouteAgentConversationTypeSelect = $("#editRouteAgentConversationTypeSelect");
 
-                    const editRouteAgentBackgroundAudioSelect = $("#editRouteAgentBackgroundAudioSelect");
-
                     addNewRoutingButton.on("click", (event) =>
                     {
                          event.preventDefault();
@@ -2265,33 +2349,6 @@
                               interruptibleBox.addClass('d-none');
                          }
                     })
-               
-                    editRouteAgentBackgroundAudioSelect.on('change', (event) => {
-                         let selectedValue = editRouteAgentBackgroundAudioSelect.val();
-
-                         if (!selectedValue) return;
-
-                         let audioConfigBox = $(".route-agent-background-audio-box");
-
-                         if (selectedValue === "none")
-                         {
-                              audioConfigBox.addClass('d-none');
-                              return;
-                         }
-
-                         let customAudioBox = $(".route-agent-background-custom-audio-box");
-
-                         if (selectedValue === "custom")
-                         {
-                              customAudioBox.removeClass('d-none');
-                         }
-                         else
-                         {
-                              customAudioBox.addClass('d-none');
-                         }
-
-                         audioConfigBox.removeClass('d-none');
-                    })
                });
           </script>
 
@@ -2349,6 +2406,8 @@
                     const ttsConfigAzureSilenceTypeSelect = $("#ttsConfigAzureSilenceTypeSelect");
                     const addTTSConfigAzureSilenceTypeButton = $("#addTTSConfigAzureSilenceType");
                     const ttsConfigAzureSilenceTypeList = $("#ttsConfigAzureSilenceTypeList");
+
+                    const editAgentBackgroundAudioSelect = $("#editAgentBackgroundAudioSelect");
 
                     addNewAgentButton.on("click", (event) =>
                     {
@@ -2789,6 +2848,33 @@
                               addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
                          }
                     });
+               
+                    editAgentBackgroundAudioSelect.on('change', (event) => {
+                         let selectedValue = editAgentBackgroundAudioSelect.val();
+
+                         if (!selectedValue) return;
+
+                         let audioConfigBox = $(".agent-background-audio-box");
+
+                         if (selectedValue === "none")
+                         {
+                              audioConfigBox.addClass('d-none');
+                              return;
+                         }
+
+                         let customAudioBox = $(".agent-background-custom-audio-box");
+
+                         if (selectedValue === "custom")
+                         {
+                              customAudioBox.removeClass('d-none');
+                         }
+                         else
+                         {
+                              customAudioBox.addClass('d-none');
+                         }
+
+                         audioConfigBox.removeClass('d-none');
+                    })
                });
           </script>
 
