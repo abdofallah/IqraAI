@@ -148,7 +148,12 @@ a:focus {
 #context-inner-tab .nav-link,
 #branding-branch-manager-tab .nav-link,
 #agents-manager-tab .nav-link,
-#agents-manager-integrations-inner-tab .nav-link {
+#agents-manager-integrations-inner-tab .nav-link,
+#inner-phone-numbers-tab .nav-link,
+#inner-twilio-phone-numbers-tab .nav-link,
+#routing-manager-tab .nav-link,
+#routing-manager-assign-number-modal-tab .nav-link
+{
      color: rgba(255, 255, 255, 0.8) !important;
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
      transition: 0.15s;
@@ -159,7 +164,12 @@ a:focus {
 #context-inner-tab .nav-link:not(:last-of-type),
 #branding-branch-manager-tab .nav-link:not(:last-of-type),
 #agents-manager-tab .nav-link:not(:last-of-type),
-#agents-manager-integrations-inner-tab .nav-link:not(:last-of-type) {
+#agents-manager-integrations-inner-tab .nav-link:not(:last-of-type),
+#inner-phone-numbers-tab .nav-link:not(:last-of-type),
+#inner-twilio-phone-numbers-tab .nav-link:not(:last-of-type),
+#routing-manager-tab .nav-link:not(:last-of-type),
+#routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type)
+{
      margin-right: 10px;
 }
 
@@ -167,7 +177,12 @@ a:focus {
 #context-inner-tab .nav-link.active,
 #branding-branch-manager-tab .nav-link.active,
 #agents-manager-tab .nav-link.active,
-#agents-manager-integrations-inner-tab .nav-link.active {
+#agents-manager-integrations-inner-tab .nav-link.active,
+#inner-phone-numbers-tab .nav-link.active,
+#inner-twilio-phone-numbers-tab .nav-link.active,
+#routing-manager-tab .nav-link.active,
+#routing-manager-assign-number-modal-tab .nav-link.active
+{
      color: var(--tcolor-light-green) !important;
      border-bottom-color: var(--tcolor-light-green);
 }
@@ -176,7 +191,12 @@ a:focus {
 #context-inner-tab .nav-link:not(.active):hover,
 #branding-branch-manager-tab .nav-link:not(.active):hover,
 #agents-manager-tab .nav-link:not(.active):hover,
-#agents-manager-integrations-inner-tab .nav-link:not(.active):hover {
+#agents-manager-integrations-inner-tab .nav-link:not(.active):hover,
+#inner-phone-numbers-tab .nav-link:not(.active):hover,
+#inner-twilio-phone-numbers-tab .nav-link:not(.active):hover,
+#routing-manager-tab .nav-link:not(.active):hover,
+#routing-manager-assign-number-modal-tab .nav-link:not(.active):hover
+{
      color: var(--tcolor-lighter-green) !important;
      border-bottom-color: var(--tcolor-lighter-green);
 }
@@ -185,7 +205,12 @@ a:focus {
 #context-inner-tab .nav-link.disabled,
 #branding-branch-manager-tab .nav-link.disabled,
 #agents-manager-tab .nav-link.disabled,
-#agents-manager-integrations-inner-tab .nav-link.disabled {
+#agents-manager-integrations-inner-tab .nav-link.disabled,
+#inner-phone-numbers-tab .nav-link.disabled,
+#inner-twilio-phone-numbers-tab .nav-link.disabled,
+#routing-manager-tab .nav-link.disabled,
+#routing-manager-assign-number-modal-tab .nav-link.disabled
+{
      color: var(--bs-nav-link-disabled-color) !important;
      border-bottom-color: var(--bs-nav-link-disabled-color) !important;
 }
@@ -359,7 +384,11 @@ a:focus {
 #customToolsTable,
 #branchesTable,
 #contextServicesTable,
-#contextProductsTable {
+#contextProductsTable,
+#twilioNumbersTable,
+#customSimNumbersTable,
+#customRouteNumberTable
+{
      table-layout: fixed;
     overflow-wrap:break-word;
 }
@@ -367,7 +396,11 @@ a:focus {
 #customToolsTable.table>:not(caption)>*>*,
 #branchesTable.table>:not(caption)>*>*,
 #contextServicesTable.table>:not(caption)>*>*,
-#contextProductsTable.table>:not(caption)>*>* {
+#contextProductsTable.table>:not(caption)>*>*,
+#twilioNumbersTable.table>:not(caption)>*>*,
+#customSimNumbersTable.table>:not(caption)>*>*,
+#customRouteNumberTable.table>:not(caption)>*>*
+{
      padding: 14px 20px;
      vertical-align: middle;
 }
@@ -375,7 +408,11 @@ a:focus {
 #customToolsTable.table>thead>*>*,
 #branchesTable.table>thead>*>*,
 #contextServicesTable.table>thead>*>*,
-#contextProductsTable.table>thead>*>* {
+#contextProductsTable.table>thead>*>*,
+#twilioNumbersTable.table>thead>*>*,
+#customSimNumbersTable.table>thead>*>*,
+#customRouteNumberTable.table>thead>*>*
+{
      background-color: var(--tcolor-lighter-green);
      color: black;
 }
@@ -385,7 +422,11 @@ a:focus {
      #customToolsTable,
      #branchesTable,
      #contextServicesTable,
-     #contextProductsTable {
+     #contextProductsTable,
+     #twilioNumbersTable,
+     #customSimNumbersTable,
+     #customRouteNumberTable
+     {
           overflow-x: scroll;
           display: inline-block;
           table-layout: auto;
@@ -627,6 +668,18 @@ a:focus {
      text-overflow: ellipsis;
 }
 
+.routing-card h4 {
+     margin-left: 0px;
+}
+
+.routing-card .card-data {
+     margin-left: 20px;
+}
+
+.routing-card .card-data h6 {
+     margin-bottom: 0px;
+}
+
 #editAgentScriptConditionValueInputs {
      max-height: 300px;
      overflow-y: scroll;
@@ -713,4 +766,75 @@ a:focus {
 {
      padding: 0.5em;
      background-color: #3a3a3a;
+}
+
+.routingMultiLanguageBox {
+     background-color: #3a3a3a;
+     padding: 0.5em;
+     border-radius: 6px;
+     border: 1px solid var(--tcolor-darker-green);
+}
+
+#editRouteDefaultLanguageSelect {
+     border-bottom-left-radius: 0px;
+     border-bottom-right-radius: 0px;
+}
+
+#routeMultiLanguagesEnabledList {
+     background-color: #1a1a1a;
+
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: none;
+}
+
+#routeMultiLanguagesEnabledList tbody td {
+     vertical-align: middle;
+}
+
+#routeMultiLanguagesEnabledList.disabled>tbody>tr>td,
+#routeMultiLanguagesEnabledList.disabled>thead>tr>th {
+    background-color: var(--bs-secondary-bg);
+}
+
+#editRouteMultiLanguageSelectMessageList {
+    max-height: 300px;
+    overflow-y: scroll;
+}
+
+#routing-manager-assign-number-modal-physical-sim-list {
+    max-height: 300px;
+    overflow-y: scroll;
+}
+
+.list-group-item.active {
+     background-color: var(--tcolor-light-green);
+    border-color: var(--tcolor-light-green);
+    color: black;
+}
+
+.route-conversation-type-box {
+     background-color: #1a1a1a;
+
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: none;
+
+     padding: 10px;
+}
+
+.route-agent-background-audio-box {
+     background-color: #1a1a1a;
+
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: none;
+
+     padding: 10px;
 }
