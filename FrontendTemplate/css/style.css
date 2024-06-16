@@ -50,13 +50,28 @@ a {
      transition: 0.15s;
 }
 
+.btn-check {
+     transition: 600ms all;
+}
+
 .btn-primary:hover,
 .btn-primary:active,
 .btn-primary:focus,
-.btn-check:checked+.btn-primary, .btn-primary.active, .btn-primary.show, .btn-primary:first-child:active, :not(.btn-check)+.btn-primary:active {
+.btn-primary.active,
+.btn-primary.show,
+.btn-primary:first-child:active,
+:not(.btn-check)+.btn-primary:active {
      background-color: var(--tcolor-dark-green) !important;
      border-color: var(--tcolor-dark-green) !important;
      color: var(--tcolor-dark) !important;
+}
+
+.btn-check:checked+.btn-primary {
+     background-color: var(--tcolor-lighter-green) !important;
+     border-color: var(--tcolor-lighter-green) !important;
+     color: var(--tcolor-dark) !important;
+     font-weight: 500;
+     transform: scale(1.04);
 }
 
 a:hover,
@@ -152,7 +167,10 @@ a:focus {
 #inner-phone-numbers-tab .nav-link,
 #inner-twilio-phone-numbers-tab .nav-link,
 #routing-manager-tab .nav-link,
-#routing-manager-assign-number-modal-tab .nav-link
+#routing-manager-assign-number-modal-tab .nav-link,
+#make-call-tab .nav-link,
+#make-call-simple-tab .nav-link,
+#make-call-assign-number-modal-tab .nav-link
 {
      color: rgba(255, 255, 255, 0.8) !important;
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
@@ -168,7 +186,10 @@ a:focus {
 #inner-phone-numbers-tab .nav-link:not(:last-of-type),
 #inner-twilio-phone-numbers-tab .nav-link:not(:last-of-type),
 #routing-manager-tab .nav-link:not(:last-of-type),
-#routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type)
+#routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type),
+#make-call-tab .nav-link:not(:last-of-type),
+#make-call-simple-tab .nav-link:not(:last-of-type),
+#make-call-assign-number-modal-tab .nav-link:not(:last-of-type)
 {
      margin-right: 10px;
 }
@@ -181,7 +202,10 @@ a:focus {
 #inner-phone-numbers-tab .nav-link.active,
 #inner-twilio-phone-numbers-tab .nav-link.active,
 #routing-manager-tab .nav-link.active,
-#routing-manager-assign-number-modal-tab .nav-link.active
+#routing-manager-assign-number-modal-tab .nav-link.active,
+#make-call-tab .nav-link.active,
+#make-call-simple-tab .nav-link.active,
+#make-call-assign-number-modal-tab .nav-link.active
 {
      color: var(--tcolor-light-green) !important;
      border-bottom-color: var(--tcolor-light-green);
@@ -195,7 +219,10 @@ a:focus {
 #inner-phone-numbers-tab .nav-link:not(.active):hover,
 #inner-twilio-phone-numbers-tab .nav-link:not(.active):hover,
 #routing-manager-tab .nav-link:not(.active):hover,
-#routing-manager-assign-number-modal-tab .nav-link:not(.active):hover
+#routing-manager-assign-number-modal-tab .nav-link:not(.active):hover,
+#make-call-tab .nav-link:not(.active):hover,
+#make-call-simple-tab .nav-link:not(.active):hover,
+#make-call-assign-number-modal-tab .nav-link:not(.active):hover
 {
      color: var(--tcolor-lighter-green) !important;
      border-bottom-color: var(--tcolor-lighter-green);
@@ -209,7 +236,10 @@ a:focus {
 #inner-phone-numbers-tab .nav-link.disabled,
 #inner-twilio-phone-numbers-tab .nav-link.disabled,
 #routing-manager-tab .nav-link.disabled,
-#routing-manager-assign-number-modal-tab .nav-link.disabled
+#routing-manager-assign-number-modal-tab .nav-link.disabled,
+#make-call-tab .nav-link.disabled,
+#make-call-simple-tab .nav-link.disabled,
+#make-call-assign-number-modal-tab .nav-link.disabled
 {
      color: var(--bs-nav-link-disabled-color) !important;
      border-bottom-color: var(--bs-nav-link-disabled-color) !important;
@@ -854,4 +884,105 @@ a:focus {
 #editRouteActionToolRingingInputArgumentsList {
      max-height: 300px;
      overflow-y: scroll;
+}
+
+.makeCallTypeContainer {
+     background-color: #1a1a1a;
+     border-radius: 6px;
+     border: 1px solid var(--tcolor-darker-green);
+     padding: 20px;
+}
+
+.make-call-conversation-type-box {
+     background-color: #1a1a1a;
+
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: none;
+
+     padding: 10px;
+}
+
+.makeCallRetryBox {
+     background-color: #1a1a1a;
+     border-radius: 6px;
+     padding: 10px;
+
+      border: var(--bs-border-width) solid var(--bs-border-color);
+ 
+}
+
+.make-call-type-box-choose {
+     background-color: var(--tcolor-light-green);
+     color: var(--tcolor-dark);
+     padding: 20px;
+     border-radius: 6px;
+
+     align-items: center;
+
+     cursor: pointer;
+
+     transition: 300ms all;
+
+     display: flex;
+     flex-direction: row;
+
+     height: 110px
+}
+
+.make-call-type-box-choose:hover,
+.make-call-type-box-choose.active {
+     background-color: var(--tcolor-lighter-green);
+     transform: scale(1.01);
+     box-shadow: 3px 5px 8px 2px var(--tcolor-dark);
+}
+
+.make-call-type-box-choose .info-data,
+.make-call-type-box-choose .info-icon  {
+     display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+}
+
+.make-call-type-box-choose .info-icon {
+      align-items: center;   
+}
+
+.make-call-type-box-choose .info-icon {
+     background-color: var(--tcolor-lighter-green);
+
+     border: var(--tcolor-light-green);
+     border-radius: 6px;
+
+     padding: 10px;
+
+     margin-right: 20px;
+
+     width: 60px;
+     height: 60px;
+
+     text-align: center;
+
+     transition: 300ms all, 1000ms transform;
+}
+
+.make-call-type-box-choose p {
+     margin: 0;
+}
+
+.make-call-type-box-choose i {
+     font-size: 35px;
+}
+
+.make-call-type-box-choose:hover .info-icon {
+     background-color: var(--tcolor-light-green);
+     transform: rotate(360deg);
+}
+
+.make-call-type-box-choose.active .info-icon {
+     background-color: var(--tcolor-light-green);
+     transform: rotate(360deg);
 }

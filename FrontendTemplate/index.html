@@ -7,6 +7,8 @@
 
           <link href="libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
           <link href="libs/boxicons-2.1.4/css/boxicons.min.css" rel="stylesheet">
+          <link href="libs/fontawesome-pro-6.5.1-web/css/fontawesome.min.css" rel="stylesheet">
+          <link href="libs/fontawesome-pro-6.5.1-web/css/regular.min.css" rel="stylesheet">
 
           <link href="css/structure.css" rel="stylesheet">
           <link href="css/style.css" rel="stylesheet">
@@ -22,7 +24,7 @@
 
      <body id="body-pd" class="body-pd">
           <header class="header header-body-pd" id="header">
-               <div class="header_toggle"> <i class='bx bx-menu bx-x' id="header-toggle"></i> </div>
+               <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
           </header>
 
           <div class="l-navbar show" id="nav-bar">
@@ -33,26 +35,26 @@
                          </a>
                          <div class="nav_list">
                               <a href="#" class="nav_link active" for="business-tab">
-                                   <i class='bx bx-briefcase nav_icon'></i>
+                                   <i class='fa-regular fa-briefcase nav_icon'></i>
                                    <span class="nav_name">Businesses</span>
                               </a>
                               <a href="#" class="nav_link" for="phone-numbers-tab">
-                                   <i class='bx bx-phone nav_icon'></i>
+                                   <i class='fa-regular fa-hashtag nav_icon'></i>
                                    <span class="nav_name">Numbers</span>
                               </a>
                               <a href="#" class="nav_link" for="billing-tab">
-                                   <i class='bx bx-credit-card nav_icon'></i>
+                                   <i class='fa-regular fa-credit-card nav_icon'></i>
                                    <span class="nav_name">Billing</span>
                               </a>
                               <a href="#" class="nav_link mb-0" for="settings-tab">
-                                   <i class='bx bx-cog nav_icon'></i>
+                                   <i class='fa-regular fa-gear nav_icon'></i>
                                    <span class="nav_name">Settings</span>
                               </a>
                          </div>
                     </div>
                     <div class="bottom-navigation">
                          <a href="/logout" class="nav_link mt-0">
-                              <i class='bx bx-log-out nav_icon'></i>
+                              <i class='fa-regular fa-right-from-bracket nav_icon'></i>
                               <span class="nav_name">Log out</span>
                          </a>
                     </div>
@@ -63,7 +65,7 @@
           <div class="w-100 main-container-wrapper" id="tabs-list">
                <!-- Bussiness Container -->
                <div class="main-container fade show w-100" id="business-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-briefcase'></i> <span>Businesses</span></h3>
+                    <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
                     <div class="inner-container">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                               <div style="min-width: 200px" class="me-4">
@@ -74,7 +76,7 @@
                               <div class="input-group w-100">
                                    <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton">
                                    <button class="input-group-button btn btn-primary" id="searchBusinessButton">
-                                        <i class='bx bx-search'></i>
+                                        <i class='fa-regular fa-magnifying-glass'></i>
                                    </button>
                               </div>
                          </div>
@@ -87,7 +89,7 @@
                                         </div>
                                         <div>
                                              <h5 class="h5-info master-number">
-                                                  <i class='bx bx-phone'></i>
+                                                  <i class='fa-regular fa-hashtag'></i>
                                                   <span>+968 7223 33384</span>
                                              </h5>
                                         </div>
@@ -99,7 +101,7 @@
 
                <!-- Phone Numbers Container -->
                <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-cog nav_icon'></i> <span>Settings</span></h3>
+                    <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
                     <div class="inner-container">
                          <ul class="nav mb-3" id="inner-phone-numbers-tab" role="tablist">
                               <li class="nav-item" role="presentation">
@@ -124,7 +126,7 @@
                                         <div class="input-group w-100">
                                              <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchCustomSimNumberButton">
                                              <button class="input-group-button btn btn-primary" id="searchCustomSimNumberButton">
-                                                  <i class='bx bx-search'></i>
+                                                  <i class='fa-regular fa-magnifying-glass'></i>
                                              </button>
                                         </div>
                                    </div>
@@ -172,7 +174,7 @@
                                              <div class="input-group w-100 mb-4">
                                                   <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchTwilioNumberButton">
                                                   <button class="input-group-button btn btn-primary" id="searchTwilioNumberButton">
-                                                       <i class='bx bx-search'></i>
+                                                       <i class='fa-regular fa-magnifying-glass'></i>
                                                   </button>
                                              </div>
                                              <table id="twilioNumbersTable" class="table w-100">
@@ -215,7 +217,7 @@
 
                <!-- Billing Container -->
                <div class="main-container fade w-100 d-none" id="billing-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-credit-card nav_icon'></i> <span>Billing</span></h3>
+                    <h3 class="fw-bold tab-title"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
                     <div class="inner-container">
                          <nav class="mb-4">
                               <div class="nav" id="billing-inner-tabs" role="tablist">
@@ -303,12 +305,12 @@
                                              </div>
                                              <div class="d-flex flex-row align-items-center justify-content-between w-100 payment-method-cards-buttons">
                                                   <button class="btn btn-light w-100 me-3">
-                                                       <i class="bx bx-trash"></i>
+                                                       <i class="fa-regular fa-trash"></i>
                                                        <span>Delete</span>
                                                   </button>
 
                                                   <button class="btn btn-light w-100">
-                                                       <i class="bx bx-pencil"></i>
+                                                       <i class="fa-regular fa-pen-to-square"></i>
                                                        <span>Edit</span>
                                                   </button>
                                              </div>
@@ -321,7 +323,7 @@
 
                <!-- Settings Container -->
                <div class="main-container fade w-100 d-none" id="settings-tab">
-                    <h3 class="fw-bold tab-title"><i class='bx bx-cog nav_icon'></i> <span>Settings</span></h3>
+                    <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
                     <div class="inner-container">
                          <h6>Ah! This page is currently under development.</h6>
                     </div>
