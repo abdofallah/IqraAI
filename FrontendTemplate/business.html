@@ -66,18 +66,14 @@
                                    <span class="nav_name">Cache</span>
                               </a>
                               <span class="mt-4 nav-category-label">Actions</span>
-                              <a href="#" class="nav_link active" for="make-calls-tab">
+                              <a href="#" class="nav_link" for="make-calls-tab">
                                    <i class='fa-regular fa-phone nav_icon'></i>
                                    <span class="nav_name">Make Calls</span>
                               </a>
                               <span class="mt-4 nav-category-label">Analytics</span>
-                              <a href="#" class="nav_link disabled" for="appointments-tab">
-                                   <i class='fa-regular fa-calendar nav_icon'></i>
-                                   <span class="nav_name">Appointments</span>
-                              </a>
-                              <a href="#" class="nav_link disabled" for="conversations-tab">
+                              <a href="#" class="nav_link active" for="conversations-tab">
                                    <i class='fa-regular fa-messages nav_icon'></i>
-                                   <span class="nav_name">Call Logs</span>
+                                   <span class="nav_name">Conversations</span>
                               </a>
                               <span class="mt-4 nav-category-label">Other</span>
                               <a href="#" class="nav_link mb-0 disabled" for="settings-tab">
@@ -1881,237 +1877,239 @@
                <!-- Tools Container -->
                <div class="main-container fade d-none w-100" id="tools-tab">
                     <h3 class="fw-bold tab-title"><i class='fa-regular fa-wrench'></i> <span>Tools</span></h3>
-                    <!-- Tools List Tab -->
-                    <div class="inner-container fade show w-100" id="toolListTab">
-                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                              <div style="min-width: 200px" class="me-4">
-                                   <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
-                                        <span>+ Add New Tool</span>
-                                   </button>
-                              </div>
-                              <div class="input-group w-100">
-                                   <input type="text" class="form-control" placeholder="Tool Name" aria-label="Tool Name" aria-describedby="searchToolButton">
-                                   <button class="input-group-button btn btn-primary" id="searchToolButton">
-                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                   </button>
-                              </div>
-                         </div>
-                         <div>
-                              <table id="customToolsTable" class="table w-100">
-                                   <thead>
-                                        <tr>
-                                             <th scope="col">Status</th>
-                                             <th scope="col">Name</th>
-                                             <th scope="col">Type</th>
-                                             <th scope="col">Service</th>
-                                             <th scope="col">Actions</th>
-                                        </tr>
-                                   </thead>
-                                   <tbody>
-                                        <tr>
-                                             <th scope="row">
-                                                  <span class="badge bg-success">Active</span>
-                                             </th>
-                                             <td>
-                                                  <b>Make Appointment</b>
-                                             </td>
-                                             <td>POST</td>
-                                             <td>Badal System</td>
-                                             <td>
-                                                  <button class="btn btn-info btn-sm">
-                                                       <i class="fa-regular fa-pen-to-square"></i>
-                                                  </button>
-                                                  <button class="btn btn-danger btn-sm">
-                                                       <i class="fa-regular fa-trash"></i>
-                                                  </button>
-                                             </td>
-                                        </tr>
-                                        <tr>
-                                             <th scope="row">
-                                                  <span class="badge bg-danger">Disabled</span>
-                                             </th>
-                                             <td>
-                                                  <b>Make Appointment</b>
-                                             </td>
-                                             <td>POST</td>
-                                             <td>Google Calendar</td>
-                                             <td>
-                                                  <button class="btn btn-info btn-sm">
-                                                       <i class="fa-regular fa-pen-to-square"></i>
-                                                  </button>
-                                                  <button class="btn btn-danger btn-sm">
-                                                       <i class="fa-regular fa-trash"></i>
-                                                  </button>
-                                             </td>
-                                        </tr>
-                                        <tr>
-                                             <th scope="row">
-                                                  <span class="badge bg-danger">Disabled</span>
-                                             </th>
-                                             <td>
-                                                  <b>Make Appointment</b>
-                                             </td>
-                                             <td>POST</td>
-                                             <td>Calendar.com</td>
-                                             <td>
-                                                  <button class="btn btn-info btn-sm">
-                                                       <i class="fa-regular fa-pen-to-square"></i>
-                                                  </button>
-                                                  <button class="btn btn-danger btn-sm">
-                                                       <i class="fa-regular fa-trash"></i>
-                                                  </button>
-                                             </td>
-                                        </tr>
-                                   </tbody>
-                              </table>
-                         </div>
-                    </div>
-                    <!-- Tools Manager Tab -->
-                    <div class="inner-container fade d-none w-100" id="toolManagerTab">
-                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                              <nav aria-label="breadcrumb">
-                                   <ol class="breadcrumb mb-0">
-                                        <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
-                                        <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
-                                   </ol>
-                              </nav>
-                              <div>
-                                   <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
-                                        <i class='fa-regular fa-wrench text-dark'></i>
-                                        <span> Debug</span>
-                                   </button>
-                                   <div class="btn-group" id="publishToolDropdown">
-                                        <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                             <i class='fa-regular fa-wrench'></i>
-                                             <span> Publish</span>
+                    <div class="inner-container">
+                         <!-- Tools List Tab -->
+                         <div class="fade show w-100" id="toolListTab">
+                              <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                   <div style="min-width: 200px" class="me-4">
+                                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
+                                             <span>+ Add New Tool</span>
                                         </button>
-                                        <div class="dropdown-menu p-3">
-                                             <div class="mb-2">
-                                                  <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
-                                                  <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">Published 20 minutes ago</p>
-                                             </div>
-                                             <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton">
-                                                  <span>Update</span>
+                                   </div>
+                                   <div class="input-group w-100">
+                                        <input type="text" class="form-control" placeholder="Tool Name" aria-label="Tool Name" aria-describedby="searchToolButton">
+                                        <button class="input-group-button btn btn-primary" id="searchToolButton">
+                                             <i class='fa-regular fa-magnifying-glass'></i>
+                                        </button>
+                                   </div>
+                              </div>
+                              <div>
+                                   <table id="customToolsTable" class="table w-100">
+                                        <thead>
+                                             <tr>
+                                                  <th scope="col">Status</th>
+                                                  <th scope="col">Name</th>
+                                                  <th scope="col">Type</th>
+                                                  <th scope="col">Service</th>
+                                                  <th scope="col">Actions</th>
+                                             </tr>
+                                        </thead>
+                                        <tbody>
+                                             <tr>
+                                                  <th scope="row">
+                                                       <span class="badge bg-success">Active</span>
+                                                  </th>
+                                                  <td>
+                                                       <b>Make Appointment</b>
+                                                  </td>
+                                                  <td>POST</td>
+                                                  <td>Badal System</td>
+                                                  <td>
+                                                       <button class="btn btn-info btn-sm">
+                                                            <i class="fa-regular fa-pen-to-square"></i>
+                                                       </button>
+                                                       <button class="btn btn-danger btn-sm">
+                                                            <i class="fa-regular fa-trash"></i>
+                                                       </button>
+                                                  </td>
+                                             </tr>
+                                             <tr>
+                                                  <th scope="row">
+                                                       <span class="badge bg-danger">Disabled</span>
+                                                  </th>
+                                                  <td>
+                                                       <b>Make Appointment</b>
+                                                  </td>
+                                                  <td>POST</td>
+                                                  <td>Google Calendar</td>
+                                                  <td>
+                                                       <button class="btn btn-info btn-sm">
+                                                            <i class="fa-regular fa-pen-to-square"></i>
+                                                       </button>
+                                                       <button class="btn btn-danger btn-sm">
+                                                            <i class="fa-regular fa-trash"></i>
+                                                       </button>
+                                                  </td>
+                                             </tr>
+                                             <tr>
+                                                  <th scope="row">
+                                                       <span class="badge bg-danger">Disabled</span>
+                                                  </th>
+                                                  <td>
+                                                       <b>Make Appointment</b>
+                                                  </td>
+                                                  <td>POST</td>
+                                                  <td>Calendar.com</td>
+                                                  <td>
+                                                       <button class="btn btn-info btn-sm">
+                                                            <i class="fa-regular fa-pen-to-square"></i>
+                                                       </button>
+                                                       <button class="btn btn-danger btn-sm">
+                                                            <i class="fa-regular fa-trash"></i>
+                                                       </button>
+                                                  </td>
+                                             </tr>
+                                        </tbody>
+                                   </table>
+                              </div>
+                         </div>
+                         <!-- Tools Manager Tab -->
+                         <div class="fade d-none w-100" id="toolManagerTab">
+                              <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                   <nav aria-label="breadcrumb">
+                                        <ol class="breadcrumb mb-0">
+                                             <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
+                                             <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
+                                        </ol>
+                                   </nav>
+                                   <div>
+                                        <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
+                                             <i class='fa-regular fa-wrench text-dark'></i>
+                                             <span> Debug</span>
+                                        </button>
+                                        <div class="btn-group" id="publishToolDropdown">
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                  <i class='fa-regular fa-wrench'></i>
+                                                  <span> Publish</span>
                                              </button>
+                                             <div class="dropdown-menu p-3">
+                                                  <div class="mb-2">
+                                                       <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
+                                                       <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">Published 20 minutes ago</p>
+                                                  </div>
+                                                  <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton">
+                                                       <span>Update</span>
+                                                  </button>
+                                             </div>
                                         </div>
                                    </div>
                               </div>
-                         </div>
-                         <div>
-                              <div class="mb-3">
-                                   <label for="inputToolName" class="form-label">Name</label>
-                                   <input type="text" class="form-control" id="inputToolName" placeholder="Tool Name">
-                              </div>
-                              <div class="mb-3">
-                                   <label for="inputToolShortDescription" class="form-label">Short Description</label>
-                                   <input type="text" class="form-control" id="inputToolShortDescription" placeholder="Tool Description for AI">
-                              </div>
-                              <div class="mb-3">
-                                   <label class="form-label d-block">Input Schemea</label>
-                                   <button class="btn btn-light btn-sm m-0 mb-2" id="addToolInputArgument">
-                                        <span>Add Input Argument</span>
-                                   </button>
-                                   <div id="toolInputArguementsList">
+                              <div>
+                                   <div class="mb-3">
+                                        <label for="inputToolName" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="inputToolName" placeholder="Tool Name">
                                    </div>
-                              </div>
-                              <div class="mb-3">
-                                   <label for="inputToolType" class="form-label">Request Type</label>
-                                   <select class="form-select mb-3" id="inputToolType">
-                                        <option value="0" selected>GET</option>
-                                        <option value="1">POST</option>
-                                        <option value="2">PUT</option>
-                                        <option value="3">DELETE</option>
-                                        <option value="4">PATCH</option>
-                                        <option value="5">HEAD</option>
-                                        <option value="6">OPTIONS</option>
-                                   </select>
-                              </div>
-                              <div class="mb-3 d-flex flex-row align-items-center justify-content-center w-100">
-                                   <div class="w-100 me-3">
-                                        <label for="inputToolURL" class="form-label btn-ic-span-align">
-                                             <span>URL (Endpoint)</span>
-                                        </label>
-                                        <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
+                                   <div class="mb-3">
+                                        <label for="inputToolShortDescription" class="form-label">Short Description</label>
+                                        <input type="text" class="form-control" id="inputToolShortDescription" placeholder="Tool Description for AI">
                                    </div>
-                                   <div class="w-100">
-                                        <label for="inputToolServiceName" class="form-label btn-ic-span-align">
-                                             <span>Service Name</span>
+                                   <div class="mb-3">
+                                        <label class="form-label d-block">Input Schemea</label>
+                                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolInputArgument">
+                                             <span>Add Input Argument</span>
+                                        </button>
+                                        <div id="toolInputArguementsList">
+                                        </div>
+                                   </div>
+                                   <div class="mb-3">
+                                        <label for="inputToolType" class="form-label">Request Type</label>
+                                        <select class="form-select mb-3" id="inputToolType">
+                                             <option value="0" selected>GET</option>
+                                             <option value="1">POST</option>
+                                             <option value="2">PUT</option>
+                                             <option value="3">DELETE</option>
+                                             <option value="4">PATCH</option>
+                                             <option value="5">HEAD</option>
+                                             <option value="6">OPTIONS</option>
+                                        </select>
+                                   </div>
+                                   <div class="mb-3 d-flex flex-row align-items-center justify-content-center w-100">
+                                        <div class="w-100 me-3">
+                                             <label for="inputToolURL" class="form-label btn-ic-span-align">
+                                                  <span>URL (Endpoint)</span>
+                                             </label>
+                                             <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
+                                        </div>
+                                        <div class="w-100">
+                                             <label for="inputToolServiceName" class="form-label btn-ic-span-align">
+                                                  <span>Service Name</span>
 
-                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Friendly service name is shown instead of the URL/Endpoint where needed.">
+                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Friendly service name is shown instead of the URL/Endpoint where needed.">
+                                                       <i class="fa-regular fa-circle-question"></i>
+                                                  </a>
+                                             </label>
+                                             <input type="text" class="form-control w-100" id="inputToolServiceName" placeholder="Friendly Service Name">
+                                        </div>
+                                   </div>
+                                   <div class="mb-3">
+                                        <label class="form-label d-block">Headers</label>
+                                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolHeader">
+                                             <span>Add Header</span>
+                                        </button>
+                                        <div id="toolHeadersList">
+                                        </div>
+                                   </div>
+                                   <div class="mb-3">
+                                        <label class="form-label btn-ic-span-align">
+                                             <span>Body</span>
+
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="To use values of the input arguements in body, use the template {{Arguement Name}} (double bracket in start and end with argurment name in between), which will be replaced with its value automatically at runtime.">
                                                   <i class="fa-regular fa-circle-question"></i>
                                              </a>
                                         </label>
-                                        <input type="text" class="form-control w-100" id="inputToolServiceName" placeholder="Friendly Service Name">
-                                   </div>
-                              </div>
-                              <div class="mb-3">
-                                   <label class="form-label d-block">Headers</label>
-                                   <button class="btn btn-light btn-sm m-0 mb-2" id="addToolHeader">
-                                        <span>Add Header</span>
-                                   </button>
-                                   <div id="toolHeadersList">
-                                   </div>
-                              </div>
-                              <div class="mb-3">
-                                   <label class="form-label btn-ic-span-align">
-                                        <span>Body</span>
+                                        <div class="mb-2">
+                                             <div class="form-check form-check-inline me-3">
+                                                  <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="none" id="toolBodyTypeNone" checked>
+                                                  <label class="form-check-label" for="toolBodyTypeNone">none</label>
+                                             </div>
+                                             <div class="form-check form-check-inline me-3">
+                                                  <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="form-data" id="toolBodyTypeFormData">
+                                                  <label class="form-check-label" for="toolBodyTypeFormData">form-data</label>
+                                             </div>
+                                             <div class="form-check form-check-inline me-3">
+                                                  <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="x-www-form-urlencoded" id="toolBodyTypeXWwwFormUrlEncoded">
+                                                  <label class="form-check-label" for="toolBodyTypeXWwwFormUrlEncoded">x-www-form-urlencoded</label>
+                                             </div>
+                                             <div class="form-check form-check-inline me-3">
+                                                  <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="raw" id="toolBodyTypeRaw">
+                                                  <label class="form-check-label" for="toolBodyTypeRaw">raw</label>
+                                             </div>
+                                        </div>
+                                        <div id="toolBodyNone">
+                                             <label style="opacity: 0.7;">This request does not have a body. Change body type.</label>
+                                        </div>
+                                        <div id="toolBodyKeyValueView" class="d-none">
+                                             <button class="btn btn-light btn-sm m-0 mb-2" id="addToolBodyKeyValue">
+                                                  <span>Add Key/Value</span>
+                                             </button>
+                                             <div id="toolBodyKeyValueViewList">
 
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="To use values of the input arguements in body, use the template {{Arguement Name}} (double bracket in start and end with argurment name in between), which will be replaced with its value automatically at runtime.">
-                                             <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                   </label>
-                                   <div class="mb-2">
-                                        <div class="form-check form-check-inline me-3">
-                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="none" id="toolBodyTypeNone" checked>
-                                             <label class="form-check-label" for="toolBodyTypeNone">none</label>
+                                             </div>
                                         </div>
-                                        <div class="form-check form-check-inline me-3">
-                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="form-data" id="toolBodyTypeFormData">
-                                             <label class="form-check-label" for="toolBodyTypeFormData">form-data</label>
-                                        </div>
-                                        <div class="form-check form-check-inline me-3">
-                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="x-www-form-urlencoded" id="toolBodyTypeXWwwFormUrlEncoded">
-                                             <label class="form-check-label" for="toolBodyTypeXWwwFormUrlEncoded">x-www-form-urlencoded</label>
-                                        </div>
-                                        <div class="form-check form-check-inline me-3">
-                                             <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="raw" id="toolBodyTypeRaw">
-                                             <label class="form-check-label" for="toolBodyTypeRaw">raw</label>
+                                        <div id="toolBodyRawView" class="d-none">
+                                             <textarea class="form-control" placeholder="" id="toolBodyRawTextarea" rows="5"></textarea>
                                         </div>
                                    </div>
-                                   <div id="toolBodyNone">
-                                        <label style="opacity: 0.7;">This request does not have a body. Change body type.</label>
-                                   </div>
-                                   <div id="toolBodyKeyValueView" class="d-none">
-                                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolBodyKeyValue">
-                                             <span>Add Key/Value</span>
-                                        </button>
-                                        <div id="toolBodyKeyValueViewList">
+                                   <div class="mb-3">
+                                        <label class="form-label btn-ic-span-align">
+                                             <span>Response </span>
 
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Javascript code to convert request response of each status type into AI readable format. Response data is available within predefined variable called 'responseData'.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
+                                        </label>
+                                        <div class="input-group mb-2">
+                                             <select class="form-select" id="toolResponseStatusSelect">
+                                             </select>
+                                             <button class="btn btn-light" id="addToolResponseStatusType">
+                                                  <span>Add Response Code</span>
+                                             </button>
                                         </div>
-                                   </div>
-                                   <div id="toolBodyRawView" class="d-none">
-                                        <textarea class="form-control" placeholder="" id="toolBodyRawTextarea" rows="5"></textarea>
-                                   </div>
-                              </div>
-                              <div class="mb-3">
-                                   <label class="form-label btn-ic-span-align">
-                                        <span>Response </span>
 
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Javascript code to convert request response of each status type into AI readable format. Response data is available within predefined variable called 'responseData'.">
-                                             <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                   </label>
-                                   <div class="input-group mb-2">
-                                        <select class="form-select" id="toolResponseStatusSelect">
-                                        </select>
-                                        <button class="btn btn-light" id="addToolResponseStatusType">
-                                             <span>Add Response Code</span>
-                                        </button>
-                                   </div>
-
-                                   <div class="mb-2" id="toolResponseStatusTypeListButtons">
-                                   </div>
-                                   <div id="toolResponseStatusTypeList">
+                                        <div class="mb-2" id="toolResponseStatusTypeListButtons">
+                                        </div>
+                                        <div id="toolResponseStatusTypeList">
+                                        </div>
                                    </div>
                               </div>
                          </div>
@@ -2133,7 +2131,7 @@
                -->
 
                <!-- Make Calls Container -->
-               <div class="main-container fade show w-100" id="make-calls-tab">
+               <div class="main-container fade d-none w-100" id="make-calls-tab">
                     <h3 class="fw-bold tab-title"><i class='fa-regular fa-phone'></i> <span>Make Calls</span></h3>
                     <div class="inner-container">
                          <div class="d-flex flex-row align-items-center justify-content-between mb-3">
@@ -2657,19 +2655,314 @@
 
                -->
 
-               <!-- Appointments Container -->
-               <div class="main-container fade d-none w-100" id="appointments-tab">
-                    <h3 class="fw-bold tab-title"><i class='fa-regular fa-calendar'></i> <span>Appointments</span></h3>
-                    <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
-                    </div>
-               </div>
-
                <!-- Conversations Container -->
-               <div class="main-container fade d-none w-100" id="conversations-tab">
+               <div class="main-container fade show w-100" id="conversations-tab">
                     <h3 class="fw-bold tab-title"><i class='fa-regular fa-messages'></i> <span>Conversations</span></h3>
                     <div class="inner-container">
-                         <h6>Ah! This page is currently under development.</h6>
+                         <!-- Conversations List Tab -->
+                         <ul class="nav mb-3" id="conversations-tab" role="tablist">
+                              <li class="nav-item me-2" role="presentation">
+                                   <button class="nav-link" id="conversations-inbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-inbound" type="button" role="tab" aria-controls="conversations-inbound" aria-selected="true">Inbound Call</button>
+                              </li>
+                              <li class="nav-item me-2" role="presentation">
+                                   <button class="nav-link" id="conversations-outbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-outbound" type="button" role="tab" aria-controls="conversations-outbound" aria-selected="true">Outbound Call</button>
+                              </li>
+                              <li class="nav-item me-2" role="presentation">
+                                   <button class="nav-link active" id="conversations-websocket-tab" data-bs-toggle="pill" data-bs-target="#conversations-websocket" type="button" role="tab" aria-controls="conversations-websocket" aria-selected="true">Websocket</button>
+                              </li>
+                         </ul>
+
+                         <div class="tab-content w-100" id="conversations-tabContent">
+                              <!-- Inbound Tab -->
+                              <div class="tab-pane fade w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-tab" tabindex="0">
+                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterInboundCallButton">
+                                                  <i class="fa-regular fa-bars-filter me-1"></i>
+                                                  <span>Filter</span>
+                                             </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                             <input type="text" class="form-control" placeholder="Routing Name or Session" aria-label="Routing Name or Session" aria-describedby="searchConversationInboundButton">
+                                             <button class="input-group-button btn btn-primary" id="searchConversationInboundButton">
+                                                  <i class='fa-regular fa-magnifying-glass'></i>
+                                             </button>
+                                        </div>
+                                   </div>             
+                                   <div>
+                                        <table id="conversationInboundTable" class="table w-100">
+                                             <thead>
+                                                  <tr>
+                                                       <th scope="col" style="width: 50px;"></th>
+                                                       <th scope="col">Routing</th>
+                                                       <th scope="col">From</th>
+                                                       <th scope="col">To</th>
+                                                       <th scope="col">Datetime</th>
+                                                       <th scope="col">Session</th>
+                                                       <th scope="col">Actions</th>
+                                                  </tr>
+                                             </thead>
+                                             <tbody>
+                                                  <tr>
+                                                       <th scope="row" style="text-align: center;">
+                                                            <span class="in-progress">
+                                                                 <i class="fa-regular fa-loader fa-spin"></i>
+                                                            </span>       
+                                                       </th>
+                                                       <th scope="row">
+                                                            📞 Public Support
+                                                       </th>
+                                                       <td>
+                                                            <b>+968 91257744</b>
+                                                       </td>
+                                                       <td>+968 72233384</td>
+                                                       <td>6/16/2024 11:51 PM</td>
+                                                       <td>12-31511212</td>
+                                                       <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                 <i class="fa-regular fa-eye"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                 <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                       </td>
+                                                  </tr>
+                                                  <tr>
+                                                       <th scope="row" style="text-align: center;">
+                                                            <span class="complete">
+                                                                 <i class="fa-regular fa-check"></i>
+                                                            </span>       
+                                                       </th>
+                                                       <th scope="row">
+                                                            📞 Public Support
+                                                       </th>
+                                                       <td>
+                                                            <b>+968 91257744</b>
+                                                       </td>
+                                                       <td>+968 72233384</td>
+                                                       <td>6/16/2024 11:51 PM</td>
+                                                       <td>13-52352352</td>
+                                                       <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                 <i class="fa-regular fa-eye"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                 <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                       </td>
+                                                  </tr>
+                                             </tbody>
+                                        </table>
+                                   </div>
+                              </div>
+
+                              <!-- Outbound Tab -->
+                              <div class="tab-pane fade show active w-100" id="conversations-outbound" role="tabpanel" aria-labelledby="conversations-outbound-tab" tabindex="0">
+                                   <div class="w-100 fade d-none" id="conversationOutboundList">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                             <div style="min-width: 200px" class="me-4">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
+                                                       <i class="fa-regular fa-bars-filter me-1"></i>
+                                                       <span>Filter</span>
+                                                  </button>
+                                             </div>
+                                             <div class="input-group w-100">
+                                                  <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
+                                                       <i class='fa-regular fa-magnifying-glass'></i>
+                                                  </button>
+                                             </div>
+                                        </div>             
+                                        <div>
+                                             <table id="conversationOutboundTable" class="table w-100">
+                                                  <thead>
+                                                       <tr>
+                                                            <th scope="col" style="width: 50px;"></th>
+                                                            <th scope="col">Indentifier</th>
+                                                            <th scope="col">Type</th>
+                                                            <th scope="col">Information</th>
+                                                            <th scope="col">Datetime</th>
+                                                            <th scope="col">Session</th>
+                                                            <th scope="col">Actions</th>
+                                                       </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                       <tr>
+                                                            <th scope="row" style="text-align: center;">
+                                                                 <span class="in-progress">
+                                                                      <i class="fa-regular fa-loader fa-spin"></i>
+                                                                 </span>       
+                                                            </th>
+                                                            <th scope="row">
+                                                                 Eid Marketing Test
+                                                            </th>
+                                                            <td>
+                                                                 <b>Single</b>
+                                                            </td>
+                                                            <td>From +968 91257744<br>to +968 72233384</td>
+                                                            <td>6/16/2024 11:51 PM</td>
+                                                            <td>12-31511212</td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="fa-regular fa-table-list"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="fa-regular fa-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                       <tr>
+                                                            <th scope="row" style="text-align: center;">
+                                                                 <span class="complete">
+                                                                      <i class="fa-regular fa-check"></i>
+                                                                 </span>       
+                                                            </th>
+                                                            <th scope="row">
+                                                                 Ramadan Marketing
+                                                            </th>
+                                                            <td>
+                                                                 <b>Bulk</b>
+                                                            </td>
+                                                            <td>1024 Calls</td>
+                                                            <td>6/16/2024 11:51 PM</td>
+                                                            <td>13-52352352</td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="fa-regular fa-eye"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="fa-regular fa-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                  </tbody>
+                                             </table>
+                                        </div>
+                                   </div>
+                                   <div class="w-100 fade show" id="conversationOutboundBulkList">
+                                        <nav class="mb-3" aria-label="breadcrumb">
+                                             <ol class="breadcrumb mb-0">
+                                                  <li class="breadcrumb-item"><a href="#" id="switchBackToOuntboundCallTab">Outbound Call</a></li>
+                                                  <li class="breadcrumb-item active" aria-current="page"><span id="currentOutboundBulkCallName">Ramadan Marketing</span></li>
+                                             </ol>
+                                        </nav>
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                             <div style="min-width: 200px" class="me-4">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundBulkCallsButton">
+                                                       <i class="fa-regular fa-bars-filter me-1"></i>
+                                                       <span>Filter</span>
+                                                  </button>
+                                             </div>
+                                             <div class="input-group w-100">
+                                                  <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundBulkButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchConversationOutboundBulkButton">
+                                                       <i class='fa-regular fa-magnifying-glass'></i>
+                                                  </button>
+                                             </div>
+                                        </div>             
+                                        <div>
+                                             <table id="conversationOutboundBulkTable" class="table w-100">
+                                                  <thead>
+                                                       <tr>
+                                                            <th scope="col" style="width: 50px;"></th>
+                                                            <th scope="col">From</th>
+                                                            <th scope="col">To</th>
+                                                            <th scope="col">Datetime</th>
+                                                            <th scope="col">Session</th>
+                                                            <th scope="col">Agent</th>
+                                                            <th scope="col">Actions</th>
+                                                       </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                       <tr>
+                                                            <th scope="row" style="text-align: center;">
+                                                                 <span class="in-progress">
+                                                                      <i class="fa-regular fa-loader fa-spin"></i>
+                                                                 </span>       
+                                                            </th>
+                                                            <td>
+                                                                 +968 72233384
+                                                            </td>
+                                                            <td>+968 91257744</td>
+                                                            <td>6/16/2024 11:51 PM</td>
+                                                            <td>12-31511212</td>
+                                                            <td>🤖 Opening Agent</td>
+                                                            <td>
+                                                                 <button class="btn btn-info btn-sm">
+                                                                      <i class="fa-regular fa-table-list"></i>
+                                                                 </button>
+                                                                 <button class="btn btn-danger btn-sm">
+                                                                      <i class="fa-regular fa-trash"></i>
+                                                                 </button>
+                                                            </td>
+                                                       </tr>
+                                                  </tbody>
+                                             </table>
+                                        </div>
+                                   </div>
+                              </div>
+
+                              <!-- Websocket Tab -->
+                              <div class="tab-pane fade w-100" id="conversations-websocket" role="tabpanel" aria-labelledby="conversations-websocket-tab" tabindex="0">
+                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterWebsocketButton">
+                                                  <i class="fa-regular fa-bars-filter me-1"></i>
+                                                  <span>Filter</span>
+                                             </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                             <input type="text" class="form-control" placeholder="Websocket Name, Identifier or Session" aria-label="Websocket Name, Identifier or Session" aria-describedby="searchConversationWebsocketButton">
+                                             <button class="input-group-button btn btn-primary" id="searchConversationWebsocketButton">
+                                                  <i class='fa-regular fa-magnifying-glass'></i>
+                                             </button>
+                                        </div>
+                                   </div>             
+                                   <div>
+                                        <table id="conversationWebsocketTable" class="table w-100">
+                                             <thead>
+                                                  <tr>
+                                                       <th scope="col" style="width: 50px;"></th>
+                                                       <th scope="col">Name</th>
+                                                       <th scope="col">Identifier</th>
+                                                       <th scope="col">Datetime</th>
+                                                       <th scope="col">Session</th>
+                                                       <th scope="col">Actions</th>
+                                                  </tr>
+                                             </thead>
+                                             <tbody>
+                                                  <tr>
+                                                       <th scope="row" style="text-align: center;">
+                                                            <span class="in-progress">
+                                                                 <i class="fa-regular fa-loader fa-spin"></i>
+                                                            </span>       
+                                                       </th>
+                                                       <th scope="row">
+                                                            Badal.om
+                                                       </th>
+                                                       <td>
+                                                            user-abdua5coc
+                                                       </td>
+                                                       <td>6/16/2024 11:51 PM</td>
+                                                       <td>12-31511212</td>
+                                                       <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                 <i class="fa-regular fa-eye"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                 <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                       </td>
+                                                  </tr>
+                                             </tbody>
+                                        </table>
+                                   </div>
+                              </div>
+                         </div>
+                         <!-- Conversations Manage Tab -->
+                         <div class="fade d-none w-100" id="toolManageTab">
+
+                         </div>
                     </div>
                </div>
 
