@@ -2996,16 +2996,12 @@
                                              <input type="text" class="form-control" id="conversationMessageSession" value="14989498498" disabled>
                                         </div>
                                         <div class="mb-3">
-                                             <label class="form-label" for="conversationMessageFrom">From</label>
-                                             <input type="text" class="form-control" id="conversationMessageFrom" value="+968 7854 2558" disabled>
-                                        </div>
-                                        <div class="mb-3">
-                                             <label class="form-label" for="conversationMessageTo">To</label>
-                                             <input type="text" class="form-control" id="conversationMessageTo" value="+968 8956 4896" disabled>
-                                        </div>
-                                        <div class="mb-3">
                                              <label class="form-label" for="conversationMessageDatetime">Datetime</label>
                                              <input type="text" class="form-control" id="conversationMessageDatetime" value="6/16/2024 11:51 PM" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageEndedByUser">Ended by user</label>
+                                             <input type="text" class="form-control" id="conversationMessageEndedByUser" value="Yes" disabled>
                                         </div>
                                         <div class="mb-3">
                                              <label class="form-label" for="conversationMessageRouting">Routing</label>
@@ -3165,15 +3161,183 @@
                                    </div>
                                    <!-- Number Tab -->
                                    <div class="tab-pane fade w-100" id="conversationsManage-number" role="tabpanel" aria-labelledby="conversationsManage-number-tab" tabindex="0">
-                                        Number
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewNumberFrom">From</label>
+                                             <input type="text" class="form-control" id="conversationViewNumberFrom" value="+968 7854 2558" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewNumberTo">To</label>
+                                             <input type="text" class="form-control" id="conversationViewNumberTo" value="+968 8956 4896" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <div class="form-check form-switch">
+                                                  <label class="form-check-label" for="conversationViewNumberRetryOnDeclineCheck">Retry on decline</label>
+                                                  <input type="checkbox" role="switch" class="form-check-input" id="conversationViewNumberRetryOnDeclineCheck" disabled>
+                                             </div>
+                                             <div class="makeCallRetryBox d-none fade">
+                                                  <div class="mb-3">
+                                                       <label class="form-label" for="conversationViewNumberRetryOnDeclineCount">Retry count</label>
+                                                       <input type="number" class="form-control" id="conversationViewNumberRetryOnDeclineCount" value="3" disabled>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label" for="conversationViewNumberRetryOnDeclineDelay">Retry delay (ms)</label>
+                                                       <input type="number" class="form-control" id="conversationViewNumberRetryOnDeclineDelay" value="10000" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <div class="form-check form-switch">
+                                                  <label class="form-check-label" for="conversationViewNumberRetryOnMisscallCheck">Retry on misscall</label>
+                                                  <input type="checkbox" role="switch" class="form-check-input" id="conversationViewNumberRetryOnMisscallCheck" disabled>
+                                             </div>
+                                             <div class="makeCallRetryBox d-none fade">
+                                                  <div class="mb-3">
+                                                       <label class="form-label" for="conversationViewNumberRetryOnMisscallCount">Retry count</label>
+                                                       <input type="number" class="form-control" id="conversationViewNumberRetryOnMisscallCount" value="3" disabled>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label" for="conversationViewNumberRetryOnMisscallDelay">Retry delay (ms)</label>
+                                                       <input type="number" class="form-control" id="conversationViewNumberRetryOnMisscallDelay" value="10000" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewNumberNumberSilenceNotify">Notify on silence (ms)</label>
+                                             <input type="number" class="form-control" id="conversationViewNumberNumberSilenceNotify" value="1000" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewNumberNumberSilenceEnd">End call on silence (ms)</label>
+                                             <input type="number" class="form-control" id="conversationViewNumberNumberSilenceEnd" value="1000" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewNumberNumberTotalCallTime">Max call time (s)</label>
+                                             <input type="number" class="form-control" id="conversationViewNumber+NumberTotalCallTime" value="120" disabled>
+                                        </div>
                                    </div>
                                    <!-- Agent Tab -->
                                    <div class="tab-pane fade w-100" id="conversationsManage-agent" role="tabpanel" aria-labelledby="conversationsManage-agent-tab" tabindex="0">
-                                        Agent
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewAgentName">Selected Agent</label>
+                                             <div class="input-group">
+                                                  <span class="input-group-text">🤖</span>
+                                                  <input type="text" class="form-control" id="conversationViewAgentName" value="Opening Agent" disabled>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewAgentScript">Selected Script</label>
+                                             <input type="text" class="form-control" id="conversationViewAgentScript" value="Opening Script" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewAgentConvoType">Conversation Type</label>
+                                             <input type="text" class="form-control" id="conversationViewAgentConvoType" value="Turn by Turn" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewAgentTimezone">Timezone</label>
+                                             <input type="text" class="form-control" id="conversationViewAgentTimezone" value="(GMT 0/UTC) Western Europe Time, London, Lisbon, Casablanca" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <div class="form-check form-switch">
+                                                  <div style="display: inline-block; vertical-align: middle;">
+                                                       <input type="checkbox" role="switch" class="form-check-input" id="conversationViewAgentCallerNumberInContextCheck" checked disabled>
+                                                       <label class="form-label mb-0" for="conversationViewAgentCallerNumberInContextCheck">
+                                                            <span>Caller Number in Context</span>
+                                                       </label>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <div class="form-check form-switch">
+                                                  <div style="display: inline-block; vertical-align: middle;">
+                                                       <input type="checkbox" role="switch" class="form-check-input" id="conversationViewAgentCallingNumberInContextCheck" checked disabled>
+                                                       <label class="form-label mb-0" for="conversationViewAgentCallingNumberInContextCheck">
+                                                            <span>Calling Number in Context</span>
+                                                       </label>
+                                                  </div>
+                                             </div>
+                                        </div>
                                    </div>
                                    <!-- Actions Tab -->
                                    <div class="tab-pane fade w-100" id="conversationsManage-actions" role="tabpanel" aria-labelledby="conversationsManage-actions-tab" tabindex="0">
-                                        Actions
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewActionsDeclined">Declined Action</label>
+                                             <input type="text" class="form-control" id="conversationViewActionsDeclined" value="None" disabled>
+                                             <div class="custom-tool-input-arguments">
+                                                  <div class="mb-3">
+                                                       <label class="form-label d-block">Input Arguments</label>
+                                                       <div class="mt-1" id="conversationViewActionsDeclinedInputArgumentsList">
+                                                            <div class="input-group">
+                                                                 <span class="input-group-text">Appointment Time</span>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label d-block" for="conversationViewActionsDeclinedResult">Result</label>
+                                                       <input type="text" class="form-control" id="conversationViewActionsDeclinedResult" value="200" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewActionsMisscall">Misscall Action</label>
+                                             <input type="text" class="form-control" id="conversationViewActionsMisscall" value="None" disabled>
+                                             <div class="custom-tool-input-arguments">
+                                                  <div class="mb-3">
+                                                       <label class="form-label d-block">Input Arguments</label>
+                                                       <div class="mt-1" id="conversationViewActionsMisscallInputArgumentsList">
+                                                            <div class="input-group">
+                                                                 <span class="input-group-text">Appointment Time</span>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label d-block" for="conversationViewActionsMisscallResult">Result</label>
+                                                       <input type="text" class="form-control" id="conversationViewActionsMisscallResult" value="200" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewActionsPickedup">Pickedup Action</label>
+                                             <input type="text" class="form-control" id="conversationViewActionsPickedup" value="None" disabled>
+                                             <div class="custom-tool-input-arguments">
+                                                  <div class="mb-3">
+                                                       <label class="form-label d-block">Input Arguments</label>
+                                                       <div class="mt-1" id="conversationViewActionsPickedupInputArgumentsList">
+                                                            <div class="input-group">
+                                                                 <span class="input-group-text">Appointment Time</span>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label d-block" for="conversationViewActionsPickedupResult">Result</label>
+                                                       <input type="text" class="form-control" id="conversationViewActionsPickedupResult" value="200" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationViewActionsEnded">Ended Action</label>
+                                             <input type="text" class="form-control" id="conversationViewActionsEnded" value="None" disabled>
+                                             <div class="custom-tool-input-arguments">
+                                                  <div class="mb-3">
+                                                       <label class="form-label d-block">Input Arguments</label>
+                                                       <div class="mt-1" id="conversationViewActionsEndedInputArgumentsList">
+                                                            <div class="input-group">
+                                                                 <span class="input-group-text">Appointment Time</span>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
+                                                                 <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                                  <div class="">
+                                                       <label class="form-label d-block" for="conversationViewActionsEndedResult">Result</label>
+                                                       <input type="text" class="form-control" id="conversationViewActionsEndedResult" value="200" disabled>
+                                                  </div>
+                                             </div>
+                                        </div>
                                    </div>
                               </div>
                          </div>
