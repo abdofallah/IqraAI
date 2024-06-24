@@ -2179,7 +2179,7 @@
                                                   <div class="make-call-type-box-choose active" box-type="single">
                                                        <div class="info-icon">
                                                             <i class="fa-regular fa-user"></i>
-                                                       </div>                                                        
+                                                       </div>
                                                        <div class="info-data">
                                                             <h4>Single</h4>
                                                             <p>Call only a single number</p>
@@ -2190,7 +2190,7 @@
                                                   <div class="make-call-type-box-choose" box-type="bulk">
                                                        <div class="info-icon">
                                                             <i class="fa-regular fa-user-group"></i>
-                                                       </div>   
+                                                       </div>
                                                        <div class="info-data">
                                                             <h4>Bulk</h4>
                                                             <p>Call in bulk with a CSV file</p>
@@ -2282,7 +2282,7 @@
                                              <div class="mb-3">
                                                   <label class="form-label" for="editMakeCallRetryOnDeclineCount">Retry count</label>
                                                   <input type="number" class="form-control" id="editMakeCallRetryOnDeclineCount" value="3">
-                                             </div>   
+                                             </div>
                                              <div class="">
                                                   <label class="form-label" for="editMakeCallRetryOnDeclineDelay">Retry delay (ms)</label>
                                                   <input type="number" class="form-control" id="editMakeCallRetryOnDeclineDelay" value="10000">
@@ -2589,7 +2589,7 @@
                                                   <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {calling_number}, {timezone_datetime}, {decline_count}, {misscall_count}.">
                                                        <i class="fa-regular fa-circle-question"></i>
                                                   </a>
-                                             </label> 
+                                             </label>
                                              <div class="input-group">
                                                   <select class="form-select" id="editMakeCallActionToolPickedUpArgumentsSelect">
                                                        <option value="-1">Select Input Argument</option>
@@ -2626,7 +2626,7 @@
                                                   <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}, {call_started}, {conversation}, {ended_by}.">
                                                        <i class="fa-regular fa-circle-question"></i>
                                                   </a>
-                                             </label> 
+                                             </label>
                                              <div class="input-group">
                                                   <select class="form-select" id="editMakeCallActionToolEndedArgumentsSelect">
                                                        <option value="-1">Select Input Argument</option>
@@ -2660,127 +2660,44 @@
                     <h3 class="fw-bold tab-title"><i class='fa-regular fa-messages'></i> <span>Conversations</span></h3>
                     <div class="inner-container">
                          <!-- Conversations List Tab -->
-                         <ul class="nav mb-3" id="conversations-tab" role="tablist">
-                              <li class="nav-item me-2" role="presentation">
-                                   <button class="nav-link" id="conversations-inbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-inbound" type="button" role="tab" aria-controls="conversations-inbound" aria-selected="true">Inbound Call</button>
-                              </li>
-                              <li class="nav-item me-2" role="presentation">
-                                   <button class="nav-link" id="conversations-outbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-outbound" type="button" role="tab" aria-controls="conversations-outbound" aria-selected="true">Outbound Call</button>
-                              </li>
-                              <li class="nav-item me-2" role="presentation">
-                                   <button class="nav-link active" id="conversations-websocket-tab" data-bs-toggle="pill" data-bs-target="#conversations-websocket" type="button" role="tab" aria-controls="conversations-websocket" aria-selected="true">Websocket</button>
-                              </li>
-                         </ul>
+                         <div class="d-none fade w-100" id="conversationListTab">
+                              <ul class="nav mb-3" id="conversations-tab" role="tablist">
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="conversations-inbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-inbound" type="button" role="tab" aria-controls="conversations-inbound" aria-selected="true">Inbound Call</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversations-outbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-outbound" type="button" role="tab" aria-controls="conversations-outbound" aria-selected="true">Outbound Call</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversations-websocket-tab" data-bs-toggle="pill" data-bs-target="#conversations-websocket" type="button" role="tab" aria-controls="conversations-websocket" aria-selected="true">Websocket</button>
+                                   </li>
+                              </ul>
 
-                         <div class="tab-content w-100" id="conversations-tabContent">
-                              <!-- Inbound Tab -->
-                              <div class="tab-pane fade w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-tab" tabindex="0">
-                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <div style="min-width: 200px" class="me-4">
-                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterInboundCallButton">
-                                                  <i class="fa-regular fa-bars-filter me-1"></i>
-                                                  <span>Filter</span>
-                                             </button>
-                                        </div>
-                                        <div class="input-group w-100">
-                                             <input type="text" class="form-control" placeholder="Routing Name or Session" aria-label="Routing Name or Session" aria-describedby="searchConversationInboundButton">
-                                             <button class="input-group-button btn btn-primary" id="searchConversationInboundButton">
-                                                  <i class='fa-regular fa-magnifying-glass'></i>
-                                             </button>
-                                        </div>
-                                   </div>             
-                                   <div>
-                                        <table id="conversationInboundTable" class="table w-100">
-                                             <thead>
-                                                  <tr>
-                                                       <th scope="col" style="width: 50px;"></th>
-                                                       <th scope="col">Routing</th>
-                                                       <th scope="col">From</th>
-                                                       <th scope="col">To</th>
-                                                       <th scope="col">Datetime</th>
-                                                       <th scope="col">Session</th>
-                                                       <th scope="col">Actions</th>
-                                                  </tr>
-                                             </thead>
-                                             <tbody>
-                                                  <tr>
-                                                       <th scope="row" style="text-align: center;">
-                                                            <span class="in-progress">
-                                                                 <i class="fa-regular fa-loader fa-spin"></i>
-                                                            </span>       
-                                                       </th>
-                                                       <th scope="row">
-                                                            📞 Public Support
-                                                       </th>
-                                                       <td>
-                                                            <b>+968 91257744</b>
-                                                       </td>
-                                                       <td>+968 72233384</td>
-                                                       <td>6/16/2024 11:51 PM</td>
-                                                       <td>12-31511212</td>
-                                                       <td>
-                                                            <button class="btn btn-info btn-sm">
-                                                                 <i class="fa-regular fa-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-danger btn-sm">
-                                                                 <i class="fa-regular fa-trash"></i>
-                                                            </button>
-                                                       </td>
-                                                  </tr>
-                                                  <tr>
-                                                       <th scope="row" style="text-align: center;">
-                                                            <span class="complete">
-                                                                 <i class="fa-regular fa-check"></i>
-                                                            </span>       
-                                                       </th>
-                                                       <th scope="row">
-                                                            📞 Public Support
-                                                       </th>
-                                                       <td>
-                                                            <b>+968 91257744</b>
-                                                       </td>
-                                                       <td>+968 72233384</td>
-                                                       <td>6/16/2024 11:51 PM</td>
-                                                       <td>13-52352352</td>
-                                                       <td>
-                                                            <button class="btn btn-info btn-sm">
-                                                                 <i class="fa-regular fa-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-danger btn-sm">
-                                                                 <i class="fa-regular fa-trash"></i>
-                                                            </button>
-                                                       </td>
-                                                  </tr>
-                                             </tbody>
-                                        </table>
-                                   </div>
-                              </div>
-
-                              <!-- Outbound Tab -->
-                              <div class="tab-pane fade show active w-100" id="conversations-outbound" role="tabpanel" aria-labelledby="conversations-outbound-tab" tabindex="0">
-                                   <div class="w-100 fade d-none" id="conversationOutboundList">
+                              <div class="tab-content w-100" id="conversations-tabContent">
+                                   <!-- Inbound Tab -->
+                                   <div class="tab-pane fade show active w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-tab" tabindex="0">
                                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                              <div style="min-width: 200px" class="me-4">
-                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterInboundCallButton">
                                                        <i class="fa-regular fa-bars-filter me-1"></i>
                                                        <span>Filter</span>
                                                   </button>
                                              </div>
                                              <div class="input-group w-100">
-                                                  <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundButton">
-                                                  <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
+                                                  <input type="text" class="form-control" placeholder="Routing Name or Session" aria-label="Routing Name or Session" aria-describedby="searchConversationInboundButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchConversationInboundButton">
                                                        <i class='fa-regular fa-magnifying-glass'></i>
                                                   </button>
                                              </div>
-                                        </div>             
+                                        </div>
                                         <div>
-                                             <table id="conversationOutboundTable" class="table w-100">
+                                             <table id="conversationInboundTable" class="table w-100">
                                                   <thead>
                                                        <tr>
                                                             <th scope="col" style="width: 50px;"></th>
-                                                            <th scope="col">Indentifier</th>
-                                                            <th scope="col">Type</th>
-                                                            <th scope="col">Information</th>
+                                                            <th scope="col">Routing</th>
+                                                            <th scope="col">From</th>
+                                                            <th scope="col">To</th>
                                                             <th scope="col">Datetime</th>
                                                             <th scope="col">Session</th>
                                                             <th scope="col">Actions</th>
@@ -2791,20 +2708,20 @@
                                                             <th scope="row" style="text-align: center;">
                                                                  <span class="in-progress">
                                                                       <i class="fa-regular fa-loader fa-spin"></i>
-                                                                 </span>       
+                                                                 </span>
                                                             </th>
                                                             <th scope="row">
-                                                                 Eid Marketing Test
+                                                                 📞 Public Support
                                                             </th>
                                                             <td>
-                                                                 <b>Single</b>
+                                                                 <b>+968 91257744</b>
                                                             </td>
-                                                            <td>From +968 91257744<br>to +968 72233384</td>
+                                                            <td>+968 72233384</td>
                                                             <td>6/16/2024 11:51 PM</td>
                                                             <td>12-31511212</td>
                                                             <td>
                                                                  <button class="btn btn-info btn-sm">
-                                                                      <i class="fa-regular fa-table-list"></i>
+                                                                      <i class="fa-regular fa-eye"></i>
                                                                  </button>
                                                                  <button class="btn btn-danger btn-sm">
                                                                       <i class="fa-regular fa-trash"></i>
@@ -2815,15 +2732,15 @@
                                                             <th scope="row" style="text-align: center;">
                                                                  <span class="complete">
                                                                       <i class="fa-regular fa-check"></i>
-                                                                 </span>       
+                                                                 </span>
                                                             </th>
                                                             <th scope="row">
-                                                                 Ramadan Marketing
+                                                                 📞 Public Support
                                                             </th>
                                                             <td>
-                                                                 <b>Bulk</b>
+                                                                 <b>+968 91257744</b>
                                                             </td>
-                                                            <td>1024 Calls</td>
+                                                            <td>+968 72233384</td>
                                                             <td>6/16/2024 11:51 PM</td>
                                                             <td>13-52352352</td>
                                                             <td>
@@ -2839,37 +2756,178 @@
                                              </table>
                                         </div>
                                    </div>
-                                   <div class="w-100 fade show" id="conversationOutboundBulkList">
-                                        <nav class="mb-3" aria-label="breadcrumb">
-                                             <ol class="breadcrumb mb-0">
-                                                  <li class="breadcrumb-item"><a href="#" id="switchBackToOuntboundCallTab">Outbound Call</a></li>
-                                                  <li class="breadcrumb-item active" aria-current="page"><span id="currentOutboundBulkCallName">Ramadan Marketing</span></li>
-                                             </ol>
-                                        </nav>
+
+                                   <!-- Outbound Tab -->
+                                   <div class="tab-pane fade w-100" id="conversations-outbound" role="tabpanel" aria-labelledby="conversations-outbound-tab" tabindex="0">
+                                        <div class="w-100 fade d-none" id="conversationOutboundList">
+                                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                  <div style="min-width: 200px" class="me-4">
+                                                       <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
+                                                            <i class="fa-regular fa-bars-filter me-1"></i>
+                                                            <span>Filter</span>
+                                                       </button>
+                                                  </div>
+                                                  <div class="input-group w-100">
+                                                       <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundButton">
+                                                       <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
+                                                            <i class='fa-regular fa-magnifying-glass'></i>
+                                                       </button>
+                                                  </div>
+                                             </div>
+                                             <div>
+                                                  <table id="conversationOutboundTable" class="table w-100">
+                                                       <thead>
+                                                            <tr>
+                                                                 <th scope="col" style="width: 50px;"></th>
+                                                                 <th scope="col">Indentifier</th>
+                                                                 <th scope="col">Type</th>
+                                                                 <th scope="col">Information</th>
+                                                                 <th scope="col">Datetime</th>
+                                                                 <th scope="col">Session</th>
+                                                                 <th scope="col">Actions</th>
+                                                            </tr>
+                                                       </thead>
+                                                       <tbody>
+                                                            <tr>
+                                                                 <th scope="row" style="text-align: center;">
+                                                                      <span class="in-progress">
+                                                                           <i class="fa-regular fa-loader fa-spin"></i>
+                                                                      </span>
+                                                                 </th>
+                                                                 <th scope="row">
+                                                                      Eid Marketing Test
+                                                                 </th>
+                                                                 <td>
+                                                                      <b>Single</b>
+                                                                 </td>
+                                                                 <td>From +968 91257744<br>to +968 72233384</td>
+                                                                 <td>6/16/2024 11:51 PM</td>
+                                                                 <td>12-31511212</td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="fa-regular fa-table-list"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="fa-regular fa-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                            <tr>
+                                                                 <th scope="row" style="text-align: center;">
+                                                                      <span class="complete">
+                                                                           <i class="fa-regular fa-check"></i>
+                                                                      </span>
+                                                                 </th>
+                                                                 <th scope="row">
+                                                                      Ramadan Marketing
+                                                                 </th>
+                                                                 <td>
+                                                                      <b>Bulk</b>
+                                                                 </td>
+                                                                 <td>1024 Calls</td>
+                                                                 <td>6/16/2024 11:51 PM</td>
+                                                                 <td>13-52352352</td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="fa-regular fa-eye"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="fa-regular fa-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                       </tbody>
+                                                  </table>
+                                             </div>
+                                        </div>
+                                        <div class="w-100 fade show" id="conversationOutboundBulkList">
+                                             <nav class="mb-3" aria-label="breadcrumb">
+                                                  <ol class="breadcrumb mb-0">
+                                                       <li class="breadcrumb-item"><a href="#" id="switchBackToOuntboundCallTab">Outbound Call</a></li>
+                                                       <li class="breadcrumb-item active" aria-current="page"><span id="currentOutboundBulkCallName">Ramadan Marketing</span></li>
+                                                  </ol>
+                                             </nav>
+                                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                  <div style="min-width: 200px" class="me-4">
+                                                       <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundBulkCallsButton">
+                                                            <i class="fa-regular fa-bars-filter me-1"></i>
+                                                            <span>Filter</span>
+                                                       </button>
+                                                  </div>
+                                                  <div class="input-group w-100">
+                                                       <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundBulkButton">
+                                                       <button class="input-group-button btn btn-primary" id="searchConversationOutboundBulkButton">
+                                                            <i class='fa-regular fa-magnifying-glass'></i>
+                                                       </button>
+                                                  </div>
+                                             </div>
+                                             <div>
+                                                  <table id="conversationOutboundBulkTable" class="table w-100">
+                                                       <thead>
+                                                            <tr>
+                                                                 <th scope="col" style="width: 50px;"></th>
+                                                                 <th scope="col">From</th>
+                                                                 <th scope="col">To</th>
+                                                                 <th scope="col">Datetime</th>
+                                                                 <th scope="col">Session</th>
+                                                                 <th scope="col">Agent</th>
+                                                                 <th scope="col">Actions</th>
+                                                            </tr>
+                                                       </thead>
+                                                       <tbody>
+                                                            <tr>
+                                                                 <th scope="row" style="text-align: center;">
+                                                                      <span class="in-progress">
+                                                                           <i class="fa-regular fa-loader fa-spin"></i>
+                                                                      </span>
+                                                                 </th>
+                                                                 <td>
+                                                                      +968 72233384
+                                                                 </td>
+                                                                 <td>+968 91257744</td>
+                                                                 <td>6/16/2024 11:51 PM</td>
+                                                                 <td>12-31511212</td>
+                                                                 <td>🤖 Opening Agent</td>
+                                                                 <td>
+                                                                      <button class="btn btn-info btn-sm">
+                                                                           <i class="fa-regular fa-eye"></i>
+                                                                      </button>
+                                                                      <button class="btn btn-danger btn-sm">
+                                                                           <i class="fa-regular fa-trash"></i>
+                                                                      </button>
+                                                                 </td>
+                                                            </tr>
+                                                       </tbody>
+                                                  </table>
+                                             </div>
+                                        </div>
+                                   </div>
+
+                                   <!-- Websocket Tab -->
+                                   <div class="tab-pane fade w-100" id="conversations-websocket" role="tabpanel" aria-labelledby="conversations-websocket-tab" tabindex="0">
                                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                              <div style="min-width: 200px" class="me-4">
-                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundBulkCallsButton">
+                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterWebsocketButton">
                                                        <i class="fa-regular fa-bars-filter me-1"></i>
                                                        <span>Filter</span>
                                                   </button>
                                              </div>
                                              <div class="input-group w-100">
-                                                  <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundBulkButton">
-                                                  <button class="input-group-button btn btn-primary" id="searchConversationOutboundBulkButton">
+                                                  <input type="text" class="form-control" placeholder="Websocket Name, Identifier or Session" aria-label="Websocket Name, Identifier or Session" aria-describedby="searchConversationWebsocketButton">
+                                                  <button class="input-group-button btn btn-primary" id="searchConversationWebsocketButton">
                                                        <i class='fa-regular fa-magnifying-glass'></i>
                                                   </button>
                                              </div>
-                                        </div>             
+                                        </div>
                                         <div>
-                                             <table id="conversationOutboundBulkTable" class="table w-100">
+                                             <table id="conversationWebsocketTable" class="table w-100">
                                                   <thead>
                                                        <tr>
                                                             <th scope="col" style="width: 50px;"></th>
-                                                            <th scope="col">From</th>
-                                                            <th scope="col">To</th>
+                                                            <th scope="col">Name</th>
+                                                            <th scope="col">Identifier</th>
                                                             <th scope="col">Datetime</th>
                                                             <th scope="col">Session</th>
-                                                            <th scope="col">Agent</th>
                                                             <th scope="col">Actions</th>
                                                        </tr>
                                                   </thead>
@@ -2878,18 +2936,19 @@
                                                             <th scope="row" style="text-align: center;">
                                                                  <span class="in-progress">
                                                                       <i class="fa-regular fa-loader fa-spin"></i>
-                                                                 </span>       
+                                                                 </span>
+                                                            </th>
+                                                            <th scope="row">
+                                                                 Badal.om
                                                             </th>
                                                             <td>
-                                                                 +968 72233384
+                                                                 user-abdua5coc
                                                             </td>
-                                                            <td>+968 91257744</td>
                                                             <td>6/16/2024 11:51 PM</td>
                                                             <td>12-31511212</td>
-                                                            <td>🤖 Opening Agent</td>
                                                             <td>
                                                                  <button class="btn btn-info btn-sm">
-                                                                      <i class="fa-regular fa-table-list"></i>
+                                                                      <i class="fa-regular fa-eye"></i>
                                                                  </button>
                                                                  <button class="btn btn-danger btn-sm">
                                                                       <i class="fa-regular fa-trash"></i>
@@ -2901,67 +2960,222 @@
                                         </div>
                                    </div>
                               </div>
+                         </div>
 
-                              <!-- Websocket Tab -->
-                              <div class="tab-pane fade w-100" id="conversations-websocket" role="tabpanel" aria-labelledby="conversations-websocket-tab" tabindex="0">
-                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <div style="min-width: 200px" class="me-4">
-                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterWebsocketButton">
-                                                  <i class="fa-regular fa-bars-filter me-1"></i>
-                                                  <span>Filter</span>
-                                             </button>
+                         <!-- Conversations Manage Tab -->
+                         <div class="fade show w-100" id="conversationManageTab">
+                              <nav class="mb-3" aria-label="breadcrumb">
+                                   <ol class="breadcrumb mb-0">
+                                        <li class="breadcrumb-item"><a href="#" id="switchBackToConversationsListTab">Conversations</a></li>
+                                        <li class="breadcrumb-item"><span id="currentConversationTypeName">Outbound Calls</span></li>
+                                        <li class="breadcrumb-item active" aria-current="page"><span id="currentConversationName">Ramadan Marketing</span></li>
+                                   </ol>
+                              </nav>
+                              <ul class="nav mb-3" id="conversationsManage-tab" role="tablist">
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="conversationsManage-general-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-general" type="button" role="tab" aria-controls="conversationsManage-general" aria-selected="true">General</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversationsManage-conversation-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-conversation" type="button" role="tab" aria-controls="conversationsManage-conversation" aria-selected="true">Conversation</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversationsManage-number-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-number" type="button" role="tab" aria-controls="conversationsManage-number" aria-selected="true">Number</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversationsManage-agent-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-agent" type="button" role="tab" aria-controls="conversationsManage-agent" aria-selected="true">Agent</button>
+                                   </li>
+                                   <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="conversationsManage-actions-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-actions" type="button" role="tab" aria-controls="conversationsManage-actions" aria-selected="true">Actions</button>
+                                   </li>
+                              </ul>
+                              <div class="tab-content w-100" id="conversationsManage-tabContent">
+                                   <!-- General Tab -->
+                                   <div class="tab-pane fade show active w-100" id="conversationsManage-general" role="tabpanel" aria-labelledby="conversationsManage-general-tab" tabindex="0">
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageSession">Session</label>
+                                             <input type="text" class="form-control" id="conversationMessageSession" value="14989498498" disabled>
                                         </div>
-                                        <div class="input-group w-100">
-                                             <input type="text" class="form-control" placeholder="Websocket Name, Identifier or Session" aria-label="Websocket Name, Identifier or Session" aria-describedby="searchConversationWebsocketButton">
-                                             <button class="input-group-button btn btn-primary" id="searchConversationWebsocketButton">
-                                                  <i class='fa-regular fa-magnifying-glass'></i>
-                                             </button>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageFrom">From</label>
+                                             <input type="text" class="form-control" id="conversationMessageFrom" value="+968 7854 2558" disabled>
                                         </div>
-                                   </div>             
-                                   <div>
-                                        <table id="conversationWebsocketTable" class="table w-100">
-                                             <thead>
-                                                  <tr>
-                                                       <th scope="col" style="width: 50px;"></th>
-                                                       <th scope="col">Name</th>
-                                                       <th scope="col">Identifier</th>
-                                                       <th scope="col">Datetime</th>
-                                                       <th scope="col">Session</th>
-                                                       <th scope="col">Actions</th>
-                                                  </tr>
-                                             </thead>
-                                             <tbody>
-                                                  <tr>
-                                                       <th scope="row" style="text-align: center;">
-                                                            <span class="in-progress">
-                                                                 <i class="fa-regular fa-loader fa-spin"></i>
-                                                            </span>       
-                                                       </th>
-                                                       <th scope="row">
-                                                            Badal.om
-                                                       </th>
-                                                       <td>
-                                                            user-abdua5coc
-                                                       </td>
-                                                       <td>6/16/2024 11:51 PM</td>
-                                                       <td>12-31511212</td>
-                                                       <td>
-                                                            <button class="btn btn-info btn-sm">
-                                                                 <i class="fa-regular fa-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-danger btn-sm">
-                                                                 <i class="fa-regular fa-trash"></i>
-                                                            </button>
-                                                       </td>
-                                                  </tr>
-                                             </tbody>
-                                        </table>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageTo">To</label>
+                                             <input type="text" class="form-control" id="conversationMessageTo" value="+968 8956 4896" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageDatetime">Datetime</label>
+                                             <input type="text" class="form-control" id="conversationMessageDatetime" value="6/16/2024 11:51 PM" disabled>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="conversationMessageRouting">Routing</label>
+                                             <input type="text" class="form-control" id="conversationMessageRouting" value="📞 Public Support" disabled>
+                                        </div>
+                                   </div>
+                                   <!-- Conversation Tab -->
+                                   <div class="tab-pane fade w-100" id="conversationsManage-conversation" role="tabpanel" aria-labelledby="conversationsManage-conversation-tab" tabindex="0">
+                                        <div class="conversation-recording mb-4">
+                                             <div class="recording-container ai-recording mb-2">
+                                                  <i class="typeofconvo fa-regular fa-microchip-ai"></i>
+                                                  <div class="recording-container-waveform" id="waveform-conversation-ai"></div>
+                                                  <div class="audio-controller">
+                                                       <div class="speed-controller me-5">
+                                                            <label for="slider-conversation-ai">
+                                                                 <i class="fa-regular fa-gauge"></i>
+                                                            </label>
+                                                            <input class="mx-1" type="slider" id="range-conversation-ai" min="0.1" max="4" value="1" step="0.1">
+                                                       </div>
+                                                       <div class="volume-controller me-5">
+                                                            <label for="slider-conversation-ai">
+                                                                 <i class="fa-regular fa-volume"></i>
+                                                            </label>
+                                                            <input type="range" id="slider-conversation-ai" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                       </div>
+                                                       <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                            <i class="fa-regular fa-play"></i>
+                                                       </button>
+                                                       <button button-type="download" disabled>
+                                                            <i class="fa-regular fa-circle-down"></i>
+                                                       </button>
+                                                  </div>
+                                             </div>
+                                             <div class="recording-container user-recording">
+                                                  <i class="typeofconvo fa-regular fa-user"></i>
+                                                  <div class="recording-container-waveform" id="waveform-conversation-user"></div>
+                                                  <div class="audio-controller">
+                                                       <div class="speed-controller me-5">
+                                                            <label for="slider-conversation-ai">
+                                                                 <i class="fa-regular fa-gauge"></i>
+                                                            </label>
+                                                            <input class="mx-1" type="slider" id="range-conversation-ai" min="0.1" max="4" value="1" step="0.1">
+                                                       </div>
+                                                       <div class="volume-controller me-5">
+                                                            <label for="slider-conversation-ai">
+                                                                 <i class="fa-regular fa-volume"></i>
+                                                            </label>
+                                                            <input type="range" id="slider-conversation-ai" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                       </div>
+                                                       <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                            <i class="fa-regular fa-play"></i>
+                                                       </button>
+                                                       <button button-type="download" disabled>
+                                                            <i class="fa-regular fa-circle-down"></i>
+                                                       </button>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div class="conversation-messages">
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:00</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span>Hello! Welcome to Badal Technologies.</span>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>Hey.. I need some information</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:10</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span>For sure! What can I help you with?</span>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>I need to book a consultation appointment</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:20</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span>For sure! Under what name, and at what time do you want to book it?</span>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>Under name Abdullah bin Amir, at Saturday 5pm</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:30</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span class="tool-name">MakeAppointment</span>
+                                                            <span class="tool-result">Result 200</span>
+                                                            <button class="btn btn-outline-light btn-sm" type="button">More Information</button>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>Awesome thank you. sounds good, yes i need more help</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:40</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span>For sure! what can I help you with?</span>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>test message i can ask you</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:00:50</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span>sure you can ask me anything.</span>
+                                                       </div>
+                                                       <div class="this-conversation-message user-message">                                                       
+                                                            <span>that should be it for today! have a nice day</span>
+                                                            <i class="fa-regular fa-user"></i>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+
+                                             <div class="each-conversation-message">
+                                                  <label class="timeline-span">00:01:10</label>
+                                                  <div class="this-conversation-container">
+                                                       <div class="this-conversation-message ai-message mb-1">
+                                                            <i class="fa-regular fa-microchip-ai"></i>
+                                                            <span class="tool-name">EndCall</span>
+                                                            <button class="btn btn-outline-light btn-sm" type="button">More Information</button>
+                                                       </div>
+                                                  </div>   
+                                             </div>
+                                        </div>
+                                   </div>
+                                   <!-- Number Tab -->
+                                   <div class="tab-pane fade w-100" id="conversationsManage-number" role="tabpanel" aria-labelledby="conversationsManage-number-tab" tabindex="0">
+                                        Number
+                                   </div>
+                                   <!-- Agent Tab -->
+                                   <div class="tab-pane fade w-100" id="conversationsManage-agent" role="tabpanel" aria-labelledby="conversationsManage-agent-tab" tabindex="0">
+                                        Agent
+                                   </div>
+                                   <!-- Actions Tab -->
+                                   <div class="tab-pane fade w-100" id="conversationsManage-actions" role="tabpanel" aria-labelledby="conversationsManage-actions-tab" tabindex="0">
+                                        Actions
                                    </div>
                               </div>
-                         </div>
-                         <!-- Conversations Manage Tab -->
-                         <div class="fade d-none w-100" id="toolManageTab">
-
                          </div>
                     </div>
                </div>
@@ -2990,6 +3204,9 @@
           <script src="js/vanillaEmojiPicker.js"></script>
           <script src="js/moment-with-locales.js"></script>
           <script src="js/moment-timezone-with-data.js"></script>
+
+          <script src="libs/wavesurfer.js-7.8.0/dist/wavesurfer.min.js"></script>
+          <script src="libs/wavesurfer.js-7.8.0/dist/plugins/hover.min.js"></script>
 
           <script src="libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
 
@@ -4764,7 +4981,10 @@
                     const editMakeCallRetryOnMissCallCheck = $("#editMakeCallRetryOnMisscallCheck");
                     const makeCallMissRetryBox = editMakeCallRetryOnMissCallCheck.parent().parent().find(".makeCallRetryBox");
 
-                    makeCallTypeBox.on('click' , (event) => {
+                    
+
+                    makeCallTypeBox.on('click', (event) =>
+                    {
                          let boxType = $(event.currentTarget).attr('box-type');
 
                          let activeBox = makeCallTypeBox.filter('.active');
@@ -4777,10 +4997,11 @@
 
                          if (boxType === 'single')
                          {
-                              function makeSingleBoxVisible()
+                              function makeSingleBoxVisible ()
                               {
                                    makeCallNumberSingleContainer.removeClass("d-none");
-                                   setTimeout(() => {
+                                   setTimeout(() =>
+                                   {
                                         makeCallNumberSingleContainer.addClass("show");
                                    }, 10);
                               }
@@ -4788,9 +5009,11 @@
                               if (makeCallNumberBulkContainer.hasClass("show"))
                               {
                                    makeCallNumberBulkContainer.removeClass("show");
-                                   setTimeout(() => {
+                                   setTimeout(() =>
+                                   {
                                         makeCallNumberBulkContainer.addClass("d-none");
-                                        setTimeout(() => {
+                                        setTimeout(() =>
+                                        {
                                              makeSingleBoxVisible();
                                         }, 100);
                                    }, 300);
@@ -4800,14 +5023,15 @@
                                    makeSingleBoxVisible();
                               }
 
-                              
+
                          }
                          else if (boxType === 'bulk')
                          {
-                              function makeBulkBoxVisible()
+                              function makeBulkBoxVisible ()
                               {
                                    makeCallNumberBulkContainer.removeClass("d-none");
-                                   setTimeout(() => {
+                                   setTimeout(() =>
+                                   {
                                         makeCallNumberBulkContainer.addClass("show");
                                    }, 10);
                               }
@@ -4815,9 +5039,11 @@
                               if (makeCallNumberSingleContainer.hasClass("show"))
                               {
                                    makeCallNumberSingleContainer.removeClass("show");
-                                   setTimeout(() => {
+                                   setTimeout(() =>
+                                   {
                                         makeCallNumberSingleContainer.addClass("d-none");
-                                        setTimeout(() => {
+                                        setTimeout(() =>
+                                        {
                                              makeBulkBoxVisible();
                                         }, 100);
                                    }, 300);
@@ -4875,6 +5101,108 @@
                          }
                     });
                });
+          </script>
+
+          <!-- Conversations -->
+          <script>
+               const switchBackToOuntboundCallTab = $("#switchBackToOuntboundCallTab");
+               const currentOutboundBulkCallName = $("#currentOutboundBulkCallName");
+
+               const conversationOutboundList = $("#conversationOutboundList");
+               const conversationOutboundBulkList = $("#conversationOutboundBulkList");
+
+               const switchBackToConversationsListTabButton = $("#switchBackToConversationsListTab");
+
+               const conversationListTab = $("#conversationListTab");
+               const conversationManageTab = $("#conversationManageTab");
+
+               switchBackToOuntboundCallTab.on('click', (event) =>
+               {
+                    event.preventDefault();
+
+                    conversationOutboundBulkList.removeClass("show");
+
+                    setTimeout(() =>
+                    {
+                         conversationOutboundBulkList.addClass("d-none");
+                         conversationOutboundList.removeClass("d-none");
+
+                         setTimeout(() =>
+                         {
+                              conversationOutboundList.addClass("show");
+                         }, 10);
+                    }, 300);
+               });
+
+               switchBackToConversationsListTabButton.on('click', (event) =>
+               {
+                    event.preventDefault();
+
+                    conversationManageTab.removeClass("show");
+
+                    setTimeout(() =>
+                    {
+                         conversationManageTab.removeClass("d-none");
+                         conversationListTab.removeClass("d-none");
+
+                         setTimeout(() =>
+                         {
+                              conversationListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               });
+     
+               function CreateConversationWavesurfer(containerId)
+               {
+                    let waveSurferConversation = WaveSurfer.create({
+                         container: containerId,
+                         waveColor: '#5f6833',
+                         progressColor: '#CBE54E',
+                         height: 70,
+                         barWidth: 2,
+                         barHeight: 0.7,
+                         url: 'assets/surah-nasr.mp3',
+                         fillParent: true,
+                         audioRate: 1,
+                         plugins: [
+                              WaveSurfer.Hover.create({
+                                   lineColor: '#fff',
+                                   lineWidth: 2,
+                                   labelBackground: '#555',
+                                   labelColor: '#fff',
+                                   labelSize: '11px',
+                              }),
+                         ],
+                    });
+                    waveSurferConversation.load();
+
+                    let audioPlayPauseButton = $(containerId).parent().find('.audio-controller button[button-type="start-stop-audio"]');
+                    audioPlayPauseButton.on('click', (event) => {
+                         waveSurferConversation.playPause();
+
+                         let currentMode = $(event.currentTarget).attr('mode');
+
+                         if (currentMode === 'play')
+                         {
+                              $(event.currentTarget).attr('mode', 'pause');
+                              $(event.currentTarget).find('i').removeClass('fa-play').addClass('fa-pause');
+                         }
+                         else
+                         {
+                              $(event.currentTarget).attr('mode', 'play');
+                              $(event.currentTarget).find('i').removeClass('fa-pause').addClass('fa-play');
+                         }
+                    });
+
+                    waveSurferConversation.on('ready', (duration) => {
+                         audioPlayPauseButton.prop('disabled', false);
+
+                         console.log(audioPlayPauseButton);
+                    });
+               }
+
+               CreateConversationWavesurfer('#waveform-conversation-ai');
+               CreateConversationWavesurfer('#waveform-conversation-user');   
           </script>
      </body>
 

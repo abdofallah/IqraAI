@@ -1,0 +1,42 @@
+/**
+ * The Template plugin
+ */
+
+import BasePlugin, { type BasePluginEvents } from '../base-plugin.js'
+
+export type TemplatePluginOptions = {
+}
+
+const defaultOptions = {
+}
+
+export type TemplatePluginEvents = BasePluginEvents & {
+}
+
+export class TemplatePlugin extends BasePlugin<TemplatePluginEvents, TemplatePluginOptions> {
+  protected options: TemplatePluginOptions & typeof defaultOptions
+
+  constructor(options?: TemplatePluginOptions) {
+    super(options || {})
+
+    this.options = Object.assign({}, defaultOptions, options)
+  }
+
+  public static create(options?: TemplatePluginOptions) {
+    return new TemplatePlugin(options)
+  }
+
+  /** Called by wavesurfer, don't call manually */
+  onInit() {
+    if (!this.wavesurfer) {
+      throw Error('WaveSurfer is not initialized')
+    }
+  }
+
+  /** Unmount */
+  public destroy() {
+    super.destroy()
+  }
+}
+
+export default TemplatePlugin
