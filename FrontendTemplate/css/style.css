@@ -1167,7 +1167,7 @@ a:focus {
      color: black;
      padding: 6px;
      border-radius: 4px;
-     font-weight: 600;
+     font-weight: 500;
 }
 
 .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message .tool-result {
@@ -1175,5 +1175,5 @@ a:focus {
      color: black;
      padding: 6px;
      border-radius: 4px;
-     font-weight: 600;
+     font-weight: 500;
 }
