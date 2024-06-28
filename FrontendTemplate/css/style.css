@@ -171,7 +171,10 @@ a:focus {
 #make-call-tab .nav-link,
 #make-call-simple-tab .nav-link,
 #make-call-assign-number-modal-tab .nav-link,
-#conversations-tab .nav-link
+#conversations-tab .nav-link,
+#toolManager-inner-tab .nav-link,
+#cache-inner-tab .nav-link,
+#cache-messages-group-inner-tab .nav-link
 {
      color: rgba(255, 255, 255, 0.8) !important;
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
@@ -191,7 +194,10 @@ a:focus {
 #make-call-tab .nav-link:not(:last-of-type),
 #make-call-simple-tab .nav-link:not(:last-of-type),
 #make-call-assign-number-modal-tab .nav-link:not(:last-of-type),
-#conversations-tab .nav-link:not(:last-of-type)
+#conversations-tab .nav-link:not(:last-of-type),
+#toolManager-inner-tab .nav-link:not(:last-of-type),
+#cache-inner-tab .nav-link:not(:last-of-type),
+#cache-messages-group-inner-tab .nav-link:not(:last-of-type)
 {
      margin-right: 10px;
 }
@@ -208,7 +214,10 @@ a:focus {
 #make-call-tab .nav-link.active,
 #make-call-simple-tab .nav-link.active,
 #make-call-assign-number-modal-tab .nav-link.active,
-#conversations-tab .nav-link.active
+#conversations-tab .nav-link.active,
+#toolManager-inner-tab .nav-link.active,
+#cache-inner-tab .nav-link.active,
+#cache-messages-group-inner-tab .nav-link.active
 {
      color: var(--tcolor-light-green) !important;
      border-bottom-color: var(--tcolor-light-green);
@@ -226,7 +235,10 @@ a:focus {
 #make-call-tab .nav-link:not(.active):hover,
 #make-call-simple-tab .nav-link:not(.active):hover,
 #make-call-assign-number-modal-tab .nav-link:not(.active):hover,
-#conversations-tab .nav-link:not(.active):hover
+#conversations-tab .nav-link:not(.active):hover,
+#toolManager-inner-tab .nav-link:not(.active):hover,
+#cache-inner-tab .nav-link:not(.active):hover,
+#cache-messages-group-inner-tab .nav-link:not(.active):hover
 {
      color: var(--tcolor-lighter-green) !important;
      border-bottom-color: var(--tcolor-lighter-green);
@@ -244,7 +256,10 @@ a:focus {
 #make-call-tab .nav-link.disabled,
 #make-call-simple-tab .nav-link.disabled,
 #make-call-assign-number-modal-tab .nav-link.disabled,
-#conversations-tab .nav-link.disabled
+#conversations-tab .nav-link.disabled,
+#toolManager-inner-tab .nav-link.disabled,
+#cache-inner-tab .nav-link.disabled,
+#cache-messages-group-inner-tab .nav-link.disabled
 {
      color: var(--bs-nav-link-disabled-color) !important;
      border-bottom-color: var(--bs-nav-link-disabled-color) !important;
@@ -426,7 +441,9 @@ a:focus {
 #conversationInboundTable,
 #conversationOutboundTable,
 #conversationWebsocketTable,
-#conversationOutboundBulkTable
+#conversationOutboundBulkTable,
+#customMessageCacheGroupTable,
+#customMessageCacheGroupMessagesTable
 {
      table-layout: fixed;
     overflow-wrap:break-word;
@@ -442,7 +459,9 @@ a:focus {
 #conversationInboundTable.table>:not(caption)>*>*,
 #conversationOutboundTable.table>:not(caption)>*>*,
 #conversationWebsocketTable.table>:not(caption)>*>*,
-#conversationOutboundBulkTable.table>:not(caption)>*>*
+#conversationOutboundBulkTable.table>:not(caption)>*>*,
+#customMessageCacheGroupTable.table>:not(caption)>*>*,
+#customMessageCacheGroupMessagesTable.table>:not(caption)>*>*
 {
      padding: 14px 20px;
      vertical-align: middle;
@@ -458,7 +477,9 @@ a:focus {
 #conversationInboundTable.table>thead>*>*,
 #conversationOutboundTable.table>thead>*>*,
 #conversationWebsocketTable.table>thead>*>*,
-#conversationOutboundBulkTable.table>thead>*>*
+#conversationOutboundBulkTable.table>thead>*>*,
+#customMessageCacheGroupTable.table>thead>*>*,
+#customMessageCacheGroupMessagesTable.table>thead>*>*
 {
      background-color: var(--tcolor-lighter-green);
      color: black;
@@ -476,7 +497,9 @@ a:focus {
      #conversationInboundTable,
      #conversationOutboundTable,
      #conversationWebsocketTable,
-     #conversationOutboundBulkTable
+     #conversationOutboundBulkTable,
+     #customMessageCacheGroupTable,
+     #customMessageCacheGroupMessagesTable
      {
           overflow-x: scroll;
           display: inline-block;
@@ -1176,4 +1199,16 @@ a:focus {
      padding: 6px;
      border-radius: 4px;
      font-weight: 500;
+}
+
+.toolAudioExtraOptionsBox {
+     background-color: #1a1a1a;
+     border-radius: 6px;
+     padding: 10px;
+
+     border-top-right-radius: 0;
+     border-top-left-radius: 0;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+     border-top: 0;
 }
