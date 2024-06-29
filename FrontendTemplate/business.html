@@ -2851,7 +2851,7 @@
                <div class="inner-container">
                     <!-- Tabs Buttons -->
                     <div class="d-flex flex-row align-items-center justify-content-between mb-4">
-                         <ul class="nav" id="cache-inner-tab" role="tablist">
+                         <ul class="nav fade show w-100" id="cache-inner-tab" role="tablist">
                               <li class="nav-item me-2" role="presentation">
                                    <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill"
                                         data-bs-target="#cache-inner-messages" type="button" role="tab"
@@ -2863,6 +2863,14 @@
                                         aria-controls="cache-inner-audio" aria-selected="true">Audio</button>
                               </li>
                          </ul>
+                         <nav class="fade d-none w-100" aria-label="breadcrumb" id="cache-messages-group-manage-breadcrumb">
+                              <ol class="breadcrumb mb-0">
+                                   <li class="breadcrumb-item"><a href="#" id="switchBackToMessageCacheGroupListTab">Messages</a>
+                                   </li>
+                                   <li class="breadcrumb-item active" aria-current="page"><span
+                                             id="currentMessageCacheGroupMessageName">Message</span></li>
+                              </ol>
+                         </nav>
                          <select class="form-select" style="max-width: 300px">
                               <option value="en-us" selected>English | EN-US</option>
                               <option value="en-ar">Arabic | AR-OM</option>
@@ -2923,16 +2931,16 @@
                               <!-- Group Messages List Tab -->
                               <div class="fade d-none w-100" id="messageCacheGroupMessagesListTab">
                                    <!-- Tabs Buttons -->
-                                   <ul class="nav mb-4" id="cache-messages-group-inner-tab" role="tablist">
+                                   <ul class="nav mb-4 show fade" id="cache-messages-group-inner-tab" role="tablist">
                                         <li class="nav-item me-2" role="presentation">
                                              <button class="nav-link active" id="cache-messages-group-inner-general-tab" data-bs-toggle="pill"
                                                   data-bs-target="#cache-messages-group-inner-general" type="button" role="tab"
                                                   aria-controls="cache-messages-group-inner-general" aria-selected="true">General</button>
                                         </li>
                                         <li class="nav-item me-2" role="presentation">
-                                             <button class="nav-link" id="cache-messages-group-inner-messages-tab" data-bs-toggle="pill"
-                                                  data-bs-target="#cache-messages-group-inner-messages" type="button" role="tab"
-                                                  aria-controls="cache-messages-group-inner-messages" aria-selected="true">Messages</button>
+                                             <button class="nav-link" id="cache-messages-group-queries-list-tab" data-bs-toggle="pill"
+                                                  data-bs-target="#cache-messages-group-queries-list" type="button" role="tab"
+                                                  aria-controls="cache-messages-group-queries-list" aria-selected="true">Queries</button>
                                         </li>
                                    </ul>
                                    <!-- Tabs Content -->
@@ -2951,15 +2959,15 @@
                                                   placeholder="Group Description">
                                              </div>
                                         </div>
-                                        <!-- Messages -->
-                                        <div class="tab-pane fade w-100" id="cache-messages-group-inner-messages" role="tabpanel"
-                                        aria-labelledby="cache-messages-group-inner-messages-tab" tabindex="0">
-                                             <div class="fade w-100 show" id="messageCacheGroupMessagesListTab">
+                                        <!-- Queries -->
+                                        <div class="tab-pane fade w-100" id="cache-messages-group-queries-list" role="tabpanel"
+                                        aria-labelledby="cache-messages-group-queries-list-tab" tabindex="0">
+                                             <div class="fade w-100 show" id="messageCacheGroupQueriesListTab">
                                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                        <div style="min-width: 200px" class="me-4">
                                                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary"
-                                                                 id="addNewMessageCacheGroupMessageButton">
-                                                                 <span>+ Add New Message</span>
+                                                                 id="addNewMessageCacheGroupQueryButton">
+                                                                 <span>+ Add New Query</span>
                                                             </button>
                                                        </div>
                                                        <div class="input-group w-100">
@@ -3002,10 +3010,10 @@
                                                   <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                        <nav aria-label="breadcrumb">
                                                             <ol class="breadcrumb mb-0">
-                                                                 <li class="breadcrumb-item"><a href="#" id="switchBackToMessageCacheGroupListTab">Messages</a>
+                                                                 <li class="breadcrumb-item"><a href="#" id="switchBackToMessageCacheGroupQueriesListTab">Queries</a>
                                                                  </li>
                                                                  <li class="breadcrumb-item active" aria-current="page"><span
-                                                                           id="currentMessageCacheGroupMessageName">Message</span></li>
+                                                                           id="currentMessageCacheGroupQueryName">Query Name</span></li>
                                                             </ol>
                                                        </nav>
                                                        <button class="btn btn-primary btn-sm btn-ic-span-align"
@@ -6296,7 +6304,103 @@
                const tooltipTriggerList = document.querySelectorAll('#cache-tab [data-bs-toggle="tooltip"]');
                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
+               const addNewMessageCacheGroupButton = $("#addNewMessageCacheGroupButton");
 
+               const messageCacheGroupListTab = $("#messageCacheGroupListTab");
+               const messageCacheGroupMessagesListTab = $("#messageCacheGroupMessagesListTab");
+
+               const cacheInnerTab = $("#cache-inner-tab");
+               const cacheMessagesGroupManageBreadcrumb = $("#cache-messages-group-manage-breadcrumb");
+
+               const currentMessageCacheGroupMessageName = $("#currentMessageCacheGroupMessageName");
+
+               const switchBackToMessageCacheGroupListTabButton = $("#switchBackToMessageCacheGroupListTab");
+
+               const addNewMessageCacheGroupQueryButton = $("#addNewMessageCacheGroupQueryButton");
+
+               const messageCacheGroupQueriesListTab = $("#messageCacheGroupQueriesListTab");
+               const messageCacheGroupMessageManagerTab = $("#messageCacheGroupMessageManagerTab");
+
+               const cacheMessagesGroupInnerTab = $("#cache-messages-group-inner-tab");
+
+               const currentMessageCacheGroupQueryName = $("#currentMessageCacheGroupQueryName");
+
+               const switchBackToMessageCacheGroupQueriesListTab = $("#switchBackToMessageCacheGroupQueriesListTab");
+
+               addNewMessageCacheGroupButton.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheInnerTab.removeClass("show");
+                    messageCacheGroupListTab.removeClass("show");
+                    setTimeout(() => {
+                         currentMessageCacheGroupMessageName.text("New Group");
+
+                         cacheInnerTab.addClass("d-none");
+                         messageCacheGroupListTab.addClass("d-none");
+
+                         cacheMessagesGroupManageBreadcrumb.removeClass("d-none");
+                         messageCacheGroupMessagesListTab.removeClass("d-none");
+
+                         setTimeout(() => {
+                              cacheMessagesGroupManageBreadcrumb.addClass("show");
+                              messageCacheGroupMessagesListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               });
+
+               switchBackToMessageCacheGroupListTabButton.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheMessagesGroupManageBreadcrumb.removeClass("show");
+                    messageCacheGroupMessagesListTab.removeClass("show");
+                    setTimeout(() => {
+                         cacheMessagesGroupManageBreadcrumb.addClass("d-none");
+                         messageCacheGroupMessagesListTab.addClass("d-none");
+
+                         cacheInnerTab.removeClass("d-none");
+                         messageCacheGroupListTab.removeClass("d-none");
+
+                         setTimeout(() => {
+                              cacheInnerTab.addClass("show");
+                              messageCacheGroupListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
+          
+               addNewMessageCacheGroupQueryButton.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheMessagesGroupInnerTab.removeClass("show");
+                    messageCacheGroupQueriesListTab.removeClass("show");
+                    setTimeout(() => {
+                         currentMessageCacheGroupQueryName.text("New Query");
+
+                         cacheMessagesGroupInnerTab.addClass("d-none");
+                         messageCacheGroupQueriesListTab.addClass("d-none");
+
+                         messageCacheGroupMessageManagerTab.removeClass("d-none");
+                         setTimeout(() => {
+                              messageCacheGroupMessageManagerTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
+          
+               switchBackToMessageCacheGroupQueriesListTab.on('click', (event) => {
+                    event.preventDefault();
+
+                    messageCacheGroupMessageManagerTab.removeClass("show");
+                    setTimeout(() => {
+                         messageCacheGroupMessageManagerTab.addClass("d-none");
+
+                         cacheMessagesGroupInnerTab.removeClass("d-none");
+                         messageCacheGroupQueriesListTab.removeClass("d-none");
+
+                         setTimeout(() => {
+                              cacheMessagesGroupInnerTab.addClass("show");
+                              messageCacheGroupQueriesListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
           });
      </script>
 
