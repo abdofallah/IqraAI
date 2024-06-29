@@ -2547,6 +2547,9 @@
                                    <button class="nav-link" id="make-call-number-tab" data-bs-toggle="pill" data-bs-target="#make-call-number" type="button" role="tab" aria-controls="make-call-number" aria-selected="true">Number</button>
                               </li>
                               <li class="nav-item me-2" role="presentation">
+                                   <button class="nav-link" id="make-call-configuration-tab" data-bs-toggle="pill" data-bs-target="#make-call-configuration" type="button" role="tab" aria-controls="make-call-configuration" aria-selected="true">Configuration</button>
+                              </li>
+                              <li class="nav-item me-2" role="presentation">
                                    <button class="nav-link" id="make-call-agent-tab" data-bs-toggle="pill" data-bs-target="#make-call-agent" type="button" role="tab" aria-controls="make-call-agent" aria-selected="true">Agent</button>
                               </li>
                               <li class="nav-item me-2" role="presentation">
@@ -2570,7 +2573,11 @@
                                    <label class="form-label" for="editMakeCallDescriptionInput">Description</label>
                                    <input type="text" class="form-control" id="editMakeCallDescriptionInput" placeholder="Call Description">
                               </div>
-                              <div class="mb-3">
+                         </div>
+
+                         <!-- Number -->
+                         <div class="tab-pane fade w-100" id="make-call-number" role="tabpanel" aria-labelledby="make-call-number-tab" tabindex="0">
+                              <div class="">
                                    <label class="form-label btn-ic-span-align" for="editMakeCallTypeInput">
                                         <span>Type </span>
 
@@ -2579,7 +2586,7 @@
                                         </a>
                                    </label>
                                    <div class="row">
-                                        <div class="col-md-6 col-12 mb-4">
+                                        <div class="col-md-6 col-12 mb-3">
                                              <div class="make-call-type-box-choose active" box-type="single">
                                                   <div class="info-icon">
                                                        <i class="fa-regular fa-user"></i>
@@ -2590,7 +2597,7 @@
                                                   </div>
                                              </div>
                                         </div>
-                                        <div class="col-md-6 col-12">
+                                        <div class="col-md-6 col-12 mb-3">
                                              <div class="make-call-type-box-choose" box-type="bulk">
                                                   <div class="info-icon">
                                                        <i class="fa-regular fa-user-group"></i>
@@ -2603,10 +2610,6 @@
                                         </div>
                                    </div>
                               </div>
-                         </div>
-
-                         <!-- Number -->
-                         <div class="tab-pane fade w-100" id="make-call-number" role="tabpanel" aria-labelledby="make-call-number-tab" tabindex="0">
                               <div class="show fade" id="make-call-number-single-container">
                                    <div class="mb-3">
                                         <label class="form-label" for="editSelectedMakeCallNumber">Selected
@@ -2683,6 +2686,10 @@
                                         <input type="file" class="form-control" id="editMakeCallToNumberBulkInput">
                                    </div>
                               </div>
+                         </div>
+
+                         <!-- Configuration -->
+                         <div class="tab-pane fade w-100" id="make-call-configuration" role="tabpanel" aria-labelledby="make-call-configuration-tab" tabindex="0">
                               <div class="mb-3">
                                    <div class="form-check form-switch">
                                         <label class="form-check-label" for="editMakeCallRetryOnDeclineCheck">Retry on
