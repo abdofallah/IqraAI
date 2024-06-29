@@ -181,6 +181,7 @@ a:focus {
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
      transition: 0.15s;
      font-weight: 500;
+     margin-bottom: 10px;
 }
 
 #billing-inner-tabs .nav-link:not(:last-of-type),

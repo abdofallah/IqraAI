@@ -802,9 +802,12 @@
                          <div>
                               <!-- Manager Inner Tabs -->
                               <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                   <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
+                                   <ul class="nav" id="agents-manager-tab" role="tablist">
                                         <li class="nav-item me-2" role="presentation">
                                              <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                             <button class="nav-link" id="agents-manager-context-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-context" type="button" role="tab" aria-controls="agents-manager-context" aria-selected="true">Context</button>
                                         </li>
                                         <li class="nav-item me-2" role="presentation">
                                              <button class="nav-link" id="agents-manager-personality-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-personality" type="button" role="tab" aria-controls="agents-manager-personality" aria-selected="true">Personality</button>
@@ -833,7 +836,7 @@
 
                               <div class="tab-content w-100" id="agents-manager-tabContent">
                                    <!-- General -->
-                                   <div class="tab-pane fade w-100" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
+                                   <div class="tab-pane fade w-100 show active" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
                                         <div class="mb-3">
                                              <label class="form-label" for="editAgentIdentifierInput">Identifier</label>
                                              <div class="input-group">
@@ -846,31 +849,35 @@
                                              <input type="text" class="form-control" id="editAgentDescriptionInput" placeholder="Agent Description">
                                         </div>
                                    </div>
-                                   <!-- Utterances -->
-                                   <div class="tab-pane fade w-100" id="agents-manager-utterances" role="tabpanel" aria-labelledby="agents-manager-utterances-tab" tabindex="0">
-                                        <div class="mb-3">
-                                             <label class="form-label" for="editAgentGreetingStartTypeInput">Opening
-                                                  Type</label>
-                                             <select class="form-select" id="editAgentGreetingStartTypeInput">
-                                                  <option value="ai_first" selected>Agent Greets Right Away</option>
-                                                  <option value="user_first">Wait for User To Speak Before Greeting
-                                                  </option>
-                                             </select>
+                                   <!-- Context -->
+                                   <div class="tab-pane fade w-100" id="agents-manager-context" role="tabpanel" aria-labelledby="agents-manager-context-tab" tabindex="0">
+                                        <div class="form-check form-switch mb-3">
+                                             <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranding" checked>
+                                             <label class="form-check-label" for="agentEditContextEnableBranding">Use Branding</label>
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branding information for this agent.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
                                         </div>
-                                        <div class="mb-3">
-                                             <label class="form-label" for="editAgentPersonalityGreetingInput">Greeting
-                                                  Message</label>
-                                             <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
+                                        <div class="form-check form-switch mb-3">
+                                             <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranches" checked>
+                                             <label class="form-check-label" for="agentEditContextEnableBranches">Use Branches</label>
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branches information for this agent.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
                                         </div>
-                                        <div class="mb-3">
-                                             <label class="form-label btn-ic-span-align" for="editAgentPhrasesBeforeReply">
-                                                  <span>Phrases Before Reply </span>
-
-                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Phrases to be spoken before the agent reply.<br>This is spoken while AI is generating reply hence decreasing the reply silence time.">
-                                                       <i class="fa-regular fa-circle-question"></i>
-                                                  </a>
-                                             </label>
-                                             <textarea class="form-control" id="editAgentPhrasesBeforeReply" rows="3" style="resize: none" placeholder="Enter phrases to be spoken before reply seperated by commas"></textarea>
+                                        <div class="form-check form-switch mb-3">
+                                             <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableServices" checked>
+                                             <label class="form-check-label" for="agentEditContextEnableServices">Use Services</label>
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context services information for this agent.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                             <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableProducts" checked>
+                                             <label class="form-check-label" for="agentEditContextEnableProducts">Use Products</label>
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context products information for this agent.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
                                         </div>
                                    </div>
                                    <!-- Personality -->
@@ -920,6 +927,33 @@
                                              <div id="editAgentPersonalityValueInputs">
 
                                              </div>
+                                        </div>
+                                   </div>
+                                   <!-- Utterances -->
+                                   <div class="tab-pane fade w-100" id="agents-manager-utterances" role="tabpanel" aria-labelledby="agents-manager-utterances-tab" tabindex="0">
+                                        <div class="mb-3">
+                                             <label class="form-label" for="editAgentGreetingStartTypeInput">Opening
+                                                  Type</label>
+                                             <select class="form-select" id="editAgentGreetingStartTypeInput">
+                                                  <option value="ai_first" selected>Agent Greets Right Away</option>
+                                                  <option value="user_first">Wait for User To Speak Before Greeting
+                                                  </option>
+                                             </select>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label" for="editAgentPersonalityGreetingInput">Greeting
+                                                  Message</label>
+                                             <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                             <label class="form-label btn-ic-span-align" for="editAgentPhrasesBeforeReply">
+                                                  <span>Phrases Before Reply </span>
+
+                                                  <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Phrases to be spoken before the agent reply.<br>This is spoken while AI is generating reply hence decreasing the reply silence time.">
+                                                       <i class="fa-regular fa-circle-question"></i>
+                                                  </a>
+                                             </label>
+                                             <textarea class="form-control" id="editAgentPhrasesBeforeReply" rows="3" style="resize: none" placeholder="Enter phrases to be spoken before reply seperated by commas"></textarea>
                                         </div>
                                    </div>
                                    <!-- Scripts -->
@@ -1370,7 +1404,7 @@
                                         </div>
                                    </div>
                                    <!-- Cache -->
-                                   <div class="tab-pane fade show active w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
+                                   <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
                                         <!-- Tabs Buttons -->
                                         <ul class="nav w-100 mb-4 fade show w-100" id="cache-inner-tab" role="tablist">
                                              <li class="nav-item me-2" role="presentation">
@@ -1379,9 +1413,12 @@
                                              <li class="nav-item me-2" role="presentation">
                                                   <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="true">Audio</button>
                                              </li>
+                                             <li class="nav-item me-2" role="presentation">
+                                                  <button class="nav-link" id="cache-inner-settings-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-settings" type="button" role="tab" aria-controls="cache-inner-settings" aria-selected="true">Settings</button>
+                                             </li>
                                         </ul>
                                         <!-- Messages Manager Breadcrumb -->
-                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-messages-inner-breadcrumb">
+                                        <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-messages-inner-breadcrumb">
                                              <nav aria-label="breadcrumb">
                                                   <ol class="breadcrumb mb-0">
                                                        <li class="breadcrumb-item">
@@ -1397,10 +1434,27 @@
                                                   <span> Save</span>
                                              </button>
                                         </div>
+                                        <!-- Audio Manager Breadcrumb -->
+                                        <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-audio-inner-breadcrumb">
+                                             <nav aria-label="breadcrumb">
+                                                  <ol class="breadcrumb mb-0">
+                                                       <li class="breadcrumb-item">
+                                                            <a href="#" id="switchBackToAudioCacheGroupQueriesListTab">Audio</a>
+                                                       </li>
+                                                       <li class="breadcrumb-item active" aria-current="page">
+                                                            <span id="currentAudioCacheGroupQueryName">Query Name</span>
+                                                       </li>
+                                                  </ol>
+                                             </nav>
+                                             <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
+                                                  <i class='fa-regular fa-floppy-disk'></i>
+                                                  <span> Save</span>
+                                             </button>
+                                        </div>
                                         <!-- Tabs Content -->
                                         <div class="tab-content" id="cache-inner-tabContent w-100">
                                              <!-- Messages -->
-                                             <div class="tab-pane fade w-100" id="cache-inner-messages" role="tabpanel" aria-labelledby="cache-inner-messages-tab" tabindex="0">
+                                             <div class="tab-pane fade w-100 show active" id="cache-inner-messages" role="tabpanel" aria-labelledby="cache-inner-messages-tab" tabindex="0">
                                                   <div class="fade w-100 show" id="messageCacheGroupQueriesListTab">
                                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                             <div style="min-width: 300px" class="me-4">
@@ -1457,8 +1511,8 @@
                                                   </div>
                                              </div>
                                              <!-- Audio -->
-                                             <div class="tab-pane fade w-100 show active" id="cache-inner-audio" role="tabpanel" aria-labelledby="cache-inner-audio-tab" tabindex="0">
-                                                  <div class="fade w-100 d-none" id="audioCacheGroupQueriesListTab">
+                                             <div class="tab-pane fade w-100" id="cache-inner-audio" role="tabpanel" aria-labelledby="cache-inner-audio-tab" tabindex="0">
+                                                  <div class="fade w-100 show" id="audioCacheGroupQueriesListTab">
                                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                                             <div style="min-width: 300px" class="me-4">
                                                                  <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheQueryButton">
@@ -1498,7 +1552,7 @@
                                                             </table>
                                                        </div>
                                                   </div>
-                                                  <div class="fade w-100 show" id="audioCacheGroupAddQueryTab">
+                                                  <div class="fade w-100 d-none" id="audioCacheGroupAddQueryTab">
                                                        <div class="mb-3">
                                                             <label class="form-label" for="audioCacheGroupQueryNameInput">Query</label>
                                                             <input type="text" class="form-control" id="audioCacheGroupQueryNameInput" placeholder="Audio Message Query">
@@ -1513,6 +1567,20 @@
                                                             </label>
                                                             <input type="number" class="form-control" id="audioCacheGroupQueryExpiryInput" value="24">
                                                        </div>
+                                                  </div>
+                                             </div>
+                                             <!-- Settings -->
+                                             <div class="tab-pane fade w-100" id="cache-inner-settings" role="tabpanel" aria-labelledby="cache-inner-settings-tab" tabindex="0">
+                                                  <div class="form-check form-switch mb-2">
+                                                       <input class="form-check-input" type="checkbox" role="switch" id="agentCacheAutoCacheAudioResponseCheck">
+                                                       <label class="form-check-label" for="agentCacheAutoCacheAudioResponseCheck">Auto Cache Audio Responses</label>
+                                                       <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Automatically cache all audio (text-to-speech) responses in the cache.">
+                                                            <i class="fa-regular fa-circle-question"></i>
+                                                       </a>
+                                                  </div>
+                                                  <div class="input-group fade d-none" id="agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox">
+                                                       <span class="input-group-text">Default Expiry (hours)</span>
+                                                       <input type="number" class="form-control" id="agentCacheAutoCacheAudioResponseExpiryDefaultHoursInput" value="24">
                                                   </div>
                                              </div>
                                         </div>
@@ -4043,6 +4111,32 @@
 
                const editAgentBackgroundAudioSelect = $("#editAgentBackgroundAudioSelect");
 
+               const addNewMessageCacheGroupQueryButton = $("#addNewMessageCacheGroupQueryButton");
+
+               const messageCacheGroupQueriesListTab = $("#messageCacheGroupQueriesListTab");
+               const messageCacheGroupMessageManagerTab = $("#messageCacheGroupMessageManagerTab");
+
+               const currentMessageCacheGroupQueryName = $("#currentMessageCacheGroupQueryName");
+
+               const switchBackToMessageCacheGroupQueriesListTab = $("#switchBackToMessageCacheGroupQueriesListTab");
+
+               const cacheInnerTab = $("#cache-inner-tab");
+
+               const cacheMessagesInnerBreadcrumb = $("#cache-messages-inner-breadcrumb");
+
+               const addNewAudioCacheQueryButton = $("#addNewAudioCacheQueryButton");
+
+               const audioCacheGroupQueriesListTab = $("#audioCacheGroupQueriesListTab");
+               const audioCacheGroupAddQueryTab = $("#audioCacheGroupAddQueryTab");
+
+               const cacheAudioInnerBreadcrumb = $("#cache-audio-inner-breadcrumb");
+               
+               const switchBackToAudioCacheGroupQueriesListTab = $("#switchBackToAudioCacheGroupQueriesListTab");
+               const currentAudioCacheGroupQueryName = $("#currentAudioCacheGroupQueryName");
+
+               const agentCacheAutoCacheAudioResponseCheck = $("#agentCacheAutoCacheAudioResponseCheck");
+               const agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox = $("#agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox");
+
                addNewAgentButton.on("click", (event) => {
                     event.preventDefault();
 
@@ -4461,6 +4555,103 @@
 
                     audioConfigBox.removeClass('d-none');
                });
+          
+               addNewMessageCacheGroupQueryButton.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheInnerTab.removeClass("show");
+                    messageCacheGroupQueriesListTab.removeClass("show");
+                    setTimeout(() => {
+                         currentMessageCacheGroupQueryName.text("New Query");
+
+                         cacheInnerTab.addClass("d-none");
+                         messageCacheGroupQueriesListTab.addClass("d-none");
+
+                         cacheMessagesInnerBreadcrumb.removeClass("d-none");
+                         messageCacheGroupMessageManagerTab.removeClass("d-none");
+                         setTimeout(() => {
+                              cacheMessagesInnerBreadcrumb.addClass("show");
+                              messageCacheGroupMessageManagerTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
+
+               switchBackToMessageCacheGroupQueriesListTab.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheMessagesInnerBreadcrumb.removeClass("show");
+                    messageCacheGroupMessageManagerTab.removeClass("show");
+                    setTimeout(() => {
+                         cacheMessagesInnerBreadcrumb.addClass("d-none");
+                         messageCacheGroupMessageManagerTab.addClass("d-none");
+
+                         cacheInnerTab.removeClass("d-none");
+                         messageCacheGroupQueriesListTab.removeClass("d-none");
+
+                         setTimeout(() => {
+                              cacheInnerTab.addClass("show");
+                              messageCacheGroupQueriesListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })              
+
+               addNewAudioCacheQueryButton.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheInnerTab.removeClass("show");
+                    audioCacheGroupQueriesListTab.removeClass("show");
+                    setTimeout(() => {
+                         currentAudioCacheGroupQueryName.text("New Query");
+
+                         cacheInnerTab.addClass("d-none");
+                         audioCacheGroupQueriesListTab.addClass("d-none");
+
+                         cacheAudioInnerBreadcrumb.removeClass("d-none");
+                         audioCacheGroupAddQueryTab.removeClass("d-none");
+                         setTimeout(() => {
+                              cacheAudioInnerBreadcrumb.addClass("show");
+                              audioCacheGroupAddQueryTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
+
+               switchBackToAudioCacheGroupQueriesListTab.on('click', (event) => {
+                    event.preventDefault();
+
+                    cacheAudioInnerBreadcrumb.removeClass("show");
+                    audioCacheGroupAddQueryTab.removeClass("show");
+                    setTimeout(() => {
+                         cacheAudioInnerBreadcrumb.addClass("d-none");
+                         audioCacheGroupAddQueryTab.addClass("d-none");
+
+                         cacheInnerTab.removeClass("d-none");
+                         audioCacheGroupQueriesListTab.removeClass("d-none");
+
+                         setTimeout(() => {
+                              cacheInnerTab.addClass("show");
+                              audioCacheGroupQueriesListTab.addClass("show");
+                         }, 10);
+                    }, 300);
+               })
+
+               agentCacheAutoCacheAudioResponseCheck.on('change', (event) => {
+                    let isChecked = agentCacheAutoCacheAudioResponseCheck.is(':checked');
+
+                    if (isChecked)
+                    {
+                         agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass('d-none');
+                         setTimeout(() => {
+                              agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass('show');
+                         }, 10);
+                    }
+                    else
+                    {
+                         agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass('show');
+                         setTimeout(() => {
+                              agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass('d-none');
+                         }, 300);
+                    }
+               })
           });
      </script>
 
@@ -5262,7 +5453,8 @@
                          $('.responseStatusBox').addClass('d-none');
 
                          let editorId = `responseStatus${selectedResponseType}CodeInput`;
-                         toolResponseStatusTypeList.append(`
+
+                         let elementData = $(`
                               <div class="responseStatusBox" status-type="${selectedResponseType}">
                                    <h5 class="mb-3">${selectedResponseType} Response</h5>
                                    <div class="mb-3">
@@ -5288,8 +5480,11 @@
                                         <div class="form-check form-switch">
                                              <input class="form-check-input" type="checkbox" role="switch" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseCheck" id="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
                                              <label class="form-check-label" for="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
-                                                  <span>Speak Static Response</span>     
+                                                  <span>Speak Static Response</span>
                                              </label>
+                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Predefined response for AI to speak rather than a generated one.<br><br>Use {{response_data}} variable to include the response data in the spoken response.">
+                                                  <i class="fa-regular fa-circle-question"></i>
+                                             </a>
                                         </div>
                                         <div class="mt-2 d-none">
                                              <input type="text" class="form-control" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseText" id="toolResponseStatusSpeakStaticResponseText${selectedResponseType}" placeholder="Static response for AI to speak">
@@ -5297,7 +5492,11 @@
                                    </div>
                               </div>
                               
-                         `);
+                         `)
+                         toolResponseStatusTypeList.append(elementData);
+
+                         let staticResponseTooltip = new bootstrap.Tooltip(elementData.find('a[data-bs-toggle="tooltip"]'))
+
                          initResponseCodeEditor(selectedResponseType, editorId);
 
                          $('[button-type="selectToolResponseStatusType"]').removeClass('active');
@@ -5431,82 +5630,6 @@
                     // init
                     addResponseStatusOptions();
                });
-          });
-     </script>
-
-     <!-- Cache Tab -->
-     <script>
-          $(document).ready(() => {
-               const addNewMessageCacheGroupQueryButton = $("#addNewMessageCacheGroupQueryButton");
-
-               const messageCacheGroupQueriesListTab = $("#messageCacheGroupQueriesListTab");
-               const messageCacheGroupMessageManagerTab = $("#messageCacheGroupMessageManagerTab");
-
-               const currentMessageCacheGroupQueryName = $("#currentMessageCacheGroupQueryName");
-
-               const switchBackToMessageCacheGroupQueriesListTab = $("#switchBackToMessageCacheGroupQueriesListTab");
-
-               const cacheInnerTab = $("#cache-inner-tab");
-               const cacheMessagesInnerBreadcrumb = $("#cache-messages-inner-breadcrumb");
-
-               const addNewAudioCacheQueryButton = $("#addNewAudioCacheQueryButton");
-
-               const audioCacheGroupQueriesListTab = $("#audioCacheGroupQueriesListTab");
-               const audioCacheGroupAddQueryTab = $("#audioCacheGroupAddQueryTab");
-
-               addNewMessageCacheGroupQueryButton.on('click', (event) => {
-                    event.preventDefault();
-
-                    cacheInnerTab.removeClass("show");
-                    messageCacheGroupQueriesListTab.removeClass("show");
-                    setTimeout(() => {
-                         currentMessageCacheGroupQueryName.text("New Query");
-
-                         cacheInnerTab.addClass("d-none");
-                         messageCacheGroupQueriesListTab.addClass("d-none");
-
-                         cacheMessagesInnerBreadcrumb.removeClass("d-none");
-                         messageCacheGroupMessageManagerTab.removeClass("d-none");
-                         setTimeout(() => {
-                              cacheMessagesInnerBreadcrumb.addClass("show");
-                              messageCacheGroupMessageManagerTab.addClass("show");
-                         }, 10);
-                    }, 300);
-               })
-
-               switchBackToMessageCacheGroupQueriesListTab.on('click', (event) => {
-                    event.preventDefault();
-
-                    cacheMessagesInnerBreadcrumb.removeClass("show");
-                    messageCacheGroupMessageManagerTab.removeClass("show");
-                    setTimeout(() => {
-                         cacheMessagesInnerBreadcrumb.addClass("d-none");
-                         messageCacheGroupMessageManagerTab.addClass("d-none");
-
-                         cacheInnerTab.removeClass("d-none");
-                         messageCacheGroupQueriesListTab.removeClass("d-none");
-
-                         setTimeout(() => {
-                              cacheInnerTab.addClass("show");
-                              messageCacheGroupQueriesListTab.addClass("show");
-                         }, 10);
-                    }, 300);
-               })
-
-               addNewAudioCacheQueryButton.on('click', (event) => {
-                    event.preventDefault();
-
-                    audioCacheGroupQueriesListTab.removeClass("show");
-                    setTimeout(() => {
-                         audioCacheGroupQueriesListTab.addClass("d-none");
-
-                         audioCacheGroupAddQueryTab.removeClass("d-none");
-                         setTimeout(() => {
-                              audioCacheGroupAddQueryTab.addClass("show");
-                         }, 10);
-                    }, 300);
-               })
-
           });
      </script>
 
