@@ -175,7 +175,8 @@ a:focus {
 #toolManager-inner-tab .nav-link,
 #cache-inner-tab .nav-link,
 #cache-messages-group-inner-tab .nav-link,
-#cache-audio-group-inner-tab .nav-link
+#cache-audio-group-inner-tab .nav-link,
+#settings-inner-tab .nav-link
 {
      color: rgba(255, 255, 255, 0.8) !important;
      border-bottom: 3px solid rgba(255, 255, 255, 0.1);
@@ -200,7 +201,8 @@ a:focus {
 #toolManager-inner-tab .nav-link:not(:last-of-type),
 #cache-inner-tab .nav-link:not(:last-of-type),
 #cache-messages-group-inner-tab .nav-link:not(:last-of-type),
-#cache-audio-group-inner-tab .nav-link:not(:last-of-type)
+#cache-audio-group-inner-tab .nav-link:not(:last-of-type),
+#settings-inner-tab .nav-link:not(:last-of-type)
 {
      margin-right: 10px;
 }
@@ -221,7 +223,8 @@ a:focus {
 #toolManager-inner-tab .nav-link.active,
 #cache-inner-tab .nav-link.active,
 #cache-messages-group-inner-tab .nav-link.active,
-#cache-audio-group-inner-tab .nav-link.active
+#cache-audio-group-inner-tab .nav-link.active,
+#settings-inner-tab .nav-link.active
 {
      color: var(--tcolor-light-green) !important;
      border-bottom-color: var(--tcolor-light-green);
@@ -243,7 +246,8 @@ a:focus {
 #toolManager-inner-tab .nav-link:not(.active):hover,
 #cache-inner-tab .nav-link:not(.active):hover,
 #cache-messages-group-inner-tab .nav-link:not(.active):hover,
-#cache-audio-group-inner-tab .nav-link:not(.active):hover
+#cache-audio-group-inner-tab .nav-link:not(.active):hover,
+#settings-inner-tab .nav-link:not(.active):hover
 {
      color: var(--tcolor-lighter-green) !important;
      border-bottom-color: var(--tcolor-lighter-green);
@@ -265,7 +269,8 @@ a:focus {
 #toolManager-inner-tab .nav-link.disabled,
 #cache-inner-tab .nav-link.disabled,
 #cache-messages-group-inner-tab .nav-link.disabled,
-#cache-audio-group-inner-tab .nav-link.disabled
+#cache-audio-group-inner-tab .nav-link.disabled,
+#settings-inner-tab .nav-link.disabled
 {
      color: var(--bs-nav-link-disabled-color) !important;
      border-bottom-color: var(--bs-nav-link-disabled-color) !important;
@@ -1221,4 +1226,18 @@ a:focus {
 
      border: var(--bs-border-width) solid var(--bs-border-color);
      border-top: 0;
+}
+
+#settingsGeneralBusinessLogoPreview {
+     max-width: 100px;
+     max-height: 100px;
+     padding: 20px;
+
+     border: var(--bs-border-width) solid var(--bs-border-color);
+
+     transition: all 300ms;
+}
+
+#settingsGeneralBusinessLogoPreview:hover{
+     padding: 10px;
 }

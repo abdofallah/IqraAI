@@ -71,7 +71,7 @@
                               <span class="nav_name">Conversations</span>
                          </a>
                          <span class="mt-4 nav-category-label">Other</span>
-                         <a href="#" class="nav_link mb-0 disabled" for="settings-tab">
+                         <a href="#" class="nav_link mb-0 active" for="settings-tab">
                               <i class='fa-regular fa-gear nav_icon'></i>
                               <span class="nav_name">Settings</span>
                          </a>
@@ -732,11 +732,11 @@
                -->
 
           <!-- Agents Container -->
-          <div class="main-container fade show w-100" id="agents-tab">
+          <div class="main-container fade d-none w-100" id="agents-tab">
                <h3 class="fw-bold tab-title"><i class='fa-regular fa-headset'></i> <span>Agents</span></h3>
                <div class="inner-container">
                     <!-- Agents List Tab -->
-                    <div class="fade d-none w-100" id="agentsListTab">
+                    <div class="fade show w-100" id="agentsListTab">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                               <div style="min-width: 200px" class="me-4">
                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentButton">
@@ -767,7 +767,7 @@
                          </div>
                     </div>
                     <!-- Agents Manager Tab -->
-                    <div class="fade show w-100" id="agentsManagerTab">
+                    <div class="fade d-none w-100" id="agentsManagerTab">
                          <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                               <nav aria-label="breadcrumb">
                                    <ol class="breadcrumb mb-0">
@@ -3814,10 +3814,58 @@
                -->
 
           <!-- Settings Container -->
-          <div class="main-container fade w-100 d-none" id="settings-tab">
+          <div class="main-container fade w-100 show" id="settings-tab">
                <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
                <div class="inner-container">
-                    <h6>Ah! This page is currently under development.</h6>
+                    <!-- Tabs Buttons -->
+                    <ul class="nav mb-3" id="settings-inner-tab" role="tablist">
+                         <li class="nav-item me-2" role="presentation">
+                              <button class="nav-link active" id="settings-inner-general-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-general" type="button" role="tab" aria-controls="settings-inner-general" aria-selected="true">General</button>
+                         </li>
+                         <li class="nav-item me-2" role="presentation">
+                              <button class="nav-link" id="settings-inner-languages-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-languages" type="button" role="tab" aria-controls="settings-inner-languages" aria-selected="true">Languages</button>
+                         </li>
+                         <li class="nav-item me-2" role="presentation">
+                              <button class="nav-link" id="settings-inner-region-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-region" type="button" role="tab" aria-controls="settings-inner-region" aria-selected="true">Region</button>
+                         </li>
+                    </ul>
+                    <!-- Tabs Content -->
+                    <div class="tab-content w-100" id="settings-inner-tabContent">
+                         <!-- General -->
+                         <div class="tab-pane fade w-100 show active" id="settings-inner-general" role="tabpanel" aria-labelledby="settings-inner-general-tab" tabindex="0">
+                              <div class="mb-3">
+                                   <label class="form-label" for="settingsGeneralBusinessName">Business Name</label>
+                                   <input type="text" class="form-control" id="settingsGeneralBusinessName" placeholder="Business Name">
+                              </div>
+                              <div class="mb-3">
+                                   <label class="form-label d-block" for="settingsGeneralBusinessLogo">Business Logo</label>
+                                   <img src="img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3 mb-3" alt="Business Logo" id="settingsGeneralBusinessLogoPreview">
+                                   <input type="file" class="form-control" id="settingsGeneralBusinessLogo">
+                              </div>
+                         </div>
+                         <!-- Languages -->
+                         <div class="tab-pane fade w-100 " id="settings-inner-languages" role="tabpanel" aria-labelledby="settings-inner-languages-tab" tabindex="0">
+                              <div class="mb-3">
+                                   <label class="form-label" for="settingsLanguageAddSelect">Added Languages</label>
+                                   <div class="input-group">
+                                        <select class="form-select" id="settingsLanguageAddSelect">
+                                             <option value="none" selected disabled>Select Language</option>
+                                        </select>
+                                        <button class="btn btn-light" type="button" id="settingsLanguageAddButton">Add</button>
+                                   </div>
+                              </div>
+                              <div id="settingsAddedLanguagesList">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" value="English | EN-US" disabled>
+                                        <button class="btn btn-danger" button-type="settingsLanguageRemove" type="button"><i class="fa-regular fa-trash"></i></button>
+                                   </div>
+                              </div>
+                         </div>
+                         <!-- Region -->
+                         <div class="tab-pane fade w-100" id="settings-inner-region" role="tabpanel" aria-labelledby="settings-inner-region-tab" tabindex="0">
+                              region
+                         </div>
+                    </div>
                </div>
           </div>
      </div>
@@ -3838,6 +3886,7 @@
      <script src="libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
 
      <!-- Custom Scripts -->
+     <script src="js/countrycode_languages_list.js"></script>
      <script src="js/script.js"></script>
 
      <!-- Overview Tab -->
@@ -5845,6 +5894,25 @@
 
           CreateConversationWavesurfer('#waveform-conversation-ai');
           CreateConversationWavesurfer('#waveform-conversation-user');   
+     </script>
+
+     <!-- Settings Tab -->
+     <script>
+          $(document).ready(() => {
+
+               const settingsLanguageAddSelect = $("#settingsLanguageAddSelect");
+
+               CountryCodeLanguagesList.forEach((value, index) => {
+                    settingsLanguageAddSelect.append(`<option value="${value.Code}">${value.Name} | ${value.Code}</option>`);
+               });
+
+               $(document).on('click', '#settingsAddedLanguagesList button[button-type="settingsLanguageRemove"]', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    $(event.currentTarget).parent().remove();
+               })
+          });
      </script>
 </body>
 
