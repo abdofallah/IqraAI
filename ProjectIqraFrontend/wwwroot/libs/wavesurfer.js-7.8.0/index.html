@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>wavesurfer.js examples</title>
+
+    <style>
+      body {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0;
+        margin: 0;
+        min-height: 100vh;
+        font-size: 16px;
+        font-family: sans-serif;
+      }
+      body * {
+        box-sizing: border-box;
+      }
+      header {
+        width: 100%;
+        text-align: center;
+        padding: 1rem 1rem 0;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.3em;
+      }
+      aside {
+        max-height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-width: 130px;
+      }
+      aside ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      aside li {
+        margin-bottom: 0.5rem;
+      }
+      aside a.active {
+        font-weight: bold;
+        text-decoration: none;
+      }
+      main {
+        flex: 1;
+        display: flex;
+        gap: 1rem;
+        padding: 0 1rem;
+      }
+      iframe {
+        display: block;
+        flex: 1;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      textarea {
+        display: block;
+        width: 40%;
+        font-family: 'Menlo', monospace;
+        font-size: 13px;
+        padding: 1em;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      footer {
+        padding: 0 1rem 1rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        align-items: center;
+      }
+
+      @media (max-width: 768px) {
+        aside {
+          padding-bottom: 0;
+        }
+        aside ul {
+          width: 100%;
+          display: flex;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          gap: 1rem;
+          padding-bottom: 1rem;
+        }
+        aside li {
+          white-space: nowrap;
+        }
+        main {
+          flex-direction: column;
+        }
+        iframe {
+          width: 100%;
+          height: 20vh;
+        }
+        textarea {
+          width: 100%;
+          order: 2;
+          flex: 1;
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #222;
+          color: #eee;
+        }
+        body a {
+          color: #fff;
+        }
+        iframe {
+          border-color: #444;
+          background: #333;
+        }
+        textarea {
+          background: #333;
+          color: #eee;
+          border-color: #444;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>wavesurfer.js examples</h1>
+    </header>
+
+    <main>
+      <aside>
+        <h3>Basics</h3>
+        <ul>
+          <li><a href="#basic.js">Basic</a></li>
+          <li><a href="#all-options.js">Options</a></li>
+          <li><a href="#events.js">Events</a></li>
+          <li><a href="#zoom.js">Zoom</a></li>
+          <li><a href="#bars.js">Bars</a></li>
+          <li><a href="#react.js">React</a></li>
+          <li><a href="#predecoded.js">Pre-decoded</a></li>
+          <li><a href="#video.js">Video</a></li>
+          <li><a href="#speed.js">Speed</a></li>
+        </ul>
+
+        <h3>Plugins</h3>
+        <ul>
+          <li><a href="#regions.js">Regions</a></li>
+          <li><a href="#hover.js">Hover</a></li>
+          <li><a href="#timeline.js">Timeline</a></li>
+          <li><a href="#timeline-custom.js">Timeline x2</a></li>
+          <li><a href="#minimap.js">Minimap</a></li>
+          <li><a href="#envelope.js">Envelope</a></li>
+          <li><a href="#spectrogram.js">Spectrogram</a></li>
+          <li><a href="#record.js">Record</a></li>
+          <li><a href="#zoom-plugin.js">Zoom</a></li>
+        </ul>
+
+        <h3>Advanced</h3>
+        <ul>
+          <li><a href="#styling.js">Styling</a></li>
+          <li><a href="#gradient.js">Gradient</a></li>
+          <li><a href="#soundcloud.js">Soundcloud</a></li>
+          <li><a href="#webaudio.js">Web Audio</a></li>
+          <li><a href="#silence.js">Silence</a></li>
+          <li><a href="#pitch.js">Pitch</a></li>
+          <li><a href="#split-channels.js">Split channels</a></li>
+          <li><a href="#custom-render.js">Custom render</a></li>
+          <li><a href="#multitrack.js">Multi-track</a></li>
+          <li><a href="#vowels.js">Vowels</a></li>
+          <li><a href="#fm-synth.js">FM synth</a></li>
+        </ul>
+      </aside>
+
+      <textarea spellcheck="false"></textarea>
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="wavesurfer.js example preview"></iframe>
+    </main>
+
+    <footer>
+      <a href="https://github.com/katspaugh/wavesurfer.js">GitHub</a>
+    </footer>
+
+    <script type="module" src="/examples/_preview.js"></script>
+  </body>
+</html>

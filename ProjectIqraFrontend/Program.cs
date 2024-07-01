@@ -11,13 +11,13 @@ namespace ProjectIqraFrontend
 
             /** Services START **/
 
-
             var appConfig = builder.Configuration;
 
-            IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["Redis:UserSessionConnectionString"]);
+            IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UsersSessionDatabase:ConnectionString"]);
             builder.Services.AddSingleton<IUserSessionRepository>(userSessionRepository);
 
-
+            IUserRepository userRepository = new UserRepository(appConfig["UsersDatabase:ConnectionString"], appConfig["UsersDatabase:DatabaseName"]);
+            builder.Services.AddSingleton<IUserRepository>(userRepository);
 
             /** Services END **/
 

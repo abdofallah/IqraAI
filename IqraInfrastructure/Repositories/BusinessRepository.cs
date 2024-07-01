@@ -6,11 +6,19 @@ namespace IqraInfrastructure.Repositories
 {
     public class BusinessRepository : IBusinessRepository
     {
+        private readonly string CollectionName = "Businesses";
+
         private readonly IMongoCollection<Business> _businessCollection;
 
+        public BusinessRepository(string connectionString, string databaseName)
+        {
+            IMongoClient client = new MongoClient(connectionString);
+            IMongoDatabase database = client.GetDatabase(databaseName);
+            _businessCollection = database.GetCollection<Business>(CollectionName);
+        }
         public BusinessRepository(IMongoDatabase database)
         {
-            _businessCollection = database.GetCollection<Business>("businesses");
+            _businessCollection = database.GetCollection<Business>(CollectionName);
         }
 
         public async Task<List<Business>> GetBusinessesMetadataAsync()

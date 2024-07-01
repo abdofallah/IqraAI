@@ -6,10 +6,20 @@ namespace IqraInfrastructure.Repositories
 {
     public class UserRepository : IUserRepository
     {
+        private readonly string CollectionName = "Users";
+
         private readonly IMongoCollection<User> _usersCollection;
+
+        public UserRepository(string connectionString, string databaseName)
+        {
+            IMongoClient client = new MongoClient(connectionString);
+            IMongoDatabase database = client.GetDatabase(databaseName);
+            _usersCollection = database.GetCollection<User>(CollectionName);
+        }
+
         public UserRepository (IMongoDatabase database)
         {
-            _usersCollection = database.GetCollection<User>("users");
+            _usersCollection = database.GetCollection<User>(CollectionName);
         }
 
         public async Task<bool> AddUserAsync(User user)
