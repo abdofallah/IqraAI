@@ -5,7 +5,6 @@ namespace IqraCore.Entities.User
     public class User
     {
         [BsonId]
-        private object Id { get; set; } = Guid.NewGuid();
         public string Email { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }

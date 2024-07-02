@@ -1,0 +1,376 @@
+﻿<html data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Iqra AI</title>
+
+    <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/libs/boxicons-2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web/css/fontawesome.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web/css/regular.min.css" rel="stylesheet">
+
+    <link href="~/css/structure.css" rel="stylesheet">
+    <link href="~/css/style.css" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
+
+    <style>
+
+    </style>
+
+    <style id="dynamicCSS"></style>
+</head>
+
+<body id="body-pd" class="body-pd">
+    <header class="header header-body-pd" id="header">
+        <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
+    </header>
+
+    <div class="l-navbar show" id="nav-bar">
+        <nav class="nav">
+            <div class="upper-navigation">
+                <a href="/" class="nav_logo">
+                    <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
+                </a>
+                <div class="nav_list">
+                    <a href="#" class="nav_link active" for="business-tab">
+                        <i class='fa-regular fa-briefcase nav_icon'></i>
+                        <span class="nav_name">Businesses</span>
+                    </a>
+                    <a href="#" class="nav_link" for="phone-numbers-tab">
+                        <i class='fa-regular fa-hashtag nav_icon'></i>
+                        <span class="nav_name">Numbers</span>
+                    </a>
+                    <a href="#" class="nav_link" for="billing-tab">
+                        <i class='fa-regular fa-credit-card nav_icon'></i>
+                        <span class="nav_name">Billing</span>
+                    </a>
+                    <a href="#" class="nav_link mb-0" for="settings-tab">
+                        <i class='fa-regular fa-gear nav_icon'></i>
+                        <span class="nav_name">Settings</span>
+                    </a>
+                </div>
+            </div>
+            <div class="bottom-navigation">
+                <a href="/logout" class="nav_link mt-0">
+                    <i class='fa-regular fa-right-from-bracket nav_icon'></i>
+                    <span class="nav_name">Log out</span>
+                </a>
+            </div>
+
+        </nav>
+    </div>
+
+    <div class="w-100 main-container-wrapper" id="tabs-list">
+        <!-- Bussiness Container -->
+        <div class="main-container fade show w-100" id="business-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
+            <div class="inner-container">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 200px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary">
+                            <span>+ Add New Business</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton">
+                        <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4 col-md-6 col-12">
+                        <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="41851">
+                            <div class="d-flex flex-row align-items-center justify-content-start">
+                                <img src="~/img/logo/Badal-Logo-Black.png">
+                                <h4>Badal Technologies</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phone Numbers Container -->
+        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <div class="inner-container">
+                <ul class="nav mb-3" id="inner-phone-numbers-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">Physical Sim</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link me-2" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
+                    </li>
+                    <li class="nav-item me" role="presentation">
+                        <button class="nav-link disabled" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
+                    </li>
+                </ul>
+                <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
+                    <!-- Custom Sim -->
+                    <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
+                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                            <div style="min-width: 300px" class="me-4">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCustomSimNumberButton">
+                                    <span>+ Add Physical Sim Number</span>
+                                </button>
+                            </div>
+                            <div class="input-group w-100">
+                                <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchCustomSimNumberButton">
+                                <button class="input-group-button btn btn-primary" id="searchCustomSimNumberButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
+                            </div>
+                        </div>
+                        <table id="customSimNumbersTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 160px;">Status</th>
+                                    <th scope="col">Number</th>
+                                    <th scope="col">Region</th>
+                                    <th scope="col">Assigned</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-success">Online</span></td>
+                                    <td>
+                                        <b>+968 97845984</b>
+                                    </td>
+                                    <td>Oman-Muscat</td>
+                                    <td>Badal Technologies</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-danger">Offline</span></td>
+                                    <td>
+                                        <b>+41 519845559</b>
+                                    </td>
+                                    <td>Switzerland-Basel</td>
+                                    <td><span class="text-info">Unassigned</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Twilio -->
+                    <div class="tab-pane fade w-100" id="inner-phone-numbers-twilio" role="tabpanel" aria-labelledby="inner-phone-numbers-twilio-tab" tabindex="0">
+                        <ul class="nav mb-3" id="inner-twilio-phone-numbers-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active me-2" id="inner-twilio-phone-numbers-numbers-tab" data-bs-toggle="pill" data-bs-target="#inner-twilio-phone-numbers-numbers" type="button" role="tab" aria-controls="inner-twilio-phone-numbers-numbers" aria-selected="true">Numbers</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="inner-twilio-phone-numbers-settings-tab" data-bs-toggle="pill" data-bs-target="#inner-twilio-phone-numbers-settings" type="button" role="tab" aria-controls="inner-twilio-phone-numbers-settings" aria-selected="true">Settings</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content w-100" id="inner-twilio-phone-numbers-tabContent">
+                            <div class="tab-pane fade show active w-100" id="inner-twilio-phone-numbers-numbers" role="tabpanel" aria-labelledby="inner-twilio-phone-numbers-numbers-tab" tabindex="0">
+                                <div class="input-group w-100 mb-4">
+                                    <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchTwilioNumberButton">
+                                    <button class="input-group-button btn btn-primary" id="searchTwilioNumberButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                                <table id="twilioNumbersTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Numbers</th>
+                                            <th scope="col">Assigned</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>+1 555 555 5555</b>
+                                            </td>
+                                            <td><span class="text-info">Unassigned</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="tab-pane fade w-100" id="inner-twilio-phone-numbers-settings" role="tabpanel" aria-labelledby="inner-twilio-phone-numbers-settings-tab" tabindex="0">
+                                <div class="mb-3">
+                                    <label for="phoneNumberTwilioAccountSID" class="form-label">Account SID</label>
+                                    <input type="text" class="form-control" id="phoneNumberTwilioAccountSID" placeholder="Twilio Account SID">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phoneNumberTwilioAuthKey" class="form-label">Auth Key</label>
+                                    <input type="text" class="form-control" id="phoneNumberTwilioAuthKey" placeholder="Twilio Auth Key">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- Vonage -->
+                    <div class="tab-pane fade w-100" id="inner-phone-numbers-vonage" role="tabpanel" aria-labelledby="inner-phone-numbers-vonage-tab" tabindex="0">
+                        Vonage Todo
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing Container -->
+        <div class="main-container fade w-100 d-none" id="billing-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
+            <div class="inner-container">
+                <nav class="mb-4">
+                    <div class="nav" id="billing-inner-tabs" role="tablist">
+                        <button class="nav-link active" id="nav-invoice-tab" data-bs-toggle="tab" data-bs-target="#nav-invoice" type="button" role="tab" aria-controls="nav-invoice" aria-selected="true">
+                            Invoice
+                        </button>
+
+                        <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-controls="nav-method" aria-selected="false">
+                            Method
+                        </button>
+                    </div>
+                </nav>
+                <div class="tab-content w-100" id="billing-inner-tabContent">
+                    <div class="tab-pane fade show active w-100" id="nav-invoice" role="tabpanel" aria-labelledby="nav-invoice-tab" tabindex="0">
+                        <table class="table table-hover w-100" id="billing-invoices-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Invoice-Number</th>
+                                    <th scope="col">Cost</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="invoice-unpaid">
+                                    <td>4/27/2024</td>
+                                    <td>112512</td>
+                                    <td>$504.23</td>
+                                    <td class="invoice-unpaid">
+                                        <span>Unpaid</span>
+                                    </td>
+                                </tr>
+                                <tr class="invoice-paid">
+                                    <td>3/26/2024</td>
+                                    <td>523324</td>
+                                    <td>$204.23</td>
+                                    <td class="invoice-paid">
+                                        <span>Paid</span>
+                                    </td>
+                                </tr>
+                                <tr class="invoice-paid">
+                                    <td>2/24/2024</td>
+                                    <td>967545</td>
+                                    <td>$14.23</td>
+                                    <td class="invoice-paid">
+                                        <span>Paid</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="tab-pane fade w-100" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab" tabindex="0">
+                        <div class="row">
+                            <div class="col-md-6 col-12">
+                                <div class="billing-method-card d-flex flex-column align-items-center justify-content-center mb-2">
+                                    <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
+                                        <div class="method-type-icon icon-visa">
+                                            <img src="~/img/visa-svgrepo-com.svg">
+                                        </div>
+
+                                        <button class="btn btn-outline-light" type="button" disabled>Primary</button>
+                                    </div>
+                                    <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
+                                        <div>
+                                            <h6 class="label">Card Number</h6>
+                                            <h6>•••• •••• •••• 1539</h6>
+                                        </div>
+
+                                        <div>
+                                            <h6 class="label">Expires</h6>
+                                            <h6>04/24</h6>
+                                        </div>
+
+                                        <div>
+                                            <h6 class="label">CVV</h6>
+                                            <h6>•••</h6>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                        <div>
+                                            <h6 class="label">Card Name</h6>
+                                            <h6>John Doe</h6>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-row align-items-center justify-content-between w-100 payment-method-cards-buttons">
+                                    <button class="btn btn-light w-100 me-3">
+                                        <i class="fa-regular fa-trash"></i>
+                                        <span>Delete</span>
+                                    </button>
+
+                                    <button class="btn btn-light w-100">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Container -->
+        <div class="main-container fade w-100 d-none" id="settings-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- libs -->
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script src="libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="js/script.js"></script>
+
+    <!-- Variables -->
+    <script>
+        var isBusinessAnimationEnabled = true;
+    </script>
+
+    <!-- Businesses Tab -->
+    <script>
+        function MoveToBusinessPage(BusinessId) {
+            window.location.href = "/app/business/" + BusinessId;
+        }
+
+        $(document).ready(() => {
+            $(document).on("click", ".business-card", (event) => {
+                let currentCardElement = $(event.currentTarget);
+                let businessDataId = currentCardElement.attr("data-business-id");
+
+                if (!businessDataId || !businessDataId.length) {
+                    return;
+                }
+
+                if (isBusinessAnimationEnabled) {
+                    $("body").css("overflow", "hidden");
+
+                    let transitionTimeMS = 1000
+
+                    currentCardElement.css("transition", `all ${transitionTimeMS}ms ease`);
+                    currentCardElement.css("transform", "scale(40)");
+                    currentCardElement.css("background-color", "#1a1a1a");
+                    currentCardElement.css("color", "#1a1a1a");
+
+                    setTimeout(() => {
+                        MoveToBusinessPage(businessDataId);
+                    }, (transitionTimeMS / 1.1));
+                }
+                else {
+                    MoveToBusinessPage(businessDataId);
+                }
+            })
+        });
+    </script>
+</body>
+
+</html>

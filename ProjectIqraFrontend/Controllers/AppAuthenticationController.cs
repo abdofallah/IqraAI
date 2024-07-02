@@ -5,13 +5,38 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
 {
-    public class AuthenticationController : Controller
+    public class AppAuthenticationController : Controller
     {
         private readonly UserManager _userManager;
 
-        public AuthenticationController(UserManager userManager)
+        public AppAuthenticationController(UserManager userManager)
         {
             _userManager = userManager;
+        }
+
+        [HttpPost("/auth/register")]
+        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        {
+            if (!TryValidateModel(model))
+            {
+                return BadRequest(new { success = false, message = "Invalid email or password" });
+            }
+
+            User? user = await _userManager.GetUserByEmail(model.Email);
+            if (user != null)
+            {
+                return BadRequest(new { success = false, message = "User already exists" });
+            }
+
+            user = await _userManager.RegisterUser(model);
+
+            UserSession? session = await _userManager.CreateUserSession(user.Email);
+            if (session == null)
+            {
+                return BadRequest(new { success = false, message = "Error while creating session" });
+            }
+
+            return Ok(new { success = true, sessionId = session.Id, authKey = session.Token });
         }
 
         [HttpPost("/auth/login")]

@@ -26,7 +26,7 @@ namespace IqraInfrastructure.Services.User
             return await _userDatabase.GetUserByEmail(email);
         }
 
-        public async Task<UserData> CreateUser(CreateUserModel model)
+        public async Task<UserData> RegisterUser(RegisterModel model)
         {
             UserData newUser = new UserData
             {
@@ -34,6 +34,15 @@ namespace IqraInfrastructure.Services.User
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 PasswordSHA = HashPassword(model.Password),
+                Analytics = new UserAnalytics()
+                {
+                    DateCreated = DateTime.UtcNow,
+                    LoginCount = 0,
+                },
+                IsAdmin = false,
+                Businesses = new List<long>(),
+                ResetPasswordExpiry = null,
+                ResetPasswordToken = null
             };
 
             await _userDatabase.AddUserAsync(newUser);
@@ -74,7 +83,7 @@ namespace IqraInfrastructure.Services.User
                 Token = authKey
             };
 
-            if (await _userSessionDatabase.CreateSession(userEmail, userSession.Id, userSession.Token, _sessionDurationHours))
+            if (!(await _userSessionDatabase.CreateSession(userEmail, userSession.Id, userSession.Token, _sessionDurationHours)))
             {
                 return null;
             }

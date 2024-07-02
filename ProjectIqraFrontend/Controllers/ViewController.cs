@@ -13,23 +13,9 @@ namespace ProjectIqraFrontend.Controllers
         }
 
         [HttpGet("/")]
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                return RedirectToAction("Login");
-            }
-
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                return RedirectToAction("Login");
-            }
-
-            return View();
+            return View("Index");
         }
 
         [HttpGet("/login")]
@@ -41,21 +27,55 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                return View();
+                return View("App/Authentication");
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                return View();
+                return View("App/Authentication");
             }
 
-            return RedirectToAction("Index");
+            return RedirectToAction("App");
         }
 
-        [HttpGet("/password-reset")]
-        public IActionResult PasswordReset()
+        [HttpGet("/register")]
+        public async Task<IActionResult> Register()
         {
-            return View();
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return View("App/Authentication");
+            }
+
+            if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            return View("App/Authentication");
+        }
+
+        [HttpGet("/forget")]
+        public async Task<IActionResult> Forget()
+        {
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return View("App/Authentication");
+            }
+
+            if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            return View("App/Authentication");
         }
 
         [HttpGet("/logout")]
@@ -66,6 +86,67 @@ namespace ProjectIqraFrontend.Controllers
             Response.Cookies.Delete("userEmail");
 
             return RedirectToAction("Login");
+        }
+
+        [HttpGet("/app")]
+        public async Task<IActionResult> App()
+        {
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            return View("App/Index");
+        }
+
+        [HttpGet("/app/business")]
+        public async Task<IActionResult> Business()
+        {
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            return View("App/Business");
+        }
+
+
+        [HttpGet("/app/business/{businessId}")]
+        public async Task<IActionResult> Business(long? businessId)
+        {
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            return View("App/Business");
         }
     }
 }

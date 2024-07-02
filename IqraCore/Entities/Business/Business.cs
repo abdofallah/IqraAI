@@ -1,14 +1,12 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
     public class Business
     {
         [BsonId]
-        private ObjectId _id {  get; set; }
-
         public long BusinessId { get; set; }
+
         public string BusinessName { get; set; }
         public string BusinessPhoneNumber { get; set; }
         public string BusinessCountry { get; set; }

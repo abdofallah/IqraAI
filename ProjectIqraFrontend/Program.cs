@@ -1,5 +1,6 @@
 using IqraCore.Interfaces.Repositories;
 using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Services.User;
 
 namespace ProjectIqraFrontend
 {
@@ -14,10 +15,10 @@ namespace ProjectIqraFrontend
             var appConfig = builder.Configuration;
 
             IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UsersSessionDatabase:ConnectionString"]);
-            builder.Services.AddSingleton<IUserSessionRepository>(userSessionRepository);
-
             IUserRepository userRepository = new UserRepository(appConfig["UsersDatabase:ConnectionString"], appConfig["UsersDatabase:DatabaseName"]);
-            builder.Services.AddSingleton<IUserRepository>(userRepository);
+
+            UserManager userManager = new UserManager(userSessionRepository, userRepository);
+            builder.Services.AddSingleton<UserManager>(userManager);
 
             /** Services END **/
 
