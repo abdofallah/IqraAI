@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.BusinessNEW.BusinessApp.BusinessAppAgent.BusinessAppAgentScript.BusinessAppAgentScriptConversation.BusinessAppAgentScriptConversationExecuteTool.BusinessAppAgentScriptConversationExecuteToolSystem
+﻿namespace IqraCore.Entities.BusinessNEW
 {
     public enum BusinessAppAgentScriptConversationSystemToolENUM
     {
