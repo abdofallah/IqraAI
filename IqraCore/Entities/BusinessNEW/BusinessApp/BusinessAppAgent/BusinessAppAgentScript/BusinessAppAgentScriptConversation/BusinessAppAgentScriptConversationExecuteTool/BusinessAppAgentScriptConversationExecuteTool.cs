@@ -2,6 +2,6 @@
 {
     public class BusinessAppAgentScriptConversationExecuteTool
     {
-
+        public BusinessAppAgentScriptConversationExecuteToolENUM ToolType { get; set; }
     }
 }

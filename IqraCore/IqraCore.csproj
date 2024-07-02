@@ -16,4 +16,8 @@
     <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Entities\BusinessNEW\BusinessApp\BusinessAppAgent\BusinessAppAgentScript\BusinessAppAgentScriptConversation\BusinessAppAgentScriptConversationExecuteTool\BusinessAppAgentScriptConversationExecuteToolSystem\" />
+  </ItemGroup>
+
 </Project>
