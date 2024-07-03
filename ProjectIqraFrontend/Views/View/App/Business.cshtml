@@ -3584,16 +3584,19 @@
                             <button class="nav-link active" id="conversationsManage-general-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-general" type="button" role="tab" aria-controls="conversationsManage-general" aria-selected="true">General</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-conversation-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-conversation" type="button" role="tab" aria-controls="conversationsManage-conversation" aria-selected="true">Conversation</button>
+                            <button class="nav-link" id="conversationsManage-conversation-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-conversation" type="button" role="tab" aria-controls="conversationsManage-conversation" aria-selected="false">Conversation</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-number-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-number" type="button" role="tab" aria-controls="conversationsManage-number" aria-selected="true">Number</button>
+                            <button class="nav-link" id="conversationsManage-number-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-number" type="button" role="tab" aria-controls="conversationsManage-number" aria-selected="false">Number</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-agent-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-agent" type="button" role="tab" aria-controls="conversationsManage-agent" aria-selected="true">Agent</button>
+                            <button class="nav-link" id="conversationsManage-configuration-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-configuration" type="button" role="tab" aria-controls="conversationsManage-configuration" aria-selected="false">Configuration</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-actions-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-actions" type="button" role="tab" aria-controls="conversationsManage-actions" aria-selected="true">Actions</button>
+                            <button class="nav-link" id="conversationsManage-agent-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-agent" type="button" role="tab" aria-controls="conversationsManage-agent" aria-selected="false">Agent</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="conversationsManage-actions-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-actions" type="button" role="tab" aria-controls="conversationsManage-actions" aria-selected="false">Actions</button>
                         </li>
                     </ul>
                     <div class="tab-content w-100" id="conversationsManage-tabContent">
@@ -3798,6 +3801,9 @@
                                 <label class="form-label" for="conversationViewNumberTo">To</label>
                                 <input type="text" class="form-control" id="conversationViewNumberTo" value="+968 8956 4896" disabled>
                             </div>
+                        </div>
+                        <!-- Configuration -->
+                        <div class="tab-pane fade w-100" id="conversationsManage-configuration" role="tabpanel" aria-labelledby="conversationsManage-configuration-tab" tabindex="0">
                             <div class="mb-3">
                                 <div class="form-check form-switch">
                                     <label class="form-check-label" for="conversationViewNumberRetryOnDeclineCheck">

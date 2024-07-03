@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.BusinessNEW
+﻿namespace IqraCore.Entities.Helper.Agent
 {
-    public enum BusinessAppAgentScriptConversationSystemToolENUM
+    public enum AgentExecuteSystemToolTypeENUM
     {
         EndCall = 0,
         ChangeLanguage = 1,

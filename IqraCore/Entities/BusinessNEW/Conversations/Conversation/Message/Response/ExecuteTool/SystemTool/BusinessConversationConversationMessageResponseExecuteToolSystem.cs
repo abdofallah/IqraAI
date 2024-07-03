@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.BusinessNEW
 {
-    public class BusinessAppAgentScriptConversationExecuteToolSystem : BusinessAppAgentScriptConversationExecuteTool
+    public class BusinessConversationConversationMessageResponseExecuteToolSystem : BusinessConversationConversationMessageResponseExecuteTool
     {
         public AgentExecuteSystemToolTypeENUM ToolType { get; set; }
     }

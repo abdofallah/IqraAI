@@ -1,7 +1,9 @@
-﻿namespace IqraCore.Entities.BusinessNEW
+﻿using IqraCore.Entities.Helper.Agent;
+
+namespace IqraCore.Entities.BusinessNEW
 {
     public class BusinessAppAgentScriptConversationExecuteTool
     {
-        public BusinessAppAgentScriptConversationExecuteToolENUM ToolType { get; set; }
+        public AgentExecuteToolTypeENUM ToolType { get; set; }
     }
 }

@@ -16,8 +16,4 @@
     <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Entities\BusinessNEW\Conversations\Actions\" />
-  </ItemGroup>
-
 </Project>

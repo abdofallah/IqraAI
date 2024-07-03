@@ -1,7 +1,9 @@
-﻿namespace IqraCore.Entities.BusinessNEW
+﻿using IqraCore.Entities.Helper.Agent;
+
+namespace IqraCore.Entities.BusinessNEW
 {
     public class BusinessConversationConversationMessageResponse
     {
-        public BusinessConversationConversationMessageResponseENUM Type { get; set; }
+        public AgentReplyTypeENUM Type { get; set; }
     }
 }
