@@ -14,8 +14,8 @@ namespace ProjectIqraFrontend
 
             var appConfig = builder.Configuration;
 
-            IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UsersSessionDatabase:ConnectionString"]);
-            IUserRepository userRepository = new UserRepository(appConfig["UsersDatabase:ConnectionString"], appConfig["UsersDatabase:DatabaseName"]);
+            IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UserSessionDatabase:ConnectionString"]);
+            IUserRepository userRepository = new UserRepository(appConfig["UserDatabase:ConnectionString"], appConfig["UserDatabase:DatabaseName"]);
 
             UserManager userManager = new UserManager(userSessionRepository, userRepository);
             builder.Services.AddSingleton<UserManager>(userManager);

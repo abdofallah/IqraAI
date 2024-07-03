@@ -6,7 +6,7 @@ namespace IqraInfrastructure.Repositories
 {
     public class BusinessRepository : IBusinessRepository
     {
-        private readonly string CollectionName = "Businesses";
+        private readonly string CollectionName = "Business";
 
         private readonly IMongoCollection<Business> _businessCollection;
 
