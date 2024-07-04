@@ -10,6 +10,7 @@ namespace IqraCore.Entities.User
         public string LastName { get; set; }
         public string PasswordSHA { get; set; }
         public List<long> Businesses { get; set; } = new List<long>();
+        public List<long> Numbers { get; set; } = new List<long>();
         public UserAnalytics Analytics { get; set; } = new UserAnalytics();
         public string? ResetPasswordToken { get; set; } = null;
         public DateTime? ResetPasswordExpiry { get; set; } = DateTime.UtcNow;

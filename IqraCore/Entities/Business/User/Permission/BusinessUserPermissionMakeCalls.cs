@@ -2,9 +2,9 @@
 {
     public class BusinessUserPermissionMakeCalls
     {
-        public bool MakeCallsTabEnabled { get; set; }
-        public bool MakeSingleCallEnabled { get; set; }
-        public bool MakeBulkCallEnabled { get; set; }
-        public int MaxBulkCallNumbersCount { get; set; }
+        public bool MakeCallsTabEnabled { get; set; } = true;
+        public bool MakeSingleCallEnabled { get; set; } = true;
+        public bool MakeBulkCallEnabled { get; set; } = true;
+        public int MaxBulkCallNumbersCount { get; set; } = -1;
     }
 }

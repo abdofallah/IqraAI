@@ -2,10 +2,10 @@
 {
     public class BusinessUserWhiteLabel
     {
-        public string PlatformName { get; set; }
-        public string LogoURL { get; set; }
-        public string FaviconIconURL { get; set; }
-        public string CustomCSS { get; set; }
-        public string CustomJavaScript { get; set; }
+        public string PlatformName { get; set; } = string.Empty;
+        public string LogoURL { get; set; } = string.Empty;
+        public string FaviconIconURL { get; set; } = string.Empty;
+        public string CustomCSS { get; set; } = string.Empty;
+        public string CustomJavaScript { get; set; } = string.Empty;
     }
 }

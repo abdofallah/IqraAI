@@ -4,29 +4,29 @@
     {
         public bool ConversationsTabEnabled { get; set; }
 
-        public BusinessUserPermissionConversationsInboundCall InboundCallPermission { get; set; }
-        public BusinessUserPermissionConversationsOutboundCall OutboundCallPermission { get; set; }
-        public BusinessUserPermissionConversationsWebsocket WebsocketPermission { get; set; }
+        public BusinessUserPermissionConversationsInboundCall InboundCallPermission { get; set; } = new BusinessUserPermissionConversationsInboundCall();
+        public BusinessUserPermissionConversationsOutboundCall OutboundCallPermission { get; set; } = new BusinessUserPermissionConversationsOutboundCall();
+        public BusinessUserPermissionConversationsWebsocket WebsocketPermission { get; set; } = new BusinessUserPermissionConversationsWebsocket();
     }
 
     public class BusinessUserPermissionConversationsInboundCall
     {
-        public bool InboundCallTabEnabled { get; set; }
-        public bool DeleteInboundCall { get; set; }
-        public bool ExportInboundCall { get; set; }
+        public bool InboundCallTabEnabled { get; set; } = true;
+        public bool DeleteInboundCall { get; set; } = true;
+        public bool ExportInboundCall { get; set; } = true;
     }
 
     public class BusinessUserPermissionConversationsOutboundCall
     {
-        public bool OutboundCallTabEnabled { get; set; }
-        public bool DeleteOutboundCall { get; set; }
-        public bool ExportOutboundCall { get; set; }
+        public bool OutboundCallTabEnabled { get; set; } = true;
+        public bool DeleteOutboundCall { get; set; } = true;
+        public bool ExportOutboundCall { get; set; } = true;
     }
 
     public class BusinessUserPermissionConversationsWebsocket
     {
-        public bool WebsocketTabEnabled { get; set; }
-        public bool DeleteWebsocket { get; set; }
-        public bool ExportWebsocket { get; set; }
+        public bool WebsocketTabEnabled { get; set; } = true;
+        public bool DeleteWebsocket { get; set; } = true;
+        public bool ExportWebsocket { get; set; } = true;
     }
 }

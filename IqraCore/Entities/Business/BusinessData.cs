@@ -9,9 +9,9 @@ namespace IqraCore.Entities.Business
         public string UserEmail { get; set; }
 
         public string Name { get; set; }
-        public string Region { get; set; }
-        public string LogoURL { get; set; }
-        public string DefaultLanguage { get; set; }
+        public string Region { get; set; } = string.Empty;
+        public string LogoURL { get; set; } = string.Empty;
+        public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
         public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
         public List<BusinessUser> Users { get; set; } = new List<BusinessUser>();

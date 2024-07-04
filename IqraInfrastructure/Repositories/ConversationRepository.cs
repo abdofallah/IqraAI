@@ -38,7 +38,7 @@ namespace IqraInfrastructure.Repositories
             return _conversationsCollection.Find(filter).ToListAsync();
         }
 
-        public Task<List<ConversationData>> GetBusinessConversationsAsync(List<long> sessionsId)
+        public Task<List<ConversationData>> GetConversationsAsync(List<long> sessionsId)
         {
             var filter = Builders<ConversationData>.Filter.In(b => b.Id, sessionsId);
             return _conversationsCollection.Find(filter).ToListAsync();

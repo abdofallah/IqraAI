@@ -2,37 +2,37 @@
 {
     public class BusinessUserPermissionSettings
     {
-        public bool SettingsTabEnabled { get; set; }
+        public bool SettingsTabEnabled { get; set; } = true;
 
     }
 
     public class BusinessUserPermissionSettingsGeneral
     {
-        public bool GeneralTabEnabled { get; set; }
-        public bool EditGeneral { get; set; }
+        public bool GeneralTabEnabled { get; set; } = true;
+        public bool EditGeneral { get; set; } = true;
     }
 
     public class BusinessUserPermissionSettingsLanguages
     {
-        public bool LanguagesTabEnabled { get; set; }
-        public bool EditLanguages { get; set; }
-        public bool AddLanguages { get; set; }
-        public bool DeleteLanguages { get; set; }
-        public int MaxAllowedLanguages { get; set; }
+        public bool LanguagesTabEnabled { get; set; } = true;
+        public bool EditLanguages { get; set; } = true;
+        public bool AddLanguages { get; set; } = true;
+        public bool DeleteLanguages { get; set; } = true;
+        public int MaxAllowedLanguages { get; set; } = -1;
     }
 
     public class BusinessUserPermissionSettingsRegion
     {
-        public bool RegionTabEnabled { get; set; }
-        public bool EditRegion { get; set; }
+        public bool RegionTabEnabled { get; set; } = true;
+        public bool EditRegion { get; set; } = true;
     }
 
     public class BusinessUserPermissionSettingsUsers
     {
-        public bool UsersTabEnabled { get; set; }
-        public bool EditUsers { get; set; }
-        public bool AddUsers { get; set; }
-        public bool DeleteUsers { get; set; }
-        public int MaxAllowedUsers { get; set; }
+        public bool UsersTabEnabled { get; set; } = true;
+        public bool EditUsers { get; set; } = true;
+        public bool AddUsers { get; set; } = true;
+        public bool DeleteUsers { get; set; } = true;
+        public int MaxAllowedUsers { get; set; } = -1;
     }
 }

@@ -1,5 +1,6 @@
 using IqraCore.Interfaces.Repositories;
 using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.User;
 
 namespace ProjectIqraFrontend
@@ -19,6 +20,12 @@ namespace ProjectIqraFrontend
 
             UserManager userManager = new UserManager(userSessionRepository, userRepository);
             builder.Services.AddSingleton<UserManager>(userManager);
+
+            IBusinessRepository businessRepository = new BusinessRepository(appConfig["BusinessDatabase:ConnectionString"], appConfig["BusinessDatabase:DatabaseName"]);
+            IBusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
+
+            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository);
+            builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             /** Services END **/
 

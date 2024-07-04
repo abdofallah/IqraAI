@@ -69,7 +69,7 @@
             <div class="inner-container">
                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                     <div style="min-width: 200px" class="me-4">
-                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary">
+                        <button id="AddNewBusinessButton" class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" disabled>
                             <span>+ Add New Business</span>
                         </button>
                     </div>
@@ -80,15 +80,8 @@
                         </button>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-lg-4 col-md-6 col-12">
-                        <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="41851">
-                            <div class="d-flex flex-row align-items-center justify-content-start">
-                                <img src="~/img/logo/Badal-Logo-Black.png">
-                                <h4>Badal Technologies</h4>
-                            </div>
-                        </div>
-                    </div>
+                <div class="row" id="BusinessesList">
+                    <!-- Dynamically Generated -->
                 </div>
             </div>
         </div>
@@ -342,7 +335,59 @@
             window.location.href = "/app/business/" + BusinessId;
         }
 
+        function FetchUserBusinessPermissionsFromAPI(successCallback)
+        {
+            $.ajax({
+                url: '/app/user/permissions/business',
+                type: 'POST',
+                dataType: "json",
+                success: (response) => {
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
+        function FetchBusinessesFromAPI()
+        {
+            $.ajax({
+                url: '/app/user/businesses',
+                type: 'POST',
+                dataType: "json",
+                success: (data) => {
+                    console.log(data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+
+
+        }
+
+        function CreateUserBusinessCard(businessData)
+        {
+            let element = `
+                <div class="col-lg-4 col-md-6 col-12">
+                    <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
+                        <div class="d-flex flex-row align-items-center justify-content-start">
+                            <img src="~/img/logo/Badal-Logo-Black.png">
+                            <h4>${businessData.name}</h4>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return $(element);
+        }
+
         $(document).ready(() => {
+            const AddNewBusinessButton = $("#AddNewBusinessButton");
+
+            const BusinessesList = $("#BusinessesList");
+
             $(document).on("click", ".business-card", (event) => {
                 let currentCardElement = $(event.currentTarget);
                 let businessDataId = currentCardElement.attr("data-business-id");
@@ -368,7 +413,28 @@
                 else {
                     MoveToBusinessPage(businessDataId);
                 }
-            })
+            });
+
+            // Init
+
+            FetchUserBusinessPermissionsFromAPI((userBusinessPermission) => {
+                if (userBusinessPermission.canViewBusinesses) {
+                    FetchBusinessesFromAPI((userBusinesses) => {
+                        console.log(userBusinesses);
+
+                        userBusinesses.forEach((businessData) => {
+                            let businessCardElement = CreateUserBusinessCard(businessData);
+
+                            BusinessesList.append(businessCardElement);
+                        });
+                    });
+                }
+
+                if (userBusinessPermission.canAddBusinesses)
+                {
+                    AddNewBusinessButton.prop("disabled", false);
+                }
+            });
         });
     </script>
 </body>

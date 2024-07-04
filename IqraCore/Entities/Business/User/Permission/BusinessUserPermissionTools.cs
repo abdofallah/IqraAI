@@ -2,10 +2,10 @@
 {
     public class BusinessUserPermissionTools
     {
-        public bool ToolsTabEnabled { get; set; }
-        public bool AddNewTool { get; set; }
-        public bool EditTool { get; set; }
-        public bool DeleteTool { get; set; }
-        public int MaxAllowedTools { get; set; }
+        public bool ToolsTabEnabled { get; set; } = true;
+        public bool AddNewTool { get; set; } = true;
+        public bool EditTool { get; set; } = true;
+        public bool DeleteTool { get; set; } = true;
+        public int MaxAllowedTools { get; set; } = -1;
     }
 }

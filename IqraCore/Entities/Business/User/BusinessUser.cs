@@ -9,12 +9,12 @@ namespace IqraCore.Entities.Business
 
         public string Password { get; set; }
 
-        public bool CanUserLogin { get; set; }
+        public bool CanUserLogin { get; set; } = true;
 
-        public string? UserNotAllowedToLoginHTMLNotice { get; set; }
+        public string? UserNotAllowedToLoginHTMLNotice { get; set; } = null;
 
-        public BusinessUserPermission Permission { get; set; }
+        public BusinessUserPermission Permission { get; set; } = new BusinessUserPermission();
 
-        public BusinessUserWhiteLabel WhiteLabel { get; set; }
+        public BusinessUserWhiteLabel WhiteLabel { get; set; } = new BusinessUserWhiteLabel();
     }
 }

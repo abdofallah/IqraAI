@@ -7,7 +7,7 @@ namespace IqraCore.Interfaces.Repositories
     {
         Task<List<ConversationData>> GetConversationsAsync();
         Task<List<ConversationData>> GetBusinessConversationsAsync(long businessId);
-        Task<List<ConversationData>> GetBusinessConversationsAsync(List<long> sessionsId);
+        Task<List<ConversationData>> GetConversationsAsync(List<long> sessionsId);
         Task<ConversationData> GetConversationAsync(long sessionId);
         Task AddConversationAsync(ConversationData conversation);
         Task<bool> DeleteConversationAsync(long sessionId);

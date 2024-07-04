@@ -12,9 +12,47 @@ namespace ProjectIqraFrontend.Controllers
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppUserController(UserManager userManager)
+        public AppUserController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
+            _businessManager = businessManager;
+        }
+
+        [HttpPost("/app/user/permissions/business")]
+        public async Task<FunctionReturnResult<UserPermissionBusiness?>> GetUserBussinessPermissions()
+        {
+            var result = new FunctionReturnResult<UserPermissionBusiness?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            User? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = user.Permission.Business;
+
+            return result;
         }
 
         [HttpPost("/app/user/businesses")]
