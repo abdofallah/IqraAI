@@ -3,10 +3,12 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Conversation
 {
-    public class Conversation
+    public class ConversationData
     {
         [BsonId]
-        public long SessionId { get; set; }
+        public long Id { get; set; }
+        public long BusinessId { get; set; }
+
         public SessionTypeENUM ConversationType { get; set; }
 
         public ConversationGeneral General { get; set; }

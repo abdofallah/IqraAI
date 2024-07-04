@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.BusinessNEW;
 using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
@@ -8,60 +8,60 @@ namespace IqraInfrastructure.Repositories
     {
         private readonly string CollectionName = "Business";
 
-        private readonly IMongoCollection<Business> _businessCollection;
+        private readonly IMongoCollection<BusinessData> _businessCollection;
 
         public BusinessRepository(string connectionString, string databaseName)
         {
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
-            _businessCollection = database.GetCollection<Business>(CollectionName);
+            _businessCollection = database.GetCollection<BusinessData>(CollectionName);
         }
         public BusinessRepository(IMongoDatabase database)
         {
-            _businessCollection = database.GetCollection<Business>(CollectionName);
+            _businessCollection = database.GetCollection<BusinessData>(CollectionName);
         }
 
-        public async Task<List<Business>> GetBusinessesMetadataAsync()
+        public Task<List<BusinessData>> GetBusinessesAsync()
         {
-            var projection = Builders<Business>.Projection.Include(b => b.BusinessId).Include(b => b.BusinessName).Include(b => b.BusinessPhoneNumber);
-            return await _businessCollection.Find(_ => true).Project<Business>(projection).ToListAsync();
+            return _businessCollection.Find(_ => true).ToListAsync();
         }
 
-        public async Task<Business?> GetBusinessByPhoneNumberAsync(string phoneNumber)
+        public Task<BusinessData?> GetBusinessAsync(long businessId)
         {
-            var filter = Builders<Business>.Filter.Eq(b => b.BusinessPhoneNumber, phoneNumber);
-            return await _businessCollection.Find(filter).FirstOrDefaultAsync();
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
+            return _businessCollection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<List<Business>> GetBusinessesAsync()
+        public Task AddBusinessAsync(BusinessData business)
         {
-            return await _businessCollection.Find(_ => true).ToListAsync();
+            return _businessCollection.InsertOneAsync(business);
         }
 
-        public async Task<Business?> GetBusinessAsync(long businessId)
+        public async Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<BusinessData> updateDefinition)
         {
-            var filter = Builders<Business>.Filter.Eq(b => b.BusinessId, businessId);
-            return await _businessCollection.Find(filter).FirstOrDefaultAsync();
-        }
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
+            var result = await _businessCollection.UpdateOneAsync(filter, updateDefinition);
+            return result.ModifiedCount > 0;
 
-        public async Task<bool> AddBusinessAsync(Business business)
-        {
-            await _businessCollection.InsertOneAsync(business);
-            return true;
         }
 
         public async Task<bool> DeleteBusinessAsync(long businessId)
         {
-            var filter = Builders<Business>.Filter.Eq(b => b.BusinessId, businessId);
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
             var result = await _businessCollection.DeleteOneAsync(filter);
             return result.DeletedCount > 0;
         }
 
-        public async Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<Business> updateDefinition)
+        public Task<List<BusinessData>> GetBusinessesAsync(List<long> businessesId)
         {
-            var filter = Builders<Business>.Filter.Eq(b => b.BusinessId, businessId);
-            var result = await _businessCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
-        } 
+            var filter = Builders<BusinessData>.Filter.In(b => b.Id, businessesId);
+            return _businessCollection.Find(filter).ToListAsync();
+        }
+
+        public Task<List<BusinessData>> GetBusinessesByUserEmailAsync(string userEmail)
+        {
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.UserEmail, userEmail);
+            return _businessCollection.Find(filter).ToListAsync();
+        }
     }
 }

@@ -11,8 +11,8 @@ namespace IqraCore.Entities.User
         public string PasswordSHA { get; set; }
         public List<long> Businesses { get; set; } = new List<long>();
         public UserAnalytics Analytics { get; set; } = new UserAnalytics();
-        public bool IsAdmin { get; set; } = false;
         public string? ResetPasswordToken { get; set; } = null;
         public DateTime? ResetPasswordExpiry { get; set; } = DateTime.UtcNow;
+        public UserPermission Permission { get; set; } = new UserPermission();
     }
 }

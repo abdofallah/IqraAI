@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Conversation
 {
-    public class ConversationWebsocket : Conversation
+    public class ConversationWebsocket : ConversationData
     {
 
     }

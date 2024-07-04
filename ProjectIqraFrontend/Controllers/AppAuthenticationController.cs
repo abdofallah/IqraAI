@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.User;
-using IqraCore.Models;
+using IqraCore.Models.AppAuthentication;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
@@ -51,6 +51,12 @@ namespace ProjectIqraFrontend.Controllers
             if (user == null || !_userManager.ValidatePassword(user, model.Password))
             {
                 return BadRequest(new { success = false, message = "Invalid email or password" });
+            }
+
+            UserPermission userPermission = user.Permission;
+            if (!userPermission.CanLogin)
+            {
+                return BadRequest(new { success = false, message = "User is not allowed to login" });
             }
 
             UserSession? session = await _userManager.CreateUserSession(user.Email);

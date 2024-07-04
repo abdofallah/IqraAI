@@ -1,11 +1,16 @@
-﻿using IqraCore.Entities;
+﻿using IqraCore.Entities.Conversation;
+using MongoDB.Driver;
 
 namespace IqraCore.Interfaces.Repositories
 {
     public interface IConversationRepository
     {
-        Task AddSessionConversationAsync(SessionConversation conversation);
-        Task<SessionConversation> GetSessionConversation(string sessionId);
-        Task<bool> AddChatToConversationList(string sessionId, ConversationData conversationData);
+        Task<List<ConversationData>> GetConversationsAsync();
+        Task<List<ConversationData>> GetBusinessConversationsAsync(long businessId);
+        Task<List<ConversationData>> GetBusinessConversationsAsync(List<long> sessionsId);
+        Task<ConversationData> GetConversationAsync(long sessionId);
+        Task AddConversationAsync(ConversationData conversation);
+        Task<bool> DeleteConversationAsync(long sessionId);
+        Task<bool> UpdateConversationAsync(long sessionId, UpdateDefinition<ConversationData> updateDefinition);
     }
 }

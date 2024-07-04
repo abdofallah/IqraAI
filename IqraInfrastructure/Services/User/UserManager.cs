@@ -1,10 +1,10 @@
 ﻿using IqraCore.Interfaces.Repositories;
-using IqraCore.Models;
 using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
 using IqraCore.Entities.User;
 using UserData = IqraCore.Entities.User.User;
+using IqraCore.Models.AppAuthentication;
 
 namespace IqraInfrastructure.Services.User
 {
@@ -33,16 +33,7 @@ namespace IqraInfrastructure.Services.User
                 Email = model.Email,
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                PasswordSHA = HashPassword(model.Password),
-                Analytics = new UserAnalytics()
-                {
-                    DateCreated = DateTime.UtcNow,
-                    LoginCount = 0,
-                },
-                IsAdmin = false,
-                Businesses = new List<long>(),
-                ResetPasswordExpiry = null,
-                ResetPasswordToken = null
+                PasswordSHA = HashPassword(model.Password)
             };
 
             await _userDatabase.AddUserAsync(newUser);

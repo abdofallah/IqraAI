@@ -1,17 +1,18 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.BusinessNEW;
 using MongoDB.Driver;
 
 namespace IqraCore.Interfaces.Repositories
 {
     public interface IBusinessRepository
     {
-        Task<List<Business>> GetBusinessesMetadataAsync();
+        Task<List<BusinessData>> GetBusinessesAsync();
+        Task<List<BusinessData>> GetBusinessesAsync(List<long> businessesId);
+        Task<List<BusinessData>> GetBusinessesByUserEmailAsync(string userEmail);
 
-        Task<Business?> GetBusinessByPhoneNumberAsync(string phoneNumber);
-        Task<Business?> GetBusinessAsync(long businessId);
-        Task<bool> AddBusinessAsync(Business business);
+        Task<BusinessData?> GetBusinessAsync(long businessId);
+        Task AddBusinessAsync(BusinessData business);
         Task<bool> DeleteBusinessAsync(long businessId);
 
-        Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<Business> updateDefinition);
+        Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<BusinessData> updateDefinition);
     }
 }

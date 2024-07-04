@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities;
+﻿using IqraCore.Entities.Conversation;
 using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
@@ -6,32 +6,59 @@ namespace IqraInfrastructure.Repositories
 {
     public class ConversationRepository : IConversationRepository
     {
-        private readonly IMongoCollection<SessionConversation> _conversationsCollection;
+        private readonly string CollectionName = "Conversations";
+        private readonly IMongoCollection<ConversationData> _conversationsCollection;
 
+        public ConversationRepository(string connectionString, string databaseName)
+        {
+            IMongoClient client = new MongoClient(connectionString);
+            IMongoDatabase database = client.GetDatabase(databaseName);
+            _conversationsCollection = database.GetCollection<ConversationData>(CollectionName);
+        }
         public ConversationRepository(IMongoDatabase database)
         {
-            _conversationsCollection = database.GetCollection<SessionConversation>("conversations");
+            _conversationsCollection = database.GetCollection<ConversationData>(CollectionName);
         }
 
-        public async Task AddSessionConversationAsync(SessionConversation conversation)
+        public Task AddConversationAsync(ConversationData conversation)
         {
-            await _conversationsCollection.InsertOneAsync(conversation);
+            return _conversationsCollection.InsertOneAsync(conversation);
         }
 
-        public async Task<SessionConversation> GetSessionConversation(string sessionId)
+        public async Task<bool> DeleteConversationAsync(long sessionId)
         {
-            var filter = Builders<SessionConversation>.Filter.Eq(c => c.SessionId, sessionId);
-            return await _conversationsCollection.Find(filter).FirstOrDefaultAsync();
+            var filter = Builders<ConversationData>.Filter.Eq(b => b.Id, sessionId);
+            var result = await _conversationsCollection.DeleteOneAsync(filter);
+            return result.DeletedCount > 0;
         }
 
-        public async Task<bool> AddChatToConversationList(string sessionId, ConversationData conversationData)
+        public Task<List<ConversationData>> GetBusinessConversationsAsync(long businessId)
         {
-            var update = Builders<SessionConversation>.Update
-                .Push(c => c.ConversationList, conversationData);
+            var filter = Builders<ConversationData>.Filter.Eq(b => b.BusinessId, businessId);
+            return _conversationsCollection.Find(filter).ToListAsync();
+        }
 
-            var result = await _conversationsCollection
-                .UpdateOneAsync(c => c.SessionId == sessionId, update);
+        public Task<List<ConversationData>> GetBusinessConversationsAsync(List<long> sessionsId)
+        {
+            var filter = Builders<ConversationData>.Filter.In(b => b.Id, sessionsId);
+            return _conversationsCollection.Find(filter).ToListAsync();
+        }
 
+        public Task<ConversationData> GetConversationAsync(long sessionId)
+        {
+            var filter = Builders<ConversationData>.Filter.Eq(b => b.Id, sessionId);
+            return _conversationsCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public Task<List<ConversationData>> GetConversationsAsync()
+        {
+            return _conversationsCollection.Find(_ => true).ToListAsync();
+        }
+
+        public async Task<bool> UpdateConversationAsync(long sessionId, UpdateDefinition<ConversationData> updateDefinition)
+        {
+            var filter = Builders<ConversationData>.Filter.Eq(b => b.Id, sessionId);
+            var result = await _conversationsCollection.UpdateOneAsync(filter, updateDefinition);
             return result.ModifiedCount > 0;
         }
     }

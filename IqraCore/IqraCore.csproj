@@ -16,4 +16,8 @@
     <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\AppUser\" />
+  </ItemGroup>
+
 </Project>

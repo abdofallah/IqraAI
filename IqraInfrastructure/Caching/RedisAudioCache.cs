@@ -1,5 +1,4 @@
-﻿using System;
-using IqraCore.Interfaces;
+﻿using IqraCore.Interfaces;
 using StackExchange.Redis;
 
 namespace IqraInfrastructure.Caching

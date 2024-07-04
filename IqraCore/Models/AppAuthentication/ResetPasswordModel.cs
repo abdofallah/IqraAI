@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace IqraCore.Models
+namespace IqraCore.Models.AppAuthentication
 {
     public class ResetPasswordModel
     {

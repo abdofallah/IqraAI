@@ -1,13 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace IqraCore.Models
+namespace IqraCore.Models.AppAuthentication
 {
-    public class LoginModel
+    public class ResetPasswordRequestModel
     {
         [Required]
         public string Email { get; set; }
-
-        [Required]
-        public string Password { get; set; }
     }
 }
