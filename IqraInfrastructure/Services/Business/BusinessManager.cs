@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.BusinessNEW;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Repositories;
 using Serilog;

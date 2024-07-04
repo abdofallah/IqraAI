@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.BusinessNEW;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Business;

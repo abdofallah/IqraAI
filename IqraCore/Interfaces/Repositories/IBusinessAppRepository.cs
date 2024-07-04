@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.BusinessNEW;
+﻿using IqraCore.Entities.Business;
 using MongoDB.Driver;
 
 namespace IqraCore.Interfaces.Repositories
