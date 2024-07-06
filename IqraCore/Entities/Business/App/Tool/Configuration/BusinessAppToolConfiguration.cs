@@ -4,12 +4,12 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppToolConfiguration
     {
-        public List<BusinessAppToolConfigurationInputSchemea> InputSchemea { get; set; }
+        public List<BusinessAppToolConfigurationInputSchemea> InputSchemea { get; set; } = new List<BusinessAppToolConfigurationInputSchemea>();
         public HttpMethodEnum RequestType { get; set; }
-        public string Endpoint { get; set; }
-        public Dictionary<string, string> ServiceName { get; set; }
-        public Dictionary<string, string> Headers { get; set; }
-        public HttpBodyEnum BodyType { get; set; }
-        public object? BodyData { get; set; }
+        public string Endpoint { get; set; } = string.Empty;
+        public Dictionary<string, string> ServiceName { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+        public HttpBodyEnum BodyType { get; set; } = HttpBodyEnum.None;
+        public object? BodyData { get; set; } = null;
     }
 }

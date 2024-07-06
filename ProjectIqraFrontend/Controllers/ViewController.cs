@@ -1,4 +1,5 @@
-﻿using IqraInfrastructure.Services.User;
+﻿using IqraCore.Entities.User;
+using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
@@ -147,6 +148,37 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             return View("App/Business");
+        }
+
+        [HttpGet("/app/admin")]
+        public async Task<IActionResult> Admin()
+        {
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                return RedirectToAction("Login");
+            }
+
+            User? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                return RedirectToAction("App");
+            }
+
+            return View("App/Admin");
         }
     }
 }

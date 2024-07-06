@@ -2,10 +2,10 @@
 {
     public class BusinessAppRoute
     {
-        public BusinessAppRouteGeneral General { get; set; }
-        public BusinessAppRouteLanguage Language { get; set; }
-        public BusinessAppRouteNumber Number { get; set; }
-        public BusinessAppRouteAgent Agent { get; set; }
-        public BusinessAppRouteActions Actions { get; set; }
+        public BusinessAppRouteGeneral General { get; set; } = new BusinessAppRouteGeneral();
+        public BusinessAppRouteLanguage Language { get; set; } = new BusinessAppRouteLanguage();
+        public BusinessAppRouteNumber Number { get; set; } = new BusinessAppRouteNumber();
+        public BusinessAppRouteAgent Agent { get; set; } = new BusinessAppRouteAgent();
+        public BusinessAppRouteActions Actions { get; set; } = new BusinessAppRouteActions();
     }
 }

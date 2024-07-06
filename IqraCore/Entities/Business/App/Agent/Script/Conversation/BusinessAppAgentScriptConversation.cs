@@ -4,7 +4,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgentScriptConversation
     {
-        public Dictionary<string, string> UserMessage { get; set; }
-        public AgentReplyTypeENUM Type { get; set; }
-    }
+        public Dictionary<string, string> UserMessage { get; set; } = new Dictionary<string, string>();
+        public AgentReplyTypeENUM Type { get; set; } = AgentReplyTypeENUM.UserReply;
+    } 
 }

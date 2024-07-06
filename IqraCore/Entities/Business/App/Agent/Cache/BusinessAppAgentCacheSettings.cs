@@ -2,7 +2,7 @@
 {
     public class BusinessAppAgentCacheSettings
     {
-        public bool AutoCacheAudioResponses { get; set; }
-        public int? AutoCacheAudioResponsesDefaultExpiryHours { get; set; }
+        public bool AutoCacheAudioResponses { get; set; } = false;
+        public int? AutoCacheAudioResponsesDefaultExpiryHours { get; set; } = 24;
     }
 }

@@ -2,10 +2,10 @@
 {
     public class BusinessAppRouteNumber
     {
-        public long SelectedNumberId { get; set; }
-        public int PickUpDelayMS { get; set; }
-        public int NotifyOnSilenceMS { get; set; }
-        public int EndCallOnSilenceMS { get; set; }
-        public int MaxCallTimeMS { get; set; }
+        public long SelectedNumberId { get; set; } = -1;
+        public int PickUpDelayMS { get; set; } = 1000;
+        public int NotifyOnSilenceMS { get; set; } = 5000;
+        public int EndCallOnSilenceMS { get; set; } = 10000;
+        public int MaxCallTimeMS { get; set; } = 120;
     }
 }

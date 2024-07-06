@@ -2,8 +2,8 @@
 {
     public class BusinessAppToolResponse
     {
-        public string Javascript { get; set; }
-        public bool HasStaticResponse { get; set; }
-        public Dictionary<string, string>? StaticResponse { get; set; }
+        public string Javascript { get; set; } = string.Empty;
+        public bool HasStaticResponse { get; set; } = false;
+        public Dictionary<string, string>? StaticResponse { get; set; } = null;
     }
 }

@@ -2,8 +2,8 @@
 {
     public class BusinessAppAgentUtterances
     {
-        public BusinessAppAgentOpeningType OpeningType { get; set; }
-        public Dictionary<string, string> GreetingMessage { get; set; }
-        public Dictionary<string, List<string>> PhrasesBeforeReply { get; set; }
+        public BusinessAppAgentOpeningType OpeningType { get; set; } = BusinessAppAgentOpeningType.AgentFirst;
+        public Dictionary<string, string> GreetingMessage { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, List<string>> PhrasesBeforeReply { get; set; } = new Dictionary<string, List<string>>();
     }
 }

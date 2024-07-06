@@ -350,14 +350,13 @@
             });
         }
 
-        function FetchBusinessesFromAPI()
-        {
+        function FetchBusinessesFromAPI(successCallback) {
             $.ajax({
                 url: '/app/user/businesses',
                 type: 'POST',
                 dataType: "json",
                 success: (data) => {
-                    console.log(data);
+                    successCallback(response.data);
                 },
                 error: (error) => {
                     console.log(error);

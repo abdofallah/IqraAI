@@ -2,8 +2,8 @@
 {
     public class BusinessAppRouteActions
     {
-        public BusinessAppRouteActionTool RingingTool { get; set; }
-        public BusinessAppRouteActionTool CallPickedTool { get; set; }
-        public BusinessAppRouteActionTool CallEndedTool { get; set; }
+        public BusinessAppRouteActionTool RingingTool { get; set; } = new BusinessAppRouteActionTool();
+        public BusinessAppRouteActionTool CallPickedTool { get; set; } = new BusinessAppRouteActionTool();
+        public BusinessAppRouteActionTool CallEndedTool { get; set; } = new BusinessAppRouteActionTool();
     }
 }

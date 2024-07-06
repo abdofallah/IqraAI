@@ -2,7 +2,7 @@
 {
     public class BusinessAppRouteLanguageMultiEnabled
     {
-        public string LanguageCode { get; set; }
-        public string MessageToPlay { get; set; }
+        public string LanguageCode { get; set; } = string.Empty;
+        public string MessageToPlay { get; set; } = string.Empty;
     }
 }

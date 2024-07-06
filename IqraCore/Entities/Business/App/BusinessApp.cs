@@ -7,9 +7,9 @@ namespace IqraCore.Entities.Business
         [BsonId]
         public long Id { get; set; }
 
-        public BusinessAppContext Context { get; set; }
-        public List<BusinessAppTool> Tools { get; set; }
-        public List<BusinessAppAgent> Agents { get; set; }
-        public List<BusinessAppRoute> Routings { get; set; }
+        public BusinessAppContext Context { get; set; } = new BusinessAppContext();
+        public List<BusinessAppTool> Tools { get; set; } = new List<BusinessAppTool>();
+        public List<BusinessAppAgent> Agents { get; set; } = new List<BusinessAppAgent>();
+        public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();
     }
 }

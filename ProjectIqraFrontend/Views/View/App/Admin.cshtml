@@ -1,1 +1,155 @@
-﻿<h1>Admin Page Under Construction</h1>
+﻿<html data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Iqra AI</title>
+
+    <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/libs/boxicons-2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web/css/fontawesome.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web/css/regular.min.css" rel="stylesheet">
+
+    <link href="~/css/structure.css" rel="stylesheet">
+    <link href="~/css/style.css" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
+
+    <style>
+
+    </style>
+
+    <style id="dynamicCSS"></style>
+</head>
+
+<body id="body-pd" class="body-pd">
+    <header class="header header-body-pd" id="header">
+        <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
+    </header>
+
+    <div class="l-navbar show" id="nav-bar">
+        <nav class="nav">
+            <div class="upper-navigation">
+                <a href="/" class="nav_logo">
+                    <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
+                </a>
+                <div class="nav_list">
+                    <a href="#" class="nav_link active" for="users-tab">
+                        <i class='fa-regular fa-user nav_icon'></i>
+                        <span class="nav_name">Users</span>
+                    </a>
+                    <a href="#" class="nav_link" for="business-tab">
+                        <i class='fa-regular fa-briefcase nav_icon'></i>
+                        <span class="nav_name">Businesses</span>
+                    </a>
+                    <a href="#" class="nav_link" for="phone-numbers-tab">
+                        <i class='fa-regular fa-hashtag nav_icon'></i>
+                        <span class="nav_name">Numbers</span>
+                    </a>
+                    <a href="#" class="nav_link" for="billing-tab">
+                        <i class='fa-regular fa-credit-card nav_icon'></i>
+                        <span class="nav_name">Billing</span>
+                    </a>
+                    <a href="#" class="nav_link mb-0" for="settings-tab">
+                        <i class='fa-regular fa-gear nav_icon'></i>
+                        <span class="nav_name">Settings</span>
+                    </a>
+                </div>
+            </div>
+            <div class="bottom-navigation">
+                <a href="/logout" class="nav_link mt-0">
+                    <i class='fa-regular fa-right-from-bracket nav_icon'></i>
+                    <span class="nav_name">Log out</span>
+                </a>
+            </div>
+
+        </nav>
+    </div>
+
+    <div class="w-100 main-container-wrapper" id="tabs-list">
+        <!-- Users Container -->
+        <div class="main-container fade show w-100" id="business-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+
+        <!-- Bussiness Container -->
+        <div class="main-container fade w-100 d-none" id="business-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+
+        <!-- Phone Numbers Container -->
+        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+
+        <!-- Billing Container -->
+        <div class="main-container fade w-100 d-none" id="billing-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+
+        <!-- Settings Container -->
+        <div class="main-container fade w-100 d-none" id="settings-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- libs -->
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom Scripts -->
+    <script src="~/js/script.js"></script>
+
+    <!-- Businesses Tab -->
+    <script>
+        var BussinessPage = 0;
+        var MaxBussinessPerPage = 30;
+
+        function FetchBusinessesFromAPI() {
+            $.ajax({
+                url: '/app/user/businesses',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    page: BussinessPage,
+                    max: MaxBussinessPerPage
+                },
+                success: (data) => {
+                    console.log(data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
+        $(document).ready(() => {
+            // Init
+
+            FetchBusinessesFromAPI((userBusinesses) => {
+                console.log(userBusinesses);
+
+                userBusinesses.forEach((businessData) => {
+                    console.log(businessData);
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

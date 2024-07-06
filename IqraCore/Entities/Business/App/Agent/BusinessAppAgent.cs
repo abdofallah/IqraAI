@@ -3,13 +3,13 @@
     public class BusinessAppAgent
     {
         public long Id { get; set; }
-        public BusinessAppAgentGeneral General { get; set; }
-        public BusinessAppAgentContext Context { get; set; }
-        public BusinessAppAgentPersonality Personality { get; set; }
-        public BusinessAppAgentUtterances Utterances { get; set; }
-        public List<BusinessAppAgentScript> Scripts { get; set; }
-        public BusinessAppAgentIntegrations Integrations { get; set; }
-        public BusinessAppAgentCache Cache { get; set; }
-        public BusinessAppAgentSettings Settings { get; set; }
+        public BusinessAppAgentGeneral General { get; set; } = new BusinessAppAgentGeneral();
+        public BusinessAppAgentContext Context { get; set; } = new BusinessAppAgentContext();
+        public BusinessAppAgentPersonality Personality { get; set; } = new BusinessAppAgentPersonality();
+        public BusinessAppAgentUtterances Utterances { get; set; } = new BusinessAppAgentUtterances();
+        public List<BusinessAppAgentScript> Scripts { get; set; } = new List<BusinessAppAgentScript>(); 
+        public BusinessAppAgentIntegrations Integrations { get; set; } = new BusinessAppAgentIntegrations();
+        public BusinessAppAgentCache Cache { get; set; } = new BusinessAppAgentCache();
+        public BusinessAppAgentSettings Settings { get; set; } = new BusinessAppAgentSettings();
     }
 }

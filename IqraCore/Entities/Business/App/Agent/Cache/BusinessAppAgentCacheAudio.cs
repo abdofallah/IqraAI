@@ -2,8 +2,8 @@
 {
     public class BusinessAppAgentCacheAudio
     {
-        public string Query { get; set; }
-        public int UnusedExpiryHours { get; set; }
-        public string AudioUrl { get; set; }
+        public string Query { get; set; } = string.Empty;
+        public int UnusedExpiryHours { get; set; } = 24;
+        public string AudioUrl { get; set; } = string.Empty;
     }
 }
