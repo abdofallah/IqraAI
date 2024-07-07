@@ -71,7 +71,151 @@
         <div class="main-container fade show w-100" id="business-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
             <div class="inner-container">
-                <h6>Ah! This page is currently under development.</h6>
+                <!-- Manager Inner Tabs -->
+                <ul class="nav mb-3" id="users-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content w-100" id="users-tabContent">
+                    <!-- Analytics -->
+                    <div class="tab-pane fade w-100" id="users-analytics" role="tabpanel" aria-labelledby="users-analytics-tab" tabindex="0">
+                        analytics
+                    </div>
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="users-list" role="tabpanel" aria-labelledby="users-list-tab" tabindex="0">
+                        <!-- Users List Table Tab -->
+                        <div class="fade d-none w-100" id="usersListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserButton">
+                                        <span>+ Add New User</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="User Name or Email" aria-label="User Name or Email" aria-describedby="searchUserButton">
+                                    <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="usersListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Businesses</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Users Manage Tab -->
+                        <div class="fade w-100 show" id="usersManageTab">
+                            <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
+                                <ul class="nav" id="users-manage-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="users-manage-general-tab" data-bs-toggle="pill" data-bs-target="#users-manage-general" type="button" role="tab" aria-controls="users-manage-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-actions" type="button" role="tab" aria-controls="users-manage-actions" aria-selected="true">Actions</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-permissions" type="button" role="tab" aria-controls="users-manage-permissions" aria-selected="true">Permissions</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
+                                    </li>
+                                </ul>
+
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="usersManageSaveButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <div class="tab-content w-100" id="users-manage-tabContent">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="users-manage-general" role="tabpanel" aria-labelledby="users-manage-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label for="usersManageFirstNameInput" class="form-label">First Name</label>
+                                        <input type="text" class="form-control" id="usersManageFirstNameInput" placeholder="First Name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="usersManageLastNameInput" class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" id="usersManageLastNameInput" placeholder="Last Name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="usersManageEmailInput" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="usersManageEmailInput" placeholder="Email">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="usersManagePasswordInput" class="form-label">Password</label>
+                                        <input type="text" class="form-control" id="usersManagePasswordInput" placeholder="Password">
+                                    </div>
+                                </div>
+                                <!-- Actions -->
+                                <div class="tab-pane fade w-100" id="users-manage-actions" role="tabpanel" aria-labelledby="users-manage-actions-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label for="usersManageSendResetPasswordInput" class="form-label d-block">Send Reset Password</label>
+                                        <button class="input-group-button btn btn-primary" id="usersManageSendResetPasswordButton">
+                                            <i class='fa-regular fa-key'></i>
+                                            <span> Send</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Permissions -->
+                                <div class="tab-pane fade w-100" id="users-manage-permissions" role="tabpanel" aria-labelledby="users-manage-permissions-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Authentication</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanLoginInput">
+                                            <label for="usersManageCanLoginInput" class="form-label d-block">Can Login</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Business</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanViewBusinessInput">
+                                            <label for="usersManageCanViewBusinessInput" class="form-label d-block">Can View</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanEditBusinessInput">
+                                            <label for="usersManageCanEditBusinessInput" class="form-label d-block">Can Edit</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanDeleteBusinessInput">
+                                            <label for="usersManageCanDeleteBusinessInput" class="form-label d-block">Can Delete</label>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanAddBusinessInput">
+                                            <label for="usersManageCanAddBusinessInput" class="form-label d-block">Can Add</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
+                                    analytics
+                                </div>
+                                <!-- Businesses -->
+                                <div class="tab-pane fade w-100" id="users-manage-businesses" role="tabpanel" aria-labelledby="users-manage-businesses-tab" tabindex="0">
+                                    businesses
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -115,22 +259,91 @@
     <!-- Custom Scripts -->
     <script src="~/js/script.js"></script>
 
+    <!-- Users Tab -->
+    <script>
+        var UsersPage = 0;
+        var MaxUsersPerPage = 30;
+
+        const usersListTable = $("#usersListTable");
+        const usersListTableTab = $("#usersListTableTab");
+        const usersManageTab = $("#usersManageTab");
+
+        function FetchUsersFromAPI(successCallback) {
+            $.ajax({
+                url: '/app/admin/users',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    page: UsersPage,
+                    max: MaxUsersPerPage
+                },
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
+        function CreateUsersListTableElement(userData) {
+            let element = $(`<tr>
+                <td>${userData.email}</td>
+                <td>${userData.firstName} ${userData.lastName}</td>
+                <td>${userData.businesses.length}</td>
+                <td>
+                    <button class="btn btn-info btn-sm">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
+
+            return element;
+        }
+
+        $(document).ready(() => {
+            // Init
+
+            FetchUsersFromAPI((users) => {
+                users.forEach((userData) => {
+                    usersListTable.append(CreateUsersListTableElement(userData));
+                });
+            });
+
+        });
+    </script>
+
     <!-- Businesses Tab -->
     <script>
         var BussinessPage = 0;
         var MaxBussinessPerPage = 30;
 
-        function FetchBusinessesFromAPI() {
+        function FetchBusinessesFromAPI(successCallback) {
             $.ajax({
-                url: '/app/user/businesses',
+                url: '/app/admin/businesses',
                 type: 'POST',
                 dataType: "json",
                 data: {
                     page: BussinessPage,
                     max: MaxBussinessPerPage
                 },
-                success: (data) => {
-                    console.log(data);
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
                 },
                 error: (error) => {
                     console.log(error);
@@ -141,10 +354,10 @@
         $(document).ready(() => {
             // Init
 
-            FetchBusinessesFromAPI((userBusinesses) => {
-                console.log(userBusinesses);
+            FetchBusinessesFromAPI((businesses) => {
+                console.log(businesses);
 
-                userBusinesses.forEach((businessData) => {
+                businesses.forEach((businessData) => {
                     console.log(businessData);
                 });
             });

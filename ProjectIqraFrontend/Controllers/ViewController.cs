@@ -167,7 +167,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            User? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
                 return RedirectToAction("Login");

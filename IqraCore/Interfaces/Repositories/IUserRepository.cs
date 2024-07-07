@@ -5,8 +5,10 @@ namespace IqraCore.Interfaces.Repositories
 {
     public interface IUserRepository
     {
-        Task<bool> AddUserAsync(User user);
-        Task<User?> GetUserByEmail(string email);
-        Task<bool> UpdateUser(string email, UpdateDefinition<User> updateDefinition);
+        Task<List<UserData>> GetUsersAsync();
+        Task<List<UserData>> GetUsersAsync(int page, int pageSize);
+        Task<bool> AddUserAsync(UserData user);
+        Task<UserData?> GetUserByEmail(string email);
+        Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition);
     }
 }

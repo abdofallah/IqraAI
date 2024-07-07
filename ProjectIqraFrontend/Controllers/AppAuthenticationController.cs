@@ -22,7 +22,7 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "Invalid email or password" });
             }
 
-            User? user = await _userManager.GetUserByEmail(model.Email);
+            UserData? user = await _userManager.GetUserByEmail(model.Email);
             if (user != null)
             {
                 return BadRequest(new { success = false, message = "User already exists" });
@@ -47,7 +47,7 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "Invalid email or password" });
             }
 
-            User? user = await _userManager.GetUserByEmail(model.Email);
+            UserData? user = await _userManager.GetUserByEmail(model.Email);
             if (user == null || !_userManager.ValidatePassword(user, model.Password))
             {
                 return BadRequest(new { success = false, message = "Invalid email or password" });
@@ -65,6 +65,8 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "Error while creating session" });
             }
 
+            await _userManager.UpdateLastLoginAndIncreaseCount(user);
+
             return Ok(new { success = true, sessionId = session.Id, authKey = session.Token });
         }
 
@@ -76,7 +78,7 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "Invalid email" });
             }
 
-            User? user = await _userManager.GetUserByEmail(model.Email);
+            UserData? user = await _userManager.GetUserByEmail(model.Email);
             if (user == null)
             {
                 return BadRequest(new { success = false, message = "User not found" });
@@ -95,7 +97,7 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "Invalid email or token or password" });
             }
 
-            User? user = await _userManager.GetUserByEmail(model.Email);
+            UserData? user = await _userManager.GetUserByEmail(model.Email);
             if (user == null || !_userManager.ValidateResetPasswordToken(user, model.Token))
             {
                 return BadRequest(new { success = false, message = "Invalid reset password token or token expired" });

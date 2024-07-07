@@ -41,7 +41,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            User? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = 3;
@@ -78,7 +78,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            User? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = 3;
@@ -131,7 +131,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            User? user = await _userManager.GetUserByEmail(userEmail);
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
                 result.Code = 3;

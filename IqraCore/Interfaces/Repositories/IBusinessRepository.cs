@@ -6,6 +6,7 @@ namespace IqraCore.Interfaces.Repositories
     public interface IBusinessRepository
     {
         Task<List<BusinessData>> GetBusinessesAsync();
+        Task<List<BusinessData>> GetBusinessesAsync(int page, int pageSize);
         Task<List<BusinessData>> GetBusinessesAsync(List<long> businessesId);
         Task<List<BusinessData>> GetBusinessesByUserEmailAsync(string userEmail);
 

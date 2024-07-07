@@ -90,5 +90,25 @@ namespace IqraInfrastructure.Services.Business
 
             return result;
         }
+
+        public async Task<FunctionReturnResult<List<BusinessData>?>> GetBusinesses(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<BusinessData>?>();
+            result.Data = null;
+
+            var businesses = await _businessRepository.GetBusinessesAsync(page, pageSize);
+            if (businesses == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[BusinessManager] Null - Businesses not found");
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businesses;
+            }
+
+            return result;
+        }
     }
 }

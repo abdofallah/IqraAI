@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.User
 {
-    public class User
+    public class UserData
     {
         [BsonId]
         public string Email { get; set; }

@@ -26,6 +26,11 @@ namespace IqraInfrastructure.Repositories
             return _businessCollection.Find(_ => true).ToListAsync();
         }
 
+        public Task<List<BusinessData>> GetBusinessesAsync(int page, int pageSize)
+        {
+            return _businessCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();
+        }
+
         public Task<BusinessData?> GetBusinessAsync(long businessId)
         {
             var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);

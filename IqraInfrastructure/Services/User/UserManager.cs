@@ -3,8 +3,10 @@ using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
 using IqraCore.Entities.User;
-using UserData = IqraCore.Entities.User.User;
+using UserData = IqraCore.Entities.User.UserData;
 using IqraCore.Models.AppAuthentication;
+using IqraCore.Entities.Helpers;
+using Serilog;
 
 namespace IqraInfrastructure.Services.User
 {
@@ -122,6 +124,35 @@ namespace IqraInfrastructure.Services.User
 
             throw new NotImplementedException();
             //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+        }
+
+        public async Task<FunctionReturnResult<List<UserData>?>> GetUsersAsync(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<UserData>?>();
+            result.Data = null;
+
+            var users = await _userDatabase.GetUsersAsync(page, pageSize);
+            if (users == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[UserManager] Null - Users not found");
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = users;
+            }
+
+            return result;
+        }
+
+        public async Task UpdateLastLoginAndIncreaseCount(UserData user)
+        {
+            var updateDefiniton = Builders<UserData>.Update
+                .Set(u => u.Analytics.LastLogin, DateTime.UtcNow)
+                .Inc(u => u.Analytics.LoginCount, 1);
+
+            await _userDatabase.UpdateUser(user.Email, updateDefiniton);
         }
     }
 }
