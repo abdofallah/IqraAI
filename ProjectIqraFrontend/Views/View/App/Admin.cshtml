@@ -34,11 +34,11 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a href="#" class="nav_link active" for="users-tab">
+                    <a href="#" class="nav_link" for="users-tab">
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
-                    <a href="#" class="nav_link" for="business-tab">
+                    <a href="#" class="nav_link active" for="business-tab">
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
@@ -68,7 +68,7 @@
 
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Users Container -->
-        <div class="main-container fade show w-100" id="users-tab">
+        <div class="main-container fade w-100 d-none" id="users-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -90,7 +90,7 @@
                         </ol>
                     </nav>
                 </div>
-
+                <!-- Tab Content -->
                 <div class="tab-content w-100" id="users-inner-tabContent">
                     <!-- Analytics -->
                     <div class="tab-pane fade w-100" id="users-analytics" role="tabpanel" aria-labelledby="users-analytics-tab" tabindex="0">
@@ -131,6 +131,7 @@
                         </div>
                         <!-- Users Manage Tab -->
                         <div class="fade w-100 d-none" id="usersManageTab">
+                            <!-- Header Tab -->
                             <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
                                 <ul class="nav" id="users-manage-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
@@ -158,7 +159,7 @@
                                     <span> Save</span>
                                 </button>
                             </div>
-
+                            <!-- Tab Content -->
                             <div class="tab-content w-100" id="users-manage-tabContent">
                                 <!-- General -->
                                 <div class="tab-pane fade w-100 show active" id="users-manage-general" role="tabpanel" aria-labelledby="users-manage-general-tab" tabindex="0">
@@ -244,7 +245,7 @@
                                 <div class="tab-pane fade w-100" id="users-manage-businesses" role="tabpanel" aria-labelledby="users-manage-businesses-tab" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserBusinessButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addUserBusinessModalButton" data-bs-toggle="modal" data-bs-target="#addUserBusinessModal">
                                                 <span>+ Add Business</span>
                                             </button>
                                         </div>
@@ -270,12 +271,52 @@
                                             <!-- Dynamically Generated -->
                                         </tbody>
                                     </table>
+                                    <!-- Add Business Modal -->
+                                    <div class="modal modal-lg fade" id="addUserBusinessModal" tabindex="-1" aria-labelledby="addUserBusinessModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h1 class="modal-title fs-5" id="addUserBusinessModalLabel">Add User Business</h1>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="input-group w-100 mb-3">
+                                                        <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchAddUserBusinessModalButton">
+                                                        <button class="input-group-button btn btn-primary" id="searchAddUserBusinessModalButton">
+                                                            <i class='fa-regular fa-magnifying-glass'></i>
+                                                        </button>
+                                                    </div>
+                                                    <table id="addUserBusinessModalListTable" class="table w-100">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col">#</th>
+                                                                <th scope="col">Name</th>
+                                                                <th scope="col">Master Email</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <!-- Dynamically Generated -->
+                                                            <tr>
+                                                                <td colspan="3" class="text-center">Search for results...</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                        <i class="fa-regular fa-plus"></i>
+                                                        <span> Add</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Numbers -->
                                 <div class="tab-pane fade w-100" id="users-manage-numbers" role="tabpanel" aria-labelledby="users-manage-numbers-tab" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserNumberButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserNumberButton" data-bs-toggle="modal" data-bs-target="#addUserNumberModal">
                                                 <span>+ Add Number</span>
                                             </button>
                                         </div>
@@ -300,6 +341,27 @@
                                             <!-- Dynamically Generated -->
                                         </tbody>
                                     </table>
+                                    <!-- Add Number Modal -->
+                                    <div class="modal modal-lg fade" id="addUserNumberModal" tabindex="-1" aria-labelledby="addUserNumberModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h1 class="modal-title fs-5" id="addUserNumberModalLabel">Add User Number</h1>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <!-- TODO -->
+                                                    todo
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                        <i class="fa-regular fa-plus"></i>
+                                                        <span> Add</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <!-- Analytics -->
                                 <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
@@ -313,10 +375,164 @@
         </div>
 
         <!-- Bussiness Container -->
-        <div class="main-container fade w-100 d-none" id="business-tab">
+        <div class="main-container fade w-100 show" id="business-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
             <div class="inner-container">
-                <h6>Ah! This page is currently under development.</h6>
+                <!-- Manager Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="business-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="businesses-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-analytics" type="button" role="tab" aria-controls="businesses-analytics" aria-selected="true">Analytics</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="businesses-list-tab" data-bs-toggle="pill" data-bs-target="#businesses-list" type="button" role="tab" aria-controls="businesses-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="businesses-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToBusinessesListTabFromManageTab">Business</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageBusinessName">Business</span></li>
+                        </ol>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div class="tab-content w-100" id="businesses-inner-tabContent">
+                    <!-- Analytics -->
+                    <div class="tab-pane fade w-100" id="businesses-analytics" role="tabpanel" aria-labelledby="businesses-analytics-tab" tabindex="0">
+                        analytics
+                    </div>
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="businesses-list" role="tabpanel" aria-labelledby="businesses-list-tab" tabindex="0">
+                        <!-- Businesses List Table Tab -->
+                        <div class="fade w-100 d-none" id="businessesListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBusinessButton">
+                                        <span>+ Add New Business</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Business Name or Id" aria-label="Business Name or Id" aria-describedby="searchBusinessButton">
+                                    <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="businessesListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Numbers</th>
+                                        <th scope="col">Master Email</th>
+                                        <th scope="col">Users</th>
+                                        <th scope="col">Region</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Businesses Manage Tab -->
+                        <div class="fade w-100 show" id="businessesManageTab">
+                            <!-- Businesses Manage General Tab -->
+                            <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
+                                <ul class="nav" id="businesses-manage-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="businesses-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-actions" type="button" role="tab" aria-controls="businesses-manage-actions" aria-selected="true">Actions</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="businesses-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-analytics" type="button" role="tab" aria-controls="businesses-manage-analytics" aria-selected="true">Analytics</button>
+                                    </li>
+                                </ul>
+
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="businessesManageSaveButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content w-100" id="businesses-manage-tabContent">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label for="manageBusinessNameInput" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="manageBusinessNameInput" placeholder="Name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="manageBusinessLogoInput" class="form-label d-block">Logo</label>
+                                        <img src="~/img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3 mb-3" alt="Business Logo" id="manageBusinessLogoPreview">   
+                                        <input type="file" class="form-control" id="manageBusinessLogoInput" placeholder="Logo"> 
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="manageBusinessMasterUserInput" class="form-label">Master User</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="manageBusinessMasterUserInput" placeholder="Master User" disabled>
+                                            <button class="input-group-button btn btn-light" data-bs-toggle="modal" data-bs-target="#manageBusinessMasterUserModal">
+                                                Select
+                                            </button>
+                                        </div>
+                                        <div class="modal modal-lg fade" id="manageBusinessMasterUserModal" tabindex="-1" aria-labelledby="manageBusinessMasterUserModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="manageBusinessMasterUserModalLabel">Select Master User</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                       <div class="input-group w-100 mb-3">
+                                                            <input type="text" class="form-control" placeholder="User email" aria-label="User email" aria-describedby="searchBusinessMasterUserModalButton">
+                                                            <button class="input-group-button btn btn-primary" id="searchBusinessMasterUserModalButton">
+                                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                                            </button>
+                                                        </div>
+                                                        <table id="masterUserListTable" class="table w-100">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th scope="col">#</th>
+                                                                    <th scope="col">Email</th>
+                                                                    <th scope="col">Name</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <!-- Dynamically Generated -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                            <i class="fa-regular fa-floppy-disk"></i>
+                                                            <span> Select</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-actions" role="tabpanel" aria-labelledby="businesses-manage-actions-tab" tabindex="0">
+                                    actions
+                                </div>
+
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
+                                    analytics
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -374,6 +590,9 @@
 
         const switchBackToUsersListTabFromManageTab = $("#switchBackToUsersListTabFromManageTab");
         const currentManageUserName = $("#currentManageUserName");
+
+        const addUserBusinessModal = $("#addUserBusinessModal");
+        const addUserBusinessModalListTable = $("#addUserBusinessModalListTable");
 
         function FetchUsersFromAPI(successCallback) {
             $.ajax({
@@ -504,7 +723,7 @@
         function ResetAndEmptyManageTabData()
         {
             usersManageTab.find("input[type=text]").val("");
-            usersManageTab.find("input[type=checkbox]").prop("checked", false);
+            usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
             usersManageTab.find("table tbody").empty();
         }
 
@@ -629,6 +848,8 @@
 
                 FillUserManageTab(currentUserData, CurrentManageUserBusinesses, CurrentManageUserNumbers);
                 currentManageUserName.text(userEmail);
+
+                $("#users-manage-general-tab").click();
                 
                 usersInnerTab.removeClass("show");
                 usersListTableTab.removeClass("show");
@@ -684,6 +905,18 @@
                 }
             });
 
+            // Add User Business Modal
+            addUserBusinessModal.on('show.bs.modal', (event) => {
+                addUserBusinessModalListTable.find("tbody").append('<tr><td colspan="3">Search for results...</td></tr>');
+            });
+
+            addUserBusinessModal.on('hidden.bs.modal', (event) => {
+                addUserBusinessModalListTable.find("tbody").empty();
+            });
+
+            // Add User Number Modal
+            // Todo
+
             // Init
 
             FetchUsersFromAPI((users) => {
@@ -696,7 +929,6 @@
 
                 IsEditUserAllowed = true;
             });
-
         });
     </script>
 

@@ -12,9 +12,6 @@ namespace IqraCore.Entities.User
         public List<long> Businesses { get; set; } = new List<long>();
         public List<long> Numbers { get; set; } = new List<long>();
 
-        [ExcludeInAllEndpoints]
-        [IncludeInEndpoint("/app/admin/users")]
-        public UserAnalytics Analytics { get; set; } = new UserAnalytics();
         public UserPermission Permission { get; set; } = new UserPermission();
 
         [ExcludeInAllEndpoints]
@@ -22,5 +19,9 @@ namespace IqraCore.Entities.User
 
         [ExcludeInAllEndpoints]
         public List<UserResetPassword> ResetPasswordTokens { get; set; } = new List<UserResetPassword>();
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/users")]
+        public UserAnalytics Analytics { get; set; } = new UserAnalytics();
     }
 }

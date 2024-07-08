@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
@@ -16,9 +17,13 @@ namespace IqraCore.Entities.Business
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
 
-        public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();
         public List<long> NumberIds { get; set; } = new List<long>();
 
+        [ExcludeInEndpoint("/app/user/businesses")]
+        public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/user/businesses")]
         public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
     }
 }

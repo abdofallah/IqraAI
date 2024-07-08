@@ -200,7 +200,9 @@ a:focus
 #cache-audio-group-inner-tab .nav-link,
 #settings-inner-tab .nav-link,
 #users-inner-tab .nav-link,
-#users-manage-tab .nav-link
+#users-manage-tab .nav-link,
+#business-inner-tab .nav-link,
+#businesses-manage-tab .nav-link
 {
     color: rgba(255, 255, 255, 0.8) !important;
     border-bottom: 3px solid rgba(255, 255, 255, 0.1);
@@ -228,7 +230,9 @@ a:focus
     #cache-audio-group-inner-tab .nav-link:not(:last-of-type),
     #settings-inner-tab .nav-link:not(:last-of-type),
     #users-inner-tab .nav-link:not(:last-of-type),
-    #users-manage-tab .nav-link:not(:last-of-type)
+    #users-manage-tab .nav-link:not(:last-of-type),
+    #business-inner-tab .nav-link:not(:last-of-type),
+    #businesses-manage-tab .nav-link:not(:last-of-type)
     {
         margin-right: 10px;
     }
@@ -252,7 +256,9 @@ a:focus
     #cache-audio-group-inner-tab .nav-link.active,
     #settings-inner-tab .nav-link.active,
     #users-inner-tab .nav-link.active,
-    #users-manage-tab .nav-link.active
+    #users-manage-tab .nav-link.active,
+    #business-inner-tab .nav-link.active,
+    #businesses-manage-tab .nav-link.active
     {
         color: var(--tcolor-light-green) !important;
         border-bottom-color: var(--tcolor-light-green);
@@ -277,7 +283,9 @@ a:focus
     #cache-audio-group-inner-tab .nav-link:not(.active):hover,
     #settings-inner-tab .nav-link:not(.active):hover,
     #users-inner-tab .nav-link:not(.active):hover,
-    #users-manage-tab .nav-link:not(.active):hover
+    #users-manage-tab .nav-link:not(.active):hover,
+    #business-inner-tab .nav-link:not(.active):hover,
+    #businesses-manage-tab .nav-link:not(.active):hover
     {
         color: var(--tcolor-lighter-green) !important;
         border-bottom-color: var(--tcolor-lighter-green);
@@ -302,7 +310,9 @@ a:focus
     #cache-audio-group-inner-tab .nav-link.disabled,
     #settings-inner-tab .nav-link.disabled,
     #users-inner-tab .nav-link.disabled,
-    #users-manage-tab .nav-link.disabled
+    #users-manage-tab .nav-link.disabled,
+    #business-inner-tab .nav-link.disabled,
+    #businesses-manage-tab .nav-link.disabled
     {
         color: var(--bs-nav-link-disabled-color) !important;
         border-bottom-color: var(--bs-nav-link-disabled-color) !important;
@@ -520,7 +530,10 @@ a:focus
 #customAudioCacheGroupTable,
 #usersListTable,
 #userBusinessesListTable,
-#userNumbersListTable
+#userNumbersListTable,
+#addUserBusinessModalListTable,
+#businessesListTable,
+#masterUserListTable
 {
     table-layout: fixed;
     overflow-wrap: break-word;
@@ -542,7 +555,10 @@ a:focus
     #customAudioCacheGroupTable.table > :not(caption) > * > *,
     #usersListTable.table > :not(caption) > * > *,
     #userBusinessesListTable.table > :not(caption) > * > *,
-    #userNumbersListTable.table > :not(caption) > * > *
+    #userNumbersListTable.table > :not(caption) > * > *,
+    #addUserBusinessModalListTable.table > :not(caption) > * > *,
+    #businessesListTable.table > :not(caption) > * > *,
+    #masterUserListTable.table > :not(caption) > * > *
     {
         padding: 14px 20px;
         vertical-align: middle;
@@ -564,7 +580,10 @@ a:focus
     #customAudioCacheGroupTable.table > thead > * > *,
     #usersListTable.table > thead > * > *,
     #userBusinessesListTable.table > thead > * > *,
-    #userNumbersListTable.table > thead > * > *
+    #userNumbersListTable.table > thead > * > *,
+    #addUserBusinessModalListTable.table > thead > * > *,
+    #businessesListTable.table > thead > * > *,
+    #masterUserListTable.table > thead > * > *
     {
         background-color: var(--tcolor-lighter-green);
         color: black;
@@ -588,7 +607,10 @@ a:focus
     #customAudioCacheGroupTable,
     #usersListTable,
     #userBusinessesListTable,
-    #userNumbersListTable
+    #userNumbersListTable,
+    #addUserBusinessModalListTable,
+    #businessesListTable,
+    #masterUserListTable
     {
         overflow-x: scroll;
         display: inline-block;
@@ -1363,7 +1385,8 @@ a:focus
     border-top: 0;
 }
 
-#settingsGeneralBusinessLogoPreview
+#settingsGeneralBusinessLogoPreview,
+#manageBusinessLogoPreview
 {
     max-width: 100px;
     max-height: 100px;
