@@ -2,6 +2,7 @@ using IqraCore.Interfaces.Repositories;
 using IqraInfrastructure.Repositories;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.User;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend
 {
@@ -29,7 +30,18 @@ namespace ProjectIqraFrontend
 
             /** Services END **/
 
-            builder.Services.AddControllersWithViews();
+            builder.Services
+                .AddControllersWithViews()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.Converters.Add(
+                        new EndpointAwareJsonConverter(
+                            builder.Services.BuildServiceProvider().GetRequiredService<IHttpContextAccessor>()
+                        )
+                    );
+                });
+
+            builder.Services.AddHttpContextAccessor();
 
             var app = builder.Build();
 

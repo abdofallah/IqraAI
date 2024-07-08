@@ -6,15 +6,12 @@ namespace IqraCore.Entities.Business
     {
         [BsonId]
         public string Email { get; set; }
-
         public string Password { get; set; }
 
-        public bool CanUserLogin { get; set; } = true;
-
-        public string? UserNotAllowedToLoginHTMLNotice { get; set; } = null;
+        public DateTime? DisabledUserLoginAt { get; set; } = null;
+        public string? DisabledUserLoginReason { get; set; } = null;
 
         public BusinessUserPermission Permission { get; set; } = new BusinessUserPermission();
-
         public BusinessUserWhiteLabel WhiteLabel { get; set; } = new BusinessUserWhiteLabel();
     }
 }

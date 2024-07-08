@@ -35,7 +35,7 @@ export class ErrorHandler {
         let error = new Error(msg);
         try {
             throw error;
-        } catch (base) {
+        } catch (base: any | null) {
             /* istanbul ignore else */
             if (Object.create && Object.defineProperty) {
                 error = Object.create(base);

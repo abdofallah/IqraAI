@@ -5,17 +5,20 @@ namespace IqraCore.Entities.Business
     public class BusinessData
     {
         [BsonId]
-        public long Id { get; set; }
-        public string UserEmail { get; set; }
+        public long Id { get; set; } = -1;
+        public string MasterUserEmail { get; set; } = string.Empty;
 
-        public string Name { get; set; }
-        public string Region { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
         public string LogoURL { get; set; } = string.Empty;
+
+        public string Region { get; set; } = string.Empty;
+
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
-        public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
-        public List<BusinessUser> Users { get; set; } = new List<BusinessUser>();
 
+        public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();
         public List<long> NumberIds { get; set; } = new List<long>();
+
+        public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
     }
 }

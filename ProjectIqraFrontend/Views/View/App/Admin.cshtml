@@ -68,20 +68,30 @@
 
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Users Container -->
-        <div class="main-container fade show w-100" id="business-tab">
+        <div class="main-container fade show w-100" id="users-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
-                <ul class="nav mb-3" id="users-tab" role="tablist">
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
-                    </li>
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
-                    </li>
-                </ul>
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="users-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="users-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-analytics" type="button" role="tab" aria-controls="users-analytics" aria-selected="true">Analytics</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="users-list-tab" data-bs-toggle="pill" data-bs-target="#users-list" type="button" role="tab" aria-controls="users-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="users-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToUsersListTabFromManageTab">Users</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageUserName">User</span></li>
+                        </ol>
+                    </nav>
+                </div>
 
-                <div class="tab-content w-100" id="users-tabContent">
+                <div class="tab-content w-100" id="users-inner-tabContent">
                     <!-- Analytics -->
                     <div class="tab-pane fade w-100" id="users-analytics" role="tabpanel" aria-labelledby="users-analytics-tab" tabindex="0">
                         analytics
@@ -90,7 +100,7 @@
                     <!-- List -->
                     <div class="tab-pane fade w-100 show active" id="users-list" role="tabpanel" aria-labelledby="users-list-tab" tabindex="0">
                         <!-- Users List Table Tab -->
-                        <div class="fade d-none w-100" id="usersListTableTab">
+                        <div class="fade w-100 show" id="usersListTableTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 200px" class="me-4">
                                     <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserButton">
@@ -110,6 +120,7 @@
                                         <th scope="col">Email</th>
                                         <th scope="col">Name</th>
                                         <th scope="col">Businesses</th>
+                                        <th scope="col">Numbers</th>
                                         <th scope="col">Actions</th>
                                     </tr>
                                 </thead>
@@ -119,7 +130,7 @@
                             </table>
                         </div>
                         <!-- Users Manage Tab -->
-                        <div class="fade w-100 show" id="usersManageTab">
+                        <div class="fade w-100 d-none" id="usersManageTab">
                             <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
                                 <ul class="nav" id="users-manage-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
@@ -132,10 +143,13 @@
                                         <button class="nav-link" id="users-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-permissions" type="button" role="tab" aria-controls="users-manage-permissions" aria-selected="true">Permissions</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
+                                        <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
+                                        <button class="nav-link" id="users-manage-numbers-tab" data-bs-toggle="pill" data-bs-target="#users-manage-numbers" type="button" role="tab" aria-controls="users-manage-numbers" aria-selected="true">Numbers</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
                                     </li>
                                 </ul>
 
@@ -179,38 +193,117 @@
                                 <div class="tab-pane fade w-100" id="users-manage-permissions" role="tabpanel" aria-labelledby="users-manage-permissions-tab" tabindex="0">
                                     <div class="mb-3">
                                         <label class="form-label d-block">Authentication</label>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanLoginInput">
-                                            <label for="usersManageCanLoginInput" class="form-label d-block">Can Login</label>
+
+                                        <div class="">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableLoginInput" check-type="permission-with-reason">
+                                                <label for="usersManageDisableLoginInput" class="form-label d-block">Login Disabled</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="usersManageLoginDisabledReasonInput" placeholder="Login Disabled Reason">
                                         </div>
+
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label d-block">Business</label>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanViewBusinessInput">
-                                            <label for="usersManageCanViewBusinessInput" class="form-label d-block">Can View</label>
+
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableCompleteBusinessInput" check-type="permission-with-reason">
+                                                <label for="usersManageDisableCompleteBusinessInput" class="form-label d-block">Disable Complete (Viewing Also)</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="usersManageDisableCompleteBusinessReasonInput" placeholder="Disable Complete Reason">
                                         </div>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanEditBusinessInput">
-                                            <label for="usersManageCanEditBusinessInput" class="form-label d-block">Can Edit</label>
+
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableEditBusinessInput" check-type="permission-with-reason">
+                                                <label for="usersManageDisableEditBusinessInput" class="form-label d-block">Disable Edit</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="usersManageDisableEditBusinessReasonInput" placeholder="Disable Edit Reason">
                                         </div>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanDeleteBusinessInput">
-                                            <label for="usersManageCanDeleteBusinessInput" class="form-label d-block">Can Delete</label>
+                                        
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableDeleteBusinessInput" check-type="permission-with-reason">
+                                                <label for="usersManageDisableDeleteBusinessInput" class="form-label d-block">Disable Delete</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="usersManageDisableDeleteBusinessReasonInput" placeholder="Disable Delete Reason">
                                         </div>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="usersManageCanAddBusinessInput">
-                                            <label for="usersManageCanAddBusinessInput" class="form-label d-block">Can Add</label>
+                                        
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableAddBusinessInput" check-type="permission-with-reason">
+                                                <label for="usersManageDisableAddBusinessInput" class="form-label d-block">Disable Add</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="usersManageDisableAddBusinessReasonInput" placeholder="Disable Add Reason">
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                                <!-- Businesses -->
+                                <div class="tab-pane fade w-100" id="users-manage-businesses" role="tabpanel" aria-labelledby="users-manage-businesses-tab" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserBusinessButton">
+                                                <span>+ Add Business</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchUserBusinessButton">
+                                            <button class="input-group-button btn btn-primary" id="searchUserBusinessButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
                                         </div>
                                     </div>
+                                    <table id="userBusinessesListTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">#</th>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">Numbers</th>
+                                                <th scope="col">Users</th>
+                                                <th scope="col">Region</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamically Generated -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Numbers -->
+                                <div class="tab-pane fade w-100" id="users-manage-numbers" role="tabpanel" aria-labelledby="users-manage-numbers-tab" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserNumberButton">
+                                                <span>+ Add Number</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Number or id" aria-label="Number or id" aria-describedby="searchUserNumberButton">
+                                            <button class="input-group-button btn btn-primary" id="searchUserNumberButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <table id="userNumbersListTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">#</th>
+                                                <th scope="col">Country</th>
+                                                <th scope="col">Number</th>
+                                                <th scope="col">Assigned</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamically Generated -->
+                                        </tbody>
+                                    </table>
                                 </div>
                                 <!-- Analytics -->
                                 <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
                                     analytics
-                                </div>
-                                <!-- Businesses -->
-                                <div class="tab-pane fade w-100" id="users-manage-businesses" role="tabpanel" aria-labelledby="users-manage-businesses-tab" tabindex="0">
-                                    businesses
                                 </div>
                             </div>
                         </div>
@@ -261,12 +354,26 @@
 
     <!-- Users Tab -->
     <script>
+        var CurrentUsersTableList = [];
+
+        var CurrentManageUserBusinesses = [];
+        var CurrentManageUserNumbers = [];
+
         var UsersPage = 0;
         var MaxUsersPerPage = 30;
 
+        var IsEditUserAllowed = false;
+
         const usersListTable = $("#usersListTable");
+
         const usersListTableTab = $("#usersListTableTab");
         const usersManageTab = $("#usersManageTab");
+
+        const usersInnerTab = $("#users-inner-tab");
+        const usersManageBreadcrumb = $("#users-manage-breadcrumb");
+
+        const switchBackToUsersListTabFromManageTab = $("#switchBackToUsersListTabFromManageTab");
+        const currentManageUserName = $("#currentManageUserName");
 
         function FetchUsersFromAPI(successCallback) {
             $.ajax({
@@ -292,13 +399,60 @@
             });
         }
 
+        function FetchUserBusinessesFromAPI(userEmail, successCallback)
+        {
+            $.ajax({
+                url: '/app/admin/user/businesses',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    email: userEmail
+                },
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
+        function FetchUserNumbersFromAPI(userEmail, successCallback) {
+            $.ajax({
+                url: '/app/admin/user/numbers',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    email: userEmail
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
         function CreateUsersListTableElement(userData) {
             let element = $(`<tr>
                 <td>${userData.email}</td>
                 <td>${userData.firstName} ${userData.lastName}</td>
                 <td>${userData.businesses.length}</td>
+                <td>${userData.numbers.length}</td>
                 <td>
-                    <button class="btn btn-info btn-sm">
+                    <button class="btn btn-info btn-sm" user-email="${userData.email}" button-type="edit-user">
                         <i class="fa-regular fa-pen-to-square"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
@@ -310,13 +464,237 @@
             return element;
         }
 
+        function CreateUserManageBusinessesTableElement(businessData)
+        {
+            let element = $(`<tr>
+                <td>${businessData.id}</td>
+                <td>${businessData.name}</td>
+                <td>${businessData.numbers.length}</td>
+                <td>${businessData.users.length}</td>
+                <td>${businessData.region}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
+        }
+
+        function CreateUserManageNumbersTableElement(numberData)
+        {
+            let element = $(`<tr>
+                <td>${numberData.id}</td>
+                <td>${numberData.country}</td>
+                <td>${numberData.number}</td>
+                <td>${numberData.assigned}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-number">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
+        }
+
+        function ResetAndEmptyManageTabData()
+        {
+            usersManageTab.find("input[type=text]").val("");
+            usersManageTab.find("input[type=checkbox]").prop("checked", false);
+            usersManageTab.find("table tbody").empty();
+        }
+
+        function FillUserManageTab(userData, userBusinessesData, userNumbersData)
+        {
+            ResetAndEmptyManageTabData();
+
+            // General
+
+            usersManageTab.find("#usersManageFirstNameInput").val(userData.firstName);
+            usersManageTab.find("#usersManageLastNameInput").val(userData.lastName);
+
+            usersManageTab.find("#usersManageEmailInput").val(userData.email);
+
+            // Permissions
+
+            if (userData.permission.loginDisabledAt != null) {
+                usersManageTab.find("#usersManageDisableLoginInput").prop("checked", true).change();
+
+                if (userData.permission.loginDisabledReason != null)
+                {     
+                    usersManageTab.find("#usersManageLoginDisabledReasonInput").val(userData.permission.loginDisabledReason);
+                }
+            }
+
+            if (userData.permission.business.disableBusinessesAt != null) {
+                usersManageTab.find("#usersManageDisableCompleteBusinessInput").prop("checked", true).change();
+
+
+                if (userData.permission.business.disableBusinessesReason != null)
+                {
+                    usersManageTab.find("#usersManageDisableCompleteBusinessReasonInput").val(userData.permission.business.disableBusinessesReason);
+                }
+            }
+            
+            if (userData.permission.business.editBusinessDisabledAt != null) {
+                usersManageTab.find("#usersManageDisableDeleteBusinessInput").prop("checked", true).change();
+
+                if (userData.permission.business.editBusinessDisabledReason != null)
+                {
+                    usersManageTab.find("#usersManageDisableEditBusinessReasonInput").val(userData.permission.business.editBusinessDisabledReason);
+                }
+            }
+            
+            if (userData.permission.business.deleteBusinessDisableAt != null) {
+                usersManageTab.find("#usersManageDisableDeleteInput").prop("checked", true).change();
+
+                if (userData.permission.business.deleteBusinessDisabledReason != null)
+                {         
+                    usersManageTab.find("#usersManageDisableDeleteReasonInput").val(userData.permission.business.deleteBusinessDisabledReason);
+                }
+            }
+            
+            if (userData.permission.business.addBusinessDisabledAt != null) {
+                usersManageTab.find("#usersManageDisableAddBusinessInput").prop("checked", true).change();
+
+                if (userData.permission.business.addBusinessDisabledReason != null)
+                {   
+                    usersManageTab.find("#usersManageDisableAddBusinessReasonInput").val(userData.permission.business.addBusinessDisabledReason);
+                }
+            }
+        
+            // Businesses
+
+            if (userBusinessesData.length > 0)
+            {
+                userBusinessesData.forEach((businessData) => {
+                    usersManageTab.find("#userBusinessesListTable tbody").append(CreateUserManageBusinessesTableElement(businessData));
+                });
+            }
+            else
+            {
+                usersManageTab.find("#userBusinessesListTable tbody").append('<tr tr-type="none-notice"><td colspan="6">No businesses</td></tr>');
+            }
+
+            // Numbers
+
+            if (userNumbersData.length > 0)
+            {
+                userNumbersData.forEach((numberData) => {
+                    usersManageTab.find("#userNumbersListTable tbody").append(CreateUserManageNumbersTableElement(numberData));
+                });
+            }
+            else
+            {
+                usersManageTab.find("#userNumbersListTable tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
+            }
+        }
+
         $(document).ready(() => {
+            $(document).on("click", "#usersListTable tr td button[button-type=edit-user]", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (!IsEditUserAllowed)
+                {
+                    console.log("Already editing a user!");
+                    return;
+                }
+
+                IsEditUserAllowed = false;
+
+                let userEmail = $(event.currentTarget).attr("user-email");
+                usersManageTab.attr("user-email", userEmail);
+
+                let currentUserData = CurrentUsersTableList.find((userData) => userData.email == userEmail);
+                if (!currentUserData)
+                {
+                    alert("Could not find user data for: " + user);
+
+                    IsEditUserAllowed = true;
+                    return;
+                }
+
+                FetchUserBusinessesFromAPI(userEmail, (userBusinessesData) => {
+                    CurrentManageUserBusinesses = userBusinessesData;
+                });
+
+                FetchUserNumbersFromAPI(userEmail, (userNumbersData) => {
+                    CurrentManageUserNumbers = userNumbersData;
+                });
+
+                FillUserManageTab(currentUserData, CurrentManageUserBusinesses, CurrentManageUserNumbers);
+                currentManageUserName.text(userEmail);
+                
+                usersInnerTab.removeClass("show");
+                usersListTableTab.removeClass("show");
+                setTimeout(() => {
+                    usersInnerTab.addClass("d-none");
+                    usersListTableTab.addClass("d-none");
+
+                    usersManageBreadcrumb.removeClass("d-none");
+                    usersManageTab.removeClass("d-none");
+
+                    setTimeout(() => {
+                        usersManageBreadcrumb.addClass("show");
+                        usersManageTab.addClass("show");
+
+                        IsEditUserAllowed = true;
+                        return;
+                    }, 10);
+                }, 300);
+            });
+
+            switchBackToUsersListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                usersManageBreadcrumb.removeClass("show");
+                usersManageTab.removeClass("show");
+                setTimeout(() => {
+                    usersManageBreadcrumb.addClass("d-none");
+                    usersManageTab.addClass("d-none");
+
+                    usersInnerTab.removeClass("d-none");
+                    usersListTableTab.removeClass("d-none");
+
+                    setTimeout(() => {
+                        usersInnerTab.addClass("show");
+                        usersListTableTab.addClass("show");
+                    }, 10);
+                }, 300);
+            });
+
+            $("#usersManageTab input[check-type=permission-with-reason]").on("change", (event) => { 
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+                let reasonInput = current.parent().parent().find("input[type=text]");
+
+                if (current.prop("checked"))
+                {
+                    reasonInput.removeClass("d-none");
+                }
+                else
+                {
+                    reasonInput.addClass("d-none");
+                }
+            });
+
             // Init
 
             FetchUsersFromAPI((users) => {
+                CurrentUsersTableList = users;
+
                 users.forEach((userData) => {
+                    console.log(userData);
                     usersListTable.append(CreateUsersListTableElement(userData));
                 });
+
+                IsEditUserAllowed = true;
             });
 
         });

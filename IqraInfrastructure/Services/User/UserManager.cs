@@ -47,19 +47,27 @@ namespace IqraInfrastructure.Services.User
         {
             string hashedPassword = HashPassword(newPassword);
             var updateDefinition = Builders<UserData>.Update
-                .Set(u => u.PasswordSHA, hashedPassword)
-                .Set(u => u.ResetPasswordToken, null)
-                .Set(u => u.ResetPasswordExpiry, null);
+                .Set(u => u.PasswordSHA, hashedPassword);
 
             return await _userDatabase.UpdateUser(userEmail, updateDefinition);
         }
 
-        public async Task<string> GenerateResetPasswordToken(string userEmail)
+        public async Task<string> GenerateResetPasswordToken(string userEmail, string? requestedBy)
         {
             string token = Guid.NewGuid().ToString();
+
+            var resetPassword = new UserResetPassword()
+            {
+                RequestedAt = DateTime.Now,
+                Token = token
+            };
+
+            if (!string.IsNullOrEmpty(requestedBy)) {
+                resetPassword.RequestedBy = requestedBy;
+            }
+
             var updateDefinition = Builders<UserData>.Update
-                .Set(u => u.ResetPasswordToken, token)
-                .Set(u => u.ResetPasswordExpiry, DateTime.UtcNow.AddHours(1));
+                .AddToSet(d => d.ResetPasswordTokens, resetPassword);
 
             await _userDatabase.UpdateUser(userEmail, updateDefinition);
             return token;
@@ -84,9 +92,40 @@ namespace IqraInfrastructure.Services.User
             return userSession;
         }
 
-        public bool ValidateResetPasswordToken(UserData user, string token)
+        public async Task<int> ValidateResetPasswordToken(UserData user, string token)
         {
-            return user.ResetPasswordToken == token && user.ResetPasswordExpiry > DateTime.UtcNow;
+            UpdateDefinition<UserData>? updateDefinition = null;
+            var resultFound = 1; // token not found
+
+            foreach (var userResetPassword in user.ResetPasswordTokens)
+            {
+                if (userResetPassword.RequestedAt.AddDays(3) < DateTime.UtcNow)
+                {
+                    updateDefinition = Builders<UserData>.Update
+                        .PullFilter(u => u.ResetPasswordTokens, d => (d.Token == userResetPassword.Token && d.RequestedAt == userResetPassword.RequestedAt));
+                    await _userDatabase.UpdateUser(user.Email, updateDefinition);
+
+                    continue;
+                }
+
+                if (userResetPassword.Token == token)
+                {
+                    if (userResetPassword.RequestedAt.AddHours(1) < DateTime.UtcNow)
+                    {
+                        resultFound = 2; // is expired
+                    }
+
+                    resultFound = 200; // found and is not expired
+
+                    updateDefinition = Builders<UserData>.Update
+                        .PullFilter(u => u.ResetPasswordTokens, d => (d.Token == userResetPassword.Token && d.RequestedAt == userResetPassword.RequestedAt));
+                    await _userDatabase.UpdateUser(user.Email, updateDefinition);
+
+                    break;
+                }
+            }
+
+            return resultFound; 
         }
 
         public async Task<bool> ValidateSession(string userEmail, string sessionId, string authKey)
@@ -114,13 +153,13 @@ namespace IqraInfrastructure.Services.User
             return Guid.NewGuid().ToString();
         }
 
-        public async Task SendPasswordResetEmail(string userEmail)
+        public async Task SendPasswordResetEmail(string userEmail, string? requestedBy = null)
         {
-            string resetToken = await GenerateResetPasswordToken(userEmail);
+            string resetToken = await GenerateResetPasswordToken(userEmail, requestedBy);
             string resetUrl = $"{resetToken}";
 
             string subject = "Reset Password | ProjectIqra";
-            string body = $"<a href='{resetUrl}'>{resetUrl}</a>";
+            string body = $"<a href='{resetUrl}'>{resetUrl}</a>{(string.IsNullOrEmpty(requestedBy) ? "" : $"<p>Requested By: {requestedBy}</p>")}";
 
             throw new NotImplementedException();
             //await _emailManager.SendEmailAsync(user.Email, subject, body); todo

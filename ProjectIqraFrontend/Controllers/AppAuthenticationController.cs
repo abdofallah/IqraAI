@@ -54,9 +54,9 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             UserPermission userPermission = user.Permission;
-            if (!userPermission.CanLogin)
+            if (userPermission.LoginDisabledAt != null)
             {
-                return BadRequest(new { success = false, message = "User is not allowed to login" });
+                return BadRequest(new { success = false, message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.LoginDisabledReason) ? "" : ": " + userPermission.LoginDisabledReason)) });
             }
 
             UserSession? session = await _userManager.CreateUserSession(user.Email);
@@ -84,7 +84,7 @@ namespace ProjectIqraFrontend.Controllers
                 return BadRequest(new { success = false, message = "User not found" });
             }
 
-            await _userManager.SendPasswordResetEmail(user.Email);
+            await _userManager.SendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
 
             return Ok(new { success = true, message = "Reset password email sent" });
         }
@@ -98,9 +98,25 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             UserData? user = await _userManager.GetUserByEmail(model.Email);
-            if (user == null || !_userManager.ValidateResetPasswordToken(user, model.Token))
+            if (user == null)
             {
-                return BadRequest(new { success = false, message = "Invalid reset password token or token expired" });
+                return BadRequest(new { success = false, message = "User not found with email" });
+            }
+
+            int validateResult = await _userManager.ValidateResetPasswordToken(user, model.Token);
+            if (validateResult != 200)
+            {
+                if (validateResult == 1)
+                {
+                    return BadRequest(new { success = false, message = "Invalid token" });
+                }
+
+                if (validateResult == 2)
+                {
+                    return BadRequest(new { success = false, message = "Token is expired, request new token" });
+                }
+
+                return BadRequest(new { success = false, message = "Error while validating token" });
             }
 
             if (!(await _userManager.ResetPassword(user.Email, model.NewPassword)))

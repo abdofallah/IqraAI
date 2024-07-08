@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.User;
@@ -68,6 +69,114 @@ namespace ProjectIqraFrontend.Controllers
             result.Data = usersResult.Data;
 
             return result;
+        }
+
+        [HttpPost("/app/admin/user/businesses")]
+        public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinesses(string inputUserEmail, List<long> businessIds)
+        {
+            var result = new FunctionReturnResult<List<BusinessData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = 4;
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            var businessesResult = await _businessManager.GetUserBusinessesByIds(businessIds, inputUserEmail);
+            if (!businessesResult.Success)
+            {
+                result.Code = 1000 + businessesResult.Code;
+                result.Message = businessesResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = businessesResult.Data;
+
+            return result;
+        }
+
+        [HttpPost("/app/admin/user/numbers")]
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbers(string inputUserEmail, List<long> numberIds)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = 4;
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            throw new NotImplementedException("Not implemented yet...");
+
+            /**
+            var numbersResult = await _numberManager.GetUserNumbers(inputUserEmail);
+            if (!numbersResult.Success)
+            {
+                result.Code = 1000 + numbersResult.Code;
+                result.Message = numbersResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numbersResult.Data;
+
+            return result;
+            **/
         }
 
         [HttpPost("/app/admin/businesses")]

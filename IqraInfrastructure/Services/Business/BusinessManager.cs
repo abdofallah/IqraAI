@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Services.Business
             var result = new FunctionReturnResult<List<BusinessData>>();
             result.Data = new List<BusinessData>();
 
-            var businesses = await _businessRepository.GetBusinessesByUserEmailAsync(userEmail);
+            var businesses = await _businessRepository.GetBusinessesByMasterUserEmailAsync(userEmail);
             if (businesses == null)
             {
                 result.Code = 1;

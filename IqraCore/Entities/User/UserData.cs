@@ -1,19 +1,26 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
 {
     public class UserData
     {
         [BsonId]
-        public string Email { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string PasswordSHA { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
         public List<long> Businesses { get; set; } = new List<long>();
         public List<long> Numbers { get; set; } = new List<long>();
+
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/users")]
         public UserAnalytics Analytics { get; set; } = new UserAnalytics();
-        public string? ResetPasswordToken { get; set; } = null;
-        public DateTime? ResetPasswordExpiry { get; set; } = DateTime.UtcNow;
         public UserPermission Permission { get; set; } = new UserPermission();
+
+        [ExcludeInAllEndpoints]
+        public string PasswordSHA { get; set; } = string.Empty;
+
+        [ExcludeInAllEndpoints]
+        public List<UserResetPassword> ResetPasswordTokens { get; set; } = new List<UserResetPassword>();
     }
 }

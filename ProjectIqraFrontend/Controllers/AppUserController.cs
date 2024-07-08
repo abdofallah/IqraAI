@@ -87,10 +87,10 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             UserPermission userPermission = user.Permission;
-            if (!userPermission.Business.CanViewBusinesses)
+            if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = 4;
-                result.Message = "User does not have permission to view businesses";
+                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
                 return result;
             }
 
@@ -140,10 +140,10 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             UserPermission userPermission = user.Permission;
-            if (!userPermission.Business.CanViewBusinesses)
+            if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = 4;
-                result.Message = "User does not have permission to view businesses";
+                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
                 return result;
             }
 

@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Number
     {
         [BsonId]
         public long Id { get; set; }
-        public string UserEmail { get; set; }
+        public string MasterUserEmail { get; set; }
 
         public string CountryCode { get; set; }
         public string Number { get; set; }

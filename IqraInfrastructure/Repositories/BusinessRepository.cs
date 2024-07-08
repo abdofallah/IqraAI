@@ -63,9 +63,9 @@ namespace IqraInfrastructure.Repositories
             return _businessCollection.Find(filter).ToListAsync();
         }
 
-        public Task<List<BusinessData>> GetBusinessesByUserEmailAsync(string userEmail)
+        public Task<List<BusinessData>> GetBusinessesByMasterUserEmailAsync(string userEmail)
         {
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.UserEmail, userEmail);
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, userEmail);
             return _businessCollection.Find(filter).ToListAsync();
         }
     }
