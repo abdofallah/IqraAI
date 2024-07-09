@@ -22,22 +22,6 @@ namespace ProjectIqraFrontend
             RegionManager regionManager = new RegionManager(regionRepository);
             builder.Services.AddSingleton<RegionManager>(regionManager);
 
-            regionManager.AddRegion(new IqraCore.Entities.Region.RegionData()
-            {
-                CountryCode = "OM",
-                CountryRegion = "MCT",
-                Servers = new List<IqraCore.Entities.Region.RegionServer>()
-                {
-                    new IqraCore.Entities.Region.RegionServer()
-                    {
-                        IpAddress = "127.0.0.1",
-                        HasSimModules = true
-                    }
-                }
-            }).GetAwaiter().GetResult();
-
-            regionManager.DisableRegionServer("OM", "MCT", "127.0.0.1").GetAwaiter().GetResult();
-
             UserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UserSessionDatabase:ConnectionString"]);
             UserRepository userRepository = new UserRepository(appConfig["UserDatabase:ConnectionString"], appConfig["UserDatabase:DatabaseName"]);
 
