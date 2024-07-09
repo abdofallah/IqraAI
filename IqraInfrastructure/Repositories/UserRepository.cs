@@ -1,10 +1,9 @@
 ﻿using IqraCore.Entities.User;
-using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository
     {
         private readonly string CollectionName = "Users";
 

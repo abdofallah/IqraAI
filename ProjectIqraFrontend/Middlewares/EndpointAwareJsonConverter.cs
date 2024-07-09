@@ -23,8 +23,60 @@ namespace ProjectIqraFrontend.Middlewares
             typeToConvert != typeof(DateTime) &&
             !typeof(IEnumerable).IsAssignableFrom(typeToConvert);
 
-        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-            throw new NotImplementedException("Deserialization is not implemented for this converter.");
+        public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType != JsonTokenType.StartObject)
+            {
+                throw new JsonException("JSON token is not a start object");
+            }
+
+            var instance = Activator.CreateInstance(typeToConvert);
+            var properties = typeToConvert.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                          .ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    return instance;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException("JSON token is not a property name");
+                }
+
+                string propertyName = reader.GetString() ?? throw new JsonException("Property name is null");
+                reader.Read();
+
+                if (properties.TryGetValue(propertyName, out PropertyInfo? property))
+                {
+                    object? value;
+                    if (property.PropertyType.IsPrimitive || property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
+                    {
+                        value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
+                    }
+                    else if (typeof(IEnumerable).IsAssignableFrom(property.PropertyType) && property.PropertyType.IsGenericType)
+                    {
+                        var listType = typeof(List<>).MakeGenericType(property.PropertyType.GetGenericArguments()[0]);
+                        value = JsonSerializer.Deserialize(ref reader, listType, options);
+                    }
+                    else
+                    {
+                        value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
+                    }
+
+                    property.SetValue(instance, value);
+                }
+                else
+                {
+                    // Skip the value for unknown properties
+                    reader.Skip();
+                }
+            }
+
+            throw new JsonException("JSON object is incomplete");
+        }
 
         public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
         {

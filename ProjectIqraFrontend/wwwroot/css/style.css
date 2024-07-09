@@ -1,5 +1,4 @@
-﻿:root
-{
+﻿:root {
     --tcolor-light-cream: rgb(241, 236, 232);
     --tcolor-cream: #d1bfae;
     --tcolor-lighter-green: #e7f88f;
@@ -10,55 +9,50 @@
 }
 
 ::selection,
-::-moz-selection
-{
+::-moz-selection {
     color: var(--tcolor-dark);
     background: var(--tcolor-light-green);
 }
 
-.nav-pills .nav-link
-{
+.nav-pills .nav-link {
     background-color: var(--tcolor-light-cream);
     color: var(--tcolor-dark);
 }
 
-    .nav-pills .nav-link:not(.active):hover
-    {
-        background-color: var(--tcolor-lighter-green);
-        color: var(--tcolor-dark);
-    }
+.nav-pills .nav-link:not(.active):hover {
+    background-color: var(--tcolor-lighter-green);
+    color: var(--tcolor-dark);
+}
 
-    .nav-pills .nav-link.active, .nav-pills .show > .nav-link
-    {
-        background-color: var(--tcolor-light-green);
-        border-color: var(--tcolor-light-green);
-        color: var(--tcolor-dark);
-    }
-
-.btn-primary
-{
+.nav-pills .nav-link.active,
+.nav-pills .show>.nav-link {
     background-color: var(--tcolor-light-green);
     border-color: var(--tcolor-light-green);
     color: var(--tcolor-dark);
 }
 
-    .btn-primary.disabled, .btn-primary:disabled, fieldset:disabled .btn-primary
-    {
-        color: var(--tcolor-dark);
-        pointer-events: none;
-        background-color: var(--tcolor-light-green);
-        border-color: var(--tcolor-light-green);
-        opacity: var(--bs-btn-disabled-opacity);
-    }
+.btn-primary {
+    background-color: var(--tcolor-light-green);
+    border-color: var(--tcolor-light-green);
+    color: var(--tcolor-dark);
+}
 
-a
-{
+.btn-primary.disabled,
+.btn-primary:disabled,
+fieldset:disabled .btn-primary {
+    color: var(--tcolor-dark);
+    pointer-events: none;
+    background-color: var(--tcolor-light-green);
+    border-color: var(--tcolor-light-green);
+    opacity: var(--bs-btn-disabled-opacity);
+}
+
+a {
     color: var(--tcolor-light-green);
     transition: 0.15s;
 }
 
-.btn-check
-{
+.btn-check {
     transition: 600ms all;
 }
 
@@ -68,15 +62,13 @@ a
 .btn-primary.active,
 .btn-primary.show,
 .btn-primary:first-child:active,
-:not(.btn-check) + .btn-primary:active
-{
+:not(.btn-check)+.btn-primary:active {
     background-color: var(--tcolor-dark-green) !important;
     border-color: var(--tcolor-dark-green) !important;
     color: var(--tcolor-dark) !important;
 }
 
-.btn-check:checked + .btn-primary
-{
+.btn-check:checked+.btn-primary {
     background-color: var(--tcolor-lighter-green) !important;
     border-color: var(--tcolor-lighter-green) !important;
     color: var(--tcolor-dark) !important;
@@ -86,32 +78,27 @@ a
 
 a:hover,
 a:active,
-a:focus
-{
+a:focus {
     color: var(--tcolor-dark-green) !important;
 }
 
-.tab-title span
-{
+.tab-title span {
     line-height: normal;
     vertical-align: middle;
 }
 
-.tab-title i
-{
+.tab-title i {
     vertical-align: middle;
 }
 
 .header_toggle,
 .tab-title,
 .nav_icon,
-.nav_name
-{
+.nav_name {
     color: var(--tcolor-light-cream) !important;
 }
 
-.business-card
-{
+.business-card {
     padding: 2em;
     background-color: var(--tcolor-light-green);
     width: 100%;
@@ -128,58 +115,50 @@ a:focus
     position: relative;
 }
 
-    .business-card img
-    {
-        max-width: 100%;
-        width: 60px;
-        background-color: var(--tcolor-lighter-green);
-        border-radius: 10px;
-        padding: 8px;
-        transition: 1s;
-    }
+.business-card img {
+    max-width: 100%;
+    width: 60px;
+    background-color: var(--tcolor-lighter-green);
+    border-radius: 10px;
+    padding: 8px;
+    transition: 1s;
+}
 
-    .business-card h4
-    {
-        margin: 0;
-        margin-left: 20px;
-        font-weight: 700;
-        line-height: normal;
-    }
+.business-card h4 {
+    margin: 0;
+    margin-left: 20px;
+    font-weight: 700;
+    line-height: normal;
+}
 
-    .business-card .h5-info
-    {
-        margin-bottom: 0;
-        font-weight: 600;
-    }
+.business-card .h5-info {
+    margin-bottom: 0;
+    font-weight: 600;
+}
 
-        .business-card .h5-info:not(:last-child)
-        {
-            margin-bottom: 20px;
-        }
+.business-card .h5-info:not(:last-child) {
+    margin-bottom: 20px;
+}
 
-        .business-card .h5-info i
-        {
-            font-size: 26px;
-            vertical-align: middle;
-            width: 30px;
-        }
+.business-card .h5-info i {
+    font-size: 26px;
+    vertical-align: middle;
+    width: 30px;
+}
 
-        .business-card .h5-info span
-        {
-            line-height: normal;
-            vertical-align: middle;
-        }
+.business-card .h5-info span {
+    line-height: normal;
+    vertical-align: middle;
+}
 
-    .business-card:hover
-    {
-        transform: scale(1.02);
-        box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-    }
+.business-card:hover {
+    transform: scale(1.02);
+    box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
 
-        .business-card:hover img
-        {
-            transform: rotate(360deg);
-        }
+.business-card:hover img {
+    transform: rotate(360deg);
+}
 
 #billing-inner-tabs .nav-link,
 #context-inner-tab .nav-link,
@@ -202,8 +181,8 @@ a:focus
 #users-inner-tab .nav-link,
 #users-manage-tab .nav-link,
 #business-inner-tab .nav-link,
-#businesses-manage-tab .nav-link
-{
+#businesses-manage-tab .nav-link,
+#region-inner-tab .nav-link {
     color: rgba(255, 255, 255, 0.8) !important;
     border-bottom: 3px solid rgba(255, 255, 255, 0.1);
     transition: 0.15s;
@@ -211,128 +190,125 @@ a:focus
     margin-bottom: 10px;
 }
 
-    #billing-inner-tabs .nav-link:not(:last-of-type),
-    #context-inner-tab .nav-link:not(:last-of-type),
-    #branding-branch-manager-tab .nav-link:not(:last-of-type),
-    #agents-manager-tab .nav-link:not(:last-of-type),
-    #agents-manager-integrations-inner-tab .nav-link:not(:last-of-type),
-    #inner-phone-numbers-tab .nav-link:not(:last-of-type),
-    #inner-twilio-phone-numbers-tab .nav-link:not(:last-of-type),
-    #routing-manager-tab .nav-link:not(:last-of-type),
-    #routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type),
-    #make-call-tab .nav-link:not(:last-of-type),
-    #make-call-simple-tab .nav-link:not(:last-of-type),
-    #make-call-assign-number-modal-tab .nav-link:not(:last-of-type),
-    #conversations-tab .nav-link:not(:last-of-type),
-    #toolManager-inner-tab .nav-link:not(:last-of-type),
-    #cache-inner-tab .nav-link:not(:last-of-type),
-    #cache-messages-group-inner-tab .nav-link:not(:last-of-type),
-    #cache-audio-group-inner-tab .nav-link:not(:last-of-type),
-    #settings-inner-tab .nav-link:not(:last-of-type),
-    #users-inner-tab .nav-link:not(:last-of-type),
-    #users-manage-tab .nav-link:not(:last-of-type),
-    #business-inner-tab .nav-link:not(:last-of-type),
-    #businesses-manage-tab .nav-link:not(:last-of-type)
-    {
-        margin-right: 10px;
-    }
+#billing-inner-tabs .nav-link:not(:last-of-type),
+#context-inner-tab .nav-link:not(:last-of-type),
+#branding-branch-manager-tab .nav-link:not(:last-of-type),
+#agents-manager-tab .nav-link:not(:last-of-type),
+#agents-manager-integrations-inner-tab .nav-link:not(:last-of-type),
+#inner-phone-numbers-tab .nav-link:not(:last-of-type),
+#inner-twilio-phone-numbers-tab .nav-link:not(:last-of-type),
+#routing-manager-tab .nav-link:not(:last-of-type),
+#routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type),
+#make-call-tab .nav-link:not(:last-of-type),
+#make-call-simple-tab .nav-link:not(:last-of-type),
+#make-call-assign-number-modal-tab .nav-link:not(:last-of-type),
+#conversations-tab .nav-link:not(:last-of-type),
+#toolManager-inner-tab .nav-link:not(:last-of-type),
+#cache-inner-tab .nav-link:not(:last-of-type),
+#cache-messages-group-inner-tab .nav-link:not(:last-of-type),
+#cache-audio-group-inner-tab .nav-link:not(:last-of-type),
+#settings-inner-tab .nav-link:not(:last-of-type),
+#users-inner-tab .nav-link:not(:last-of-type),
+#users-manage-tab .nav-link:not(:last-of-type),
+#business-inner-tab .nav-link:not(:last-of-type),
+#businesses-manage-tab .nav-link:not(:last-of-type),
+#region-inner-tab .nav-link:not(:last-of-type) {
+    margin-right: 10px;
+}
 
-    #billing-inner-tabs .nav-link.active,
-    #context-inner-tab .nav-link.active,
-    #branding-branch-manager-tab .nav-link.active,
-    #agents-manager-tab .nav-link.active,
-    #agents-manager-integrations-inner-tab .nav-link.active,
-    #inner-phone-numbers-tab .nav-link.active,
-    #inner-twilio-phone-numbers-tab .nav-link.active,
-    #routing-manager-tab .nav-link.active,
-    #routing-manager-assign-number-modal-tab .nav-link.active,
-    #make-call-tab .nav-link.active,
-    #make-call-simple-tab .nav-link.active,
-    #make-call-assign-number-modal-tab .nav-link.active,
-    #conversations-tab .nav-link.active,
-    #toolManager-inner-tab .nav-link.active,
-    #cache-inner-tab .nav-link.active,
-    #cache-messages-group-inner-tab .nav-link.active,
-    #cache-audio-group-inner-tab .nav-link.active,
-    #settings-inner-tab .nav-link.active,
-    #users-inner-tab .nav-link.active,
-    #users-manage-tab .nav-link.active,
-    #business-inner-tab .nav-link.active,
-    #businesses-manage-tab .nav-link.active
-    {
-        color: var(--tcolor-light-green) !important;
-        border-bottom-color: var(--tcolor-light-green);
-    }
+#billing-inner-tabs .nav-link.active,
+#context-inner-tab .nav-link.active,
+#branding-branch-manager-tab .nav-link.active,
+#agents-manager-tab .nav-link.active,
+#agents-manager-integrations-inner-tab .nav-link.active,
+#inner-phone-numbers-tab .nav-link.active,
+#inner-twilio-phone-numbers-tab .nav-link.active,
+#routing-manager-tab .nav-link.active,
+#routing-manager-assign-number-modal-tab .nav-link.active,
+#make-call-tab .nav-link.active,
+#make-call-simple-tab .nav-link.active,
+#make-call-assign-number-modal-tab .nav-link.active,
+#conversations-tab .nav-link.active,
+#toolManager-inner-tab .nav-link.active,
+#cache-inner-tab .nav-link.active,
+#cache-messages-group-inner-tab .nav-link.active,
+#cache-audio-group-inner-tab .nav-link.active,
+#settings-inner-tab .nav-link.active,
+#users-inner-tab .nav-link.active,
+#users-manage-tab .nav-link.active,
+#business-inner-tab .nav-link.active,
+#businesses-manage-tab .nav-link.active,
+#region-inner-tab .nav-link.active {
+    color: var(--tcolor-light-green) !important;
+    border-bottom-color: var(--tcolor-light-green);
+}
 
-    #billing-inner-tabs .nav-link:not(.active):hover,
-    #context-inner-tab .nav-link:not(.active):hover,
-    #branding-branch-manager-tab .nav-link:not(.active):hover,
-    #agents-manager-tab .nav-link:not(.active):hover,
-    #agents-manager-integrations-inner-tab .nav-link:not(.active):hover,
-    #inner-phone-numbers-tab .nav-link:not(.active):hover,
-    #inner-twilio-phone-numbers-tab .nav-link:not(.active):hover,
-    #routing-manager-tab .nav-link:not(.active):hover,
-    #routing-manager-assign-number-modal-tab .nav-link:not(.active):hover,
-    #make-call-tab .nav-link:not(.active):hover,
-    #make-call-simple-tab .nav-link:not(.active):hover,
-    #make-call-assign-number-modal-tab .nav-link:not(.active):hover,
-    #conversations-tab .nav-link:not(.active):hover,
-    #toolManager-inner-tab .nav-link:not(.active):hover,
-    #cache-inner-tab .nav-link:not(.active):hover,
-    #cache-messages-group-inner-tab .nav-link:not(.active):hover,
-    #cache-audio-group-inner-tab .nav-link:not(.active):hover,
-    #settings-inner-tab .nav-link:not(.active):hover,
-    #users-inner-tab .nav-link:not(.active):hover,
-    #users-manage-tab .nav-link:not(.active):hover,
-    #business-inner-tab .nav-link:not(.active):hover,
-    #businesses-manage-tab .nav-link:not(.active):hover
-    {
-        color: var(--tcolor-lighter-green) !important;
-        border-bottom-color: var(--tcolor-lighter-green);
-    }
+#billing-inner-tabs .nav-link:not(.active):hover,
+#context-inner-tab .nav-link:not(.active):hover,
+#branding-branch-manager-tab .nav-link:not(.active):hover,
+#agents-manager-tab .nav-link:not(.active):hover,
+#agents-manager-integrations-inner-tab .nav-link:not(.active):hover,
+#inner-phone-numbers-tab .nav-link:not(.active):hover,
+#inner-twilio-phone-numbers-tab .nav-link:not(.active):hover,
+#routing-manager-tab .nav-link:not(.active):hover,
+#routing-manager-assign-number-modal-tab .nav-link:not(.active):hover,
+#make-call-tab .nav-link:not(.active):hover,
+#make-call-simple-tab .nav-link:not(.active):hover,
+#make-call-assign-number-modal-tab .nav-link:not(.active):hover,
+#conversations-tab .nav-link:not(.active):hover,
+#toolManager-inner-tab .nav-link:not(.active):hover,
+#cache-inner-tab .nav-link:not(.active):hover,
+#cache-messages-group-inner-tab .nav-link:not(.active):hover,
+#cache-audio-group-inner-tab .nav-link:not(.active):hover,
+#settings-inner-tab .nav-link:not(.active):hover,
+#users-inner-tab .nav-link:not(.active):hover,
+#users-manage-tab .nav-link:not(.active):hover,
+#business-inner-tab .nav-link:not(.active):hover,
+#businesses-manage-tab .nav-link:not(.active):hover,
+#region-inner-tab .nav-link:not(.active):hover {
+    color: var(--tcolor-lighter-green) !important;
+    border-bottom-color: var(--tcolor-lighter-green);
+}
 
-    #billing-inner-tabs .nav-link.disabled,
-    #context-inner-tab .nav-link.disabled,
-    #branding-branch-manager-tab .nav-link.disabled,
-    #agents-manager-tab .nav-link.disabled,
-    #agents-manager-integrations-inner-tab .nav-link.disabled,
-    #inner-phone-numbers-tab .nav-link.disabled,
-    #inner-twilio-phone-numbers-tab .nav-link.disabled,
-    #routing-manager-tab .nav-link.disabled,
-    #routing-manager-assign-number-modal-tab .nav-link.disabled,
-    #make-call-tab .nav-link.disabled,
-    #make-call-simple-tab .nav-link.disabled,
-    #make-call-assign-number-modal-tab .nav-link.disabled,
-    #conversations-tab .nav-link.disabled,
-    #toolManager-inner-tab .nav-link.disabled,
-    #cache-inner-tab .nav-link.disabled,
-    #cache-messages-group-inner-tab .nav-link.disabled,
-    #cache-audio-group-inner-tab .nav-link.disabled,
-    #settings-inner-tab .nav-link.disabled,
-    #users-inner-tab .nav-link.disabled,
-    #users-manage-tab .nav-link.disabled,
-    #business-inner-tab .nav-link.disabled,
-    #businesses-manage-tab .nav-link.disabled
-    {
-        color: var(--bs-nav-link-disabled-color) !important;
-        border-bottom-color: var(--bs-nav-link-disabled-color) !important;
-    }
+#billing-inner-tabs .nav-link.disabled,
+#context-inner-tab .nav-link.disabled,
+#branding-branch-manager-tab .nav-link.disabled,
+#agents-manager-tab .nav-link.disabled,
+#agents-manager-integrations-inner-tab .nav-link.disabled,
+#inner-phone-numbers-tab .nav-link.disabled,
+#inner-twilio-phone-numbers-tab .nav-link.disabled,
+#routing-manager-tab .nav-link.disabled,
+#routing-manager-assign-number-modal-tab .nav-link.disabled,
+#make-call-tab .nav-link.disabled,
+#make-call-simple-tab .nav-link.disabled,
+#make-call-assign-number-modal-tab .nav-link.disabled,
+#conversations-tab .nav-link.disabled,
+#toolManager-inner-tab .nav-link.disabled,
+#cache-inner-tab .nav-link.disabled,
+#cache-messages-group-inner-tab .nav-link.disabled,
+#cache-audio-group-inner-tab .nav-link.disabled,
+#settings-inner-tab .nav-link.disabled,
+#users-inner-tab .nav-link.disabled,
+#users-manage-tab .nav-link.disabled,
+#business-inner-tab .nav-link.disabled,
+#businesses-manage-tab .nav-link.disabled,
+#region-inner-tab .nav-link.disabled {
+    color: var(--bs-nav-link-disabled-color) !important;
+    border-bottom-color: var(--bs-nav-link-disabled-color) !important;
+}
 
-#billing-invoices-table.table > :not(caption) > * > *
-{
+#billing-invoices-table.table> :not(caption)>*>* {
     background-color: transparent;
     padding: 14px 5px;
     vertical-align: middle;
 }
 
-#billing-invoices-table.table-hover > tbody > tr:hover > *
-{
+#billing-invoices-table.table-hover>tbody>tr:hover>* {
     cursor: pointer;
 }
 
 #billing-invoices-table td.invoice-paid span,
-#billing-invoices-table td.invoice-unpaid span
-{
+#billing-invoices-table td.invoice-unpaid span {
     padding: 8px 0px;
     border-radius: 12px;
     width: 80px;
@@ -341,89 +317,74 @@ a:focus
     font-weight: 500;
 }
 
-:root
-{
+:root {
     --invoice-unpaid-color: rgba(252, 23, 23, 0.6);
     --invoice-paid-color: rgba(38, 255, 38, 0.6);
 }
 
-#billing-invoices-table td.invoice-paid span
-{
+#billing-invoices-table td.invoice-paid span {
     background-color: var(--invoice-paid-color) !important;
     color: rgb(130, 255, 130);
 }
 
-#billing-invoices-table td.invoice-unpaid span
-{
+#billing-invoices-table td.invoice-unpaid span {
     background-color: var(--invoice-unpaid-color) !important;
     color: rgb(255, 165, 165);
 }
 
 #billing-invoices-table tr.invoice-paid,
-#billing-invoices-table tr.invoice-unpaid
-{
+#billing-invoices-table tr.invoice-unpaid {
     border-left: 5px solid;
 }
 
-#billing-invoices-table tr.invoice-paid
-{
+#billing-invoices-table tr.invoice-paid {
     border-left-color: var(--invoice-paid-color) !important;
 }
 
-#billing-invoices-table tr.invoice-unpaid
-{
+#billing-invoices-table tr.invoice-unpaid {
     border-left-color: var(--invoice-unpaid-color) !important;
 }
 
-#billing-invoices-table tbody tr td:first-of-type
-{
+#billing-invoices-table tbody tr td:first-of-type {
     padding-left: 10px;
 }
 
-.billing-method-card
-{
+.billing-method-card {
     padding: 1.5em;
     border-radius: 16px;
     background-color: #5c74bc;
 }
 
-    .billing-method-card .method-type-icon
-    {
-        background-color: white;
-        padding: 0px 20px;
-        border-radius: 12px;
-    }
+.billing-method-card .method-type-icon {
+    background-color: white;
+    padding: 0px 20px;
+    border-radius: 12px;
+}
 
-        .billing-method-card .method-type-icon img
-        {
-            height: 50px;
-        }
+.billing-method-card .method-type-icon img {
+    height: 50px;
+}
 
-    .billing-method-card .label
-    {
-        color: white;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
+.billing-method-card .label {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
 
-    .billing-method-card h6
-    {
-        margin-bottom: 0px;
-    }
+.billing-method-card h6 {
+    margin-bottom: 0px;
+}
 
-.payment-method-cards-buttons i
-{
+.payment-method-cards-buttons i {
     vertical-align: middle;
 }
 
-.payment-method-cards-buttons span
-{
+.payment-method-cards-buttons span {
     line-height: normal;
     vertical-align: middle;
 }
 
-.analytics-card
-{
+.analytics-card {
     border: 1px solid black;
     padding: 20px;
     border-radius: 6px;
@@ -437,181 +398,88 @@ a:focus
     width: 100%;
 }
 
-    .analytics-card.half-card
-    {
-        height: 70px;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-    }
+.analytics-card.half-card {
+    height: 70px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
 
-    .analytics-card .d-flex
-    {
-        width: 100%;
-    }
+.analytics-card .d-flex {
+    width: 100%;
+}
 
-    .analytics-card h6
-    {
-        font-size: 20px;
-        opacity: 0.8;
-    }
+.analytics-card h6 {
+    font-size: 20px;
+    opacity: 0.8;
+}
 
-    .analytics-card h4
-    {
-        line-height: normal;
-        font-weight: 600;
-    }
+.analytics-card h4 {
+    line-height: normal;
+    font-weight: 600;
+}
 
-    .analytics-card.half-card:not(:last-of-type)
-    {
-        margin-bottom: 12px;
-    }
+.analytics-card.half-card:not(:last-of-type) {
+    margin-bottom: 12px;
+}
 
-    .analytics-card .percentage
-    {
-        line-height: normal;
-        background-color: var(--tcolor-dark);
-        padding: 4px 5px;
-        border-radius: 6px;
-        ;
-    }
+.analytics-card .percentage {
+    line-height: normal;
+    background-color: var(--tcolor-dark);
+    padding: 4px 5px;
+    border-radius: 6px;
+    ;
+}
 
-    .analytics-card .percentage-positive
-    {
-        color: greenyellow;
-    }
+.analytics-card .percentage-positive {
+    color: greenyellow;
+}
 
-    .analytics-card .percentage-negative
-    {
-        color: rgb(255, 104, 104);
-    }
+.analytics-card .percentage-negative {
+    color: rgb(255, 104, 104);
+}
 
-    .analytics-card .percentage span,
-    .analytics-card .percentage i
-    {
-        font-weight: 500;
-        line-height: normal;
-        vertical-align: middle;
-    }
+.analytics-card .percentage span,
+.analytics-card .percentage i {
+    font-weight: 500;
+    line-height: normal;
+    vertical-align: middle;
+}
 
-.analytics-second-section
-{
+.analytics-second-section {
     height: 400px;
 }
 
-#analyticsChart
-{
+#analyticsChart {
     padding: 20px;
     border-radius: 6px;
     background-color: var(--tcolor-light-cream);
 }
 
-.analytics-acitivity
-{
+.analytics-acitivity {
     padding: 20px;
     border-radius: 6px;
     background-color: var(--tcolor-light-cream);
     color: black;
 }
 
-#customToolsTable,
-#branchesTable,
-#contextServicesTable,
-#contextProductsTable,
-#twilioNumbersTable,
-#customSimNumbersTable,
-#customRouteNumberTable,
-#conversationInboundTable,
-#conversationOutboundTable,
-#conversationWebsocketTable,
-#conversationOutboundBulkTable,
-#customMessageCacheGroupTable,
-#customMessageCacheGroupMessagesTable,
-#customAudioCacheGroupTable,
-#usersListTable,
-#userBusinessesListTable,
-#userNumbersListTable,
-#addUserBusinessModalListTable,
-#businessesListTable,
-#masterUserListTable
-{
+table.table {
     table-layout: fixed;
     overflow-wrap: break-word;
 }
 
-    #customToolsTable.table > :not(caption) > * > *,
-    #branchesTable.table > :not(caption) > * > *,
-    #contextServicesTable.table > :not(caption) > * > *,
-    #contextProductsTable.table > :not(caption) > * > *,
-    #twilioNumbersTable.table > :not(caption) > * > *,
-    #customSimNumbersTable.table > :not(caption) > * > *,
-    #customRouteNumberTable.table > :not(caption) > * > *,
-    #conversationInboundTable.table > :not(caption) > * > *,
-    #conversationOutboundTable.table > :not(caption) > * > *,
-    #conversationWebsocketTable.table > :not(caption) > * > *,
-    #conversationOutboundBulkTable.table > :not(caption) > * > *,
-    #customMessageCacheGroupTable.table > :not(caption) > * > *,
-    #customMessageCacheGroupMessagesTable.table > :not(caption) > * > *,
-    #customAudioCacheGroupTable.table > :not(caption) > * > *,
-    #usersListTable.table > :not(caption) > * > *,
-    #userBusinessesListTable.table > :not(caption) > * > *,
-    #userNumbersListTable.table > :not(caption) > * > *,
-    #addUserBusinessModalListTable.table > :not(caption) > * > *,
-    #businessesListTable.table > :not(caption) > * > *,
-    #masterUserListTable.table > :not(caption) > * > *
-    {
-        padding: 14px 20px;
-        vertical-align: middle;
-    }
+table.table> :not(caption)>*>* {
+    padding: 14px 20px;
+    vertical-align: middle;
+}
 
-    #customToolsTable.table > thead > * > *,
-    #branchesTable.table > thead > * > *,
-    #contextServicesTable.table > thead > * > *,
-    #contextProductsTable.table > thead > * > *,
-    #twilioNumbersTable.table > thead > * > *,
-    #customSimNumbersTable.table > thead > * > *,
-    #customRouteNumberTable.table > thead > * > *,
-    #conversationInboundTable.table > thead > * > *,
-    #conversationOutboundTable.table > thead > * > *,
-    #conversationWebsocketTable.table > thead > * > *,
-    #conversationOutboundBulkTable.table > thead > * > *,
-    #customMessageCacheGroupTable.table > thead > * > *,
-    #customMessageCacheGroupMessagesTable.table > thead > * > *,
-    #customAudioCacheGroupTable.table > thead > * > *,
-    #usersListTable.table > thead > * > *,
-    #userBusinessesListTable.table > thead > * > *,
-    #userNumbersListTable.table > thead > * > *,
-    #addUserBusinessModalListTable.table > thead > * > *,
-    #businessesListTable.table > thead > * > *,
-    #masterUserListTable.table > thead > * > *
-    {
-        background-color: var(--tcolor-lighter-green);
-        color: black;
-    }
+table.table>thead>*>* {
+    background-color: var(--tcolor-lighter-green);
+    color: black;
+}
 
-@media (max-width: 768px)
-{
-    #customToolsTable,
-    #branchesTable,
-    #contextServicesTable,
-    #contextProductsTable,
-    #twilioNumbersTable,
-    #customSimNumbersTable,
-    #customRouteNumberTable,
-    #conversationInboundTable,
-    #conversationOutboundTable,
-    #conversationWebsocketTable,
-    #conversationOutboundBulkTable,
-    #customMessageCacheGroupTable,
-    #customMessageCacheGroupMessagesTable,
-    #customAudioCacheGroupTable,
-    #usersListTable,
-    #userBusinessesListTable,
-    #userNumbersListTable,
-    #addUserBusinessModalListTable,
-    #businessesListTable,
-    #masterUserListTable
-    {
+@media (max-width: 768px) {
+    table.table {
         overflow-x: scroll;
         display: inline-block;
         table-layout: auto;
@@ -619,117 +487,97 @@ a:focus
 }
 
 /* Chrome, Edge and Safari */
-*::-webkit-scrollbar
-{
+*::-webkit-scrollbar {
     height: 6px;
     width: 6px;
 }
 
-*::-webkit-scrollbar-track
-{
+*::-webkit-scrollbar-track {
     border-radius: 4px;
     background-color: #F1ECE8;
 }
 
-    *::-webkit-scrollbar-track:hover
-    {
-        background-color: #F1ECE8;
-    }
+*::-webkit-scrollbar-track:hover {
+    background-color: #F1ECE8;
+}
 
-    *::-webkit-scrollbar-track:active
-    {
-        background-color: #F1ECE8;
-    }
+*::-webkit-scrollbar-track:active {
+    background-color: #F1ECE8;
+}
 
-*::-webkit-scrollbar-thumb
-{
+*::-webkit-scrollbar-thumb {
     border-radius: 0px;
     background-color: #CBE54E;
 }
 
-    *::-webkit-scrollbar-thumb:hover
-    {
-        background-color: #94B447;
-    }
+*::-webkit-scrollbar-thumb:hover {
+    background-color: #94B447;
+}
 
-    *::-webkit-scrollbar-thumb:active
-    {
-        background-color: #94B447;
-    }
+*::-webkit-scrollbar-thumb:active {
+    background-color: #94B447;
+}
 
 /* Chrome, Edge and Safari */
-.l-navbar::-webkit-scrollbar
-{
+.l-navbar::-webkit-scrollbar {
     height: 4px;
     width: 4px;
 }
 
-.l-navbar::-webkit-scrollbar-track
-{
+.l-navbar::-webkit-scrollbar-track {
     border-radius: 0px;
     background-color: #F1ECE8;
 }
 
-    .l-navbar::-webkit-scrollbar-track:hover
-    {
-        background-color: #F1ECE8;
-    }
+.l-navbar::-webkit-scrollbar-track:hover {
+    background-color: #F1ECE8;
+}
 
-    .l-navbar::-webkit-scrollbar-track:active
-    {
-        background-color: #F1ECE8;
-    }
+.l-navbar::-webkit-scrollbar-track:active {
+    background-color: #F1ECE8;
+}
 
-.l-navbar::-webkit-scrollbar-thumb
-{
+.l-navbar::-webkit-scrollbar-thumb {
     border-radius: 4px;
     background-color: #CBE54E;
 }
 
-    .l-navbar::-webkit-scrollbar-thumb:hover
-    {
-        background-color: #94B447;
-    }
+.l-navbar::-webkit-scrollbar-thumb:hover {
+    background-color: #94B447;
+}
 
-    .l-navbar::-webkit-scrollbar-thumb:active
-    {
-        background-color: #94B447;
-    }
+.l-navbar::-webkit-scrollbar-thumb:active {
+    background-color: #94B447;
+}
 
 .btn-ic-span-align span,
 .btn-ic-span-align i,
-.btn-ic-span-align.dropdown-toggle::after
-{
+.btn-ic-span-align.dropdown-toggle::after {
     vertical-align: middle;
     line-height: normal;
 }
 
-#publishToolDropdown button
-{
+#publishToolDropdown button {
     width: 160px;
 }
 
-#publishToolDropdown .dropdown-menu
-{
+#publishToolDropdown .dropdown-menu {
     width: 260px;
 }
 
 #toolHeadersList,
-#toolInputArguementsList
-{
+#toolInputArguementsList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-.responseStatusBox
-{
+.responseStatusBox {
     background-color: #1a1a1a;
     padding: 1em;
     border-radius: 6px;
 }
 
-.mon-editor
-{
+.mon-editor {
     min-height: 100px !important;
     width: 100%;
     height: 300px;
@@ -738,8 +586,7 @@ a:focus
     overflow-x: auto;
 }
 
-.error-result-container ul
-{
+.error-result-container ul {
     height: 90px;
     overflow-y: scroll;
     margin: 0;
@@ -750,25 +597,21 @@ a:focus
     border-radius: 6px;
 }
 
-.returnAlert
-{
+.returnAlert {
     color: rgb(247, 86, 86);
     font-weight: 600;
 }
 
-.error-result-container ul span:first-child
-{
+.error-result-container ul span:first-child {
     color: rgb(247, 86, 86);
     font-weight: 600;
 }
 
-.error-result-container ul li
-{
+.error-result-container ul li {
     color: orange;
 }
 
-.brandingBranchBox
-{
+.brandingBranchBox {
     background-color: var(--tcolor-light-cream);
     color: var(--tcolor-dark);
     padding: 1em;
@@ -777,60 +620,51 @@ a:focus
     font-weight: 500;
 }
 
-    .brandingBranchBox.active
-    {
-        background-color: var(--tcolor-light-green);
-    }
+.brandingBranchBox.active {
+    background-color: var(--tcolor-light-green);
+}
 
-#brandingBranchInformationList
-{
+#brandingBranchInformationList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-.branchOpeningHoursDayBox
-{
+.branchOpeningHoursDayBox {
     background-color: #3a3a3a;
     padding: 0.5em;
     border-radius: 6px;
     border: 1px solid var(--tcolor-darker-green);
 }
 
-.workingHoursTimingList
-{
+.workingHoursTimingList {
     max-height: 120px;
     overflow-y: scroll;
 }
 
-.editBranchTeamBox
-{
+.editBranchTeamBox {
     background-color: #3a3a3a;
     padding: 0.5em;
     border-radius: 6px;
     border: 1px solid var(--tcolor-darker-green);
 }
 
-#contextBranchInformationList
-{
+#contextBranchInformationList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-#contextServiceInformationList
-{
+#contextServiceInformationList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-#contextProductInformationList
-{
+#contextProductInformationList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
 
-.agent-card
-{
+.agent-card {
     padding: 2em;
     background-color: var(--tcolor-light-green);
     width: 100%;
@@ -847,142 +681,121 @@ a:focus
     position: relative;
 }
 
-    .agent-card:hover
-    {
-        transform: scale(1.02);
-        box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
-    }
+.agent-card:hover {
+    transform: scale(1.02);
+    box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
 
-    .agent-card .agent-icon
-    {
-        max-width: 100%;
-        width: 60px;
-        text-align: center;
-        font-size: 28px;
-        background-color: var(--tcolor-lighter-green);
-        border-radius: 10px;
-        padding: 8px;
-        transition: 1s;
-    }
+.agent-card .agent-icon {
+    max-width: 100%;
+    width: 60px;
+    text-align: center;
+    font-size: 28px;
+    background-color: var(--tcolor-lighter-green);
+    border-radius: 10px;
+    padding: 8px;
+    transition: 1s;
+}
 
-    .agent-card:hover .agent-icon
-    {
-        transform: rotate(360deg);
-    }
+.agent-card:hover .agent-icon {
+    transform: rotate(360deg);
+}
 
-    .agent-card h4
-    {
-        margin: 0;
-        margin-left: 20px;
-        font-weight: 700;
-        line-height: normal;
-    }
+.agent-card h4 {
+    margin: 0;
+    margin-left: 20px;
+    font-weight: 700;
+    line-height: normal;
+}
 
-    .agent-card .h5-info
-    {
-        margin-bottom: 0;
-        font-weight: 600;
-        opacity: 0.7;
-        font-size: 18px;
-        max-width: 220px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+.agent-card .h5-info {
+    margin-bottom: 0;
+    font-weight: 600;
+    opacity: 0.7;
+    font-size: 18px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
-.routing-card h4
-{
+.routing-card h4 {
     margin-left: 0px;
 }
 
-.routing-card .card-data
-{
+.routing-card .card-data {
     margin-left: 20px;
 }
 
-    .routing-card .card-data h6
-    {
-        margin-bottom: 0px;
-    }
+.routing-card .card-data h6 {
+    margin-bottom: 0px;
+}
 
-#editAgentScriptConditionValueInputs
-{
+#editAgentScriptConditionValueInputs {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-#editAgentScriptConversationContainer
-{
+#editAgentScriptConversationContainer {
     background-color: #3a3a3a;
     padding: 1em;
     border-radius: 6px;
     position: relative;
 }
 
-    #editAgentScriptConversationContainer .agentScriptConversationMessages
-    {
-        height: 50vh;
-        min-height: 500px;
-        overflow-y: scroll;
-    }
+#editAgentScriptConversationContainer .agentScriptConversationMessages {
+    height: 50vh;
+    min-height: 500px;
+    overflow-y: scroll;
+}
 
-        #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage
-        {
-            background-color: #4a4a4a;
-            padding: 1em;
-            border-radius: 6px;
-        }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage {
+    background-color: #4a4a4a;
+    padding: 1em;
+    border-radius: 6px;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage
-            {
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage:not(:last-child)
-            {
-                margin-bottom: 10px;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage:not(:last-child) {
+    margin-bottom: 10px;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message textarea
-            {
-                width: calc(100% - 55px);
-                max-height: 100px;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message textarea {
+    width: calc(100% - 55px);
+    max-height: 100px;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage .message-icon
-            {
-                width: 40px;
-                background-color: #5c74bc;
-                border-radius: 40px;
-                text-align: center;
-                padding: 10px;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage .message-icon {
+    width: 40px;
+    background-color: #5c74bc;
+    border-radius: 40px;
+    text-align: center;
+    padding: 10px;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message
-            {
-                margin-bottom: 5px;
-                justify-content: end;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message {
+    margin-bottom: 5px;
+    justify-content: end;
+}
 
-                #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message .message-icon
-                {
-                    margin-left: 10px;
-                }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .singleMessage.user-message .message-icon {
+    margin-left: 10px;
+}
 
-            #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage
-            {
-                justify-content: start;
-            }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage {
+    justify-content: start;
+}
 
-                #editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage .message-icon
-                {
-                    margin-right: 10px;
-                }
+#editAgentScriptConversationContainer .agentScriptConversationMessages .conversationMessage .ai-message .singleMessage .message-icon {
+    margin-right: 10px;
+}
 
-.no-messages-conversation
-{
+.no-messages-conversation {
     position: absolute;
     top: 0;
     bottom: 0;
@@ -993,36 +806,31 @@ a:focus
     height: fit-content;
 }
 
-#ttsConfigAzureSilenceTypeList
-{
+#ttsConfigAzureSilenceTypeList {
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
     max-height: 300px;
     overflow-y: scroll;
 }
 
-    #ttsConfigAzureSilenceTypeList:has(div)
-    {
-        padding: 0.5em;
-        background-color: #3a3a3a;
-    }
+#ttsConfigAzureSilenceTypeList:has(div) {
+    padding: 0.5em;
+    background-color: #3a3a3a;
+}
 
-.routingMultiLanguageBox
-{
+.routingMultiLanguageBox {
     background-color: #3a3a3a;
     padding: 0.5em;
     border-radius: 6px;
     border: 1px solid var(--tcolor-darker-green);
 }
 
-#editRouteDefaultLanguageSelect
-{
+#editRouteDefaultLanguageSelect {
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
 }
 
-#routeMultiLanguagesEnabledList
-{
+#routeMultiLanguagesEnabledList {
     background-color: #1a1a1a;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -1030,38 +838,32 @@ a:focus
     border-top: none;
 }
 
-    #routeMultiLanguagesEnabledList tbody td
-    {
-        vertical-align: middle;
-    }
+#routeMultiLanguagesEnabledList tbody td {
+    vertical-align: middle;
+}
 
-    #routeMultiLanguagesEnabledList.disabled > tbody > tr > td,
-    #routeMultiLanguagesEnabledList.disabled > thead > tr > th
-    {
-        background-color: var(--bs-secondary-bg);
-    }
+#routeMultiLanguagesEnabledList.disabled>tbody>tr>td,
+#routeMultiLanguagesEnabledList.disabled>thead>tr>th {
+    background-color: var(--bs-secondary-bg);
+}
 
-#editRouteMultiLanguageSelectMessageList
-{
+#editRouteMultiLanguageSelectMessageList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-#routing-manager-assign-number-modal-physical-sim-list
-{
+#routing-manager-assign-number-modal-physical-sim-list {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-.list-group-item.active
-{
+.list-group-item.active {
     background-color: var(--tcolor-light-green);
     border-color: var(--tcolor-light-green);
     color: black;
 }
 
-.route-conversation-type-box
-{
+.route-conversation-type-box {
     background-color: #1a1a1a;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -1070,8 +872,7 @@ a:focus
     padding: 10px;
 }
 
-.agent-background-audio-box
-{
+.agent-background-audio-box {
     background-color: #1a1a1a;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -1080,8 +881,7 @@ a:focus
     padding: 10px;
 }
 
-.custom-tool-input-arguments
-{
+.custom-tool-input-arguments {
     background-color: #1a1a1a;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -1090,22 +890,19 @@ a:focus
     padding: 10px;
 }
 
-#editRouteActionToolRingingInputArgumentsList
-{
+#editRouteActionToolRingingInputArgumentsList {
     max-height: 300px;
     overflow-y: scroll;
 }
 
-.makeCallTypeContainer
-{
+.makeCallTypeContainer {
     background-color: #1a1a1a;
     border-radius: 6px;
     border: 1px solid var(--tcolor-darker-green);
     padding: 20px;
 }
 
-.make-call-conversation-type-box
-{
+.make-call-conversation-type-box {
     background-color: #1a1a1a;
     border-bottom-left-radius: 6px;
     border-bottom-right-radius: 6px;
@@ -1114,16 +911,14 @@ a:focus
     padding: 10px;
 }
 
-.makeCallRetryBox
-{
+.makeCallRetryBox {
     background-color: #1a1a1a;
     border-radius: 6px;
     padding: 10px;
     border: var(--bs-border-width) solid var(--bs-border-color);
 }
 
-.make-call-type-box-choose
-{
+.make-call-type-box-choose {
     background-color: var(--tcolor-light-green);
     color: var(--tcolor-dark);
     padding: 20px;
@@ -1136,68 +931,59 @@ a:focus
     height: 110px
 }
 
-    .make-call-type-box-choose:hover,
-    .make-call-type-box-choose.active
-    {
-        background-color: var(--tcolor-lighter-green);
-        transform: scale(1.01);
-        box-shadow: 3px 5px 8px 2px var(--tcolor-dark);
-    }
+.make-call-type-box-choose:hover,
+.make-call-type-box-choose.active {
+    background-color: var(--tcolor-lighter-green);
+    transform: scale(1.01);
+    box-shadow: 3px 5px 8px 2px var(--tcolor-dark);
+}
 
-    .make-call-type-box-choose .info-data,
-    .make-call-type-box-choose .info-icon
-    {
-        display: flex;
-        flex-direction: column;
-        align-items: start;
-        justify-content: center;
-    }
+.make-call-type-box-choose .info-data,
+.make-call-type-box-choose .info-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+}
 
-    .make-call-type-box-choose .info-icon
-    {
-        align-items: center;
-    }
+.make-call-type-box-choose .info-icon {
+    align-items: center;
+}
 
-    .make-call-type-box-choose .info-icon
-    {
-        background-color: var(--tcolor-lighter-green);
-        border: var(--tcolor-light-green);
-        border-radius: 6px;
-        padding: 10px;
-        margin-right: 20px;
-        width: 60px;
-        height: 60px;
-        text-align: center;
-        transition: 300ms all, 1000ms transform;
-    }
+.make-call-type-box-choose .info-icon {
+    background-color: var(--tcolor-lighter-green);
+    border: var(--tcolor-light-green);
+    border-radius: 6px;
+    padding: 10px;
+    margin-right: 20px;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    transition: 300ms all, 1000ms transform;
+}
 
-    .make-call-type-box-choose p
-    {
-        margin: 0;
-    }
+.make-call-type-box-choose p {
+    margin: 0;
+}
 
-    .make-call-type-box-choose i
-    {
-        font-size: 35px;
-    }
+.make-call-type-box-choose i {
+    font-size: 35px;
+}
 
-    .make-call-type-box-choose:hover .info-icon
-    {
-        background-color: var(--tcolor-light-green);
-        transform: rotate(360deg);
-    }
+.make-call-type-box-choose:hover .info-icon {
+    background-color: var(--tcolor-light-green);
+    transform: rotate(360deg);
+}
 
-    .make-call-type-box-choose.active .info-icon
-    {
-        background-color: var(--tcolor-light-green);
-        transform: rotate(360deg);
-    }
+.make-call-type-box-choose.active .info-icon {
+    background-color: var(--tcolor-light-green);
+    transform: rotate(360deg);
+}
 
 #conversationInboundTable .in-progress,
 #conversationOutboundTable .in-progress,
 #conversationWebsocketTable .in-progress,
-#conversationOutboundBulkTable .in-progress
-{
+#conversationOutboundBulkTable .in-progress {
     background-color: #fbff00;
     padding: 4px;
     border-radius: 2px;
@@ -1207,29 +993,26 @@ a:focus
 #conversationInboundTable .complete,
 #conversationOutboundTable .complete,
 #conversationWebsocketTable .complete,
-#conversationOutboundBulkTable .complete
-{
+#conversationOutboundBulkTable .complete {
     background-color: var(--tcolor-light-green);
     padding: 4px;
     border-radius: 2px;
     color: black;
 }
 
-    #conversationInboundTable .in-progress i,
-    #conversationInboundTable .complete i,
-    #conversationOutboundTable .in-progress i,
-    #conversationOutboundTable .complete i,
-    #conversationWebsocketTable .in-progress i,
-    #conversationWebsocketTable .complete i,
-    #conversationOutboundBulkTable .in-progress i,
-    #conversationOutboundBulkTable .complete i
-    {
-        width: 20px;
-        vertical-align: middle;
-    }
+#conversationInboundTable .in-progress i,
+#conversationInboundTable .complete i,
+#conversationOutboundTable .in-progress i,
+#conversationOutboundTable .complete i,
+#conversationWebsocketTable .in-progress i,
+#conversationWebsocketTable .complete i,
+#conversationOutboundBulkTable .in-progress i,
+#conversationOutboundBulkTable .complete i {
+    width: 20px;
+    vertical-align: middle;
+}
 
-.conversation-recording .recording-container
-{
+.conversation-recording .recording-container {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1241,21 +1024,18 @@ a:focus
     position: relative;
 }
 
-    .conversation-recording .recording-container .recording-container-waveform
-    {
-        width: 100%;
-    }
+.conversation-recording .recording-container .recording-container-waveform {
+    width: 100%;
+}
 
-    .conversation-recording .recording-container i.typeofconvo
-    {
-        font-size: 24px;
-        padding-left: 20px;
-        padding-right: 30px;
-        z-index: 99999;
-    }
+.conversation-recording .recording-container i.typeofconvo {
+    font-size: 24px;
+    padding-left: 20px;
+    padding-right: 30px;
+    z-index: 99999;
+}
 
-.conversation-recording .audio-controller
-{
+.conversation-recording .audio-controller {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -1273,13 +1053,11 @@ a:focus
     border-radius: 6px;
 }
 
-.conversation-recording .recording-container:hover .audio-controller
-{
+.conversation-recording .recording-container:hover .audio-controller {
     opacity: 1;
 }
 
-.conversation-recording .audio-controller button
-{
+.conversation-recording .audio-controller button {
     padding: 10px;
     margin: 0;
     background-color: transparent;
@@ -1288,24 +1066,21 @@ a:focus
 }
 
 .conversation-recording .audio-controller .volume-controller,
-.conversation-recording .audio-controller .speed-controller
-{
+.conversation-recording .audio-controller .speed-controller {
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
 }
 
-    .conversation-recording .audio-controller .speed-controller input
-    {
-        width: 28px;
-        height: 18px;
-        text-align: center;
-        font-size: 10px;
-    }
+.conversation-recording .audio-controller .speed-controller input {
+    width: 28px;
+    height: 18px;
+    text-align: center;
+    font-size: 10px;
+}
 
-.conversation-messages
-{
+.conversation-messages {
     min-height: 300px;
     max-height: 50vh;
     overflow-y: scroll;
@@ -1315,67 +1090,57 @@ a:focus
     border-radius: 4px;
 }
 
-    .conversation-messages .each-conversation-message:not(:last-child)
-    {
-        margin-bottom: 18px;
-    }
+.conversation-messages .each-conversation-message:not(:last-child) {
+    margin-bottom: 18px;
+}
 
-    .conversation-messages .each-conversation-message .timeline-span
-    {
-        font-size: 12px;
-        opacity: 0.8;
-    }
+.conversation-messages .each-conversation-message .timeline-span {
+    font-size: 12px;
+    opacity: 0.8;
+}
 
-    .conversation-messages .each-conversation-message .this-conversation-container
-    {
-        background-color: #2a2a2a;
-        padding: 10px;
-        border-radius: 4px;
-    }
+.conversation-messages .each-conversation-message .this-conversation-container {
+    background-color: #2a2a2a;
+    padding: 10px;
+    border-radius: 4px;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message i
-        {
-            background-color: var(--tcolor-light-green);
-            color: black;
-            padding: 6px;
-            border-radius: 4px;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message i {
+    background-color: var(--tcolor-light-green);
+    color: black;
+    padding: 6px;
+    border-radius: 4px;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.user-message
-        {
-            text-align: right;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.user-message {
+    text-align: right;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.ai-message i
-        {
-            margin-right: 8px;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.ai-message i {
+    margin-right: 8px;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.user-message i
-        {
-            margin-left: 8px;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message.user-message i {
+    margin-left: 8px;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message .tool-name
-        {
-            background-color: var(--tcolor-light-green);
-            color: black;
-            padding: 6px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message .tool-name {
+    background-color: var(--tcolor-light-green);
+    color: black;
+    padding: 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
 
-        .conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message .tool-result
-        {
-            background-color: var(--tcolor-light-green);
-            color: black;
-            padding: 6px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
+.conversation-messages .each-conversation-message .this-conversation-container .this-conversation-message .tool-result {
+    background-color: var(--tcolor-light-green);
+    color: black;
+    padding: 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
 
-.toolAudioExtraOptionsBox
-{
+.toolAudioExtraOptionsBox {
     background-color: #1a1a1a;
     border-radius: 6px;
     padding: 10px;
@@ -1386,8 +1151,7 @@ a:focus
 }
 
 #settingsGeneralBusinessLogoPreview,
-#manageBusinessLogoPreview
-{
+#manageBusinessLogoPreview {
     max-width: 100px;
     max-height: 100px;
     padding: 20px;
@@ -1395,7 +1159,6 @@ a:focus
     transition: all 300ms;
 }
 
-    #settingsGeneralBusinessLogoPreview:hover
-    {
-        padding: 10px;
-    }
+#settingsGeneralBusinessLogoPreview:hover {
+    padding: 10px;
+}

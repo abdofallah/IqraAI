@@ -1,10 +1,9 @@
 ﻿using IqraCore.Entities.Conversation;
-using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories
 {
-    public class ConversationRepository : IConversationRepository
+    public class ConversationRepository
     {
         private readonly string CollectionName = "Conversations";
         private readonly IMongoCollection<ConversationData> _conversationsCollection;

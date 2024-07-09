@@ -3,24 +3,28 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
-namespace IqraInfrastructure.Repositories
+namespace IqraInfrastructure.Repositories.App
 {
     public class AppRepository
     {
+        private readonly string CollectionName = "AppConfiguration";
+
         private readonly IMongoCollection<BsonDocument> _applicationConfigurationCollection;
 
-        public AppRepository(IMongoDatabase database)
+        public AppRepository(string connectionString, string databaseName)
         {
-            _applicationConfigurationCollection = database.GetCollection<BsonDocument>("applicationConfiguration");
+            IMongoClient client = new MongoClient(connectionString);
+            IMongoDatabase database = client.GetDatabase(databaseName);
+            _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }
 
         /**
          * 
          * API Keys
          * 
-        **/ 
+        **/
 
-        private const string ApiKeyField = "apiKeys";
+        private const string ApiKeyField = "ApiKeys";
 
         public async Task<bool> AddApiKey(string apiKey)
         {
@@ -55,6 +59,5 @@ namespace IqraInfrastructure.Repositories
 
             return result != null;
         }
-
     }
 }

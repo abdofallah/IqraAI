@@ -1,4 +1,4 @@
-﻿using IqraInfrastructure.Repositories;
+﻿using IqraInfrastructure.Repositories.App;
 
 namespace IqraInfrastructure.Services.App
 {

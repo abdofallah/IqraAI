@@ -2,6 +2,7 @@
 {
     public class NumberPhysical : NumberData
     {
-        public string OriginCode { get; set; }
+        public string CountryCode { get; set; }
+        public string CountryRegion { get; set; }
     }
 }

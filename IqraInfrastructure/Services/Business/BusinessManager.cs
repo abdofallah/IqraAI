@@ -1,16 +1,16 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Interfaces.Repositories;
+using IqraInfrastructure.Repositories;
 using Serilog;
 
 namespace IqraInfrastructure.Services.Business
 {
     public class BusinessManager
     {
-        private readonly IBusinessRepository _businessRepository;
-        private readonly IBusinessAppRepository _businessAppRepository;
+        private readonly BusinessRepository _businessRepository;
+        private readonly BusinessAppRepository _businessAppRepository;
 
-        public BusinessManager(IBusinessRepository businessRepository, IBusinessAppRepository businessAppRepository)
+        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository)
         {
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;

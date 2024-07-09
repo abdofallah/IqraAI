@@ -1,5 +1,6 @@
-using IqraCore.Interfaces.Repositories;
 using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.User;
 using ProjectIqraFrontend.Middlewares;
@@ -16,14 +17,35 @@ namespace ProjectIqraFrontend
 
             var appConfig = builder.Configuration;
 
-            IUserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UserSessionDatabase:ConnectionString"]);
-            IUserRepository userRepository = new UserRepository(appConfig["UserDatabase:ConnectionString"], appConfig["UserDatabase:DatabaseName"]);
+            RegionRepository regionRepository = new RegionRepository(appConfig["AppDatabase:ConnectionString"], appConfig["AppDatabase:DatabaseName"]);
+
+            RegionManager regionManager = new RegionManager(regionRepository);
+            builder.Services.AddSingleton<RegionManager>(regionManager);
+
+            regionManager.AddRegion(new IqraCore.Entities.Region.RegionData()
+            {
+                CountryCode = "OM",
+                CountryRegion = "MCT",
+                Servers = new List<IqraCore.Entities.Region.RegionServer>()
+                {
+                    new IqraCore.Entities.Region.RegionServer()
+                    {
+                        IpAddress = "127.0.0.1",
+                        HasSimModules = true
+                    }
+                }
+            }).GetAwaiter().GetResult();
+
+            regionManager.DisableRegionServer("OM", "MCT", "127.0.0.1").GetAwaiter().GetResult();
+
+            UserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UserSessionDatabase:ConnectionString"]);
+            UserRepository userRepository = new UserRepository(appConfig["UserDatabase:ConnectionString"], appConfig["UserDatabase:DatabaseName"]);
 
             UserManager userManager = new UserManager(userSessionRepository, userRepository);
             builder.Services.AddSingleton<UserManager>(userManager);
 
-            IBusinessRepository businessRepository = new BusinessRepository(appConfig["BusinessDatabase:ConnectionString"], appConfig["BusinessDatabase:DatabaseName"]);
-            IBusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
+            BusinessRepository businessRepository = new BusinessRepository(appConfig["BusinessDatabase:ConnectionString"], appConfig["BusinessDatabase:DatabaseName"]);
+            BusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
 
             BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);

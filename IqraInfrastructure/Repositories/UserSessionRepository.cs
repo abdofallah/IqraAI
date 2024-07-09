@@ -1,9 +1,8 @@
-﻿using IqraCore.Interfaces.Repositories;
-using StackExchange.Redis;
+﻿using StackExchange.Redis;
 
 namespace IqraInfrastructure.Repositories
 {
-    public class UserSessionRepository : IUserSessionRepository
+    public class UserSessionRepository
     {
         private readonly ConnectionMultiplexer _redis;
         public UserSessionRepository(string connectionString)

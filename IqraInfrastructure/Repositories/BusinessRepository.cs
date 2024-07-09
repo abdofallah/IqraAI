@@ -1,10 +1,9 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Interfaces.Repositories;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories
 {
-    public class BusinessRepository : IBusinessRepository
+    public class BusinessRepository
     {
         private readonly string CollectionName = "Business";
 

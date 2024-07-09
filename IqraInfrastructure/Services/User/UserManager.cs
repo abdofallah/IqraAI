@@ -1,5 +1,4 @@
-﻿using IqraCore.Interfaces.Repositories;
-using MongoDB.Driver;
+﻿using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
 using IqraCore.Entities.User;
@@ -7,17 +6,18 @@ using UserData = IqraCore.Entities.User.UserData;
 using IqraCore.Models.AppAuthentication;
 using IqraCore.Entities.Helpers;
 using Serilog;
+using IqraInfrastructure.Repositories;
 
 namespace IqraInfrastructure.Services.User
 {
     public class UserManager
     {
-        private readonly IUserSessionRepository _userSessionDatabase;
-        private readonly IUserRepository _userDatabase;
+        private readonly UserSessionRepository _userSessionDatabase;
+        private readonly UserRepository _userDatabase;
 
         private readonly int _sessionDurationHours = 24;
 
-        public UserManager(IUserSessionRepository userSessionRepository, IUserRepository userRepository)
+        public UserManager(UserSessionRepository userSessionRepository, UserRepository userRepository)
         {
             _userDatabase = userRepository;
             _userSessionDatabase = userSessionRepository;
