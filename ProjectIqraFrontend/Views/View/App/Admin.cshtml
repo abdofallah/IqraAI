@@ -23,6 +23,12 @@
 </head>
 
 <body id="body-pd" class="body-pd">
+    <div id="page-loader">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
     <header class="header header-body-pd" id="header">
         <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
     </header>
@@ -38,7 +44,7 @@
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
-                    <a href="#" class="nav_link" for="business-tab">
+                    <a href="#" class="nav_link active" for="business-tab">
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
@@ -46,7 +52,7 @@
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
-                    <a href="#" class="nav_link active" for="region-tab">
+                    <a href="#" class="nav_link" for="region-tab">
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
@@ -371,7 +377,7 @@
         </div>
 
         <!-- Bussiness Container -->
-        <div class="main-container fade w-100 d-none" id="business-tab">
+        <div class="main-container fade w-100 show" id="business-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -514,6 +520,46 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="mb-3">
+                                        <label for="manageBusinessRegionInput" class="form-label">Region</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="manageBusinessRegionInput" placeholder="Region" disabled>
+                                            <button class="input-group-button btn btn-light" data-bs-toggle="modal" data-bs-target="#manageBusinessRegionModal">
+                                                Select
+                                            </button>
+                                        </div>
+                                        <div class="modal modal-lg fade" id="manageBusinessRegionModal" tabindex="-1" aria-labelledby="manageBusinessRegionModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="manageBusinessRegionModalLabel">Select Region</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <table id="businessRegionModalListTable" class="table w-100">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th scope="col">#</th>
+                                                                    <th scope="col">Country</th>
+                                                                    <th scope="col">Region</th>
+                                                                    <th scope="col">Servers</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <!-- Dynamically Generated -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                            <i class="fa-regular fa-floppy-disk"></i>
+                                                            <span> Select</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Actions -->
@@ -534,14 +580,14 @@
 
         <!-- Phone Numbers Container -->
         <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
             <div class="inner-container">
                 <h6>Ah! This page is currently under development.</h6>
             </div>
         </div>
 
         <!-- Region Container -->
-        <div class="main-container fade w-100 show" id="region-tab">
+        <div class="main-container fade w-100 d-none" id="region-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-server nav_icon'></i> <span>Region</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -747,40 +793,20 @@
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/script.js"></script>
 
-    <!-- Users Tab -->
+    <!-- Global -->
     <script>
-        var CurrentUsersTableList = [];
+        var CurrentUsersList = null;
+        var CurrentBusinessesList = null;
+        var CurrentRegionsList = null;
 
-        var CurrentManageUserBusinesses = [];
-        var CurrentManageUserNumbers = [];
-
-        var UsersPage = 0;
-        var MaxUsersPerPage = 30;
-
-        var IsEditUserAllowed = false;
-
-        const usersListTable = $("#usersListTable");
-
-        const usersListTableTab = $("#usersListTableTab");
-        const usersManageTab = $("#usersManageTab");
-
-        const usersInnerTab = $("#users-inner-tab");
-        const usersManageBreadcrumb = $("#users-manage-breadcrumb");
-
-        const switchBackToUsersListTabFromManageTab = $("#switchBackToUsersListTabFromManageTab");
-        const currentManageUserName = $("#currentManageUserName");
-
-        const addUserBusinessModal = $("#addUserBusinessModal");
-        const addUserBusinessModalListTable = $("#addUserBusinessModalListTable");
-
-        function FetchUsersFromAPI(successCallback) {
+        function FetchUsersFromAPI(page, pageSize, successCallback) {
             $.ajax({
                 url: '/app/admin/users',
                 type: 'POST',
                 dataType: "json",
                 data: {
-                    page: UsersPage,
-                    max: MaxUsersPerPage
+                    page: page,
+                    pageSize: pageSize
                 },
                 success: (response) => {
                     if (!response.success)
@@ -843,6 +869,98 @@
             });
         }
 
+        function FetchBusinessesFromAPI(page, pageSize, successCallback) {
+            $.ajax({
+                url: '/app/admin/businesses',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    page: page,
+                    pageSize: pageSize
+                },
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+    
+        function FetchRegionsFromAPI(successCallback) {
+            $.ajax({
+                url: '/app/admin/regions',
+                type: 'POST',
+                dataType: "json",
+                success: (response) => {
+                    if (!response.success) {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+    </script>
+
+    <!-- PageLoader -->
+    <script>
+        const pageLoader = $("#page-loader");
+
+        var PageLoaderInterval = setInterval(() => {
+            if (
+                CurrentUsersList != null
+                &&
+                CurrentBusinessesList != null
+                &&
+                CurrentRegionsList != null
+            ) {
+                clearInterval(PageLoaderInterval);
+
+                pageLoader.css("opacity", "0");
+                setTimeout(() => {
+                    pageLoader.addClass("d-none");
+                }, 300);
+            }
+        }, 100);
+    </script>
+
+    <!-- Users Tab -->
+    <script>
+        var CurrentManageUserBusinesses = [];
+        var CurrentManageUserNumbers = [];
+
+        var UsersTabListTabPage = 0;
+        var UsersTabListTabPageSize = 30;
+
+        var IsEditUserAllowed = false;
+
+        const usersTab = $("#users-tab");
+
+        const usersListTable = usersTab.find("#usersListTable");
+
+        const usersListTableTab = usersTab.find("#usersListTableTab");
+        const usersManageTab = usersTab.find("#usersManageTab");
+
+        const usersInnerTab = usersTab.find("#users-inner-tab");
+        const usersManageBreadcrumb = usersTab.find("#users-manage-breadcrumb");
+
+        const switchBackToUsersListTabFromManageTab = usersTab.find("#switchBackToUsersListTabFromManageTab");
+        const currentManageUserName = usersTab.find("#currentManageUserName");
+
+        const addUserBusinessModal = usersTab.find("#addUserBusinessModal");
+        const addUserBusinessModalListTable = usersTab.find("#addUserBusinessModalListTable");
+
         function CreateUsersListTableElement(userData) {
             let element = $(`<tr>
                 <td>${userData.email}</td>
@@ -851,7 +969,7 @@
                 <td>${userData.numbers.length}</td>
                 <td>
                     <button class="btn btn-info btn-sm" user-email="${userData.email}" button-type="edit-user">
-                        <i class="fa-regular fa-pen-to-square"></i>
+                        <i class="fa-regular fa-eye"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
                         <i class="fa-regular fa-trash"></i>
@@ -872,7 +990,7 @@
                 <td>${businessData.region}</td>
                 <td>
                     <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business">
-                        <i class="fa-regular fa-pen-to-square"></i>
+                        <i class="fa-regular fa-eye"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
                         <i class="fa-regular fa-trash"></i>
@@ -890,7 +1008,7 @@
                 <td>${numberData.assigned}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-number">
-                        <i class="fa-regular fa-pen-to-square"></i>
+                        <i class="fa-regular fa-eye"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
                         <i class="fa-regular fa-trash"></i>
@@ -993,7 +1111,7 @@
         }
 
         $(document).ready(() => {
-            $(document).on("click", "#usersListTable tr td button[button-type=edit-user]", (event) => {
+            $(document).on("click", "#users-tab #usersListTable tr td button[button-type=edit-user]", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
 
@@ -1008,7 +1126,7 @@
                 let userEmail = $(event.currentTarget).attr("user-email");
                 usersManageTab.attr("user-email", userEmail);
 
-                let currentUserData = CurrentUsersTableList.find((userData) => userData.email == userEmail);
+                let currentUserData = CurrentUsersList.find((userData) => userData.email == userEmail);
                 if (!currentUserData)
                 {
                     alert("Could not find user data for: " + user);
@@ -1068,7 +1186,7 @@
                 }, 300);
             });
 
-            $("#usersManageTab input[check-type=permission-with-reason]").on("change", (event) => { 
+            $("#users-tab #usersManageTab input[check-type=permission-with-reason]").on("change", (event) => { 
                 event.stopPropagation();
 
                 let current = $(event.currentTarget);
@@ -1098,11 +1216,10 @@
 
             // Init
 
-            FetchUsersFromAPI((users) => {
-                CurrentUsersTableList = users;
+            FetchUsersFromAPI(UsersTabListTabPage, UsersTabListTabPageSize, (users) => {
+                CurrentUsersList = users;
 
                 users.forEach((userData) => {
-                    console.log(userData);
                     usersListTable.append(CreateUsersListTableElement(userData));
                 });
 
@@ -1113,38 +1230,46 @@
 
     <!-- Businesses Tab -->
     <script>
-        var BussinessPage = 0;
-        var MaxBussinessPerPage = 30;
+        var BusinessesTabListTabPage = 0;
+        var BusinessesTabListTabPageSize = 30;
 
-        function FetchBusinessesFromAPI(successCallback) {
-            $.ajax({
-                url: '/app/admin/businesses',
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    page: BussinessPage,
-                    max: MaxBussinessPerPage
-                },
-                success: (response) => {
-                    if (!response.success)
-                    {
-                        alert(response.message);
-                        return;
-                    }
+        var CurrentBusinessesList = null;
 
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    console.log(error);
-                }
-            });
+        const businessesTab = $("#businesses-tab");
+
+        const manageBusinessRegionModal = businessesTab.find("#manageBusinessRegionModal");
+        const businessRegionModalListTable = businessesTab.find("#businessRegionModalListTable");
+
+        function CreateManageBusinessRegionListTableElement(regionData) {
+            let countryData = CountriesList[regionData.countryCode.toUpperCase()]
+
+            let element = $(
+                `<tr>
+                    <td>${regionData.id}</td>
+                    <td>${countryData["Country"]}</td>
+                    <td>${regionData.countryRegion}</td>
+                    <td>${regionData.servers.length}</td>
+                </tr>`
+            );
+
+            return element;
         }
 
         $(document).ready(() => {
+            manageBusinessRegionModal.on('show.bs.modal', (event) => {
+                CurrentRegionsList.forEach((regionData) => {
+                    businessRegionModalListTable.find("tbody").append(CreateManageBusinessRegionListTableElement(regionData));
+                })
+            })
+
+            manageBusinessRegionModal.on('hidden.bs.modal', (event) => {
+                businessRegionModalListTable.find("tbody").empty();
+            })
+            
             // Init
 
-            FetchBusinessesFromAPI((businesses) => {
-                console.log(businesses);
+            FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize, (businesses) => {
+                CurrentBusinessesList = businesses;
 
                 businesses.forEach((businessData) => {
                     console.log(businessData);
@@ -1155,60 +1280,45 @@
 
     <!-- Regions Tab -->
     <script>
-        /** Variables **/
-        var CurrentRegionsList = [];
-
         /** Elements **/
-        const regionListTable = $("#regionListTable");
+        const regionTab = $("#region-tab");
 
-        const regionListTableTab = $("#regionListTableTab");
-        const regionManageTab = $("#regionManageTab");
+        const regionListTable = regionTab.find("#regionListTable");
 
-        const regionInnerTab = $("#region-inner-tab");
-        const regionManageBreadcrumb = $("#region-manage-breadcrumb");
+        const regionListTableTab = regionTab.find("#regionListTableTab");
+        const regionManageTab = regionTab.find("#regionManageTab");
 
-        const currentManageRegionName = $("#currentManageRegionName");
-        const switchBackToRegionListTabFromManageTab = $("#switchBackToRegionListTabFromManageTab");
+        const regionInnerTab = regionTab.find("#region-inner-tab");
+        const regionManageBreadcrumb = regionTab.find("#region-manage-breadcrumb");
 
-        const manageRegionCountryInputSelect = $("#manageRegionCountryInput");
-        const manageRegionCountryRegionInput = $("#manageRegionCountryRegionInput");
-        const manageRegionDisabledInput = $("#manageRegionDisabledInput");
+        const currentManageRegionName = regionTab.find("#currentManageRegionName");
+        const switchBackToRegionListTabFromManageTab = regionTab.find("#switchBackToRegionListTabFromManageTab");
 
-        const regionServerListTable = $("#regionServerListTable");
+        const manageRegionCountryInputSelect = regionTab.find("#manageRegionCountryInput");
+        const manageRegionCountryRegionInput = regionTab.find("#manageRegionCountryRegionInput");
+        const manageRegionDisabledInput = regionTab.find("#manageRegionDisabledInput");
 
-        const regionManagerServersListTab = $("#regionManagerServersListTab");
-        const regionManagerServerManageTab = $("#regionManagerServerManageTab");
+        const regionServerListTable = regionTab.find("#regionServerListTable");
 
-        const currentManageServerRegionName = $("#currentManageServerRegionName");
-        const currentManageRegionServerName = $("#currentManageRegionServerName");
-        const regionServerManagerBreadcrumb = $("#region-server-manager-breadcrumb");
-        const regionManagerInnerTabContainer = $("#region-manager-inner-tab-container");
-        const regionManagerGeneralTab = $("#region-manager-general-tab");
+        const regionManagerServersListTab = regionTab.find("#regionManagerServersListTab");
+        const regionManagerServerManageTab = regionTab.find("#regionManagerServerManageTab");
 
-        const switchBackToRegionManagerServersListTabFromServersTab = $("#switchBackToRegionManagerServersListTabFromServersTab");
+        const currentManageServerRegionName = regionTab.find("#currentManageServerRegionName");
+        const currentManageRegionServerName = regionTab.find("#currentManageRegionServerName");
+        const regionServerManagerBreadcrumb = regionTab.find("#region-server-manager-breadcrumb");
+        const regionManagerInnerTabContainer = regionTab.find("#region-manager-inner-tab-container");
+        const regionManagerGeneralTab = regionTab.find("#region-manager-general-tab");
 
-        const manageRegionServerIdInput = $("#manageRegionServerIdInput");
-        const manageRegionServerIpInput = $("#manageRegionServerIpInput");
-        const manageRegionServerDisabledInput = $("#manageRegionServerDisabledInput");
-        const manageRegionServerSimModulesInput = $("#manageRegionServerSimModulesInput");
+        const switchBackToRegionManagerServersListTabFromServersTab = regionTab.find("#switchBackToRegionManagerServersListTabFromServersTab");
+
+        const manageRegionServerIdInput = regionTab.find("#manageRegionServerIdInput");
+        const manageRegionServerIpInput = regionTab.find("#manageRegionServerIpInput");
+        const manageRegionServerDisabledInput = regionTab.find("#manageRegionServerDisabledInput");
+        const manageRegionServerSimModulesInput = regionTab.find("#manageRegionServerSimModulesInput");
         
-        const addNewRegionButton = $("#addNewRegionButton");
+        const addNewRegionButton = regionTab.find("#addNewRegionButton");
 
-        const addNewRegionServerButton = $("#addNewRegionServerButton");
-
-        function FetchRegionsFromAPI(successCallback) {
-            $.ajax({
-                url: '/app/admin/regions',
-                type: 'POST',
-                dataType: "json",
-                success: (response) => {
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    console.log(error);
-                }
-            });
-        }
+        const addNewRegionServerButton = regionTab.find("#addNewRegionServerButton");
 
         function CreateRegionListTableElement(regionData)
         {
@@ -1384,7 +1494,7 @@
         }
 
         $(document).ready(() => { 
-            $(document).on("click", "#regionListTable tr td button[button-type=edit-region]", (event) => {
+            $(document).on("click", "#region-tab #regionListTable tr td button[button-type=edit-region]", (event) => {
                 event.preventDefault();
             
                 let elementRegionId = $(event.currentTarget).attr("region-id");
@@ -1411,7 +1521,7 @@
                 HideRegionManageTab();
             })
 
-            $(document).on("click", "#regionServerListTable tr td button[button-type=edit-region-server]", (event) => {
+            $(document).on("click", "#region-tab #regionServerListTable tr td button[button-type=edit-region-server]", (event) => {
                 event.preventDefault();
 
                 let elementRegionId = $(event.currentTarget).attr("region-id");
@@ -1470,12 +1580,12 @@
                 manageRegionCountryInputSelect.append(`<option value="${countryData["Alpha-2 code"]}">${countryData["Country"]}</option>`)
             })
 
-            FetchRegionsFromAPI((regions) => {        
-                CurrentRegionsList = regions;
+            FetchRegionsFromAPI((regionsData) => {
+                CurrentRegionsList = regionsData;
 
-                regions.forEach((regionData) => {
+                CurrentRegionsList.forEach((regionData) => {
                     regionListTable.append(CreateRegionListTableElement(regionData));
-                })
+                });
             });
         });
     </script>
