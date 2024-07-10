@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using MongoDB.Driver;
 
-namespace IqraInfrastructure.Repositories
+namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessRepository
     {

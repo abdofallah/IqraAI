@@ -6,7 +6,7 @@ using UserData = IqraCore.Entities.User.UserData;
 using IqraCore.Models.AppAuthentication;
 using IqraCore.Entities.Helpers;
 using Serilog;
-using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Repositories.User;
 
 namespace IqraInfrastructure.Services.User
 {

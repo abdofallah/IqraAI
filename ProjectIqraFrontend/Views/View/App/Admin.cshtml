@@ -562,6 +562,15 @@
                             <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionName">Region</span></li>
                         </ol>
                     </nav>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-server-manager-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item" aria-current="page"><span id="currentManageServerRegionName">Region</span></li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToRegionManagerServersListTabFromServersTab">Servers</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionServerName">Server</span></li>
+                        </ol>
+                    </nav>
                 </div>
                 <!-- Tab Content -->
                 <div class="tab-content" id="region-manage-tab-content">
@@ -589,6 +598,7 @@
                             <table id="regionListTable" class="table w-100">
                                 <thead>
                                     <tr>
+                                        <th scope="col" style="width: 100px"></th>
                                         <th scope="col">#</th>
                                         <th scope="col">Country</th>
                                         <th scope="col">Region</th>
@@ -601,6 +611,128 @@
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Region Manage Tab -->
+                        <div class="fade w-100 d-none" id="regionManageTab">
+                            <!-- Region Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="region-manager-inner-tab-container">
+                                <ul class="nav fade show" id="region-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="region-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-manager-general" type="button" role="tab" aria-controls="region-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="region-manager-servers-tab" data-bs-toggle="pill" data-bs-target="#region-manager-servers" type="button" role="tab" aria-controls="region-manager-servers" aria-selected="true">Servers</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="region-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-manager-analytics" type="button" role="tab" aria-controls="region-manager-analytics" aria-selected="true">Analytics</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="region-manager-manage-tab-content">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="region-manager-general" role="tabpanel" aria-labelledby="region-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRegionCountryInput">Country</label>
+                                        <select class="form-select" id="manageRegionCountryInput">
+                                            <!-- Dynamically Generated -->
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRegionCountryRegionInput">Region</label>
+                                        <input type="text" class="form-control" id="manageRegionCountryRegionInput" placeholder="Region">
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageRegionDisabledInput">
+                                        <label class="form-check-label" for="manageRegionDisabledInput">Disabled</label>
+                                    </div>
+                                </div>
+                                <!-- Servers -->
+                                <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel" aria-labelledby="region-manager-servers-tab" tabindex="0">
+                                    <!-- Servers List Tab -->
+                                    <div class="fade w-100 show" id="regionManagerServersListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                            <div style="min-width: 200px" class="me-4">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionServerButton">
+                                                    <span>+ Add New Server</span>
+                                                </button>
+                                            </div>
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" placeholder="Server IP or Id" aria-label="Server IP or Id" aria-describedby="searchRegionServerButton">
+                                                <button class="input-group-button btn btn-primary" id="searchRegionServerButton">
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <table id="regionServerListTable" class="table w-100">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" style="width: 100px"></th>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">IP</th>
+                                                    <th scope="col">Has Sim Modules?</th>
+                                                    <th scope="col">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Dynamically Generated -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <!-- Servers Manage Tab -->
+                                    <div class="fade w-100 d-none" id="regionManagerServerManageTab">
+                                        <!-- Servers Manager Inner Tabs -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                            <ul class="nav" id="region-server-manager-inner-tab" role="tablist">
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="region-server-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-general" type="button" role="tab" aria-controls="region-server-manager-general" aria-selected="true">General</button>
+                                                </li>
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link disabled" id="region-server-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-analytics" type="button" role="tab" aria-controls="region-server-manager-analytics" aria-selected="true">Analytics</button>
+                                                </li>
+                                            </ul>
+                                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionServerButton">
+                                                <i class='fa-regular fa-floppy-disk'></i>
+                                                <span> Save</span>
+                                            </button>
+                                        </div>
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="region-server-manager-manage-tab-content">
+                                            <!-- General -->
+                                            <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
+                                                    <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
+                                                    <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
+                                                    <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
+                                                    <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
+                                                </div>
+                                            </div>
+                                            <!-- Analytics -->
+                                            <div class="tab-pane fade w-100" id="region-server-manager-analytics" role="tabpanel" aria-labelledby="region-server-manager-analytics-tab" tabindex="0">
+                                                Analytics
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="region-manager-analytics" role="tabpanel" aria-labelledby="region-manager-analytics-tab" tabindex="0">
+                                    Analytics
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -612,6 +744,7 @@
     <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom Scripts -->
+    <script src="~/js/countries_list.js"></script>
     <script src="~/js/script.js"></script>
 
     <!-- Users Tab -->
@@ -1016,6 +1149,300 @@
                 businesses.forEach((businessData) => {
                     console.log(businessData);
                 });
+            });
+        });
+    </script>
+
+    <!-- Regions Tab -->
+    <script>
+        /** Variables **/
+        var CurrentRegionsList = [];
+
+        /** Elements **/
+        const regionListTable = $("#regionListTable");
+
+        const regionListTableTab = $("#regionListTableTab");
+        const regionManageTab = $("#regionManageTab");
+
+        const regionInnerTab = $("#region-inner-tab");
+        const regionManageBreadcrumb = $("#region-manage-breadcrumb");
+
+        const currentManageRegionName = $("#currentManageRegionName");
+        const switchBackToRegionListTabFromManageTab = $("#switchBackToRegionListTabFromManageTab");
+
+        const manageRegionCountryInputSelect = $("#manageRegionCountryInput");
+        const manageRegionCountryRegionInput = $("#manageRegionCountryRegionInput");
+        const manageRegionDisabledInput = $("#manageRegionDisabledInput");
+
+        const regionServerListTable = $("#regionServerListTable");
+
+        const regionManagerServersListTab = $("#regionManagerServersListTab");
+        const regionManagerServerManageTab = $("#regionManagerServerManageTab");
+
+        const currentManageServerRegionName = $("#currentManageServerRegionName");
+        const currentManageRegionServerName = $("#currentManageRegionServerName");
+        const regionServerManagerBreadcrumb = $("#region-server-manager-breadcrumb");
+        const regionManagerInnerTabContainer = $("#region-manager-inner-tab-container");
+        const regionManagerGeneralTab = $("#region-manager-general-tab");
+
+        const switchBackToRegionManagerServersListTabFromServersTab = $("#switchBackToRegionManagerServersListTabFromServersTab");
+
+        const manageRegionServerIdInput = $("#manageRegionServerIdInput");
+        const manageRegionServerIpInput = $("#manageRegionServerIpInput");
+        const manageRegionServerDisabledInput = $("#manageRegionServerDisabledInput");
+        const manageRegionServerSimModulesInput = $("#manageRegionServerSimModulesInput");
+
+        function FetchRegionsFromAPI(successCallback) {
+            $.ajax({
+                url: '/app/admin/regions',
+                type: 'POST',
+                dataType: "json",
+                success: (response) => {
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
+
+        function CreateRegionListTableElement(regionData)
+        {
+            let countryData = CountriesList[regionData.countryCode.toUpperCase()]
+
+            let element = $(`<tr>
+                <td><span class="badge bg-success">Healthy</span></td>
+                <td>${regionData.id}</td>
+                <td>${countryData["Country"]}</td>
+                <td>${regionData.countryRegion}</td>
+                <td>${regionData.servers.length}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" region-id="${regionData.id}" button-type="edit-region">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
+
+            return element;
+        }
+
+        function CreateServerListTableElement(regionId, serverData)
+        {
+            let element = $(`<tr>
+                <td><span class="badge bg-success">Healthy</span></td>
+                <td>${serverData.id}</td>
+                <td>${serverData.ipAddress}</td>
+                <td>${(serverData.hasSimModules === true ? "Yes" : "No")}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" region-id="${regionId}" server-id="${serverData.id}" button-type="edit-region-server">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
+
+            return element;
+        }
+
+        function ShowRegionManageTab()
+        {
+            regionManagerGeneralTab.click();
+
+            regionInnerTab.removeClass("show");
+            regionListTableTab.removeClass("show");
+
+            setTimeout(() => {
+                regionInnerTab.addClass("d-none");
+                regionListTableTab.addClass("d-none");
+
+                regionManageBreadcrumb.removeClass("d-none");
+                regionManageTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    regionManageBreadcrumb.addClass("show");
+                    regionManageTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function HideRegionManageTab()
+        {
+            regionManageBreadcrumb.removeClass("show");
+            regionManageTab.removeClass("show");
+
+            setTimeout(() => {
+                regionManageBreadcrumb.addClass("d-none");
+                regionManageTab.addClass("d-none");
+
+                regionInnerTab.removeClass("d-none");
+                regionListTableTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    regionInnerTab.addClass("show");
+                    regionListTableTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function FillRegionManageTab(regionData)
+        {
+            ResetAndEmptyRegionManageTab();
+
+            manageRegionCountryInputSelect.val(regionData.countryCode.toUpperCase());
+            manageRegionCountryInputSelect.prop("disabled", true);
+
+            manageRegionCountryRegionInput.val(regionData.countryRegion);
+            manageRegionCountryRegionInput.prop("disabled", true);
+
+            if (regionData.disabled != null)
+            {
+                manageRegionDisabledInput.prop("checked", true);
+            }
+
+            regionData.servers.forEach((serverData) => {
+                regionServerListTable.append(CreateServerListTableElement(regionData.id, serverData));
+            });
+        }
+
+        function ResetAndEmptyRegionManageTab()
+        {
+            regionManageTab.find("input[type=text]").val("");
+            regionManageTab.find("input[type=checkbox]").prop("checked", false).change();
+            regionManageTab.find("table tbody").empty();
+        }
+
+        function ShowRegionServerManageTab()
+        {
+            regionManageBreadcrumb.removeClass("show");
+            regionManagerInnerTabContainer.removeClass("show");
+            regionManagerServersListTab.removeClass("show");
+
+            setTimeout(() => {
+                regionManageBreadcrumb.addClass("d-none");
+                regionManagerInnerTabContainer.addClass("d-none");
+                regionManagerServersListTab.addClass("d-none");
+
+                regionServerManagerBreadcrumb.removeClass("d-none");
+                regionManagerServerManageTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    regionServerManagerBreadcrumb.addClass("show");
+                    regionManagerServerManageTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function HideRegionServerManageTab()
+        {
+            regionServerManagerBreadcrumb.removeClass("show");
+            regionManagerServerManageTab.removeClass("show");
+
+            setTimeout(() => {
+                regionServerManagerBreadcrumb.addClass("d-none");
+                regionManagerServerManageTab.addClass("d-none");
+
+                regionManageBreadcrumb.removeClass("d-none");
+                regionManagerInnerTabContainer.removeClass("d-none");
+                regionManagerServersListTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    regionManageBreadcrumb.addClass("show");
+                    regionManagerInnerTabContainer.addClass("show");
+                    regionManagerServersListTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function FillRegionServerManageTab(serverData)
+        {
+            ResetAndEmptyRegionServerManageTab();
+
+            manageRegionServerIdInput.val(serverData.id);
+            manageRegionServerIdInput.prop("disabled", true);
+
+            manageRegionServerIpInput.val(serverData.ipAddress);
+            
+            if (serverData.disabledAt != null)
+            {
+                manageRegionServerDisabledInput.prop("checked", true);
+            }
+            
+            manageRegionServerSimModulesInput.prop("checked", serverData.hasSimModules);
+        }
+
+        function ResetAndEmptyRegionServerManageTab()
+        {
+            regionManagerServerManageTab.find("input[type=text]").val("");
+            regionManagerServerManageTab.find("input[type=checkbox]").prop("checked", false).change();
+            regionManagerServerManageTab.find("table tbody").empty();
+        }
+
+        $(document).ready(() => { 
+            $(document).on("click", "#regionListTable tr td button[button-type=edit-region]", (event) => {
+                event.preventDefault();
+            
+                let elementRegionId = $(event.currentTarget).attr("region-id");
+                currentManageRegionName.text(elementRegionId);
+                currentManageServerRegionName.text(elementRegionId);
+
+                let currentRegionData = CurrentRegionsList.find((regionData) => {
+                    return regionData.id == elementRegionId;
+                });
+
+                FillRegionManageTab(currentRegionData);
+
+                ShowRegionManageTab();  
+            });
+
+            switchBackToRegionListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                HideRegionManageTab();
+            })
+
+            $(document).on("click", "#regionServerListTable tr td button[button-type=edit-region-server]", (event) => {
+                event.preventDefault();
+
+                let elementRegionId = $(event.currentTarget).attr("region-id");
+                let elementServerId = $(event.currentTarget).attr("server-id");
+
+                let currentRegionData = CurrentRegionsList.find((regionData) => {
+                    return regionData.id == elementRegionId;
+                });
+                let currentServerData = currentRegionData.servers.find((serverData) => {
+                    return serverData.id == elementServerId;
+                });
+
+                currentManageRegionServerName.text(elementServerId);
+
+                FillRegionServerManageTab(currentServerData);
+
+                ShowRegionServerManageTab();
+            });
+
+            switchBackToRegionManagerServersListTabFromServersTab.on("click", (event) => {
+                event.preventDefault();
+
+                HideRegionServerManageTab();
+            })
+
+            // Init
+            Object.keys(CountriesList).forEach((countryCode) => {
+                let countryData = CountriesList[countryCode];
+                manageRegionCountryInputSelect.append(`<option value="${countryData["Alpha-2 code"]}">${countryData["Country"]}</option>`)
+            })
+
+            FetchRegionsFromAPI((regions) => {        
+                CurrentRegionsList = regions;
+
+                regions.forEach((regionData) => {
+                    regionListTable.append(CreateRegionListTableElement(regionData));
+                })
             });
         });
     </script>

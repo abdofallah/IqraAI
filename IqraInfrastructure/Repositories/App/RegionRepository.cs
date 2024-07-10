@@ -21,10 +21,15 @@ namespace IqraInfrastructure.Repositories.App
             await _regionCollection.InsertOneAsync(regionData);
             return true;
         }
-
+        
         public async Task<List<RegionData>> GetRegions()
         {
             return await _regionCollection.Find(_ => true).ToListAsync();
+        }
+
+        public async Task<List<RegionData>> GetRegions(int page, int pageSize)
+        {
+            return await _regionCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
 
         public async Task<RegionData> GetRegion(string countryCode, string countryRegion)

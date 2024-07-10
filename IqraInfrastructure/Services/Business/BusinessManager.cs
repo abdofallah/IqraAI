@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Repositories.Business;
 using Serilog;
 
 namespace IqraInfrastructure.Services.Business

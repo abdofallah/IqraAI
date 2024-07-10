@@ -1,7 +1,9 @@
-﻿using IqraCore.Entities.Region;
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Region;
 using IqraInfrastructure.Repositories.App;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Serilog;
 
 namespace IqraInfrastructure.Services.App
 {
@@ -11,6 +13,26 @@ namespace IqraInfrastructure.Services.App
         public RegionManager(RegionRepository regionRepository)
         {
             _regionRepository = regionRepository;
+        }
+
+        public async Task<FunctionReturnResult<List<RegionData>?>> GetRegions(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<RegionData>?>();
+            result.Data = null;
+
+            var businesses = await _regionRepository.GetRegions(page, pageSize);
+            if (businesses == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[RegionManager] Null - Regions not found");
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businesses;
+            }
+
+            return result;
         }
 
         public async Task<List<RegionData>> GetRegions()

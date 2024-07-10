@@ -1,6 +1,6 @@
 ﻿using StackExchange.Redis;
 
-namespace IqraInfrastructure.Repositories
+namespace IqraInfrastructure.Repositories.User
 {
     public class UserSessionRepository
     {

@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.User;
 using MongoDB.Driver;
 
-namespace IqraInfrastructure.Repositories
+namespace IqraInfrastructure.Repositories.User
 {
     public class UserRepository
     {
@@ -16,7 +16,7 @@ namespace IqraInfrastructure.Repositories
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }
 
-        public UserRepository (IMongoDatabase database)
+        public UserRepository(IMongoDatabase database)
         {
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }

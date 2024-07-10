@@ -160,29 +160,7 @@ a:focus {
     transform: rotate(360deg);
 }
 
-#billing-inner-tabs .nav-link,
-#context-inner-tab .nav-link,
-#branding-branch-manager-tab .nav-link,
-#agents-manager-tab .nav-link,
-#agents-manager-integrations-inner-tab .nav-link,
-#inner-phone-numbers-tab .nav-link,
-#inner-twilio-phone-numbers-tab .nav-link,
-#routing-manager-tab .nav-link,
-#routing-manager-assign-number-modal-tab .nav-link,
-#make-call-tab .nav-link,
-#make-call-simple-tab .nav-link,
-#make-call-assign-number-modal-tab .nav-link,
-#conversations-tab .nav-link,
-#toolManager-inner-tab .nav-link,
-#cache-inner-tab .nav-link,
-#cache-messages-group-inner-tab .nav-link,
-#cache-audio-group-inner-tab .nav-link,
-#settings-inner-tab .nav-link,
-#users-inner-tab .nav-link,
-#users-manage-tab .nav-link,
-#business-inner-tab .nav-link,
-#businesses-manage-tab .nav-link,
-#region-inner-tab .nav-link {
+.nav .nav-item .nav-link {
     color: rgba(255, 255, 255, 0.8) !important;
     border-bottom: 3px solid rgba(255, 255, 255, 0.1);
     transition: 0.15s;
@@ -190,109 +168,21 @@ a:focus {
     margin-bottom: 10px;
 }
 
-#billing-inner-tabs .nav-link:not(:last-of-type),
-#context-inner-tab .nav-link:not(:last-of-type),
-#branding-branch-manager-tab .nav-link:not(:last-of-type),
-#agents-manager-tab .nav-link:not(:last-of-type),
-#agents-manager-integrations-inner-tab .nav-link:not(:last-of-type),
-#inner-phone-numbers-tab .nav-link:not(:last-of-type),
-#inner-twilio-phone-numbers-tab .nav-link:not(:last-of-type),
-#routing-manager-tab .nav-link:not(:last-of-type),
-#routing-manager-assign-number-modal-tab .nav-link:not(:last-of-type),
-#make-call-tab .nav-link:not(:last-of-type),
-#make-call-simple-tab .nav-link:not(:last-of-type),
-#make-call-assign-number-modal-tab .nav-link:not(:last-of-type),
-#conversations-tab .nav-link:not(:last-of-type),
-#toolManager-inner-tab .nav-link:not(:last-of-type),
-#cache-inner-tab .nav-link:not(:last-of-type),
-#cache-messages-group-inner-tab .nav-link:not(:last-of-type),
-#cache-audio-group-inner-tab .nav-link:not(:last-of-type),
-#settings-inner-tab .nav-link:not(:last-of-type),
-#users-inner-tab .nav-link:not(:last-of-type),
-#users-manage-tab .nav-link:not(:last-of-type),
-#business-inner-tab .nav-link:not(:last-of-type),
-#businesses-manage-tab .nav-link:not(:last-of-type),
-#region-inner-tab .nav-link:not(:last-of-type) {
+.nav .nav-item .nav-link:not(:last-of-type) {
     margin-right: 10px;
 }
 
-#billing-inner-tabs .nav-link.active,
-#context-inner-tab .nav-link.active,
-#branding-branch-manager-tab .nav-link.active,
-#agents-manager-tab .nav-link.active,
-#agents-manager-integrations-inner-tab .nav-link.active,
-#inner-phone-numbers-tab .nav-link.active,
-#inner-twilio-phone-numbers-tab .nav-link.active,
-#routing-manager-tab .nav-link.active,
-#routing-manager-assign-number-modal-tab .nav-link.active,
-#make-call-tab .nav-link.active,
-#make-call-simple-tab .nav-link.active,
-#make-call-assign-number-modal-tab .nav-link.active,
-#conversations-tab .nav-link.active,
-#toolManager-inner-tab .nav-link.active,
-#cache-inner-tab .nav-link.active,
-#cache-messages-group-inner-tab .nav-link.active,
-#cache-audio-group-inner-tab .nav-link.active,
-#settings-inner-tab .nav-link.active,
-#users-inner-tab .nav-link.active,
-#users-manage-tab .nav-link.active,
-#business-inner-tab .nav-link.active,
-#businesses-manage-tab .nav-link.active,
-#region-inner-tab .nav-link.active {
+.nav .nav-item .nav-link.active {
     color: var(--tcolor-light-green) !important;
     border-bottom-color: var(--tcolor-light-green);
 }
 
-#billing-inner-tabs .nav-link:not(.active):hover,
-#context-inner-tab .nav-link:not(.active):hover,
-#branding-branch-manager-tab .nav-link:not(.active):hover,
-#agents-manager-tab .nav-link:not(.active):hover,
-#agents-manager-integrations-inner-tab .nav-link:not(.active):hover,
-#inner-phone-numbers-tab .nav-link:not(.active):hover,
-#inner-twilio-phone-numbers-tab .nav-link:not(.active):hover,
-#routing-manager-tab .nav-link:not(.active):hover,
-#routing-manager-assign-number-modal-tab .nav-link:not(.active):hover,
-#make-call-tab .nav-link:not(.active):hover,
-#make-call-simple-tab .nav-link:not(.active):hover,
-#make-call-assign-number-modal-tab .nav-link:not(.active):hover,
-#conversations-tab .nav-link:not(.active):hover,
-#toolManager-inner-tab .nav-link:not(.active):hover,
-#cache-inner-tab .nav-link:not(.active):hover,
-#cache-messages-group-inner-tab .nav-link:not(.active):hover,
-#cache-audio-group-inner-tab .nav-link:not(.active):hover,
-#settings-inner-tab .nav-link:not(.active):hover,
-#users-inner-tab .nav-link:not(.active):hover,
-#users-manage-tab .nav-link:not(.active):hover,
-#business-inner-tab .nav-link:not(.active):hover,
-#businesses-manage-tab .nav-link:not(.active):hover,
-#region-inner-tab .nav-link:not(.active):hover {
+.nav .nav-item .nav-link:not(.active):hover {
     color: var(--tcolor-lighter-green) !important;
     border-bottom-color: var(--tcolor-lighter-green);
 }
 
-#billing-inner-tabs .nav-link.disabled,
-#context-inner-tab .nav-link.disabled,
-#branding-branch-manager-tab .nav-link.disabled,
-#agents-manager-tab .nav-link.disabled,
-#agents-manager-integrations-inner-tab .nav-link.disabled,
-#inner-phone-numbers-tab .nav-link.disabled,
-#inner-twilio-phone-numbers-tab .nav-link.disabled,
-#routing-manager-tab .nav-link.disabled,
-#routing-manager-assign-number-modal-tab .nav-link.disabled,
-#make-call-tab .nav-link.disabled,
-#make-call-simple-tab .nav-link.disabled,
-#make-call-assign-number-modal-tab .nav-link.disabled,
-#conversations-tab .nav-link.disabled,
-#toolManager-inner-tab .nav-link.disabled,
-#cache-inner-tab .nav-link.disabled,
-#cache-messages-group-inner-tab .nav-link.disabled,
-#cache-audio-group-inner-tab .nav-link.disabled,
-#settings-inner-tab .nav-link.disabled,
-#users-inner-tab .nav-link.disabled,
-#users-manage-tab .nav-link.disabled,
-#business-inner-tab .nav-link.disabled,
-#businesses-manage-tab .nav-link.disabled,
-#region-inner-tab .nav-link.disabled {
+.nav .nav-item .nav-link.disabled {
     color: var(--bs-nav-link-disabled-color) !important;
     border-bottom-color: var(--bs-nav-link-disabled-color) !important;
 }
