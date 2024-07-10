@@ -1191,6 +1191,10 @@
         const manageRegionServerIpInput = $("#manageRegionServerIpInput");
         const manageRegionServerDisabledInput = $("#manageRegionServerDisabledInput");
         const manageRegionServerSimModulesInput = $("#manageRegionServerSimModulesInput");
+        
+        const addNewRegionButton = $("#addNewRegionButton");
+
+        const addNewRegionServerButton = $("#addNewRegionServerButton");
 
         function FetchRegionsFromAPI(successCallback) {
             $.ajax({
@@ -1291,8 +1295,6 @@
 
         function FillRegionManageTab(regionData)
         {
-            ResetAndEmptyRegionManageTab();
-
             manageRegionCountryInputSelect.val(regionData.countryCode.toUpperCase());
             manageRegionCountryInputSelect.prop("disabled", true);
 
@@ -1311,8 +1313,9 @@
 
         function ResetAndEmptyRegionManageTab()
         {
-            regionManageTab.find("input[type=text]").val("");
-            regionManageTab.find("input[type=checkbox]").prop("checked", false).change();
+            regionManageTab.find("select").prop("disabled", false).val("").change();
+            regionManageTab.find("input[type=text]").prop("disabled", false).val("");
+            regionManageTab.find("input[type=checkbox]").prop("disabled", false).prop("checked", false).change();
             regionManageTab.find("table tbody").empty();
         }
 
@@ -1360,8 +1363,6 @@
 
         function FillRegionServerManageTab(serverData)
         {
-            ResetAndEmptyRegionServerManageTab();
-
             manageRegionServerIdInput.val(serverData.id);
             manageRegionServerIdInput.prop("disabled", true);
 
@@ -1394,6 +1395,11 @@
                     return regionData.id == elementRegionId;
                 });
 
+                // View
+
+                ResetAndEmptyRegionManageTab();
+                ResetAndEmptyRegionServerManageTab();
+
                 FillRegionManageTab(currentRegionData);
 
                 ShowRegionManageTab();  
@@ -1420,6 +1426,8 @@
 
                 currentManageRegionServerName.text(elementServerId);
 
+                // View
+
                 FillRegionServerManageTab(currentServerData);
 
                 ShowRegionServerManageTab();
@@ -1429,6 +1437,31 @@
                 event.preventDefault();
 
                 HideRegionServerManageTab();
+            })
+
+            addNewRegionButton.on("click", (event) => {
+                event.preventDefault();
+
+                currentManageRegionName.text("New Region");
+                currentManageServerRegionName.text("New Region");
+
+                // View
+
+                ResetAndEmptyRegionManageTab();
+
+                ShowRegionManageTab();
+            })
+
+            addNewRegionServerButton.on("click", (event) => {
+                event.preventDefault();
+
+                currentManageRegionServerName.text("New Server");
+
+                // View
+
+                ResetAndEmptyRegionServerManageTab();
+
+                ShowRegionServerManageTab();
             })
 
             // Init
