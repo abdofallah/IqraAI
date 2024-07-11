@@ -720,23 +720,6 @@ table.table>thead>*>* {
     border-bottom-right-radius: 0px;
 }
 
-#routeMultiLanguagesEnabledList {
-    background-color: #1a1a1a;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
-    border: var(--bs-border-width) solid var(--bs-border-color);
-    border-top: none;
-}
-
-#routeMultiLanguagesEnabledList tbody td {
-    vertical-align: middle;
-}
-
-#routeMultiLanguagesEnabledList.disabled>tbody>tr>td,
-#routeMultiLanguagesEnabledList.disabled>thead>tr>th {
-    background-color: var(--bs-secondary-bg);
-}
-
 #editRouteMultiLanguageSelectMessageList {
     max-height: 300px;
     overflow-y: scroll;
@@ -1051,4 +1034,33 @@ table.table>thead>*>* {
 
 #settingsGeneralBusinessLogoPreview:hover {
     padding: 10px;
+}
+
+.table-selectable>tbody>tr.selectable:hover>* {
+    --bs-table-color-state: var(--bs-table-hover-color);
+    --bs-table-bg-state: var(--bs-table-hover-bg);
+    cursor: pointer;
+}
+
+.table-selectable>tbody>tr.active>* {
+    --bs-table-color-state: var(--bs-table-hover-color);
+    --bs-table-bg-state: var(--bs-table-hover-bg);
+}
+
+#routeMultiLanguagesEnabledList {
+    background-color: #1a1a1a !important;
+    border-bottom-left-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+    border: var(--bs-border-width) solid var(--bs-border-color) !important;
+    border-top: none !important;
+}
+
+#routeMultiLanguagesEnabledList tbody td {
+    vertical-align: middle !important;
+}
+
+#routeMultiLanguagesEnabledList.disabled>tbody>tr>td,
+#routeMultiLanguagesEnabledList.disabled>thead>tr>th {
+    background-color: var(--bs-secondary-bg) !important;
+    color: white;
 }

@@ -73,6 +73,13 @@ body {
      transition: .5s
 }
 
+#BootstrapAlertManager {
+     position: fixed;
+     top: 30px;
+     right: 30px;
+     z-index: 9999999;
+}
+
 #page-loader {
      position: fixed;
      top: 0;

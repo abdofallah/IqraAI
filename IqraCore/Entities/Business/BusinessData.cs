@@ -12,8 +12,6 @@ namespace IqraCore.Entities.Business
         public string Name { get; set; } = string.Empty;
         public string LogoURL { get; set; } = string.Empty;
 
-        public string Region { get; set; } = string.Empty;
-
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
 
@@ -25,5 +23,7 @@ namespace IqraCore.Entities.Business
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/user/businesses")]
         public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
+
+        public BusinessPermission Permission { get; set; } = new BusinessPermission();
     }
 }

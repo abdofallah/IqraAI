@@ -449,10 +449,19 @@
                                         <button class="nav-link active" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="businesses-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-actions" type="button" role="tab" aria-controls="businesses-manage-actions" aria-selected="true">Actions</button>
+                                        <button class="nav-link disabled" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-routing-permissions" type="button" role="tab" aria-controls="businesses-routing-permissions" aria-selected="true">Permissions</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="businesses-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-analytics" type="button" role="tab" aria-controls="businesses-manage-analytics" aria-selected="true">Analytics</button>
+                                        <button class="nav-link disabled" id="businesses-manage-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-routing-general" type="button" role="tab" aria-controls="businesses-routing-general" aria-selected="true">Routing</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="businesses-manage-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-agents-general" type="button" role="tab" aria-controls="businesses-agents-general" aria-selected="true">Agents</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="businesses-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-actions" type="button" role="tab" aria-controls="businesses-manage-actions" aria-selected="true">Actions</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="businesses-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-analytics" type="button" role="tab" aria-controls="businesses-manage-analytics" aria-selected="true">Analytics</button>
                                     </li>
                                 </ul>
 
@@ -492,15 +501,14 @@
                                                     </div>
                                                     <div class="modal-body">
                                                        <div class="input-group w-100 mb-3">
-                                                            <input type="text" class="form-control" placeholder="User email" aria-label="User email" aria-describedby="searchBusinessMasterUserModalButton">
-                                                            <button class="input-group-button btn btn-primary" id="searchBusinessMasterUserModalButton">
+                                                            <input type="text" class="form-control" placeholder="User email" aria-label="User email" aria-describedby="searchBusinessMasterUserModalButton" id="searchBusinessMasterUserModalInput">
+                                                            <button class="input-group-button btn btn-primary" id="searchBusinessMasterUserModalButton" disabled>
                                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                                             </button>
                                                         </div>
-                                                        <table id="masterUserListTable" class="table w-100">
+                                                        <table id="businessMasterUserModalListTable" class="table w-100 table-selectable">
                                                             <thead>
                                                                 <tr>
-                                                                    <th scope="col">#</th>
                                                                     <th scope="col">Email</th>
                                                                     <th scope="col">Name</th>
                                                                 </tr>
@@ -511,55 +519,17 @@
                                                         </table>
                                                     </div>
                                                     <div class="modal-footer">
-                                                        <button type="button" class="btn btn-primary btn-ic-span-align">
-                                                            <i class="fa-regular fa-floppy-disk"></i>
-                                                            <span> Select</span>
-                                                        </button>
+                                                        <button type="button" class="btn btn-primary" id="selectManageBusinessMasterUserButton" disabled>Select</button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="manageBusinessRegionInput" class="form-label">Region</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control" id="manageBusinessRegionInput" placeholder="Region" disabled>
-                                            <button class="input-group-button btn btn-light" data-bs-toggle="modal" data-bs-target="#manageBusinessRegionModal">
-                                                Select
-                                            </button>
-                                        </div>
-                                        <div class="modal modal-lg fade" id="manageBusinessRegionModal" tabindex="-1" aria-labelledby="manageBusinessRegionModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="manageBusinessRegionModalLabel">Select Region</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <table id="businessRegionModalListTable" class="table w-100">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th scope="col">#</th>
-                                                                    <th scope="col">Country</th>
-                                                                    <th scope="col">Region</th>
-                                                                    <th scope="col">Servers</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                <!-- Dynamically Generated -->
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-primary btn-ic-span-align">
-                                                            <i class="fa-regular fa-floppy-disk"></i>
-                                                            <span> Select</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                </div>
+
+                                <!-- Permissions -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
+                                    Permissions
                                 </div>
 
                                 <!-- Actions -->
@@ -791,10 +761,13 @@
 
     <!-- Custom Scripts -->
     <script src="~/js/countries_list.js"></script>
+    <script src="~/js/alert_manager.js"></script>
     <script src="~/js/script.js"></script>
 
     <!-- Global -->
     <script>
+        var AlertManager = new BootstrapAlertManager();
+
         var CurrentUsersList = null;
         var CurrentBusinessesList = null;
         var CurrentRegionsList = null;
@@ -819,6 +792,29 @@
                 },
                 error: (error) => {
                     console.log(error);
+                }
+            });
+        }
+
+        function FetchUserFromAPI(email, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/user',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    email: email
+                },
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
                 }
             });
         }
@@ -1235,37 +1231,102 @@
 
         var CurrentBusinessesList = null;
 
-        const businessesTab = $("#businesses-tab");
+        const businessesTab = $("#business-tab");
 
-        const manageBusinessRegionModal = businessesTab.find("#manageBusinessRegionModal");
-        const businessRegionModalListTable = businessesTab.find("#businessRegionModalListTable");
+        const manageBusinessMasterUserInput = businessesTab.find("#manageBusinessMasterUserInput");
 
-        function CreateManageBusinessRegionListTableElement(regionData) {
-            let countryData = CountriesList[regionData.countryCode.toUpperCase()]
+        const manageBusinessMasterUserModal = businessesTab.find("#manageBusinessMasterUserModal");
 
-            let element = $(
-                `<tr>
-                    <td>${regionData.id}</td>
-                    <td>${countryData["Country"]}</td>
-                    <td>${regionData.countryRegion}</td>
-                    <td>${regionData.servers.length}</td>
-                </tr>`
-            );
-
-            return element;
-        }
+        const searchBusinessMasterUserModalButton = manageBusinessMasterUserModal.find("#searchBusinessMasterUserModalButton");
+        const searchBusinessMasterUserModalInput = manageBusinessMasterUserModal.find("#searchBusinessMasterUserModalInput");
+        const businessMasterUserModalListTable = manageBusinessMasterUserModal.find("#businessMasterUserModalListTable");
+        const selectManageBusinessMasterUserButton = manageBusinessMasterUserModal.find("#selectManageBusinessMasterUserButton");
 
         $(document).ready(() => {
-            manageBusinessRegionModal.on('show.bs.modal', (event) => {
-                CurrentRegionsList.forEach((regionData) => {
-                    businessRegionModalListTable.find("tbody").append(CreateManageBusinessRegionListTableElement(regionData));
-                })
+            searchBusinessMasterUserModalInput.on("input", (event) => {
+                let value = searchBusinessMasterUserModalInput.val().trim();
+
+                if (!value || value == "")
+                {
+                    searchBusinessMasterUserModalInput.addClass("is-invalid");
+                    searchBusinessMasterUserModalButton.prop("disabled", true);
+                }
+                else
+                {
+                    searchBusinessMasterUserModalInput.removeClass("is-invalid");
+                    searchBusinessMasterUserModalButton.prop("disabled", false);
+                }
             })
 
-            manageBusinessRegionModal.on('hidden.bs.modal', (event) => {
-                businessRegionModalListTable.find("tbody").empty();
-            })
+            searchBusinessMasterUserModalButton.on("click", (event) => {
+                event.preventDefault();
+
+                searchBusinessMasterUserModalInput.prop("disabled", true);
+                searchBusinessMasterUserModalButton.prop("disabled", true);
+                selectManageBusinessMasterUserButton.prop("disabled", true);
+
+                businessMasterUserModalListTable.find("tbody").empty();
+
+                FetchUserFromAPI(searchBusinessMasterUserModalInput.val().trim(),
+                    // success callback
+                    (userData) => {
+                        let element = $(
+                            `<tr class="selectable" tr-type="business-master-user">
+                                <td data-type="email">${userData.email}</td>
+                                <td data-type="name">${userData.firstName} ${userData.lastName}</td>
+                            </tr>`
+                        );
+
+                        businessMasterUserModalListTable.find("tbody").append(element);
+
+                        searchBusinessMasterUserModalInput.prop("disabled", false);
+                        searchBusinessMasterUserModalButton.prop("disabled", false);
+                    },
+                    // Error callback
+                    (error) => {
+                        console.log(error);
+
+                        searchBusinessMasterUserModalInput.prop("disabled", false);
+                        searchBusinessMasterUserModalButton.prop("disabled", false);
+                    }
+                );
+            });
+
+            $(document).on("click", "#business-tab #businessMasterUserModalListTable tr.selectable[tr-type=business-master-user]", (event) => {
+                event.preventDefault();
+
+                let userEmail = $(event.currentTarget).find("td[data-type=email]").text();
+
+                let findActiveSelectable = businessMasterUserModalListTable.find("tr.selectable[tr-type=business-master-user].active");
+                findActiveSelectable.removeClass("active");
+
+                $(event.currentTarget).addClass("active");
+
+                selectManageBusinessMasterUserButton.prop("disabled", false);
+            });
+
+            selectManageBusinessMasterUserButton.on("click", (event) => {
+                event.preventDefault();
+
+                let findActiveSelectable = businessMasterUserModalListTable.find("tr.selectable[tr-type=business-master-user].active");
+
+                let userEmail = findActiveSelectable.find("td[data-type=email]").text();
+
+                manageBusinessMasterUserInput.val(userEmail);
+
+                manageBusinessMasterUserModal.modal("hide");
+            });
             
+            manageBusinessMasterUserModal.on('show.bs.modal', (event) => {
+                businessMasterUserModalListTable.find("tbody").append($('<tr><td colspan="2">Search for result...</td></tr>'));
+            });
+
+            manageBusinessMasterUserModal.on('hidden.bs.modal', (event) => {
+                searchBusinessMasterUserModalButton.prop("disabled", true);
+                searchBusinessMasterUserModalInput.val("").prop("disabled", false).removeClass("is-invalid");
+                businessMasterUserModalListTable.find("tbody").empty();
+            });
+
             // Init
 
             FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize, (businesses) => {
@@ -1572,7 +1633,7 @@
                 ResetAndEmptyRegionServerManageTab();
 
                 ShowRegionServerManageTab();
-            })
+            }) 
 
             // Init
             Object.keys(CountriesList).forEach((countryCode) => {
