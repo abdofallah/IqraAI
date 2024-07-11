@@ -446,16 +446,16 @@
                             <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
                                 <ul class="nav" id="businesses-manage-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
+                                        <button class="nav-link" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link disabled" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-routing-permissions" type="button" role="tab" aria-controls="businesses-routing-permissions" aria-selected="true">Permissions</button>
+                                        <button class="nav-link active" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions" type="button" role="tab" aria-controls="businesses-manage-permissions" aria-selected="true">Permissions</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link disabled" id="businesses-manage-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-routing-general" type="button" role="tab" aria-controls="businesses-routing-general" aria-selected="true">Routing</button>
+                                        <button class="nav-link disabled" id="businesses-manage-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-routing" type="button" role="tab" aria-controls="businesses-manage-routing" aria-selected="true">Routing</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link disabled" id="businesses-manage-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-agents-general" type="button" role="tab" aria-controls="businesses-agents-general" aria-selected="true">Agents</button>
+                                        <button class="nav-link disabled" id="businesses-manage-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-agents" type="button" role="tab" aria-controls="businesses-manage-agents" aria-selected="true">Agents</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link disabled" id="businesses-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-actions" type="button" role="tab" aria-controls="businesses-manage-actions" aria-selected="true">Actions</button>
@@ -474,7 +474,7 @@
                             <!-- Tab Content -->
                             <div class="tab-content w-100" id="businesses-manage-tabContent">
                                 <!-- General -->
-                                <div class="tab-pane fade w-100 show active" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
                                     <div class="mb-3">
                                         <label for="manageBusinessNameInput" class="form-label">Name</label>
                                         <input type="text" class="form-control" id="manageBusinessNameInput" placeholder="Name">
@@ -528,8 +528,33 @@
                                 </div>
 
                                 <!-- Permissions -->
-                                <div class="tab-pane fade w-100" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
-                                    Permissions
+                                <div class="tab-pane fade w-100 show active" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label d-block">Access</label>
+
+                                        <div class="">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullInput" check-type="permission-with-reason">
+                                                <label for="businessesManageDisableFullInput" class="form-label d-block">Disable Full</label>
+                                            </div>
+                                            <input type="text" class="form-control d-none" id="businessesManageDisabledFullReasonInput" placeholder="Disabled Full Reason">
+                                        </div>
+
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableEditInput" class="form-label d-block">Disable Edit</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisabledEditReasonInput" placeholder="Disabled Edit Reason">
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeleteInput" check-type="permission-with-reason">
+                                            <label for="businessesManageDisableDeleteInput" class="form-label d-block">Disable Delete</label>
+                                        </div>
+                                        <input type="text" class="form-control d-none" id="businessesManageDisabledDeleteReasonInput" placeholder="Disabled Delete Reason">
+                                    </div>
                                 </div>
 
                                 <!-- Actions -->
@@ -1325,6 +1350,22 @@
                 searchBusinessMasterUserModalButton.prop("disabled", true);
                 searchBusinessMasterUserModalInput.val("").prop("disabled", false).removeClass("is-invalid");
                 businessMasterUserModalListTable.find("tbody").empty();
+            });
+
+            $("#business-tab #businesses-manage-permissions input[check-type=permission-with-reason]").on("change", (event) => { 
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+                let reasonInput = current.parent().parent().find("input[type=text]");
+
+                if (current.prop("checked"))
+                {
+                    reasonInput.removeClass("d-none");
+                }
+                else
+                {
+                    reasonInput.addClass("d-none");
+                }
             });
 
             // Init
