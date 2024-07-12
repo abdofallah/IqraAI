@@ -787,10 +787,90 @@
                                             </div>
                                         </div>
                                         <div class="tab-pane fade" id="businesses-manage-permissions-makecall" role="tabpanel" aria-labelledby="businesses-manage-permissions-makecall-tab">
-                                            <!-- Add the content for the MakeCall tab -->
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsMakeCallDisableCallingInput" check-type="permission-with-reason">
+                                                    <label for="businessPermissionsMakeCallDisableCallingInput" class="form-label d-block">Disable Calling</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessPermissionsMakeCallDisableCallingReasonInput" placeholder="Disable Calling Reason">
+                                            </div>
                                         </div>
                                         <div class="tab-pane fade" id="businesses-manage-permissions-conversation" role="tabpanel" aria-labelledby="businesses-manage-permissions-conversation-tab">
-                                            <!-- Add the content for the Conversation tab -->
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Inbound</label>
+                                                    <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationInboundDisableFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableExporting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationInboundDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                                </div>
+
+                                                <div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableDeleting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationInboundDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationInboundDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Outbound</label>
+                                                    <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationOutboundDisableFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableExporting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationOutboundDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                                </div>
+
+                                                <div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableDeleting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationOutboundDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationOutboundDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="form-label d-block">Websocket</label>
+                                                    <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationWebsocketDisableFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableExporting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationWebsocketDisableExporting" class="form-label d-block">Disable Exporting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableExportingReasonInput" placeholder="Disable Exporting Reason">
+                                                </div>
+
+                                                <div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableDeleting" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsConversationWebsocketDisableDeleting" class="form-label d-block">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsConversationWebsocketDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
