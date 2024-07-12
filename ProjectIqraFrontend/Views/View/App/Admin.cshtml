@@ -723,7 +723,7 @@
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label d-block">Services</label>
-                                                
+
                                                 <div class="mb-2">
                                                     <div class="form-check form-switch">
                                                         <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableFull" check-type="permission-with-reason">
@@ -751,7 +751,7 @@
                                                         <label class="form-check-label" for="businessPermissionContextServicesDisableDelete">Disable Deleting</label>
                                                     </div>
                                                     <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableDeleteReasonInput" placeholder="Disable Deleting Reason">
-                                                </div>       
+                                                </div>
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label d-block">Products</label>
@@ -810,213 +810,212 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Phone Numbers Container -->
-    <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-        <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
-        <div class="inner-container">
-            <h6>Ah! This page is currently under development.</h6>
-        </div>
-    </div>
-
-    <!-- Region Container -->
-    <div class="main-container fade w-100 d-none" id="region-tab">
-        <h3 class="fw-bold tab-title"><i class='fa-regular fa-server nav_icon'></i> <span>Region</span></h3>
-        <div class="inner-container">
-            <!-- Manager Inner Tabs -->
-            <div class="mb-3">
-                <ul class="nav w-100 fade show" id="region-inner-tab" role="tablist">
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link disabled" id="region-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-analytics" type="button" role="tab" aria-controls="region-analytics" aria-selected="true">Analytics</button>
-                    </li>
-                    <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link active" id="region-list-tab" data-bs-toggle="pill" data-bs-target="#region-list" type="button" role="tab" aria-controls="region-list" aria-selected="true">List</button>
-                    </li>
-                </ul>
-                <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-manage-breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item">
-                            <a href="#" id="switchBackToRegionListTabFromManageTab">Region</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionName">Region</span></li>
-                    </ol>
-                </nav>
-                <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-server-manager-breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item" aria-current="page"><span id="currentManageServerRegionName">Region</span></li>
-                        <li class="breadcrumb-item">
-                            <a href="#" id="switchBackToRegionManagerServersListTabFromServersTab">Servers</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionServerName">Server</span></li>
-                    </ol>
-                </nav>
+        <!-- Phone Numbers Container -->
+        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
+            <div class="inner-container">
+                <h6>Ah! This page is currently under development.</h6>
             </div>
-            <!-- Tab Content -->
-            <div class="tab-content" id="region-manage-tab-content">
-                <!-- Analytics -->
-                <div class="tab-pane fade w-100" id="region-analytics" role="tabpanel" aria-labelledby="region-analytics-tab" tabindex="0">
-                    analytics
+        </div>
+
+        <!-- Region Container -->
+        <div class="main-container fade w-100 d-none" id="region-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-server nav_icon'></i> <span>Region</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="region-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="region-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-analytics" type="button" role="tab" aria-controls="region-analytics" aria-selected="true">Analytics</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="region-list-tab" data-bs-toggle="pill" data-bs-target="#region-list" type="button" role="tab" aria-controls="region-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToRegionListTabFromManageTab">Region</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionName">Region</span></li>
+                        </ol>
+                    </nav>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-server-manager-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item" aria-current="page"><span id="currentManageServerRegionName">Region</span></li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToRegionManagerServersListTabFromServersTab">Servers</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionServerName">Server</span></li>
+                        </ol>
+                    </nav>
                 </div>
-                <!-- List -->
-                <div class="tab-pane fade w-100 show active" id="region-list" role="tabpanel" aria-labelledby="region-list-tab" tabindex="0">
-                    <!-- Region List Table Tab -->
-                    <div class="fade w-100 show" id="regionListTableTab">
-                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                            <div style="min-width: 200px" class="me-4">
-                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionButton">
-                                    <span>+ Add New Region</span>
-                                </button>
-                            </div>
-                            <div class="input-group w-100">
-                                <input type="text" class="form-control" placeholder="Region Name or Id" aria-label="Region Name or Id" aria-describedby="searchRegionButton">
-                                <button class="input-group-button btn btn-primary" id="searchRegionButton">
-                                    <i class='fa-regular fa-magnifying-glass'></i>
-                                </button>
-                            </div>
-                        </div>
-                        <table id="regionListTable" class="table w-100">
-                            <thead>
-                                <tr>
-                                    <th scope="col" style="width: 100px"></th>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Country</th>
-                                    <th scope="col">Region</th>
-                                    <th scope="col">Servers</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Dynamically Generated -->
-                            </tbody>
-                        </table>
+                <!-- Tab Content -->
+                <div class="tab-content" id="region-manage-tab-content">
+                    <!-- Analytics -->
+                    <div class="tab-pane fade w-100" id="region-analytics" role="tabpanel" aria-labelledby="region-analytics-tab" tabindex="0">
+                        analytics
                     </div>
-                    <!-- Region Manage Tab -->
-                    <div class="fade w-100 d-none" id="regionManageTab">
-                        <!-- Region Manager Inner Tabs -->
-                        <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="region-manager-inner-tab-container">
-                            <ul class="nav fade show" id="region-manager-inner-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="region-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-manager-general" type="button" role="tab" aria-controls="region-manager-general" aria-selected="true">General</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="region-manager-servers-tab" data-bs-toggle="pill" data-bs-target="#region-manager-servers" type="button" role="tab" aria-controls="region-manager-servers" aria-selected="true">Servers</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="region-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-manager-analytics" type="button" role="tab" aria-controls="region-manager-analytics" aria-selected="true">Analytics</button>
-                                </li>
-                            </ul>
-                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionButton">
-                                <i class='fa-regular fa-floppy-disk'></i>
-                                <span> Save</span>
-                            </button>
-                        </div>
-                        <!-- Tab Content -->
-                        <div class="tab-content" id="region-manager-manage-tab-content">
-                            <!-- General -->
-                            <div class="tab-pane fade w-100 show active" id="region-manager-general" role="tabpanel" aria-labelledby="region-manager-general-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label" for="manageRegionCountryInput">Country</label>
-                                    <select class="form-select" id="manageRegionCountryInput">
-                                        <!-- Dynamically Generated -->
-                                    </select>
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="region-list" role="tabpanel" aria-labelledby="region-list-tab" tabindex="0">
+                        <!-- Region List Table Tab -->
+                        <div class="fade w-100 show" id="regionListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionButton">
+                                        <span>+ Add New Region</span>
+                                    </button>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label" for="manageRegionCountryRegionInput">Region</label>
-                                    <input type="text" class="form-control" id="manageRegionCountryRegionInput" placeholder="Region">
-                                </div>
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionDisabledInput">
-                                    <label class="form-check-label" for="manageRegionDisabledInput">Disabled</label>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Region Name or Id" aria-label="Region Name or Id" aria-describedby="searchRegionButton">
+                                    <button class="input-group-button btn btn-primary" id="searchRegionButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
                                 </div>
                             </div>
-                            <!-- Servers -->
-                            <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel" aria-labelledby="region-manager-servers-tab" tabindex="0">
-                                <!-- Servers List Tab -->
-                                <div class="fade w-100 show" id="regionManagerServersListTab">
-                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionServerButton">
-                                                <span>+ Add New Server</span>
-                                            </button>
-                                        </div>
-                                        <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Server IP or Id" aria-label="Server IP or Id" aria-describedby="searchRegionServerButton">
-                                            <button class="input-group-button btn btn-primary" id="searchRegionServerButton">
-                                                <i class='fa-regular fa-magnifying-glass'></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <table id="regionServerListTable" class="table w-100">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col" style="width: 100px"></th>
-                                                <th scope="col">#</th>
-                                                <th scope="col">IP</th>
-                                                <th scope="col">Has Sim Modules?</th>
-                                                <th scope="col">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                            <table id="regionListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 100px"></th>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Country</th>
+                                        <th scope="col">Region</th>
+                                        <th scope="col">Servers</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Region Manage Tab -->
+                        <div class="fade w-100 d-none" id="regionManageTab">
+                            <!-- Region Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="region-manager-inner-tab-container">
+                                <ul class="nav fade show" id="region-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="region-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-manager-general" type="button" role="tab" aria-controls="region-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="region-manager-servers-tab" data-bs-toggle="pill" data-bs-target="#region-manager-servers" type="button" role="tab" aria-controls="region-manager-servers" aria-selected="true">Servers</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="region-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-manager-analytics" type="button" role="tab" aria-controls="region-manager-analytics" aria-selected="true">Analytics</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="region-manager-manage-tab-content">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="region-manager-general" role="tabpanel" aria-labelledby="region-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRegionCountryInput">Country</label>
+                                        <select class="form-select" id="manageRegionCountryInput">
                                             <!-- Dynamically Generated -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <!-- Servers Manage Tab -->
-                                <div class="fade w-100 d-none" id="regionManagerServerManageTab">
-                                    <!-- Servers Manager Inner Tabs -->
-                                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                        <ul class="nav" id="region-server-manager-inner-tab" role="tablist">
-                                            <li class="nav-item me-2" role="presentation">
-                                                <button class="nav-link active" id="region-server-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-general" type="button" role="tab" aria-controls="region-server-manager-general" aria-selected="true">General</button>
-                                            </li>
-                                            <li class="nav-item me-2" role="presentation">
-                                                <button class="nav-link disabled" id="region-server-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-analytics" type="button" role="tab" aria-controls="region-server-manager-analytics" aria-selected="true">Analytics</button>
-                                            </li>
-                                        </ul>
-                                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionServerButton">
-                                            <i class='fa-regular fa-floppy-disk'></i>
-                                            <span> Save</span>
-                                        </button>
+                                        </select>
                                     </div>
-                                    <!-- Tab Content -->
-                                    <div class="tab-content" id="region-server-manager-manage-tab-content">
-                                        <!-- General -->
-                                        <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
-                                            <div class="mb-3">
-                                                <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
-                                                <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
-                                                <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
-                                            </div>
-                                            <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
-                                                <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
-                                            </div>
-                                            <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
-                                                <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
-                                            </div>
-                                        </div>
-                                        <!-- Analytics -->
-                                        <div class="tab-pane fade w-100" id="region-server-manager-analytics" role="tabpanel" aria-labelledby="region-server-manager-analytics-tab" tabindex="0">
-                                            Analytics
-                                        </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRegionCountryRegionInput">Region</label>
+                                        <input type="text" class="form-control" id="manageRegionCountryRegionInput" placeholder="Region">
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageRegionDisabledInput">
+                                        <label class="form-check-label" for="manageRegionDisabledInput">Disabled</label>
                                     </div>
                                 </div>
-                            </div>
-                            <!-- Analytics -->
-                            <div class="tab-pane fade w-100" id="region-manager-analytics" role="tabpanel" aria-labelledby="region-manager-analytics-tab" tabindex="0">
-                                Analytics
+                                <!-- Servers -->
+                                <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel" aria-labelledby="region-manager-servers-tab" tabindex="0">
+                                    <!-- Servers List Tab -->
+                                    <div class="fade w-100 show" id="regionManagerServersListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                            <div style="min-width: 200px" class="me-4">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionServerButton">
+                                                    <span>+ Add New Server</span>
+                                                </button>
+                                            </div>
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" placeholder="Server IP or Id" aria-label="Server IP or Id" aria-describedby="searchRegionServerButton">
+                                                <button class="input-group-button btn btn-primary" id="searchRegionServerButton">
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <table id="regionServerListTable" class="table w-100">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" style="width: 100px"></th>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">IP</th>
+                                                    <th scope="col">Has Sim Modules?</th>
+                                                    <th scope="col">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Dynamically Generated -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <!-- Servers Manage Tab -->
+                                    <div class="fade w-100 d-none" id="regionManagerServerManageTab">
+                                        <!-- Servers Manager Inner Tabs -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                            <ul class="nav" id="region-server-manager-inner-tab" role="tablist">
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="region-server-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-general" type="button" role="tab" aria-controls="region-server-manager-general" aria-selected="true">General</button>
+                                                </li>
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link disabled" id="region-server-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-analytics" type="button" role="tab" aria-controls="region-server-manager-analytics" aria-selected="true">Analytics</button>
+                                                </li>
+                                            </ul>
+                                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionServerButton">
+                                                <i class='fa-regular fa-floppy-disk'></i>
+                                                <span> Save</span>
+                                            </button>
+                                        </div>
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="region-server-manager-manage-tab-content">
+                                            <!-- General -->
+                                            <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
+                                                    <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
+                                                    <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
+                                                    <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
+                                                    <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
+                                                </div>
+                                            </div>
+                                            <!-- Analytics -->
+                                            <div class="tab-pane fade w-100" id="region-server-manager-analytics" role="tabpanel" aria-labelledby="region-server-manager-analytics-tab" tabindex="0">
+                                                Analytics
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="region-manager-analytics" role="tabpanel" aria-labelledby="region-manager-analytics-tab" tabindex="0">
+                                    Analytics
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <!-- libs -->
