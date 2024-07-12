@@ -6,6 +6,5 @@
         public bool AddNewTool { get; set; } = true;
         public bool EditTool { get; set; } = true;
         public bool DeleteTool { get; set; } = true;
-        public int MaxAllowedTools { get; set; } = -1;
     }
 }

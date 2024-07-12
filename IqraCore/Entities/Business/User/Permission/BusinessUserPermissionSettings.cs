@@ -18,7 +18,6 @@
         public bool EditLanguages { get; set; } = true;
         public bool AddLanguages { get; set; } = true;
         public bool DeleteLanguages { get; set; } = true;
-        public int MaxAllowedLanguages { get; set; } = -1;
     }
 
     public class BusinessUserPermissionSettingsRegion
@@ -33,6 +32,5 @@
         public bool EditUsers { get; set; } = true;
         public bool AddUsers { get; set; } = true;
         public bool DeleteUsers { get; set; } = true;
-        public int MaxAllowedUsers { get; set; } = -1;
     }
 }

@@ -224,7 +224,7 @@
                                             </div>
                                             <input type="text" class="form-control d-none" id="usersManageDisableEditBusinessReasonInput" placeholder="Disable Edit Reason">
                                         </div>
-                                        
+
                                         <div class="mb-2">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableDeleteBusinessInput" check-type="permission-with-reason">
@@ -232,7 +232,7 @@
                                             </div>
                                             <input type="text" class="form-control d-none" id="usersManageDisableDeleteBusinessReasonInput" placeholder="Disable Delete Reason">
                                         </div>
-                                        
+
                                         <div class="mb-2">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" role="switch" id="usersManageDisableAddBusinessInput" check-type="permission-with-reason">
@@ -240,7 +240,7 @@
                                             </div>
                                             <input type="text" class="form-control d-none" id="usersManageDisableAddBusinessReasonInput" placeholder="Disable Add Reason">
                                         </div>
-                                        
+
                                     </div>
                                 </div>
                                 <!-- Businesses -->
@@ -481,8 +481,8 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="manageBusinessLogoInput" class="form-label d-block">Logo</label>
-                                        <img src="~/img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3 mb-3" alt="Business Logo" id="manageBusinessLogoPreview">   
-                                        <input type="file" class="form-control" id="manageBusinessLogoInput" placeholder="Logo"> 
+                                        <img src="~/img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3 mb-3" alt="Business Logo" id="manageBusinessLogoPreview">
+                                        <input type="file" class="form-control" id="manageBusinessLogoInput" placeholder="Logo">
                                     </div>
                                     <div class="mb-3">
                                         <label for="manageBusinessMasterUserInput" class="form-label">Master User</label>
@@ -500,7 +500,7 @@
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                     </div>
                                                     <div class="modal-body">
-                                                       <div class="input-group w-100 mb-3">
+                                                        <div class="input-group w-100 mb-3">
                                                             <input type="text" class="form-control" placeholder="User email" aria-label="User email" aria-describedby="searchBusinessMasterUserModalButton" id="searchBusinessMasterUserModalInput">
                                                             <button class="input-group-button btn btn-primary" id="searchBusinessMasterUserModalButton" disabled>
                                                                 <i class='fa-regular fa-magnifying-glass'></i>
@@ -529,255 +529,494 @@
 
                                 <!-- Permissions -->
                                 <div class="tab-pane fade w-100 show active" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
-                                    <div class="mb-3">
-                                        <label class="form-label d-block">Access</label>
-
-                                        <div class="">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullInput" check-type="permission-with-reason">
-                                                <label for="businessesManageDisableFullInput" class="form-label d-block">Disable Full</label>
+                                    <ul class="nav mb-3" id="businesses-manage-permissions-tab" role="tablist">
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link active" id="businesses-manage-permissions-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-general" type="button" role="tab" aria-controls="businesses-manage-permissions-general" aria-selected="true">General</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-routing" type="button" role="tab" aria-controls="businesses-manage-permissions-routing" aria-selected="true">Routing</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-agents-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-agents" type="button" role="tab" aria-controls="businesses-manage-permissions-agents" aria-selected="true">Agents</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-tools-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-tools" type="button" role="tab" aria-controls="businesses-manage-permissions-tools" aria-selected="true">Tools</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-context-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-context" type="button" role="tab" aria-controls="businesses-manage-permissions-context" aria-selected="true">Context</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-makecall-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-makecall" type="button" role="tab" aria-controls="businesses-manage-permissions-makecall" aria-selected="true">Make Call</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="businesses-manage-permissions-conversation-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-conversation" type="button" role="tab" aria-controls="businesses-manage-permissions-conversation" aria-selected="true">Conversation</button>
+                                        </li>
+                                    </ul>
+                                    <div class="tab-content w-100" id="businesses-manage-permissions-tab-content">
+                                        <div class="tab-pane fade show active" id="businesses-manage-permissions-general" role="tabpanel" aria-labelledby="businesses-manage-permissions-general-tab">
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledFullInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisabledFullInput" class="form-label d-block">Disabled Full</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisabledFullReasonInput" placeholder="Disabled Full Reason">
                                             </div>
-                                            <input type="text" class="form-control d-none" id="businessesManageDisabledFullReasonInput" placeholder="Disabled Full Reason">
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledEditInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisabledEditInput" class="form-label d-block">Disabled Edit</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisabledEditReasonInput" placeholder="Disabled Edit Reason">
+                                            </div>
+                                            <div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisabledDeleteInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisabledDeleteInput" class="form-label d-block">Disabled Delete</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisabledDeleteReasonInput" placeholder="Disabled Delete Reason">
+                                            </div>
                                         </div>
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-routing" role="tabpanel" aria-labelledby="businesses-manage-permissions-routing-tab">
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableRoutingInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableRoutingInput" class="form-label d-block">Disable Full</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableRoutingReasonInput" placeholder="Disable Routing Reason">
+                                            </div>
 
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditInput" check-type="permission-with-reason">
-                                            <label for="businessesManageDisableEditInput" class="form-label d-block">Disable Edit</label>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableAddingInput" class="form-label d-block">Disable Adding</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableAddingReasonInput" placeholder="Disable Adding Reason">
+                                            </div>
+
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                            </div>
+
+                                            <div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableDeletingInput" class="form-label d-block">Disable Deleting</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                            </div>
                                         </div>
-                                        <input type="text" class="form-control d-none" id="businessesManageDisabledEditReasonInput" placeholder="Disabled Edit Reason">
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeleteInput" check-type="permission-with-reason">
-                                            <label for="businessesManageDisableDeleteInput" class="form-label d-block">Disable Delete</label>
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-agents" role="tabpanel" aria-labelledby="businesses-manage-permissions-agents-tab">
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullAgentsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableFullAgentsInput" class="form-label d-block">Disable Full</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableFullAgentsReasonInput" placeholder="Disable Full Reason">
+                                            </div>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingAgentsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableAddingAgentsInput" class="form-label d-block">Disable Adding</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableAddingAgentsReasonInput" placeholder="Disable Adding Reason">
+                                            </div>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingAgentsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableEditingAgentsInput" class="form-label d-block">Disable Editing</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableEditingAgentsReasonInput" placeholder="Disable Editing Reason">
+                                            </div>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingAgentsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableDeletingAgentsInput" class="form-label d-block">Disable Deleting</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableDeletingAgentsReasonInput" placeholder="Disable Deleting Reason">
+                                            </div>
                                         </div>
-                                        <input type="text" class="form-control d-none" id="businessesManageDisabledDeleteReasonInput" placeholder="Disabled Delete Reason">
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-tools" role="tabpanel" aria-labelledby="businesses-manage-permissions-tools-tab">
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableFullToolsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableFullToolsInput" class="form-label d-block">Disable Full</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableFullToolsReasonInput" placeholder="Disable Full Reason">
+                                            </div>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableAddingToolsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableAddingToolsInput" class="form-label d-block">Disable Adding</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableAddingToolsReasonInput" placeholder="Disable Adding Reason">
+                                            </div>
+                                            <div class="mb-2">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableEditingToolsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableEditingToolsInput" class="form-label d-block">Disable Editing</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableEditingToolsReasonInput" placeholder="Disable Editing Reason">
+                                            </div>
+                                            <div>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="businessesManageDisableDeletingToolsInput" check-type="permission-with-reason">
+                                                    <label for="businessesManageDisableDeletingToolsInput" class="form-label d-block">Disable Deleting</label>
+                                                </div>
+                                                <input type="text" class="form-control d-none" id="businessesManageDisableDeletingToolsReasonInput" placeholder="Disable Deleting Reason">
+                                            </div>
+                                        </div>
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-context" role="tabpanel" aria-labelledby="businesses-manage-permissions-context-tab">
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">General</label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsDisableFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsDisableFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Branding</label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsContextBrandingDisableEditingInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionsContextBrandingDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionsContextBrandingDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Branches</label>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextBranchesDisableFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableAddingInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextBranchesDisableAddingInput" class="form-label d-block">Disable Adding</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableAddingReasonInput" placeholder="Disable Adding Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableEditingInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextBranchesDisableEditingInput" class="form-label d-block">Disable Editing</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableEditingReasonInput" placeholder="Disable Editing Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextBranchesDisableDeletingInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextBranchesDisableDeletingInput" class="form-label d-block">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextBranchesDisableDeletingReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Services</label>
+                                                
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableFull" check-type="permission-with-reason">
+                                                        <label class="form-check-label" for="businessPermissionContextServicesDisableFull">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableAdd" check-type="permission-with-reason">
+                                                        <label class="form-check-label" for="businessPermissionContextServicesDisableAdd">Disable Adding</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableAddReasonInput" placeholder="Disable Adding Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableEdit" check-type="permission-with-reason">
+                                                        <label class="form-check-label" for="businessPermissionContextServicesDisableEdit">Disable Editing</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableEditReasonInput" placeholder="Disable Editing Reason">
+                                                </div>
+                                                <div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" id="businessPermissionContextServicesDisableDelete" check-type="permission-with-reason">
+                                                        <label class="form-check-label" for="businessPermissionContextServicesDisableDelete">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextServicesDisableDeleteReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>       
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label d-block">Products</label>
+
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledFullInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextProductsDisabledFullInput" class="form-label d-block">Disable Full</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledFullReasonInput" placeholder="Disable Full Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledAddInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextProductsDisabledAddInput" class="form-label d-block">Disable Adding</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledAddReasonInput" placeholder="Disable Adding Reason">
+                                                </div>
+                                                <div class="mb-2">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledEditInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextProductsDisabledEditInput" class="form-label d-block">Disable Editing</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledEditReasonInput" placeholder="Disable Editing Reason">
+                                                </div>
+                                                <div>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionContextProductsDisabledDeleteInput" check-type="permission-with-reason">
+                                                        <label for="businessPermissionContextProductsDisabledDeleteInput" class="form-label d-block">Disable Deleting</label>
+                                                    </div>
+                                                    <input type="text" class="form-control d-none" id="businessPermissionContextProductsDisabledDeleteReasonInput" placeholder="Disable Deleting Reason">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-makecall" role="tabpanel" aria-labelledby="businesses-manage-permissions-makecall-tab">
+                                            <!-- Add the content for the MakeCall tab -->
+                                        </div>
+                                        <div class="tab-pane fade" id="businesses-manage-permissions-conversation" role="tabpanel" aria-labelledby="businesses-manage-permissions-conversation-tab">
+                                            <!-- Add the content for the Conversation tab -->
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Actions -->
-                                <div class="tab-pane fade w-100" id="businesses-manage-actions" role="tabpanel" aria-labelledby="businesses-manage-actions-tab" tabindex="0">
-                                    actions
-                                </div>
+                            <!-- Actions -->
+                            <div class="tab-pane fade w-100" id="businesses-manage-actions" role="tabpanel" aria-labelledby="businesses-manage-actions-tab" tabindex="0">
+                                actions
+                            </div>
 
-                                <!-- Analytics -->
-                                <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
-                                    analytics
-                                </div>
+                            <!-- Analytics -->
+                            <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
+                                analytics
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Phone Numbers Container -->
-        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
-            <div class="inner-container">
-                <h6>Ah! This page is currently under development.</h6>
-            </div>
+    <!-- Phone Numbers Container -->
+    <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+        <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
+        <div class="inner-container">
+            <h6>Ah! This page is currently under development.</h6>
         </div>
+    </div>
 
-        <!-- Region Container -->
-        <div class="main-container fade w-100 d-none" id="region-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-server nav_icon'></i> <span>Region</span></h3>
-            <div class="inner-container">
-                <!-- Manager Inner Tabs -->
-                <div class="mb-3">
-                    <ul class="nav w-100 fade show" id="region-inner-tab" role="tablist">
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link disabled" id="region-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-analytics" type="button" role="tab" aria-controls="region-analytics" aria-selected="true">Analytics</button>
+    <!-- Region Container -->
+    <div class="main-container fade w-100 d-none" id="region-tab">
+        <h3 class="fw-bold tab-title"><i class='fa-regular fa-server nav_icon'></i> <span>Region</span></h3>
+        <div class="inner-container">
+            <!-- Manager Inner Tabs -->
+            <div class="mb-3">
+                <ul class="nav w-100 fade show" id="region-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link disabled" id="region-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-analytics" type="button" role="tab" aria-controls="region-analytics" aria-selected="true">Analytics</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="region-list-tab" data-bs-toggle="pill" data-bs-target="#region-list" type="button" role="tab" aria-controls="region-list" aria-selected="true">List</button>
+                    </li>
+                </ul>
+                <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-manage-breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToRegionListTabFromManageTab">Region</a>
                         </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="region-list-tab" data-bs-toggle="pill" data-bs-target="#region-list" type="button" role="tab" aria-controls="region-list" aria-selected="true">List</button>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionName">Region</span></li>
+                    </ol>
+                </nav>
+                <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-server-manager-breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item" aria-current="page"><span id="currentManageServerRegionName">Region</span></li>
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToRegionManagerServersListTabFromServersTab">Servers</a>
                         </li>
-                    </ul>
-                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-manage-breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToRegionListTabFromManageTab">Region</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionName">Region</span></li>
-                        </ol>
-                    </nav>
-                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="region-server-manager-breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item" aria-current="page"><span id="currentManageServerRegionName">Region</span></li>
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToRegionManagerServersListTabFromServersTab">Servers</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionServerName">Server</span></li>
-                        </ol>
-                    </nav>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRegionServerName">Server</span></li>
+                    </ol>
+                </nav>
+            </div>
+            <!-- Tab Content -->
+            <div class="tab-content" id="region-manage-tab-content">
+                <!-- Analytics -->
+                <div class="tab-pane fade w-100" id="region-analytics" role="tabpanel" aria-labelledby="region-analytics-tab" tabindex="0">
+                    analytics
                 </div>
-                <!-- Tab Content -->
-                <div class="tab-content" id="region-manage-tab-content">
-                    <!-- Analytics -->
-                    <div class="tab-pane fade w-100" id="region-analytics" role="tabpanel" aria-labelledby="region-analytics-tab" tabindex="0">
-                        analytics
-                    </div>
-                    <!-- List -->
-                    <div class="tab-pane fade w-100 show active" id="region-list" role="tabpanel" aria-labelledby="region-list-tab" tabindex="0">
-                        <!-- Region List Table Tab -->
-                        <div class="fade w-100 show" id="regionListTableTab">
-                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                <div style="min-width: 200px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionButton">
-                                        <span>+ Add New Region</span>
-                                    </button>
-                                </div>
-                                <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Region Name or Id" aria-label="Region Name or Id" aria-describedby="searchRegionButton">
-                                    <button class="input-group-button btn btn-primary" id="searchRegionButton">
-                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <table id="regionListTable" class="table w-100">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" style="width: 100px"></th>
-                                        <th scope="col">#</th>
-                                        <th scope="col">Country</th>
-                                        <th scope="col">Region</th>
-                                        <th scope="col">Servers</th>
-                                        <th scope="col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Dynamically Generated -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <!-- Region Manage Tab -->
-                        <div class="fade w-100 d-none" id="regionManageTab">
-                            <!-- Region Manager Inner Tabs -->
-                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="region-manager-inner-tab-container">
-                                <ul class="nav fade show" id="region-manager-inner-tab" role="tablist">
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="region-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-manager-general" type="button" role="tab" aria-controls="region-manager-general" aria-selected="true">General</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="region-manager-servers-tab" data-bs-toggle="pill" data-bs-target="#region-manager-servers" type="button" role="tab" aria-controls="region-manager-servers" aria-selected="true">Servers</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link disabled" id="region-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-manager-analytics" type="button" role="tab" aria-controls="region-manager-analytics" aria-selected="true">Analytics</button>
-                                    </li>
-                                </ul>
-                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionButton">
-                                    <i class='fa-regular fa-floppy-disk'></i>
-                                    <span> Save</span>
+                <!-- List -->
+                <div class="tab-pane fade w-100 show active" id="region-list" role="tabpanel" aria-labelledby="region-list-tab" tabindex="0">
+                    <!-- Region List Table Tab -->
+                    <div class="fade w-100 show" id="regionListTableTab">
+                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                            <div style="min-width: 200px" class="me-4">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionButton">
+                                    <span>+ Add New Region</span>
                                 </button>
                             </div>
-                            <!-- Tab Content -->
-                            <div class="tab-content" id="region-manager-manage-tab-content">
-                                <!-- General -->
-                                <div class="tab-pane fade w-100 show active" id="region-manager-general" role="tabpanel" aria-labelledby="region-manager-general-tab" tabindex="0">
-                                    <div class="mb-3">
-                                        <label class="form-label" for="manageRegionCountryInput">Country</label>
-                                        <select class="form-select" id="manageRegionCountryInput">
-                                            <!-- Dynamically Generated -->
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label" for="manageRegionCountryRegionInput">Region</label>
-                                        <input type="text" class="form-control" id="manageRegionCountryRegionInput" placeholder="Region">
-                                    </div>
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="manageRegionDisabledInput">
-                                        <label class="form-check-label" for="manageRegionDisabledInput">Disabled</label>
-                                    </div>
+                            <div class="input-group w-100">
+                                <input type="text" class="form-control" placeholder="Region Name or Id" aria-label="Region Name or Id" aria-describedby="searchRegionButton">
+                                <button class="input-group-button btn btn-primary" id="searchRegionButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
+                            </div>
+                        </div>
+                        <table id="regionListTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width: 100px"></th>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Country</th>
+                                    <th scope="col">Region</th>
+                                    <th scope="col">Servers</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Region Manage Tab -->
+                    <div class="fade w-100 d-none" id="regionManageTab">
+                        <!-- Region Manager Inner Tabs -->
+                        <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="region-manager-inner-tab-container">
+                            <ul class="nav fade show" id="region-manager-inner-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="region-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-manager-general" type="button" role="tab" aria-controls="region-manager-general" aria-selected="true">General</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="region-manager-servers-tab" data-bs-toggle="pill" data-bs-target="#region-manager-servers" type="button" role="tab" aria-controls="region-manager-servers" aria-selected="true">Servers</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="region-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-manager-analytics" type="button" role="tab" aria-controls="region-manager-analytics" aria-selected="true">Analytics</button>
+                                </li>
+                            </ul>
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionButton">
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save</span>
+                            </button>
+                        </div>
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="region-manager-manage-tab-content">
+                            <!-- General -->
+                            <div class="tab-pane fade w-100 show active" id="region-manager-general" role="tabpanel" aria-labelledby="region-manager-general-tab" tabindex="0">
+                                <div class="mb-3">
+                                    <label class="form-label" for="manageRegionCountryInput">Country</label>
+                                    <select class="form-select" id="manageRegionCountryInput">
+                                        <!-- Dynamically Generated -->
+                                    </select>
                                 </div>
-                                <!-- Servers -->
-                                <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel" aria-labelledby="region-manager-servers-tab" tabindex="0">
-                                    <!-- Servers List Tab -->
-                                    <div class="fade w-100 show" id="regionManagerServersListTab">
-                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                            <div style="min-width: 200px" class="me-4">
-                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionServerButton">
-                                                    <span>+ Add New Server</span>
-                                                </button>
-                                            </div>
-                                            <div class="input-group w-100">
-                                                <input type="text" class="form-control" placeholder="Server IP or Id" aria-label="Server IP or Id" aria-describedby="searchRegionServerButton">
-                                                <button class="input-group-button btn btn-primary" id="searchRegionServerButton">
-                                                    <i class='fa-regular fa-magnifying-glass'></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <table id="regionServerListTable" class="table w-100">
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col" style="width: 100px"></th>
-                                                    <th scope="col">#</th>
-                                                    <th scope="col">IP</th>
-                                                    <th scope="col">Has Sim Modules?</th>
-                                                    <th scope="col">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <!-- Dynamically Generated -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <!-- Servers Manage Tab -->
-                                    <div class="fade w-100 d-none" id="regionManagerServerManageTab">
-                                        <!-- Servers Manager Inner Tabs -->
-                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                            <ul class="nav" id="region-server-manager-inner-tab" role="tablist">
-                                                <li class="nav-item me-2" role="presentation">
-                                                    <button class="nav-link active" id="region-server-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-general" type="button" role="tab" aria-controls="region-server-manager-general" aria-selected="true">General</button>
-                                                </li>
-                                                <li class="nav-item me-2" role="presentation">
-                                                    <button class="nav-link disabled" id="region-server-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-analytics" type="button" role="tab" aria-controls="region-server-manager-analytics" aria-selected="true">Analytics</button>
-                                                </li>
-                                            </ul>
-                                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionServerButton">
-                                                <i class='fa-regular fa-floppy-disk'></i>
-                                                <span> Save</span>
+                                <div class="mb-3">
+                                    <label class="form-label" for="manageRegionCountryRegionInput">Region</label>
+                                    <input type="text" class="form-control" id="manageRegionCountryRegionInput" placeholder="Region">
+                                </div>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionDisabledInput">
+                                    <label class="form-check-label" for="manageRegionDisabledInput">Disabled</label>
+                                </div>
+                            </div>
+                            <!-- Servers -->
+                            <div class="tab-pane fade w-100" id="region-manager-servers" role="tabpanel" aria-labelledby="region-manager-servers-tab" tabindex="0">
+                                <!-- Servers List Tab -->
+                                <div class="fade w-100 show" id="regionManagerServersListTab">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRegionServerButton">
+                                                <span>+ Add New Server</span>
                                             </button>
                                         </div>
-                                        <!-- Tab Content -->
-                                        <div class="tab-content" id="region-server-manager-manage-tab-content">
-                                            <!-- General -->
-                                            <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
-                                                    <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
-                                                    <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
-                                                </div>
-                                                <div class="form-check form-switch mb-3">
-                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
-                                                    <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
-                                                </div>
-                                                <div class="form-check form-switch mb-3">
-                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
-                                                    <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
-                                                </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Server IP or Id" aria-label="Server IP or Id" aria-describedby="searchRegionServerButton">
+                                            <button class="input-group-button btn btn-primary" id="searchRegionServerButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <table id="regionServerListTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" style="width: 100px"></th>
+                                                <th scope="col">#</th>
+                                                <th scope="col">IP</th>
+                                                <th scope="col">Has Sim Modules?</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamically Generated -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Servers Manage Tab -->
+                                <div class="fade w-100 d-none" id="regionManagerServerManageTab">
+                                    <!-- Servers Manager Inner Tabs -->
+                                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                        <ul class="nav" id="region-server-manager-inner-tab" role="tablist">
+                                            <li class="nav-item me-2" role="presentation">
+                                                <button class="nav-link active" id="region-server-manager-general-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-general" type="button" role="tab" aria-controls="region-server-manager-general" aria-selected="true">General</button>
+                                            </li>
+                                            <li class="nav-item me-2" role="presentation">
+                                                <button class="nav-link disabled" id="region-server-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#region-server-manager-analytics" type="button" role="tab" aria-controls="region-server-manager-analytics" aria-selected="true">Analytics</button>
+                                            </li>
+                                        </ul>
+                                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRegionServerButton">
+                                            <i class='fa-regular fa-floppy-disk'></i>
+                                            <span> Save</span>
+                                        </button>
+                                    </div>
+                                    <!-- Tab Content -->
+                                    <div class="tab-content" id="region-server-manager-manage-tab-content">
+                                        <!-- General -->
+                                        <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
+                                            <div class="mb-3">
+                                                <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
+                                                <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
                                             </div>
-                                            <!-- Analytics -->
-                                            <div class="tab-pane fade w-100" id="region-server-manager-analytics" role="tabpanel" aria-labelledby="region-server-manager-analytics-tab" tabindex="0">
-                                                Analytics
+                                            <div class="mb-3">
+                                                <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
+                                                <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
                                             </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
+                                                <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
+                                                <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
+                                            </div>
+                                        </div>
+                                        <!-- Analytics -->
+                                        <div class="tab-pane fade w-100" id="region-server-manager-analytics" role="tabpanel" aria-labelledby="region-server-manager-analytics-tab" tabindex="0">
+                                            Analytics
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Analytics -->
-                                <div class="tab-pane fade w-100" id="region-manager-analytics" role="tabpanel" aria-labelledby="region-manager-analytics-tab" tabindex="0">
-                                    Analytics
-                                </div>
+                            </div>
+                            <!-- Analytics -->
+                            <div class="tab-pane fade w-100" id="region-manager-analytics" role="tabpanel" aria-labelledby="region-manager-analytics-tab" tabindex="0">
+                                Analytics
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- libs -->
@@ -807,8 +1046,7 @@
                     pageSize: pageSize
                 },
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         alert(response.message);
                         return;
                     }
@@ -830,8 +1068,7 @@
                     email: email
                 },
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         alert(response.message);
                         return;
                     }
@@ -844,8 +1081,7 @@
             });
         }
 
-        function FetchUserBusinessesFromAPI(userEmail, successCallback)
-        {
+        function FetchUserBusinessesFromAPI(userEmail, successCallback) {
             $.ajax({
                 url: '/app/admin/user/businesses',
                 type: 'POST',
@@ -854,8 +1090,7 @@
                     email: userEmail
                 },
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         alert(response.message);
                         return;
                     }
@@ -900,8 +1135,7 @@
                     pageSize: pageSize
                 },
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         alert(response.message);
                         return;
                     }
@@ -913,7 +1147,7 @@
                 }
             });
         }
-    
+
         function FetchRegionsFromAPI(successCallback) {
             $.ajax({
                 url: '/app/admin/regions',
@@ -1001,8 +1235,7 @@
             return element;
         }
 
-        function CreateUserManageBusinessesTableElement(businessData)
-        {
+        function CreateUserManageBusinessesTableElement(businessData) {
             let element = $(`<tr>
                 <td>${businessData.id}</td>
                 <td>${businessData.name}</td>
@@ -1020,8 +1253,7 @@
             </tr>`);
         }
 
-        function CreateUserManageNumbersTableElement(numberData)
-        {
+        function CreateUserManageNumbersTableElement(numberData) {
             let element = $(`<tr>
                 <td>${numberData.id}</td>
                 <td>${numberData.country}</td>
@@ -1038,15 +1270,13 @@
             </tr>`);
         }
 
-        function ResetAndEmptyManageTabData()
-        {
+        function ResetAndEmptyManageTabData() {
             usersManageTab.find("input[type=text]").val("");
             usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
             usersManageTab.find("table tbody").empty();
         }
 
-        function FillUserManageTab(userData, userBusinessesData, userNumbersData)
-        {
+        function FillUserManageTab(userData, userBusinessesData, userNumbersData) {
             ResetAndEmptyManageTabData();
 
             // General
@@ -1061,8 +1291,7 @@
             if (userData.permission.loginDisabledAt != null) {
                 usersManageTab.find("#usersManageDisableLoginInput").prop("checked", true).change();
 
-                if (userData.permission.loginDisabledReason != null)
-                {     
+                if (userData.permission.loginDisabledReason != null) {
                     usersManageTab.find("#usersManageLoginDisabledReasonInput").val(userData.permission.loginDisabledReason);
                 }
             }
@@ -1071,62 +1300,54 @@
                 usersManageTab.find("#usersManageDisableCompleteBusinessInput").prop("checked", true).change();
 
 
-                if (userData.permission.business.disableBusinessesReason != null)
-                {
+                if (userData.permission.business.disableBusinessesReason != null) {
                     usersManageTab.find("#usersManageDisableCompleteBusinessReasonInput").val(userData.permission.business.disableBusinessesReason);
                 }
             }
-            
+
             if (userData.permission.business.editBusinessDisabledAt != null) {
                 usersManageTab.find("#usersManageDisableDeleteBusinessInput").prop("checked", true).change();
 
-                if (userData.permission.business.editBusinessDisabledReason != null)
-                {
+                if (userData.permission.business.editBusinessDisabledReason != null) {
                     usersManageTab.find("#usersManageDisableEditBusinessReasonInput").val(userData.permission.business.editBusinessDisabledReason);
                 }
             }
-            
+
             if (userData.permission.business.deleteBusinessDisableAt != null) {
                 usersManageTab.find("#usersManageDisableDeleteInput").prop("checked", true).change();
 
-                if (userData.permission.business.deleteBusinessDisabledReason != null)
-                {         
+                if (userData.permission.business.deleteBusinessDisabledReason != null) {
                     usersManageTab.find("#usersManageDisableDeleteReasonInput").val(userData.permission.business.deleteBusinessDisabledReason);
                 }
             }
-            
+
             if (userData.permission.business.addBusinessDisabledAt != null) {
                 usersManageTab.find("#usersManageDisableAddBusinessInput").prop("checked", true).change();
 
-                if (userData.permission.business.addBusinessDisabledReason != null)
-                {   
+                if (userData.permission.business.addBusinessDisabledReason != null) {
                     usersManageTab.find("#usersManageDisableAddBusinessReasonInput").val(userData.permission.business.addBusinessDisabledReason);
                 }
             }
-        
+
             // Businesses
 
-            if (userBusinessesData.length > 0)
-            {
+            if (userBusinessesData.length > 0) {
                 userBusinessesData.forEach((businessData) => {
                     usersManageTab.find("#userBusinessesListTable tbody").append(CreateUserManageBusinessesTableElement(businessData));
                 });
             }
-            else
-            {
+            else {
                 usersManageTab.find("#userBusinessesListTable tbody").append('<tr tr-type="none-notice"><td colspan="6">No businesses</td></tr>');
             }
 
             // Numbers
 
-            if (userNumbersData.length > 0)
-            {
+            if (userNumbersData.length > 0) {
                 userNumbersData.forEach((numberData) => {
                     usersManageTab.find("#userNumbersListTable tbody").append(CreateUserManageNumbersTableElement(numberData));
                 });
             }
-            else
-            {
+            else {
                 usersManageTab.find("#userNumbersListTable tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
             }
         }
@@ -1136,8 +1357,7 @@
                 event.preventDefault();
                 event.stopPropagation();
 
-                if (!IsEditUserAllowed)
-                {
+                if (!IsEditUserAllowed) {
                     console.log("Already editing a user!");
                     return;
                 }
@@ -1148,8 +1368,7 @@
                 usersManageTab.attr("user-email", userEmail);
 
                 let currentUserData = CurrentUsersList.find((userData) => userData.email == userEmail);
-                if (!currentUserData)
-                {
+                if (!currentUserData) {
                     alert("Could not find user data for: " + user);
 
                     IsEditUserAllowed = true;
@@ -1168,7 +1387,7 @@
                 currentManageUserName.text(userEmail);
 
                 $("#users-manage-general-tab").click();
-                
+
                 usersInnerTab.removeClass("show");
                 usersListTableTab.removeClass("show");
                 setTimeout(() => {
@@ -1207,18 +1426,16 @@
                 }, 300);
             });
 
-            $("#users-tab #usersManageTab input[check-type=permission-with-reason]").on("change", (event) => { 
+            $("#users-tab #usersManageTab input[check-type=permission-with-reason]").on("change", (event) => {
                 event.stopPropagation();
 
                 let current = $(event.currentTarget);
                 let reasonInput = current.parent().parent().find("input[type=text]");
 
-                if (current.prop("checked"))
-                {
+                if (current.prop("checked")) {
                     reasonInput.removeClass("d-none");
                 }
-                else
-                {
+                else {
                     reasonInput.addClass("d-none");
                 }
             });
@@ -1271,13 +1488,11 @@
             searchBusinessMasterUserModalInput.on("input", (event) => {
                 let value = searchBusinessMasterUserModalInput.val().trim();
 
-                if (!value || value == "")
-                {
+                if (!value || value == "") {
                     searchBusinessMasterUserModalInput.addClass("is-invalid");
                     searchBusinessMasterUserModalButton.prop("disabled", true);
                 }
-                else
-                {
+                else {
                     searchBusinessMasterUserModalInput.removeClass("is-invalid");
                     searchBusinessMasterUserModalButton.prop("disabled", false);
                 }
@@ -1341,7 +1556,7 @@
 
                 manageBusinessMasterUserModal.modal("hide");
             });
-            
+
             manageBusinessMasterUserModal.on('show.bs.modal', (event) => {
                 businessMasterUserModalListTable.find("tbody").append($('<tr><td colspan="2">Search for result...</td></tr>'));
             });
@@ -1352,18 +1567,16 @@
                 businessMasterUserModalListTable.find("tbody").empty();
             });
 
-            $("#business-tab #businesses-manage-permissions input[check-type=permission-with-reason]").on("change", (event) => { 
+            $("#business-tab #businesses-manage-permissions input[check-type=permission-with-reason]").on("change", (event) => {
                 event.stopPropagation();
 
                 let current = $(event.currentTarget);
                 let reasonInput = current.parent().parent().find("input[type=text]");
 
-                if (current.prop("checked"))
-                {
+                if (current.prop("checked")) {
                     reasonInput.removeClass("d-none");
                 }
-                else
-                {
+                else {
                     reasonInput.addClass("d-none");
                 }
             });
@@ -1417,13 +1630,12 @@
         const manageRegionServerIpInput = regionTab.find("#manageRegionServerIpInput");
         const manageRegionServerDisabledInput = regionTab.find("#manageRegionServerDisabledInput");
         const manageRegionServerSimModulesInput = regionTab.find("#manageRegionServerSimModulesInput");
-        
+
         const addNewRegionButton = regionTab.find("#addNewRegionButton");
 
         const addNewRegionServerButton = regionTab.find("#addNewRegionServerButton");
 
-        function CreateRegionListTableElement(regionData)
-        {
+        function CreateRegionListTableElement(regionData) {
             let countryData = CountriesList[regionData.countryCode.toUpperCase()]
 
             let element = $(`<tr>
@@ -1445,8 +1657,7 @@
             return element;
         }
 
-        function CreateServerListTableElement(regionId, serverData)
-        {
+        function CreateServerListTableElement(regionId, serverData) {
             let element = $(`<tr>
                 <td><span class="badge bg-success">Healthy</span></td>
                 <td>${serverData.id}</td>
@@ -1465,8 +1676,7 @@
             return element;
         }
 
-        function ShowRegionManageTab()
-        {
+        function ShowRegionManageTab() {
             regionManagerGeneralTab.click();
 
             regionInnerTab.removeClass("show");
@@ -1486,8 +1696,7 @@
             }, 300);
         }
 
-        function HideRegionManageTab()
-        {
+        function HideRegionManageTab() {
             regionManageBreadcrumb.removeClass("show");
             regionManageTab.removeClass("show");
 
@@ -1505,16 +1714,14 @@
             }, 300);
         }
 
-        function FillRegionManageTab(regionData)
-        {
+        function FillRegionManageTab(regionData) {
             manageRegionCountryInputSelect.val(regionData.countryCode.toUpperCase());
             manageRegionCountryInputSelect.prop("disabled", true);
 
             manageRegionCountryRegionInput.val(regionData.countryRegion);
             manageRegionCountryRegionInput.prop("disabled", true);
 
-            if (regionData.disabled != null)
-            {
+            if (regionData.disabled != null) {
                 manageRegionDisabledInput.prop("checked", true);
             }
 
@@ -1523,16 +1730,14 @@
             });
         }
 
-        function ResetAndEmptyRegionManageTab()
-        {
+        function ResetAndEmptyRegionManageTab() {
             regionManageTab.find("select").prop("disabled", false).val("").change();
             regionManageTab.find("input[type=text]").prop("disabled", false).val("");
             regionManageTab.find("input[type=checkbox]").prop("disabled", false).prop("checked", false).change();
             regionManageTab.find("table tbody").empty();
         }
 
-        function ShowRegionServerManageTab()
-        {
+        function ShowRegionServerManageTab() {
             regionManageBreadcrumb.removeClass("show");
             regionManagerInnerTabContainer.removeClass("show");
             regionManagerServersListTab.removeClass("show");
@@ -1552,8 +1757,7 @@
             }, 300);
         }
 
-        function HideRegionServerManageTab()
-        {
+        function HideRegionServerManageTab() {
             regionServerManagerBreadcrumb.removeClass("show");
             regionManagerServerManageTab.removeClass("show");
 
@@ -1573,32 +1777,29 @@
             }, 300);
         }
 
-        function FillRegionServerManageTab(serverData)
-        {
+        function FillRegionServerManageTab(serverData) {
             manageRegionServerIdInput.val(serverData.id);
             manageRegionServerIdInput.prop("disabled", true);
 
             manageRegionServerIpInput.val(serverData.ipAddress);
-            
-            if (serverData.disabledAt != null)
-            {
+
+            if (serverData.disabledAt != null) {
                 manageRegionServerDisabledInput.prop("checked", true);
             }
-            
+
             manageRegionServerSimModulesInput.prop("checked", serverData.hasSimModules);
         }
 
-        function ResetAndEmptyRegionServerManageTab()
-        {
+        function ResetAndEmptyRegionServerManageTab() {
             regionManagerServerManageTab.find("input[type=text]").val("");
             regionManagerServerManageTab.find("input[type=checkbox]").prop("checked", false).change();
             regionManagerServerManageTab.find("table tbody").empty();
         }
 
-        $(document).ready(() => { 
+        $(document).ready(() => {
             $(document).on("click", "#region-tab #regionListTable tr td button[button-type=edit-region]", (event) => {
                 event.preventDefault();
-            
+
                 let elementRegionId = $(event.currentTarget).attr("region-id");
                 currentManageRegionName.text(elementRegionId);
                 currentManageServerRegionName.text(elementRegionId);
@@ -1614,7 +1815,7 @@
 
                 FillRegionManageTab(currentRegionData);
 
-                ShowRegionManageTab();  
+                ShowRegionManageTab();
             });
 
             switchBackToRegionListTabFromManageTab.on("click", (event) => {
@@ -1674,7 +1875,7 @@
                 ResetAndEmptyRegionServerManageTab();
 
                 ShowRegionServerManageTab();
-            }) 
+            })
 
             // Init
             Object.keys(CountriesList).forEach((countryCode) => {

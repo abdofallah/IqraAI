@@ -6,6 +6,5 @@
         public bool AddNewRoute { get; set; } = true;
         public bool EditRoute { get; set; } = true;
         public bool DeleteRoute { get; set; } = true;
-        public int MaxAllowedRoutes { get; set; } = -1;
     }
 }

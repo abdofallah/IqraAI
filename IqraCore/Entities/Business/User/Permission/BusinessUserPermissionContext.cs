@@ -22,7 +22,6 @@
         public bool EditBranches { get; set; } = true;
         public bool AddBranches { get; set; } = true;
         public bool DeleteBranches { get; set; } = true;
-        public int MaxAllowedBranches { get; set; } = -1;
     }
 
     public class BusinessUserPermissionContextServices
@@ -31,7 +30,6 @@
         public bool EditServices { get; set; } = true;
         public bool AddServices { get; set; } = true;
         public bool DeleteServices { get; set; } = true;
-        public int MaxAllowedServices { get; set; } = -1;
     }
 
     public class BusinessUserPermissionContextProducts
@@ -40,6 +38,5 @@
         public bool EditProducts { get; set; } = true;
         public bool AddProducts { get; set; } = true;
         public bool DeleteProducts { get; set; } = true;
-        public int MaxAllowedProducts { get; set; } = -1;
     }
 }

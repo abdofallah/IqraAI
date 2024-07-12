@@ -5,6 +5,5 @@
         public bool MakeCallsTabEnabled { get; set; } = true;
         public bool MakeSingleCallEnabled { get; set; } = true;
         public bool MakeBulkCallEnabled { get; set; } = true;
-        public int MaxBulkCallNumbersCount { get; set; } = -1;
     }
 }

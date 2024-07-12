@@ -14,5 +14,7 @@
         public BusinessRoutingPermission Routing { get; set; } = new BusinessRoutingPermission();
         public BusinessAgentsPermission Agents { get; set; } = new BusinessAgentsPermission();
         public BusinessToolsPermission Tools { get; set; } = new BusinessToolsPermission();
+        public BusinessContextPermission Context { get; set; } = new BusinessContextPermission();
+        public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
     }
 }
