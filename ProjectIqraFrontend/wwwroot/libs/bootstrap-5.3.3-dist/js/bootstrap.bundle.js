@@ -4309,6 +4309,9 @@
       this._scrollBar.hide();
       document.body.classList.add(CLASS_NAME_OPEN);
       this._adjustDialog();
+
+      this.element.style.zIndex = this._config.zIndex;
+
       this._backdrop.show(() => this._showElement(relatedTarget));
     }
     hide() {
@@ -4340,7 +4343,7 @@
     _initializeBackDrop() {
       return new Backdrop({
         isVisible: Boolean(this._config.backdrop),
-        zIndex: this._config.backdropZIndex,
+        zIndex: this._config.zIndex - 1,
         // 'static' option will be translated to true, and booleans will keep their value,
         isAnimated: this._isAnimated()
       });
