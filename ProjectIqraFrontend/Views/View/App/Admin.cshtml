@@ -2018,9 +2018,9 @@
 
         function ResetAndEmptyManageTabData()
         {
-            usersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
-            usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
-            usersManageTab.find("table tbody").empty();
+            businessesManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
+            businessesManageTab.find("input[type=checkbox]").prop("checked", false).change();
+            businessesManageTab.find("table tbody").empty();
         }
 
         function ShowBusinessManageTab() {
@@ -2182,71 +2182,8 @@
             return element;
         }
 
-        $(document).ready(() => {
-            $("#business-tab #businesses-manage-permissions input[check-type=permission-with-reason]").on("change", (event) => {
-                event.stopPropagation();
-
-                let current = $(event.currentTarget);
-                let reasonInput = current.parent().parent().find("input[type=text]");
-
-                if (current.prop("checked")) {
-                    reasonInput.removeClass("d-none");
-                }
-                else {
-                    reasonInput.addClass("d-none");
-                }
-            });
-
-            addNewBusinessButton.on("click", (event) => {
-                event.preventDefault();
-
-                ResetAndEmptyManageTabData();
-                currentManageBusinessName.text("New Business");
-                CurrentManageBusinessId = "new";
-
-                ShowBusinessManageTab();
-            });
-
-            switchBackToBusinessesListTabFromManageTab.on("click", (event) => {
-                event.preventDefault();
-
-                ShowBusinessListTab();
-            })
-
-            $(document).on("click", "#business-tab #businessesListTable tr td button[button-type=edit-list-business]", (event) => {
-                event.preventDefault();
-
-                let elementBusinessId = $(event.currentTarget).attr("business-id");
-
-                let currentBusinessData = CurrentBusinessesList.find((businessData) => {
-                    return businessData.id == elementBusinessId;
-                });
-
-                currentManageBusinessName.text(currentBusinessData.name);
-                CurrentManageBusinessId = currentBusinessData.id;
-
-                ResetAndEmptyManageTabData();
-
-                FetchBusinessNumbersFromAPI(currentBusinessData.numberIds,
-                    (businessNumbers) => {
-                        CurrentManageBusinessNumbers = businessNumbers;
-
-                        FillBusinessManageTab(currentBusinessData, CurrentManageBusinessNumbers);                
-
-                        ShowBusinessManageTab();
-                    },
-                    (businessNumbersError) => {
-                        AlertManager.createAlert({
-                            type: "danger",
-                            message: 'Error occured while fetching user numbers. Check browser console for logs.',
-                            timeout: 5000
-                        });
-
-                        console.log("Error occured while fetching user numbers: " + businessNumbersError);
-                    }
-                )
-            });
-
+        function AddBusinessPermissionsHelper()
+        {
             // General Business Permissions
             DisableFullPermissionHelper(
                 businessesManageDisabledFullInput,
@@ -2390,7 +2327,6 @@
                     modalClass: '',
                 }
             );
-
             DisableFullPermissionHelper(
                 businessPermissionsConversationOutboundDisableFullInput,
                 [businessPermissionsConversationOutboundDisableExporting, businessPermissionsConversationOutboundDisableDeleting],
@@ -2403,7 +2339,6 @@
                     modalClass: '',
                 }
             );
-
             DisableFullPermissionHelper(
                 businessPermissionsConversationWebsocketDisableFullInput,
                 [businessPermissionsConversationWebsocketDisableExporting, businessPermissionsConversationWebsocketDisableDeleting],
@@ -2416,9 +2351,76 @@
                     modalClass: '',
                 }
             );
+        }
 
+        $(document).ready(() => {
+            $("#business-tab #businesses-manage-permissions input[check-type=permission-with-reason]").on("change", (event) => {
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+                let reasonInput = current.parent().parent().find("input[type=text]");
+
+                if (current.prop("checked")) {
+                    reasonInput.removeClass("d-none");
+                }
+                else {
+                    reasonInput.addClass("d-none");
+                }
+            });
+
+            addNewBusinessButton.on("click", (event) => {
+                event.preventDefault();
+
+                ResetAndEmptyManageTabData();
+                currentManageBusinessName.text("New Business");
+                CurrentManageBusinessId = "new";
+
+                ShowBusinessManageTab();
+            });
+
+            switchBackToBusinessesListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                ShowBusinessListTab();
+            })
+
+            $(document).on("click", "#business-tab #businessesListTable tr td button[button-type=edit-list-business]", (event) => {
+                event.preventDefault();
+
+                let elementBusinessId = $(event.currentTarget).attr("business-id");
+
+                let currentBusinessData = CurrentBusinessesList.find((businessData) => {
+                    return businessData.id == elementBusinessId;
+                });
+
+                currentManageBusinessName.text(currentBusinessData.name);
+                CurrentManageBusinessId = currentBusinessData.id;
+
+                ResetAndEmptyManageTabData();
+
+                FetchBusinessNumbersFromAPI(currentBusinessData.numberIds,
+                    (businessNumbers) => {
+                        CurrentManageBusinessNumbers = businessNumbers;
+
+                        FillBusinessManageTab(currentBusinessData, CurrentManageBusinessNumbers);                
+
+                        ShowBusinessManageTab();
+                    },
+                    (businessNumbersError) => {
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: 'Error occured while fetching user numbers. Check browser console for logs.',
+                            timeout: 5000
+                        });
+
+                        console.log("Error occured while fetching user numbers: " + businessNumbersError);
+                    }
+                )
+            });
+
+            AddBusinessPermissionsHelper();
+            
             // Init
-
             FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize, (businesses) => {
                 CurrentBusinessesList = businesses;
 
