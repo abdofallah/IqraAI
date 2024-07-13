@@ -1042,6 +1042,12 @@ table.table>thead>*>* {
     cursor: pointer;
 }
 
+.table-selectable>tbody>tr.selectable.disabled>* {
+    --bs-table-color-state: rgb(229, 229, 229) !important;
+    --bs-table-bg-state: rgb(73, 73, 73) !important;
+    cursor: inherit !important;
+}
+
 .table-selectable>tbody>tr.active>* {
     --bs-table-color-state: var(--bs-table-hover-color);
     --bs-table-bg-state: var(--bs-table-hover-bg);
