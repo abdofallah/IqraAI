@@ -4254,13 +4254,13 @@
     backdrop: true,
     focus: true,
     keyboard: true,
-    backdropZIndex: 1050
+    zIndex: 1050
   };
   const DefaultType$6 = {
     backdrop: '(boolean|string)',
     focus: 'boolean',
     keyboard: 'boolean',
-    backdropZIndex: 'number'
+    zIndex: 'number'
   };
 
   /**
@@ -4310,7 +4310,7 @@
       document.body.classList.add(CLASS_NAME_OPEN);
       this._adjustDialog();
 
-      this.element.style.zIndex = this._config.zIndex;
+      this._element.style.zIndex = this._config.zIndex;
 
       this._backdrop.show(() => this._showElement(relatedTarget));
     }
