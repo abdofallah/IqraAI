@@ -152,7 +152,7 @@
                                         <button class="nav-link" id="users-manage-numbers-tab" data-bs-toggle="pill" data-bs-target="#users-manage-numbers" type="button" role="tab" aria-controls="users-manage-numbers" aria-selected="true">Numbers</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
+                                        <button class="nav-link disabled" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
                                     </li>
                                 </ul>
 
@@ -265,7 +265,6 @@
                                                 <th scope="col">Name</th>
                                                 <th scope="col">Numbers</th>
                                                 <th scope="col">Users</th>
-                                                <th scope="col">Region</th>
                                                 <th scope="col">Actions</th>
                                             </tr>
                                         </thead>
@@ -283,12 +282,12 @@
                                                 </div>
                                                 <div class="modal-body">
                                                     <div class="input-group w-100 mb-3">
-                                                        <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchAddUserBusinessModalButton">
-                                                        <button class="input-group-button btn btn-primary" id="searchAddUserBusinessModalButton">
+                                                        <input type="text" class="form-control" placeholder="Business name or id" aria-label="Business name or id" aria-describedby="searchAddUserBusinessModalButton" id="addUserBusinessModalSearchInput">
+                                                        <button class="input-group-button btn btn-primary" id="searchAddUserBusinessModalButton" disabled>
                                                             <i class='fa-regular fa-magnifying-glass'></i>
                                                         </button>
                                                     </div>
-                                                    <table id="addUserBusinessModalListTable" class="table w-100">
+                                                    <table id="addUserBusinessModalListTable" class="table w-100 table-selectable">
                                                         <thead>
                                                             <tr>
                                                                 <th scope="col">#</th>
@@ -305,7 +304,7 @@
                                                     </table>
                                                 </div>
                                                 <div class="modal-footer">
-                                                    <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                    <button type="button" class="btn btn-primary btn-ic-span-align" id="addUserBusinessModalSaveButton" disabled>
                                                         <i class="fa-regular fa-plus"></i>
                                                         <span> Add</span>
                                                     </button>
@@ -335,6 +334,7 @@
                                                 <th scope="col">#</th>
                                                 <th scope="col">Country</th>
                                                 <th scope="col">Number</th>
+                                                <th scope="col">Provider</th>
                                                 <th scope="col">Assigned</th>
                                                 <th scope="col">Actions</th>
                                             </tr>
@@ -409,7 +409,7 @@
                     <!-- List -->
                     <div class="tab-pane fade w-100 show active" id="businesses-list" role="tabpanel" aria-labelledby="businesses-list-tab" tabindex="0">
                         <!-- Businesses List Table Tab -->
-                        <div class="fade w-100 d-none" id="businessesListTableTab">
+                        <div class="fade w-100 show" id="businessesListTableTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 200px" class="me-4">
                                     <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBusinessButton">
@@ -441,7 +441,7 @@
                             </table>
                         </div>
                         <!-- Businesses Manage Tab -->
-                        <div class="fade w-100 show" id="businessesManageTab">
+                        <div class="fade w-100 d-none" id="businessesManageTab">
                             <!-- Businesses Manage General Tab -->
                             <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
                                 <ul class="nav" id="businesses-manage-tab" role="tablist">
@@ -449,7 +449,10 @@
                                         <button class="nav-link" id="businesses-manage-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-general" type="button" role="tab" aria-controls="businesses-manage-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions" type="button" role="tab" aria-controls="businesses-manage-permissions" aria-selected="true">Permissions</button>
+                                        <button class="nav-link" id="businesses-manage-permissions-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions" type="button" role="tab" aria-controls="businesses-manage-permissions" aria-selected="true">Permissions</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="businesses-manage-numbers-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-numbers" type="button" role="tab" aria-controls="businesses-manage-numbers" aria-selected="true">Numbers</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link disabled" id="businesses-manage-routing-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-routing" type="button" role="tab" aria-controls="businesses-manage-routing" aria-selected="true">Routing</button>
@@ -471,7 +474,7 @@
                             <!-- Tab Content -->
                             <div class="tab-content w-100" id="businesses-manage-tabContent">
                                 <!-- General -->
-                                <div class="tab-pane fade w-100" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
+                                <div class="tab-pane fade w-100 show active" id="businesses-manage-general" role="tabpanel" aria-labelledby="businesses-manage-general-tab" tabindex="0">
                                     <div class="mb-3">
                                         <label for="manageBusinessNameInput" class="form-label">Name</label>
                                         <input type="text" class="form-control" id="manageBusinessNameInput" placeholder="Name">
@@ -525,7 +528,7 @@
                                 </div>
 
                                 <!-- Permissions -->
-                                <div class="tab-pane fade w-100 show active" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="businesses-manage-permissions" role="tabpanel" aria-labelledby="businesses-manage-permissions-tab" tabindex="0">
                                     <ul class="nav mb-3" id="businesses-manage-permissions-tab" role="tablist">
                                         <li class="nav-item me-2" role="presentation">
                                             <button class="nav-link active" id="businesses-manage-permissions-general-tab" data-bs-toggle="pill" data-bs-target="#businesses-manage-permissions-general" type="button" role="tab" aria-controls="businesses-manage-permissions-general" aria-selected="true">General</button>
@@ -871,22 +874,74 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Routing -->
-                            <div class="tab-pane fade w-100" id="businesses-manage-routing" role="tabpanel" aria-labelledby="businesses-manage-routing-tab" tabindex="0">
-                                routing
-                            </div>
+                                <!-- Numbers -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-numbers" role="tabpanel" aria-labelledby="businesses-manage-numbers-tab" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewbusinessManageNumberButton" data-bs-toggle="modal" data-bs-target="#addBusinessManagerNumberModal">
+                                                <span>+ Add Number</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Id or Number" aria-label="Id or Number" aria-describedby="searchbusinessManageNumberButton">
+                                            <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <table id="businessManageNumberListTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">#</th>
+                                                <th scope="col">Country</th>
+                                                <th scope="col">Number</th>
+                                                <th scope="col">Provider</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Dynamically Generated -->
+                                        </tbody>
+                                    </table>
+                                    <!-- Add Number Modal -->
+                                    <div class="modal modal-lg fade" id="addBusinessManagerNumberModal" tabindex="-1" aria-labelledby="addBusinessManagerNumberModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h1 class="modal-title fs-5" id="addBusinessManagerNumberModalLabel">Add Business Number</h1>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <!-- TODO -->
+                                                    todo
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-primary btn-ic-span-align">
+                                                        <i class="fa-regular fa-plus"></i>
+                                                        <span> Add</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <!-- Agents -->
-                            <div class="tab-pane fade w-100" id="businesses-manage-agents" role="tabpanel" aria-labelledby="businesses-manage-agents-tab" tabindex="0">
-                                agents
-                            </div>
+                                <!-- Routing -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-routing" role="tabpanel" aria-labelledby="businesses-manage-routing-tab" tabindex="0">
+                                    routing
+                                </div>
 
-                            <!-- Analytics -->
-                            <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
-                                analytics
-                            </div>
+                                <!-- Agents -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-agents" role="tabpanel" aria-labelledby="businesses-manage-agents-tab" tabindex="0">
+                                    agents
+                                </div>
+
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
+                                    analytics
+                                </div>
+                            </div>     
                         </div>
                     </div>
                 </div>
@@ -1102,11 +1157,12 @@
 
     <!-- libs -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
-    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
 
     <!-- Custom Scripts -->
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
+    <script src="~/js/confirm_dialog.js"></script>
     <script src="~/js/script.js"></script>
 
     <!-- Global -->
@@ -1247,6 +1303,30 @@
                 }
             });
         }
+    
+        function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback) {
+            $.ajax({
+                url: '/app/admin/business/search',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    query: query,
+                    page: page,
+                    pageSize: pageSize
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        alert(response.message);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    console.log(error);
+                }
+            });
+        }
     </script>
 
     <!-- PageLoader -->
@@ -1276,8 +1356,19 @@
         var CurrentManageUserBusinesses = [];
         var CurrentManageUserNumbers = [];
 
+        var CurrentManageAddUserBusinessesSearched = [];
+    
+        var CurrentManageUserEmail = "";
+        var CurrentManageUserAddBusiness = []
+        var CurrentManageUserDeletedBusiness = []
+        var CurrentManageUserAddNumbers = []
+        var CurrentManageUserDeletedNumbers = []
+
         var UsersTabListTabPage = 0;
         var UsersTabListTabPageSize = 30;
+
+        var UsersTabAddBusinessModalListPage = 0;
+        var UsersTabAddBusinessModalListPageSize = 30;
 
         var IsEditUserAllowed = false;
 
@@ -1296,6 +1387,24 @@
 
         const addUserBusinessModal = usersTab.find("#addUserBusinessModal");
         const addUserBusinessModalListTable = usersTab.find("#addUserBusinessModalListTable");
+
+        const addNewUserButton = usersTab.find("#addNewUserButton");
+
+        const usersManageGeneralTab = usersTab.find("#users-manage-general-tab");
+
+        const addUserBusinessModalSearchInput = usersTab.find("#addUserBusinessModalSearchInput");
+        const searchAddUserBusinessModalButton = usersTab.find("#searchAddUserBusinessModalButton");
+
+        const addUserBusinessModalSaveButton = usersTab.find("#addUserBusinessModalSaveButton");
+
+        const userBusinessesListTable = usersTab.find("#userBusinessesListTable");
+        const userNumbersListTable = usersTab.find("#userNumbersListTable");
+
+        const usersManageDisableCompleteBusinessInput = usersTab.find("#usersManageDisableCompleteBusinessInput");
+        const usersManageDisableCompleteBusinessReasonInput = usersTab.find("#usersManageDisableCompleteBusinessReasonInput");
+        const usersManageDisableEditBusinessInput = usersTab.find("#usersManageDisableEditBusinessInput");
+        const usersManageDisableDeleteBusinessInput = usersTab.find("#usersManageDisableDeleteBusinessInput");
+        const usersManageDisableAddBusinessInput = usersTab.find("#usersManageDisableAddBusinessInput");
 
         function CreateUsersListTableElement(userData) {
             let element = $(`<tr>
@@ -1316,22 +1425,23 @@
             return element;
         }
 
-        function CreateUserManageBusinessesTableElement(businessData) {
+        function CreateUserManageBusinessesTableElement(businessData, isNew = false) {
             let element = $(`<tr>
                 <td>${businessData.id}</td>
                 <td>${businessData.name}</td>
-                <td>${businessData.numbers.length}</td>
-                <td>${businessData.users.length}</td>
-                <td>${businessData.region}</td>
+                <td>${businessData.numberIds.length}</td>
+                <td>${businessData.subUsers.length}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business">
+                    <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business" ${(isNew ? "disabled" : "")}>
                         <i class="fa-regular fa-eye"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fa-regular fa-trash"></i>
+                    <button class="btn btn-danger btn-sm" business-id="${businessData.id}" button-type="${(isNew ? "remove-added-business" : "delete-business")}">
+                        <i class="fa-regular ${(isNew ? "fa-minus" : "fa-trash")}"></i>
                     </button>
                 </td>
             </tr>`);
+
+            return element;
         }
 
         function CreateUserManageNumbersTableElement(numberData) {
@@ -1352,7 +1462,7 @@
         }
 
         function ResetAndEmptyManageTabData() {
-            usersManageTab.find("input[type=text]").val("");
+            usersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
             usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
             usersManageTab.find("table tbody").empty();
         }
@@ -1412,25 +1522,71 @@
 
             // Businesses
 
+            userBusinessesListTable.find("tbody").empty();
             if (userBusinessesData.length > 0) {
                 userBusinessesData.forEach((businessData) => {
-                    usersManageTab.find("#userBusinessesListTable tbody").append(CreateUserManageBusinessesTableElement(businessData));
+                    userBusinessesListTable.find("tbody").append(CreateUserManageBusinessesTableElement(businessData));
                 });
-            }
-            else {
-                usersManageTab.find("#userBusinessesListTable tbody").append('<tr tr-type="none-notice"><td colspan="6">No businesses</td></tr>');
             }
 
             // Numbers
 
+            userNumbersListTable.find("tbody").empty();
             if (userNumbersData.length > 0) {
                 userNumbersData.forEach((numberData) => {
-                    usersManageTab.find("#userNumbersListTable tbody").append(CreateUserManageNumbersTableElement(numberData));
+                    userNumbersListTable.find("tbody").append(CreateUserManageNumbersTableElement(numberData));
                 });
             }
-            else {
-                usersManageTab.find("#userNumbersListTable tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
-            }
+        }
+
+        function ShowUserManageTab()
+        {
+            usersInnerTab.removeClass("show");
+            usersListTableTab.removeClass("show");
+            setTimeout(() => {
+                usersInnerTab.addClass("d-none");
+                usersListTableTab.addClass("d-none");
+
+                usersManageBreadcrumb.removeClass("d-none");
+                usersManageTab.removeClass("d-none");
+
+                usersManageGeneralTab.click();
+                userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
+                userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
+
+                setTimeout(() => {
+                    usersManageBreadcrumb.addClass("show");
+                    usersManageTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function ShowUserListTab()
+        {
+            usersManageBreadcrumb.removeClass("show");
+            usersManageTab.removeClass("show");
+            setTimeout(() => {
+                usersManageBreadcrumb.addClass("d-none");
+                usersManageTab.addClass("d-none");
+
+                usersInnerTab.removeClass("d-none");
+                usersListTableTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    usersInnerTab.addClass("show");
+                    usersListTableTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function CreateAddUserBusinessListTableElement(businessData) {
+            let element = $(`<tr class="selectable" business-id="${businessData.id}" tr-type="add-user-business-modal">
+                <td>${businessData.id}</td>
+                <td>${businessData.name}</td>
+                <td>${businessData.masterUserEmail}</td>
+            </tr>`);
+            
+            return element;
         }
 
         $(document).ready(() => {
@@ -1456,6 +1612,8 @@
                     return;
                 }
 
+                CurrentManageUserEmail = userEmail;
+
                 FetchUserBusinessesFromAPI(userEmail, (userBusinessesData) => {
                     CurrentManageUserBusinesses = userBusinessesData;
                 });
@@ -1469,48 +1627,32 @@
 
                 $("#users-manage-general-tab").click();
 
-                usersInnerTab.removeClass("show");
-                usersListTableTab.removeClass("show");
-                setTimeout(() => {
-                    usersInnerTab.addClass("d-none");
-                    usersListTableTab.addClass("d-none");
-
-                    usersManageBreadcrumb.removeClass("d-none");
-                    usersManageTab.removeClass("d-none");
-
-                    setTimeout(() => {
-                        usersManageBreadcrumb.addClass("show");
-                        usersManageTab.addClass("show");
-
-                        IsEditUserAllowed = true;
-                        return;
-                    }, 10);
-                }, 300);
+                ShowUserManageTab(() => {
+                    IsEditUserAllowed = true;
+                })
             });
+
+            addNewUserButton.on("click", (event) => {
+                event.preventDefault();
+
+                ResetAndEmptyManageTabData();
+                currentManageUserName.text("New User");
+                CurrentManageUserEmail = "new";
+
+                ShowUserManageTab();
+            })
 
             switchBackToUsersListTabFromManageTab.on("click", (event) => {
                 event.preventDefault();
 
-                usersManageBreadcrumb.removeClass("show");
-                usersManageTab.removeClass("show");
-                setTimeout(() => {
-                    usersManageBreadcrumb.addClass("d-none");
-                    usersManageTab.addClass("d-none");
-
-                    usersInnerTab.removeClass("d-none");
-                    usersListTableTab.removeClass("d-none");
-
-                    setTimeout(() => {
-                        usersInnerTab.addClass("show");
-                        usersListTableTab.addClass("show");
-                    }, 10);
-                }, 300);
+                ShowUserListTab();
             });
 
             $("#users-tab #usersManageTab input[check-type=permission-with-reason]").on("change", (event) => {
                 event.stopPropagation();
 
                 let current = $(event.currentTarget);
+
                 let reasonInput = current.parent().parent().find("input[type=text]");
 
                 if (current.prop("checked")) {
@@ -1521,6 +1663,42 @@
                 }
             });
 
+            usersManageDisableCompleteBusinessInput.on("change", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+
+                let isChecked = current.is(':checked');
+                if (isChecked) {
+                    var confirmDialog = new BootstrapConfirmDialog({
+                        title: 'Disable Business',
+                        message: 'This will completely disable adding, editing, viewing and deleting the user businesses. Are you sure?',
+                        confirmText: 'Disable',
+                        cancelText: 'Cancel',
+                        confirmButtonClass: 'btn-danger',
+                        modalClass: '',
+                    });
+
+                    confirmDialog.show().then((isConfirmed) => {
+                        if (isConfirmed) {
+                            usersManageDisableEditBusinessInput.prop("checked", false).prop("disabled", true).change();
+                            usersManageDisableDeleteBusinessInput.prop("checked", false).prop("disabled", true).change();
+                            usersManageDisableAddBusinessInput.prop("checked", false).prop("disabled", true).change();
+                        } else {
+                            usersManageDisableCompleteBusinessInput.prop("checked", false);
+                            usersManageDisableCompleteBusinessReasonInput.val("").addClass("d-none");
+                        }
+                    });
+                }
+                else
+                {
+                    usersManageDisableEditBusinessInput.prop("checked", false).prop("disabled", false).change();
+                    usersManageDisableDeleteBusinessInput.prop("checked", false).prop("disabled", false).change();
+                    usersManageDisableAddBusinessInput.prop("checked", false).prop("disabled", false).change();
+                }
+            })
+
             // Add User Business Modal
             addUserBusinessModal.on('show.bs.modal', (event) => {
                 addUserBusinessModalListTable.find("tbody").append('<tr><td colspan="3">Search for results...</td></tr>');
@@ -1528,6 +1706,151 @@
 
             addUserBusinessModal.on('hidden.bs.modal', (event) => {
                 addUserBusinessModalListTable.find("tbody").empty();
+
+                addUserBusinessModalSearchInput.val("").removeClass("is-invalid");
+                searchAddUserBusinessModalButton.prop("disabled", true);
+
+                addUserBusinessModalSaveButton.prop("disabled", true);
+            });
+
+            addUserBusinessModalSearchInput.on("input", (event) => {
+                let currentElement = $(event.currentTarget);
+
+                let value = currentElement.val().trim();
+                if (!value || value == "") {
+                    searchAddUserBusinessModalButton.prop("disabled", true);
+                    currentElement.addClass("is-invalid");
+                }
+                else {
+                    searchAddUserBusinessModalButton.prop("disabled", false);
+                    currentElement.removeClass("is-invalid");
+                }
+            });
+
+            addUserBusinessModalSearchInput.on("keypress", (event) => {
+                if (event.which == 13) {
+                    event.preventDefault();
+
+                    if (!searchAddUserBusinessModalButton.prop("disabled")) {
+                        searchAddUserBusinessModalButton.click();
+                    }
+                }
+            });
+
+            searchAddUserBusinessModalButton.on("click", (event) => {
+                event.preventDefault();
+
+                let value = addUserBusinessModalSearchInput.val().trim();
+
+                FetchSearchedBusinessesFromAPI(value, UsersTabAddBusinessModalListPage, UsersTabAddBusinessModalListPageSize, (businesses) => {
+                    CurrentManageAddUserBusinessesSearched = businesses;
+
+                    addUserBusinessModalListTable.find("tbody").empty();
+
+                    if (businesses.length == 0) {
+                        addUserBusinessModalListTable.find("tbody").append('<tr><td colspan="3">No results found...</td></tr>');
+                    }
+                    else
+                    {
+                        businesses.forEach((businessData) => {
+                            addUserBusinessModalListTable.find("tbody").append(CreateAddUserBusinessListTableElement(businessData));
+                        });
+                    }
+                })
+            });
+
+            $(document).on("click", "#users-tab #addUserBusinessModalListTable tr.selectable[tr-type=add-user-business-modal]", (event) => {
+                event.preventDefault();
+
+                let businessId = $(event.currentTarget).attr("business-id");
+
+                let findActiveSelectable = addUserBusinessModalListTable.find("tr.selectable[tr-type=add-user-business-modal].active");
+                findActiveSelectable.removeClass("active");
+
+                $(event.currentTarget).addClass("active");
+
+                addUserBusinessModalSaveButton.prop("disabled", false);
+            });
+
+            addUserBusinessModalSaveButton.on("click", (event) => {
+                event.preventDefault();
+
+                let findActiveSelectable = addUserBusinessModalListTable.find("tr.selectable[tr-type=add-user-business-modal].active");
+                let businessId = findActiveSelectable.attr("business-id");
+                let businessData = CurrentManageAddUserBusinessesSearched.find((businessData) => businessData.id == businessId);
+
+                let transferAllNumbers = false;
+
+                function proceedWithBusinessTransfer() {
+                    userBusinessesListTable.find("tbody").find("tr[tr-type=none-notice]").remove();
+                    userBusinessesListTable.find("tbody").append(CreateUserManageBusinessesTableElement(businessData, true));
+
+                    addUserBusinessModal.modal("hide");
+
+                    CurrentManageUserAddBusiness.push({
+                        id: businessData.id,
+                        transferAllNumbers: transferAllNumbers
+                    });
+                }
+
+                if (businessData.masterUserEmail && businessData.masterUserEmail !== CurrentManageUserEmail) {
+                    const transferConfirmDialog = new BootstrapConfirmDialog({
+                        title: 'Confirm Business Transfer',
+                        message: `This business is managed by: ${businessData.masterUserEmail}\nThey will lose complete access to this business.\nDo you want to continue?`,
+                        confirmText: 'Continue',
+                        cancelText: 'Cancel',
+                        confirmButtonClass: 'btn-warning',
+                        modalClass: 'business-transfer-modal',
+                        zIndex: 2000
+                    });
+
+                    transferConfirmDialog.show().then(isTransferConfirmed => {
+                        if (!isTransferConfirmed) {
+                            return;
+                        }
+
+                        if (businessData.numberIds.length > 0) {
+                            const numberTransferDialog = new BootstrapConfirmDialog({
+                                title: 'Confirm Number Transfer',
+                                message: `This business has ${businessData.numberIds.length} numbers.\nIf confirmed, the numbers associated to this business will also be transferred to this user, else all numbers will be disassociated from this business.\nDo you want to continue?`,
+                                confirmText: 'Transfer Numbers',
+                                cancelText: 'Disassociate Numbers',
+                                confirmButtonClass: 'btn-primary',
+                                cancelButtonClass: 'btn-secondary',
+                                modalClass: 'number-transfer-modal'
+                            });
+
+                            numberTransferDialog.show().then(shouldTransferNumbers => {
+                                transferAllNumbers = shouldTransferNumbers;
+                                if (!transferAllNumbers) {
+                                    businessData.numberIds = [];
+                                }
+                                proceedWithBusinessTransfer();
+                            });
+                        } else {
+                            proceedWithBusinessTransfer();
+                        }
+                    });
+                } else {
+                    proceedWithBusinessTransfer();
+                }
+            });
+
+            $(document).on("click", "#users-tab #userBusinessesListTable tr td button[button-type=remove-added-business]", (event) => {
+                event.preventDefault();
+
+                let current = $(event.currentTarget);
+
+                let businessId = current.attr("business-id");
+
+                let index = CurrentManageUserAddBusiness.findIndex((businessData) => businessData.id == businessId);
+                CurrentManageUserAddBusiness.splice(index, 1);
+
+                current.parent().parent().remove();
+
+                if (userBusinessesListTable.find("tbody").children().length == 0) {
+                    userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
+                }
             });
 
             // Add User Number Modal

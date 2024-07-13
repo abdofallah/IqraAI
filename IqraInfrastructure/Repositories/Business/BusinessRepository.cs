@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -66,6 +67,17 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, userEmail);
             return _businessCollection.Find(filter).ToListAsync();
+        }
+
+        public async Task<List<BusinessData>?> SearchBusinessesAsync(string query, int page, int pageSize)
+        {
+            var filter = Builders<BusinessData>.Filter.Regex(b => b.Name, new Regex(query, RegexOptions.IgnoreCase));
+            if (long.TryParse(query, out var id))
+            {
+                filter = filter | Builders<BusinessData>.Filter.Eq(b => b.Id, id);
+            }
+
+            return await _businessCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
     }
 }

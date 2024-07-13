@@ -16,6 +16,11 @@ namespace IqraInfrastructure.Services.Business
             _businessAppRepository = businessAppRepository;
         }
 
+        public async Task AddBusiness(BusinessData businessData)
+        {
+            await _businessRepository.AddBusinessAsync(businessData);
+        }
+
         public async Task<FunctionReturnResult<List<BusinessData>>> GetUserBusinessesByEmail(string userEmail)
         {
             var result = new FunctionReturnResult<List<BusinessData>>();
@@ -101,6 +106,26 @@ namespace IqraInfrastructure.Services.Business
             {
                 result.Code = 1;
                 Log.Logger.Error("[BusinessManager] Null - Businesses not found");
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businesses;
+            }
+
+            return result;
+        }
+    
+        public async Task<FunctionReturnResult<List<BusinessData>?>> SearchBusinesses(string query, int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<BusinessData>?>();
+            result.Data = null;
+
+            var businesses = await _businessRepository.SearchBusinessesAsync(query, page, pageSize);
+            if (businesses == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[BusinessManager] Null - Search Businesses not found");
             }
             else
             {

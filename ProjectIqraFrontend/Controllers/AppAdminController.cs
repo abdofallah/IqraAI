@@ -338,5 +338,64 @@ namespace ProjectIqraFrontend.Controllers
 
             return result;
         }
+
+        [HttpPost("/app/admin/business/search")]
+        public async Task<FunctionReturnResult<List<BusinessData>?>> SearchBusinesses(string query, int pageSize = 10, int page = 0)
+        {
+            var result = new FunctionReturnResult<List<BusinessData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = 4;
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                result.Code = 5;
+                result.Message = "Query cannot be empty";
+                return result;
+            }
+
+            var businessesResult = await _businessManager.SearchBusinesses(query, page, pageSize);
+            if (!businessesResult.Success)
+            {
+                result.Code = 1000 + businessesResult.Code;
+                result.Message = businessesResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = businessesResult.Data;
+
+            return result;
+        }
     }
 }

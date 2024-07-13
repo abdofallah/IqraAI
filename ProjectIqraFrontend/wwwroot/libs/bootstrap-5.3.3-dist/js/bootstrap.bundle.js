@@ -3958,6 +3958,10 @@
         reflow(element);
       }
       element.classList.add(CLASS_NAME_SHOW$5);
+      if (this._config.zIndex)
+      {
+        element.style.zIndex = this._config.zIndex;
+      }
       this._emulateAnimation(() => {
         execute(callback);
       });
@@ -4249,12 +4253,14 @@
   const Default$6 = {
     backdrop: true,
     focus: true,
-    keyboard: true
+    keyboard: true,
+    backdropZIndex: 1050
   };
   const DefaultType$6 = {
     backdrop: '(boolean|string)',
     focus: 'boolean',
-    keyboard: 'boolean'
+    keyboard: 'boolean',
+    backdropZIndex: 'number'
   };
 
   /**
@@ -4334,6 +4340,7 @@
     _initializeBackDrop() {
       return new Backdrop({
         isVisible: Boolean(this._config.backdrop),
+        zIndex: this._config.backdropZIndex,
         // 'static' option will be translated to true, and booleans will keep their value,
         isAnimated: this._isAnimated()
       });
