@@ -1428,7 +1428,7 @@
 
         // API Related Calls
 
-        function FetchUsersFromAPI(page, pageSize, successCallback) {
+        function FetchUsersFromAPI(page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/users',
                 type: 'POST',
@@ -1439,14 +1439,14 @@
                 },
                 success: (response) => {
                     if (!response.success) {
-                        alert(response.message);
+                        errorCallback(response);
                         return;
                     }
 
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
         }
@@ -1517,7 +1517,7 @@
             });
         }
 
-        function FetchBusinessesFromAPI(page, pageSize, successCallback) {
+        function FetchBusinessesFromAPI(page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/businesses',
                 type: 'POST',
@@ -1528,38 +1528,38 @@
                 },
                 success: (response) => {
                     if (!response.success) {
-                        alert(response.message);
+                        errorCallback(response);
                         return;
                     }
 
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
         }
 
-        function FetchRegionsFromAPI(successCallback) {
+        function FetchRegionsFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/regions',
                 type: 'POST',
                 dataType: "json",
                 success: (response) => {
                     if (!response.success) {
-                        alert(response.message);
+                        errorCallback(response);
                         return;
                     }
 
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
         }
 
-        function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback) {
+        function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/business/search',
                 type: 'POST',
@@ -1571,14 +1571,14 @@
                 },
                 success: (response) => {
                     if (!response.success) {
-                        alert(response.message);
+                        errorCallback(response);
                         return;
                     }
 
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
         }
@@ -1611,6 +1611,30 @@
                 type: 'POST',
                 dataType: "json",
                 data: {
+                    page: page,
+                    pageSize: pageSize
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSearchedNumbersFromAPI(query, page, pageSize, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/numbers/search',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    query: query,
                     page: page,
                     pageSize: pageSize
                 },
@@ -1828,14 +1852,14 @@
             </tr>`);
         }
 
-        function ResetAndEmptyManageTabData() {
+        function ResetAndEmptyUsersManageTabData() {
             usersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
             usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
             usersManageTab.find("table tbody").empty();
         }
 
         function FillUserManageTab(userData, userBusinessesData, userNumbersData) {
-            ResetAndEmptyManageTabData();
+            ResetAndEmptyUsersManageTabData();
 
             // General
             usersManageFirstNameInput.val(userData.firstName);
@@ -1960,9 +1984,7 @@
                                 currentManageUserName.text(userEmail);
 
                                 $("#users-manage-general-tab").click();
-                                ShowUserManageTab(() => {
-                                    IsEditUserAllowed = true;
-                                });
+                                ShowUserManageTab();
                             },
                             (userNumbersError) => {
                                 AlertManager.createAlert({
@@ -1971,7 +1993,7 @@
                                     timeout: 5000
                                 });
 
-                                console.log("Error occured while fetching user numbers: " + userNumbersError);
+                                console.log("Error occured while fetching user numbers: ", userNumbersError);
                             }
                         );
                     },
@@ -1982,7 +2004,7 @@
                             timeout: 5000
                         });
 
-                        console.log("Error occured while fetching user businesses: " + userBusinessesError);
+                        console.log("Error occured while fetching user businesses: ", userBusinessesError);
                     }
                 );        
             });
@@ -1990,7 +2012,7 @@
             addNewUserButton.on("click", (event) => {
                 event.preventDefault();
 
-                ResetAndEmptyManageTabData();
+                ResetAndEmptyUsersManageTabData();
                 currentManageUserName.text("New User");
                 CurrentManageUserEmail = "new";
 
@@ -2001,6 +2023,8 @@
                 event.preventDefault();
 
                 ShowUserListTab();
+
+                IsEditUserAllowed = true;
             });
 
             $("#users-tab #usersManageTab input[check-type=permission-with-reason]").on("change", (event) => {
@@ -2074,30 +2098,41 @@
 
                 let value = addUserBusinessModalSearchInput.val().trim();
 
-                FetchSearchedBusinessesFromAPI(value, UsersTabAddBusinessModalListPage, UsersTabAddBusinessModalListPageSize, (businesses) => {
-                    CurrentManageAddUserBusinessesSearched = businesses;
+                FetchSearchedBusinessesFromAPI(value, UsersTabAddBusinessModalListPage, UsersTabAddBusinessModalListPageSize,
+                    (businesses) => {
+                        CurrentManageAddUserBusinessesSearched = businesses;
 
-                    addUserBusinessModalListTable.find("tbody").empty();
+                        addUserBusinessModalListTable.find("tbody").empty();
 
-                    if (CurrentManageAddUserBusinessesSearched.length == 0) {
-                        addUserBusinessModalListTable.find("tbody").append('<tr><td colspan="3">No results found...</td></tr>');
-                    }
-                    else
-                    {
-                        CurrentManageAddUserBusinessesSearched.forEach((businessData) => {
-                            let addedIndex = CurrentManageUserAddBusiness.findIndex((business) => business.id == businessData.id);
-                            let alreadyIndex = CurrentManageUserBusinesses.findIndex((business) => business.id == businessData.id);
+                        if (CurrentManageAddUserBusinessesSearched.length == 0) {
+                            addUserBusinessModalListTable.find("tbody").append('<tr><td colspan="3">No results found...</td></tr>');
+                        }
+                        else
+                        {
+                            CurrentManageAddUserBusinessesSearched.forEach((businessData) => {
+                                let addedIndex = CurrentManageUserAddBusiness.findIndex((business) => business.id == businessData.id);
+                                let alreadyIndex = CurrentManageUserBusinesses.findIndex((business) => business.id == businessData.id);
 
-                            let alreadyInUser = false;
-                            if (addedIndex !== -1 || alreadyIndex !== -1)
-                            {
-                                alreadyInUser = true;
-                            }
+                                let alreadyInUser = false;
+                                if (addedIndex !== -1 || alreadyIndex !== -1)
+                                {
+                                    alreadyInUser = true;
+                                }
 
-                            addUserBusinessModalListTable.find("tbody").append(CreateAddUserBusinessListTableElement(businessData, alreadyInUser));
+                                addUserBusinessModalListTable.find("tbody").append(CreateAddUserBusinessListTableElement(businessData, alreadyInUser));
+                            });
+                        }
+                    },
+                    (businessesError) => {
+                        AlertManager.createAlert({
+                            type: 'danger',
+                            message: 'Error occured while fetching user businesses. Check browser console for logs.',
+                            timeout: 5000
                         });
+
+                        console.log("Error occured while fetching user businesses: ", businessesError);
                     }
-                })
+                )
             });
 
             $(document).on("click", "#users-tab #addUserBusinessModalListTable tr.selectable[tr-type=add-user-business-modal]", (event) => {
@@ -2198,15 +2233,26 @@
 
             // Init
 
-            FetchUsersFromAPI(UsersTabListTabPage, UsersTabListTabPageSize, (users) => {
-                CurrentUsersList = users;
+            FetchUsersFromAPI(UsersTabListTabPage, UsersTabListTabPageSize,
+                (users) => {
+                    CurrentUsersList = users;
 
-                users.forEach((userData) => {
-                    usersListTable.append(CreateUsersListTableElement(userData));
-                });
+                    users.forEach((userData) => {
+                        usersListTable.append(CreateUsersListTableElement(userData));
+                    });
 
-                IsEditUserAllowed = true;
-            });
+                    IsEditUserAllowed = true;
+                },
+                (usersError) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: 'Error occured while fetching users. Check browser console for logs.',
+                        timeout: 5000
+                    });
+                    
+                    console.log("Error occured while fetching users: ", usersError);
+                }
+            );
         });
     </script>
 
@@ -2342,7 +2388,7 @@
         const businessPermissionsConversationWebsocketDisableDeleting = businessesManageTab.find("#businessPermissionsConversationWebsocketDisableDeleting");
         const businessPermissionsConversationWebsocketDisableDeletingReasonInput = businessesManageTab.find("#businessPermissionsConversationWebsocketDisableDeletingReasonInput");
 
-        function ResetAndEmptyManageTabData()
+        function ResetAndEmptyBusinessManageTabData()
         {
             businessesManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
             businessesManageTab.find("input[type=checkbox]").prop("checked", false).change();
@@ -2697,7 +2743,7 @@
             addNewBusinessButton.on("click", (event) => {
                 event.preventDefault();
 
-                ResetAndEmptyManageTabData();
+                ResetAndEmptyBusinessManageTabData();
                 currentManageBusinessName.text("New Business");
                 CurrentManageBusinessId = "new";
 
@@ -2722,7 +2768,7 @@
                 currentManageBusinessName.text(currentBusinessData.name);
                 CurrentManageBusinessId = currentBusinessData.id;
 
-                ResetAndEmptyManageTabData();
+                ResetAndEmptyBusinessManageTabData();
 
                 FetchBusinessNumbersFromAPI(currentBusinessData.numberIds,
                     (businessNumbers) => {
@@ -2739,7 +2785,7 @@
                             timeout: 5000
                         });
 
-                        console.log("Error occured while fetching user numbers: " + businessNumbersError);
+                        console.log("Error occured while fetching user numbers: ", businessNumbersError);
                     }
                 )
             });
@@ -2747,13 +2793,24 @@
             AddBusinessPermissionsHelper();
 
             // Init
-            FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize, (businesses) => {
-                CurrentBusinessesList = businesses;
+            FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize,
+                (businesses) => {
+                    CurrentBusinessesList = businesses;
 
-                businesses.forEach((businessData) => {
-                    businessesListTable.append(CreateBusinessesListTableElement(businessData));
-                });
-            });
+                    businesses.forEach((businessData) => {
+                        businessesListTable.append(CreateBusinessesListTableElement(businessData));
+                    });
+                },
+                (businessesError) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: 'Error occured while fetching businesses. Check browser console for logs.',
+                        timeout: 5000
+                    });
+                    
+                    console.log("Error occured while fetching businesses: ", businessesError);
+                }
+            );
         });
     </script>
 
@@ -3099,7 +3156,7 @@
                     CurrentPhysicalNumbersList = physicalNumbersList;
 
                     if (CurrentPhysicalNumbersList.length == 0) {
-                        physicalNumbersListTable.append('<tr><td colspan="5">No numbers found</td></tr>');
+                        physicalNumbersListTable.append('<tr><td colspan="7">No numbers found</td></tr>');
                     }
                     else
                     {
@@ -3125,7 +3182,7 @@
                     CurrentTwilioNumbersList = twilioNumbersList;
 
                     if (CurrentTwilioNumbersList.length === 0) {
-                        twilioNumbersListTable.append('<tr><td colspan="4">No numbers found</td></tr>');
+                        twilioNumbersListTable.append('<tr><td colspan="6">No numbers found</td></tr>');
                     }
                     else
                     {
@@ -3151,7 +3208,7 @@
                     CurrentVonageNumbersList = vonageNumbersList;
 
                     if (CurrentVonageNumbersList.length === 0) {
-                        vonageNumbersListTable.append('<tr><td colspan="4">No numbers found</td></tr>');
+                        vonageNumbersListTable.append('<tr><td colspan="6">No numbers found</td></tr>');
                     }
                     else
                     {
@@ -3463,13 +3520,24 @@
                 manageRegionCountryInputSelect.append(`<option value="${countryData["Alpha-2 code"]}">${countryData["Country"]}</option>`)
             })
 
-            FetchRegionsFromAPI((regionsData) => {
-                CurrentRegionsList = regionsData;
+            FetchRegionsFromAPI(
+                (regionsData) => {
+                    CurrentRegionsList = regionsData;
 
-                CurrentRegionsList.forEach((regionData) => {
-                    regionListTable.append(CreateRegionListTableElement(regionData));
-                });
-            });
+                    CurrentRegionsList.forEach((regionData) => {
+                        regionListTable.append(CreateRegionListTableElement(regionData));
+                    });
+                },
+                (regionsError) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: 'Error occured while fetching regions. Check browser console for logs.',
+                        timeout: 5000
+                    });
+                    
+                    console.log("Error occured while fetching regions: ", regionsError);
+                }
+            );
         });
     </script>
 </body>
