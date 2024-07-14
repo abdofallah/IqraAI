@@ -188,53 +188,10 @@ namespace ProjectIqraFrontend.Middlewares
 
         public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
         {
-            if (value is null)
+            if (WriteNoDepthProperties(writer, value, value.GetType(), options))
             {
-                writer.WriteNullValue();
                 return;
             }
-
-            if (value is string stringValue)
-            {
-                writer.WriteStringValue(stringValue);
-                return;
-            }
-
-            if (value is int intValue)
-            {
-                writer.WriteNumberValue(intValue);
-                return;
-            }
-
-            if (value is long longValue)
-            {
-                writer.WriteNumberValue(longValue);
-                return;
-            }
-
-            if (value is double doubleValue)
-            {
-                writer.WriteNumberValue(doubleValue);
-                return;
-            }
-
-            if (value is float floatValue)
-            {
-                writer.WriteNumberValue(floatValue);
-                return;
-            }
-
-            if (value is bool boolValue)
-            {
-                writer.WriteBooleanValue(boolValue);
-                return;
-            }
-
-            if (value is DateTime dateTimeValue)
-            {
-                JsonSerializer.Serialize(writer, dateTimeValue, options);
-                return;
-            }  
 
             writer.WriteStartObject();
 
@@ -249,67 +206,94 @@ namespace ProjectIqraFrontend.Middlewares
 
                 writer.WritePropertyName(propertyName);
 
-                if (propertyValue is null)
+                if (!WriteNoDepthProperties(writer, propertyValue, property.PropertyType, options))
                 {
-                    writer.WriteNullValue();
-                }
-                else
-                {
-                    var underlyingType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-
-                    if (underlyingType.IsEnum)
-                    {
-                        SerializeEnum(writer, propertyValue);
-                    }
-                    else if (underlyingType.IsPrimitive)
-                    {
-                        JsonSerializer.Serialize(writer, propertyValue, underlyingType, options);
-                    }
-                    else if (propertyValue is IEnumerable enumerable)
-                    {
-                        writer.WriteStartArray();
-                        foreach (var item in enumerable)
-                        {
-                            JsonSerializer.Serialize(writer, item, options);
-                        }
-                        writer.WriteEndArray();
-                    }
-                    else
-                    {
-                        JsonSerializer.Serialize(writer, propertyValue, options);
-                    }
+                    JsonSerializer.Serialize(writer, propertyValue, options);
                 }
             }
 
             writer.WriteEndObject();
         }
 
-        private void SerializeInt(Utf8JsonWriter writer, int value)
+        private bool WriteNoDepthProperties(Utf8JsonWriter writer, object? value, Type valueType, JsonSerializerOptions options)
         {
-            writer.WriteNumberValue(value);
-        }
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return true;
+            }
 
-        private void SerializeLong(Utf8JsonWriter writer, long value)
-        {
-            writer.WriteNumberValue(value);
-        }
+            var underlyingType = Nullable.GetUnderlyingType(valueType) ?? valueType;
 
-        private void SerializeFloat(Utf8JsonWriter writer, float value)
-        {
-            writer.WriteNumberValue(value);
-        }
+            if (underlyingType == typeof(string))
+            {
+                writer.WriteStringValue((string)value);
+                return true;
+            }
 
-        private void SerializeDouble(Utf8JsonWriter writer, double value)
-        {
-            writer.WriteNumberValue(value);
-        }
+            if (underlyingType == typeof(int))
+            {
+                writer.WriteNumberValue((int)value);
+                return true;
+            }
 
-        private void SerializeEnum(Utf8JsonWriter writer, object enumValue)
-        {
-            writer.WriteStartObject();
-            writer.WriteNumber("value", Convert.ToInt32(enumValue));
-            writer.WriteString("name", Enum.GetName(enumValue.GetType(), enumValue));
-            writer.WriteEndObject();
+            if (underlyingType == typeof(long))
+            {
+                writer.WriteNumberValue((long)value);
+                return true;
+            }
+
+            if (underlyingType == typeof(double))
+            {
+                writer.WriteNumberValue((double)value);
+                return true;
+            }
+
+            if (underlyingType == typeof(float))
+            {
+                writer.WriteNumberValue((float)value);
+                return true;
+            }
+
+            if (underlyingType == typeof(bool))
+            {
+                writer.WriteBooleanValue((bool)value);
+                return true;
+            }
+
+            if (underlyingType == typeof(DateTime))
+            {
+                JsonSerializer.Serialize(writer, (DateTime)value, underlyingType, options);
+                return true;
+            }
+
+            if (underlyingType.IsEnum)
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("value", Convert.ToInt32(value));
+                writer.WriteString("name", Enum.GetName(value.GetType(), value));
+                writer.WriteEndObject();
+                return true;
+            }
+
+            if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                writer.WriteStartArray();
+                foreach (var item in (IEnumerable)value)
+                {
+                    JsonSerializer.Serialize(writer, item, options);
+                }
+                writer.WriteEndArray();
+                return true;
+            }
+
+            if (underlyingType.IsPrimitive)
+            {
+                JsonSerializer.Serialize(writer, value, underlyingType, options);
+                return true;
+            }
+            
+            return false;
         }
 
         private PropertyInfo[] GetSerializableProperties(Type type, string currentEndpoint)

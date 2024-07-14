@@ -1694,6 +1694,11 @@
                 ) {
                     clearInterval(PageLoaderInterval);
 
+                    console.log(CurrentUsersList);
+                    console.log(CurrentBusinessesList);
+                    console.log(CurrentRegionsList);
+                    console.log(CurrentPhysicalNumbersList);          
+
                     pageLoader.css("opacity", "0");
                     setTimeout(() => {
                         pageLoader.addClass("d-none");
