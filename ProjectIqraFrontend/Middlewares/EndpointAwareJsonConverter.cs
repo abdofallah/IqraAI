@@ -200,6 +200,42 @@ namespace ProjectIqraFrontend.Middlewares
                 return;
             }
 
+            if (value is int intValue)
+            {
+                writer.WriteNumberValue(intValue);
+                return;
+            }
+
+            if (value is long longValue)
+            {
+                writer.WriteNumberValue(longValue);
+                return;
+            }
+
+            if (value is double doubleValue)
+            {
+                writer.WriteNumberValue(doubleValue);
+                return;
+            }
+
+            if (value is float floatValue)
+            {
+                writer.WriteNumberValue(floatValue);
+                return;
+            }
+
+            if (value is bool boolValue)
+            {
+                writer.WriteBooleanValue(boolValue);
+                return;
+            }
+
+            if (value is DateTime dateTimeValue)
+            {
+                JsonSerializer.Serialize(writer, dateTimeValue, options);
+                return;
+            }  
+
             writer.WriteStartObject();
 
             var type = value.GetType();
@@ -221,27 +257,11 @@ namespace ProjectIqraFrontend.Middlewares
                 {
                     var underlyingType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
 
-                    if (underlyingType == typeof(int))
-                    {
-                        SerializeInt(writer, (int)propertyValue);
-                    }
-                    else if (underlyingType == typeof(long))
-                    {
-                        SerializeLong(writer, (long)propertyValue);
-                    }
-                    else if (underlyingType == typeof(float))
-                    {
-                        SerializeFloat(writer, (float)propertyValue);
-                    }
-                    else if (underlyingType == typeof(double))
-                    {
-                        SerializeDouble(writer, (double)propertyValue);
-                    }
-                    else if (underlyingType.IsEnum)
+                    if (underlyingType.IsEnum)
                     {
                         SerializeEnum(writer, propertyValue);
                     }
-                    else if (underlyingType.IsPrimitive || propertyValue is string || propertyValue is DateTime)
+                    else if (underlyingType.IsPrimitive)
                     {
                         JsonSerializer.Serialize(writer, propertyValue, underlyingType, options);
                     }
