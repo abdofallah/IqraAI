@@ -15,7 +15,7 @@ namespace IqraCore.Entities.Business
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
 
-        public List<long> NumberIds { get; set; } = new List<long>();
+        public List<string> NumberIds { get; set; } = new List<string>();
 
         [ExcludeInEndpoint("/app/user/businesses")]
         public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();

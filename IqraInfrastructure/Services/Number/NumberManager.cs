@@ -1,0 +1,165 @@
+﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Number;
+using IqraInfrastructure.Repositories.Number;
+using Serilog;
+
+namespace IqraInfrastructure.Services.Number
+{
+    public class NumberManager
+    {
+        public readonly NumberRepository _numberRepository;
+
+        public NumberManager(NumberRepository numberRepository) {
+            _numberRepository = numberRepository;
+        }
+
+        public async Task<FunctionReturnResult<NumberData?>> AddNumber(NumberData numberData)
+        {
+            var result = new FunctionReturnResult<NumberData?>();
+
+            if (string.IsNullOrWhiteSpace(numberData.CountryCode) || string.IsNullOrWhiteSpace(numberData.Number))
+            {
+                result.Code = 1;
+                result.Message = "Country Code or Number is empty";
+
+                return result;
+            }
+
+            numberData.Id = numberData.CountryCode + numberData.Number;
+            await _numberRepository.AddNumberAsync(numberData);
+
+            result.Success = true;
+            result.Data = numberData;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<NumberData?>> GetNumber(string id)
+        {
+            var result = new FunctionReturnResult<NumberData?>();
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                result.Code = 1;
+                result.Message = "Id is empty";
+
+                return result;
+            }
+
+            var numberResult = await _numberRepository.GetNumberAsync(id);
+
+            if (numberResult == null)
+            {
+                result.Code = 2;
+                result.Message = "Number not found";
+
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResult;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumberByIds(List<string> numberIds, string userEmail)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            if (numberIds.Count == 0)
+            {
+                result.Success = true;
+                result.Data = new List<NumberData>();
+
+                return result;
+            }
+
+            var numberResults = await _numberRepository.GetNumberByIdsAsync(numberIds);
+
+            if (numberResults == null) {
+                result.Code = 1;
+
+                result.Message = "Null - Numbers not found for user: " + userEmail;
+                Log.Logger.Error("[NumberManager] " + result.Message);
+
+                return result;
+            }
+
+            if (numberResults.Count != numberIds.Count)
+            {
+                result.Code = 2;
+
+                result.Message = "Not all numbers found for user: " + userEmail;
+                Log.Logger.Error("[NumberManager] " + result.Message);
+
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResults;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetBusinessNumberByIds(List<string> numberIds, long businessId)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            if (numberIds.Count == 0)
+            {
+                result.Success = true;
+                result.Data = new List<NumberData>();
+
+                return result;
+            }
+
+            var numberResults = await _numberRepository.GetNumberByIdsAsync(numberIds);
+
+            if (numberResults == null)
+            {
+                result.Code = 1;
+
+                result.Message = "Null - Numbers not found for business: " + businessId;
+                Log.Logger.Error("[NumberManager] " + result.Message);
+
+                return result;
+            }
+
+            if (numberResults.Count != numberIds.Count)
+            {
+                result.Code = 2;
+
+                result.Message = "Not all numbers found for business: " + businessId;
+                Log.Logger.Error("[NumberManager] " + result.Message);
+
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResults;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetNumbers(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            var numberResults = await _numberRepository.GetNumbersAsync(page, pageSize);
+
+            if (numberResults == null)
+            {
+                result.Code = 1;
+
+                result.Message = "Null - Numbers not found";
+                Log.Logger.Error("[NumberManager] " + result.Message);
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResults;
+
+            return result;
+        }
+    }
+}

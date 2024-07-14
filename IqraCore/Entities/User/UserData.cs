@@ -10,7 +10,7 @@ namespace IqraCore.Entities.User
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public List<long> Businesses { get; set; } = new List<long>();
-        public List<long> Numbers { get; set; } = new List<long>();
+        public List<string> Numbers { get; set; } = new List<string>();
 
         public UserPermission Permission { get; set; } = new UserPermission();
 

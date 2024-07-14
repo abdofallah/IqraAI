@@ -16,10 +16,6 @@ namespace IqraInfrastructure.Repositories.Business
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);
         }
-        public BusinessRepository(IMongoDatabase database)
-        {
-            _businessCollection = database.GetCollection<BusinessData>(CollectionName);
-        }
 
         public Task<List<BusinessData>> GetBusinessesAsync()
         {

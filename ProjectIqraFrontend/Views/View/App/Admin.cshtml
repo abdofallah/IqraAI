@@ -44,11 +44,11 @@
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
-                    <a href="#" class="nav_link active" for="business-tab">
+                    <a href="#" class="nav_link" for="business-tab">
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a href="#" class="nav_link" for="phone-numbers-tab">
+                    <a href="#" class="nav_link active" for="phone-numbers-tab">
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
@@ -377,7 +377,7 @@
         </div>
 
         <!-- Bussiness Container -->
-        <div class="main-container fade w-100 show" id="business-tab">
+        <div class="main-container fade w-100 d-none" id="business-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -911,10 +911,185 @@
         </div>
 
         <!-- Phone Numbers Container -->
-        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+        <div class="main-container fade w-100 show" id="phone-numbers-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
             <div class="inner-container">
-                <h6>Ah! This page is currently under development.</h6>
+                <!-- Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="phone-numbers-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="phone-numbers-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-analytics" type="button" role="tab" aria-controls="phone-numbers-analytics" aria-selected="true">Analytics</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="phone-numbers-physical-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical" type="button" role="tab" aria-controls="phone-numbers-physical" aria-selected="false">Physical</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio" type="button" role="tab" aria-controls="phone-numbers-twilio" aria-selected="false">Twilio</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage" type="button" role="tab" aria-controls="phone-numbers-vonage" aria-selected="false">Vonage</button>
+                        </li> 
+                    </ul>
+                </div>
+                <!-- Tabs Content -->
+                <div class="tab-content" id="phone-numbers-tab-content">
+                    <!-- Analytics -->
+                    <div class="tab-pane fade w-100" id="phone-numbers-analytics" role="tabpanel" aria-labelledby="phone-numbers-analytics-tab" tabindex="0">
+                        analytics
+                    </div>
+                    <!-- Physical -->
+                    <div class="tab-pane fade w-100 show active" id="phone-numbers-physical" role="tabpanel" aria-labelledby="phone-numbers-physical-tab" tabindex="0">
+                        <!-- Physical Inner Tabs -->
+                        <div class="mb-3">
+                            <ul class="nav w-100 fade show" id="phone-numbers-physical-inner-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-physical-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-analytics" type="button" role="tab" aria-controls="phone-numbers-physical-analytics" aria-selected="true">Analytics</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="phone-numbers-physical-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-list" type="button" role="tab" aria-controls="phone-numbers-physical-list" aria-selected="false">List</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-physical-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-settings" type="button" role="tab" aria-controls="phone-numbers-physical-settings" aria-selected="false">Settings</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Tabs Content -->
+                        <div class="tab-content" id="phone-numbers-physical-tab-content">
+                            <!-- Analytics -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-physical-analytics" role="tabpanel" aria-labelledby="phone-numbers-physical-analytics-tab" tabindex="0">
+                                analytics
+                            </div>
+                            <!-- List -->
+                            <div class="tab-pane fade w-100 show active" id="phone-numbers-physical-list" role="tabpanel" aria-labelledby="phone-numbers-physical-list-tab" tabindex="0">
+                                <div class="input-group w-100 mb-3">
+                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchPhysicalNumberButton" id="searchPhysicalNumberInput">
+                                    <button class="input-group-button btn btn-primary" id="searchPhysicalNumberButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                                <table id="physicalNumbersListTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Country Code</th>
+                                            <th scope="col">Number</th>
+                                            <th scope="col">Host</th>
+                                            <th scope="col">Region</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Settings -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-physical-settings" role="tabpanel" aria-labelledby="phone-numbers-physical-settings-tab" tabindex="0">
+                                settings
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Twilio -->
+                    <div class="tab-pane fade w-100" id="phone-numbers-twilio" role="tabpanel" aria-labelledby="phone-numbers-twilio-tab" tabindex="0">
+                        <!-- Twilio Inner Tabs -->
+                        <div class="mb-3">
+                            <ul class="nav w-100 fade show" id="phone-numbers-twilio-inner-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-twilio-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-analytics" type="button" role="tab" aria-controls="phone-numbers-twilio-analytics" aria-selected="true">Analytics</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="phone-numbers-twilio-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-list" type="button" role="tab" aria-controls="phone-numbers-twilio-list" aria-selected="false">List</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-twilio-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-settings" type="button" role="tab" aria-controls="phone-numbers-twilio-settings" aria-selected="false">Settings</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Tabs Content -->
+                        <div class="tab-content" id="phone-numbers-twilio-tab-content">
+                            <!-- Analytics -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-twilio-analytics" role="tabpanel" aria-labelledby="phone-numbers-twilio-analytics-tab" tabindex="0">
+                                analytics
+                            </div>
+                            <!-- List -->
+                            <div class="tab-pane fade w-100 show active" id="phone-numbers-twilio-list" role="tabpanel" aria-labelledby="phone-numbers-twilio-list-tab" tabindex="0">
+                                <div class="input-group w-100 mb-3">
+                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchTwilioNumberButton" id="searchTwilioNumberInput">
+                                    <button class="input-group-button btn btn-primary" id="searchTwilioNumberButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                                <table id="twilioNumbersListTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Country Code</th>
+                                            <th scope="col">Number</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Settings -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-twilio-settings" role="tabpanel" aria-labelledby="phone-numbers-twilio-settings-tab" tabindex="0">
+                                settings
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Vonage -->
+                    <div class="tab-pane fade w-100" id="phone-numbers-vonage" role="tabpanel" aria-labelledby="phone-numbers-vonage-tab" tabindex="0">
+                        <!-- Vonage Inner Tabs -->
+                        <div class="mb-3">
+                            <ul class="nav w-100 fade show" id="phone-numbers-vonage-inner-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-vonage-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-analytics" type="button" role="tab" aria-controls="phone-numbers-vonage-analytics" aria-selected="true">Analytics</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="phone-numbers-vonage-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-list" type="button" role="tab" aria-controls="phone-numbers-vonage-list" aria-selected="false">List</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link disabled" id="phone-numbers-vonage-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-settings" type="button" role="tab" aria-controls="phone-numbers-vonage-settings" aria-selected="false">Settings</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Tabs Content -->
+                        <div class="tab-content" id="phone-numbers-vonage-tab-content">
+                            <!-- Analytics -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-vonage-analytics" role="tabpanel" aria-labelledby="phone-numbers-vonage-analytics-tab" tabindex="0">
+                                analytics
+                            </div>
+                            <!-- List -->
+                            <div class="tab-pane fade w-100 show active" id="phone-numbers-vonage-list" role="tabpanel" aria-labelledby="phone-numbers-vonage-list-tab" tabindex="0">
+                                <div class="input-group w-100 mb-3">
+                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchVonageNumberButton" id="searchVonageNumberInput">
+                                    <button class="input-group-button btn btn-primary" id="searchVonageNumberButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                                <table id="vonageNumbersListTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">#</th>
+                                            <th scope="col">Country Code</th>
+                                            <th scope="col">Number</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Settings -->
+                            <div class="tab-pane fade w-100" id="phone-numbers-vonage-settings" role="tabpanel" aria-labelledby="phone-numbers-vonage-settings-tab" tabindex="0">
+                                settings
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1265,7 +1440,7 @@
                 }
             });
         }
-    
+
         function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback) {
             $.ajax({
                 url: '/app/admin/business/search',
@@ -1289,7 +1464,7 @@
                 }
             });
         }
-    
+
         function FetchBusinessNumbersFromAPI(numberIds, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/business/numbers',
@@ -1343,7 +1518,7 @@
                 }
             });
         }
-    
+
         function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
             if (disabledAt) {
                 checkboxElement.prop("checked", true).change();
@@ -1385,7 +1560,7 @@
         var CurrentManageUserNumbers = [];
 
         var CurrentManageAddUserBusinessesSearched = [];
-    
+
         var CurrentManageUserEmail = "";
         var CurrentManageUserAddBusiness = []
         var CurrentManageUserDeletedBusiness = []
@@ -1589,7 +1764,7 @@
                 <td>${businessData.name}</td>
                 <td>${businessData.masterUserEmail}</td>
             </tr>`);
-            
+
             return element;
         }
 
@@ -2419,7 +2594,7 @@
             });
 
             AddBusinessPermissionsHelper();
-            
+
             // Init
             FetchBusinessesFromAPI(BusinessesTabListTabPage, BusinessesTabListTabPageSize, (businesses) => {
                 CurrentBusinessesList = businesses;

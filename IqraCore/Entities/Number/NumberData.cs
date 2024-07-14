@@ -6,14 +6,16 @@ namespace IqraCore.Entities.Number
     public class NumberData
     {
         [BsonId]
-        public long Id { get; set; }
-        public string MasterUserEmail { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string MasterUserEmail { get; set; } = string.Empty;
 
-        public string CountryCode { get; set; }
-        public string Number { get; set; }
+        public string CountryCode { get; set; } = string.Empty;
+        public string Number { get; set; } = string.Empty;
 
-        public long? AssignedToBusinessId { get; set; }
+        public long? AssignedToBusinessId { get; set; } = -1;
 
-        public NumberProviderEnum Provider { get; set; }
+        public NumberProviderEnum Provider { get; set; } = NumberProviderEnum.Unknown;
+
+        public NumberPermission Permissions {  get; set; } = new NumberPermission();
     }
 }

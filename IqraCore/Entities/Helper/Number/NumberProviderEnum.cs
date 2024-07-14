@@ -2,8 +2,9 @@
 {
     public enum NumberProviderEnum
     {
-        Physical = 0,
-        Twilio = 1,
-        Vonage = 2,
+        Unknown = 0,
+        Physical = 1,
+        Twilio = 2,
+        Vonage = 3,
     }
 }
