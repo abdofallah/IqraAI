@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Linq;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Http;
 using IqraCore.Attributes;
 
 namespace ProjectIqraFrontend.Middlewares
@@ -55,11 +53,27 @@ namespace ProjectIqraFrontend.Middlewares
                 if (properties.TryGetValue(propertyName, out PropertyInfo? property))
                 {
                     object? value;
-                    if (property.PropertyType.IsEnum)
+                    if (property.PropertyType == typeof(int))
+                    {
+                        value = DeserializeInt(ref reader);
+                    }
+                    else if (property.PropertyType == typeof(long))
+                    {
+                        value = DeserializeLong(ref reader);
+                    }
+                    else if (property.PropertyType == typeof(float))
+                    {
+                        value = DeserializeFloat(ref reader);
+                    }
+                    else if (property.PropertyType == typeof(double))
+                    {
+                        value = DeserializeDouble(ref reader);
+                    }
+                    else if (property.PropertyType.IsEnum)
                     {
                         value = DeserializeEnum(ref reader, property.PropertyType);
                     }
-                    else if (property.PropertyType.IsPrimitive || property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
+                    else if (property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
                     {
                         value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
                     }
@@ -82,6 +96,70 @@ namespace ProjectIqraFrontend.Middlewares
             }
 
             throw new JsonException("JSON object is incomplete");
+        }
+
+        private int DeserializeInt(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetInt32();
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                if (int.TryParse(reader.GetString(), out int result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize int value");
+        }
+
+        private long DeserializeLong(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetInt64();
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                if (long.TryParse(reader.GetString(), out long result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize long value");
+        }
+
+        private float DeserializeFloat(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetSingle();
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                if (float.TryParse(reader.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out float result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize float value");
+        }
+
+        private double DeserializeDouble(ref Utf8JsonReader reader)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetDouble();
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                if (double.TryParse(reader.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
+                {
+                    return result;
+                }
+            }
+            throw new JsonException("Unable to deserialize double value");
         }
 
         private object DeserializeEnum(ref Utf8JsonReader reader, Type enumType)
@@ -133,30 +211,71 @@ namespace ProjectIqraFrontend.Middlewares
                 {
                     writer.WriteNullValue();
                 }
-                else if (property.PropertyType.IsEnum)
-                {
-                    SerializeEnum(writer, propertyValue);
-                }
-                else if (property.PropertyType.IsPrimitive || propertyValue is string || propertyValue is DateTime)
-                {
-                    JsonSerializer.Serialize(writer, propertyValue, property.PropertyType, options);
-                }
-                else if (propertyValue is IEnumerable enumerable)
-                {
-                    writer.WriteStartArray();
-                    foreach (var item in enumerable)
-                    {
-                        JsonSerializer.Serialize(writer, item, options);
-                    }
-                    writer.WriteEndArray();
-                }
                 else
                 {
-                    JsonSerializer.Serialize(writer, propertyValue, options);
+                    var underlyingType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+                    if (underlyingType == typeof(int))
+                    {
+                        SerializeInt(writer, (int)propertyValue);
+                    }
+                    else if (underlyingType == typeof(long))
+                    {
+                        SerializeLong(writer, (long)propertyValue);
+                    }
+                    else if (underlyingType == typeof(float))
+                    {
+                        SerializeFloat(writer, (float)propertyValue);
+                    }
+                    else if (underlyingType == typeof(double))
+                    {
+                        SerializeDouble(writer, (double)propertyValue);
+                    }
+                    else if (underlyingType.IsEnum)
+                    {
+                        SerializeEnum(writer, propertyValue);
+                    }
+                    else if (underlyingType.IsPrimitive || propertyValue is string || propertyValue is DateTime)
+                    {
+                        JsonSerializer.Serialize(writer, propertyValue, underlyingType, options);
+                    }
+                    else if (propertyValue is IEnumerable enumerable)
+                    {
+                        writer.WriteStartArray();
+                        foreach (var item in enumerable)
+                        {
+                            JsonSerializer.Serialize(writer, item, options);
+                        }
+                        writer.WriteEndArray();
+                    }
+                    else
+                    {
+                        JsonSerializer.Serialize(writer, propertyValue, options);
+                    }
                 }
             }
 
             writer.WriteEndObject();
+        }
+
+        private void SerializeInt(Utf8JsonWriter writer, int value)
+        {
+            writer.WriteNumberValue(value);
+        }
+
+        private void SerializeLong(Utf8JsonWriter writer, long value)
+        {
+            writer.WriteNumberValue(value);
+        }
+
+        private void SerializeFloat(Utf8JsonWriter writer, float value)
+        {
+            writer.WriteNumberValue(value);
+        }
+
+        private void SerializeDouble(Utf8JsonWriter writer, double value)
+        {
+            writer.WriteNumberValue(value);
         }
 
         private void SerializeEnum(Utf8JsonWriter writer, object enumValue)

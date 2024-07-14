@@ -930,9 +930,17 @@
                             <button class="nav-link" id="phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage" type="button" role="tab" aria-controls="phone-numbers-vonage" aria-selected="false">Vonage</button>
                         </li> 
                     </ul>
+                    <ol class="breadcrumb mb-0 fade w-100 d-none" id="phone-numbers-manage-breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="#" class="d-none" id="switchBackToPhysicalNumbersListTabFromManageTab">Physical Numbers</a>
+                            <a href="#" class="d-none" id="switchBackToTwilioNumbersListTabFromManageTab">Twilio Numbers</a>
+                            <a href="#" class="d-none" id="switchBackToVonageNumbersListTabFromManageTab">Vonage Numbers</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentPhysicalNumberId">Number</span></li>
+                    </ol>
                 </div>
                 <!-- Tabs Content -->
-                <div class="tab-content" id="phone-numbers-tab-content">
+                <div class="tab-content fade w-100 show" id="phone-numbers-tab-content">
                     <!-- Analytics -->
                     <div class="tab-pane fade w-100" id="phone-numbers-analytics" role="tabpanel" aria-labelledby="phone-numbers-analytics-tab" tabindex="0">
                         analytics
@@ -973,8 +981,9 @@
                                             <th scope="col">#</th>
                                             <th scope="col">Country Code</th>
                                             <th scope="col">Number</th>
+                                            <th scope="col">Master User</th> 
+                                            <th scope="col">Assigned Business</th>
                                             <th scope="col">Host</th>
-                                            <th scope="col">Region</th>
                                             <th scope="col">Actions</th>
                                         </tr>
                                     </thead>
@@ -1025,6 +1034,8 @@
                                             <th scope="col">#</th>
                                             <th scope="col">Country Code</th>
                                             <th scope="col">Number</th>
+                                            <th scope="col">Master User</th>
+                                            <th scope="col">Assigned Business</th>
                                             <th scope="col">Actions</th>
                                         </tr>
                                     </thead>
@@ -1075,6 +1086,8 @@
                                             <th scope="col">#</th>
                                             <th scope="col">Country Code</th>
                                             <th scope="col">Number</th>
+                                            <th scope="col">Master User</th>
+                                            <th scope="col">Assigned Business</th>
                                             <th scope="col">Actions</th>
                                         </tr>
                                     </thead>
@@ -1086,6 +1099,109 @@
                             <!-- Settings -->
                             <div class="tab-pane fade w-100" id="phone-numbers-vonage-settings" role="tabpanel" aria-labelledby="phone-numbers-vonage-settings-tab" tabindex="0">
                                 settings
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Manage Tab -->
+                <div class="fade w-100 d-none" id="phoneNumbersManageTab">
+                    <!-- Manage Inner Tab -->
+                    <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
+                        <ul class="nav" id="phoneNumbersManageInnerTab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="phoneNumbersManageGeneralTab" data-bs-toggle="pill" data-bs-target="#phoneNumbersManageGeneral" type="button" role="tab" aria-controls="phoneNumbersManageGeneral" aria-selected="true">General</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="phoneNumbersManagePermissionsTab" data-bs-toggle="pill" data-bs-target="#phoneNumbersManagePermissions" type="button" role="tab" aria-controls="phoneNumbersManagePermissions" aria-selected="false">Permissions</button>
+                            </li>
+                        </ul>
+                        <button class="btn btn-sm btn-primary btn-ic-span-align" id="phoneNumbersManageSaveButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                    <!-- Manage Tab Content -->
+                    <div class="tab-content" id="phoneNumbersManageTabContent">
+                        <!-- General -->
+                        <div class="tab-pane fade w-100 show active" id="phoneNumbersManageGeneral" role="tabpanel" aria-labelledby="phoneNumbersManageGeneralTab" tabindex="0">
+                            <div class="mb-3">
+                                <label for="phoneNumbersManageIdInput" class="form-label">Id</label>
+                                <input type="text" class="form-control" id="phoneNumbersManageIdInput" placeholder="Id" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumbersManageMasterUserEmailInput" class="form-label">Master User Email</label>
+                                <input type="email" class="form-control" id="phoneNumbersManageMasterUserEmailInput" placeholder="Master User Email" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumbersManageCountryInput" class="form-label">Country</label>
+                                <input type="text" class="form-control" id="phoneNumbersManageCountryInput" placeholder="Country" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumbersManageNumberInput" class="form-label">Number</label>
+                                <input type="text" class="form-control" id="phoneNumbersManageNumberInput" placeholder="Number" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="phoneNumbersManageAssignedToBusinessInput" class="form-label">Assigned To Business</label>
+                                <input type="text" class="form-control" id="phoneNumbersManageAssignedToBusinessInput" placeholder="Assigned To Business" disabled>
+                            </div>
+                            <div>
+                                <label for="phoneNumbersManageHostTypeInput" class="form-label">Host Type</label>
+                                <input type="text" class="form-control" id="phoneNumbersManageHostTypeInput" placeholder="Host Type" disabled>
+                            </div>
+                            <div class="mt-3 d-none" id="phoneNumbersManageHostIqraContainer">
+                                <div class="mb-2">
+                                    <label for="phoneNumbersManageRegionInput" class="form-label">Region Name</label>
+                                    <input type="text" class="form-control" id="phoneNumbersManageRegionInput" placeholder="Region Name" disabled>
+                                </div>
+                                <div class="">
+                                    <label for="phoneNumbersManageRegionServerInput" class="form-label">Region Server</label>
+                                    <input type="text" class="form-control" id="phoneNumbersManageRegionServerInput" placeholder="Region Server" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Permissions -->
+                        <div class="tab-pane fade w-100" id="phoneNumbersManagePermissions" role="tabpanel" aria-labelledby="phoneNumbersManagePermissionsTab" tabindex="0">
+                            <div class="">
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableFullInput" check-type="permission-with-reason">
+                                        <label for="phoneNumbersManagePermissionDisableFullInput" class="form-label d-block">Disabled Full</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableFullReasonInput" placeholder="Disabled Full Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableEditingInput" check-type="permission-with-reason">
+                                        <label for="phoneNumbersManagePermissionDisableEditingInput" class="form-label d-block">Disabled Editing</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableEditingReasonInput" placeholder="Disabled Editing Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableDeletingInput" check-type="permission-with-reason">
+                                        <label for="phoneNumbersManagePermissionDisableDeletingInput" class="form-label d-block">Disabled Deleting</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableDeletingReasonInput" placeholder="Disabled Deleting Reason">
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableInboundCallingInput" check-type="permission-with-reason">
+                                        <label for="phoneNumbersManagePermissionDisableInboundCallingInput" class="form-label d-block">Disabled Inbound Calling</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableInboundCallingReasonInput" placeholder="Disabled Inbound Calling Reason">
+                                </div>
+
+                                <div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableOutboundCallingInput" check-type="permission-with-reason">
+                                        <label for="phoneNumbersManagePermissionDisableOutboundCallingInput" class="form-label d-block">Disabled Outbound Calling</label>
+                                    </div>
+                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableOutboundCallingReasonInput" placeholder="Disabled Outbound Calling Reason">
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -1310,6 +1426,8 @@
         var CurrentBusinessesList = null;
         var CurrentRegionsList = null;
 
+        // API Related Calls
+
         function FetchUsersFromAPI(page, pageSize, successCallback) {
             $.ajax({
                 url: '/app/admin/users',
@@ -1487,10 +1605,6 @@
             });
         }
 
-        function FetchNumbersFromAPI(page, pageSize, successCallback, errorCallback) {
-            
-        }
-
         function FetchNumbersByProviderFromAPI(provider, page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/numbers/' + provider,
@@ -1513,6 +1627,8 @@
                 }
             });
         }
+
+        // Other Functions
 
         function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
         {
@@ -2643,6 +2759,12 @@
 
     <!-- Numbers Tab -->
     <script>
+        const NumberProviderEnum = {
+            "Physical": 1,
+            "Twilio": 2,
+            "Vonage": 3
+        }
+
         var PhysicalNumbersTabListTabPage = 0;
         var PhysicalNumbersTabListTabPageSize = 30;
         var CurrentPhysicalNumbersList = null;
@@ -2656,11 +2778,51 @@
         var CurrentVonageNumbersList = null;
 
         /** Elements **/
-        const numberTab = $("#number-tab");
+        const numberTab = $("#phone-numbers-tab");
+
+        const phoneNumbersPhysicalManageTab = numberTab.find("#phone-numbers-physical-manage-tab");
 
         const physicalNumbersListTable = numberTab.find("#physicalNumbersListTable");
         const twilioNumbersListTable = numberTab.find("#twilioNumbersListTable");
         const vonageNumbersListTable = numberTab.find("#vonageNumbersListTable");
+
+        const phoneNumbersInnerTab = numberTab.find("#phone-numbers-inner-tab");
+        const phoneNumbersManageBreadcrumb = numberTab.find("#phone-numbers-manage-breadcrumb");
+        
+        const switchBackToPhysicalNumbersListTabFromManageTab = numberTab.find("#switchBackToPhysicalNumbersListTabFromManageTab");
+        const switchBackToTwilioNumbersListTabFromManageTab = numberTab.find("#switchBackToTwilioNumbersListTabFromManageTab");
+        const switchBackToVonageNumbersListTabFromManageTab = numberTab.find("#switchBackToVonageNumbersListTabFromManageTab");
+
+        const phoneNumbersTabContent = numberTab.find("#phone-numbers-tab-content");
+        const phoneNumbersManageTab = numberTab.find("#phoneNumbersManageTab");
+
+        const phoneNumbersManageGeneralTab = phoneNumbersManageTab.find("#phoneNumbersManageGeneralTab");
+
+        const phoneNumbersManagePermissionDisableFullInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableFullInput");
+        const phoneNumbersManagePermissionDisableFullReasonInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableFullReasonInput");
+
+        const phoneNumbersManagePermissionDisableEditingInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableEditingInput");
+        const phoneNumbersManagePermissionDisableEditingReasonInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableEditingReasonInput");
+
+        const phoneNumbersManagePermissionDisableDeletingInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableDeletingInput");
+        const phoneNumbersManagePermissionDisableDeletingReasonInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableDeletingReasonInput");
+
+        const phoneNumbersManagePermissionDisableInboundCallingInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableInboundCallingInput");
+        const phoneNumbersManagePermissionDisableInboundCallingReasonInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableInboundCallingReasonInput");
+
+        const phoneNumbersManagePermissionDisableOutboundCallingInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableOutboundCallingInput");
+        const phoneNumbersManagePermissionDisableOutboundCallingReasonInput = phoneNumbersManageTab.find("#phoneNumbersManagePermissionDisableOutboundCallingReasonInput");
+
+        const phoneNumbersManageIdInput = phoneNumbersManageTab.find("#phoneNumbersManageIdInput");
+        const phoneNumbersManageMasterUserEmailInput = phoneNumbersManageTab.find("#phoneNumbersManageMasterUserEmailInput");
+        const phoneNumbersManageCountryInput = phoneNumbersManageTab.find("#phoneNumbersManageCountryInput");
+        const phoneNumbersManageNumberInput = phoneNumbersManageTab.find("#phoneNumbersManageNumberInput");
+        const phoneNumbersManageAssignedToBusinessInput = phoneNumbersManageTab.find("#phoneNumbersManageAssignedToBusinessInput");
+        const phoneNumbersManageHostTypeInput = phoneNumbersManageTab.find("#phoneNumbersManageHostTypeInput");
+
+        const phoneNumbersManageHostIqraContainer = phoneNumbersManageTab.find("#phone-numbers-manage-host-iqra-container");
+        const phoneNumbersManageRegionInput = phoneNumbersManageHostIqraContainer.find("#phoneNumbersManageRegionInput");
+        const phoneNumbersManageRegionServerInput = phoneNumbersManageHostIqraContainer.find("#phoneNumbersManageRegionServerInput");
 
         /** Functions **/
 
@@ -2671,12 +2833,14 @@
                 <td>${numberData.id}</td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${numberData.assigned}</td>
+                <td>${numberData.masterUserEmail}</td>
+                <td>${numberData.assignedToBusinessId}</td>
+                <td>${numberData.hostType.name}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
+                    <button class="btn btn-info btn-sm" number-id="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-eye"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm">
+                    <button class="btn btn-danger btn-sm" number-id="${numberData.id}" button-type="delete-physical-number">
                         <i class="fa-regular fa-trash"></i>
                     </button>
                 </td>
@@ -2692,7 +2856,8 @@
                 <td>${numberData.id}</td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${numberData.assigned}</td>
+                <td>${numberData.masterUserEmail}</td>
+                <td>${numberData.assignedToBusinessId}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-twilio-number">
                         <i class="fa-regular fa-eye"></i>
@@ -2713,7 +2878,7 @@
                 <td>${numberData.id}</td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${numberData.assigned}</td>
+                <td>${numberData.assignedToBusinessId}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-vonage-number">
                         <i class="fa-regular fa-eye"></i>
@@ -2727,18 +2892,221 @@
             return element;
         }
 
-        $(document).ready(() => {
-           // Init
+        function ResetAndEmptyNumberManageTab()
+        {
+            phoneNumbersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
+            phoneNumbersManageTab.find("input[type=checkbox]").prop("checked", false).change();
+            phoneNumbersManageTab.find("table tbody").empty();
 
-            FetchNumbersByProviderFromAPI(1, PhysicalNumbersTabListTabPage, PhysicalNumbersTabListTabPageSize,
-                (physicalNumbersList) => {
-                    console.log(physicalNumbersList);
+            switchBackToPhysicalNumbersListTabFromManageTab.addClass("d-none");
+            switchBackToTwilioNumbersListTabFromManageTab.addClass("d-none");
+            switchBackToVonageNumbersListTabFromManageTab.addClass("d-none");
+
+            phoneNumbersManageHostIqraContainer.addClass("d-none");
+        }
+
+        function ShowNumberManageTab(provider)
+        {
+            phoneNumbersInnerTab.removeClass("show");
+            phoneNumbersTabContent.removeClass("show");
+
+            setTimeout(() => {
+                phoneNumbersInnerTab.addClass("d-none");
+                phoneNumbersTabContent.addClass("d-none");
+
+                phoneNumbersManageGeneralTab.click();
+
+                switch (provider) {
+                    case 1:
+                        switchBackToPhysicalNumbersListTabFromManageTab.removeClass("d-none");
+                        break;
+
+                    case 2:
+                        switchBackToTwilioNumbersListTabFromManageTab.removeClass("d-none");
+                        break;
+
+                    case 3:
+                        switchBackToVonageNumbersListTabFromManageTab.removeClass("d-none");
+                        break;
+
+                    default:
+                        break;
+                }
+
+                phoneNumbersManageBreadcrumb.removeClass("d-none");
+                phoneNumbersManageTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    phoneNumbersManageBreadcrumb.addClass("show");
+                    phoneNumbersManageTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function ShowNumberListTab(provider)
+        {
+            phoneNumbersManageBreadcrumb.removeClass("show");
+            phoneNumbersManageTab.removeClass("show");
+
+            setTimeout(() => {
+                phoneNumbersManageBreadcrumb.addClass("d-none");
+                phoneNumbersManageTab.addClass("d-none");
+
+                phoneNumbersInnerTab.removeClass("d-none");
+                phoneNumbersTabContent.removeClass("d-none");
+
+                setTimeout(() => {
+                    phoneNumbersInnerTab.addClass("show");
+                    phoneNumbersTabContent.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function FillNumberManageTab(provider, numberData, regionData = null)
+        {
+            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
+
+            phoneNumbersManageIdInput.val(numberData.id);
+            phoneNumbersManageMasterUserEmailInput.val(numberData.masterUserEmail);
+            phoneNumbersManageCountryInput.val(countryData["Alpha-2 code"]);
+            phoneNumbersManageNumberInput.val(numberData.number);
+            phoneNumbersManageAssignedToBusinessInput.val(numberData.assignedToBusinessId);
+            phoneNumbersManageHostTypeInput.val(numberData.hostType.name);
+
+            switch(provider) {
+                case 1:
+                    phoneNumbersManageHostIqraContainer.removeClass("d-none");
+
+                    if (regionData)
+                    {
+                        phoneNumbersManageRegionInput.val(regionData.name);
+
+                        let regionServerData = regionData.servers.find((serverData) => {
+                            return serverData.id == numberData.regionServerId
+                        });
+
+                        if (regionServerData)
+                        {
+                            phoneNumbersManageRegionServerInput.val(regionServerData.id);
+                        }
+                        else
+                        {
+                            AlertManager.createAlert({
+                                type: "warning",
+                                message: "Region [" + numberData.regionId +  "] Server [" + numberData.regionServerId +  "] not found for number with id: " + numberData.id,
+                                timeout: 5000
+                            });
+                        }  
+                    }
+                    else
+                    {
+                        AlertManager.createAlert({
+                            type: "warning",
+                            message: "Region " + numberData.regionId +  " not found for number with id: " + numberData.id,
+                            timeout: 5000
+                        });
+                    }
                     
+                    break;
+                
+                case 2:
+
+                    break;
+
+                case 3:
+
+                    break;
+
+                default:
+                    break;
+            }
+        
+            SetPermissionInput(phoneNumbersManagePermissionDisableFullInput, phoneNumbersManagePermissionDisableFullReasonInput, numberData.permissions.disabledFullAt, numberData.permissions.disabledFullReason);
+            SetPermissionInput(phoneNumbersManagePermissionDisableEditingInput, phoneNumbersManagePermissionDisableEditingReasonInput, numberData.permissions.disabledEditingAt, numberData.permissions.disabledEditingReason);
+            SetPermissionInput(phoneNumbersManagePermissionDisableDeletingInput, phoneNumbersManagePermissionDisableDeletingReasonInput, numberData.permissions.disabledDeletingAt, numberData.permissions.disabledDeletingReason);
+            SetPermissionInput(phoneNumbersManagePermissionDisableInboundCallingInput, phoneNumbersManagePermissionDisableInboundCallingReasonInput, numberData.permissions.disabledInboundCallingAt, numberData.permissions.disabledInboundCallingReason);
+            SetPermissionInput(phoneNumbersManagePermissionDisableOutboundCallingInput, phoneNumbersManagePermissionDisableOutboundCallingReasonInput, numberData.permissions.disabledOutboundCallingAt, numberData.permissions.disabledOutboundCallingReason);
+        }
+
+        $(document).ready(() => {
+            $("#phone-numbers-tab #phoneNumbersManageTab input[check-type=permission-with-reason]").on("change", (event) => {
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+
+                let reasonInput = current.parent().parent().find("input[type=text]");
+
+                if (current.prop("checked")) {
+                    reasonInput.removeClass("d-none");
+                }
+                else {
+                    reasonInput.addClass("d-none");
+                }
+            });
+
+            DisableFullPermissionHelper(
+                phoneNumbersManagePermissionDisableFullInput,
+                [phoneNumbersManagePermissionDisableEditingInput, phoneNumbersManagePermissionDisableDeletingInput, phoneNumbersManagePermissionDisableInboundCallingInput, phoneNumbersManagePermissionDisableOutboundCallingInput],
+                {
+                    title: 'Disable Number',
+                    message: 'This will completely disable editing, deleting, inbound calling, and outbound calling of the number. Are you sure?',
+                    confirmText: 'Disable',
+                    cancelText: 'Cancel',
+                    confirmButtonClass: 'btn-danger',
+                    modalClass: '',
+                }
+            );
+
+            $(document).on("click", "#phone-numbers-tab #physicalNumbersListTable tr td button[button-type=edit-physical-number]", (event) => {
+                event.preventDefault();
+
+                let current = $(event.currentTarget);
+
+                let numberId = current.attr("number-id");
+
+                let numberData = CurrentPhysicalNumbersList.find((number) => number.id == numberId);
+                let regionData = CurrentRegionsList.find((region) => region.id == numberData.regionId);
+
+                ResetAndEmptyNumberManageTab();
+                FillNumberManageTab(NumberProviderEnum["Physical"], numberData, regionData);
+
+                ShowNumberManageTab(NumberProviderEnum["Physical"]);
+            });
+
+            switchBackToPhysicalNumbersListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                ShowNumberListTab(NumberProviderEnum["Physical"]);
+            });
+
+            switchBackToTwilioNumbersListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                ShowNumberListTab(NumberProviderEnum["Twilio"]);
+            });
+
+            switchBackToVonageNumbersListTabFromManageTab.on("click", (event) => {
+                event.preventDefault();
+
+                ShowNumberListTab(NumberProviderEnum["Vonage"]);
+            });
+
+            // Init
+
+            // Physical
+            FetchNumbersByProviderFromAPI(NumberProviderEnum["Physical"], PhysicalNumbersTabListTabPage, PhysicalNumbersTabListTabPageSize,
+                (physicalNumbersList) => {
                     CurrentPhysicalNumbersList = physicalNumbersList;
 
-                    CurrentPhysicalNumbersList.forEach((numberData) => {
-                        physicalNumbersListTable.append(CreatePhysicalNumberListTableElement(numberData));
-                    });
+                    if (CurrentPhysicalNumbersList.length == 0) {
+                        physicalNumbersListTable.append('<tr><td colspan="5">No numbers found</td></tr>');
+                    }
+                    else
+                    {
+                        CurrentPhysicalNumbersList.forEach((numberData) => {
+                            physicalNumbersListTable.append(CreatePhysicalNumberListTableElement(numberData));
+                        });
+                    }
                 },
                 (physicalNumbersError) => {
                     AlertManager.createAlert({
@@ -2751,13 +3119,20 @@
                 }
             );
 
-            FetchNumbersByProviderFromAPI(2, TwilioNumbersTabListTabPage, TwilioNumbersTabListTabPageSize,
+            // Twilio
+            FetchNumbersByProviderFromAPI(NumberProviderEnum["Twilio"], TwilioNumbersTabListTabPage, TwilioNumbersTabListTabPageSize,
                 (twilioNumbersList) => {
                     CurrentTwilioNumbersList = twilioNumbersList;
 
-                    CurrentTwilioNumbersList.forEach((numberData) => {
-                        twilioNumbersList.append(CreateTwilioNumberListTableElement(numberData));
-                    });
+                    if (CurrentTwilioNumbersList.length === 0) {
+                        twilioNumbersListTable.append('<tr><td colspan="4">No numbers found</td></tr>');
+                    }
+                    else
+                    {
+                        CurrentTwilioNumbersList.forEach((numberData) => {
+                            twilioNumbersListTable.append(CreateTwilioNumberListTableElement(numberData));
+                        });
+                    }
                 },
                 (twilioNumbersError) => {
                     AlertManager.createAlert({
@@ -2770,13 +3145,20 @@
                 }
             );
 
-            FetchNumbersByProviderFromAPI(3, VonageNumbersTabListTabPage, VonageNumbersTabListTabPageSize,
+            // Vonage
+            FetchNumbersByProviderFromAPI(NumberProviderEnum["Vonage"], VonageNumbersTabListTabPage, VonageNumbersTabListTabPageSize,
                 (vonageNumbersList) => {
                     CurrentVonageNumbersList = vonageNumbersList;
 
-                    CurrentVonageNumbersList.forEach((numberData) => {
-                        vonageNumbersListTable.append(CreateVonageNumberListTableElement(numberData));
-                    });
+                    if (CurrentVonageNumbersList.length === 0) {
+                        vonageNumbersListTable.append('<tr><td colspan="4">No numbers found</td></tr>');
+                    }
+                    else
+                    {
+                        CurrentVonageNumbersList.forEach((numberData) => {
+                            vonageNumbersListTable.append(CreateVonageNumberListTableElement(numberData));
+                        });
+                    }  
                 },
                 (vonageNumbersError) => {
                     AlertManager.createAlert({
