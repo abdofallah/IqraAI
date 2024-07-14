@@ -40,7 +40,7 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a href="#" class="nav_link" for="users-tab">
+                    <a href="#" class="nav_link active" for="users-tab">
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
@@ -48,7 +48,7 @@
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a href="#" class="nav_link active" for="phone-numbers-tab">
+                    <a href="#" class="nav_link" for="phone-numbers-tab">
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
@@ -70,7 +70,7 @@
 
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Users Container -->
-        <div class="main-container fade w-100 d-none" id="users-tab">
+        <div class="main-container fade w-100 show" id="users-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -315,18 +315,11 @@
                                 </div>
                                 <!-- Numbers -->
                                 <div class="tab-pane fade w-100" id="users-manage-numbers" role="tabpanel" aria-labelledby="users-manage-numbers-tab" tabindex="0">
-                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewUserNumberButton" data-bs-toggle="modal" data-bs-target="#addUserNumberModal">
-                                                <span>+ Add Number</span>
-                                            </button>
-                                        </div>
-                                        <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Number or id" aria-label="Number or id" aria-describedby="searchUserNumberButton">
-                                            <button class="input-group-button btn btn-primary" id="searchUserNumberButton">
-                                                <i class='fa-regular fa-magnifying-glass'></i>
-                                            </button>
-                                        </div>
+                                    <div class="input-group w-100 mb-4">
+                                        <input type="text" class="form-control" placeholder="Number" aria-label="Number" aria-describedby="searchUserNumberButton">
+                                        <button class="input-group-button btn btn-primary" id="searchUserNumberButton">
+                                            <i class='fa-regular fa-magnifying-glass'></i>
+                                        </button>
                                     </div>
                                     <table id="userNumbersListTable" class="table w-100">
                                         <thead>
@@ -343,27 +336,6 @@
                                             <!-- Dynamically Generated -->
                                         </tbody>
                                     </table>
-                                    <!-- Add Number Modal -->
-                                    <div class="modal modal-lg fade" id="addUserNumberModal" tabindex="-1" aria-labelledby="addUserNumberModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h1 class="modal-title fs-5" id="addUserNumberModalLabel">Add User Number</h1>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <!-- TODO -->
-                                                    todo
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-primary btn-ic-span-align">
-                                                        <i class="fa-regular fa-plus"></i>
-                                                        <span> Add</span>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                                 <!-- Analytics -->
                                 <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
@@ -911,7 +883,7 @@
         </div>
 
         <!-- Phone Numbers Container -->
-        <div class="main-container fade w-100 show" id="phone-numbers-tab">
+        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
             <div class="inner-container">
                 <!-- Inner Tabs -->
@@ -1473,13 +1445,14 @@
             });
         }
 
-        function FetchUserBusinessesFromAPI(userEmail, successCallback, errorCallback) {
+        function FetchUserBusinessesFromAPI(userEmail, businessIds, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/user/businesses',
                 type: 'POST',
                 dataType: "json",
                 data: {
-                    email: userEmail
+                    email: userEmail,
+                    businessIds: businessIds
                 },
                 success: (response) => {
                     if (!response.success) {
@@ -1495,13 +1468,14 @@
             });
         }
 
-        function FetchUserNumbersFromAPI(userEmail, successCallback, errorCallback) {
+        function FetchUserNumbersFromAPI(userEmail, numberIds, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/user/numbers',
                 type: 'POST',
                 dataType: "json",
                 data: {
-                    email: userEmail
+                    email: userEmail,
+                    numberIds: numberIds
                 },
                 success: (response) => {
                     if (!response.success) {
@@ -1735,6 +1709,7 @@
         var CurrentManageUserNumbers = [];
 
         var CurrentManageAddUserBusinessesSearched = [];
+        var CurrentManageAddUserNumbersSearched = [];
 
         var CurrentManageUserEmail = "";
         var CurrentManageUserAddBusiness = []
@@ -1836,11 +1811,14 @@
         }
 
         function CreateUserManageNumbersTableElement(numberData) {
+            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
+
             let element = $(`<tr>
                 <td>${numberData.id}</td>
-                <td>${numberData.country}</td>
+                <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${numberData.assigned}</td>
+                <td>${numberData.provider.name}</td>
+                <td>${numberData.assignedToBusinessId}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-number">
                         <i class="fa-regular fa-eye"></i>
@@ -1850,6 +1828,8 @@
                     </button>
                 </td>
             </tr>`);
+
+            return element;
         }
 
         function ResetAndEmptyUsersManageTabData() {
@@ -1883,13 +1863,22 @@
                     userBusinessesListTable.find("tbody").append(CreateUserManageBusinessesTableElement(businessData));
                 });
             }
+            else
+            {
+                userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
+            }
 
             // Numbers
             userNumbersListTable.find("tbody").empty();
             if (userNumbersData.length > 0) {
                 userNumbersData.forEach((numberData) => {
+                    console.log(numberData);
                     userNumbersListTable.find("tbody").append(CreateUserManageNumbersTableElement(numberData));
                 });
+            }
+            else
+            {              
+                userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
             }
         }
 
@@ -1904,9 +1893,7 @@
                 usersManageBreadcrumb.removeClass("d-none");
                 usersManageTab.removeClass("d-none");
 
-                usersManageGeneralTab.click();
-                userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
-                userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
+                usersManageGeneralTab.click();   
 
                 setTimeout(() => {
                     usersManageBreadcrumb.addClass("show");
@@ -1972,11 +1959,11 @@
 
                 CurrentManageUserEmail = userEmail;
 
-                FetchUserBusinessesFromAPI(userEmail,
+                FetchUserBusinessesFromAPI(userEmail, currentUserData.businesses,
                     (userBusinessesData) => {
                         CurrentManageUserBusinesses = userBusinessesData;
 
-                        FetchUserNumbersFromAPI(userEmail,
+                        FetchUserNumbersFromAPI(userEmail, currentUserData.numbers,
                             (userNumbersData) => {
                                 CurrentManageUserNumbers = userNumbersData;
 
@@ -2015,6 +2002,9 @@
                 ResetAndEmptyUsersManageTabData();
                 currentManageUserName.text("New User");
                 CurrentManageUserEmail = "new";
+
+                userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
+                userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
 
                 ShowUserManageTab();
             })
@@ -2227,9 +2217,6 @@
                     userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
                 }
             });
-
-            // Add User Number Modal
-            // Todo
 
             // Init
 

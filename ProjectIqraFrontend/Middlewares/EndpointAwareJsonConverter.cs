@@ -194,6 +194,12 @@ namespace ProjectIqraFrontend.Middlewares
                 return;
             }
 
+            if (value is string stringValue)
+            {
+                writer.WriteStringValue(stringValue);
+                return;
+            }
+
             writer.WriteStartObject();
 
             var type = value.GetType();
@@ -291,7 +297,7 @@ namespace ProjectIqraFrontend.Middlewares
             return _propertyCache.GetOrAdd((type, currentEndpoint), key =>
             {
                 return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => ShouldSerializeProperty(p, currentEndpoint))
+                    .Where(p => ShouldSerializeProperty(p, currentEndpoint) && !p.GetIndexParameters().Any())
                     .ToArray();
             });
         }
