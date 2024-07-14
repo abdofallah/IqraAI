@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Number;
+﻿using IqraCore.Entities.Helper.Number;
+using IqraCore.Entities.Number;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories.Number
@@ -35,6 +36,12 @@ namespace IqraInfrastructure.Repositories.Number
         public async Task<List<NumberData>?> GetNumbersAsync(int page, int pageSize)
         {
             return await _numberCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();
+        }
+
+        public async Task<List<NumberData>?> GetNumbersByProviderAsync(NumberProviderEnum provider, int page, int pageSize)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.Provider, provider);
+            return await _numberCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
     }
 }

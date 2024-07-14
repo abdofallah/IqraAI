@@ -1,9 +1,12 @@
-﻿using IqraCore.Attributes;
+﻿using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Collections;
-using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Http;
+using IqraCore.Attributes;
 
 namespace ProjectIqraFrontend.Middlewares
 {
@@ -52,7 +55,11 @@ namespace ProjectIqraFrontend.Middlewares
                 if (properties.TryGetValue(propertyName, out PropertyInfo? property))
                 {
                     object? value;
-                    if (property.PropertyType.IsPrimitive || property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
+                    if (property.PropertyType.IsEnum)
+                    {
+                        value = DeserializeEnum(ref reader, property.PropertyType);
+                    }
+                    else if (property.PropertyType.IsPrimitive || property.PropertyType == typeof(string) || property.PropertyType == typeof(DateTime))
                     {
                         value = JsonSerializer.Deserialize(ref reader, property.PropertyType, options);
                     }
@@ -70,12 +77,35 @@ namespace ProjectIqraFrontend.Middlewares
                 }
                 else
                 {
-                    // Skip the value for unknown properties
                     reader.Skip();
                 }
             }
 
             throw new JsonException("JSON object is incomplete");
+        }
+
+        private object DeserializeEnum(ref Utf8JsonReader reader, Type enumType)
+        {
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                return Enum.ToObject(enumType, reader.GetInt32());
+            }
+            else if (reader.TokenType == JsonTokenType.String)
+            {
+                return Enum.Parse(enumType, reader.GetString() ?? string.Empty);
+            }
+            else if (reader.TokenType == JsonTokenType.StartObject)
+            {
+                reader.Read(); // Move to the first property
+                if (reader.TokenType == JsonTokenType.PropertyName && reader.GetString() == "value")
+                {
+                    reader.Read(); // Move to the value
+                    int enumValue = reader.GetInt32();
+                    reader.Read(); // Move to the next property or end object
+                    return Enum.ToObject(enumType, enumValue);
+                }
+            }
+            throw new JsonException($"Unable to deserialize enum of type {enumType.Name}");
         }
 
         public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
@@ -103,6 +133,10 @@ namespace ProjectIqraFrontend.Middlewares
                 {
                     writer.WriteNullValue();
                 }
+                else if (property.PropertyType.IsEnum)
+                {
+                    SerializeEnum(writer, propertyValue);
+                }
                 else if (property.PropertyType.IsPrimitive || propertyValue is string || propertyValue is DateTime)
                 {
                     JsonSerializer.Serialize(writer, propertyValue, property.PropertyType, options);
@@ -122,6 +156,14 @@ namespace ProjectIqraFrontend.Middlewares
                 }
             }
 
+            writer.WriteEndObject();
+        }
+
+        private void SerializeEnum(Utf8JsonWriter writer, object enumValue)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("value", Convert.ToInt32(enumValue));
+            writer.WriteString("name", Enum.GetName(enumValue.GetType(), enumValue));
             writer.WriteEndObject();
         }
 

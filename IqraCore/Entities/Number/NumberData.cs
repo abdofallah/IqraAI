@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Number
 {
+    [BsonKnownTypes(typeof(NumberPhysical))]
     public class NumberData
     {
         [BsonId]
