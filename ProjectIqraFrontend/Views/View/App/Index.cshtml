@@ -123,9 +123,11 @@
                             <thead>
                                 <tr>
                                     <th scope="col" style="width: 160px;">Status</th>
+                                    <th scope="col">Country</th>
                                     <th scope="col">Number</th>
-                                    <th scope="col">Region</th>
+                                    <th scope="col">Host</th>
                                     <th scope="col">Assigned</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -337,12 +339,13 @@
     </div>
 
     <!-- libs -->
-    <script src="js/jquery-3.7.1.min.js"></script>
-    <script src="libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom Scripts -->
+    <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
-    <script src="js/script.js"></script>
+    <script src="~/js/script.js"></script>
 
     <!-- Variables -->
     <script>
@@ -354,20 +357,19 @@
         var AlertManager = new BootstrapAlertManager();
 
         var CurrentUserBusinessPermission = null;
+        var PhysicalSimNumbersList = null;
 
         var CurrentBusinessesList = null;
 
         // API Related Calls
 
-        function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback)
-        {
+        function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/user/permissions/business',
                 type: 'POST',
                 dataType: "json",
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         errorCallback(response);
                         return;
                     }
@@ -386,8 +388,7 @@
                 type: 'POST',
                 dataType: "json",
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         errorCallback(response);
                         return;
                     }
@@ -399,7 +400,7 @@
                 }
             });
         }
-    
+
         function FetchUserNumbersFromAPI(provider, page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/user/numbers/' + provider,
@@ -427,6 +428,7 @@
     <!-- PageLoader -->
     <script>
         const pageLoader = $("#page-loader");
+        var HasNumbersLoaded = false;
 
         var PageLoaderInterval = setInterval(
             () => {
@@ -435,15 +437,15 @@
                     &&
                     PhysicalSimNumbersList != null
                 ) {
-                    clearInterval(PageLoaderInterval);       
+                    clearInterval(PageLoaderInterval);
 
                     pageLoader.css("opacity", "0");
                     setTimeout(() => {
                         pageLoader.addClass("d-none");
-                    }, 300);
+                    }, 300);     
                 }
             }
-        , 100);
+            , 100);
     </script>
 
     <!-- Businesses Tab -->
@@ -456,9 +458,8 @@
         function MoveToBusinessPage(BusinessId) {
             window.location.href = "/app/business/" + BusinessId;
         }
-        
-        function CreateUserBusinessCard(businessData)
-        {
+
+        function CreateUserBusinessCard(businessData) {
             let element = `
                 <div class="col-lg-4 col-md-6 col-12">
                     <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
@@ -474,7 +475,7 @@
         }
 
         $(document).ready(() => {
-            
+
             $(document).on("click", ".business-card", (event) => {
                 let currentCardElement = $(event.currentTarget);
                 let businessDataId = currentCardElement.attr("data-business-id");
@@ -511,7 +512,7 @@
                     if (userBusinessPermission.disableBusinessesAt == null) {
                         searchBusinessInput.prop("disabled", false);
                         searchBusinessButton.prop("disabled", false);
-                        
+
                         FetchUserBusinessesFromAPI((userBusinesses) => {
                             CurrentBusinessesList = userBusinesses;
 
@@ -522,16 +523,14 @@
                             });
                         });
                     }
-                    else
-                    {
+                    else {
                         CurrentBusinessesList = [];
 
                         let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
                         if (userBusinessPermission.disableBusinessesReason != null) {
                             alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.disableBusinessesReason;
                         }
-                        else
-                        {
+                        else {
                             alertMessage = alertMessage + "<br>Please contact support for more information.";
                         }
 
@@ -543,18 +542,14 @@
                         });
                     }
 
-                    if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null)
-                    {
-                        if (userBusinessPermission.disableBusinessesAt == null)
-                        {
+                    if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                        if (userBusinessPermission.disableBusinessesAt == null) {
                             let alertMessage = "Bussiness Adding is disabled for your account.";
 
-                            if (userBusinessPermission.addBusinessDisableReason != null)
-                            {
+                            if (userBusinessPermission.addBusinessDisableReason != null) {
                                 alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.addBusinessDisableReason;
                             }
-                            else
-                            {
+                            else {
                                 alertMessage = alertMessage + "<br>Please contact support for more information.";
                             }
 
@@ -566,23 +561,18 @@
                             });
                         }
                     }
-                    else
-                    {
+                    else {
                         AddNewBusinessButton.prop("disabled", false);
                     }
 
-                    if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null)
-                    {
-                        if (userBusinessPermission.disableBusinessesAt == null)
-                        {
+                    if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                        if (userBusinessPermission.disableBusinessesAt == null) {
                             let alertMessage = "Bussiness Editing is disabled for your account.";
 
-                            if (userBusinessPermission.editBusinessDisableReason != null)
-                            {
+                            if (userBusinessPermission.editBusinessDisableReason != null) {
                                 alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.editBusinessDisableReason;
                             }
-                            else
-                            {
+                            else {
                                 alertMessage = alertMessage + "<br>Please contact support for more information.";
                             }
 
@@ -595,18 +585,14 @@
                         }
                     }
 
-                    if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null)
-                    {
-                        if (userBusinessPermission.disableBusinessesAt == null)
-                        {
+                    if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                        if (userBusinessPermission.disableBusinessesAt == null) {
                             let alertMessage = "Bussiness Deleting is disabled for your account.";
 
-                            if (userBusinessPermission.deleteBusinessDisableReason != null)
-                            {
+                            if (userBusinessPermission.deleteBusinessDisableReason != null) {
                                 alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.deleteBusinessDisableReason;
                             }
-                            else
-                            {
+                            else {
                                 alertMessage = alertMessage + "<br>Please contact support for more information.";
                             }
 
@@ -640,29 +626,71 @@
             "Vonage": 3
         }
 
-        var PhysicalSimNumbersList = null;
-
         var PhysicalSimNumbersListPage = 0;
         var PhysicalSimNumbersListPageSize = 0;
 
         const physicalSimNumbersTable = $("#physicalSimNumbersTable");
 
-        FetchUserNumbersFromAPI(NumberProviderEnum["Physical"], PhysicalSimNumbersListPage, PhysicalSimNumbersListPageSize,
-            (userPhysicalNumbers) => {
-                PhysicalSimNumbersList = userPhysicalNumbers;
+        function CreateUserPhysicalNumbersTableElement(numberData) {
+            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
+            let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
 
-                
-            },
-            (userPhysicalNumbersError) => {
-                AlertManager.createAlert({
-                    type: "danger",
-                    message: "Error occured while fetching user numbers. Check browser console for logs.",
-                    timeout: 5000
-                });
+            let element = $(`<tr>
+                <td><span class="badge bg-success">Online</span></td>
+                <td>${countryData["Alpha-2 code"]}</td>
+                <td>${numberData.number}</td>
+                <td>${numberData.hostType.name}</td>
+                <td>${(businessData == null ? "-" : businessData.name)}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`);
 
-                console.log("Error occured while fetching user numbers: ", userPhysicalNumbersError);
-            }
-        )
+            return element;
+        }
+
+        var LoadNumberAfterBusinesses = setInterval(
+            () => {
+
+                if (CurrentBusinessesList != null && !HasNumbersLoaded) {
+                    HasNumbersLoaded = true;
+                    clearInterval(LoadNumberAfterBusinesses);
+
+                    $(document).ready(() => {
+                        FetchUserNumbersFromAPI(NumberProviderEnum["Physical"], PhysicalSimNumbersListPage, PhysicalSimNumbersListPageSize,
+                            (userPhysicalNumbers) => {
+                                PhysicalSimNumbersList = userPhysicalNumbers;
+
+                                if (PhysicalSimNumbersList.length == 0) {
+                                    physicalSimNumbersTable.append('<tr><td colspan="6">No numbers found</td></tr>');
+                                }
+                                else
+                                {
+                                    PhysicalSimNumbersList.forEach((numberData) => {
+                                        physicalSimNumbersTable.find("tbody").append(CreateUserPhysicalNumbersTableElement(numberData));
+                                    })
+                                }
+                            },
+                            (userPhysicalNumbersError) => {
+                                AlertManager.createAlert({
+                                    type: "danger",
+                                    message: "Error occured while fetching user numbers. Check browser console for logs.",
+                                    timeout: 5000
+                                });
+
+                                console.log("Error occured while fetching user numbers: ", userPhysicalNumbersError);
+                            }
+                        );
+                    })
+                }
+
+            }, 100
+        );
     </script>
 </body>
 
