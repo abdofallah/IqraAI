@@ -18,7 +18,8 @@ class BootstrapAlertManager {
             message = '',
             fade = true,
             timeout = 3000,
-            customClassName = ''
+            customClassName = '',
+            enableDismiss = true
         } = options;
 
         const alertElement = $('<div>', {
@@ -26,7 +27,7 @@ class BootstrapAlertManager {
             role: 'alert',
             html: `
                 ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                ${(enableDismiss ? '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' : "")}
             `
         });
 

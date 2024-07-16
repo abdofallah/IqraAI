@@ -183,5 +183,26 @@ namespace IqraInfrastructure.Services.Number
 
             return result;
         }
+
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbersByProvider(NumberProviderEnum provider, string email, int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            var numberResults = await _numberRepository.GetUserNumbersByProviderAsync(provider, email, page, pageSize);
+
+            if (numberResults == null)
+            {
+                result.Code = 1;
+
+                result.Message = "Null - Numbers not found";
+                Log.Logger.Error("[NumberManager] " + result.Message);
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResults;
+
+            return result;
+        }
     }
 }

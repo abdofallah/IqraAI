@@ -15,14 +15,16 @@
 
     <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
 
-    <style>
-
-    </style>
-
     <style id="dynamicCSS"></style>
 </head>
 
 <body id="body-pd" class="body-pd">
+    <div id="page-loader">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
     <header class="header header-body-pd" id="header">
         <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
     </header>
@@ -74,8 +76,8 @@
                         </button>
                     </div>
                     <div class="input-group w-100">
-                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton">
-                        <button class="input-group-button btn btn-primary" id="searchBusinessButton">
+                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton" id="searchBusinessInput" disabled>
+                        <button class="input-group-button btn btn-primary" id="searchBusinessButton" disabled>
                             <i class='fa-regular fa-magnifying-glass'></i>
                         </button>
                     </div>
@@ -98,11 +100,11 @@
                         <button class="nav-link me-2" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
                     </li>
                     <li class="nav-item me" role="presentation">
-                        <button class="nav-link disabled" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
+                        <button class="nav-link" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
                     </li>
                 </ul>
                 <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
-                    <!-- Custom Sim -->
+                    <!-- Physical Sim -->
                     <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                             <div style="min-width: 300px" class="me-4">
@@ -117,7 +119,7 @@
                                 </button>
                             </div>
                         </div>
-                        <table id="customSimNumbersTable" class="table w-100">
+                        <table id="physicalSimNumbersTable" class="table w-100">
                             <thead>
                                 <tr>
                                     <th scope="col" style="width: 160px;">Status</th>
@@ -127,28 +129,13 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td><span class="badge bg-success">Online</span></td>
-                                    <td>
-                                        <b>+968 97845984</b>
-                                    </td>
-                                    <td>Oman-Muscat</td>
-                                    <td>Badal Technologies</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="badge bg-danger">Offline</span></td>
-                                    <td>
-                                        <b>+41 519845559</b>
-                                    </td>
-                                    <td>Switzerland-Basel</td>
-                                    <td><span class="text-info">Unassigned</span></td>
-                                </tr>
+                                <!-- Dynamically Generated -->
                             </tbody>
                         </table>
                     </div>
                     <!-- Twilio -->
                     <div class="tab-pane fade w-100" id="inner-phone-numbers-twilio" role="tabpanel" aria-labelledby="inner-phone-numbers-twilio-tab" tabindex="0">
-                        <ul class="nav mb-3" id="inner-twilio-phone-numbers-tab" role="tablist">
+                        <ul class="nav mb-4" id="inner-twilio-phone-numbers-tab" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active me-2" id="inner-twilio-phone-numbers-numbers-tab" data-bs-toggle="pill" data-bs-target="#inner-twilio-phone-numbers-numbers" type="button" role="tab" aria-controls="inner-twilio-phone-numbers-numbers" aria-selected="true">Numbers</button>
                             </li>
@@ -172,12 +159,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td>
-                                                <b>+1 555 555 5555</b>
-                                            </td>
-                                            <td><span class="text-info">Unassigned</span></td>
-                                        </tr>
+                                        <!-- Dynamically Generated -->
                                     </tbody>
                                 </table>
                             </div>
@@ -192,11 +174,48 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                     <!-- Vonage -->
                     <div class="tab-pane fade w-100" id="inner-phone-numbers-vonage" role="tabpanel" aria-labelledby="inner-phone-numbers-vonage-tab" tabindex="0">
-                        Vonage Todo
+                        <ul class="nav mb-4" id="inner-vonage-phone-numbers-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active me-2" id="inner-vonage-phone-numbers-numbers-tab" data-bs-toggle="pill" data-bs-target="#inner-vonage-phone-numbers-numbers" type="button" role="tab" aria-controls="inner-vonage-phone-numbers-numbers" aria-selected="true">Numbers</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="inner-vonage-phone-numbers-settings-tab" data-bs-toggle="pill" data-bs-target="#inner-vonage-phone-numbers-settings" type="button" role="tab" aria-controls="inner-vonage-phone-numbers-settings" aria-selected="true">Settings</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content w-100" id="inner-vonage-phone-numbers-tabContent">
+                            <div class="tab-pane fade show active w-100" id="inner-vonage-phone-numbers-numbers" role="tabpanel" aria-labelledby="inner-vonage-phone-numbers-numbers-tab" tabindex="0">
+                                <div class="input-group w-100 mb-4">
+                                    <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchVonageNumberButton">
+                                    <button class="input-group-button btn btn-primary" id="searchVonageNumberButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                                <table id="vonageNumbersTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Numbers</th>
+                                            <th scope="col">Assigned</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="tab-pane fade w-100" id="inner-vonage-phone-numbers-settings" role="tabpanel" aria-labelledby="inner-vonage-phone-numbers-settings-tab" tabindex="0">
+                                <div class="mb-3">
+                                    <label for="phoneNumberVonageApiKey" class="form-label">API Key</label>
+                                    <input type="text" class="form-control" id="phoneNumberVonageApiKey" placeholder="Vonage API Key">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phoneNumberVonageApiSecret" class="form-label">API Secret</label>
+                                    <input type="text" class="form-control" id="phoneNumberVonageApiSecret" placeholder="Vonage API Secret">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -322,6 +341,7 @@
     <script src="libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom Scripts -->
+    <script src="~/js/alert_manager.js"></script>
     <script src="js/script.js"></script>
 
     <!-- Variables -->
@@ -329,50 +349,121 @@
         var isBusinessAnimationEnabled = true;
     </script>
 
-    <!-- Businesses Tab -->
+    <!-- Global -->
     <script>
-        function MoveToBusinessPage(BusinessId) {
-            window.location.href = "/app/business/" + BusinessId;
-        }
+        var AlertManager = new BootstrapAlertManager();
 
-        function FetchUserBusinessPermissionsFromAPI(successCallback)
+        var CurrentUserBusinessPermission = null;
+
+        var CurrentBusinessesList = null;
+
+        // API Related Calls
+
+        function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback)
         {
             $.ajax({
                 url: '/app/user/permissions/business',
                 type: 'POST',
                 dataType: "json",
                 success: (response) => {
+                    if (!response.success)
+                    {
+                        errorCallback(response);
+                        return;
+                    }
+
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
         }
 
-        function FetchBusinessesFromAPI(successCallback) {
+        function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/user/businesses',
                 type: 'POST',
                 dataType: "json",
-                success: (data) => {
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        errorCallback(response);
+                        return;
+                    }
+
                     successCallback(response.data);
                 },
                 error: (error) => {
-                    console.log(error);
+                    errorCallback(error);
                 }
             });
-
-
         }
+    
+        function FetchUserNumbersFromAPI(provider, page, pageSize, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/numbers/' + provider,
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    page: page,
+                    pageSize: pageSize
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
 
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+    </script>
+
+    <!-- PageLoader -->
+    <script>
+        const pageLoader = $("#page-loader");
+
+        var PageLoaderInterval = setInterval(
+            () => {
+                if (
+                    CurrentBusinessesList != null
+                    &&
+                    PhysicalSimNumbersList != null
+                ) {
+                    clearInterval(PageLoaderInterval);       
+
+                    pageLoader.css("opacity", "0");
+                    setTimeout(() => {
+                        pageLoader.addClass("d-none");
+                    }, 300);
+                }
+            }
+        , 100);
+    </script>
+
+    <!-- Businesses Tab -->
+    <script>
+        const AddNewBusinessButton = $("#AddNewBusinessButton");
+        const searchBusinessInput = $("#searchBusinessInput");
+        const searchBusinessButton = $("#searchBusinessButton");
+        const BusinessesList = $("#BusinessesList");
+
+        function MoveToBusinessPage(BusinessId) {
+            window.location.href = "/app/business/" + BusinessId;
+        }
+        
         function CreateUserBusinessCard(businessData)
         {
             let element = `
                 <div class="col-lg-4 col-md-6 col-12">
                     <div class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
                         <div class="d-flex flex-row align-items-center justify-content-start">
-                            <img src="~/img/logo/Badal-Logo-Black.png">
+                            <img src="/img/logo/logo-dark.png">
                             <h4>${businessData.name}</h4>
                         </div>
                     </div>
@@ -383,10 +474,7 @@
         }
 
         $(document).ready(() => {
-            const AddNewBusinessButton = $("#AddNewBusinessButton");
-
-            const BusinessesList = $("#BusinessesList");
-
+            
             $(document).on("click", ".business-card", (event) => {
                 let currentCardElement = $(event.currentTarget);
                 let businessDataId = currentCardElement.attr("data-business-id");
@@ -416,25 +504,165 @@
 
             // Init
 
-            FetchUserBusinessPermissionsFromAPI((userBusinessPermission) => {
-                if (userBusinessPermission.canViewBusinesses) {
-                    FetchBusinessesFromAPI((userBusinesses) => {
-                        console.log(userBusinesses);
+            FetchUserBusinessPermissionsFromAPI(
+                (userBusinessPermission) => {
+                    CurrentUserBusinessPermission = userBusinessPermission;
 
-                        userBusinesses.forEach((businessData) => {
-                            let businessCardElement = CreateUserBusinessCard(businessData);
+                    if (userBusinessPermission.disableBusinessesAt == null) {
+                        searchBusinessInput.prop("disabled", false);
+                        searchBusinessButton.prop("disabled", false);
+                        
+                        FetchUserBusinessesFromAPI((userBusinesses) => {
+                            CurrentBusinessesList = userBusinesses;
 
-                            BusinessesList.append(businessCardElement);
+                            userBusinesses.forEach((businessData) => {
+                                let businessCardElement = CreateUserBusinessCard(businessData);
+
+                                BusinessesList.append(businessCardElement);
+                            });
                         });
-                    });
-                }
+                    }
+                    else
+                    {
+                        CurrentBusinessesList = [];
 
-                if (userBusinessPermission.canAddBusinesses)
-                {
-                    AddNewBusinessButton.prop("disabled", false);
+                        let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
+                        if (userBusinessPermission.disableBusinessesReason != null) {
+                            alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.disableBusinessesReason;
+                        }
+                        else
+                        {
+                            alertMessage = alertMessage + "<br>Please contact support for more information.";
+                        }
+
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: alertMessage,
+                            timeout: 0,
+                            enableDismiss: false
+                        });
+                    }
+
+                    if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null)
+                    {
+                        if (userBusinessPermission.disableBusinessesAt == null)
+                        {
+                            let alertMessage = "Bussiness Adding is disabled for your account.";
+
+                            if (userBusinessPermission.addBusinessDisableReason != null)
+                            {
+                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.addBusinessDisableReason;
+                            }
+                            else
+                            {
+                                alertMessage = alertMessage + "<br>Please contact support for more information.";
+                            }
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: alertMessage,
+                                timeout: 0,
+                                enableDismiss: false
+                            });
+                        }
+                    }
+                    else
+                    {
+                        AddNewBusinessButton.prop("disabled", false);
+                    }
+
+                    if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null)
+                    {
+                        if (userBusinessPermission.disableBusinessesAt == null)
+                        {
+                            let alertMessage = "Bussiness Editing is disabled for your account.";
+
+                            if (userBusinessPermission.editBusinessDisableReason != null)
+                            {
+                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.editBusinessDisableReason;
+                            }
+                            else
+                            {
+                                alertMessage = alertMessage + "<br>Please contact support for more information.";
+                            }
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: alertMessage,
+                                timeout: 0,
+                                enableDismiss: false
+                            });
+                        }
+                    }
+
+                    if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null)
+                    {
+                        if (userBusinessPermission.disableBusinessesAt == null)
+                        {
+                            let alertMessage = "Bussiness Deleting is disabled for your account.";
+
+                            if (userBusinessPermission.deleteBusinessDisableReason != null)
+                            {
+                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.deleteBusinessDisableReason;
+                            }
+                            else
+                            {
+                                alertMessage = alertMessage + "<br>Please contact support for more information.";
+                            }
+
+                            AlertManager.createAlert({
+                                type: "danger",
+                                message: alertMessage,
+                                timeout: 0,
+                                enableDismiss: false
+                            });
+                        }
+                    }
+                },
+                (userBusinessPermissionError) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error occured while fetching user businesses. Check browser console for logs.",
+                        timeout: 5000
+                    });
+
+                    console.log("Error occured while fetching user businesses: ", userBusinessPermissionError);
                 }
-            });
+            );
         });
+    </script>
+
+    <!-- Numbers -->
+    <script>
+        const NumberProviderEnum = {
+            "Physical": 1,
+            "Twilio": 2,
+            "Vonage": 3
+        }
+
+        var PhysicalSimNumbersList = null;
+
+        var PhysicalSimNumbersListPage = 0;
+        var PhysicalSimNumbersListPageSize = 0;
+
+        const physicalSimNumbersTable = $("#physicalSimNumbersTable");
+
+        FetchUserNumbersFromAPI(NumberProviderEnum["Physical"], PhysicalSimNumbersListPage, PhysicalSimNumbersListPageSize,
+            (userPhysicalNumbers) => {
+                PhysicalSimNumbersList = userPhysicalNumbers;
+
+                
+            },
+            (userPhysicalNumbersError) => {
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error occured while fetching user numbers. Check browser console for logs.",
+                    timeout: 5000
+                });
+
+                console.log("Error occured while fetching user numbers: ", userPhysicalNumbersError);
+            }
+        )
     </script>
 </body>
 

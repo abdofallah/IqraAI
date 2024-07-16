@@ -15,10 +15,6 @@
 
     <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
 
-    <style>
-
-    </style>
-
     <style id="dynamicCSS"></style>
 </head>
 
@@ -1692,12 +1688,7 @@
                     &&
                     CurrentVonageNumbersList != null
                 ) {
-                    clearInterval(PageLoaderInterval);
-
-                    console.log(CurrentUsersList);
-                    console.log(CurrentBusinessesList);
-                    console.log(CurrentRegionsList);
-                    console.log(CurrentPhysicalNumbersList);          
+                    clearInterval(PageLoaderInterval);      
 
                     pageLoader.css("opacity", "0");
                     setTimeout(() => {
@@ -2399,7 +2390,6 @@
                 businessesManageTab.removeClass("d-none");
 
                 businessesManageGeneralTab.click();
-                businessManageNumberListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
 
                 setTimeout(() => {
                     businessesManageBreadcrumb.addClass("show");
@@ -2460,6 +2450,10 @@
                         CreateBusinessManageNumberListTableElement(numberData)
                     );
                 });
+            }
+            else
+            {
+                businessManageNumberListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
             }
 
             // Permissions
@@ -2535,7 +2529,7 @@
                     <td>${numberData.id}</td>
                     <td>${countryData["Alpha-2 code"]}</td>
                     <td>${numberData.number}</td>
-                    <td>${numberData.provider}</td>
+                    <td>${numberData.provider.name}</td>
                     <td>
                         <button class="btn btn-danger btn-sm" number-id="${numberData.id}" button-type="delete-list-business-number">
                             <i class="fa-regular fa-trash"></i>
@@ -2738,6 +2732,8 @@
                 ResetAndEmptyBusinessManageTabData();
                 currentManageBusinessName.text("New Business");
                 CurrentManageBusinessId = "new";
+
+                businessManageNumberListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
 
                 ShowBusinessManageTab();
             });

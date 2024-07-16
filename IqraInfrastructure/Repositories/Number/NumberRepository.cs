@@ -43,5 +43,11 @@ namespace IqraInfrastructure.Repositories.Number
             var filter = Builders<NumberData>.Filter.Eq(x => x.Provider, provider);
             return await _numberCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
+
+        public async Task<List<NumberData>?> GetUserNumbersByProviderAsync(NumberProviderEnum provider, string email, int page, int pageSize)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.Provider, provider) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, email);
+            return await _numberCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
+        }
     }
 }
