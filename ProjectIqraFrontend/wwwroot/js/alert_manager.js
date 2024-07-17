@@ -17,7 +17,7 @@ class BootstrapAlertManager {
             type = 'danger',
             message = '',
             fade = true,
-            timeout = 3000,
+            timeout = 0,
             customClassName = '',
             enableDismiss = true
         } = options;

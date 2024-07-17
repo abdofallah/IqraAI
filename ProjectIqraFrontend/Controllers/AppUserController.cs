@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helper.Number;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Number;
@@ -182,6 +183,122 @@ namespace ProjectIqraFrontend.Controllers
             result.Success = true;
             result.Data = businessAppResult.Data;
 
+            return result;
+        }
+
+        [HttpPost("/app/user/business/add")]
+        public async Task<FunctionReturnResult<BusinessData?>> AddUserBusiness([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.AddBusinessDisabledAt != null)
+            {
+                result.Code = 4;
+                result.Message = "User does not have permission to add businesses";
+
+                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                }
+                
+                if (!string.IsNullOrEmpty(user.Permission.Business.AddBusinessDisableReason))
+                {
+                    result.Message += ": " + user.Permission.Business.AddBusinessDisableReason;
+                }
+
+                return result;
+            }
+
+            string? businessName = formData["BusinessName"];
+            string? businessType = formData["BusinessType"];
+            IFormFile? businessLogo = formData.Files.GetFile("BusinessLogo");
+
+            if (string.IsNullOrWhiteSpace(businessName) || businessName.Length > 64)
+            {
+                result.Code = 6;
+                result.Message = "Invalid business name. Minimum length is 1 and maximum length is 64.";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(businessType))
+            {
+                result.Code = 7;
+                result.Message = "Missing business type";
+                return result;
+            }
+
+            if (!int.TryParse(businessType, out int businessTypeInt) || !Enum.IsDefined(typeof(BusinessTypeEnum), businessTypeInt))
+            {
+                result.Code = 8;
+                result.Message = "Invalid business type";
+                return result;
+            }
+
+            BusinessTypeEnum businessTypeEnum = (BusinessTypeEnum)businessTypeInt;
+            if (businessTypeEnum != BusinessTypeEnum.NoCode)
+            {
+                result.Code = 9;
+                result.Message = "Business type not supported";
+                return result;
+            }
+
+            if (businessLogo != null)
+            {
+                if (businessLogo.Length > 5 * 1024 * 1024)
+                {
+                    result.Code = 10;
+                    result.Message = "Business logo too large. Allowed file size is 5MB.";
+                    return result;
+                }
+
+                // TODO validate is png, jpeg, gif or webp
+                // Save to minio database
+                // assign the url to the business
+            }
+
+            BusinessData newBusinessData = await _businessManager.AddBusiness(
+                new BusinessData()
+                {
+                    Name = businessName,
+                    MasterUserEmail = userEmail,
+                    Type = businessTypeEnum,
+                    Tutorials = new Dictionary<string, object>()
+                    {
+                        { "NewBusinessTutorial", true}
+                    }
+                }
+            );
+
+            await _userManager.AddBusinessIdToUser(userEmail, newBusinessData.Id);
+            
+            result.Success = true;
+            result.Data = newBusinessData;
             return result;
         }
 

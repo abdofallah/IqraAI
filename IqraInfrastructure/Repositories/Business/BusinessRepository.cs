@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Text.RegularExpressions;
 
@@ -6,15 +7,48 @@ namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessRepository
     {
-        private readonly string CollectionName = "Business";
+        private static readonly string CollectionName = "Business";
+        private static readonly string CounterCollectionName = CollectionName + "Counter";
+
+        private static readonly string BusinessIdCounterField = "BusinessIdCounter";
 
         private readonly IMongoCollection<BusinessData> _businessCollection;
+        private readonly IMongoCollection<BsonDocument> _businessCounterCollection;
 
         public BusinessRepository(string connectionString, string databaseName)
         {
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);
+            _businessCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);
+
+            ValidateBusinessIdCounter().GetAwaiter().GetResult();
+        }
+
+        public async Task ValidateBusinessIdCounter()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BusinessIdCounterField);
+            var counter = await _businessCounterCollection.Find(filter).FirstOrDefaultAsync();
+            if (counter == null)
+            {
+                await _businessCounterCollection.InsertOneAsync(
+                    new BsonDocument
+                    {
+                        { "_id", BusinessIdCounterField },
+                        { "Counter", 0 }
+                    }
+                );
+            }
+        }
+
+        public async Task<long> GetNextBusinessId()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BusinessIdCounterField);
+            var update = Builders<BsonDocument>.Update.Inc("Counter", 1);
+
+            var result = await _businessCounterCollection.FindOneAndUpdateAsync(filter, update);
+
+            return result["Counter"].AsInt32;
         }
 
         public Task<List<BusinessData>> GetBusinessesAsync()

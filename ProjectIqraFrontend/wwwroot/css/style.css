@@ -8,6 +8,10 @@
     --tcolor-dark: #1a1a1a;
 }
 
+* {
+    user-select: none;
+}
+
 ::selection,
 ::-moz-selection {
     color: var(--tcolor-dark);
@@ -98,6 +102,74 @@ a:focus {
     color: var(--tcolor-light-cream) !important;
 }
 
+.new-business-type-card {
+    padding: 1.3em 1em;
+    background-color: var(--tcolor-lighter-green);
+    width: 100%;
+    border-radius: 10px;
+    color: var(--tcolor-dark);
+    transition: 0.15s ease-in-out;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    cursor: pointer;
+    z-index: 999;
+    position: relative;
+}
+
+.new-business-type-card p {
+    margin: 0;
+    font-weight: 500;
+    letter-spacing: 0;
+    font-size: 12px;
+}
+
+.new-business-type-card h4 {
+    margin: 0;
+    font-size: 20px;
+    margin-bottom: 6px;;
+}
+
+.new-business-type-card i {
+    font-size: 30px;
+    background-color: var(--tcolor-light-green);
+    padding: 16px;
+    margin-right: 10px;
+    border-radius: 10px;
+    transition: 1.2s;
+}
+
+.new-business-type-card:not(.disabled):not(.active):hover {
+    transform: scale(1.02);
+    box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
+
+.new-business-type-card:not(.disabled):hover i {
+    rotate: 360deg;
+}
+
+.new-business-type-card.active {
+    box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+    background-color: var(--tcolor-light-green);
+    cursor: default;
+}
+
+.new-business-type-card.active i {
+    background-color: var(--tcolor-lighter-green);
+    rotate: 360deg;
+}
+
+.new-business-type-card.disabled {
+    background-color: #979797;
+    color: rgb(219, 219, 219);
+    cursor: default;
+}
+
+.new-business-type-card.disabled i {
+    background-color: #6e6e6e;
+    color: rgb(219, 219, 219);
+}
+
 .business-card {
     padding: 2em;
     background-color: var(--tcolor-light-green);
@@ -111,8 +183,9 @@ a:focus {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     cursor: pointer;
-    z-index: 9999;
+    z-index: 999;
     position: relative;
+    text-decoration: none;
 }
 
 .business-card img {
@@ -156,6 +229,12 @@ a:focus {
     box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
 }
 
+.business-card:hover, 
+.business-card:active,
+.business-card:focus {
+    color: black !important;
+}
+
 .business-card:hover img {
     transform: rotate(360deg);
 }
@@ -185,16 +264,6 @@ a:focus {
 .nav .nav-item .nav-link.disabled {
     color: var(--bs-nav-link-disabled-color) !important;
     border-bottom-color: var(--bs-nav-link-disabled-color) !important;
-}
-
-#billing-invoices-table.table> :not(caption)>*>* {
-    background-color: transparent;
-    padding: 14px 5px;
-    vertical-align: middle;
-}
-
-#billing-invoices-table.table-hover>tbody>tr:hover>* {
-    cursor: pointer;
 }
 
 #billing-invoices-table td.invoice-paid span,
@@ -1069,4 +1138,17 @@ table.table>thead>*>* {
 #routeMultiLanguagesEnabledList.disabled>thead>tr>th {
     background-color: var(--bs-secondary-bg) !important;
     color: white;
+}
+
+#addNewBusinessLogoPreview {
+    cursor: pointer;
+    max-width: 160px;
+    max-height: 160px;
+    padding: 20px;
+    border: var(--bs-border-width) solid var(--bs-border-color);
+    transition: all 300ms;
+}
+
+#addNewBusinessLogoPreview:hover {
+    transform: scale(1.02);
 }

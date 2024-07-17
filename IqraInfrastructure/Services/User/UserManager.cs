@@ -23,6 +23,14 @@ namespace IqraInfrastructure.Services.User
             _userSessionDatabase = userSessionRepository;
         }
 
+        public async Task AddBusinessIdToUser(string userEmail, long businessId)
+        {
+            var updateDefinition = Builders<UserData>.Update
+                .AddToSet(u => u.Businesses, businessId);
+
+            await _userDatabase.UpdateUser(userEmail, updateDefinition);
+        }
+
         public async Task<UserData?> GetUserByEmail(string email)
         {
             return await _userDatabase.GetUserByEmail(email);

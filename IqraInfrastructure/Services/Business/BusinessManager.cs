@@ -16,9 +16,11 @@ namespace IqraInfrastructure.Services.Business
             _businessAppRepository = businessAppRepository;
         }
 
-        public async Task AddBusiness(BusinessData businessData)
+        public async Task<BusinessData> AddBusiness(BusinessData businessData)
         {
+            businessData.Id = await _businessRepository.GetNextBusinessId();
             await _businessRepository.AddBusinessAsync(businessData);
+            return businessData;
         }
 
         public async Task<FunctionReturnResult<List<BusinessData>>> GetUserBusinessesByEmail(string userEmail)

@@ -1,4 +1,5 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Business;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
@@ -9,11 +10,15 @@ namespace IqraCore.Entities.Business
         public long Id { get; set; } = -1;
         public string MasterUserEmail { get; set; } = string.Empty;
 
+        public BusinessTypeEnum Type { get; set; } = BusinessTypeEnum.Unknown;
+
         public string Name { get; set; } = string.Empty;
         public string LogoURL { get; set; } = string.Empty;
 
         public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
+
+        public Dictionary<string, object> Tutorials { get; set; } = new Dictionary<string, object>();
 
         public List<string> NumberIds { get; set; } = new List<string>();
 
