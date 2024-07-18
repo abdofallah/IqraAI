@@ -15,7 +15,6 @@ namespace IqraCore.Entities.Business
         public string Name { get; set; } = string.Empty;
         public string LogoURL { get; set; } = string.Empty;
 
-        public string DefaultLanguage { get; set; } = string.Empty;
         public List<string> Languages { get; set; } = new List<string>();
 
         public Dictionary<string, object> Tutorials { get; set; } = new Dictionary<string, object>();

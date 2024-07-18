@@ -112,21 +112,7 @@ namespace ProjectIqraFrontend.Controllers
         [HttpGet("/app/business")]
         public async Task<IActionResult> Business()
         {
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                return RedirectToAction("Login");
-            }
-
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                return RedirectToAction("Login");
-            }
-
-            return View("App/Business");
+            return RedirectToAction("App");
         }
 
 

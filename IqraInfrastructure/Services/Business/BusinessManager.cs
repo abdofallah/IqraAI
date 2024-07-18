@@ -19,7 +19,15 @@ namespace IqraInfrastructure.Services.Business
         public async Task<BusinessData> AddBusiness(BusinessData businessData)
         {
             businessData.Id = await _businessRepository.GetNextBusinessId();
+            
             await _businessRepository.AddBusinessAsync(businessData);
+            await _businessAppRepository.AddBusinessAppAsync(
+                new BusinessApp()
+                {
+                    Id = businessData.Id,
+                }
+            );
+
             return businessData;
         }
 
@@ -78,6 +86,26 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
+        public async Task<FunctionReturnResult<BusinessData?>> GetUserBusinessById(long businessId, string userEmail)
+        {
+            var result = new FunctionReturnResult<BusinessData?>();
+            result.Data = null;
+
+            BusinessData? businessData = await _businessRepository.GetBusinessAsync(businessId);
+            if (businessData == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[BusinessManager] Null - Business not found for user: " + userEmail);
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businessData;
+            }
+
+            return result;
+        }
+
         public async Task<FunctionReturnResult<BusinessApp?>> GetUserBusinessAppById(long businessId, string userEmail)
         {
             var result = new FunctionReturnResult<BusinessApp?>();
@@ -87,7 +115,7 @@ namespace IqraInfrastructure.Services.Business
             if (businessApp == null)
             {
                 result.Code = 1;
-                Log.Logger.Error("[BusinessManager] Null - Business not found for user: " + userEmail);
+                Log.Logger.Error("[BusinessManager] Null - Business app not found for user: " + userEmail);
             }
             else
             {

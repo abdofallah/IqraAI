@@ -47,7 +47,7 @@ function CreateConversationWavesurfer(containerId) {
         height: 70,
         barWidth: 2,
         barHeight: 0.7,
-        url: 'assets/surah-nasr.mp3',
+        url: '/assets/surah-nasr.mp3',
         fillParent: true,
         audioRate: 1,
         plugins: [

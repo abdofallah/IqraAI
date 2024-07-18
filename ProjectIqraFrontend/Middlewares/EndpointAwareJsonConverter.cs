@@ -287,6 +287,23 @@ namespace ProjectIqraFrontend.Middlewares
                 return true;
             }
 
+            if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                writer.WriteStartObject();
+                foreach (var entry in (IDictionary)value)
+                {
+                    var kvp = (DictionaryEntry)entry;
+
+                    var propertyName = kvp.Key.ToString() ?? string.Empty;
+                    propertyName = options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName;
+
+                    writer.WritePropertyName(propertyName);
+                    JsonSerializer.Serialize(writer, kvp.Value, options);
+                }
+                writer.WriteEndObject();
+                return true;
+            }
+
             if (underlyingType.IsPrimitive)
             {
                 JsonSerializer.Serialize(writer, value, underlyingType, options);

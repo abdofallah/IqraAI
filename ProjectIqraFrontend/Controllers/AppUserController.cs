@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper.Number;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
+using IqraCore.Models.AppUser;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
@@ -126,7 +127,80 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
-        [HttpPost("/app/user/business/{businessId}")]
+        [HttpPost("/app/user/business/{businessId}/meta")]
+        public async Task<FunctionReturnResult<BusinessData?>> GetUserBusinessMeta(long businessId)
+        {
+            var result = new FunctionReturnResult<BusinessData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            UserPermission userPermission = user.Permission;
+            if (userPermission.Business.DisableBusinessesAt != null)
+            {
+                result.Code = 4;
+                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = 5;
+                result.Message = "User does not have permission to view this business";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, user.Email);
+            if (!businessResult.Success)
+            {
+                result.Code = 1000 + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null)
+            {
+                result.Code = 6;
+                result.Message = "Business is disabled.";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += " Reason: " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = businessResult.Data;
+
+            return result;
+        }
+
+        [HttpPost("/app/user/business/{businessId}/app")]
         public async Task<FunctionReturnResult<BusinessApp?>> GetUserBusinessApp(long businessId)
         {
             var result = new FunctionReturnResult<BusinessApp?>();
@@ -172,16 +246,122 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, user.Email);
+            if (!businessResult.Success)
+            {
+                result.Code = 1000 + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null)
+            {
+                result.Code = 6;
+                result.Message = "Business is disabled.";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += " Reason: " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                return result;
+            }
+
             FunctionReturnResult<BusinessApp?> businessAppResult = await _businessManager.GetUserBusinessAppById(businessId, user.Email);
             if (!businessAppResult.Success)
             {
-                result.Code = 1000 + businessAppResult.Code;
+                result.Code = 2000 + businessAppResult.Code;
                 result.Message = businessAppResult.Message;
                 return result;
             }
 
             result.Success = true;
             result.Data = businessAppResult.Data;
+
+            return result;
+        }
+
+        [HttpPost("/app/user/business/{businessId}")]
+        public async Task<FunctionReturnResult<GetUserBusinessFullReturnModel?>> GetUserBusiness(long businessId)
+        {
+            var result = new FunctionReturnResult<GetUserBusinessFullReturnModel?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            UserPermission userPermission = user.Permission;
+            if (userPermission.Business.DisableBusinessesAt != null)
+            {
+                result.Code = 4;
+                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = 5;
+                result.Message = "User does not have permission to view this business";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, user.Email);
+            if (!businessResult.Success)
+            {
+                result.Code = 1000 + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null)
+            {
+                result.Code = 6;
+                result.Message = "Business is disabled.";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += " Reason: " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            FunctionReturnResult<BusinessApp?> businessAppResult = await _businessManager.GetUserBusinessAppById(businessId, user.Email);
+            if (!businessAppResult.Success)
+            {
+                result.Code = 2000 + businessAppResult.Code;
+                result.Message = businessAppResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = new GetUserBusinessFullReturnModel()
+            {
+                BusinessData = businessResult.Data,
+                BusinessApp = businessAppResult.Data
+            };
 
             return result;
         }
