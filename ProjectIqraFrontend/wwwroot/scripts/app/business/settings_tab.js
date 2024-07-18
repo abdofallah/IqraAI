@@ -277,16 +277,38 @@ function initSettingsTab()
             CheckIfSettingsHasChanges();
         });
     
-        $(document).on('click', '#settingsAddedLanguagesList button[button-type="settingsLanguageRemove"]', (event) => {
+        $(document).on('click', '#settingsAddedLanguagesList button[button-type="settingsLanguageRemove"]', async (event) => {
             event.preventDefault();
             event.stopPropagation();
-    
+            
             let languageCode = $(event.currentTarget).attr('language-code');
-            settingsAddedLanguagesList.find(`tr[language-code="${languageCode}"]`).remove();
     
             let languageData = CountryCodeLanguagesList.find((value, index) => {
                 return value.Code === languageCode;
             });
+
+            if (BusinessFullData.businessData.languages.includes(languageCode))
+            {
+                var confirmDeleteDialog = new BootstrapConfirmDialog(
+                    {
+                        title: 'Confirm Delete Language',
+                        message: 'Are you sure you want to delete the language <b>' + languageData.Name + '</b>?<br><br>Deleting the language will remove all references to this language from context, tools, agents, and other components while automatically re-publishing inbound call routings without this language.<br><br><b>This action cannot be undone.</b>',
+                        confirmText: 'Delete',
+                        cancelText: 'Cancel', 
+                        confirmButtonClass: 'btn-danger',
+                        modalClass: 'modal-lg',
+                    }
+                );
+                
+                var confirmDeleteDialogResult = await confirmDeleteDialog.show();
+    
+                if (!confirmDeleteDialogResult)
+                {
+                    return;
+                }
+            }            
+    
+            settingsAddedLanguagesList.find(`tr[language-code="${languageCode}"]`).remove();
     
             settingsLanguageAddSelect.append(`<option value="${languageData.Code}">${languageData.Name} | ${languageData.Code}</option>`);
     
