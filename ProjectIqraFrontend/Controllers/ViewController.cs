@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.User;
+﻿using IqraCore.Entities.Frontend;
+using IqraCore.Entities.User;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,10 +8,12 @@ namespace ProjectIqraFrontend.Controllers
     public class ViewController : Controller
     {
         private readonly UserManager _userManager;
+        private readonly ViewLinkConfiguration _viewLinkConfiguration;
 
-        public ViewController(UserManager userManager)
+        public ViewController(UserManager userManager, ViewLinkConfiguration viewLinkConfiguration)
         {
             _userManager = userManager;
+            _viewLinkConfiguration = viewLinkConfiguration;
         }
 
         [HttpGet("/")]
@@ -106,6 +109,8 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
+            TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
+
             return View("App/Index");
         }
 
@@ -132,6 +137,8 @@ namespace ProjectIqraFrontend.Controllers
             {
                 return RedirectToAction("Login");
             }
+
+            TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
 
             return View("App/Business");
         }
@@ -163,6 +170,8 @@ namespace ProjectIqraFrontend.Controllers
             {
                 return RedirectToAction("App");
             }
+
+            TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
 
             return View("App/Admin");
         }

@@ -28,7 +28,7 @@ namespace IqraInfrastructure.Services.Business
             bool fileExists = await _businessLogoRepository.FileExists(hash);
             if (!fileExists)
             {
-                await _businessLogoRepository.PutFileAsByteData(hash, webpImage, new Dictionary<string, string>());
+                await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
             }
 
             businessData.LogoURL = hash;
@@ -176,6 +176,13 @@ namespace IqraInfrastructure.Services.Business
                 result.Data = businesses;
             }
 
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<bool?>> UpdateUserBusinessSettings()
+        {
+            var result = new FunctionReturnResult<bool?>();
+            
             return result;
         }
     }

@@ -460,6 +460,11 @@
         </div>
     </div>
 
+    <!-- ASP -->
+    <script>
+        const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
+    </script>
+
     <!-- libs -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
     <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
@@ -630,7 +635,7 @@
                 <div class="col-lg-4 col-md-6 col-12">
                     <a href="/app/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
                         <div class="d-flex flex-row align-items-center justify-content-start">
-                            <img src="/img/logo/logo-dark.png">
+                            <img src="${BusinessLogoURL + "/" + businessData.logoURL}">
                             <h4>${businessData.name}</h4>
                         </div>
                     </a>
@@ -691,6 +696,7 @@
                     currentCardElement.css("transform", "scale(40)");
                     currentCardElement.css("background-color", "#1a1a1a");
                     currentCardElement.css("color", "#1a1a1a");
+                    currentCardElement.css("z-index", "99999");
 
                     currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS/4)}ms ease`);
                     currentCardElement.find("h4").css("opacity", "0");

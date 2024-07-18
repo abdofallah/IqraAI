@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using System.Data.HashFunction.xxHash;
 
 namespace IqraCore.Utilities

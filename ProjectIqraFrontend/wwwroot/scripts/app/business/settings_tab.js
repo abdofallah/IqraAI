@@ -11,6 +11,32 @@ const settingsLanguageAddSelect = settingsTab.find("#settingsLanguageAddSelect")
 const settingsLanguageAddButton = settingsTab.find("#settingsLanguageAddButton");
 const settingsAddedLanguagesList = settingsTab.find("#settingsAddedLanguagesList");
 
+// API Functions
+
+function SaveNewSettings(changes, successCallback, errorCallback)
+{
+    $.ajax({
+        type: "POST",
+        url: "/app/user/business/" + CurrentBusinessId + "/settings/save",
+        data: changes,
+        dataType: "json",
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (!response.success)
+            {
+                errorCallback(response, false);
+                return;
+            }
+
+            successCallback(response);
+        },
+        error: (error) => {
+            errorCallback(error, true);
+        }
+    });
+}
+
 // Functions
 function CreateAddedLanguagesElement(code, name) {
     let element = $(`
@@ -47,47 +73,66 @@ function GetCurrentAddedLanguages()
 
 function CheckGeneralTabHasChanges()
 {
+    let changes = {};
     let hasChanges = false;
+
     if (BusinessFullData.businessData.name !== settingsGeneralBusinessName.val())
     {
         hasChanges = true;
+        changes.name = settingsGeneralBusinessName.val();
     }
 
     if (settingsGeneralBusinessLogo[0].files.length > 0)
     {
         hasChanges = true;
+        changes.logo = settingsGeneralBusinessLogo[0].files[0];
     }
 
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: changes
+    };
 }
 
 function CheckLanguagesTabHasChanges()
 {
     let currentAddedLanguages = GetCurrentAddedLanguages();
-
     let businessLanguages = BusinessFullData.businessData.languages;
 
     if (currentAddedLanguages.length !== businessLanguages.length)
     {
-        return true;
+        return {
+            hasChanges: true,
+            changes: {
+                languages:  currentAddedLanguages
+            }
+        };
     }
 
     for (let i = 0; i < currentAddedLanguages.length; i++)
     {
         if (currentAddedLanguages[i] !== businessLanguages[i])
         {
-            return true;
+            return {
+                hasChanges: true,
+                changes: {
+                    languages:  currentAddedLanguages
+                }
+            };
         }
     }
 
-    return false;
+    return {
+        hasChanges: false,
+        changes: null
+    };
 }
 
 function CheckIfSettingsHasChanges(enableDisableButton = true) {
     let generalTabHasChanges = CheckGeneralTabHasChanges();
     let languageTabHasChanges = CheckLanguagesTabHasChanges();
 
-    let hasChanges = generalTabHasChanges || languageTabHasChanges;
+    let hasChanges = generalTabHasChanges.hasChanges || languageTabHasChanges.hasChanges;
 
     if (enableDisableButton)
     {
@@ -101,7 +146,13 @@ function CheckIfSettingsHasChanges(enableDisableButton = true) {
         }
     }
     
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: {
+            general: generalTabHasChanges.changes,
+            languages: languageTabHasChanges.changes
+        }
+    };
 }
 
 function FillSettingsTab()
@@ -109,9 +160,9 @@ function FillSettingsTab()
     function FillSettingsGeneralTab()
     {
         settingsGeneralBusinessName.val(BusinessFullData.businessData.name);
-        if (BusinessFullData.businessData.logoURL)
+        if (BusinessFullData.businessData.logoURL && BusinessFullData.businessData.logoURL != null)
         {
-            // todo
+            settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL);
         }
     }
 
@@ -157,7 +208,7 @@ function initSettingsTab()
     
             let file = settingsGeneralBusinessLogo[0].files[0];
             if (!file) {
-                settingsGeneralBusinessLogoPreview.attr("src", BusinessFullData.businessData.logoURL);
+                settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL);
                 CheckIfSettingsHasChanges();
                 return;
             }
@@ -249,7 +300,60 @@ function initSettingsTab()
         settingsSaveButton.on("click", (event) => {
             event.preventDefault();
     
-            
+            let changes = CheckIfSettingsHasChanges(false).changes;
+
+            if (changes.languages && changes.languages.languages)
+            {
+                if (changes.languages.languages.length === 0)
+                {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'You must have atleast one language in order to save settings.',
+                        timeout: 6000
+                    });
+
+                    return;
+                }
+            }
+
+            let formData = new FormData();
+            if (changes.general)
+            {
+                if (changes.general.name)
+                {
+                    formData.append("general.name", changes.general.name);
+                }
+                
+                if (changes.general.logo)
+                {
+                    formData.append("general.logo", changes.general.logo);
+                }
+            }
+
+            if (changes.languages)
+            {
+                if (changes.languages.languages)
+                {
+                    formData.append("languages", changes.languages.languages);
+                }
+            }        
+
+            SaveNewSettings(formData,
+                (saveResponse) => {
+                    setTimeout(() => {
+                        location.reload();
+                    }, 100);
+                },
+                (saveError, isUnsuccessful) => {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Error occured while saving business settings data. Check browser console for logs.',
+                        timeout: 6000
+                    });
+
+                    console.log('Error occured while saving business settings data: ', saveError);
+                }
+            )
         });
     
         FillSettingsTab();

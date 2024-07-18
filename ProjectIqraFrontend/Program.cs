@@ -1,3 +1,4 @@
+using IqraCore.Entities.Frontend;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Number;
@@ -54,6 +55,13 @@ namespace ProjectIqraFrontend
 
             NumberManager numberManager = new NumberManager(numberRepository);
             builder.Services.AddSingleton<NumberManager>(numberManager);
+
+            // Views Links Config
+            ViewLinkConfiguration viewLinkConfiguration = new ViewLinkConfiguration()
+            {
+                BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"]
+            };
+            builder.Services.AddSingleton<ViewLinkConfiguration>(viewLinkConfiguration);
 
             /** 
              * 

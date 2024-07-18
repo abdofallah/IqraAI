@@ -495,6 +495,96 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
+        // Save Settings
+        [HttpPost("/app/user/business/{businessId}/settings/save")]
+        public async Task<FunctionReturnResult<bool?>> SaveBusinessSettings(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
+            {
+                result.Code = 4;
+                result.Message = "User does not have permission to edit businesses";
+
+                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                }
+
+                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                {
+                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                }
+
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
+            if (!businessResult.Success)
+            {
+                result.Code = 1000 + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
+            {
+                result.Code = 5;
+                result.Message = "Business does not have permission to edit settings";
+
+                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
+                }
+
+                return result;
+            }
+
+            FunctionReturnResult<bool?> updateResult = await _businessManager.UpdateUserBusinessSettings();
+            if (!updateResult.Success)
+            {
+                result.Code = 2000 + updateResult.Code;
+                result.Message = updateResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            return result;
+        }
+
+
+
         /**
          * 
          * Numbers
