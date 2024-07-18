@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
+using Microsoft.AspNetCore.Http;
 using Serilog;
 
 namespace IqraInfrastructure.Services.Business
@@ -9,17 +11,28 @@ namespace IqraInfrastructure.Services.Business
     {
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
+        private readonly BusinessLogoRepository _businessLogoRepository;
 
-        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository)
+        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository)
         {
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
+            _businessLogoRepository = businessLogoRepository;
         }
 
-        public async Task<BusinessData> AddBusiness(BusinessData businessData)
+        public async Task<BusinessData> AddBusiness(BusinessData businessData, IFormFile businessLogoFile)
         {
             businessData.Id = await _businessRepository.GetNextBusinessId();
-            
+
+            var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogoFile);
+            bool fileExists = await _businessLogoRepository.FileExists(hash);
+            if (!fileExists)
+            {
+                await _businessLogoRepository.PutFileAsByteData(hash, webpImage, new Dictionary<string, string>());
+            }
+
+            businessData.LogoURL = hash;
+
             await _businessRepository.AddBusinessAsync(businessData);
             await _businessAppRepository.AddBusinessAppAsync(
                 new BusinessApp()

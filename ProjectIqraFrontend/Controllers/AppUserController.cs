@@ -5,6 +5,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
 using IqraCore.Models.AppUser;
+using IqraCore.Utilities;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
@@ -450,16 +451,27 @@ namespace ProjectIqraFrontend.Controllers
 
             if (businessLogo != null)
             {
-                if (businessLogo.Length > 5 * 1024 * 1024)
+                int imageResult = ImageHelper.ValidateBusinessLogoFile(businessLogo);
+                if (imageResult == 0)
                 {
-                    result.Code = 10;
+                    result.Code = 11;
                     result.Message = "Business logo too large. Allowed file size is 5MB.";
                     return result;
                 }
+                
+                if (imageResult == 1)
+                {
+                    result.Code = 12;
+                    result.Message = "Invalid business logo file. Allowed file types are: png, jpg, jpeg, webp, gif.";
+                    return result;
+                }
 
-                // TODO validate is png, jpeg, gif or webp
-                // Save to minio database
-                // assign the url to the business
+                if (imageResult != 200)
+                {
+                    result.Code = 13;
+                    result.Message = "Failed to validate business logo.";
+                    return result;
+                }
             }
 
             BusinessData newBusinessData = await _businessManager.AddBusiness(
@@ -472,7 +484,8 @@ namespace ProjectIqraFrontend.Controllers
                     {
                         { "NewBusinessTutorial", true}
                     }
-                }
+                },
+                businessLogo
             );
 
             await _userManager.AddBusinessIdToUser(userEmail, newBusinessData.Id);
