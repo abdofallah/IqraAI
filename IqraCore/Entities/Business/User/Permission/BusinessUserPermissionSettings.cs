@@ -4,6 +4,9 @@
     {
         public bool SettingsTabEnabled { get; set; } = true;
 
+        public BusinessUserPermissionSettingsGeneral General { get; set; } = new BusinessUserPermissionSettingsGeneral();
+        public BusinessUserPermissionSettingsLanguages Languages { get; set; } = new BusinessUserPermissionSettingsLanguages();
+        public BusinessUserPermissionSettingsUsers Users { get; set; } = new BusinessUserPermissionSettingsUsers();
     }
 
     public class BusinessUserPermissionSettingsGeneral
@@ -18,12 +21,6 @@
         public bool EditLanguages { get; set; } = true;
         public bool AddLanguages { get; set; } = true;
         public bool DeleteLanguages { get; set; } = true;
-    }
-
-    public class BusinessUserPermissionSettingsRegion
-    {
-        public bool RegionTabEnabled { get; set; } = true;
-        public bool EditRegion { get; set; } = true;
     }
 
     public class BusinessUserPermissionSettingsUsers

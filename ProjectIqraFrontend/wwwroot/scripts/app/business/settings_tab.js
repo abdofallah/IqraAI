@@ -11,6 +11,53 @@ const settingsLanguageAddSelect = settingsTab.find("#settingsLanguageAddSelect")
 const settingsLanguageAddButton = settingsTab.find("#settingsLanguageAddButton");
 const settingsAddedLanguagesList = settingsTab.find("#settingsAddedLanguagesList");
 
+const businessSubusersTable = settingsTab.find("#businessSubusersTable");
+const addNewBusinessSubuserButton = settingsTab.find("#addNewBusinessSubuserButton");
+
+const businessSubusersListTab = settingsTab.find("#businessSubusersListTab");
+const subusersManagerTab = settingsTab.find("#subusersManagerTab");
+
+const settingsInnerTabContainer = settingsTab.find("#settings-inner-tab-container");
+const switchBackToBusinessSubusersTab = settingsTab.find("#switchBackToBusinessSubusersTab");
+
+const currentBusinessSubuserName = settingsTab.find("#currentBusinessSubuserName");
+
+const businessSubuserWhiteLabelDomainType = subusersManagerTab.find("#business-subuser-white-label-domain-type");
+
+const businessSubuserWhiteLabelLogoPreview = subusersManagerTab.find("#business-subuser-white-label-logo-preview");
+const businessSubuserWhiteLabelLogo = subusersManagerTab.find("#business-subuser-white-label-logo");
+
+const businessSubuserWhiteLabelFaviconPreview = subusersManagerTab.find("#business-subuser-white-label-favicon-preview");
+const businessSubuserWhiteLabelFavicon = subusersManagerTab.find("#business-subuser-white-label-favicon");
+
+const businessSubuserManagerGeneralTab = subusersManagerTab.find("#business-subuser-manager-general-tab");
+const businessSubuserPermissionsRoutingTab = subusersManagerTab.find("#business-subuser-permissions-routing-tab");
+const subusersWhitelabelGeneralTab = subusersManagerTab.find("#subusers-whitelabel-general-tab");
+
+const saveBusinessSubuserButton = subusersManagerTab.find("#saveBusinessSubuserButton");
+
+const businessSubuserLoginDisabledInput = subusersManagerTab.find("#business-subuser-login-disabled");
+const businessSubuserLoginDisabledReasonInput = subusersManagerTab.find("#business-subuser-login-disabled-reason");
+
+const businessSubuserEmail = subusersManagerTab.find("#business-subuser-email");
+const businessSubuserPassword = subusersManagerTab.find("#business-subuser-password");
+
+const businessSubuserWhiteLabelPlatformName = subusersManagerTab.find("#business-subuser-white-label-platform-name");
+const businessSubuserWhiteLabelPlatformTitle = subusersManagerTab.find("#business-subuser-white-label-platform-title");
+const businessSubuserWhiteLabelPlatformDescription = subusersManagerTab.find("#business-subuser-white-label-platform-description");
+
+const businessSubuserWhiteLabelCustomCss = subusersManagerTab.find("#business-subuser-white-label-custom-css");
+const businessSubuserWhiteLabelCustomJs = subusersManagerTab.find("#business-subuser-white-label-custom-js");
+
+const businessSubuserWhiteLabelIqraSubdomainContainer = subusersManagerTab.find("#business-subuser-white-label-iqra-subdomain-container");
+const businessSubuserWhiteLabelIqraSubdomain = businessSubuserWhiteLabelIqraSubdomainContainer.find("#business-subuser-white-label-iqra-subdomain");
+
+const businessSubuserWhiteLabelCustomDomainContainer = subusersManagerTab.find("#business-subuser-white-label-custom-domain-container");
+const businessSubuserWhiteLabelCustomDomain = businessSubuserWhiteLabelCustomDomainContainer.find("#business-subuser-white-label-custom-domain");
+const businessSubuserWhiteLabelSslEnabled = subusersManagerTab.find("#business-subuser-white-label-ssl-enabled");
+const businessSubuserWhiteLabelSslPrivateKey = subusersManagerTab.find("#business-subuser-white-label-ssl-private-key");
+const businessSubuserWhiteLabelSslCertificate = subusersManagerTab.find("#business-subuser-white-label-ssl-certificate");
+
 // API Functions
 
 function SaveNewSettings(changes, successCallback, errorCallback)
@@ -155,6 +202,22 @@ function CheckIfSettingsHasChanges(enableDisableButton = true) {
     };
 }
 
+function CreateBusinessSubusersTableElement(userData)
+{
+    let element = $(`
+        <tr user-id="${userData.email}">
+            <td>${userData.email}</td>
+            <td>
+                <button user-id="${userData.email}" class="btn btn-danger" button-type="settingsUserRemove" type="button">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `);
+
+    return element;
+}
+
 function FillSettingsTab()
 {
     function FillSettingsGeneralTab()
@@ -191,8 +254,133 @@ function FillSettingsTab()
         }
     }
 
+    function FillSettingsUsersTab()
+    {
+        if (BusinessFullData.businessData.subUsers.length === 0)
+        {
+            businessSubusersTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="2">No subuser added yet...</td></tr>');
+        }
+        else
+        {
+            BusinessFullData.businessData.subUsers.forEach((userData, index) => {
+                businessSubusersTable.append(CreateBusinessSubusersTableElement(userData));
+            })
+        }
+    }
+
     FillSettingsGeneralTab();
     FillSettingsLanguagesTab();
+    FillSettingsUsersTab();
+}
+
+function ShowUsersManageTab()
+{
+    settingsInnerTabContainer.removeClass("show");
+    businessSubusersListTab.removeClass("show");
+
+    setTimeout(() => {
+        settingsInnerTabContainer.addClass("d-none");
+        businessSubusersListTab.addClass("d-none");
+
+        subusersManagerTab.removeClass("d-none");
+        setTimeout(() => {
+            subusersManagerTab.addClass("show");
+        }, 10);
+    }, 300);
+}
+
+function ShowUsersListTab()
+{
+    subusersManagerTab.removeClass("show");
+    setTimeout(() => {
+        subusersManagerTab.addClass("d-none");
+
+        settingsInnerTabContainer.removeClass("d-none");
+        businessSubusersListTab.removeClass("d-none");
+        setTimeout(() => {
+            settingsInnerTabContainer.addClass("show");
+            businessSubusersListTab.addClass("show");
+        }, 10);
+    }, 300);
+}
+
+function ResetUsersManageTab()
+{
+    subusersManagerTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
+    subusersManagerTab.find("input[type=checkbox]").prop("checked", false).change();
+    subusersManagerTab.find("table tbody").empty();
+
+    if (businessSubuserWhiteLabelLogo[0].files.length > 0)
+    {
+        Array.prototype.slice.call(businessSubuserWhiteLabelLogo[0].files, 1);
+    }
+
+    if (businessSubuserWhiteLabelFavicon[0].files.length > 0)
+    {
+        Array.prototype.slice.call(businessSubuserWhiteLabelFavicon[0].files, 1);
+    }
+
+    businessSubuserWhiteLabelLogoPreview.attr("src", "/img/logo/logo-colored-light.png");
+    businessSubuserWhiteLabelFaviconPreview.attr("src", "/img/logo/logo-colored-light.png");
+
+    businessSubuserWhiteLabelDomainType.val("Unknown").change();
+
+    businessSubuserManagerGeneralTab.click();
+    businessSubuserPermissionsRoutingTab.click();
+    subusersWhitelabelGeneralTab.click();
+}
+
+function FillUsersManageTab(usersData, whitelabelDomainData)
+{
+    // General
+    businessSubuserEmail.val(usersData.email);
+    businessSubuserPassword.val(usersData.password);
+
+    SetPermissionInput(businessSubuserLoginDisabledInput, businessSubuserLoginDisabledReasonInput, usersData.disabledUserLoginAt, usersData.disabledUserLoginReason);
+
+    // Permissions
+    // TODO
+
+    // White Label
+    businessSubuserWhiteLabelPlatformName.val(usersData.whitelabel.platformName);
+    businessSubuserWhiteLabelPlatformTitle.val(usersData.whitelabel.platformTitle);
+    businessSubuserWhiteLabelPlatformDescription.val(usersData.whitelabel.platformDescription);
+
+    businessSubuserWhiteLabelLogoPreview.val(BusinessLogoURL + "/" + usersData.whitelabel.logoURL);
+    businessSubuserWhiteLabelFaviconPreview.val(BusinessLogoURL + "/" + usersData.whitelabel.faviconURL);
+
+    businessSubuserWhiteLabelCustomCss.val(usersData.whitelabel.customCSS);
+    businessSubuserWhiteLabelCustomJs.val(usersData.whitelabel.customJavaScript);
+
+    if (whitelabelDomainData)
+    {
+        businessSubuserWhiteLabelDomainType.val(whitelabelDomainData.type).change();
+        if (whitelabelDomainData.type === "IqraSubdomain")
+        {
+            businessSubuserWhiteLabelIqraSubdomainContainer.removeClass("d-none");
+            businessSubuserWhiteLabelIqraSubdomain.val(whitelabelDomainData.subDomain);
+        }
+        else if (whitelabelDomainData.type === "CustomDomain")
+        {
+            businessSubuserWhiteLabelCustomDomainContainer.removeClass("d-none");
+            businessSubuserWhiteLabelCustomDomain.val(whitelabelDomainData.customDomain);
+
+            if (whitelabelDomainData.sslEnabled != null)
+            {
+                businessSubuserWhiteLabelSslEnabled.prop("checked", true).change();
+                businessSubuserWhiteLabelSslPrivateKey.val(whitelabelDomainData.sslPrivateKey);
+                businessSubuserWhiteLabelSslCertificate.val(whitelabelDomainData.sslCertificate);
+            }
+        }
+        else
+        {
+            businessSubuserWhiteLabelDomainType.val("Unknown").change();
+        }
+    }
+    else
+    {
+        businessSubuserWhiteLabelDomainType.val("Unknown").change();
+    }
 }
 
 function initSettingsTab()
@@ -376,6 +564,66 @@ function initSettingsTab()
                     console.log('Error occured while saving business settings data: ', saveError);
                 }
             )
+        });
+
+        addNewBusinessSubuserButton.on("click", (event) => {
+            event.preventDefault();
+
+            ResetUsersManageTab();
+            currentBusinessSubuserName.text("New Subuser");
+            saveBusinessSubuserButton.prop("disabled", false);
+
+            ShowUsersManageTab();
+        });
+
+        switchBackToBusinessSubusersTab.on("click", (event) => {
+            event.preventDefault();
+
+            ShowUsersListTab();
+        });
+
+        businessSubuserWhiteLabelLogoPreview.on("click", (event) => {
+            event.preventDefault();
+
+            businessSubuserWhiteLabelLogo.click();
+        });
+
+        businessSubuserWhiteLabelLogo.on("change", (event) => {
+            event.preventDefault();
+
+            let file = businessSubuserWhiteLabelLogo[0].files[0];
+            if (!file) {
+                return;
+            }
+
+            let reader = new FileReader();
+            reader.onload = (event) => {
+                businessSubuserWhiteLabelLogoPreview.attr("src", event.target.result);
+            }
+
+            reader.readAsDataURL(file);
+        });
+
+        businessSubuserWhiteLabelFaviconPreview.on("click", (event) => {
+            event.preventDefault();
+
+            businessSubuserWhiteLabelFavicon.click();
+        });
+
+        businessSubuserWhiteLabelFavicon.on("change", (event) => {
+            event.preventDefault();
+
+            let file = businessSubuserWhiteLabelFavicon[0].files[0];
+            if (!file) {
+                return;
+            }
+
+            let reader = new FileReader();
+            reader.onload = (event) => {
+                businessSubuserWhiteLabelFaviconPreview.attr("src", event.target.result);
+            }
+
+            reader.readAsDataURL(file);
         });
     
         FillSettingsTab();

@@ -16,6 +16,6 @@ namespace IqraCore.Entities.Business
         public string CustomJavaScript { get; set; } = string.Empty;
 
         // Domain
-        public BusinessUserWhiteLabelDomainTypeEnum DomainType { get; set; } = BusinessUserWhiteLabelDomainTypeEnum.Unknown;
+        public long DomainId { get; set; } = -1;
     }
 }
