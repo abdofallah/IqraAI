@@ -1136,7 +1136,9 @@ table.table>thead>*>* {
 }
 
 #addNewBusinessLogoPreview,
-#settingsGeneralBusinessLogoPreview {
+#settingsGeneralBusinessLogoPreview,
+#business-subuser-white-label-logo-preview,
+#business-subuser-white-label-favicon-preview {
     cursor: pointer;
     max-width: 160px;
     max-height: 160px;
@@ -1146,7 +1148,9 @@ table.table>thead>*>* {
 }
 
 #addNewBusinessLogoPreview:hover,
-#settingsGeneralBusinessLogoPreview:hover {
+#settingsGeneralBusinessLogoPreview:hover,
+#business-subuser-white-label-logo-preview:hover,
+#business-subuser-white-label-favicon-preview:hover {
     transform: scale(1.02);
 }
 

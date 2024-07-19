@@ -4047,7 +4047,7 @@
                 <div class="d-flex flex-row align-items-center justify-content-between">
                     <ul class="nav mb-3" id="settings-inner-tab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="settings-inner-general-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-general" type="button" role="tab" aria-controls="settings-inner-general" aria-selected="true">General</button>
+                            <button class="nav-link" id="settings-inner-general-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-general" type="button" role="tab" aria-controls="settings-inner-general" aria-selected="true">General</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link" id="settings-inner-languages-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-languages" type="button" role="tab" aria-controls="settings-inner-languages" aria-selected="true">Languages</button>
@@ -4056,7 +4056,7 @@
                             <button class="nav-link disabled" id="settings-inner-numbers-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-numbers" type="button" role="tab" aria-controls="settings-inner-numbers" aria-selected="true">Numbers</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link disabled" id="settings-inner-users-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-users" type="button" role="tab" aria-controls="settings-inner-users" aria-selected="true">Users</button>
+                            <button class="nav-link active" id="settings-inner-users-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-users" type="button" role="tab" aria-controls="settings-inner-users" aria-selected="true">Users</button>
                         </li>
                     </ul>
                     <button class="btn btn-primary btn-ic-span-align" id="settingsSaveButton" disabled>
@@ -4067,7 +4067,7 @@
                 <!-- Tabs Content -->
                 <div class="tab-content w-100" id="settings-inner-tabContent">
                     <!-- General -->
-                    <div class="tab-pane fade w-100 show active" id="settings-inner-general" role="tabpanel" aria-labelledby="settings-inner-general-tab" tabindex="0">
+                    <div class="tab-pane fade w-100" id="settings-inner-general" role="tabpanel" aria-labelledby="settings-inner-general-tab" tabindex="0">
                         <div class="mb-3">
                             <label class="form-label" for="settingsGeneralBusinessName">Business Name</label>
                             <input type="text" class="form-control" id="settingsGeneralBusinessName" placeholder="Business Name">
@@ -4079,7 +4079,7 @@
                         </div>
                     </div>
                     <!-- Languages -->
-                    <div class="tab-pane fade w-100 " id="settings-inner-languages" role="tabpanel" aria-labelledby="settings-inner-languages-tab" tabindex="0">
+                    <div class="tab-pane fade w-100" id="settings-inner-languages" role="tabpanel" aria-labelledby="settings-inner-languages-tab" tabindex="0">
                         <div class="mb-3">
                             <label class="form-label" for="settingsLanguageAddSelect">Added Languages</label>
                             <div class="input-group">
@@ -4107,8 +4107,482 @@
                         Numbers
                     </div>
                     <!-- Users -->
-                    <div class="tab-pane fade w-100" id="settings-inner-users" role="tabpanel" aria-labelledby="settings-inner-users-tab" tabindex="0">
-                        users
+                    <div class="tab-pane fade w-100 show active" id="settings-inner-users" role="tabpanel" aria-labelledby="settings-inner-users-tab" tabindex="0">
+                        <!-- Business Subusers List Tab -->
+                        <div class="fade w-100 d-none" id="businessSubusersListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBusinessSubuserButton">
+                                        <span>+ Add New Subuser</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Subuser Email" aria-label="Subuser Email" aria-describedby="searchBusinessSubuserButton">
+                                    <button class="input-group-button btn btn-primary" id="searchBusinessSubuserButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="businessSubusersTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Business Subusers will be dynamically added here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Users Manager Tab -->
+                        <div class="fade w-100 show" id="usersManagerTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <nav aria-label="breadcrumb">
+                                    <ol class="breadcrumb mb-0">
+                                        <li class="breadcrumb-item"><a href="#" id="switchBackToBusinessSubusersTab">Users</a></li>
+                                        <li class="breadcrumb-item active" aria-current="page"><span id="currentBusinessSubuserName">User</span></li>
+                                    </ol>
+                                </nav>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveBusinessSubuserButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <ul class="nav mb-3" id="business-subuser-manager-tab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="business-subuser-manager-general-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-manager-general" type="button" role="tab" aria-controls="business-subuser-manager-general" aria-selected="true">General</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="business-subuser-manager-permissions-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-manager-permissions" type="button" role="tab" aria-controls="business-subuser-manager-permissions" aria-selected="false">Permissions</button>
+                                </li>
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link" id="business-subuser-manager-white-label-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-manager-white-label" type="button" role="tab" aria-controls="business-subuser-manager-white-label" aria-selected="false">White Label</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content w-100" id="business-subuser-manager-tabContent">
+                                <!-- General Tab -->
+                                <div class="tab-pane fade show active w-100" id="business-subuser-manager-general" role="tabpanel" aria-labelledby="business-subuser-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label for="businessSubuserEmail" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="businessSubuserEmail" placeholder="Subuser Email">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="businessSubuserPassword" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="businessSubuserPassword" placeholder="Subuser Password">
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="businessSubuserEnabled">
+                                            <label class="form-check-label" for="businessSubuserEnabled">Subuser Enabled</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Permissions Tab -->
+                                <div class="tab-pane fade w-100" id="business-subuser-manager-permissions" role="tabpanel" aria-labelledby="business-subuser-manager-permissions-tab" tabindex="0">
+                                    <ul class="nav mb-3" id="business-subuser-permissions-tab" role="tablist">
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link active" id="business-subuser-permissions-routing-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-routing" type="button" role="tab" aria-controls="business-subuser-permissions-routing" aria-selected="true">Routing</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-tools-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-tools" type="button" role="tab" aria-controls="business-subuser-permissions-tools" aria-selected="false">Tools</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-agents-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-agents" type="button" role="tab" aria-controls="business-subuser-permissions-agents" aria-selected="false">Agents</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-context-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-context" type="button" role="tab" aria-controls="business-subuser-permissions-context" aria-selected="false">Context</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-make-calls-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-make-calls" type="button" role="tab" aria-controls="business-subuser-permissions-make-calls" aria-selected="false">Make Calls</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-conversations-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-conversations" type="button" role="tab" aria-controls="business-subuser-permissions-conversations" aria-selected="false">Conversations</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="business-subuser-permissions-settings-tab" data-bs-toggle="pill" data-bs-target="#business-subuser-permissions-settings" type="button" role="tab" aria-controls="business-subuser-permissions-settings" aria-selected="false">Settings</button>
+                                        </li>
+                                    </ul>
+
+
+                                    <div class="tab-content" id="business-subuser-permissions-tabContent">
+                                        <!-- Routing Permissions -->
+                                        <div class="tab-pane fade show active" id="business-subuser-permissions-routing" role="tabpanel" aria-labelledby="business-subuser-permissions-routing-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-routing-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-routing-tab-enabled">Routing Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-routing-add-new-route">
+                                                <label class="form-check-label" for="business-subuser-routing-add-new-route">Add New Route</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-routing-edit-route">
+                                                <label class="form-check-label" for="business-subuser-routing-edit-route">Edit Route</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-routing-delete-route">
+                                                <label class="form-check-label" for="business-subuser-routing-delete-route">Delete Route</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tools Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-tools" role="tabpanel" aria-labelledby="business-subuser-permissions-tools-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-tools-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-tools-tab-enabled">Tools Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-tools-add-new-tool">
+                                                <label class="form-check-label" for="business-subuser-tools-add-new-tool">Add New Tool</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-tools-edit-tool">
+                                                <label class="form-check-label" for="business-subuser-tools-edit-tool">Edit Tool</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-tools-delete-tool">
+                                                <label class="form-check-label" for="business-subuser-tools-delete-tool">Delete Tool</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Agents Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-agents" role="tabpanel" aria-labelledby="business-subuser-permissions-agents-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-agents-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-agents-tab-enabled">Agents Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-agents-add-new-agent">
+                                                <label class="form-check-label" for="business-subuser-agents-add-new-agent">Add New Agent</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-agents-edit-agent">
+                                                <label class="form-check-label" for="business-subuser-agents-edit-agent">Edit Agent</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-agents-delete-agent">
+                                                <label class="form-check-label" for="business-subuser-agents-delete-agent">Delete Agent</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Context Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-context" role="tabpanel" aria-labelledby="business-subuser-permissions-context-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-context-tab-enabled">Context Tab Enabled</label>
+                                            </div>
+                                            
+                                            <h6 class="mt-3">Branding</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-branding-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-context-branding-tab-enabled">Branding Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-edit-branding">
+                                                <label class="form-check-label" for="business-subuser-context-edit-branding">Edit Branding</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Branches</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-branches-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-context-branches-tab-enabled">Branches Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-edit-branches">
+                                                <label class="form-check-label" for="business-subuser-context-edit-branches">Edit Branches</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-add-branches">
+                                                <label class="form-check-label" for="business-subuser-context-add-branches">Add Branches</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-delete-branches">
+                                                <label class="form-check-label" for="business-subuser-context-delete-branches">Delete Branches</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Services</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-services-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-context-services-tab-enabled">Services Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-edit-services">
+                                                <label class="form-check-label" for="business-subuser-context-edit-services">Edit Services</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-add-services">
+                                                <label class="form-check-label" for="business-subuser-context-add-services">Add Services</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-delete-services">
+                                                <label class="form-check-label" for="business-subuser-context-delete-services">Delete Services</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Products</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-products-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-context-products-tab-enabled">Products Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-edit-products">
+                                                <label class="form-check-label" for="business-subuser-context-edit-products">Edit Products</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-add-products">
+                                                <label class="form-check-label" for="business-subuser-context-add-products">Add Products</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-context-delete-products">
+                                                <label class="form-check-label" for="business-subuser-context-delete-products">Delete Products</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Make Calls Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-make-calls" role="tabpanel" aria-labelledby="business-subuser-permissions-make-calls-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-make-calls-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-make-calls-tab-enabled">Make Calls Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-make-calls-single-call-enabled">
+                                                <label class="form-check-label" for="business-subuser-make-calls-single-call-enabled">Make Single Call Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-make-calls-bulk-call-enabled">
+                                                <label class="form-check-label" for="business-subuser-make-calls-bulk-call-enabled">Make Bulk Call Enabled</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Conversations Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-conversations" role="tabpanel" aria-labelledby="business-subuser-permissions-conversations-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-conversations-tab-enabled">Conversations Tab Enabled</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Inbound Call</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-inbound-call-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-conversations-inbound-call-tab-enabled">Inbound Call Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-delete-inbound-call">
+                                                <label class="form-check-label" for="business-subuser-conversations-delete-inbound-call">Delete Inbound Call</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-export-inbound-call">
+                                                <label class="form-check-label" for="business-subuser-conversations-export-inbound-call">Export Inbound Call</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Outbound Call</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-outbound-call-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-conversations-outbound-call-tab-enabled">Outbound Call Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-delete-outbound-call">
+                                                <label class="form-check-label" for="business-subuser-conversations-delete-outbound-call">Delete Outbound Call</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-export-outbound-call">
+                                                <label class="form-check-label" for="business-subuser-conversations-export-outbound-call">Export Outbound Call</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Websocket</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-websocket-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-conversations-websocket-tab-enabled">Websocket Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-delete-websocket">
+                                                <label class="form-check-label" for="business-subuser-conversations-delete-websocket">Delete Websocket</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-conversations-export-websocket">
+                                                <label class="form-check-label" for="business-subuser-conversations-export-websocket">Export Websocket</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Settings Permissions -->
+                                        <div class="tab-pane fade" id="business-subuser-permissions-settings" role="tabpanel" aria-labelledby="business-subuser-permissions-settings-tab" tabindex="0">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-settings-tab-enabled">Settings Tab Enabled</label>
+                                            </div>
+
+                                            <h6 class="mt-3">General</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-general-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-settings-general-tab-enabled">General Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-edit-general">
+                                                <label class="form-check-label" for="business-subuser-settings-edit-general">Edit General</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Languages</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-languages-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-settings-languages-tab-enabled">Languages Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-edit-languages">
+                                                <label class="form-check-label" for="business-subuser-settings-edit-languages">Edit Languages</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-add-languages">
+                                                <label class="form-check-label" for="business-subuser-settings-add-languages">Add Languages</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-delete-languages">
+                                                <label class="form-check-label" for="business-subuser-settings-delete-languages">Delete Languages</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Region</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-region-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-settings-region-tab-enabled">Region Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-edit-region">
+                                                <label class="form-check-label" for="business-subuser-settings-edit-region">Edit Region</label>
+                                            </div>
+
+                                            <h6 class="mt-3">Users</h6>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-users-tab-enabled">
+                                                <label class="form-check-label" for="business-subuser-settings-users-tab-enabled">Users Tab Enabled</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-edit-users">
+                                                <label class="form-check-label" for="business-subuser-settings-edit-users">Edit Users</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-add-users">
+                                                <label class="form-check-label" for="business-subuser-settings-add-users">Add Users</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="business-subuser-settings-delete-users">
+                                                <label class="form-check-label" for="business-subuser-settings-delete-users">Delete Users</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Whitelabel Tab -->
+                                <div class="tab-pane fade w-100" id="business-subuser-manager-white-label" role="tabpanel" aria-labelledby="business-subuser-manager-white-label-tab" tabindex="0">
+                                    <!-- Inner Tab Navigation -->
+                                    <ul class="nav mb-3" id="whitelabelInnerTabs" role="tablist">
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link active" id="whitelabel-general-tab" data-bs-toggle="tab" data-bs-target="#whitelabel-general" type="button" role="tab" aria-controls="whitelabel-general" aria-selected="true">General</button>
+                                        </li>
+                                        <li class="nav-item me-2" role="presentation">
+                                            <button class="nav-link" id="whitelabel-styles-tab" data-bs-toggle="tab" data-bs-target="#whitelabel-styles" type="button" role="tab" aria-controls="whitelabel-styles" aria-selected="false">Styles</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="whitelabel-domain-tab" data-bs-toggle="tab" data-bs-target="#whitelabel-domain" type="button" role="tab" aria-controls="whitelabel-domain" aria-selected="false">Domain</button>
+                                        </li>
+                                    </ul>
+
+                                    <!-- Inner Tab Content -->
+                                    <div class="tab-content" id="whitelabelInnerTabsContent">
+                                        <!-- General Tab -->
+                                        <div class="tab-pane fade show active" id="whitelabel-general" role="tabpanel" aria-labelledby="whitelabel-general-tab">
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-platform-name" class="form-label">Platform Name</label>
+                                                <input type="text" class="form-control" id="business-subuser-white-label-platform-name" placeholder="Enter platform name">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-platform-title" class="form-label">Platform Title</label>
+                                                <input type="text" class="form-control" id="business-subuser-white-label-platform-title" placeholder="Enter platform title">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-platform-description" class="form-label">Platform Description</label>
+                                                <textarea class="form-control" id="business-subuser-white-label-platform-description" rows="3" placeholder="Enter platform description"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <!-- Styles Tab -->
+                                        <div class="tab-pane fade" id="whitelabel-styles" role="tabpanel" aria-labelledby="whitelabel-styles-tab">
+                                            <div class="mb-3">
+                                                <label class="form-label d-block" for="business-subuser-white-label-logo">Logo</label>
+                                                <img src="~/img/logo/logo-colored-light.png" class="img-fluid rounded-3" alt="Logo" id="business-subuser-white-label-logo-preview" allow="image/png, image/jpeg, image/webp, image/gif">
+                                                <input type="file" class="form-control d-none" id="business-subuser-white-label-logo" accept="image/png, image/jpeg, image/webp, image/gif">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label d-block" for="business-subuser-white-label-favicon">Favicon</label>
+                                                <img src="~/img/logo/logo-colored-light.png" class="img-fluid rounded-3" alt="Favicon" id="business-subuser-white-label-favicon-preview" allow="image/x-icon,image/png">
+                                                <input type="file" class="form-control d-none" id="business-subuser-white-label-favicon" accept="image/x-icon,image/png">
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-custom-css" class="form-label">Custom CSS</label>
+                                                <textarea class="form-control" id="business-subuser-white-label-custom-css" rows="5" placeholder="Enter custom CSS"></textarea>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-custom-js" class="form-label">Custom JavaScript</label>
+                                                <textarea class="form-control" id="business-subuser-white-label-custom-js" rows="5" placeholder="Enter custom JavaScript"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <!-- Domain Tab -->
+                                        <div class="tab-pane fade" id="whitelabel-domain" role="tabpanel" aria-labelledby="whitelabel-domain-tab">
+                                            <div class="mb-3">
+                                                <label for="business-subuser-white-label-domain-type" class="form-label">Domain Type</label>
+                                                <select class="form-select" id="business-subuser-white-label-domain-type">
+                                                    <option value="iqra_subdomain">Iqra Subdomain</option>
+                                                    <option value="custom_domain">Custom Domain</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Iqra Subdomain Container -->
+                                            <div id="business-subuser-white-label-iqra-subdomain-container" class="mb-4">
+                                                <div class="mb-3">
+                                                    <label for="business-subuser-white-label-iqra-subdomain" class="form-label">Subdomain Name</label>
+                                                    <div class="input-group">
+                                                        <input type="text" class="form-control" id="business-subuser-white-label-iqra-subdomain" placeholder="Enter subdomain name">
+                                                        <span class="input-group-text">.iqra.ai</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Custom Domain Container -->
+                                            <div id="business-subuser-white-label-custom-domain-container" class="mb-4 d-none">
+                                                <div class="mb-3">
+                                                    <label for="business-subuser-white-label-custom-domain" class="form-label">Custom Domain</label>
+                                                    <input type="text" class="form-control" id="business-subuser-white-label-custom-domain" placeholder="Enter custom domain">
+                                                </div>
+                                                <div class="mb-3 form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="business-subuser-white-label-ssl-enabled">
+                                                    <label class="form-check-label" for="business-subuser-white-label-ssl-enabled">SSL Enabled</label>
+                                                </div>
+                                                <div id="business-subuser-white-label-ssl-config" class="mb-3 d-none">
+                                                    <h6>SSL Configuration</h6>
+                                                    <div class="mb-3">
+                                                        <label for="business-subuser-white-label-ssl-private-key" class="form-label">Private Key</label>
+                                                        <textarea class="form-control" id="business-subuser-white-label-ssl-private-key" rows="3" placeholder="Enter SSL private key"></textarea>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="business-subuser-white-label-ssl-certificate" class="form-label">Certificate</label>
+                                                        <textarea class="form-control" id="business-subuser-white-label-ssl-certificate" rows="3" placeholder="Enter SSL certificate"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
