@@ -625,6 +625,16 @@ function initSettingsTab()
 
             reader.readAsDataURL(file);
         });
+
+        businessSubuserWhiteLabelDomainType.on("change", (event) => {
+
+            // todo
+        });
+
+        businessSubuserWhiteLabelSslEnabled.on("change", (event) => {
+
+            // todo
+        });
     
         FillSettingsTab();
     });
