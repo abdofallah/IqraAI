@@ -45,8 +45,9 @@ namespace ProjectIqraFrontend
             BusinessRepository businessRepository = new BusinessRepository(appConfig["BusinessDatabase:ConnectionString"], appConfig["BusinessDatabase:DatabaseName"]);
             BusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
             BusinessLogoRepository businessLogoRepository = new BusinessLogoRepository(appConfig["BusinessLogoRepository:Endpoint"], int.Parse(appConfig["BusinessLogoRepository:Port"]), appConfig["BusinessLogoRepository:AccessKey"], appConfig["BusinessLogoRepository:SecretKey"], appConfig["BusinessLogoRepository:BucketName"], bool.Parse(appConfig["BusinessLogoRepository:IsSecure"]));
+            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository = new BusinessWhiteLabelDomainRepository(appConfig["BusinessWhiteLabelDomainRepository:ConnectionString"], appConfig["BusinessWhiteLabelDomainRepository:DatabaseName"]);
 
-            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository);
+            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             // Number

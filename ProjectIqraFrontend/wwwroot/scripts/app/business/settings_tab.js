@@ -1,3 +1,6 @@
+var CurrentManageSubUserData = null;
+var CurrentManageSubUserWhiteLabelDomainData = null;
+
 // Elements
 const settingsTab = $("#settings-tab");
 
@@ -55,6 +58,7 @@ const businessSubuserWhiteLabelIqraSubdomain = businessSubuserWhiteLabelIqraSubd
 const businessSubuserWhiteLabelCustomDomainContainer = subusersManagerTab.find("#business-subuser-white-label-custom-domain-container");
 const businessSubuserWhiteLabelCustomDomain = businessSubuserWhiteLabelCustomDomainContainer.find("#business-subuser-white-label-custom-domain");
 const businessSubuserWhiteLabelSslEnabled = subusersManagerTab.find("#business-subuser-white-label-ssl-enabled");
+const businessSubuserWhiteLabelSslConfig = subusersManagerTab.find("#business-subuser-white-label-ssl-config");
 const businessSubuserWhiteLabelSslPrivateKey = subusersManagerTab.find("#business-subuser-white-label-ssl-private-key");
 const businessSubuserWhiteLabelSslCertificate = subusersManagerTab.find("#business-subuser-white-label-ssl-certificate");
 
@@ -627,13 +631,39 @@ function initSettingsTab()
         });
 
         businessSubuserWhiteLabelDomainType.on("change", (event) => {
+            let current = $(event.currentTarget);
+            let currentValue = current.val();
 
-            // todo
+            businessSubuserWhiteLabelIqraSubdomainContainer.addClass("d-none");
+            businessSubuserWhiteLabelCustomDomainContainer.addClass("d-none");
+
+            if (currentValue === "Unknown")
+            { 
+                return;
+            }
+
+            if (currentValue === "IqraSubdomain")
+            {
+                businessSubuserWhiteLabelIqraSubdomainContainer.removeClass("d-none");
+            }
+            else if (currentValue === "CustomDomain")
+            {
+                businessSubuserWhiteLabelCustomDomainContainer.removeClass("d-none");
+            }
         });
 
         businessSubuserWhiteLabelSslEnabled.on("change", (event) => {
+            let current = $(event.currentTarget);
+            let currentChecked = current.prop("checked");
 
-            // todo
+            if (currentChecked)
+            {
+                businessSubuserWhiteLabelSslConfig.removeClass("d-none");
+            }
+            else
+            {
+                businessSubuserWhiteLabelSslConfig.addClass("d-none");
+            }
         });
     
         FillSettingsTab();

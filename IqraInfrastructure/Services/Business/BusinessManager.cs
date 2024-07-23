@@ -12,17 +12,19 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
+        private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
 
-        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository)
+        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository)
         {
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
+            _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
         }
 
         public async Task<BusinessData> AddBusiness(BusinessData businessData, IFormFile businessLogoFile)
         {
-            businessData.Id = await _businessRepository.GetNextBusinessId();
+            long bussinessId = await _businessRepository.GetNextBusinessId();
 
             var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogoFile);
             bool fileExists = await _businessLogoRepository.FileExists(hash);
@@ -31,13 +33,14 @@ namespace IqraInfrastructure.Services.Business
                 await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
             }
 
+            businessData.Id = bussinessId;
             businessData.LogoURL = hash;
 
             await _businessRepository.AddBusinessAsync(businessData);
             await _businessAppRepository.AddBusinessAppAsync(
                 new BusinessApp()
                 {
-                    Id = businessData.Id,
+                    Id = bussinessId,
                 }
             );
 
