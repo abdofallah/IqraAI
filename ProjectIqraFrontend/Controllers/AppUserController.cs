@@ -495,7 +495,7 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
-        // Save Settings
+        // Settings
         [HttpPost("/app/user/business/{businessId}/settings/save")]
         public async Task<FunctionReturnResult<bool?>> SaveBusinessSettings(long businessId, [FromForm] IFormCollection formData)
         {
@@ -571,7 +571,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            FunctionReturnResult<bool?> updateResult = await _businessManager.UpdateUserBusinessSettings();
+            FunctionReturnResult<bool?> updateResult = await _businessManager.UpdateUserBusinessSettings(businessId, formData);
             if (!updateResult.Success)
             {
                 result.Code = 2000 + updateResult.Code;

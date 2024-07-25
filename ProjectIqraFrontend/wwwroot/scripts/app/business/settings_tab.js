@@ -1,6 +1,10 @@
 var CurrentManageSubUserData = null;
 var CurrentManageSubUserWhiteLabelDomainData = null;
 
+var DeletedSubUserIds = [];
+var EditedSubUsers = [];
+var AddedSubUsers = [];
+
 // Elements
 const settingsTab = $("#settings-tab");
 
