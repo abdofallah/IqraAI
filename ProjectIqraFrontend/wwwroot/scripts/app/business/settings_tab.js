@@ -25,6 +25,7 @@ const businessSubusersListTab = settingsTab.find("#businessSubusersListTab");
 const subusersManagerTab = settingsTab.find("#subusersManagerTab");
 
 const settingsInnerTabContainer = settingsTab.find("#settings-inner-tab-container");
+const settingsManageSubusersBreadcrumb = settingsTab.find("#settings-manage-subusers-breadcrumb");
 const switchBackToBusinessSubusersTab = settingsTab.find("#switchBackToBusinessSubusersTab");
 
 const currentBusinessSubuserName = settingsTab.find("#currentBusinessSubuserName");
@@ -290,8 +291,10 @@ function ShowUsersManageTab()
         settingsInnerTabContainer.addClass("d-none");
         businessSubusersListTab.addClass("d-none");
 
+        settingsManageSubusersBreadcrumb.removeClass("d-none");
         subusersManagerTab.removeClass("d-none");
         setTimeout(() => {
+            settingsManageSubusersBreadcrumb.addClass("show");
             subusersManagerTab.addClass("show");
         }, 10);
     }, 300);
@@ -299,8 +302,10 @@ function ShowUsersManageTab()
 
 function ShowUsersListTab()
 {
+    settingsManageSubusersBreadcrumb.removeClass("show");
     subusersManagerTab.removeClass("show");
     setTimeout(() => {
+        settingsManageSubusersBreadcrumb.addClass("d-none");
         subusersManagerTab.addClass("d-none");
 
         settingsInnerTabContainer.removeClass("d-none");

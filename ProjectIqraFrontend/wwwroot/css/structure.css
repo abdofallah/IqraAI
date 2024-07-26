@@ -277,6 +277,14 @@ body {
      height: -webkit-fill-available;
 }
 
+.inner-header-container {
+     padding: 20px 30px;
+     border: 1px solid rgb(78, 78, 78);
+     border-radius: 12px;
+     background-color: #2a2a2a;
+     height: -webkit-fill-available;
+}
+
 .nav_name,
 .nav_logo-name {
      padding-left: 1rem;

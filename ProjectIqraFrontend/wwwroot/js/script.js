@@ -1,3 +1,5 @@
+var CurrentTabHasHeader = false;
+
 $(document).ready(() =>
 {
      const showNavbar = (toggleId, navId, bodyId, headerId) =>
@@ -68,13 +70,18 @@ $(document).ready(() =>
                setTimeout(() =>
                {
                     $("#" + forTab).addClass("show");
+                    
+                    setTimeout(() => {
+                         CurrentTabHasHeader = newTabElement.find(".inner-header-container").length > 0;
+                         setDynamicBodyHeight(CurrentTabHasHeader);
+                    }, 10);
                }, 10);
           }, 150);
      });
 
      var dynamicCSSElement = $("#dynamicCSS");
 
-     function setDynamicBodyHeight ()
+     function setDynamicBodyHeight (shouldIncludeInnerHeaderContainer = false)
      {
           $('body').css('overflow', 'hidden');
 
@@ -84,9 +91,13 @@ $(document).ready(() =>
                var headerHeight = $("#header")[ 0 ].clientHeight;
                var mainContainerWrapperPaddingHeight = (parseInt($(".main-container-wrapper").css('padding-top')) + parseInt($(".main-container-wrapper").css('padding-bottom')));
 
-               const headerTextHeight = 50; // get this dynamically but 50 should always be good
+               var headerTextHeight = 50; // get this dynamically but 50 should always be good
+               if (shouldIncludeInnerHeaderContainer)
+               {
+                    headerTextHeight += 110;
+               }
 
-               var bodyCalculatedHeight = windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15); // 15 to make sure no random scroll - find out why this is even needed
+               var bodyCalculatedHeight = (windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15)); // 15 to make sure no random scroll - find out why this is even needed
 
                dynamicCSSElement.html(
                     `.inner-container{min-height: ${ bodyCalculatedHeight }px !important;}`
@@ -137,11 +148,13 @@ $(document).ready(() =>
      {
           setDynamicSidebarHeight()
           setTimeout(() => {
-               setDynamicBodyHeight();
-          }, 50);
-          
+               CurrentTabHasHeader = $('#' + $('.l-navbar .nav_link.active').attr('for')).find(".inner-header-container").length > 0;
+               setDynamicBodyHeight(CurrentTabHasHeader);
+          }, 50);    
      });
 
+     CurrentTabHasHeader = $('#' + $('.l-navbar .nav_link.active').attr('for')).find(".inner-header-container").length > 0;
+
      setDynamicSidebarHeight();
-     setDynamicBodyHeight();
+     setDynamicBodyHeight(CurrentTabHasHeader);
 });
