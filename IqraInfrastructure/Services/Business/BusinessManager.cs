@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
@@ -25,19 +26,22 @@ namespace IqraInfrastructure.Services.Business
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
         }
 
-        public async Task<BusinessData> AddBusiness(BusinessData businessData, IFormFile businessLogoFile)
+        public async Task<BusinessData> AddBusiness(BusinessData businessData, IFormFile? businessLogoFile)
         {
             long bussinessId = await _businessRepository.GetNextBusinessId();
-
-            var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogoFile);
-            bool fileExists = await _businessLogoRepository.FileExists(hash);
-            if (!fileExists)
-            {
-                await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
-            }
-
             businessData.Id = bussinessId;
-            businessData.LogoURL = hash;
+
+            if (businessLogoFile != null)
+            {
+                var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(businessLogoFile);
+                bool fileExists = await _businessLogoRepository.FileExists(hash);
+                if (!fileExists)
+                {
+                    await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
+                }
+
+                businessData.LogoURL = hash;
+            }
 
             await _businessRepository.AddBusinessAsync(businessData);
             await _businessAppRepository.AddBusinessAppAsync(
@@ -189,20 +193,21 @@ namespace IqraInfrastructure.Services.Business
         {
             var result = new FunctionReturnResult<bool?>();
 
+            bool updateBusinessApp = false;
+
+            BusinessData? businessDataBackup = await _businessRepository.GetBusinessAsync(businessId);
+
             BusinessData? businessData = await _businessRepository.GetBusinessAsync(businessId);
             BusinessApp? businessApp = await _businessAppRepository.GetBusinessAppAsync(businessId);
 
-            UpdateDefinition<BusinessData>? BusinessUpdateDefinition = null;
+            List<UpdateDefinition<BusinessData>> updateDefinitions = new List<UpdateDefinition<BusinessData>>();
 
             // General
             string? businessName = formData["general.name"];
-            if (string.IsNullOrWhiteSpace(businessName))
+            if (!string.IsNullOrWhiteSpace(businessName))
             {
-                result.Code = 1;
-                result.Message = "The business name cannot be empty.";
-                return result;
+                updateDefinitions.Add(Builders<BusinessData>.Update.Set(x => x.Name, businessName));
             }
-            BusinessUpdateDefinition = Builders<BusinessData>.Update.Set(x => x.Name, businessName);
 
             IFormFile? businessLogo = formData.Files.FirstOrDefault(x => x.Name == "general.logo");
             if (businessLogo != null)
@@ -229,25 +234,59 @@ namespace IqraInfrastructure.Services.Business
             }
 
             // Languages
-            List<string?>? businessLanguages = formData["languages"].ToList();   
-            if (businessLanguages == null || businessLanguages.Count == 0)
+            string? businessLanguagesString = formData["languages"].ToString();
+            if (!string.IsNullOrWhiteSpace(businessLanguagesString))
             {
-                result.Code = 5;
-                result.Message = "The business must have atleast one language added.";
-                return result;
-            }
-            // todo validate languages - create a language repo or list taht iqra allows somewhere
-            BusinessUpdateDefinition = BusinessUpdateDefinition.Set(d => d.Languages, businessLanguages);
+                List<string>? businessLanguages = businessLanguagesString.Split(',').ToList();
+                if (businessLanguages == null || businessLanguages.Count == 0)
+                {
+                    result.Code = 5;
+                    result.Message = "Must have at least one language selected.";
+                    return result;
+                }
 
-            var businessLanguagesUpdateResult = MultiLanguageHelper.UpdateObjectMultiLanguages(businessApp, businessLanguages, businessData.Languages);
-            if (!businessLanguagesUpdateResult.Success)
-            {
-                result.Code = 100 + businessLanguagesUpdateResult.Code;
-                result.Message = businessLanguagesUpdateResult.Message;
-                return result;
-            }
+                // todo validate languages - create a language repo or list taht iqra allows somewhere
 
-            // unpublish the business, calls etc if languages are different than saved ones
+                int addedCount = 0;
+                int remainedCount = 0;
+                foreach (string oldLanguage in businessData.Languages)
+                {
+                    if (businessLanguages.Contains(oldLanguage))
+                    {
+                        remainedCount++;
+                    }
+                }
+                foreach (string newLanguage in businessLanguages)
+                {
+                    if (!businessData.Languages.Contains(newLanguage))
+                    {
+                        addedCount++;
+                    }
+                }
+
+                if (remainedCount + addedCount == 0)
+                {
+                    result.Code = 6;
+                    result.Message = "Must have at least one language selected.";
+                    result.Data = false;
+                    return result;
+                }
+
+                var businessLanguagesUpdateResult = MultiLanguageHelper.UpdateObjectMultiLanguages(businessApp, businessLanguages, businessData.Languages);
+                if (!businessLanguagesUpdateResult.Success)
+                {
+                    result.Code = 100 + businessLanguagesUpdateResult.Code;
+                    result.Message = businessLanguagesUpdateResult.Message;
+                    return result;
+                }
+
+                updateDefinitions.Add(Builders<BusinessData>.Update.Set(d => d.Languages, businessLanguages));
+
+                // todo unpublish the business, calls etc if languages are different than saved ones
+
+                updateBusinessApp = true;
+            }
+            
 
             // Subusers
             List<string?>? businessRemovedSubusers = formData["subusers.removed"].ToList();
@@ -256,7 +295,7 @@ namespace IqraInfrastructure.Services.Business
                 foreach (string? subuser in businessRemovedSubusers)
                 {
                     var removeSubuserFilter = Builders<BusinessUser>.Filter.Eq(x => x.Email, subuser);
-                    BusinessUpdateDefinition = BusinessUpdateDefinition.PullFilter(x => x.SubUsers, removeSubuserFilter);
+                    updateDefinitions.Add(Builders<BusinessData>.Update.PullFilter(x => x.SubUsers, removeSubuserFilter));
                 }
             }
 
@@ -300,9 +339,9 @@ namespace IqraInfrastructure.Services.Business
                             // Remove if exists first
                             // todo confirm if this works in order
                             var removeSubuserFilter = Builders<BusinessUser>.Filter.Eq(x => x.Email, subuser.Email);
-                            BusinessUpdateDefinition = BusinessUpdateDefinition.PullFilter(x => x.SubUsers, removeSubuserFilter);
+                            updateDefinitions.Add(Builders<BusinessData>.Update.PullFilter(x => x.SubUsers, removeSubuserFilter));
                             // add new
-                            BusinessUpdateDefinition = BusinessUpdateDefinition.Push(x => x.SubUsers, subuser);
+                            updateDefinitions.Add(Builders<BusinessData>.Update.Push(x => x.SubUsers, subuser));
                         }
                     }
                 }
@@ -324,19 +363,40 @@ namespace IqraInfrastructure.Services.Business
                     await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
                 }
 
-                BusinessUpdateDefinition = BusinessUpdateDefinition
-                    .Set(x => x.LogoURL, hash);
+                updateDefinitions.Add(Builders<BusinessData>.Update.Set(x => x.LogoURL, hash));
             }
 
-            // If all is valid, update
-            var updateResult = await _businessRepository.UpdateBusinessAsync(businessData.Id, BusinessUpdateDefinition);
-            if (!updateResult)
+            if (updateDefinitions.Count == 0)
             {
                 result.Code = 8;
+                result.Message = "Nothing to update.";
+                return result;
+            }
+
+            // If all is valid, update business and businesapp
+            var updateBusinessResult = await _businessRepository.UpdateBusinessAsync(businessData.Id, Builders<BusinessData>.Update.Combine(updateDefinitions));
+            if (!updateBusinessResult)
+            {
+                result.Code = 9;
                 result.Message = "Failed to update business.";
                 return result;
             }
 
+            if (updateBusinessApp)
+            {
+                var updateBusinessAppResult = await _businessAppRepository.ReplaceBusinessAppAsync(businessApp);
+                if (!updateBusinessAppResult)
+                {
+                    // revert back business data if app fails
+                    await _businessRepository.ReplaceBusinessAsync(businessDataBackup);
+
+                    result.Code = 10;
+                    result.Message = "Failed to update business app.";
+                    return result;
+                }
+            }  
+
+            result.Success = true;
             return result;
         }
     }

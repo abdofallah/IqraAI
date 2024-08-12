@@ -561,6 +561,15 @@ function initSettingsTab()
                 }
             }        
 
+            if (settingsAddedLanguagesList.find("tbody").find("tr").length === 0) {
+                AlertManager.createAlert({
+                    type: 'danger',
+                    message: 'You must have atleast one language added in order to save settings.',
+                    timeout: 6000
+                });
+                return;
+            }
+
             SaveNewSettings(formData,
                 (saveResponse) => {
                     setTimeout(() => {

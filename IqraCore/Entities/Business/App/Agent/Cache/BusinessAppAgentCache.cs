@@ -1,9 +1,14 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Attributes;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgentCache
     {
-        public List<BusinessAppAgentCacheMessage> Messages { get; set; } = new List<BusinessAppAgentCacheMessage>();
-        public List<BusinessAppAgentCacheAudio> Audios { get; set; } = new List<BusinessAppAgentCacheAudio>();
+        [MultiLanguageProperty]
+        public Dictionary<string, List<BusinessAppAgentCacheMessage>> Messages { get; set; } = new Dictionary<string, List<BusinessAppAgentCacheMessage>>();
+
+        [MultiLanguageProperty]
+        public Dictionary<string, List<BusinessAppAgentCacheAudio>> Audios { get; set; } = new Dictionary<string, List<BusinessAppAgentCacheAudio>>();
         public BusinessAppAgentCacheSettings Settings { get; set; } = new BusinessAppAgentCacheSettings();
     }
 }

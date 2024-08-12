@@ -21,12 +21,13 @@ namespace IqraCore.Utilities
                 UpdateObjectMultiLanguagesRecursive(obj, newLanguages, oldLanguages, result);
             }
 
+            result.Success = true;
             return result;
         }
 
         private static TypeInfo GetOrCreateTypeInfo(Type type)
         {
-            return _typeCache.GetOrAdd(type, t =>
+            return _typeCache.GetOrAdd(type, (t) =>
             {
                 var info = new TypeInfo();
                 var properties = t.GetProperties();
@@ -41,7 +42,15 @@ namespace IqraCore.Utilities
                     else
                     {
                         var propertyType = property.PropertyType;
-                        if (propertyType.IsClass && propertyType != typeof(string))
+
+                        bool propertyIsString = propertyType == typeof(string);
+                        bool propertyIsType = propertyType == typeof(Type);
+                        if (propertyIsString || propertyIsType) continue;
+
+                        bool propertyIsClass = propertyType.IsClass;
+                        bool propertyIsIEnumerable = typeof(IEnumerable).IsAssignableFrom(propertyType);
+                        
+                        if (propertyIsClass && !propertyIsIEnumerable)
                         {
                             var nestedTypeInfo = GetOrCreateTypeInfo(propertyType);
                             if (nestedTypeInfo.HasMultiLanguageProperties)
@@ -50,12 +59,21 @@ namespace IqraCore.Utilities
                                 info.NestedMultiLanguageProperties.Add(property);
                             }
                         }
-                        else if (typeof(IEnumerable).IsAssignableFrom(propertyType) && propertyType != typeof(string))
+                        
+                        if (propertyIsIEnumerable)
                         {
-                            var elementType = propertyType.IsArray ? propertyType.GetElementType() : propertyType.GetGenericArguments()[0];
-                            if (elementType.IsClass)
+                            var propertyElementType = propertyType.IsArray ? propertyType.GetElementType() : propertyType.GetGenericArguments()[0];
+                            
+                            bool propertyElementIsString = propertyElementType == typeof(string);
+                            bool propertyElementIsType = propertyElementType == typeof(Type);
+                            if (propertyElementIsString || propertyElementIsType) continue;
+
+                            bool propertyElementIsClass = propertyElementType.IsClass;
+                            bool propertyElementIsIEnumerable = typeof(IEnumerable).IsAssignableFrom(propertyElementType);
+
+                            if (propertyElementIsClass)
                             {
-                                var nestedTypeInfo = GetOrCreateTypeInfo(elementType);
+                                var nestedTypeInfo = GetOrCreateTypeInfo(propertyElementType);
                                 if (nestedTypeInfo.HasMultiLanguageProperties)
                                 {
                                     info.HasMultiLanguageProperties = true;
@@ -80,7 +98,7 @@ namespace IqraCore.Utilities
             foreach (var property in typeInfo.MultiLanguageProperties)
             {
                 UpdateMultiLanguageProperty(obj, property, newLanguages, oldLanguages, result);
-                if (!result.Data.GetValueOrDefault()) return;
+                if (!result.Data.Value) return;
             }
 
             foreach (var property in typeInfo.NestedMultiLanguageProperties)
@@ -91,13 +109,13 @@ namespace IqraCore.Utilities
                     foreach (var item in enumerable)
                     {
                         UpdateObjectMultiLanguagesRecursive(item, newLanguages, oldLanguages, result);
-                        if (!result.Data.GetValueOrDefault()) return;
+                        if (!result.Data.Value) return;
                     }
                 }
                 else
                 {
                     UpdateObjectMultiLanguagesRecursive(value, newLanguages, oldLanguages, result);
-                    if (!result.Data.GetValueOrDefault()) return;
+                    if (!result.Data.Value) return;
                 }
             }
         }
@@ -105,38 +123,53 @@ namespace IqraCore.Utilities
         private static void UpdateMultiLanguageProperty(object obj, PropertyInfo property, List<string> newLanguages, List<string> oldLanguages, FunctionReturnResult<bool?> result)
         {
             var attribute = property.GetCustomAttribute<MultiLanguagePropertyAttribute>();
-            var value = property.GetValue(obj) as IDictionary<string, object>;
+
+            Type dictionaryType = property.PropertyType;
+
+            Type[] genericArgs = dictionaryType.GetGenericArguments();
+
+            Type valueType = genericArgs[1];
+
+            var value = property.GetValue(obj);
             if (value == null)
             {
-                value = Activator.CreateInstance(property.PropertyType) as IDictionary<string, object>;
+                Type concreteType = dictionaryType.IsInterface || dictionaryType.IsAbstract
+                ? typeof(Dictionary<,>).MakeGenericType(typeof(string), valueType)
+                : dictionaryType;
+
+                value = Activator.CreateInstance(concreteType);
                 property.SetValue(obj, value);
             }
+
+            var dictionaryObj = value as IDictionary;
 
             // Remove languages that are in oldLanguages but not in newLanguages
             var languagesToRemove = oldLanguages.Except(newLanguages).ToList();
             foreach (var langToRemove in languagesToRemove)
             {
-                value.Remove(langToRemove);
+                dictionaryObj.Remove(langToRemove);
             }
 
             // Add new languages that are in newLanguages but not in oldLanguages
             var languagesToAdd = newLanguages.Except(oldLanguages).ToList();
             foreach (var langToAdd in languagesToAdd)
             {
-                value[langToAdd] = GetDefaultValue(property.PropertyType.GetGenericArguments()[1]);
+                dictionaryObj[langToAdd] = GetDefaultValue(valueType);
             }
 
             // Check if we have the required number of languages
-            if (attribute.LanguagesRequired > 0 && value.Count < attribute.LanguagesRequired)
+            if (attribute.LanguagesRequired > 0 && dictionaryObj.Count < attribute.LanguagesRequired)
             {
                 result.Code = 1;
                 result.Message = $"Property {property.Name} requires at least {attribute.LanguagesRequired} language(s).";
+                result.Success = false;
                 result.Data = false;
             }
-            else if (attribute.LanguagesRequired == -1 && value.Count < newLanguages.Count)
+            else if (attribute.LanguagesRequired == -1 && dictionaryObj.Count < newLanguages.Count)
             {
                 result.Code = 2;
                 result.Message = $"Property {property.Name} requires all languages to be present.";
+                result.Success = false;
                 result.Data = false;
             }
         }

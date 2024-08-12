@@ -109,5 +109,12 @@ namespace IqraInfrastructure.Repositories.Business
 
             return await _businessCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
+
+        public async Task<bool> ReplaceBusinessAsync(BusinessData businessDataBackup)
+        {
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessDataBackup.Id);
+            var result = await _businessCollection.ReplaceOneAsync(filter, businessDataBackup);
+            return result.ModifiedCount > 0;
+        }
     }
 }

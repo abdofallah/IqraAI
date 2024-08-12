@@ -13,8 +13,8 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\img\" />
+    <Folder Include="wwwroot\scripts\app\business\tutorials\" />
     <Folder Include="wwwroot\scripts\app\index\" />
-    <Folder Include="wwwroot\scripts\app\business\" />
   </ItemGroup>
 
 </Project>

@@ -45,5 +45,12 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.UpdateOneAsync(filter, updateDefinition);
             return result.ModifiedCount > 0;
         }
+
+        public async Task<bool> ReplaceBusinessAppAsync(BusinessApp? businessApp)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessApp.Id);
+            var result = await _businessAppCollection.ReplaceOneAsync(filter, businessApp);
+            return result.ModifiedCount > 0;
+        }
     }
 }
