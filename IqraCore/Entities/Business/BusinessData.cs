@@ -28,6 +28,8 @@ namespace IqraCore.Entities.Business
         [IncludeInEndpoint("/app/admin/user/businesses")]
         public BusinessAnalytics Analytics { get; set; } = new BusinessAnalytics();
 
+        public List<long> WhiteLabelDomainIds { get; set; } = new List<long>();
+
         public BusinessPermission Permission { get; set; } = new BusinessPermission();
     }
 }

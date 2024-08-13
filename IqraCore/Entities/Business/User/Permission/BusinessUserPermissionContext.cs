@@ -2,7 +2,7 @@
 {
     public class BusinessUserPermissionContext
     {
-        public bool ContextTabEnabled { get; set; } = true;
+        public bool ContextTabEnabled { get; set; } = false;
         
         public BusinessUserPermissionContextBranding Branding { get; set; } = new BusinessUserPermissionContextBranding();
         public BusinessUserPermissionContextBranches Branches { get; set; } = new BusinessUserPermissionContextBranches();
@@ -12,31 +12,31 @@
 
     public class BusinessUserPermissionContextBranding
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Edit { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Edit { get; set; } = false;
     }
 
     public class BusinessUserPermissionContextBranches
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Edit { get; set; } = true;
-        public bool Add { get; set; } = true;
-        public bool Delete { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Edit { get; set; } = false;
+        public bool Add { get; set; } = false;
+        public bool Delete { get; set; } = false;
     }
 
     public class BusinessUserPermissionContextServices
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Edit { get; set; } = true;
-        public bool Add { get; set; } = true;
-        public bool Delete { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Edit { get; set; } = false;
+        public bool Add { get; set; } = false;
+        public bool Delete { get; set; } = false;
     }
 
     public class BusinessUserPermissionContextProducts
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Edit { get; set; } = true;
-        public bool Add { get; set; } = true;
-        public bool Delete { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Edit { get; set; } = false;
+        public bool Add { get; set; } = false;
+        public bool Delete { get; set; } = false;
     }
 }

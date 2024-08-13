@@ -2,7 +2,7 @@
 {
     public class BusinessUserPermissionConversations
     {
-        public bool TabEnabled { get; set; }
+        public bool TabEnabled { get; set; } = false;
 
         public BusinessUserPermissionConversationsInboundCall Inbound { get; set; } = new BusinessUserPermissionConversationsInboundCall();
         public BusinessUserPermissionConversationsOutboundCall Outbound { get; set; } = new BusinessUserPermissionConversationsOutboundCall();
@@ -11,22 +11,22 @@
 
     public class BusinessUserPermissionConversationsInboundCall
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Delete { get; set; } = true;
-        public bool Export { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Delete { get; set; } = false;
+        public bool Export { get; set; } = false;
     }
 
     public class BusinessUserPermissionConversationsOutboundCall
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Delete { get; set; } = true;
-        public bool Export { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Delete { get; set; } = false;
+        public bool Export { get; set; } = false;
     }
 
     public class BusinessUserPermissionConversationsWebsocket
     {
-        public bool TabEnabled { get; set; } = true;
-        public bool Delete { get; set; } = true;
-        public bool Export { get; set; } = true;
+        public bool TabEnabled { get; set; } = false;
+        public bool Delete { get; set; } = false;
+        public bool Export { get; set; } = false;
     }
 }

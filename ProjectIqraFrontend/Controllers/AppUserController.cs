@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helper.Number;
 using IqraCore.Entities.Helpers;
@@ -282,6 +283,86 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
+        [HttpPost("/app/user/business/{businessId}/whitelabeldomains")]
+        public async Task<FunctionReturnResult<List<BusinessWhiteLabelDomain>?>> GetUserBusinessWhiteLabelDomains(long businessId)
+        {
+            var result = new FunctionReturnResult<List<BusinessWhiteLabelDomain>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = 1;
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = 2;
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = 3;
+                result.Message = "User not found";
+                return result;
+            }
+
+            UserPermission userPermission = user.Permission;
+            if (userPermission.Business.DisableBusinessesAt != null)
+            {
+                result.Code = 4;
+                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = 5;
+                result.Message = "User does not have permission to view this business";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, user.Email);
+            if (!businessResult.Success)
+            {
+                result.Code = 1000 + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null)
+            {
+                result.Code = 6;
+                result.Message = "Business is disabled.";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += " Reason: " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
+            if (!businessWhiteLabelDomainResult.Success)
+            {
+                result.Code = 1000 + businessWhiteLabelDomainResult.Code;
+                result.Message = businessWhiteLabelDomainResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = businessWhiteLabelDomainResult.Data;
+            return result;
+        }
+
         [HttpPost("/app/user/business/{businessId}")]
         public async Task<FunctionReturnResult<GetUserBusinessFullReturnModel?>> GetUserBusiness(long businessId)
         {
@@ -357,11 +438,20 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
+            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
+            if (!businessWhiteLabelDomainResult.Success)
+            {
+                result.Code = 3000 + businessWhiteLabelDomainResult.Code;
+                result.Message = businessWhiteLabelDomainResult.Message;
+                return result;
+            }
+
             result.Success = true;
             result.Data = new GetUserBusinessFullReturnModel()
             {
                 BusinessData = businessResult.Data,
-                BusinessApp = businessAppResult.Data
+                BusinessApp = businessAppResult.Data,
+                BusinessWhiteLabelDomain = businessWhiteLabelDomainResult.Data
             };
 
             return result;
@@ -642,5 +732,6 @@ namespace ProjectIqraFrontend.Controllers
 
             return result;
         }
+    
     }
 }

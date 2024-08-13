@@ -61,6 +61,12 @@ namespace IqraInfrastructure.Repositories.Business
             return _businessWhiteLabelDomainCollection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public Task<List<BusinessWhiteLabelDomain>?> GetBusinessWhiteLabelDomainsAsync(List<long> ids)
+        {
+            var filter = Builders<BusinessWhiteLabelDomain>.Filter.In(b => b.Id, ids);
+            return _businessWhiteLabelDomainCollection.Find(filter).ToListAsync();
+        }
+
         public Task<List<BusinessWhiteLabelDomain>?> GetBusinessWhiteLabelDomainsByBusinessIdAsync(long businessId)
         {
             var filter = Builders<BusinessWhiteLabelDomain>.Filter.Eq(b => b.BusinessId, businessId);

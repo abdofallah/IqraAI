@@ -51,22 +51,27 @@ const subusersWhitelabelGeneralTab = subusersManagerTab.find("#subusers-whitelab
 
 const saveBusinessSubuserButton = settingsManageSubusersBreadcrumb.find("#saveBusinessSubuserButton");
 
-const businessSubuserLoginDisabledInput = subusersManagerTab.find("#businessSubuserLoginDisabledInput");
-const businessSubuserLoginDisabledReasonInput = subusersManagerTab.find("#businessSubuserLoginDisabledReasonInput");
-
+// Sub Users General
 const businessSubuserEmail = subusersManagerTab.find("#businessSubuserEmail");
 const businessSubuserPassword = subusersManagerTab.find("#businessSubuserPassword");
 
+const businessSubuserLoginDisabledInput = subusersManagerTab.find("#businessSubuserLoginDisabledInput");
+const businessSubuserLoginDisabledReasonInput = subusersManagerTab.find("#businessSubuserLoginDisabledReasonInput");
+
+// White Label
 const businessSubuserWhiteLabelPlatformName = subusersManagerTab.find("#business-subuser-white-label-platform-name");
 const businessSubuserWhiteLabelPlatformTitle = subusersManagerTab.find("#business-subuser-white-label-platform-title");
 const businessSubuserWhiteLabelPlatformDescription = subusersManagerTab.find("#business-subuser-white-label-platform-description");
 
+// White Label Styles
 const businessSubuserWhiteLabelCustomCss = subusersManagerTab.find("#business-subuser-white-label-custom-css");
 const businessSubuserWhiteLabelCustomJs = subusersManagerTab.find("#business-subuser-white-label-custom-js");
 
+// White Label Iqra Domain
 const businessSubuserWhiteLabelIqraSubdomainContainer = subusersManagerTab.find("#business-subuser-white-label-iqra-subdomain-container");
 const businessSubuserWhiteLabelIqraSubdomain = businessSubuserWhiteLabelIqraSubdomainContainer.find("#business-subuser-white-label-iqra-subdomain");
 
+// White Label Custom Domain
 const businessSubuserWhiteLabelCustomDomainContainer = subusersManagerTab.find("#business-subuser-white-label-custom-domain-container");
 const businessSubuserWhiteLabelCustomDomain = businessSubuserWhiteLabelCustomDomainContainer.find("#business-subuser-white-label-custom-domain");
 const businessSubuserWhiteLabelSslEnabled = subusersManagerTab.find("#business-subuser-white-label-ssl-enabled");
@@ -456,9 +461,15 @@ function FillSettingsTab()
         }
     }
 
+    function FillSettingsDomainsTab()
+    {
+        alert("FillSettingsDomainsTab TODO");
+    }
+
     FillSettingsGeneralTab();
     FillSettingsLanguagesTab();
     FillSettingsUsersTab();
+    FillSettingsDomainsTab();
 }
 
 function ShowUsersManageTab()
@@ -958,12 +969,49 @@ function CheckSubusersPermissionsTabHasChanges()
     return hasChanges;
 }
 
+function CheckSubusersWhiteLabelHasChanges()
+{
+    let hasChanges = false;
+
+    // General
+
+    if (businessSubuserWhiteLabelPlatformName.val() !== CurrentManageSubUserData.whiteLabel.platformName)
+    {
+        hasChanges = true;
+    }
+
+    if (businessSubuserWhiteLabelPlatformTitle.val() !== CurrentManageSubUserData.whiteLabel.platformTitle)
+    {
+        hasChanges = true;
+    }
+
+    if (businessSubuserWhiteLabelPlatformDescription.val() !== CurrentManageSubUserData.whiteLabel.platformDescription)
+    {
+        hasChanges = true;
+    }
+
+    // Styles
+
+    if (businessSubuserWhiteLabelLogo[0].files.length > 0)
+    {
+        hasChanges = true;
+    }
+
+    if (businessSubuserWhiteLabelFavicon[0].files.length > 0)
+    {
+        hasChanges = true;
+    }
+
+    return hasChanges;
+}
+
 function CheckIfSubusersManageHasChanges(enableDisableButton = true)
 {
     let subusersGeneralTabChanges = CheckSubusersGeneralTabHasChanges();
     let subusersPermissionTabChanges = CheckSubusersPermissionsTabHasChanges();
+    let subusersWhiteLabelTabChanges = CheckSubusersWhiteLabelHasChanges();
 
-    let hasChanges = subusersGeneralTabChanges || subusersPermissionTabChanges;
+    let hasChanges = subusersGeneralTabChanges || subusersPermissionTabChanges || subusersWhiteLabelTabChanges;
 
     if (enableDisableButton)
     {

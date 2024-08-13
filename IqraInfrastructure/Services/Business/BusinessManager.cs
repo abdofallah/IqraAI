@@ -1,4 +1,6 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.WhiteLabelDomain;
+using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Utilities;
@@ -43,13 +45,27 @@ namespace IqraInfrastructure.Services.Business
                 businessData.LogoURL = hash;
             }
 
-            await _businessRepository.AddBusinessAsync(businessData);
-            await _businessAppRepository.AddBusinessAppAsync(
-                new BusinessApp()
-                {
-                    Id = bussinessId,
-                }
-            );
+            var businessApp = new BusinessApp()
+            {
+                Id = bussinessId,
+            };
+
+            string subDomainHash = SubdomainHashGenerator.GenerateSubdomainHash(bussinessId);
+
+            long businessWhiteLabelId = await _businessWhiteLabelDomainRepository.GetNextBusinessWhiteLabelDomainId();
+            businessData.WhiteLabelDomainIds.Add(businessWhiteLabelId);
+
+            var businessWhiteLabelDomain = new BusinessWhiteLabelIqraSubDomain()
+            {
+                Id = businessWhiteLabelId,
+                BusinessId = bussinessId,
+                SubDomain = subDomainHash,
+                Type = BusinessUserWhiteLabelDomainTypeEnum.IqraSubdomain
+            };
+            
+            await _businessWhiteLabelDomainRepository.AddBusinessWhiteLabelDomainAsync(businessWhiteLabelDomain);
+
+            await _businessAppRepository.AddBusinessAppAsync(businessApp);
 
             return businessData;
         }
@@ -331,6 +347,25 @@ namespace IqraInfrastructure.Services.Business
             }  
 
             result.Success = true;
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<BusinessWhiteLabelDomain>?>> GetUserBusinessWhiteLabelDomainByIds(List<long> whitelabelDomainId, long businessId, string email)
+        {
+            var result = new FunctionReturnResult<List<BusinessWhiteLabelDomain>?>();
+
+            List<BusinessWhiteLabelDomain>? businessWhiteLabelDomain = await _businessWhiteLabelDomainRepository.GetBusinessWhiteLabelDomainsAsync(whitelabelDomainId);
+            if (businessWhiteLabelDomain == null)
+            {
+                result.Code = 1;
+                Log.Logger.Error("[BusinessManager] Null - Business white label domains not found for user: " + email + " business id: " + businessId);
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businessWhiteLabelDomain;
+            }
+
             return result;
         }
     }
