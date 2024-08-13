@@ -2,8 +2,8 @@
 {
     public class BusinessUserPermissionMakeCalls
     {
-        public bool MakeCallsTabEnabled { get; set; } = true;
-        public bool MakeSingleCallEnabled { get; set; } = true;
-        public bool MakeBulkCallEnabled { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool SingleCallEnabled { get; set; } = true;
+        public bool BulkCallEnabled { get; set; } = true;
     }
 }

@@ -2,9 +2,9 @@
 {
     public class BusinessUserPermissionAgents
     {
-        public bool AgentsTabEnabled { get; set; } = true;
-        public bool AddNewAgent { get; set; } = true;
-        public bool EditAgent { get; set; } = true;
-        public bool DeleteAgent { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 }

@@ -29,7 +29,7 @@ $(document).ready(() =>
      showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header');
 
      /*===== LINK ACTIVE =====*/
-     $(document).on('click', '.l-navbar .nav_link', (event) =>
+     $(document).on('click', '.l-navbar .nav_link', async (event) =>
      {
           event.preventDefault();
 
@@ -46,6 +46,36 @@ $(document).ready(() =>
 
           if (currentElement.hasClass("disabled"))
           {
+               return;
+          }
+
+          const tabChangeEvent = new CustomEvent('tabChange', {
+               bubbles: true,
+               cancelable: true,
+               detail: {
+                    from: activeElementFor,
+                    to: forTab
+               }
+          });
+
+          // Dispatch event and wait for all listeners to complete
+          const listeners = jQuery._data($("#nav-bar")[0], "events")?.tabChange || [];
+          const results = await Promise.all(listeners.map(listener => 
+               new Promise(resolve => {
+                    const result = listener.handler(tabChangeEvent);
+                    if (result instanceof Promise) {
+                         result.then(() => resolve(!tabChangeEvent.defaultPrevented));
+                    } else {
+                         resolve(!tabChangeEvent.defaultPrevented);
+                    }
+               })
+          ));
+
+          // Check if any listener prevented default
+          const shouldProceed = results.every(result => result);
+
+          // If the event was cancelled (preventDefault was called), don't proceed
+          if (!shouldProceed) {
                return;
           }
 

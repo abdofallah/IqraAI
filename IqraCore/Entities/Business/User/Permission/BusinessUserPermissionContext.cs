@@ -4,39 +4,39 @@
     {
         public bool ContextTabEnabled { get; set; } = true;
         
-        public BusinessUserPermissionContextBranding BrandingPermission { get; set; } = new BusinessUserPermissionContextBranding();
-        public BusinessUserPermissionContextBranches BranchesPermission { get; set; } = new BusinessUserPermissionContextBranches();
-        public BusinessUserPermissionContextServices ServicesPermission { get; set; } = new BusinessUserPermissionContextServices();
-        public BusinessUserPermissionContextProducts ProductsPermission { get; set; } = new BusinessUserPermissionContextProducts();
+        public BusinessUserPermissionContextBranding Branding { get; set; } = new BusinessUserPermissionContextBranding();
+        public BusinessUserPermissionContextBranches Branches { get; set; } = new BusinessUserPermissionContextBranches();
+        public BusinessUserPermissionContextServices Services { get; set; } = new BusinessUserPermissionContextServices();
+        public BusinessUserPermissionContextProducts Products { get; set; } = new BusinessUserPermissionContextProducts();
     }
 
     public class BusinessUserPermissionContextBranding
     {
-        public bool BrandingTabEnabled { get; set; } = true;
-        public bool EditBranding { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Edit { get; set; } = true;
     }
 
     public class BusinessUserPermissionContextBranches
     {
-        public bool BranchesTabEnabled { get; set; } = true;
-        public bool EditBranches { get; set; } = true;
-        public bool AddBranches { get; set; } = true;
-        public bool DeleteBranches { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 
     public class BusinessUserPermissionContextServices
     {
-        public bool ServicesTabEnabled { get; set; } = true;
-        public bool EditServices { get; set; } = true;
-        public bool AddServices { get; set; } = true;
-        public bool DeleteServices { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 
     public class BusinessUserPermissionContextProducts
     {
-        public bool ProductsTabEnabled { get; set; } = true;
-        public bool EditProducts { get; set; } = true;
-        public bool AddProducts { get; set; } = true;
-        public bool DeleteProducts { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 }

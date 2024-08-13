@@ -285,73 +285,7 @@ namespace IqraInfrastructure.Services.Business
                 // todo unpublish the business, calls etc if languages are different than saved ones
 
                 updateBusinessApp = true;
-            }
-            
-
-            // Subusers
-            List<string?>? businessRemovedSubusers = formData["subusers.removed"].ToList();
-            if (businessRemovedSubusers != null && businessRemovedSubusers.Count > 0)
-            {
-                foreach (string? subuser in businessRemovedSubusers)
-                {
-                    var removeSubuserFilter = Builders<BusinessUser>.Filter.Eq(x => x.Email, subuser);
-                    updateDefinitions.Add(Builders<BusinessData>.Update.PullFilter(x => x.SubUsers, removeSubuserFilter));
-                }
-            }
-
-            string? businessEditedSubusersJsonString = formData["subusers.edited"];
-            if (!string.IsNullOrWhiteSpace(businessEditedSubusersJsonString))
-            {
-                List<BusinessUser>? businessEditedSubusers = null;
-                try
-                {
-                    businessEditedSubusers = JsonSerializer.Deserialize<List<BusinessUser>?>(businessEditedSubusersJsonString);
-
-                    if (businessEditedSubusers != null && businessEditedSubusers.Count > 0)
-                    {
-                        foreach (BusinessUser subuser in businessEditedSubusers)
-                        {
-                            var editSubuserFilter = Builders<BusinessData>.Filter.ElemMatch(x => x.SubUsers, su => su.Email == subuser.Email);
-                            var update = Builders<BusinessData>.Update.Set(x => x.SubUsers.FirstMatchingElement(), subuser);
-                        }
-                    }
-                }
-                catch
-                {
-                    result.Code = 6;
-                    result.Message = "The edited subusers data is not valid.";
-                    return result;
-                }
-            }
-
-            string? businessAddedSubusersJsonString = formData["subusers.added"];
-            if (!string.IsNullOrWhiteSpace(businessAddedSubusersJsonString))
-            {
-                List<BusinessUser>? businessAddedSubusers = null;
-                try
-                {
-                    businessAddedSubusers = JsonSerializer.Deserialize<List<BusinessUser>?>(businessAddedSubusersJsonString);
-
-                    if (businessAddedSubusers != null && businessAddedSubusers.Count > 0)
-                    {
-                        foreach (BusinessUser subuser in businessAddedSubusers)
-                        {
-                            // Remove if exists first
-                            // todo confirm if this works in order
-                            var removeSubuserFilter = Builders<BusinessUser>.Filter.Eq(x => x.Email, subuser.Email);
-                            updateDefinitions.Add(Builders<BusinessData>.Update.PullFilter(x => x.SubUsers, removeSubuserFilter));
-                            // add new
-                            updateDefinitions.Add(Builders<BusinessData>.Update.Push(x => x.SubUsers, subuser));
-                        }
-                    }
-                }
-                catch
-                {
-                    result.Code = 7;
-                    result.Message = "The added subusers data is not valid.";
-                    return result;
-                }
-            }
+            }         
 
             // Logo upload after all the validation
             if (businessLogo != null)

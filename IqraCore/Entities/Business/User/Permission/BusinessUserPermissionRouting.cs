@@ -2,9 +2,9 @@
 {
     public class BusinessUserPermissionRouting
     {
-        public bool RoutingTabEnabled { get; set; } = true;
-        public bool AddNewRoute { get; set; } = true;
-        public bool EditRoute { get; set; } = true;
-        public bool DeleteRoute { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 }

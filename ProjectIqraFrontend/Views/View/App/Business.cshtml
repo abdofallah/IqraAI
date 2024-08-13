@@ -4104,8 +4104,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label d-block" for="settingsGeneralBusinessLogo">Business Logo</label>
-                            <img src="~/img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3" alt="Business Logo" id="settingsGeneralBusinessLogoPreview" allow="image/png, image/jpeg, image/webp, image/gif">
-                            <input type="file" class="form-control d-none" id="settingsGeneralBusinessLogo">
+                            <img src="~/img/logo/Badal-Logo-Light.png" class="img-fluid rounded-3" alt="Business Logo" id="settingsGeneralBusinessLogoPreview">
+                            <input type="file" class="form-control d-none" id="settingsGeneralBusinessLogo" accept="image/png, image/jpeg, image/webp, image/gif">
                         </div>
                     </div>
                     <!-- Languages -->
@@ -4177,10 +4177,10 @@
                                     </div>
                                     <div>
                                         <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="businessSubuserLoginDisabledInput">
-                                            <label class="form-check-label" for="businessSubuserLoginDisabledInput">Login Disabled</label>
+                                            <input class="form-check-input" type="checkbox" id="businessSubuserLoginDisabledInput" check-type="permission-with-reason">
+                                            <label class="form-label d-block" for="businessSubuserLoginDisabledInput">Login Disabled</label>
                                         </div>
-                                        <input type="text" class="form-control d-none" id="businessSubuserLoginDisabledReasonInput" placeholder="Subuser Login Reason">
+                                        <input type="text" class="form-control d-none" id="businessSubuserLoginDisabledReasonInput" placeholder="Subuser Disabled Login Reason">
                                     </div>
                                 </div>
 
@@ -4600,6 +4600,55 @@
     <script src="~/libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
 
     <!-- Scripts -->
+    <script>
+        function GetIdFromURLPath()
+        {
+            let urlPath = window.location.pathname;
+
+            if (urlPath.endsWith("/")) {
+                urlPath = urlPath.substring(0, urlPath.length - 1);
+            }
+
+            return urlPath.split("/").pop();
+        } 
+
+        function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
+            if (disabledAt) {
+                checkboxElement.prop("checked", true).change();
+                if (disabledReason) {
+                    reasonInputElement.val(disabledReason);
+                }
+            } else {
+                checkboxElement.prop("checked", false).change();
+                reasonInputElement.val("");
+            }
+        }
+
+        function EnableFullPermissionHelper(enableFullElement, subEnableElementsArray)
+        {
+            enableFullElement.on("change", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+
+                let isChecked = current.is(':checked');
+                if (isChecked) {
+                    subEnableElementsArray.forEach((element) => {
+                        element.prop("disabled", false).change();
+                    })
+                    enableFullElement.parent().parent().find("input[type=text]").removeClass("d-none");
+                }
+                else
+                {
+                    subEnableElementsArray.forEach((element) => {
+                        element.prop("checked", false).prop("disabled", true).change();
+                    });
+                    enableFullElement.parent().parent().find("input[type=text]").val("").addClass("d-none");
+                }
+            });
+        }
+    </script>
     <script src="~/js/countrycode_languages_list.js"></script> <!-- Make this Dynamic -->
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
@@ -4634,31 +4683,6 @@
                     errorCallback(error);
                 }
             });
-        }
-
-        // Other Functions
-
-        function GetIdFromURLPath()
-        {
-            let urlPath = window.location.pathname;
-
-            if (urlPath.endsWith("/")) {
-                urlPath = urlPath.substring(0, urlPath.length - 1);
-            }
-
-            return urlPath.split("/").pop();
-        }    
-
-        function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
-            if (disabledAt) {
-                checkboxElement.prop("checked", true).change();
-                if (disabledReason) {
-                    reasonInputElement.val(disabledReason);
-                }
-            } else {
-                checkboxElement.prop("checked", false).change();
-                reasonInputElement.val("");
-            }
         }
     </script>
 

@@ -2,9 +2,9 @@
 {
     public class BusinessUserPermissionTools
     {
-        public bool ToolsTabEnabled { get; set; } = true;
-        public bool AddNewTool { get; set; } = true;
-        public bool EditTool { get; set; } = true;
-        public bool DeleteTool { get; set; } = true;
+        public bool TabEnabled { get; set; } = true;
+        public bool Add { get; set; } = true;
+        public bool Edit { get; set; } = true;
+        public bool Delete { get; set; } = true;
     }
 }
