@@ -4093,8 +4093,22 @@
                             <span> Save</span>
                         </button>
                     </div>
-                    
                 </div> 
+                <!-- Manage Domain Tab -->
+                <div class="fade d-none w-100" id="settings-manage-domains-breadcrumb">
+                    <div class="d-flex flex-row align-items-center justify-content-between">
+                        <nav aria-label="breadcrumb" class="mb-3">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item"><a href="#" id="switchBackToBusinessDomainsTab">Domains</a></li>
+                                <li class="breadcrumb-item active" aria-current="page"><span id="currentBusinessDomainName">Domain</span></li>
+                            </ol>
+                        </nav>
+                        <button class="btn btn-primary btn-ic-span-align" id="saveBusinessDomainButton" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="inner-container" has-header="true">      
                 <!-- Tabs Content -->
@@ -4137,7 +4151,78 @@
                     </div>
                     <!-- Domains -->
                     <div class="tab-pane fade w-100 show active" id="settings-inner-domains" role="tabpanel" aria-labelledby="settings-inner-domains-tab" tabindex="0">
-                        // todo
+                        <!-- Domains List Tab -->
+                        <div class="fade w-100 show" id="businessDomainsListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBusinessDomainButton">
+                                        <span>+ Add New Domain</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Domain" aria-label="Domain" aria-describedby="searchBusinessDomainButton">
+                                    <button class="input-group-button btn btn-primary" id="searchBusinessDomainButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="businessDomainsTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Domain</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Business Domains will be dynamically added here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Domains Manager Tab -->
+                        <div class="fade w-100 d-none" id="businessDomainsManagerTab">
+                            <div class="mb-3">
+                                <label for="business-domains-domain-type" class="form-label">Domain Type</label>
+                                <select class="form-select" id="business-domains-domain-type">
+                                    <option value="Unknown" selected disabled>Select Domain Type</option>
+                                    <option value="IqraSubdomain">Iqra Subdomain</option>
+                                    <option value="CustomDomain">Custom Domain</option>
+                                </select>
+                            </div>
+
+                            <!-- Iqra Subdomain Container -->
+                            <div id="business-domains-iqra-subdomain-container" class="mb-4 d-none">
+                                <div class="mb-3">
+                                    <label for="business-domains-iqra-subdomain" class="form-label">Subdomain Name</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="business-domains-iqra-subdomain" placeholder="Enter subdomain name">
+                                        <span class="input-group-text">.iqra.business</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Domain Container -->
+                            <div id="business-domains-custom-domain-container" class="mb-4 d-none">
+                                <div class="mb-3">
+                                    <label for="business-domains-custom-domain" class="form-label">Custom Domain</label>
+                                    <input type="text" class="form-control" id="business-domains-custom-domain" placeholder="Enter custom domain">
+                                </div>
+                                <div class="mb-3 form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="business-domains-ssl-enabled">
+                                    <label class="form-check-label" for="business-domains-ssl-enabled">SSL Enabled</label>
+                                </div>
+                                <div id="business-domains-ssl-config" class="mb-3 d-none">
+                                    <div class="mb-2">
+                                        <label for="business-domains-ssl-private-key" class="form-label">Private Key</label>
+                                        <textarea class="form-control" id="business-domains-ssl-private-key" rows="3" placeholder="Enter SSL private key"></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="business-domains-ssl-certificate" class="form-label">Certificate</label>
+                                        <textarea class="form-control" id="business-domains-ssl-certificate" rows="3" placeholder="Enter SSL certificate"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <!-- Users -->
                     <div class="tab-pane fade w-100" id="settings-inner-users" role="tabpanel" aria-labelledby="settings-inner-users-tab" tabindex="0">
@@ -4482,9 +4567,6 @@
                                         <li class="nav-item me-2" role="presentation">
                                             <button class="nav-link" id="subusers-whitelabel-styles-tab" data-bs-toggle="tab" data-bs-target="#subusers-whitelabel-styles" type="button" role="tab" aria-controls="subusers-whitelabel-styles" aria-selected="false">Styles</button>
                                         </li>
-                                        <li class="nav-item" role="presentation">
-                                            <button class="nav-link" id="subusers-whitelabel-domain-tab" data-bs-toggle="tab" data-bs-target="#subusers-whitelabel-domain" type="button" role="tab" aria-controls="subusers-whitelabel-domain" aria-selected="false">Domain</button>
-                                        </li>
                                     </ul>
 
                                     <!-- Inner Tab Content -->
@@ -4504,6 +4586,13 @@
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-platform-description" class="form-label">Platform Description</label>
                                                 <textarea class="form-control" id="business-subuser-white-label-platform-description" rows="3" placeholder="Enter platform description"></textarea>
+                                            </div>
+
+                                            <div>
+                                                <label for="business-subuser-white-label-domain-identifier" class="form-label">Domain</label>
+                                                <select class="form-select" id="business-subuser-white-label-domain-identifier">
+                                                    <option value="Unknown" selected disabled>Select Domain</option>
+                                                </select>
                                             </div>
                                         </div>
 
@@ -4529,51 +4618,6 @@
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-custom-js" class="form-label">Custom JavaScript</label>
                                                 <textarea class="form-control" id="business-subuser-white-label-custom-js" rows="5" placeholder="Enter custom JavaScript"></textarea>
-                                            </div>
-                                        </div>
-
-                                        <!-- Domain Tab -->
-                                        <div class="tab-pane fade" id="subusers-whitelabel-domain" role="tabpanel" aria-labelledby="subusers-whitelabel-domain-tab">
-                                            <div class="mb-3">
-                                                <label for="business-subuser-white-label-domain-type" class="form-label">Domain Type</label>
-                                                <select class="form-select" id="business-subuser-white-label-domain-type">
-                                                    <option value="Unknown" selected disabled>Select Domain Type</option>
-                                                    <option value="IqraSubdomain">Iqra Subdomain</option>
-                                                    <option value="CustomDomain">Custom Domain</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Iqra Subdomain Container -->
-                                            <div id="business-subuser-white-label-iqra-subdomain-container" class="mb-4 d-none">
-                                                <div class="mb-3">
-                                                    <label for="business-subuser-white-label-iqra-subdomain" class="form-label">Subdomain Name</label>
-                                                    <div class="input-group">
-                                                        <input type="text" class="form-control" id="business-subuser-white-label-iqra-subdomain" placeholder="Enter subdomain name">
-                                                        <span class="input-group-text">.iqra.ai</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Custom Domain Container -->
-                                            <div id="business-subuser-white-label-custom-domain-container" class="mb-4 d-none">
-                                                <div class="mb-3">
-                                                    <label for="business-subuser-white-label-custom-domain" class="form-label">Custom Domain</label>
-                                                    <input type="text" class="form-control" id="business-subuser-white-label-custom-domain" placeholder="Enter custom domain">
-                                                </div>
-                                                <div class="mb-3 form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="business-subuser-white-label-ssl-enabled">
-                                                    <label class="form-check-label" for="business-subuser-white-label-ssl-enabled">SSL Enabled</label>
-                                                </div>
-                                                <div id="business-subuser-white-label-ssl-config" class="mb-3 d-none">
-                                                    <div class="mb-2">
-                                                        <label for="business-subuser-white-label-ssl-private-key" class="form-label">Private Key</label>
-                                                        <textarea class="form-control" id="business-subuser-white-label-ssl-private-key" rows="3" placeholder="Enter SSL private key"></textarea>
-                                                    </div>
-                                                    <div>
-                                                        <label for="business-subuser-white-label-ssl-certificate" class="form-label">Certificate</label>
-                                                        <textarea class="form-control" id="business-subuser-white-label-ssl-certificate" rows="3" placeholder="Enter SSL certificate"></textarea>
-                                                    </div>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>

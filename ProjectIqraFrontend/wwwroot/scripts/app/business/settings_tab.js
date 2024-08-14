@@ -1,10 +1,14 @@
 const DefaultBusinessImgSRC = "/img/logo/logo-light.png";
+const DefaultWhiteLabelLogoSRC = "/img/logo/logo-colored-light.png";
+const DefaultWhiteLabelFaviconSRC = "/img/logo/logo-colored-light.png";
+
+var IsManagerDomainTabOpened = false;
+var ManageDomainType = null;
+var CurrentManageDomainData = null;
 
 var IsManageUserTabOpened = false;
 var ManageUserType = null;
-
 var CurrentManageSubUserData = null;
-var CurrentManageSubUserWhiteLabelDomainData = null;
 
 var DeletedSubUserIds = [];
 var EditedSubUsers = [];
@@ -32,24 +36,17 @@ const subusersManagerTab = settingsTab.find("#subusersManagerTab");
 const settingsInnerTabContainer = settingsTab.find("#settings-inner-tab-container");
 const settingsInnerGeneralTab = settingsTab.find("#settings-inner-general-tab");
 
+// Subuser Navigation
 const settingsManageSubusersBreadcrumb = settingsTab.find("#settings-manage-subusers-breadcrumb");
 const switchBackToBusinessSubusersTab = settingsTab.find("#switchBackToBusinessSubusersTab");
-
 const currentBusinessSubuserName = settingsTab.find("#currentBusinessSubuserName");
 
-const businessSubuserWhiteLabelDomainType = subusersManagerTab.find("#business-subuser-white-label-domain-type");
-
-const businessSubuserWhiteLabelLogoPreview = subusersManagerTab.find("#business-subuser-white-label-logo-preview");
-const businessSubuserWhiteLabelLogo = subusersManagerTab.find("#business-subuser-white-label-logo");
-
-const businessSubuserWhiteLabelFaviconPreview = subusersManagerTab.find("#business-subuser-white-label-favicon-preview");
-const businessSubuserWhiteLabelFavicon = subusersManagerTab.find("#business-subuser-white-label-favicon");
+const saveBusinessSubuserButton = settingsManageSubusersBreadcrumb.find("#saveBusinessSubuserButton");
 
 const businessSubuserManagerGeneralTab = settingsManageSubusersBreadcrumb.find("#business-subuser-manager-general-tab");
 const businessSubuserPermissionsRoutingTab = subusersManagerTab.find("#business-subuser-permissions-routing-tab");
-const subusersWhitelabelGeneralTab = subusersManagerTab.find("#subusers-whitelabel-general-tab");
 
-const saveBusinessSubuserButton = settingsManageSubusersBreadcrumb.find("#saveBusinessSubuserButton");
+const subusersWhitelabelGeneralTab = subusersManagerTab.find("#subusers-whitelabel-general-tab");
 
 // Sub Users General
 const businessSubuserEmail = subusersManagerTab.find("#businessSubuserEmail");
@@ -62,22 +59,17 @@ const businessSubuserLoginDisabledReasonInput = subusersManagerTab.find("#busine
 const businessSubuserWhiteLabelPlatformName = subusersManagerTab.find("#business-subuser-white-label-platform-name");
 const businessSubuserWhiteLabelPlatformTitle = subusersManagerTab.find("#business-subuser-white-label-platform-title");
 const businessSubuserWhiteLabelPlatformDescription = subusersManagerTab.find("#business-subuser-white-label-platform-description");
+const businessSubuserWhiteLabelDomainIdentifier = subusersManagerTab.find("#business-subuser-white-label-domain-identifier");
 
 // White Label Styles
+const businessSubuserWhiteLabelLogoPreview = subusersManagerTab.find("#business-subuser-white-label-logo-preview");
+const businessSubuserWhiteLabelLogo = subusersManagerTab.find("#business-subuser-white-label-logo");
+
+const businessSubuserWhiteLabelFaviconPreview = subusersManagerTab.find("#business-subuser-white-label-favicon-preview");
+const businessSubuserWhiteLabelFavicon = subusersManagerTab.find("#business-subuser-white-label-favicon");
+
 const businessSubuserWhiteLabelCustomCss = subusersManagerTab.find("#business-subuser-white-label-custom-css");
 const businessSubuserWhiteLabelCustomJs = subusersManagerTab.find("#business-subuser-white-label-custom-js");
-
-// White Label Iqra Domain
-const businessSubuserWhiteLabelIqraSubdomainContainer = subusersManagerTab.find("#business-subuser-white-label-iqra-subdomain-container");
-const businessSubuserWhiteLabelIqraSubdomain = businessSubuserWhiteLabelIqraSubdomainContainer.find("#business-subuser-white-label-iqra-subdomain");
-
-// White Label Custom Domain
-const businessSubuserWhiteLabelCustomDomainContainer = subusersManagerTab.find("#business-subuser-white-label-custom-domain-container");
-const businessSubuserWhiteLabelCustomDomain = businessSubuserWhiteLabelCustomDomainContainer.find("#business-subuser-white-label-custom-domain");
-const businessSubuserWhiteLabelSslEnabled = subusersManagerTab.find("#business-subuser-white-label-ssl-enabled");
-const businessSubuserWhiteLabelSslConfig = subusersManagerTab.find("#business-subuser-white-label-ssl-config");
-const businessSubuserWhiteLabelSslPrivateKey = subusersManagerTab.find("#business-subuser-white-label-ssl-private-key");
-const businessSubuserWhiteLabelSslCertificate = subusersManagerTab.find("#business-subuser-white-label-ssl-certificate");
 
 // Permissions Routing
 const businessSubuserRoutingTabEnabled = subusersManagerTab.find("#business-subuser-routing-tab-enabled");
@@ -153,6 +145,29 @@ const businessSubuserSettingsUsersTabEnabled = subusersManagerTab.find("#busines
 const businessSubuserSettingsEditUsers = subusersManagerTab.find("#business-subuser-settings-edit-users");
 const businessSubuserSettingsAddUsers = subusersManagerTab.find("#business-subuser-settings-add-users");
 const businessSubuserSettingsDeleteUsers = subusersManagerTab.find("#business-subuser-settings-delete-users");
+
+// Domains
+const settingsManageDomainsBreadcrumb = settingsTab.find("#settings-manage-domains-breadcrumb");
+const saveBusinessDomainButton = settingsTab.find("#saveBusinessDomainButton");
+
+const businessDomainsListTab = settingsTab.find("#businessDomainsListTab");
+const businessDomainsTable = businessDomainsListTab.find("#businessDomainsTable");
+
+const businessDomainsManagerTab = settingsTab.find("#businessDomainsManagerTab");
+
+const businessDomainsDomainType = businessDomainsManagerTab.find("#business-domains-domain-type");
+
+// Iqra Domain
+const businessDomainsIqraSubdomainContainer = businessDomainsManagerTab.find("#business-domains-iqra-subdomain-container");
+const businessDomainsIqraSubdomain = businessDomainsIqraSubdomainContainer.find("#business-domains-iqra-subdomain");
+
+// Custom Domain
+const businessDomainsCustomDomainContainer = businessDomainsManagerTab.find("#business-domains-custom-domain-container");
+const businessDomainsCustomDomain = businessDomainsCustomDomainContainer.find("#business-domains-custom-domain");
+const businessDomainsSslEnabled = businessDomainsManagerTab.find("#business-domains-ssl-enabled");
+const businessDomainsSslConfig = businessDomainsManagerTab.find("#business-domains-ssl-config");
+const businessDomainsSslPrivateKey = businessDomainsManagerTab.find("#business-domains-ssl-private-key");
+const businessDomainsSslCertificate = businessDomainsManagerTab.find("#business-domains-ssl-certificate");
 
 // API Functions
 
@@ -400,6 +415,47 @@ function CreateBusinessSubusersTableElement(userData)
     return element;
 }
 
+function CreateBusinessDomainTableElement(domainData)
+{
+    let element = "";
+    
+    if (domainData.type.value == 1)
+    {
+        element = $(`
+            <tr domain-id="${domainData.id}">
+                <td>${domainData.subDomain}.${domainData.iqraDomain}</td>
+                <td>
+                    <button domain-id="${domainData.id}" class="btn btn-primary" button-type="settingsDomainEdit" type="button">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button domain-id="${domainData.id}" class="btn btn-danger" button-type="settingsDomainRemove" type="button">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    }
+
+    if (domainData.type.value == 2)
+    {
+        element = $(`
+            <tr domain-id="${domainData.id}">
+                <td>${domainData.customDomain}</td>
+                <td>
+                    <button domain-id="${domainData.id}" class="btn btn-primary" button-type="settingsDomainEdit" type="button">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button domain-id="${domainData.id}" class="btn btn-danger" button-type="settingsDomainRemove" type="button">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    }
+
+    return element;
+}
+
 function FillSettingsTab()
 {
     function FillSettingsGeneralTab()
@@ -412,7 +468,7 @@ function FillSettingsTab()
         }
         if (BusinessFullData.businessData.logoURL && BusinessFullData.businessData.logoURL != null)
         {
-            settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL);
+            settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL + ".webp");
         }
         else
         {
@@ -456,14 +512,24 @@ function FillSettingsTab()
         else
         {
             BusinessFullData.businessData.subUsers.forEach((userData, index) => {
-                businessSubusersTable.append(CreateBusinessSubusersTableElement(userData));
+                businessSubusersTable.find("tbody").append(CreateBusinessSubusersTableElement(userData));
             })
         }
     }
 
     function FillSettingsDomainsTab()
     {
-        alert("FillSettingsDomainsTab TODO");
+        businessDomainsTable.find("tbody").empty();
+        if (BusinessFullData.businessWhiteLabelDomain.length === 0)
+        {
+            businessDomainsTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="2">No domains added yet...</td></tr>');
+        }
+        else
+        {
+            BusinessFullData.businessWhiteLabelDomain.forEach((value, index) => {
+                businessDomainsTable.find("tbody").append(CreateBusinessDomainTableElement(value));
+            })
+        }
     }
 
     FillSettingsGeneralTab();
@@ -509,7 +575,8 @@ function ShowUsersListTab()
 
 function ResetUsersManageTab()
 {
-    subusersManagerTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
+    subusersManagerTab.find("input, textarea").val("");
+    subusersManagerTab.find(".is-invalid").removeClass("is-invalid");
     subusersManagerTab.find("input[type=checkbox]").prop("checked", false).change();
     subusersManagerTab.find("table tbody").empty();
 
@@ -523,17 +590,29 @@ function ResetUsersManageTab()
         Array.prototype.slice.call(businessSubuserWhiteLabelFavicon[0].files, 1);
     }
 
-    businessSubuserWhiteLabelLogoPreview.attr("src", "/img/logo/logo-colored-light.png");
-    businessSubuserWhiteLabelFaviconPreview.attr("src", "/img/logo/logo-colored-light.png");
+    businessSubuserWhiteLabelLogoPreview.attr("src", DefaultWhiteLabelLogoSRC);
+    businessSubuserWhiteLabelFaviconPreview.attr("src", DefaultWhiteLabelFaviconSRC);
 
-    businessSubuserWhiteLabelDomainType.val("Unknown").change();
+    businessSubuserWhiteLabelDomainIdentifier.empty();
+    businessSubuserWhiteLabelDomainIdentifier.append("<option value='-1' disabled selected>Select domain</option>");
+    BusinessFullData.businessWhiteLabelDomain.forEach((data, index) => {
+        if (data.type.value === 1)
+        {
+            businessSubuserWhiteLabelDomainIdentifier.append(`<option value="${data.id}">${data.subDomain}.${data.iqraDomain}</option>`);
+        }
+
+        if (data.type.value === 2)
+        {
+            businessSubuserWhiteLabelDomainIdentifier.append(`<option value="${data.id}">${data.customDomain}</option>`);
+        }
+    });
 
     businessSubuserManagerGeneralTab.click();
     businessSubuserPermissionsRoutingTab.click();
     subusersWhitelabelGeneralTab.click();
 }
 
-function FillUsersManageTab(usersData, whitelabelDomainData)
+function FillUsersManageTab(usersData)
 {
     // General
     businessSubuserEmail.val(usersData.email);
@@ -543,6 +622,7 @@ function FillUsersManageTab(usersData, whitelabelDomainData)
 
     // Permissions
     // TODO
+    alert("todo permissions fill users manage tab");
 
     // White Label
     businessSubuserWhiteLabelPlatformName.val(usersData.whitelabel.platformName);
@@ -555,35 +635,7 @@ function FillUsersManageTab(usersData, whitelabelDomainData)
     businessSubuserWhiteLabelCustomCss.val(usersData.whitelabel.customCSS);
     businessSubuserWhiteLabelCustomJs.val(usersData.whitelabel.customJavaScript);
 
-    if (whitelabelDomainData)
-    {
-        businessSubuserWhiteLabelDomainType.val(whitelabelDomainData.type).change();
-        if (whitelabelDomainData.type === "IqraSubdomain")
-        {
-            businessSubuserWhiteLabelIqraSubdomainContainer.removeClass("d-none");
-            businessSubuserWhiteLabelIqraSubdomain.val(whitelabelDomainData.subDomain);
-        }
-        else if (whitelabelDomainData.type === "CustomDomain")
-        {
-            businessSubuserWhiteLabelCustomDomainContainer.removeClass("d-none");
-            businessSubuserWhiteLabelCustomDomain.val(whitelabelDomainData.customDomain);
-
-            if (whitelabelDomainData.sslEnabled != null)
-            {
-                businessSubuserWhiteLabelSslEnabled.prop("checked", true).change();
-                businessSubuserWhiteLabelSslPrivateKey.val(whitelabelDomainData.sslPrivateKey);
-                businessSubuserWhiteLabelSslCertificate.val(whitelabelDomainData.sslCertificate);
-            }
-        }
-        else
-        {
-            businessSubuserWhiteLabelDomainType.val("Unknown").change();
-        }
-    }
-    else
-    {
-        businessSubuserWhiteLabelDomainType.val("Unknown").change();
-    }
+    businessSubuserWhiteLabelDomainIdentifier.val(usersData.whitelabel.domainId).change();
 }
 
 function ValidateSubusersGeneralFields(onlyRemove = true)
@@ -619,6 +671,77 @@ function ValidateSubusersGeneralFields(onlyRemove = true)
     else
     {
         businessSubuserPassword.removeClass("is-invalid");
+    }
+
+    return {
+        validated: validated,
+        errors: errors
+    };
+}
+
+function ValidateSubusersWhiteLabelGeneralFields(onlyRemove = true)
+{
+    let errors = [];
+    let validated = true;
+
+    if (businessSubuserWhiteLabelPlatformName.val().trim() === "")
+    {
+        validated = false;
+        errors.push("Platform name is required and can not be empty.");
+
+        if (!onlyRemove)
+        {
+            businessSubuserWhiteLabelPlatformName.addClass("is-invalid");
+        }
+    }
+    else
+    {
+        businessSubuserWhiteLabelPlatformName.removeClass("is-invalid");
+    }
+
+    if (businessSubuserWhiteLabelPlatformTitle.val().trim() === "")
+    {
+        validated = false;
+        errors.push("Platform title is required and can not be empty.");
+
+        if (!onlyRemove)
+        {
+            businessSubuserWhiteLabelPlatformTitle.addClass("is-invalid");
+        }
+    }
+    else
+    {
+        businessSubuserWhiteLabelPlatformTitle.removeClass("is-invalid");
+    }
+
+    if (businessSubuserWhiteLabelPlatformDescription.val().trim() === "")
+    {
+        validated = false;
+        errors.push("Platform description is required and can not be empty.");
+
+        if (!onlyRemove)
+        {
+            businessSubuserWhiteLabelPlatformDescription.addClass("is-invalid");
+        }
+    }
+    else
+    {
+        businessSubuserWhiteLabelPlatformDescription.removeClass("is-invalid");
+    }
+
+    if (businessSubuserWhiteLabelDomainIdentifier.val() === "-1" || businessSubuserWhiteLabelDomainIdentifier.val() === null)
+    {
+        validated = false;
+        errors.push("Domain is required and can not be empty.");
+
+        if (!onlyRemove)
+        {
+            businessSubuserWhiteLabelDomainIdentifier.addClass("is-invalid");
+        }
+    }
+    else
+    {
+        businessSubuserWhiteLabelDomainIdentifier.removeClass("is-invalid");
     }
 
     return {
@@ -990,6 +1113,11 @@ function CheckSubusersWhiteLabelHasChanges()
         hasChanges = true;
     }
 
+    if (businessSubuserWhiteLabelDomainIdentifier.val() !== CurrentManageSubUserData.whiteLabel.domainId)
+    {
+        hasChanges = true;
+    }
+
     // Styles
 
     if (businessSubuserWhiteLabelLogo[0].files.length > 0)
@@ -1126,23 +1254,16 @@ function CreateDefaultSubuserObject()
             platformName: "",
             platformTitle: "",
             platformDescription: "",
+            domainId: -1,
             logoURL: "",
             faviconIconURL: "",
             customCSS: "",
-            customJavaScript: "",
-            domainId: -1
+            customJavaScript: ""
         }
     }
 
-    var defaultUserWhiteLabelDomainObject = {
-        id: -1,
-        businessId: -1,
-        type: 0,
-    }
-
     return {
-        user: defaultUserObject,
-        whiteLabelDomain: defaultUserWhiteLabelDomainObject
+        user: defaultUserObject
     };
 }
 
@@ -1254,7 +1375,7 @@ function initSettingsTab()
     
             let file = settingsGeneralBusinessLogo[0].files[0];
             if (!file) {
-                settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL);
+                settingsGeneralBusinessLogoPreview.attr("src", BusinessLogoURL + "/" + BusinessFullData.businessData.logoURL + ".webp");
                 CheckIfSettingsHasChanges();
                 return;
             }
@@ -1476,7 +1597,6 @@ function initSettingsTab()
             let newObject = CreateDefaultSubuserObject();
 
             CurrentManageSubUserData = newObject.user;
-            CurrentManageSubUserWhiteLabelDomainData = newObject.whiteLabelDomain;
 
             ShowUsersManageTab();
         });
@@ -1534,12 +1654,12 @@ function initSettingsTab()
             reader.readAsDataURL(file);
         });
 
-        businessSubuserWhiteLabelDomainType.on("change", (event) => {
+        businessDomainsDomainType.on("change", (event) => {
             let current = $(event.currentTarget);
             let currentValue = current.val();
 
-            businessSubuserWhiteLabelIqraSubdomainContainer.addClass("d-none");
-            businessSubuserWhiteLabelCustomDomainContainer.addClass("d-none");
+            businessDomainsIqraSubdomainContainer.addClass("d-none");
+            businessDomainsCustomDomainContainer.addClass("d-none");
 
             if (currentValue === "Unknown")
             { 
@@ -1548,32 +1668,32 @@ function initSettingsTab()
 
             if (currentValue === "IqraSubdomain")
             {
-                businessSubuserWhiteLabelIqraSubdomainContainer.removeClass("d-none");
+                businessDomainsIqraSubdomainContainer.removeClass("d-none");
             }
             else if (currentValue === "CustomDomain")
             {
-                businessSubuserWhiteLabelCustomDomainContainer.removeClass("d-none");
+                businessDomainsCustomDomainContainer.removeClass("d-none");
             }
         });
 
-        businessSubuserWhiteLabelSslEnabled.on("change", (event) => {
+        businessDomainsSslEnabled.on("change", (event) => {
             let current = $(event.currentTarget);
             let currentChecked = current.prop("checked");
 
             if (currentChecked)
             {
-                businessSubuserWhiteLabelSslConfig.removeClass("d-none");
+                businessDomainsSslConfig.removeClass("d-none");
             }
             else
             {
-                businessSubuserWhiteLabelSslConfig.addClass("d-none");
+                businessDomainsSslConfig.addClass("d-none");
             }
         });
     
         $("#settings-inner-tab button.nav-link").on("show.bs.tab", (event) => {
             let newTabId = $(event.target).attr("id");
 
-            if (newTabId === "settings-inner-users-tab")
+            if (newTabId === "settings-inner-users-tab" || newTabId === "settings-inner-domains-tab")
             {
                 settingsSaveButton.addClass("d-none");
             }
@@ -1584,43 +1704,45 @@ function initSettingsTab()
         });
 
         $("#nav-bar").on('tabChange', async(event) => {
-            let settingsChanges = CheckIfSettingsHasChanges(false);
+            if (IsManagerDomainTabOpened)
+            {
+                // todo
+            }
 
             if (IsManageUserTabOpened)
             {
-                // todo check if has changes
-                if (ManageUserType === "new")
-                {
-
-                }
-                else if (ManageUserType === "edit")
-                {
-
-                }
-
-                var confirmCloseMangeUserDialog = new BootstrapConfirmDialog(
-                    {
-                        title: 'Discard Subuser Edit',
-                        message: 'You currently have manage subuser tab opened. Are you sure you want to discard these changes and leave the settings tab?',
-                        confirmText: 'Discard',
-                        cancelText: 'Cancel', 
-                        confirmButtonClass: 'btn-danger',
-                        modalClass: 'modal-lg',
-                    }
-                );
-
-                var confirmCloseMangeUserResult = await confirmCloseMangeUserDialog.show(); 
-                if (confirmCloseMangeUserResult)
+                let manageSubuserChanges = CheckIfSubusersManageHasChanges(false);
+                if (!manageSubuserChanges)
                 {
                     switchBackToBusinessSubusersTab.click();
                 }
                 else
                 {
-                    event.preventDefault();
-                    return;
-                }
+                    var confirmCloseMangeUserDialog = new BootstrapConfirmDialog(
+                        {
+                            title: 'Discard Subuser Edit',
+                            message: 'You currently have manage subuser tab opened. Are you sure you want to discard these changes and leave the settings tab?',
+                            confirmText: 'Discard',
+                            cancelText: 'Cancel', 
+                            confirmButtonClass: 'btn-danger',
+                            modalClass: 'modal-lg',
+                        }
+                    );
+
+                    var confirmCloseMangeUserResult = await confirmCloseMangeUserDialog.show(); 
+                    if (confirmCloseMangeUserResult)
+                    {
+                        switchBackToBusinessSubusersTab.click();
+                    }
+                    else
+                    {
+                        event.preventDefault();
+                        return;
+                    }
+                } 
             }
 
+            let settingsChanges = CheckIfSettingsHasChanges(false);
             if (settingsChanges.hasChanges)
             {
                 let changesInTabs = [];
@@ -1667,6 +1789,7 @@ function initSettingsTab()
             if (IsManageUserTabOpened == false) return;
 
             ValidateSubusersGeneralFields(true);
+            ValidateSubusersWhiteLabelGeneralFields(true);
             CheckIfSubusersManageHasChanges();
         });
 
@@ -1678,7 +1801,19 @@ function initSettingsTab()
             {
                 AlertManager.createAlert({
                     type: 'danger',
-                    message: 'Validation for required fields failed.<br><br>' + generalTabValidation.errors.join('<br>'),
+                    message: 'Validation for required general tab fields failed.<br><br>' + generalTabValidation.errors.join('<br>'),
+                    timeout: 6000
+                });
+
+                return;
+            }
+
+            let whiteLabelGeneralTabValidation = ValidateSubusersWhiteLabelGeneralFields(false);
+            if (!whiteLabelGeneralTabValidation.validated)
+            {
+                AlertManager.createAlert({
+                    type: 'danger',
+                    message: 'Validation for required white label tab general tab fields failed.<br><br>' + whiteLabelGeneralTabValidation.errors.join('<br>'),
                     timeout: 6000
                 });
 

@@ -60,12 +60,15 @@ namespace IqraInfrastructure.Services.Business
                 Id = businessWhiteLabelId,
                 BusinessId = bussinessId,
                 SubDomain = subDomainHash,
+                IqraDomain = "iqra.business", // todo, should be configurable
                 Type = BusinessUserWhiteLabelDomainTypeEnum.IqraSubdomain
             };
             
             await _businessWhiteLabelDomainRepository.AddBusinessWhiteLabelDomainAsync(businessWhiteLabelDomain);
 
             await _businessAppRepository.AddBusinessAppAsync(businessApp);
+
+            await _businessRepository.AddBusinessAsync(businessData);
 
             return businessData;
         }
