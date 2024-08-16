@@ -1992,7 +1992,35 @@ function initSettingsTab()
         $("#nav-bar").on('tabChange', async(event) => {
             if (IsManagerDomainTabOpened)
             {
-                // todo
+                let manageDomainChanges = CheckIfSettingsDomainManagerHasChanges(false);
+                if (!manageDomainChanges)
+                {
+                    switchBackToBusinessDomainsTab.click();
+                }
+                else
+                {
+                    var confirmCloseMangeDomainDialog = new BootstrapConfirmDialog(
+                        {
+                            title: 'Discard Domain Edit',
+                            message: 'You currently have manage domain tab opened. Are you sure you want to discard these changes and leave the settings tab?',
+                            confirmText: 'Discard',
+                            cancelText: 'Cancel', 
+                            confirmButtonClass: 'btn-danger',
+                            modalClass: 'modal-lg',
+                        }
+                    );
+
+                    var confirmCloseMangeDomainResult = await confirmCloseMangeDomainDialog.show(); 
+                    if (confirmCloseMangeDomainResult)
+                    {
+                        switchBackToBusinessDomainsTab.click();
+                    }
+                    else
+                    {
+                        event.preventDefault();
+                        return;
+                    }
+                }
             }
 
             if (IsManageUserTabOpened)
