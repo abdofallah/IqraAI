@@ -148,9 +148,12 @@ const businessSubuserSettingsDeleteUsers = subusersManagerTab.find("#business-su
 
 // Domains
 const settingsManageDomainsBreadcrumb = settingsTab.find("#settings-manage-domains-breadcrumb");
+const currentBusinessDomainName = settingsTab.find("#currentBusinessDomainName");
+const switchBackToBusinessDomainsTab = settingsTab.find("#switchBackToBusinessDomainsTab");
 const saveBusinessDomainButton = settingsTab.find("#saveBusinessDomainButton");
 
 const businessDomainsListTab = settingsTab.find("#businessDomainsListTab");
+const addNewBusinessDomainButton = businessDomainsListTab.find("#addNewBusinessDomainButton");
 const businessDomainsTable = businessDomainsListTab.find("#businessDomainsTable");
 
 const businessDomainsManagerTab = settingsTab.find("#businessDomainsManagerTab");
@@ -162,10 +165,13 @@ const businessDomainsIqraSubdomainContainer = businessDomainsManagerTab.find("#b
 const businessDomainsIqraSubdomain = businessDomainsIqraSubdomainContainer.find("#business-domains-iqra-subdomain");
 
 // Custom Domain
+const businessDomainsSslConfig = businessDomainsManagerTab.find("#business-domains-ssl-config");
+
+const businessDomainSSLTypeCustom = businessDomainsManagerTab.find("#business-domain-ssl-type-custom");
+
 const businessDomainsCustomDomainContainer = businessDomainsManagerTab.find("#business-domains-custom-domain-container");
 const businessDomainsCustomDomain = businessDomainsCustomDomainContainer.find("#business-domains-custom-domain");
 const businessDomainsSslEnabled = businessDomainsManagerTab.find("#business-domains-ssl-enabled");
-const businessDomainsSslConfig = businessDomainsManagerTab.find("#business-domains-ssl-config");
 const businessDomainsSslPrivateKey = businessDomainsManagerTab.find("#business-domains-ssl-private-key");
 const businessDomainsSslCertificate = businessDomainsManagerTab.find("#business-domains-ssl-certificate");
 
@@ -219,8 +225,32 @@ function SaveBusinessSubuser(changes, successCallback, errorCallback)
     });
 }
 
+function SaveBusinessDomain(changes, successCallback, errorCallback)
+{
+    $.ajax({
+        type: "POST",
+        url: "/app/user/business/" + CurrentBusinessId + "/domain/save",
+        data: changes,
+        dataType: "json",
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (!response.success)
+            {
+                errorCallback(response, false);
+                return;
+            }
+
+            successCallback(response);
+        },
+        error: (error) => {
+            errorCallback(error, true);
+        }
+    });
+}
+
 // Functions
-function ValidateGeneralTabFields(onlyRemove = true)
+function ValidateSettingsGeneralTabFields(onlyRemove = true)
 {
     let errors = [];
     let validated = true;
@@ -247,7 +277,7 @@ function ValidateGeneralTabFields(onlyRemove = true)
     };
 }
 
-function CreateAddedLanguagesElement(code, name) {
+function CreateSettingsAddedLanguagesElement(code, name) {
     let element = $(`
         <tr language-code="${code}">
             <td>${code}</td>
@@ -263,7 +293,7 @@ function CreateAddedLanguagesElement(code, name) {
     return element;
 }
 
-function GetCurrentAddedLanguages()
+function GetSettingsCurrentAddedLanguages()
 {
     let currentAddedLanguages = [];
 
@@ -280,7 +310,7 @@ function GetCurrentAddedLanguages()
     return currentAddedLanguages;
 }
 
-function CheckGeneralTabHasChanges()
+function CheckSettingsGeneralTabHasChanges()
 {
     let changes = {};
     let hasChanges = false;
@@ -303,9 +333,9 @@ function CheckGeneralTabHasChanges()
     };
 }
 
-function CheckLanguagesTabHasChanges()
+function CheckSettingsLanguagesTabHasChanges()
 {
-    let currentAddedLanguages = GetCurrentAddedLanguages();
+    let currentAddedLanguages = GetSettingsCurrentAddedLanguages();
     let businessLanguages = BusinessFullData.businessData.languages;
 
     if (currentAddedLanguages.length !== businessLanguages.length)
@@ -363,8 +393,8 @@ function CheckLanguagesTabHasChanges()
 }
 
 function CheckIfSettingsHasChanges(enableDisableButton = true) {
-    let generalTabHasChanges = CheckGeneralTabHasChanges();
-    let languageTabHasChanges = CheckLanguagesTabHasChanges();
+    let generalTabHasChanges = CheckSettingsGeneralTabHasChanges();
+    let languageTabHasChanges = CheckSettingsLanguagesTabHasChanges();
 
     let hasChanges = generalTabHasChanges.hasChanges || languageTabHasChanges.hasChanges;
 
@@ -399,7 +429,7 @@ function CheckIfSettingsHasChanges(enableDisableButton = true) {
     return result;
 }
 
-function CreateBusinessSubusersTableElement(userData)
+function CreateSettingsBusinessSubusersTableElement(userData)
 {
     let element = $(`
         <tr user-id="${userData.email}">
@@ -415,7 +445,7 @@ function CreateBusinessSubusersTableElement(userData)
     return element;
 }
 
-function CreateBusinessDomainTableElement(domainData)
+function CreateSettingsBusinessDomainTableElement(domainData)
 {
     let element = "";
     
@@ -494,7 +524,7 @@ function FillSettingsTab()
                     return data.Code === value;
                 });
     
-                let element = CreateAddedLanguagesElement(countryCodeLanguage.Code, countryCodeLanguage.Name);
+                let element = CreateSettingsAddedLanguagesElement(countryCodeLanguage.Code, countryCodeLanguage.Name);
                 settingsAddedLanguagesList.append(element);
 
                 settingsLanguageAddSelect.find(`option[value="${value}"]`).remove();
@@ -512,7 +542,7 @@ function FillSettingsTab()
         else
         {
             BusinessFullData.businessData.subUsers.forEach((userData, index) => {
-                businessSubusersTable.find("tbody").append(CreateBusinessSubusersTableElement(userData));
+                businessSubusersTable.find("tbody").append(CreateSettingsBusinessSubusersTableElement(userData));
             })
         }
     }
@@ -527,7 +557,7 @@ function FillSettingsTab()
         else
         {
             BusinessFullData.businessWhiteLabelDomain.forEach((value, index) => {
-                businessDomainsTable.find("tbody").append(CreateBusinessDomainTableElement(value));
+                businessDomainsTable.find("tbody").append(CreateSettingsBusinessDomainTableElement(value));
             })
         }
     }
@@ -538,7 +568,7 @@ function FillSettingsTab()
     FillSettingsDomainsTab();
 }
 
-function ShowUsersManageTab()
+function ShowSettingsUsersManageTab()
 {
     settingsInnerTabContainer.removeClass("show");
     businessSubusersListTab.removeClass("show");
@@ -556,7 +586,7 @@ function ShowUsersManageTab()
     }, 300);
 }
 
-function ShowUsersListTab()
+function ShowSettingsUsersListTab()
 {
     settingsManageSubusersBreadcrumb.removeClass("show");
     subusersManagerTab.removeClass("show");
@@ -573,7 +603,7 @@ function ShowUsersListTab()
     }, 300);
 }
 
-function ResetUsersManageTab()
+function ResetSettingsUsersManageTab()
 {
     subusersManagerTab.find("input, textarea").val("");
     subusersManagerTab.find(".is-invalid").removeClass("is-invalid");
@@ -612,7 +642,7 @@ function ResetUsersManageTab()
     subusersWhitelabelGeneralTab.click();
 }
 
-function FillUsersManageTab(usersData)
+function FillSettingsUsersManageTab(usersData)
 {
     // General
     businessSubuserEmail.val(usersData.email);
@@ -638,7 +668,7 @@ function FillUsersManageTab(usersData)
     businessSubuserWhiteLabelDomainIdentifier.val(usersData.whitelabel.domainId).change();
 }
 
-function ValidateSubusersGeneralFields(onlyRemove = true)
+function ValidateSettingsSubusersGeneralFields(onlyRemove = true)
 {
     let errors = [];
     let validated = true;
@@ -679,7 +709,7 @@ function ValidateSubusersGeneralFields(onlyRemove = true)
     };
 }
 
-function ValidateSubusersWhiteLabelGeneralFields(onlyRemove = true)
+function ValidateSettingsSubusersWhiteLabelGeneralFields(onlyRemove = true)
 {
     let errors = [];
     let validated = true;
@@ -750,7 +780,7 @@ function ValidateSubusersWhiteLabelGeneralFields(onlyRemove = true)
     };
 }
 
-function CheckSubusersGeneralTabHasChanges()
+function CheckSettingsSubusersGeneralTabHasChanges()
 {
     let hasChanges = false;
 
@@ -786,7 +816,7 @@ function CheckSubusersGeneralTabHasChanges()
     return hasChanges;
 }
 
-function CheckSubusersPermissionsTabHasChanges()
+function CheckSettingsSubusersPermissionsTabHasChanges()
 {
     let hasChanges = false;
 
@@ -1092,7 +1122,7 @@ function CheckSubusersPermissionsTabHasChanges()
     return hasChanges;
 }
 
-function CheckSubusersWhiteLabelHasChanges()
+function CheckSettingsSubusersWhiteLabelHasChanges()
 {
     let hasChanges = false;
 
@@ -1133,11 +1163,11 @@ function CheckSubusersWhiteLabelHasChanges()
     return hasChanges;
 }
 
-function CheckIfSubusersManageHasChanges(enableDisableButton = true)
+function CheckIfSettingsSubusersManageHasChanges(enableDisableButton = true)
 {
-    let subusersGeneralTabChanges = CheckSubusersGeneralTabHasChanges();
-    let subusersPermissionTabChanges = CheckSubusersPermissionsTabHasChanges();
-    let subusersWhiteLabelTabChanges = CheckSubusersWhiteLabelHasChanges();
+    let subusersGeneralTabChanges = CheckSettingsSubusersGeneralTabHasChanges();
+    let subusersPermissionTabChanges = CheckSettingsSubusersPermissionsTabHasChanges();
+    let subusersWhiteLabelTabChanges = CheckSettingsSubusersWhiteLabelHasChanges();
 
     let hasChanges = subusersGeneralTabChanges || subusersPermissionTabChanges || subusersWhiteLabelTabChanges;
 
@@ -1156,7 +1186,7 @@ function CheckIfSubusersManageHasChanges(enableDisableButton = true)
     return hasChanges;
 }
 
-function CreateDefaultSubuserObject()
+function CreateSettingsDefaultSubuserObject()
 {
     var defaultUserObject = {
         email: "",
@@ -1267,7 +1297,7 @@ function CreateDefaultSubuserObject()
     };
 }
 
-function EventListenersSubusersPermissionsEnableHelper()
+function EventListenersSettingsSubusersPermissionsEnableHelper()
 {
     // Routings
     EnableFullPermissionHelper(
@@ -1362,6 +1392,262 @@ function EventListenersSubusersPermissionsEnableHelper()
     );
 }
 
+function ShowSettingsDomainsManageTab()
+{
+    settingsInnerTabContainer.removeClass("show");
+    businessDomainsListTab.removeClass("show");
+
+    setTimeout(() => {
+        settingsInnerTabContainer.addClass("d-none");
+        businessDomainsListTab.addClass("d-none");
+
+        settingsManageDomainsBreadcrumb.removeClass("d-none");
+        businessDomainsManagerTab.removeClass("d-none");
+        setTimeout(() => {
+            settingsManageDomainsBreadcrumb.addClass("show");
+            businessDomainsManagerTab.addClass("show");
+        }, 10);
+    }, 300);
+}
+
+function ShowSettingsDomainsListTab()
+{
+    settingsManageDomainsBreadcrumb.removeClass("show");
+    businessDomainsManagerTab.removeClass("show");
+    setTimeout(() => {
+        settingsManageDomainsBreadcrumb.addClass("d-none");
+        businessDomainsManagerTab.addClass("d-none");
+
+        settingsInnerTabContainer.removeClass("d-none");
+        businessDomainsListTab.removeClass("d-none");
+        setTimeout(() => {
+            settingsInnerTabContainer.addClass("show");
+            businessDomainsListTab.addClass("show");
+        }, 10);
+    }, 300);
+}
+
+function CreateSettingsDefaultDomainObject()
+{
+    let newObject = {
+        id: -1,
+        type: {
+            value: 0,
+            name: "Unknown"
+        },
+        subDomain: "",
+        iqraDomain: "",
+        customDomain: "",
+        sslEnabled: false,
+        useLetsEncryptSSL: true,
+        sslPrivateKey: "",
+        sslCertificate: ""
+    }
+
+    return newObject;
+}
+
+function ResetSettingsDomainsManageTab()
+{
+    businessDomainsManagerTab.find("input, textarea").val("");
+    businessDomainsManagerTab.find(".is-invalid").removeClass("is-invalid");
+    businessDomainsManagerTab.find("input[type=checkbox]").prop("checked", false).change();
+
+    businessDomainsDomainType.val("Unknown").change();
+    businessDomainsSslConfig.find('input[name="businessDomainSSLType"][ssl-type="free"]').click().change();
+}
+
+function FillSettingsDomainsManageTab(domainData)
+{
+    if (domainData.type.value == 1)
+    {
+        businessDomainsDomainType.val("IqraSubdomain").change();
+        businessDomainsIqraSubdomain.val(domainData.subDomain);
+        businessDomainsIqraSubdomain.parent().find("span.input-group-text").text(domainData.iqraDomain);
+    }
+
+    if (domainData.type.value == 2)
+    {
+        businessDomainsDomainType.val("CustomDomain").change();
+        businessDomainsCustomDomain.text(domainData.customDomain);
+
+        if (domainData.sslEnabled)
+        {
+            businessDomainsSslEnabled.prop("checked", true).change();
+
+            if (!domainData.useLetsEncryptSSL)
+            {
+                businessDomainsSslConfig.find('input[name="businessDomainSSLType"][ssl-type="custom"]').click().change();
+
+                businessDomainsSslCertificate.val(domainData.sslCertificate);
+                businessDomainsSslPrivateKey.val(domainData.sslPrivateKey);
+            }
+        }
+    }
+}
+
+function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
+{
+    let hasChanges = false;
+
+    let currentDomainType = businessDomainsDomainType.val();
+    if (CurrentManageDomainData.type.name != currentDomainType)
+    {
+        hasChanges = true;
+    }
+    else
+    {
+        if (currentDomainType == "IqraSubdomain")
+        {
+            if (businessDomainsIqraSubdomain.val() != CurrentManageDomainData.subDomain)
+            {
+                hasChanges = true;
+            }
+        }
+        else if (currentDomainType == "CustomDomain")
+        {
+            if (businessDomainsCustomDomain.text() != CurrentManageDomainData.customDomain)
+            {
+                hasChanges = true;
+            }
+
+            let isSSLEnabled = businessDomainsSslEnabled.prop("checked");
+            if (isSSLEnabled && CurrentManageDomainData.sslEnabled == null)
+            {
+                hasChanges = true;
+            }
+            else if (isSSLEnabled && CurrentManageDomainData.sslEnabled)
+            {
+                let checkedSSLType = businessDomainsSslConfig.find('input[name="businessDomainSSLType"]:checked').attr("ssl-type");
+                if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL == null)
+                {
+                    hasChanges = true;
+                }
+                else if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL)
+                {
+                    if (businessDomainsSslCertificate.val() != CurrentManageDomainData.sslCertificate)
+                    {
+                        hasChanges = true;
+                    }
+
+                    if (businessDomainsSslPrivateKey.val() != CurrentManageDomainData.sslPrivateKey)
+                    {
+                        hasChanges = true;
+                    }
+                }
+            }
+        }
+    }
+
+    if (enableDisableButton)
+    {
+        if (hasChanges)
+        {
+            saveBusinessDomainButton.prop("disabled", false);
+        }
+        else
+        {
+            saveBusinessDomainButton.prop("disabled", true);
+        }
+    }
+
+    return hasChanges;
+}
+
+function ValidateSettingsDomainManageFields(onlyRemove = true)
+{
+    let errors = [];
+    let validated = true;
+
+    let domainType = businessDomainsDomainType.val();
+    if (domainType == "Unknown")
+    {
+        validated = false;
+        errors.push("Domain type is required and can not be empty.");
+
+        if (!onlyRemove)
+        {
+            businessDomainsDomainType.addClass("is-invalid");
+        }
+    }
+    else
+    {
+        businessDomainsDomainType.removeClass("is-invalid");
+    }
+
+    if (domainType == "IqraSubdomain")
+    {
+        if (businessDomainsIqraSubdomain.val() == "")
+        {
+            validated = false;
+            errors.push("Subdomain name is required and can not be empty.");
+
+            if (!onlyRemove)
+            {
+                businessDomainsIqraSubdomain.addClass("is-invalid");
+            }
+        }
+        else
+        {
+            businessDomainsIqraSubdomain.removeClass("is-invalid");
+        }
+    }
+
+    if (domainType == "CustomDomain")
+    {
+        if (businessDomainsCustomDomain.val() == "")
+        {
+            validated = false;
+            errors.push("Custom domain name is required and can not be empty.");
+
+            if (!onlyRemove)
+            {
+                businessDomainsCustomDomain.addClass("is-invalid");
+            }
+        }
+        else
+        {
+            businessDomainsCustomDomain.removeClass("is-invalid");
+        }
+
+        let domainSSLType = businessDomainsSslConfig.find('input[name="businessDomainSSLType"]:checked').attr("ssl-type");
+        if (domainSSLType == "custom")
+        {
+            if (businessDomainsSslCertificate.val() == "")
+            {
+                validated = false;
+                errors.push("Certificate is required and can not be empty.");
+
+                if (!onlyRemove)
+                {
+                    businessDomainsSslCertificate.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                businessDomainsSslCertificate.removeClass("is-invalid");
+            }
+
+            if (businessDomainsSslPrivateKey.val() == "")
+            {
+                validated = false;
+                errors.push("Private key is required and can not be empty.");
+
+                if (!onlyRemove)
+                {
+                    businessDomainsSslPrivateKey.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                businessDomainsSslPrivateKey.removeClass("is-invalid");
+            }
+        }
+    }
+
+    return { validated: validated, errors: errors };
+}
+
 function initSettingsTab()
 {
     $(document).ready(() => {
@@ -1422,7 +1708,7 @@ function initSettingsTab()
         });
     
         settingsGeneralBusinessName.on("input", (event) => {
-            ValidateGeneralTabFields(true);
+            ValidateSettingsGeneralTabFields(true);
             CheckIfSettingsHasChanges();
         });
     
@@ -1452,7 +1738,7 @@ function initSettingsTab()
                 noNoticeTr.remove();
             }
     
-            settingsAddedLanguagesList.find("tbody").append(CreateAddedLanguagesElement(countryCodeLanguage.Code, countryCodeLanguage.Name));
+            settingsAddedLanguagesList.find("tbody").append(CreateSettingsAddedLanguagesElement(countryCodeLanguage.Code, countryCodeLanguage.Name));
     
             settingsLanguageAddSelect.val("none");
             settingsLanguageAddButton.prop("disabled", true);
@@ -1507,7 +1793,7 @@ function initSettingsTab()
         settingsSaveButton.on("click", (event) => {
             event.preventDefault();
 
-            let generalTabValidation = ValidateGeneralTabFields(false);
+            let generalTabValidation = ValidateSettingsGeneralTabFields(false);
             if (!generalTabValidation.validated)
             {
                 AlertManager.createAlert({
@@ -1587,18 +1873,18 @@ function initSettingsTab()
         addNewBusinessSubuserButton.on("click", (event) => {
             event.preventDefault();
 
-            ResetUsersManageTab();
+            ResetSettingsUsersManageTab();
             currentBusinessSubuserName.text("New Subuser");
             saveBusinessSubuserButton.prop("disabled", true);
 
             IsManageUserTabOpened = true;
             ManageUserType = "new";
 
-            let newObject = CreateDefaultSubuserObject();
+            let newObject = CreateSettingsDefaultSubuserObject();
 
             CurrentManageSubUserData = newObject.user;
 
-            ShowUsersManageTab();
+            ShowSettingsUsersManageTab();
         });
 
         switchBackToBusinessSubusersTab.on("click", (event) => {
@@ -1607,7 +1893,7 @@ function initSettingsTab()
             IsManageUserTabOpened = false;
             ManageUserType = null;
 
-            ShowUsersListTab();
+            ShowSettingsUsersListTab();
         });
 
         businessSubuserWhiteLabelLogoPreview.on("click", (event) => {
@@ -1711,7 +1997,7 @@ function initSettingsTab()
 
             if (IsManageUserTabOpened)
             {
-                let manageSubuserChanges = CheckIfSubusersManageHasChanges(false);
+                let manageSubuserChanges = CheckIfSettingsSubusersManageHasChanges(false);
                 if (!manageSubuserChanges)
                 {
                     switchBackToBusinessSubusersTab.click();
@@ -1788,15 +2074,15 @@ function initSettingsTab()
 
             if (IsManageUserTabOpened == false) return;
 
-            ValidateSubusersGeneralFields(true);
-            ValidateSubusersWhiteLabelGeneralFields(true);
-            CheckIfSubusersManageHasChanges();
+            ValidateSettingsSubusersGeneralFields(true);
+            ValidateSettingsSubusersWhiteLabelGeneralFields(true);
+            CheckIfSettingsSubusersManageHasChanges();
         });
 
         saveBusinessSubuserButton.on("click", (event) => {
             event.preventDefault();
 
-            let generalTabValidation = ValidateSubusersGeneralFields(false);
+            let generalTabValidation = ValidateSettingsSubusersGeneralFields(false);
             if (!generalTabValidation.validated)
             {
                 AlertManager.createAlert({
@@ -1808,7 +2094,7 @@ function initSettingsTab()
                 return;
             }
 
-            let whiteLabelGeneralTabValidation = ValidateSubusersWhiteLabelGeneralFields(false);
+            let whiteLabelGeneralTabValidation = ValidateSettingsSubusersWhiteLabelGeneralFields(false);
             if (!whiteLabelGeneralTabValidation.validated)
             {
                 AlertManager.createAlert({
@@ -1821,6 +2107,8 @@ function initSettingsTab()
             }
 
             let formData = new FormData();
+
+            alert("todo subuser save formdata fields");
 
             SaveBusinessSubuser(formData,
                 (saveResponse) => {
@@ -1853,7 +2141,126 @@ function initSettingsTab()
             }
         });
 
-        EventListenersSubusersPermissionsEnableHelper();
+        addNewBusinessDomainButton.on("click", (event) => {
+            event.preventDefault();
+
+            ResetSettingsDomainsManageTab();
+            currentBusinessDomainName.text("New Domain");
+            saveBusinessDomainButton.prop("disabled", true);
+
+            IsManagerDomainTabOpened = true;
+            ManageDomainType = "new";
+
+            let newObject = CreateSettingsDefaultDomainObject();
+            CurrentManageDomainData = newObject;
+
+            ShowSettingsDomainsManageTab();
+        });
+
+        switchBackToBusinessDomainsTab.on("click", (event) => {
+            event.preventDefault();
+
+            IsManagerDomainTabOpened = false;
+            ManageDomainType = null;
+
+            ShowSettingsDomainsListTab();
+        });
+
+        businessDomainsSslConfig.on("change", 'input[name="businessDomainSSLType"]', (event) => {
+            event.stopPropagation();
+
+            let current = $(event.currentTarget);
+            let currentCheckedSSLType = current.attr("ssl-type");
+            
+            if (currentCheckedSSLType == "custom")
+            {
+                businessDomainSSLTypeCustom.removeClass("d-none");
+            }
+            else
+            {
+                businessDomainSSLTypeCustom.addClass("d-none");
+                businessDomainSSLTypeCustom.find("textarea, input").val("");
+            }
+
+        });
+
+        businessDomainsTable.on("click", 'button[button-type="settingsDomainEdit"]', (event) => {
+           event.preventDefault();
+
+           let current = $(event.currentTarget);
+
+           let currentDomainId = current.attr("domain-id");
+
+           let currentDomainData = BusinessFullData.businessWhiteLabelDomain.find(x => x.id == currentDomainId);
+
+           ResetSettingsDomainsManageTab();
+
+           if (currentDomainData.type.value == 1)
+           {
+                currentBusinessDomainName.text(currentDomainData.subDomain + "." + currentDomainData.iqraDomain);
+           }
+
+           if (currentDomainData.type.value == 2)
+           {
+               currentBusinessDomainName.text(currentDomainData.customDomain);
+           }
+
+           
+           CurrentManageDomainData = currentDomainData;
+
+           FillSettingsDomainsManageTab(currentDomainData);
+
+           ShowSettingsDomainsManageTab();
+
+           IsManagerDomainTabOpened = true;
+           ManageDomainType = "edit";
+        });
+
+        businessDomainsManagerTab.on('change input', 'input, select, textarea', (event) => {
+            event.stopPropagation();
+
+            if (IsManagerDomainTabOpened == false) return;
+
+            ValidateSettingsDomainManageFields(true);
+            CheckIfSettingsDomainManagerHasChanges();
+        });
+
+        saveBusinessDomainButton.on("click", (event) => {
+            event.preventDefault();
+
+            let manageTabValidation = ValidateSettingsDomainManageFields(false);
+            if (!manageTabValidation.validated)
+            {
+                AlertManager.createAlert({
+                    type: 'danger',
+                    message: 'Validation for required fields failed.<br><br>' + manageTabValidation.errors.join('<br>'),
+                    timeout: 6000
+                });
+
+                return;
+            }
+
+            let formData = new FormData();
+
+            alert("todo domain save formdata fields");
+
+            SaveBusinessDomain(formData,
+                (saveResponse) => {
+                    // todo
+                },
+                (saveError, isUnsuccessful) => {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Error occured while saving business domain data. Check browser console for logs.',
+                        timeout: 6000
+                    });
+
+                    console.log('Error occured while saving business domain data: ', saveError);
+                }
+            )
+        });
+
+        EventListenersSettingsSubusersPermissionsEnableHelper();
 
         // Initialize
         FillSettingsTab();

@@ -4097,7 +4097,7 @@
                 <!-- Manage Domain Tab -->
                 <div class="fade d-none w-100" id="settings-manage-domains-breadcrumb">
                     <div class="d-flex flex-row align-items-center justify-content-between">
-                        <nav aria-label="breadcrumb" class="mb-3">
+                        <nav aria-label="breadcrumb">
                             <ol class="breadcrumb mb-0">
                                 <li class="breadcrumb-item"><a href="#" id="switchBackToBusinessDomainsTab">Domains</a></li>
                                 <li class="breadcrumb-item active" aria-current="page"><span id="currentBusinessDomainName">Domain</span></li>
@@ -4212,13 +4212,31 @@
                                     <label class="form-check-label" for="business-domains-ssl-enabled">SSL Enabled</label>
                                 </div>
                                 <div id="business-domains-ssl-config" class="mb-3 d-none">
-                                    <div class="mb-2">
-                                        <label for="business-domains-ssl-private-key" class="form-label">Private Key</label>
-                                        <textarea class="form-control" id="business-domains-ssl-private-key" rows="3" placeholder="Enter SSL private key"></textarea>
+                                    <div class="">
+                                        <label class="form-label" for="business-domains-ssl-enabled">SSL Type</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="businessDomainSSLType" id="businessDomainSSLTypeFree" ssl-type="free" checked>
+                                            <label class="form-check-label" for="businessDomainSSLTypeFree">
+                                                Free by IqraAI
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="businessDomainSSLType" id="businessDomainSSLTypeCustom" ssl-type="custom">
+                                            <label class="form-check-label" for="businessDomainSSLTypeCustom">
+                                                Custom SSL
+                                            </label>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label for="business-domains-ssl-certificate" class="form-label">Certificate</label>
-                                        <textarea class="form-control" id="business-domains-ssl-certificate" rows="3" placeholder="Enter SSL certificate"></textarea>
+
+                                    <div id="business-domain-ssl-type-custom" class="d-none mt-3">
+                                        <div class="mb-2">
+                                            <label for="business-domains-ssl-private-key" class="form-label">Private Key</label>
+                                            <textarea class="form-control" id="business-domains-ssl-private-key" rows="3" placeholder="Enter SSL private key"></textarea>
+                                        </div>
+                                        <div>
+                                            <label for="business-domains-ssl-certificate" class="form-label">Certificate</label>
+                                            <textarea class="form-control" id="business-domains-ssl-certificate" rows="3" placeholder="Enter SSL certificate"></textarea>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

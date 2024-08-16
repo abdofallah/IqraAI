@@ -4,7 +4,7 @@
     {
         public string CustomDomain { get; set; } = string.Empty;
         public DateTime? SSLEnabled { get; set; } = null;
-        public bool UseLetsEncryptSSL { get; set; } = true;
+        public DateTime? UseLetsEncryptSSL { get; set; } = DateTime.UtcNow;
         public string? SSLPrivateKey { get; set; } = null;
         public string? SSLCertificate { get; set; } = null;
     }
