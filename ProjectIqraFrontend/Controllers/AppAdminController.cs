@@ -44,14 +44,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetUsers:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetUsers:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -59,14 +59,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetUsers:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetUsers:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -74,7 +74,7 @@ namespace ProjectIqraFrontend.Controllers
             var usersResult = await _userManager.GetUsersAsync(page, pageSize);
             if (!usersResult.Success)
             {
-                result.Code = 1000 + usersResult.Code;
+                result.Code = "GetUsers:" + usersResult.Code;
                 result.Message = usersResult.Message;
                 return result;
             }
@@ -96,14 +96,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetUser:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetUser:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -111,14 +111,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetUser:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetUser:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -126,7 +126,7 @@ namespace ProjectIqraFrontend.Controllers
             var resultUser = await _userManager.GetUserByEmail(email);
             if (resultUser == null)
             {
-                result.Code = 5;
+                result.Code = "GetUser:5";
                 result.Message = "User not found";
                 return result;
             }
@@ -148,14 +148,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetUserBusinesses:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetUserBusinesses:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -163,14 +163,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetUserBusinesses:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetUserBusinesses:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -178,7 +178,7 @@ namespace ProjectIqraFrontend.Controllers
             var businessesResult = await _businessManager.GetUserBusinessesByIds(businessIds, inputUserEmail);
             if (!businessesResult.Success)
             {
-                result.Code = 1000 + businessesResult.Code;
+                result.Code = "GetUserBusinesses:" + businessesResult.Code;
                 result.Message = businessesResult.Message;
                 return result;
             }
@@ -200,14 +200,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetUserNumbers:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetUserNumbers:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -215,14 +215,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetUserNumbers:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetUserNumbers:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -230,7 +230,7 @@ namespace ProjectIqraFrontend.Controllers
             var numbersResult = await _numberManager.GetUserNumberByIds(numberIds, inputUserEmail);
             if (!numbersResult.Success)
             {
-                result.Code = 1000 + numbersResult.Code;
+                result.Code = "GetUserNumbers:" + numbersResult.Code;
                 result.Message = numbersResult.Message;
                 return result;
             }
@@ -258,14 +258,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetBusinesses:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetBusinesses:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -273,14 +273,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetBusinesses:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetBusinesses:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -288,7 +288,7 @@ namespace ProjectIqraFrontend.Controllers
             var businessesResult = await _businessManager.GetBusinesses(page, pageSize);
             if (!businessesResult.Success)
             {
-                result.Code = 1000 + businessesResult.Code;
+                result.Code = "GetBusinesses:" + businessesResult.Code;
                 result.Message = businessesResult.Message;
                 return result;
             }
@@ -310,14 +310,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "SearchBusinesses:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "SearchBusinesses:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -325,21 +325,21 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "SearchBusinesses:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "SearchBusinesses:4";
                 result.Message = "User is not an admin";
                 return result;
             }
 
             if (string.IsNullOrWhiteSpace(query))
             {
-                result.Code = 5;
+                result.Code = "SearchBusinesses:5";
                 result.Message = "Query cannot be empty";
                 return result;
             }
@@ -347,7 +347,7 @@ namespace ProjectIqraFrontend.Controllers
             var businessesResult = await _businessManager.SearchBusinesses(query, page, pageSize);
             if (!businessesResult.Success)
             {
-                result.Code = 1000 + businessesResult.Code;
+                result.Code = "SearchBusinesses:" + businessesResult.Code;
                 result.Message = businessesResult.Message;
                 return result;
             }
@@ -369,14 +369,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetBusinessNumbers:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetBusinessNumbers:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -384,14 +384,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetBusinessNumbers:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetBusinessNumbers:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -399,7 +399,7 @@ namespace ProjectIqraFrontend.Controllers
             var numbersResult = await _numberManager.GetBusinessNumberByIds(numberIds, businessId);
             if (!numbersResult.Success)
             {
-                result.Code = 1000 + numbersResult.Code;
+                result.Code = "GetBusinessNumbers:" + numbersResult.Code;
                 result.Message = numbersResult.Message;
                 return result;
             }
@@ -427,14 +427,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetRegions:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetRegions:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -442,14 +442,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetRegions:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetRegions:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -457,7 +457,7 @@ namespace ProjectIqraFrontend.Controllers
             var regionsResult = await _regionManager.GetRegions(page, pageSize);
             if (!regionsResult.Success)
             {
-                result.Code = 1000 + regionsResult.Code;
+                result.Code = "GetRegions:" + regionsResult.Code;
                 result.Message = regionsResult.Message;
                 return result;
             }
@@ -485,14 +485,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetNumbers:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetNumbers:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -500,14 +500,14 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetNumbers:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetNumbers:4";
                 result.Message = "User is not an admin";
                 return result;
             }
@@ -515,7 +515,7 @@ namespace ProjectIqraFrontend.Controllers
             var numbersResult = await _numberManager.GetNumbers(page, pageSize);
             if (!numbersResult.Success)
             {
-                result.Code = 1000 + numbersResult.Code;
+                result.Code = "GetNumbers:" + numbersResult.Code;
                 result.Message = numbersResult.Message;
                 return result;
             }
@@ -537,14 +537,14 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = 1;
+                result.Code = "GetNumbersByType:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                result.Code = 2;
+                result.Code = "GetNumbersByType:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -552,21 +552,21 @@ namespace ProjectIqraFrontend.Controllers
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = 3;
+                result.Code = "GetNumbersByType:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (!user.Permission.IsAdmin)
             {
-                result.Code = 4;
+                result.Code = "GetNumbersByType:4";
                 result.Message = "User is not an admin";
                 return result;
             }
 
             if (!Enum.IsDefined(typeof(NumberProviderEnum), provider))
             {
-                result.Code = 5;
+                result.Code = "GetNumbersByType:5";
                 result.Message = "Invalid provider";
                 return result;
             }
@@ -574,7 +574,7 @@ namespace ProjectIqraFrontend.Controllers
             var numbersResult = await _numberManager.GetNumbersByProvider((NumberProviderEnum)provider, page, pageSize);
             if (!numbersResult.Success)
             {
-                result.Code = 1000 + numbersResult.Code;
+                result.Code = "GetNumbersByType:" + numbersResult.Code;
                 result.Message = numbersResult.Message;
                 return result;
             }

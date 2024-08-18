@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (string.IsNullOrWhiteSpace(numberData.CountryCode) || string.IsNullOrWhiteSpace(numberData.Number))
             {
-                result.Code = 1;
+                result.Code = "AddNumber:1";
                 result.Message = "Country Code or Number is empty";
 
                 return result;
@@ -41,7 +41,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (string.IsNullOrWhiteSpace(id))
             {
-                result.Code = 1;
+                result.Code = "GetNumber:1";
                 result.Message = "Id is empty";
 
                 return result;
@@ -51,7 +51,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResult == null)
             {
-                result.Code = 2;
+                result.Code = "GetNumber:2";
                 result.Message = "Number not found";
 
                 return result;
@@ -78,7 +78,7 @@ namespace IqraInfrastructure.Services.Number
             var numberResults = await _numberRepository.GetNumberByIdsAsync(numberIds);
 
             if (numberResults == null) {
-                result.Code = 1;
+                result.Code = "GetUserNumberByIds:1";
 
                 result.Message = "Null - Numbers not found for user: " + userEmail;
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -88,7 +88,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults.Count != numberIds.Count)
             {
-                result.Code = 2;
+                result.Code = "GetUserNumberByIds:2";
 
                 result.Message = "Not all numbers found for user: " + userEmail;
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -118,7 +118,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults == null)
             {
-                result.Code = 1;
+                result.Code = "GetBusinessNumberByIds:1";
 
                 result.Message = "Null - Numbers not found for business: " + businessId;
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -128,7 +128,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults.Count != numberIds.Count)
             {
-                result.Code = 2;
+                result.Code = "GetBusinessNumberByIds:2";
 
                 result.Message = "Not all numbers found for business: " + businessId;
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -150,7 +150,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults == null)
             {
-                result.Code = 1;
+                result.Code = "GetNumbers:1";
 
                 result.Message = "Null - Numbers not found";
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -171,7 +171,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults == null)
             {
-                result.Code = 1;
+                result.Code = "GetNumbersByProvider:1";
 
                 result.Message = "Null - Numbers not found";
                 Log.Logger.Error("[NumberManager] " + result.Message);
@@ -192,7 +192,7 @@ namespace IqraInfrastructure.Services.Number
 
             if (numberResults == null)
             {
-                result.Code = 1;
+                result.Code = "GetUserNumbersByProvider:1";
 
                 result.Message = "Null - Numbers not found";
                 Log.Logger.Error("[NumberManager] " + result.Message);

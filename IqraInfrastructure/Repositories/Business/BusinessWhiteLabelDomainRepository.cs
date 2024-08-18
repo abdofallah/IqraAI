@@ -73,9 +73,9 @@ namespace IqraInfrastructure.Repositories.Business
             return _businessWhiteLabelDomainCollection.Find(filter).ToListAsync();
         }
 
-        public Task AddBusinessWhiteLabelDomainAsync(BusinessWhiteLabelDomain businessApp)
+        public Task AddBusinessWhiteLabelDomainAsync(BusinessWhiteLabelDomain domainData)
         {
-            return _businessWhiteLabelDomainCollection.InsertOneAsync(businessApp);
+            return _businessWhiteLabelDomainCollection.InsertOneAsync(domainData);
         }
 
         public async Task<bool> DeleteBusinessWhiteLabelDomainAsync(long id)
@@ -89,6 +89,13 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessWhiteLabelDomain>.Filter.Eq(b => b.Id, id);
             var result = await _businessWhiteLabelDomainCollection.UpdateOneAsync(filter, updateDefinition);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateBusinessWhiteLabelDomainAsync(BusinessWhiteLabelDomain businessWhiteLabelDomain)
+        {
+            var filter = Builders<BusinessWhiteLabelDomain>.Filter.Eq(b => b.Id, businessWhiteLabelDomain.Id);
+            var result = await _businessWhiteLabelDomainCollection.ReplaceOneAsync(filter, businessWhiteLabelDomain);
             return result.ModifiedCount > 0;
         }
     }

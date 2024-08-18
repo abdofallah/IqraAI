@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Services.App
             var businesses = await _regionRepository.GetRegions(page, pageSize);
             if (businesses == null)
             {
-                result.Code = 1;
+                result.Code = "GetRegions:1";
                 Log.Logger.Error("[RegionManager] Null - Regions not found");
             }
             else

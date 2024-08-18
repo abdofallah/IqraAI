@@ -181,7 +181,7 @@ namespace IqraInfrastructure.Services.User
             var users = await _userDatabase.GetUsersAsync(page, pageSize);
             if (users == null)
             {
-                result.Code = 1;
+                result.Code = "GetUsersAsync:1";
                 Log.Logger.Error("[UserManager] Null - Users not found");
             }
             else

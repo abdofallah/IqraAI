@@ -160,14 +160,14 @@ namespace IqraCore.Utilities
             // Check if we have the required number of languages
             if (attribute.LanguagesRequired > 0 && dictionaryObj.Count < attribute.LanguagesRequired)
             {
-                result.Code = 1;
+                result.Code = "UpdateMultiLanguageProperty:1";
                 result.Message = $"Property {property.Name} requires at least {attribute.LanguagesRequired} language(s).";
                 result.Success = false;
                 result.Data = false;
             }
             else if (attribute.LanguagesRequired == -1 && dictionaryObj.Count < newLanguages.Count)
             {
-                result.Code = 2;
+                result.Code = "UpdateMultiLanguageProperty:2";
                 result.Message = $"Property {property.Name} requires all languages to be present.";
                 result.Success = false;
                 result.Data = false;

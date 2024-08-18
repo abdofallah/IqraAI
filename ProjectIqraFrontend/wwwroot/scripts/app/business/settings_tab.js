@@ -2,6 +2,8 @@ const DefaultBusinessImgSRC = "/img/logo/logo-light.png";
 const DefaultWhiteLabelLogoSRC = "/img/logo/logo-colored-light.png";
 const DefaultWhiteLabelFaviconSRC = "/img/logo/logo-colored-light.png";
 
+const IqraBusinessDomain = "iqra.business"; // todo get this dynamically from server
+
 var IsManagerDomainTabOpened = false;
 var ManageDomainType = null;
 var CurrentManageDomainData = null;
@@ -177,7 +179,7 @@ const businessDomainsSslCertificate = businessDomainsManagerTab.find("#business-
 
 // API Functions
 
-function SaveNewSettings(changes, successCallback, errorCallback)
+function SaveSettingsChanges(changes, successCallback, errorCallback)
 {
     $.ajax({
         type: "POST",
@@ -201,7 +203,7 @@ function SaveNewSettings(changes, successCallback, errorCallback)
     });
 }
 
-function SaveBusinessSubuser(changes, successCallback, errorCallback)
+function SaveSettingsBusinessSubuser(changes, successCallback, errorCallback)
 {
     $.ajax({
         type: "POST",
@@ -225,7 +227,7 @@ function SaveBusinessSubuser(changes, successCallback, errorCallback)
     });
 }
 
-function SaveBusinessDomain(changes, successCallback, errorCallback)
+function SaveSettingsBusinessDomain(changes, successCallback, errorCallback)
 {
     $.ajax({
         type: "POST",
@@ -453,7 +455,7 @@ function CreateSettingsBusinessDomainTableElement(domainData)
     {
         element = $(`
             <tr domain-id="${domainData.id}">
-                <td>${domainData.subDomain}.${domainData.iqraDomain}</td>
+                <td>${domainData.subDomain}.${IqraBusinessDomain}</td>
                 <td>
                     <button domain-id="${domainData.id}" class="btn btn-primary" button-type="settingsDomainEdit" type="button">
                         <i class="fa-regular fa-pen-to-square"></i>
@@ -560,6 +562,8 @@ function FillSettingsTab()
                 businessDomainsTable.find("tbody").append(CreateSettingsBusinessDomainTableElement(value));
             })
         }
+   
+        businessDomainsIqraSubdomain.parent().find("span.input-group-text").text("." + IqraBusinessDomain);
     }
 
     FillSettingsGeneralTab();
@@ -1436,7 +1440,6 @@ function CreateSettingsDefaultDomainObject()
             name: "Unknown"
         },
         subDomain: "",
-        iqraDomain: "",
         customDomain: "",
         sslEnabled: false,
         useLetsEncryptSSL: true,
@@ -1463,7 +1466,6 @@ function FillSettingsDomainsManageTab(domainData)
     {
         businessDomainsDomainType.val("IqraSubdomain").change();
         businessDomainsIqraSubdomain.val(domainData.subDomain);
-        businessDomainsIqraSubdomain.parent().find("span.input-group-text").text(domainData.iqraDomain);
     }
 
     if (domainData.type.value == 2)
@@ -1489,14 +1491,18 @@ function FillSettingsDomainsManageTab(domainData)
 function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
 {
     let hasChanges = false;
+    let changes = {};
 
     let currentDomainType = businessDomainsDomainType.val();
+
+    changes.type = currentDomainType;
     if (CurrentManageDomainData.type.name != currentDomainType)
     {
         hasChanges = true;
     }
     else
     {
+        changes.subDomain = businessDomainsIqraSubdomain.val();
         if (currentDomainType == "IqraSubdomain")
         {
             if (businessDomainsIqraSubdomain.val() != CurrentManageDomainData.subDomain)
@@ -1506,12 +1512,14 @@ function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
         }
         else if (currentDomainType == "CustomDomain")
         {
-            if (businessDomainsCustomDomain.text() != CurrentManageDomainData.customDomain)
+            changes.customDomain = businessDomainsCustomDomain.val();
+            if (businessDomainsCustomDomain.val() != CurrentManageDomainData.customDomain)
             {
                 hasChanges = true;
             }
 
             let isSSLEnabled = businessDomainsSslEnabled.prop("checked");
+            changes.sslEnabled = isSSLEnabled;
             if (isSSLEnabled && CurrentManageDomainData.sslEnabled == null)
             {
                 hasChanges = true;
@@ -1519,17 +1527,20 @@ function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
             else if (isSSLEnabled && CurrentManageDomainData.sslEnabled)
             {
                 let checkedSSLType = businessDomainsSslConfig.find('input[name="businessDomainSSLType"]:checked').attr("ssl-type");
+                changes.useLetsEncryptSSL = (checkedSSLType != "custom");
                 if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL == null)
                 {
                     hasChanges = true;
                 }
                 else if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL)
                 {
+                    changes.sslCertificate = businessDomainsSslCertificate.val();
                     if (businessDomainsSslCertificate.val() != CurrentManageDomainData.sslCertificate)
                     {
                         hasChanges = true;
                     }
 
+                    changes.sslPrivateKey = businessDomainsSslPrivateKey.val();
                     if (businessDomainsSslPrivateKey.val() != CurrentManageDomainData.sslPrivateKey)
                     {
                         hasChanges = true;
@@ -1551,7 +1562,10 @@ function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
         }
     }
 
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: changes
+    };
 }
 
 function ValidateSettingsDomainManageFields(onlyRemove = true)
@@ -1852,7 +1866,7 @@ function initSettingsTab()
                 return;
             }
 
-            SaveNewSettings(formData,
+            SaveSettingsChanges(formData,
                 (saveResponse) => {
                     setTimeout(() => {
                         location.reload();
@@ -1992,7 +2006,7 @@ function initSettingsTab()
         $("#nav-bar").on('tabChange', async(event) => {
             if (IsManagerDomainTabOpened)
             {
-                let manageDomainChanges = CheckIfSettingsDomainManagerHasChanges(false);
+                let manageDomainChanges = CheckIfSettingsDomainManagerHasChanges(false).hasChanges;
                 if (!manageDomainChanges)
                 {
                     switchBackToBusinessDomainsTab.click();
@@ -2138,7 +2152,7 @@ function initSettingsTab()
 
             alert("todo subuser save formdata fields");
 
-            SaveBusinessSubuser(formData,
+            SaveSettingsBusinessSubuser(formData,
                 (saveResponse) => {
                     // todo
                 },
@@ -2225,7 +2239,7 @@ function initSettingsTab()
 
            if (currentDomainData.type.value == 1)
            {
-                currentBusinessDomainName.text(currentDomainData.subDomain + "." + currentDomainData.iqraDomain);
+                currentBusinessDomainName.text(currentDomainData.subDomain + "." + IqraBusinessDomain);
            }
 
            if (currentDomainData.type.value == 2)
@@ -2270,11 +2284,30 @@ function initSettingsTab()
 
             let formData = new FormData();
 
-            alert("todo domain save formdata fields");
+            // Is edit or new
+            formData.append("postType", ManageDomainType);
 
-            SaveBusinessDomain(formData,
+            if (ManageDomainType == "edit")
+            {
+                formData.append("domainId", CurrentManageDomainData.id);
+            }
+
+            let domainManagerChanges = CheckIfSettingsDomainManagerHasChanges(false);
+
+            formData.append("changes", JSON.stringify(domainManagerChanges.changes));
+
+            SaveSettingsBusinessDomain(formData,
                 (saveResponse) => {
-                    // todo
+                    if (ManageDomainType == "edit")
+                    {
+
+                    }
+                    else if (ManageDomainType == "new")
+                    {
+
+                    }
+
+                    alert("saved");
                 },
                 (saveError, isUnsuccessful) => {
                     AlertManager.createAlert({
