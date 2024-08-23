@@ -17,15 +17,15 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
-        private readonly BusinessDomainHostingRepository _businessDomainHostingRepository;
+        private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
 
-        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessDomainHostingRepository businessDomainHostingRepository)
+        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
         {
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
-            _businessDomainHostingRepository = businessDomainHostingRepository;
+            _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
         }
 
         public async Task<BusinessData> AddBusiness(BusinessData businessData, IFormFile? businessLogoFile)
