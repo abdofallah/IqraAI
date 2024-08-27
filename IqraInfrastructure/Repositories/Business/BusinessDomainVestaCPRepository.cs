@@ -16,6 +16,9 @@ namespace IqraInfrastructure.Repositories.Business
         private string _domainDefaultIP;
         private string _businessDomain;
 
+        private readonly string _defaultProxyTemplateName = "IqraBusinessesDefault";
+        private readonly string _maintenanceProxyTemplateFile = "IqraBusinessesMaintenance";
+
         private HttpClient _httpClient;
 
         public BusinessDomainVestaCPRepository(string hostname, string adminUsername, string businessesUsername, string password, string domainDefaultIP, string businessDomain)
@@ -161,6 +164,34 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
+        public async Task<FunctionReturnResult<string?>> RebuildAdminWeb(bool restart)
+        {
+            return await SendRequest("v-rebuild-web-domains",
+                ("arg1", _adminUsername),
+                ("arg2", restart ? "yes" : "no")
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> RebuildBusinessesWeb(bool restart)
+        {
+            return await SendRequest("v-rebuild-web-domains",
+                ("arg1", _businessesUsername),
+                ("arg2", restart ? "yes" : "no")
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> ChangeWebProxy(string username, string domain, string proxyTemplate, string extensions, bool restart)
+        {
+            return await SendRequest("v-change-web-domain-proxy-tpl",
+                ("returncode", "OK"),
+                ("arg1", username),
+                ("arg2", domain),
+                ("arg3", proxyTemplate),
+                ("arg4", extensions),
+                ("arg5", restart == true ? "yes" : "no")
+            );
+        }
+
         /**
          * 
          * Custom Business Domain
@@ -283,6 +314,28 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
+        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultProxyTemplate(string domain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                domain,
+                _defaultProxyTemplateName,
+                "",
+                restart
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> SetCustomDomainMaintenanceProxyTemplate(string domain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                domain,
+                _maintenanceProxyTemplateFile,
+                "",
+                restart
+            );
+        }
+
         /**
          * 
          * Iqra Business Subdomain
@@ -306,7 +359,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ("arg2", (subdomain + "." + _businessDomain)),
                 ("arg3", _domainDefaultIP),
                 ("arg4", restart ? "yes" : "no"),
-                ("arg5", ""),
+                ("arg5", "none"),
                 ("arg6", "")
             );
         }
@@ -347,13 +400,35 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> AddIqraBusinessDomainLetsEncryptSSL(string subdomain)
+        public async Task<FunctionReturnResult<string?>> AddIqraBusinessSubDomainLetsEncryptSSL(string subdomain)
         {
             return await SendRequest("v-add-letsencrypt-domain",
                 ("returncode", "OK"),
                 ("arg1", _businessesUsername),
                 ("arg2", (subdomain + "." + _businessDomain)),
                 ("arg3", "")
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultProxyTemplate(string subdomain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                (subdomain + "." + _businessDomain),
+                _defaultProxyTemplateName,
+                "",
+                restart
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainMaintenanceProxyTemplate(string subdomain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                (subdomain + "." + _businessDomain),
+                _maintenanceProxyTemplateFile,
+                "",
+                restart
             );
         }
     }

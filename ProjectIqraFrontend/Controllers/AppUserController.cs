@@ -564,7 +564,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
             }
 
-            BusinessData newBusinessData = await _businessManager.AddBusiness(
+            var newBusinessResult = await _businessManager.AddBusiness(
                 new BusinessData()
                 {
                     Name = businessName,
@@ -577,11 +577,17 @@ namespace ProjectIqraFrontend.Controllers
                 },
                 businessLogo
             );
+            if (!newBusinessResult.Success)
+            {
+                result.Code = "AddUserBusiness:" + newBusinessResult.Code;
+                result.Message = newBusinessResult.Message;
+                return result;
+            }
 
-            await _userManager.AddBusinessIdToUser(userEmail, newBusinessData.Id);
+            await _userManager.AddBusinessIdToUser(userEmail, newBusinessResult.Data.Id);
             
             result.Success = true;
-            result.Data = newBusinessData;
+            result.Data = newBusinessResult.Data;
             return result;
         }
 
