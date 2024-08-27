@@ -1,5 +1,7 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using FluentFTP;
+using IqraCore.Entities.Helpers;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Repositories.Business
@@ -49,7 +51,7 @@ namespace IqraInfrastructure.Repositories.Business
                 throw new Exception("Unable to retrieve VestaCP Admin User data for API Initalization test.\nDid you forget to allow your IP for API use?");
             }
             JsonDocument adminUserJsonData = JsonSerializer.Deserialize<JsonDocument>(adminUserStringData.Data);
-            if (!adminUserJsonData.RootElement.TryGetProperty("username", out _))
+            if (!adminUserJsonData.RootElement.TryGetProperty(_adminUsername, out _))
             {
                 throw new Exception($"{_adminUsername} not found in VestaCP users");
             }
@@ -61,7 +63,7 @@ namespace IqraInfrastructure.Repositories.Business
                 throw new Exception("Unable to retrieve VestaCP Businesses User data for API Initalization test.\nDid you forget to allow your IP for API use?");
             }
             JsonDocument businessesUserJsonData = JsonSerializer.Deserialize<JsonDocument>(businessesUserStringData.Data);
-            if (!businessesUserJsonData.RootElement.TryGetProperty("username", out _))
+            if (!businessesUserJsonData.RootElement.TryGetProperty(_businessesUsername, out _))
             {
                 throw new Exception($"{_businessesUsername} not found in VestaCP users");
             }
@@ -131,21 +133,50 @@ namespace IqraInfrastructure.Repositories.Business
         public async Task<FunctionReturnResult<string?>> GetUserDetails(string username)
         {
             return await SendRequest("v-list-user",
+                ("returncode", "OK"),
                 ("arg1", username),
                 ("arg2", "json")
             );
         }
 
-        // Custom Business Domain
+        public async Task<FunctionReturnResult<string?>> AddWebDomainFTP(string domain, string ftpUser, string ftpPass, string ftpPath)
+        {
+            return await SendRequest("v-add-web-domain-ftp",
+                ("returncode", "OK"),
+                ("arg1", _businessesUsername),
+                ("arg2", domain),
+                ("arg3", ftpUser),
+                ("arg4", ftpPass),
+                ("arg5", ftpPath)
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> DeleteWebDomainFTP(string domain, string ftpUser)
+        {
+            return await SendRequest("v-add-web-domain-ftp",
+                ("returncode", "OK"),
+                ("arg1", _businessesUsername),
+                ("arg2", domain),
+                ("arg3", ftpUser)
+            );
+        }
+
+        /**
+         * 
+         * Custom Business Domain
+         * 
+        **/
         public async Task<FunctionReturnResult<string?>> GetCustomBusinessDomainDetails(string domain)
         {
             return await SendRequest("v-list-web-domain",
-                ("arg1", _businessesUsername), ("arg2", domain),
+                ("returncode", "OK"),
+                ("arg1", _businessesUsername),
+                ("arg2", domain),
                 ("arg3", "json")
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> AddCustomBusinessDomain(string domain, bool restart, string aliases, string proxyExtensions)
+        public async Task<FunctionReturnResult<string?>> AddCustomBusinessDomain(string domain, bool restart)
         {
             return await SendRequest("v-add-web-domain",
                 ("returncode", "OK"),
@@ -153,19 +184,71 @@ namespace IqraInfrastructure.Repositories.Business
                 ("arg2", domain),
                 ("arg3", _domainDefaultIP),
                 ("arg4", restart ? "yes" : "no"),
-                ("arg5", aliases),
-                ("arg6", proxyExtensions)
+                ("arg5", ""),
+                ("arg6", "")
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> AddCustomBusinessDomainSSL(string domain, string sslDir, string sslHome)
+        public async Task<FunctionReturnResult<string?>> AddCustomBusinessDomainSSL(string domain, string sslCertificate, string sslPrivateKey, bool restart)
         {
+            var result = new FunctionReturnResult<string?>();
+
+            string ftpUsername = (domain + "_ssl");
+            string ftpPass = Guid.NewGuid().ToString();
+
+            string sslDir = Path.Combine("home", _businessesUsername, "web", domain, "private");
+
+            var addFTPResult = await AddWebDomainFTP(domain, ftpUsername, ftpPass, "private");
+            if (!addFTPResult.Success) {
+
+                result.Code = "AddCustomBusinessDomainSSL:" + addFTPResult.Code;
+                result.Message = addFTPResult.Message;
+                result.Data = addFTPResult.Data;
+                return result;
+            }
+
+            var ftpUploadResult = new FunctionReturnResult<string?>();
+            try
+            {
+                using (var ftp = new FtpClient(domain, ftpUsername, ftpPass))
+                {
+                    ftp.Connect();
+
+                    ftp.UploadBytes(Encoding.Default.GetBytes(sslCertificate), (Path.Combine(sslDir, (domain + ".crt"))), FtpRemoteExists.Overwrite);
+                    ftp.UploadBytes(Encoding.Default.GetBytes(sslPrivateKey), (Path.Combine(sslDir, (domain + ".key"))), FtpRemoteExists.Overwrite);
+
+                    ftp.Disconnect();
+                }
+
+                ftpUploadResult.Success = true;
+            }
+            catch (Exception ex)
+            {
+                ftpUploadResult.Code = "AddCustomBusinessDomainSSL:1";
+                ftpUploadResult.Message = ex.Message;
+            }
+
+            var deleteFTPResult = await DeleteWebDomainFTP(domain, ftpUsername);
+            if (!deleteFTPResult.Success) {
+                result.Code = "AddCustomBusinessDomainSSL:" + deleteFTPResult.Code;
+                result.Message = deleteFTPResult.Message;
+                result.Data = deleteFTPResult.Data;
+                return result;
+            }
+
+            if (!ftpUploadResult.Success) {
+                result.Code = "AddCustomBusinessDomainSSL:" + ftpUploadResult.Code;
+                result.Message = ftpUploadResult.Message;
+                return result;
+            }
+
             return await SendRequest("v-add-web-domain-ssl",
                 ("returncode", "OK"),
                 ("arg1", _businessesUsername),
                 ("arg2", domain),
                 ("arg3", sslDir),
-                ("arg4", sslHome)
+                ("arg4", ""),
+                ("arg5", (restart ? "yes" : "no"))
             );
         }
 
@@ -194,16 +277,23 @@ namespace IqraInfrastructure.Repositories.Business
         public async Task<FunctionReturnResult<string?>> DeleteCustomBusinessDomain(string domain)
         {
             return await SendRequest("v-delete-web-domain",
+                ("returncode", "OK"),
                 ("arg1", _businessesUsername),
                 ("arg2", domain)
             );
         }
 
-        // Iqra Business Subdomain
+        /**
+         * 
+         * Iqra Business Subdomain
+         * 
+        **/
         public async Task<FunctionReturnResult<string?>> GetIqraBusinessSubDomainDetails(string subdomain)
         {
             return await SendRequest("v-list-web-domain",
-                ("arg1", _businessesUsername), ("arg2", (subdomain + "." + _businessDomain)),
+                ("returncode", "OK"),
+                ("arg1", _businessesUsername),
+                ("arg2", (subdomain + "." + _businessDomain)),
                 ("arg3", "json")
             );
         }
@@ -251,8 +341,19 @@ namespace IqraInfrastructure.Repositories.Business
         public async Task<FunctionReturnResult<string?>> DeleteIqraBusinessSubDomain(string subdomain)
         {
             return await SendRequest("v-delete-web-domain",
+                ("returncode", "OK"),
                 ("arg1", _businessesUsername),
                 ("arg2", (subdomain + "." + _businessDomain))
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> AddIqraBusinessDomainLetsEncryptSSL(string subdomain)
+        {
+            return await SendRequest("v-add-letsencrypt-domain",
+                ("returncode", "OK"),
+                ("arg1", _businessesUsername),
+                ("arg2", (subdomain + "." + _businessDomain)),
+                ("arg3", "")
             );
         }
     }

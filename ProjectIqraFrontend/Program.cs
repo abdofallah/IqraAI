@@ -46,9 +46,9 @@ namespace ProjectIqraFrontend
             BusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
             BusinessLogoRepository businessLogoRepository = new BusinessLogoRepository(appConfig["BusinessLogoRepository:Endpoint"], int.Parse(appConfig["BusinessLogoRepository:Port"]), appConfig["BusinessLogoRepository:AccessKey"], appConfig["BusinessLogoRepository:SecretKey"], appConfig["BusinessLogoRepository:BucketName"], bool.Parse(appConfig["BusinessLogoRepository:IsSecure"]));
             BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository = new BusinessWhiteLabelDomainRepository(appConfig["BusinessWhiteLabelDomainRepository:ConnectionString"], appConfig["BusinessWhiteLabelDomainRepository:DatabaseName"]);
-            BusinessDomainHostingRepository businessDomainHostingRepository = new BusinessDomainHostingRepository();
+            BusinessDomainVestaCPRepository businessDomainVestaCPRepository = new BusinessDomainVestaCPRepository(appConfig["BusinessDomainHostingRepository:Hostname"], appConfig["BusinessDomainHostingRepository:AdminUsername"], appConfig["BusinessDomainHostingRepository:BusinessesUsername"], appConfig["BusinessDomainHostingRepository:AdminPassword"], appConfig["BusinessDomainHostingRepository:DomainIP"], appConfig["BusinessDomainHostingRepository:IqraBusinessDomain"]);
 
-            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainHostingRepository);
+            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             // Number
