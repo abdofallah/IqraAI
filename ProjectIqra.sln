@@ -23,6 +23,18 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectIqraBackend", "Proje
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenAI", "Dependencies\openai-master\OpenAI.SDK\OpenAI.csproj", "{292EF79C-6666-4770-AB19-273FCD33FFAF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IqraStatic", "IqraStatic", "{B4DFD56C-86CF-4F7C-8994-E694044E8E81}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VestaCP", "VestaCP", "{45F136CD-F9BC-4D19-B1EA-8905AAF0FBCD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ProxyTemplates", "ProxyTemplates", "{541506A2-F04E-4598-81DE-867A5EF046A0}"
+	ProjectSection(SolutionItems) = preProject
+		iqrabusiness.https.stpl = iqrabusiness.https.stpl
+		iqrabusiness.https.tpl = iqrabusiness.https.tpl
+		iqrabusiness.http.tpl = iqrabusiness.http.tpl
+		iqrabusiness.http.stpl = iqrabusiness.http.stpl
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,6 +84,8 @@ Global
 		{D97DB88C-FC7B-453B-957F-EC84EE08BBC1} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
 		{9936E6A1-F602-43F7-9A82-FCE249551B3D} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
 		{292EF79C-6666-4770-AB19-273FCD33FFAF} = {72E4E33A-F654-4911-9C94-A23A0961B287}
+		{45F136CD-F9BC-4D19-B1EA-8905AAF0FBCD} = {B4DFD56C-86CF-4F7C-8994-E694044E8E81}
+		{541506A2-F04E-4598-81DE-867A5EF046A0} = {45F136CD-F9BC-4D19-B1EA-8905AAF0FBCD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {49412E2B-D548-481B-B81A-8731E7BBC656}

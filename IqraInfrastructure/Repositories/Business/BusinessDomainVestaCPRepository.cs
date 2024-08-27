@@ -16,7 +16,8 @@ namespace IqraInfrastructure.Repositories.Business
         private string _domainDefaultIP;
         private string _businessDomain;
 
-        private readonly string _defaultProxyTemplateName = "IqraBusinessesDefault";
+        private readonly string _defaultHTTPProxyTemplateName = "iqrabusiness.http";
+        private readonly string _defaultHTTPSProxyTemplateName = "iqrabusiness.https";
         private readonly string _maintenanceProxyTemplateFile = "IqraBusinessesMaintenance";
 
         private HttpClient _httpClient;
@@ -314,12 +315,23 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultProxyTemplate(string domain, bool restart)
+        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultHTTPProxyTemplate(string domain, bool restart)
         {
             return await ChangeWebProxy(
                 _businessesUsername,
                 domain,
-                _defaultProxyTemplateName,
+                _defaultHTTPProxyTemplateName,
+                "",
+                restart
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultHTTPSProxyTemplate(string domain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                domain,
+                _defaultHTTPSProxyTemplateName,
                 "",
                 restart
             );
@@ -410,12 +422,23 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultProxyTemplate(string subdomain, bool restart)
+        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultHTTPProxyTemplate(string subdomain, bool restart)
         {
             return await ChangeWebProxy(
                 _businessesUsername,
                 (subdomain + "." + _businessDomain),
-                _defaultProxyTemplateName,
+                _defaultHTTPProxyTemplateName,
+                "",
+                restart
+            );
+        }
+
+        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultHTTPSProxyTemplate(string subdomain, bool restart)
+        {
+            return await ChangeWebProxy(
+                _businessesUsername,
+                (subdomain + "." + _businessDomain),
+                _defaultHTTPSProxyTemplateName,
                 "",
                 restart
             );

@@ -588,11 +588,11 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    var changeTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultProxyTemplate(currentIqraSubdomainData.SubDomain, true);
-                    if (!changeTemplateResult.Success)
+                    var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultHTTPSProxyTemplate(currentIqraSubdomainData.SubDomain, true);
+                    if (!setHTTPSTemplateResult.Success)
                     {
-                        result.Code = "AddOrUpdateUserBusinessDomain:" + changeTemplateResult.Code;
-                        result.Message = changeTemplateResult.Message;
+                        result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPSTemplateResult.Code;
+                        result.Message = setHTTPSTemplateResult.Message;
                         return result;
                     }
                 }
@@ -630,14 +630,24 @@ namespace IqraInfrastructure.Services.Business
                                 return result;
                             }
                         }
-                    }
 
-                    var changeTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultProxyTemplate(currentCustomDomainData.CustomDomain, true);
-                    if (!changeTemplateResult.Success)
+                        var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultHTTPSProxyTemplate(currentCustomDomainData.CustomDomain, true);
+                        if (!setHTTPTemplateResult.Success)
+                        {
+                            result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPTemplateResult.Code;
+                            result.Message = setHTTPTemplateResult.Message;
+                            return result;
+                        }
+                    }
+                    else
                     {
-                        result.Code = "AddOrUpdateUserBusinessDomain:" + changeTemplateResult.Code;
-                        result.Message = changeTemplateResult.Message;
-                        return result;
+                        var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultHTTPProxyTemplate(currentCustomDomainData.CustomDomain, true);
+                        if (!setHTTPTemplateResult.Success)
+                        {
+                            result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPTemplateResult.Code;
+                            result.Message = setHTTPTemplateResult.Message;
+                            return result;
+                        }
                     }
                 }
 
