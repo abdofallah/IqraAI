@@ -237,5 +237,123 @@ namespace ProjectIqraFrontend.Controllers
 
             return result;
         }
+
+        [HttpPost("/app/user/business/{businessId}/subuser/save")]
+        public async Task<FunctionReturnResult<BusinessUser?>> SaveBusinessSubUser(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessUser?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "SaveBusinessSubUser:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "SaveBusinessSubUser:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "SaveBusinessSubUser:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
+            {
+                result.Code = "SaveBusinessSubUser:4";
+                result.Message = "User does not have permission to edit businesses";
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = "SaveBusinessSubUser:5";
+                result.Message = "User does not own this business.";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
+            if (!businessResult.Success)
+            {
+                result.Code = "SaveBusinessSubUser:" + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
+            {
+                result.Code = "SaveBusinessSubUser:6";
+                result.Message = "Business does not have permission to edit settings";
+                return result;
+            }
+
+            string? postType = formData["postType"].ToString();
+            if (
+                string.IsNullOrWhiteSpace(postType)
+                ||
+                (postType != "new" && postType != "edit")
+            )
+            {
+                result.Code = "SaveBusinessSubUser:7";
+                result.Message = "Invalid post type.";
+                return result;
+            }
+
+            string subuserEmailString = formData["subUserEmail"].ToString();
+            if (string.IsNullOrWhiteSpace(subuserEmailString))
+            {
+                result.Code = "SaveBusinessSubUser:8";
+                result.Message = "Invalid subuser email.";
+                return result;
+            }
+
+            BusinessUser? businessUserData = businessResult.Data.SubUsers.Find((d) =>
+            {
+                return d.Email == subuserEmailString;
+            });
+
+            if (postType == "new")
+            {
+                if (businessUserData != null)
+                {
+                    result.Code = "SaveBusinessSubUser:9";
+                    result.Message = "The business already owns this subuser.";
+                    return result;
+                }
+            }
+
+            if (postType == "edit")
+            {
+                if (businessUserData == null)
+                {
+                    result.Code = "SaveBusinessSubUser:10";
+                    result.Message = "The business does not own this subuser.";
+                    return result;
+                }
+            }     
+
+            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessUserData);
+            if (!addOrUpdateResult.Success)
+            {
+                result.Code = "SaveBusinessSubUser:" + addOrUpdateResult.Code;
+                result.Message = addOrUpdateResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = addOrUpdateResult.Data;
+            return result;
+        }
     }
 }

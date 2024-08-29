@@ -4,6 +4,8 @@ const DefaultWhiteLabelFaviconSRC = "/img/logo/logo-colored-light.png";
 
 const IqraBusinessDomain = "iqra.business"; // todo get this dynamically from server
 
+var IsSavingDomainTab = false;
+
 var IsManagerDomainTabOpened = false;
 var ManageDomainType = null;
 var CurrentManageDomainData = null;
@@ -20,6 +22,7 @@ var AddedSubUsers = [];
 const settingsTab = $("#settings-tab");
 
 const settingsSaveButton = settingsTab.find("#settingsSaveButton");
+const settingsSaveButtonSpinner = settingsSaveButton.find(".save-button-spinner");
 
 const settingsGeneralBusinessName = settingsTab.find("#settingsGeneralBusinessName");
 const settingsGeneralBusinessLogoPreview = settingsTab.find("#settingsGeneralBusinessLogoPreview");
@@ -44,6 +47,7 @@ const switchBackToBusinessSubusersTab = settingsTab.find("#switchBackToBusinessS
 const currentBusinessSubuserName = settingsTab.find("#currentBusinessSubuserName");
 
 const saveBusinessSubuserButton = settingsManageSubusersBreadcrumb.find("#saveBusinessSubuserButton");
+const saveBusinessSubuserButtonSpinner = saveBusinessSubuserButton.find(".save-button-spinner");
 
 const businessSubuserManagerGeneralTab = settingsManageSubusersBreadcrumb.find("#business-subuser-manager-general-tab");
 const businessSubuserPermissionsRoutingTab = subusersManagerTab.find("#business-subuser-permissions-routing-tab");
@@ -153,6 +157,7 @@ const settingsManageDomainsBreadcrumb = settingsTab.find("#settings-manage-domai
 const currentBusinessDomainName = settingsTab.find("#currentBusinessDomainName");
 const switchBackToBusinessDomainsTab = settingsTab.find("#switchBackToBusinessDomainsTab");
 const saveBusinessDomainButton = settingsTab.find("#saveBusinessDomainButton");
+const saveBusinessDomainButtonSpinner = saveBusinessDomainButton.find(".save-button-spinner");
 
 const businessDomainsListTab = settingsTab.find("#businessDomainsListTab");
 const addNewBusinessDomainButton = businessDomainsListTab.find("#addNewBusinessDomainButton");
@@ -631,7 +636,7 @@ function ResetSettingsUsersManageTab()
     BusinessFullData.businessWhiteLabelDomain.forEach((data, index) => {
         if (data.type.value === 1)
         {
-            businessSubuserWhiteLabelDomainIdentifier.append(`<option value="${data.id}">${data.subDomain}.${data.iqraDomain}</option>`);
+            businessSubuserWhiteLabelDomainIdentifier.append(`<option value="${data.id}">${data.subDomain}.${IqraBusinessDomain}</option>`);
         }
 
         if (data.type.value === 2)
@@ -785,19 +790,23 @@ function ValidateSettingsSubusersWhiteLabelGeneralFields(onlyRemove = true)
 
 function CheckSettingsSubusersGeneralTabHasChanges()
 {
+    let changes = {};
     let hasChanges = false;
 
+    changes.email = businessSubuserEmail.val();
     if (businessSubuserEmail.val() !== CurrentManageSubUserData.email)
     {
         hasChanges = true;
     }
 
+    changes.password = businessSubuserPassword.val();
     if (businessSubuserPassword.val() !== CurrentManageSubUserData.password)
     {
         hasChanges = true;
     }
 
     let isLoginDisableChecked = businessSubuserLoginDisabledInput.prop("checked");
+    changes.isLoginDisabled = isLoginDisableChecked;
     if (
         (isLoginDisableChecked == true && CurrentManageSubUserData.disabledUserLoginAt == null)
         ||
@@ -813,34 +822,92 @@ function CheckSettingsSubusersGeneralTabHasChanges()
         businessSubuserLoginDisabledReasonInput.val() !== CurrentManageSubUserData.disabledUserLoginReason
     )
     {
+        changes.loginDisabledReason = businessSubuserLoginDisabledReasonInput.val();
         hasChanges = true;
     }
 
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: changes
+    };
 }
 
 function CheckSettingsSubusersPermissionsTabHasChanges()
 {
+    let changes = {
+        routing: {
+
+        },
+        tools: {
+
+        },
+        agents: {
+
+        },
+        context: {
+            branding: {
+
+            },
+            branches: {
+
+            },
+            services: {
+
+            },
+            products: {
+
+            }
+        },
+        makeCalls: {
+
+        },
+        conversations: {
+            inbound: {
+
+            },
+            outbound: {
+
+            },
+            websocket: {
+
+            }
+        },
+        settings: {
+            general: {
+
+            },
+            languages: {
+
+            },
+            users: {
+
+            },
+        }
+    };
     let hasChanges = false;
 
     // Routings
     function checkRoutings()
     {
+        changes.routing.tabEnabled = businessSubuserRoutingTabEnabled.prop("checked");
         if (businessSubuserRoutingTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.routing.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.routing.add = businessSubuserRoutingAddNewRoute.prop("checked");
         if (businessSubuserRoutingAddNewRoute.prop("checked") !== CurrentManageSubUserData.permission.routing.add)
         {
             hasChanges = true;
         }
 
+        changes.routing.edit = businessSubuserRoutingEditRoute.prop("checked");
         if (businessSubuserRoutingEditRoute.prop("checked") !== CurrentManageSubUserData.permission.routing.edit)
         {
             hasChanges = true;
         }
 
+        changes.routing.delete = businessSubuserRoutingDeleteRoute.prop("checked");
         if (businessSubuserRoutingDeleteRoute.prop("checked") !== CurrentManageSubUserData.permission.routing.delete)
         {
             hasChanges = true;
@@ -851,21 +918,25 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     // Tools
     function checkTools()
     {
+        changes.tools.tabEnabled = businessSubuserToolsTabEnabled.prop("checked");
         if (businessSubuserToolsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.tools.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.tools.add = businessSubuserToolsAddNewTool.prop("checked");
         if (businessSubuserToolsAddNewTool.prop("checked") !== CurrentManageSubUserData.permission.tools.add)
         {
             hasChanges = true;
         }
 
+        changes.tools.edit = businessSubuserToolsEditTool.prop("checked");
         if (businessSubuserToolsEditTool.prop("checked") !== CurrentManageSubUserData.permission.tools.edit)
         {
             hasChanges = true;
         }
 
+        changes.tools.delete = businessSubuserToolsDeleteTool.prop("checked");
         if (businessSubuserToolsDeleteTool.prop("checked") !== CurrentManageSubUserData.permission.tools.delete)
         {
             hasChanges = true;
@@ -876,21 +947,25 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     // Agents
     function checkAgents()
     {
+        changes.agents.tabEnabled = businessSubuserAgentsTabEnabled.prop("checked");
         if (businessSubuserAgentsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.agents.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.agents.add = businessSubuserAgentsAddNewAgent.prop("checked");
         if (businessSubuserAgentsAddNewAgent.prop("checked") !== CurrentManageSubUserData.permission.agents.add)
         {
             hasChanges = true;
         }
 
+        changes.agents.edit = businessSubuserAgentsEditAgent.prop("checked");
         if (businessSubuserAgentsEditAgent.prop("checked") !== CurrentManageSubUserData.permission.agents.edit)
         {
             hasChanges = true;
         }
 
+        changes.agents.delete = businessSubuserAgentsDeleteAgent.prop("checked");
         if (businessSubuserAgentsDeleteAgent.prop("checked") !== CurrentManageSubUserData.permission.agents.delete)
         {
             hasChanges = true;
@@ -901,80 +976,95 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     // Context
     function checkContext()
     {
+        changes.context.tabEnabled = businessSubuserContextTabEnabled.prop("checked");
         if (businessSubuserContextTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.context.tabEnabled)
         {
             hasChanges = true;
         }
 
         // branding
+        changes.context.branding.tabEnabled = businessSubuserContextBrandingTabEnabled.prop("checked");
         if (businessSubuserContextBrandingTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.context.branding.tabEnabled)
         {
             hasChanges = true;
         }
         
+        changes.context.branding.edit = businessSubuserContextEditBranding.prop("checked");
         if (businessSubuserContextEditBranding.prop("checked") !== CurrentManageSubUserData.permission.context.branding.edit)
         {
             hasChanges = true;
         }
 
         // branches
+        changes.context.branches.tabEnabled = businessSubuserContextBranchesTabEnabled.prop("checked");
         if (businessSubuserContextBranchesTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.context.branches.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.context.branches.add = businessSubuserContextAddNewBranch.prop("checked");
         if (businessSubuserContextAddNewBranch.prop("checked") !== CurrentManageSubUserData.permission.context.branches.add)
         {
             hasChanges = true;
         }
 
+        changes.context.branches.edit = businessSubuserContextEditBranch.prop("checked");
         if (businessSubuserContextEditBranch.prop("checked") !== CurrentManageSubUserData.permission.context.branches.edit)
         {
             hasChanges = true;
         }
 
+        changes.context.branches.delete = businessSubuserContextDeleteBranch.prop("checked");
         if (businessSubuserContextDeleteBranch.prop("checked") !== CurrentManageSubUserData.permission.context.branches.delete)
         {
             hasChanges = true;
         }
 
         // services
+        changes.context.services.tabEnabled = businessSubuserContextServicesTabEnabled.prop("checked");
         if (businessSubuserContextServicesTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.context.services.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.context.services.add = businessSubuserContextAddNewService.prop("checked");
         if (businessSubuserContextAddNewService.prop("checked") !== CurrentManageSubUserData.permission.context.services.add)
         {
             hasChanges = true;
         }
 
+        changes.context.services.edit = businessSubuserContextEditService.prop("checked");
         if (businessSubuserContextEditService.prop("checked") !== CurrentManageSubUserData.permission.context.services.edit)
         {
             hasChanges = true;
         }
 
+        changes.context.services.delete = businessSubuserContextDeleteService.prop("checked");
         if (businessSubuserContextDeleteService.prop("checked") !== CurrentManageSubUserData.permission.context.services.delete)
         {
             hasChanges = true;
         }
 
         // products
+        changes.context.products.tabEnabled = businessSubuserContextProductsTabEnabled.prop("checked");
         if (businessSubuserContextProductsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.context.products.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.context.products.add = businessSubuserContextAddNewProduct.prop("checked");
         if (businessSubuserContextAddNewProduct.prop("checked") !== CurrentManageSubUserData.permission.context.products.add)
         {
             hasChanges = true;
         }
 
+        changes.context.products.edit = businessSubuserContextEditProduct.prop("checked");
         if (businessSubuserContextEditProduct.prop("checked") !== CurrentManageSubUserData.permission.context.products.edit)
         {
             hasChanges = true;
         }
 
+        changes.context.products.delete = businessSubuserContextDeleteProduct.prop("checked");
         if (businessSubuserContextDeleteProduct.prop("checked") !== CurrentManageSubUserData.permission.context.products.delete)
         {
             hasChanges = true;
@@ -984,16 +1074,19 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
 
     // Make Calls
     function checkMakeCalls(){
+        changes.makeCalls.tabEnabled = businessSubuserMakeCallsTabEnabled.prop("checked");
         if (businessSubuserMakeCallsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.makeCalls.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.makeCalls.singleCallEnabled = businessSubuserMakeCallsSingleCallEnabled.prop("checked");
         if (businessSubuserMakeCallsSingleCallEnabled.prop("checked") !== CurrentManageSubUserData.permission.makeCalls.singleCallEnabled)
         {
             hasChanges = true;
         }
 
+        changes.makeCalls.bulkCallEnabled = businessSubuserMakeCallsBulkCallEnabled.prop("checked");
         if (businessSubuserMakeCallsBulkCallEnabled.prop("checked") !== CurrentManageSubUserData.permission.makeCalls.bulkCallEnabled)
         {
             hasChanges = true;
@@ -1004,54 +1097,64 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     // Conversations
     function checkConversations()
     {
+        changes.conversations.tabEnabled = businessSubuserConversationsTabEnabled.prop("checked");
         if (businessSubuserConversationsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.tabEnabled)
         {
             hasChanges = true;
         }
 
         // inbound
+        changes.conversations.inbound.tabEnabled = businessSubuserConversationsInboundCallTabEnabled.prop("checked");
         if (businessSubuserConversationsInboundCallTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.inbound.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.conversations.inbound.delete = businessSubuserConversationsDeleteInboundCall.prop("checked");
         if (businessSubuserConversationsDeleteInboundCall.prop("checked") !== CurrentManageSubUserData.permission.conversations.inbound.delete)
         {
             hasChanges = true;
         }
 
+        changes.conversations.inbound.export = businessSubuserConversationsExportInboundCall.prop("checked");
         if (businessSubuserConversationsExportInboundCall.prop("checked") !== CurrentManageSubUserData.permission.conversations.inbound.export)
         {
             hasChanges = true;
         }
 
         // outbound
+        changes.conversations.outbound.tabEnabled = businessSubuserConversationsOutboundCallTabEnabled.prop("checked");
         if (businessSubuserConversationsOutboundCallTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.outbound.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.conversations.outbound.delete = businessSubuserConversationsDeleteOutboundCall.prop("checked");
         if (businessSubuserConversationsDeleteOutboundCall.prop("checked") !== CurrentManageSubUserData.permission.conversations.outbound.delete)
         {
             hasChanges = true;
         }
 
+        changes.conversations.outbound.export = businessSubuserConversationsExportOutboundCall.prop("checked");
         if (businessSubuserConversationsExportOutboundCall.prop("checked") !== CurrentManageSubUserData.permission.conversations.outbound.export)
         {
             hasChanges = true;
         }
 
         // websocket
+        changes.conversations.websocket.tabEnabled = businessSubuserConversationsWebsocketTabEnabled.prop("checked");
         if (businessSubuserConversationsWebsocketTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.websocket.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.conversations.websocket.delete = businessSubuserConversationsDeleteWebsocket.prop("checked");
         if (businessSubuserConversationsDeleteWebsocket.prop("checked") !== CurrentManageSubUserData.permission.conversations.websocket.delete)
         {
             hasChanges = true;
         }
 
+        changes.conversations.websocket.export = businessSubuserConversationsExportWebsocket.prop("checked");
         if (businessSubuserConversationsExportWebsocket.prop("checked") !== CurrentManageSubUserData.permission.conversations.websocket.export)
         {
             hasChanges = true;
@@ -1062,59 +1165,70 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     // Settings
     function checkSettings()
     {
+        changes.settings.tabEnabled = businessSubuserSettingsTabEnabled.prop("checked");
         if (businessSubuserSettingsTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.settings.tabEnabled)
         {
             hasChanges = true;
         }
 
         // general
+        changes.settings.general.tabEnabled = businessSubuserSettingsGeneralTabEnabled.prop("checked");
         if (businessSubuserSettingsGeneralTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.settings.general.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.settings.general.edit = businessSubuserSettingsEditGeneral.prop("checked");
         if (businessSubuserSettingsEditGeneral.prop("checked") !== CurrentManageSubUserData.permission.settings.general.edit)
         {
             hasChanges = true;
         }
 
         // languages
+        changes.settings.languages.tabEnabled = businessSubuserSettingsLanguagesTabEnabled.prop("checked");
         if (businessSubuserSettingsLanguagesTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.settings.languages.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.settings.languages.edit = businessSubuserSettingsEditLanguages.prop("checked");
         if (businessSubuserSettingsEditLanguages.prop("checked") !== CurrentManageSubUserData.permission.settings.languages.edit)
         {
             hasChanges = true;
         }
 
+        changes.settings.languages.add = businessSubuserSettingsAddLanguages.prop("checked");
         if (businessSubuserSettingsAddLanguages.prop("checked") !== CurrentManageSubUserData.permission.settings.languages.add)
         {
             hasChanges = true;
         }
 
+        changes.settings.languages.delete = businessSubuserSettingsDeleteLanguages.prop("checked");
         if (businessSubuserSettingsDeleteLanguages.prop("checked") !== CurrentManageSubUserData.permission.settings.languages.delete)
         {
             hasChanges = true;
         }
 
         // users
+        changes.settings.users.tabEnabled = businessSubuserSettingsUsersTabEnabled.prop("checked");
         if (businessSubuserSettingsUsersTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.settings.users.tabEnabled)
         {
             hasChanges = true;
         }
 
+        changes.settings.users.edit = businessSubuserSettingsEditUsers.prop("checked");
         if (businessSubuserSettingsEditUsers.prop("checked") !== CurrentManageSubUserData.permission.settings.users.edit)
         {
             hasChanges = true;
         }
 
+        changes.settings.users.add = businessSubuserSettingsAddUsers.prop("checked");
         if (businessSubuserSettingsAddUsers.prop("checked") !== CurrentManageSubUserData.permission.settings.users.add)
         {
             hasChanges = true;
         }
 
+        changes.settings.users.delete = businessSubuserSettingsDeleteUsers.prop("checked");
         if (businessSubuserSettingsDeleteUsers.prop("checked") !== CurrentManageSubUserData.permission.settings.users.delete)
         {
             hasChanges = true;
@@ -1122,48 +1236,82 @@ function CheckSettingsSubusersPermissionsTabHasChanges()
     }
     checkSettings();
 
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: changes
+    };
 }
 
 function CheckSettingsSubusersWhiteLabelHasChanges()
 {
+    let changes = {
+        general: {
+
+        },
+        files: {
+
+        },
+        styles: {
+
+        }
+    };
     let hasChanges = false;
 
     // General
 
+    changes.general.platformName = businessSubuserWhiteLabelPlatformName.val();
     if (businessSubuserWhiteLabelPlatformName.val() !== CurrentManageSubUserData.whiteLabel.platformName)
     {
         hasChanges = true;
     }
 
+    changes.general.platformTitle = businessSubuserWhiteLabelPlatformTitle.val();
     if (businessSubuserWhiteLabelPlatformTitle.val() !== CurrentManageSubUserData.whiteLabel.platformTitle)
     {
         hasChanges = true;
     }
 
+    changes.general.platformDescription = businessSubuserWhiteLabelPlatformDescription.val();
     if (businessSubuserWhiteLabelPlatformDescription.val() !== CurrentManageSubUserData.whiteLabel.platformDescription)
     {
         hasChanges = true;
     }
 
+    changes.general.domainId = businessSubuserWhiteLabelDomainIdentifier.val();
     if (businessSubuserWhiteLabelDomainIdentifier.val() !== CurrentManageSubUserData.whiteLabel.domainId)
     {
         hasChanges = true;
     }
 
     // Styles
-
     if (businessSubuserWhiteLabelLogo[0].files.length > 0)
     {
+        changes.files.logo = businessSubuserWhiteLabelLogo[0].files[0];
         hasChanges = true;
     }
 
     if (businessSubuserWhiteLabelFavicon[0].files.length > 0)
     {
+        changes.files.favicon = businessSubuserWhiteLabelFavicon[0].files[0];
         hasChanges = true;
     }
 
-    return hasChanges;
+    changes.styles.customCSS = businessSubuserWhiteLabelCustomCss.val();
+    if (businessSubuserWhiteLabelCustomCss.val() !== CurrentManageSubUserData.whiteLabel.customCSS)
+    {
+        hasChanges = true;
+    }
+
+    changes.styles.customJavaScript = businessSubuserWhiteLabelCustomJs.val();
+    if (businessSubuserWhiteLabelCustomJs.val() !== CurrentManageSubUserData.whiteLabel.customJavaScript)
+    {
+        hasChanges = true;
+    }
+
+    return {
+        hasChanges: hasChanges,
+        changes: changes
+    };
 }
 
 function CheckIfSettingsSubusersManageHasChanges(enableDisableButton = true)
@@ -1172,7 +1320,7 @@ function CheckIfSettingsSubusersManageHasChanges(enableDisableButton = true)
     let subusersPermissionTabChanges = CheckSettingsSubusersPermissionsTabHasChanges();
     let subusersWhiteLabelTabChanges = CheckSettingsSubusersWhiteLabelHasChanges();
 
-    let hasChanges = subusersGeneralTabChanges || subusersPermissionTabChanges || subusersWhiteLabelTabChanges;
+    let hasChanges = subusersGeneralTabChanges.hasChanges || subusersPermissionTabChanges.hasChanges || subusersWhiteLabelTabChanges.hasChanges;
 
     if (enableDisableButton)
     {
@@ -1186,7 +1334,14 @@ function CheckIfSettingsSubusersManageHasChanges(enableDisableButton = true)
         }
     }
 
-    return hasChanges;
+    return {
+        hasChanges: hasChanges,
+        changes: {
+            general: subusersGeneralTabChanges.changes,
+            permission: subusersPermissionTabChanges.changes,
+            whiteLabel: subusersWhiteLabelTabChanges.changes
+        }
+    };
 }
 
 function CreateSettingsDefaultSubuserObject()
@@ -1288,8 +1443,8 @@ function CreateSettingsDefaultSubuserObject()
             platformTitle: "",
             platformDescription: "",
             domainId: -1,
-            logoURL: "",
-            faviconIconURL: "",
+            logo: null,
+            faviconIcon: null,
             customCSS: "",
             customJavaScript: ""
         }
@@ -1460,6 +1615,9 @@ function ResetSettingsDomainsManageTab(isEdit = false)
     businessDomainsDomainType.prop("disabled", isEdit);
     businessDomainsIqraSubdomain.prop("disabled", isEdit);
     businessDomainsCustomDomain.prop("disabled", isEdit);
+
+    saveBusinessDomainButton.prop("disabled", false);
+    saveBusinessDomainButtonSpinner.addClass("d-none");
 }
 
 function FillSettingsDomainsManageTab(domainData)
@@ -1848,11 +2006,20 @@ function initSettingsTab()
                 return;
             }
 
+            settingsSaveButton.prop("disabled", true);
+            settingsSaveButtonSpinner.removeClass("d-none");
+
             SaveSettingsChanges(formData,
                 (saveResponse) => {
-                    setTimeout(() => {
-                        location.reload();
-                    }, 100);
+                    if (saveResponse.success)
+                    {
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1);
+                    }
+                    
+                    settingsSaveButton.prop("disabled", false);
+                    settingsSaveButtonSpinner.addClass("d-none");
                 },
                 (saveError, isUnsuccessful) => {
                     AlertManager.createAlert({
@@ -1862,6 +2029,9 @@ function initSettingsTab()
                     });
 
                     console.log('Error occured while saving business settings data: ', saveError);
+
+                    settingsSaveButton.prop("disabled", false);
+                    settingsSaveButtonSpinner.addClass("d-none");
                 }
             )
         });
@@ -1974,6 +2144,18 @@ function initSettingsTab()
         $("#nav-bar").on('tabChange', async(event) => {
             if (IsManagerDomainTabOpened)
             {
+                if (IsSavingDomainTab)
+                {
+                    AlertManager.createAlert({
+                        type: 'warning',
+                        message: 'Unable to leave this tab while saving. Please wait until the save is complete.',
+                        timeout: 6000
+                    });
+                    
+                    event.preventDefault();
+                    return;
+                }
+
                 let manageDomainChanges = CheckIfSettingsDomainManagerHasChanges(false).hasChanges;
                 if (!manageDomainChanges)
                 {
@@ -2116,13 +2298,58 @@ function initSettingsTab()
                 return;
             }
 
+            let subUsersTabChanges = CheckIfSettingsSubusersManageHasChanges(false);
+            if (!subUsersTabChanges.hasChanges)
+            {
+                return;
+            }
+
+            saveBusinessSubuserButton.prop("disabled", true);
+            saveBusinessSubuserButtonSpinner.removeClass("d-none");
+
             let formData = new FormData();
 
-            alert("todo subuser save formdata fields");
+            formData.append("postType", "new");
+            formData.append("subUserEmail", subUsersTabChanges.changes.general.email);
+
+            if (subUsersTabChanges.changes.general)
+            {
+                formData.append("general", JSON.stringify(subUsersTabChanges.changes.general));
+            }
+
+            if (subUsersTabChanges.changes.whiteLabel)
+            {
+                if (subUsersTabChanges.changes.whiteLabel.files)
+                {
+                    if (subUsersTabChanges.changes.whiteLabel.files.logo)
+                    {
+                        formData.append("whiteLabel.logo", subUsersTabChanges.changes.whiteLabel.files.logo);
+                    }
+
+                    if (subUsersTabChanges.changes.whiteLabel.files.favicon)
+                    {
+                        formData.append("whiteLabel.favicon", subUsersTabChanges.changes.whiteLabel.files.favicon);
+                    }
+
+                    subUsersTabChanges.changes.whiteLabel.files = undefined;
+                }
+
+                formData.append("whiteLabel", JSON.stringify(subUsersTabChanges.changes.whiteLabel));
+            }
+
+            if (subUsersTabChanges.changes.permission)
+            {
+                formData.append("permission", JSON.stringify(subUsersTabChanges.changes.permission));
+            }
 
             SaveSettingsBusinessSubuser(formData,
                 (saveResponse) => {
+                    console.log(saveResponse);
+
                     // todo
+
+                    saveBusinessSubuserButton.prop("disabled", false);
+                    saveBusinessSubuserButtonSpinner.addClass("d-none");
                 },
                 (saveError, isUnsuccessful) => {
                     AlertManager.createAlert({
@@ -2132,6 +2359,9 @@ function initSettingsTab()
                     });
 
                     console.log('Error occured while saving business subuser data: ', saveError);
+
+                    saveBusinessSubuserButton.prop("disabled", false);
+                    saveBusinessSubuserButtonSpinner.addClass("d-none");
                 }
             )
         });
@@ -2169,6 +2399,17 @@ function initSettingsTab()
 
         switchBackToBusinessDomainsTab.on("click", (event) => {
             event.preventDefault();
+
+            if (IsSavingDomainTab)
+            {
+                AlertManager.createAlert({
+                    type: 'warning',
+                    message: 'Unable to leave this tab while saving. Please wait until the save is complete.',
+                    timeout: 6000
+                });
+                
+                return;
+            }
 
             IsManagerDomainTabOpened = false;
             ManageDomainType = null;
@@ -2249,6 +2490,10 @@ function initSettingsTab()
                 return;
             }
 
+            saveBusinessDomainButton.prop("disabled", true);
+            saveBusinessDomainButtonSpinner.removeClass("d-none");
+            IsSavingDomainTab = true;
+
             let formData = new FormData();
 
             // Is edit or new
@@ -2265,16 +2510,28 @@ function initSettingsTab()
 
             SaveSettingsBusinessDomain(formData,
                 (saveResponse) => {
+                    console.log(saveResponse);
+
+                    let newDomainData = saveResponse.data;
+                    
                     if (ManageDomainType == "edit")
                     {
-
+                        let updatedDomainCurrentIndex = BusinessFullData.businessWhiteLabelDomain.findIndex(x => x.id == CurrentManageDomainData.id);
+                        BusinessFullData.businessWhiteLabelDomain[updatedDomainCurrentIndex] = newDomainData;
                     }
                     else if (ManageDomainType == "new")
                     {
+                        BusinessFullData.businessWhiteLabelDomain.push(newDomainData);
+                        BusinessFullData.businessData.whiteLabelDomainIds.push(newDomainData.id);
 
+                        businessDomainsTable.find("tbody").append(CreateSettingsBusinessDomainTableElement(newDomainData));
                     }
 
-                    alert("saved");
+                    saveBusinessDomainButton.prop("disabled", false);
+                    saveBusinessDomainButtonSpinner.addClass("d-none");
+                    IsSavingDomainTab = false;
+
+                    switchBackToBusinessDomainsTab.click();
                 },
                 (saveError, isUnsuccessful) => {
                     AlertManager.createAlert({
@@ -2284,6 +2541,10 @@ function initSettingsTab()
                     });
 
                     console.log('Error occured while saving business domain data: ', saveError);
+
+                    saveBusinessDomainButton.prop("disabled", false);
+                    saveBusinessDomainButtonSpinner.addClass("d-none");
+                    IsSavingDomainTab = false;
                 }
             )
         });

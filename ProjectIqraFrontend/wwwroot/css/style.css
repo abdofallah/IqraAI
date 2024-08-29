@@ -8,7 +8,7 @@
     --tcolor-dark: #1a1a1a;
 }
 
-* {
+img {
     user-select: none;
 }
 
@@ -1272,4 +1272,12 @@ table.table>thead>*>* {
 
 #settingsAddedLanguagesList div:last-child {
     margin-bottom: 0px;
+}
+
+.save-button-spinner {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    --bs-spinner-border-width: 0.15em;
+    margin-left: 4px;
 }

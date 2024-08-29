@@ -606,7 +606,6 @@ namespace IqraInfrastructure.Services.Business
                 {
                     BusinessWhiteLabelCustomDomain currentCustomDomainData = (BusinessWhiteLabelCustomDomain)newDomainData;
 
-                    // Check if domain is pointed to correct IP
                     try
                     {
                         var customDomainDNS = Dns.GetHostAddresses(currentCustomDomainData.CustomDomain);
@@ -693,12 +692,118 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                // TODO
                 throw new NotImplementedException("Domain postType edit functionality not implemented yet.");
             }
 
             result.Success = true;
             result.Data = newDomainData;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessUser?>> AddOrUpdateUserBusinessSubUser(long businessId, IFormCollection formData, string postType, BusinessUser? businessUserData)
+        {
+            var result = new FunctionReturnResult<BusinessUser?>();
+
+            string? generalTabChangesString = formData["general"];
+            if (string.IsNullOrWhiteSpace(generalTabChangesString))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:1";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            JsonDocument? generalTabChanges = JsonDocument.Parse(generalTabChangesString);
+            if (generalTabChanges == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:2";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            string? whiteLabelTabChangesString = formData["whiteLabel"];
+            if (string.IsNullOrWhiteSpace(whiteLabelTabChangesString))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:3";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            JsonDocument? whiteLabelTabChanges = JsonDocument.Parse(whiteLabelTabChangesString);
+            if (whiteLabelTabChanges == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:4";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            string? permissionTabChangesString = formData["permission"];
+            if (string.IsNullOrWhiteSpace(permissionTabChangesString))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:5";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            JsonDocument? permissionTabChanges = JsonDocument.Parse(permissionTabChangesString);
+            if (permissionTabChanges == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:6";
+                result.Message = "Changes data not found.";
+                return result;
+            }
+
+            IFormFile? subuserWhiteLabelLogo = formData.Files.FirstOrDefault(x => x.Name == "whiteLabel.logo");
+            if (subuserWhiteLabelLogo != null)
+            {
+                int logoValidateResult = ImageHelper.ValidateBusinessWhiteLabelLogoFile(subuserWhiteLabelLogo);
+
+                if (logoValidateResult == 0)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:7";
+                    result.Message = "The whitelabel style logo file is too big. Maximum size is 5MB.";
+                    return result;
+                }
+                else if (logoValidateResult == 1)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:8";
+                    result.Message = "The whitelabel style logo file is not valid.";
+                    return result;
+                }
+                else if (logoValidateResult != 200)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:9";
+                    result.Message = "The whitelabel style logo file is not valid.";
+                    return result;
+                }
+            }
+
+            IFormFile? subuserWhiteLabelFavicon = formData.Files.FirstOrDefault(x => x.Name == "whiteLabel.favicon");
+            if (subuserWhiteLabelFavicon != null)
+            {
+                int faviconValidateResult = ImageHelper.ValidateBusinessWhiteLabelFaviconFile(subuserWhiteLabelFavicon);
+
+                if (faviconValidateResult == 0)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:10";
+                    result.Message = "The whitelabel style favicon file is too big. Maximum size is 5MB.";
+                    return result;
+                }
+                else if (faviconValidateResult == 1)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:11";
+                    result.Message = "The whitelabel style favicon file is not valid.";
+                    return result;
+                }
+                else if (faviconValidateResult != 200)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:12";
+                    result.Message = "The whitelabel style favicon file is not valid.";
+                    return result;
+                }
+            }
+
+            // todo general, whiteLabel, permission
 
             return result;
         }
