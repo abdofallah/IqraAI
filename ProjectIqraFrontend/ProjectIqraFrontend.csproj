@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
     <ProjectReference Include="..\IqraInfrastructure\IqraInfrastructure.csproj" />
+    <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />
   </ItemGroup>
 
   <ItemGroup>

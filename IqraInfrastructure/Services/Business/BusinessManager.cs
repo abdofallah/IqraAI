@@ -7,6 +7,7 @@ using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using Serilog;
+using System.Net;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Services.Business
@@ -410,6 +411,23 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
+        public async Task<FunctionReturnResult<bool?>> AddBusinessWhiteLabelDomainId(long whitelabelDomainId, long businessId)
+        {
+            var result = new FunctionReturnResult<bool?>();
+
+            var update = Builders<BusinessData>.Update.Push(x => x.WhiteLabelDomainIds, whitelabelDomainId);
+
+            var updateResult = await _businessRepository.UpdateBusinessAsync(businessId, update);
+            if (!updateResult)
+            {
+                result.Code = "AddBusinessWhiteLabelDomainId:1";
+                result.Message = "Failed to update business.";
+            }
+
+            result.Success = true;
+            return result;
+        }
+
         public async Task<FunctionReturnResult<BusinessWhiteLabelDomain?>> AddOrUpdateUserBusinessDomain(long businessId, IFormCollection formData, string postType, BusinessWhiteLabelDomain? domainData)
         {
             var result = new FunctionReturnResult<BusinessWhiteLabelDomain?>();
@@ -490,60 +508,52 @@ namespace IqraInfrastructure.Services.Business
                 }
 
                 var checkDomainNameResult = await _businessIqraBusinessDomainsVestaCPRepository.GetCustomBusinessDomainDetails(customDomainName);
-                if (!checkDomainNameResult.Success)
+                if (!checkDomainNameResult.Success || string.IsNullOrEmpty(checkDomainNameResult.Data))
                 {
                     result.Code = "AddOrUpdateUserBusinessDomain:" + checkDomainNameResult.Code;
                     result.Message = checkDomainNameResult.Message;
                     return result;
                 }
 
-                ((BusinessWhiteLabelCustomDomain)newDomainData).CustomDomain = customDomainName;
-
-                string? isSSLEnabled = changesRoot.GetProperty("isSSLEnabled").GetString();
-                if (!bool.TryParse(isSSLEnabled, out bool isSSLEnabledBoolean))
+                if (!checkDomainNameResult.Data.Contains("Error: web domain " + customDomainName + " doesn't exist"))
                 {
                     result.Code = "AddOrUpdateUserBusinessDomain:8";
-                    result.Message = "SSL Enabled not found";
+                    result.Message = "Subdomain already exists.";
                     return result;
                 }
 
-                if (isSSLEnabledBoolean)
-                {
-                    ((BusinessWhiteLabelCustomDomain)newDomainData).SSLEnabled = DateTime.UtcNow;
+                ((BusinessWhiteLabelCustomDomain)newDomainData).CustomDomain = customDomainName;
 
-                    string? useLetsEncryptSSL = changesRoot.GetProperty("useLetsEncryptSSL").GetString();
-                    if (!bool.TryParse(useLetsEncryptSSL, out bool useLetsEncryptSSLBoolean))
+                string? useCustomSSL = changesRoot.GetProperty("useCustomSSL").ToString();
+                if (!bool.TryParse(useCustomSSL, out bool useCustomSSLBoolean))
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:9";
+                    result.Message = "Use Custom SSL not found";
+                    return result;
+                }
+
+                if (useCustomSSLBoolean)
+                {
+                    ((BusinessWhiteLabelCustomDomain)newDomainData).UseCustomSSL = DateTime.UtcNow;
+
+                    string? sslCertificate = changesRoot.GetProperty("sslCertificate").GetString();
+                    if (string.IsNullOrWhiteSpace(sslCertificate))
                     {
-                        result.Code = "AddOrUpdateUserBusinessDomain:9";
-                        result.Message = "Use Lets Encrypt SSL not found";
+                        result.Code = "AddOrUpdateUserBusinessDomain:10";
+                        result.Message = "Ssl Certificate not found";
                         return result;
                     }
 
-                    if (useLetsEncryptSSLBoolean)
+                    string? sslPrivateKey = changesRoot.GetProperty("sslPrivateKey").GetString();
+                    if (string.IsNullOrWhiteSpace(sslPrivateKey))
                     {
-                        ((BusinessWhiteLabelCustomDomain)newDomainData).UseLetsEncryptSSL = DateTime.UtcNow;
+                        result.Code = "AddOrUpdateUserBusinessDomain:11";
+                        result.Message = "Ssl Private Key not found";
+                        return result;
                     }
-                    else
-                    {
-                        string? sslCertificate = changesRoot.GetProperty("sslCertificate").GetString();
-                        if (string.IsNullOrWhiteSpace(sslCertificate))
-                        {
-                            result.Code = "AddOrUpdateUserBusinessDomain:10";
-                            result.Message = "Ssl Certificate not found";
-                            return result;
-                        }
 
-                        string? sslPrivateKey = changesRoot.GetProperty("sslPrivateKey").GetString();
-                        if (string.IsNullOrWhiteSpace(sslPrivateKey))
-                        {
-                            result.Code = "AddOrUpdateUserBusinessDomain:11";
-                            result.Message = "Ssl Private Key not found";
-                            return result;
-                        }
-
-                        ((BusinessWhiteLabelCustomDomain)newDomainData).SSLCertificate = sslCertificate;
-                        ((BusinessWhiteLabelCustomDomain)newDomainData).SSLPrivateKey = sslPrivateKey;
-                    }
+                    ((BusinessWhiteLabelCustomDomain)newDomainData).SSLCertificate = sslCertificate;
+                    ((BusinessWhiteLabelCustomDomain)newDomainData).SSLPrivateKey = sslPrivateKey;
                 }
             }
             else
@@ -556,11 +566,7 @@ namespace IqraInfrastructure.Services.Business
             newDomainData.Type = ((BusinessUserWhiteLabelDomainTypeEnum)domainTypeEnum);
 
             if (postType == "new")
-            {
-                newDomainData.Id = await _businessWhiteLabelDomainRepository.GetNextBusinessWhiteLabelDomainId();
-                newDomainData.BusinessId = businessId;
-
-                
+            {    
                 if (((BusinessUserWhiteLabelDomainTypeEnum)domainTypeEnum) == BusinessUserWhiteLabelDomainTypeEnum.IqraSubdomain)
                 {
                     BusinessWhiteLabelIqraSubDomain currentIqraSubdomainData = (BusinessWhiteLabelIqraSubDomain)newDomainData;
@@ -588,7 +594,7 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultHTTPSProxyTemplate(currentIqraSubdomainData.SubDomain, true);
+                    var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultProxyTemplate(currentIqraSubdomainData.SubDomain, true);
                     if (!setHTTPSTemplateResult.Success)
                     {
                         result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPSTemplateResult.Code;
@@ -600,6 +606,35 @@ namespace IqraInfrastructure.Services.Business
                 {
                     BusinessWhiteLabelCustomDomain currentCustomDomainData = (BusinessWhiteLabelCustomDomain)newDomainData;
 
+                    // Check if domain is pointed to correct IP
+                    try
+                    {
+                        var customDomainDNS = Dns.GetHostAddresses(currentCustomDomainData.CustomDomain);
+                        if (customDomainDNS == null || customDomainDNS.Length == 0)
+                        {
+                            result.Code = "AddOrUpdateUserBusinessDomain:13";
+                            result.Message = "Domain IP addresses not found.";
+                            return result;
+                        }
+
+                        var domainDNSIPExists = customDomainDNS.Where((d) =>
+                        {
+                            return d.ToString() == _businessIqraBusinessDomainsVestaCPRepository.GetBusinessDomainDefaultIP();
+                        }).FirstOrDefault();
+
+                        if (domainDNSIPExists == null)
+                        {
+                            result.Code = "AddOrUpdateUserBusinessDomain:14";
+                            result.Message = "Domain IP address not pointing to Iqra Domain Server IP.";
+                            return result;
+                        }
+                    }
+                    catch (Exception ex) {
+                        result.Code = "AddOrUpdateUserBusinessDomain:15";
+                        result.Message = ex.Message;
+                        return result;
+                    }
+
                     var addResult = await _businessIqraBusinessDomainsVestaCPRepository.AddCustomBusinessDomain(currentCustomDomainData.CustomDomain, true);
                     if (!addResult.Success)
                     {
@@ -608,50 +643,41 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    if (currentCustomDomainData.SSLEnabled != null)
+                    if (currentCustomDomainData.UseCustomSSL != null)
                     {
-                        if (currentCustomDomainData.UseLetsEncryptSSL != null)
+                        var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddCustomBusinessDomainSSL(currentCustomDomainData.CustomDomain, currentCustomDomainData.SSLCertificate, currentCustomDomainData.SSLPrivateKey, true);
+                        if (!addSSLResult.Success)
                         {
-                            var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddCustomBusinessDomainLetsEncryptSSL(currentCustomDomainData.CustomDomain);
-                            if (!addSSLResult.Success)
-                            {
-                                result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
-                                result.Message = addSSLResult.Message;
-                                return result;
-                            }
-                        }
-                        else
-                        {
-                            var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddCustomBusinessDomainSSL(currentCustomDomainData.CustomDomain, currentCustomDomainData.SSLCertificate, currentCustomDomainData.SSLPrivateKey, true);
-                            if (!addSSLResult.Success)
-                            {
-                                result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
-                                result.Message = addSSLResult.Message;
-                                return result;
-                            }
-                        }
-
-                        var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultHTTPSProxyTemplate(currentCustomDomainData.CustomDomain, true);
-                        if (!setHTTPTemplateResult.Success)
-                        {
-                            result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPTemplateResult.Code;
-                            result.Message = setHTTPTemplateResult.Message;
+                            result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
+                            result.Message = addSSLResult.Message;
                             return result;
                         }
                     }
                     else
                     {
-                        var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultHTTPProxyTemplate(currentCustomDomainData.CustomDomain, true);
-                        if (!setHTTPTemplateResult.Success)
+                        var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddCustomBusinessDomainLetsEncryptSSL(currentCustomDomainData.CustomDomain);
+                        if (!addSSLResult.Success)
                         {
-                            result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPTemplateResult.Code;
-                            result.Message = setHTTPTemplateResult.Message;
+                            result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
+                            result.Message = addSSLResult.Message;
                             return result;
-                        }
+                        }                    
+                    }
+
+                    var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultProxyTemplate(currentCustomDomainData.CustomDomain, true);
+                    if (!setHTTPTemplateResult.Success)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPTemplateResult.Code;
+                        result.Message = setHTTPTemplateResult.Message;
+                        return result;
                     }
                 }
 
+                newDomainData.Id = await _businessWhiteLabelDomainRepository.GetNextBusinessWhiteLabelDomainId();
+                newDomainData.BusinessId = businessId;
+
                 await _businessWhiteLabelDomainRepository.AddBusinessWhiteLabelDomainAsync(newDomainData);
+                await AddBusinessWhiteLabelDomainId(newDomainData.Id, businessId);
             }
 
             if (postType == "edit")
@@ -662,7 +688,7 @@ namespace IqraInfrastructure.Services.Business
                 var updateResult = await _businessWhiteLabelDomainRepository.UpdateBusinessWhiteLabelDomainAsync(newDomainData);
                 if (!updateResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:13";
+                    result.Code = "AddOrUpdateUserBusinessDomain:16";
                     result.Message = "Domain data update failed.";
                     return result;
                 }

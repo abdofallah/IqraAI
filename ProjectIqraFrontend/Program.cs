@@ -27,33 +27,70 @@ namespace ProjectIqraFrontend
 
             // Region
 
-            RegionRepository regionRepository = new RegionRepository(appConfig["AppDatabase:ConnectionString"], appConfig["AppDatabase:DatabaseName"]);
+            RegionRepository regionRepository = new RegionRepository(
+                appConfig["AppDatabase:ConnectionString"],
+                appConfig["AppDatabase:DatabaseName"]
+            );
 
             RegionManager regionManager = new RegionManager(regionRepository);
             builder.Services.AddSingleton<RegionManager>(regionManager);
 
             // User
 
-            UserSessionRepository userSessionRepository = new UserSessionRepository(appConfig["UserSessionDatabase:ConnectionString"]);
-            UserRepository userRepository = new UserRepository(appConfig["UserDatabase:ConnectionString"], appConfig["UserDatabase:DatabaseName"]);
+            UserSessionRepository userSessionRepository = new UserSessionRepository(
+                appConfig["UserSessionDatabase:ConnectionString"]
+            );
+            UserRepository userRepository = new UserRepository(
+                appConfig["UserDatabase:ConnectionString"],
+                appConfig["UserDatabase:DatabaseName"]
+            );
 
             UserManager userManager = new UserManager(userSessionRepository, userRepository);
             builder.Services.AddSingleton<UserManager>(userManager);
 
             // Business
 
-            BusinessRepository businessRepository = new BusinessRepository(appConfig["BusinessDatabase:ConnectionString"], appConfig["BusinessDatabase:DatabaseName"]);
-            BusinessAppRepository businessAppRepository = new BusinessAppRepository(appConfig["BusinessAppDatabase:ConnectionString"], appConfig["BusinessAppDatabase:DatabaseName"]);
-            BusinessLogoRepository businessLogoRepository = new BusinessLogoRepository(appConfig["BusinessLogoRepository:Endpoint"], int.Parse(appConfig["BusinessLogoRepository:Port"]), appConfig["BusinessLogoRepository:AccessKey"], appConfig["BusinessLogoRepository:SecretKey"], appConfig["BusinessLogoRepository:BucketName"], bool.Parse(appConfig["BusinessLogoRepository:IsSecure"]));
-            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository = new BusinessWhiteLabelDomainRepository(appConfig["BusinessWhiteLabelDomainRepository:ConnectionString"], appConfig["BusinessWhiteLabelDomainRepository:DatabaseName"]);
-            BusinessDomainVestaCPRepository businessDomainVestaCPRepository = new BusinessDomainVestaCPRepository(appConfig["BusinessDomainHostingRepository:Hostname"], appConfig["BusinessDomainHostingRepository:AdminUsername"], appConfig["BusinessDomainHostingRepository:BusinessesUsername"], appConfig["BusinessDomainHostingRepository:AdminPassword"], appConfig["BusinessDomainHostingRepository:DomainIP"], appConfig["BusinessDomainHostingRepository:IqraBusinessDomain"]);
+            BusinessRepository businessRepository = new BusinessRepository(
+                appConfig["BusinessDatabase:ConnectionString"],
+                appConfig["BusinessDatabase:DatabaseName"]
+            );
+            BusinessAppRepository businessAppRepository = new BusinessAppRepository(
+                appConfig["BusinessAppDatabase:ConnectionString"],
+                appConfig["BusinessAppDatabase:DatabaseName"]
+            );
+            BusinessLogoRepository businessLogoRepository = new BusinessLogoRepository(
+                appConfig["BusinessLogoRepository:Endpoint"],
+                int.Parse(appConfig["BusinessLogoRepository:Port"]),
+                appConfig["BusinessLogoRepository:AccessKey"],
+                appConfig["BusinessLogoRepository:SecretKey"],
+                appConfig["BusinessLogoRepository:BucketName"],
+                bool.Parse(appConfig["BusinessLogoRepository:IsSecure"])
+            );
+            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository = new BusinessWhiteLabelDomainRepository(
+                appConfig["BusinessWhiteLabelDomainRepository:ConnectionString"],
+                appConfig["BusinessWhiteLabelDomainRepository:DatabaseName"]
+            );
+            BusinessDomainVestaCPRepository businessDomainVestaCPRepository = new BusinessDomainVestaCPRepository(
+                appConfig["BusinessDomainHostingRepository:Hostname"],
+                appConfig["BusinessDomainHostingRepository:AdminUsername"],
+                appConfig["BusinessDomainHostingRepository:BusinessesUsername"],
+                appConfig["BusinessDomainHostingRepository:AdminPassword"],
+                appConfig["BusinessDomainHostingRepository:DomainIP"],
+                appConfig["BusinessDomainHostingRepository:IqraBusinessDomain"],
+                appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Endpoint"],
+                appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Username"],
+                appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"]
+            );
 
             BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             // Number
 
-            NumberRepository numberRepository = new NumberRepository(appConfig["NumberDatabase:ConnectionString"], appConfig["NumberDatabase:DatabaseName"]);
+            NumberRepository numberRepository = new NumberRepository(
+                appConfig["NumberDatabase:ConnectionString"],
+                appConfig["NumberDatabase:DatabaseName"]
+            );
 
             NumberManager numberManager = new NumberManager(numberRepository);
             builder.Services.AddSingleton<NumberManager>(numberManager);

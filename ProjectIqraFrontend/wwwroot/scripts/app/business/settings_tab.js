@@ -173,7 +173,6 @@ const businessDomainSSLTypeCustom = businessDomainsManagerTab.find("#business-do
 
 const businessDomainsCustomDomainContainer = businessDomainsManagerTab.find("#business-domains-custom-domain-container");
 const businessDomainsCustomDomain = businessDomainsCustomDomainContainer.find("#business-domains-custom-domain");
-const businessDomainsSslEnabled = businessDomainsManagerTab.find("#business-domains-ssl-enabled");
 const businessDomainsSslPrivateKey = businessDomainsManagerTab.find("#business-domains-ssl-private-key");
 const businessDomainsSslCertificate = businessDomainsManagerTab.find("#business-domains-ssl-certificate");
 
@@ -1441,8 +1440,7 @@ function CreateSettingsDefaultDomainObject()
         },
         subDomain: "",
         customDomain: "",
-        sslEnabled: false,
-        useLetsEncryptSSL: true,
+        useCustomSSL: false,
         sslPrivateKey: "",
         sslCertificate: ""
     }
@@ -1450,7 +1448,7 @@ function CreateSettingsDefaultDomainObject()
     return newObject;
 }
 
-function ResetSettingsDomainsManageTab()
+function ResetSettingsDomainsManageTab(isEdit = false)
 {
     businessDomainsManagerTab.find("input, textarea").val("");
     businessDomainsManagerTab.find(".is-invalid").removeClass("is-invalid");
@@ -1458,6 +1456,10 @@ function ResetSettingsDomainsManageTab()
 
     businessDomainsDomainType.val("Unknown").change();
     businessDomainsSslConfig.find('input[name="businessDomainSSLType"][ssl-type="free"]').click().change();
+
+    businessDomainsDomainType.prop("disabled", isEdit);
+    businessDomainsIqraSubdomain.prop("disabled", isEdit);
+    businessDomainsCustomDomain.prop("disabled", isEdit);
 }
 
 function FillSettingsDomainsManageTab(domainData)
@@ -1471,19 +1473,13 @@ function FillSettingsDomainsManageTab(domainData)
     if (domainData.type.value == 2)
     {
         businessDomainsDomainType.val("CustomDomain").change();
-        businessDomainsCustomDomain.text(domainData.customDomain);
+        businessDomainsCustomDomain.val(domainData.customDomain);
 
-        if (domainData.sslEnabled)
-        {
-            businessDomainsSslEnabled.prop("checked", true).change();
+        if (domainData.useCustomSSL) {
+            businessDomainsSslConfig.find('input[name="businessDomainSSLType"][ssl-type="custom"]').click().change();
 
-            if (!domainData.useLetsEncryptSSL)
-            {
-                businessDomainsSslConfig.find('input[name="businessDomainSSLType"][ssl-type="custom"]').click().change();
-
-                businessDomainsSslCertificate.val(domainData.sslCertificate);
-                businessDomainsSslPrivateKey.val(domainData.sslPrivateKey);
-            }
+            businessDomainsSslCertificate.val(domainData.sslCertificate);
+            businessDomainsSslPrivateKey.val(domainData.sslPrivateKey);
         }
     }
 }
@@ -1500,52 +1496,38 @@ function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true)
     {
         hasChanges = true;
     }
-    else
+
+    if (currentDomainType == "IqraSubdomain")
     {
         changes.subDomain = businessDomainsIqraSubdomain.val();
-        if (currentDomainType == "IqraSubdomain")
+        if (businessDomainsIqraSubdomain.val() != CurrentManageDomainData.subDomain)
         {
-            if (businessDomainsIqraSubdomain.val() != CurrentManageDomainData.subDomain)
-            {
-                hasChanges = true;
-            }
+            hasChanges = true;
         }
-        else if (currentDomainType == "CustomDomain")
+    }
+    else if (currentDomainType == "CustomDomain")
+    {
+        changes.customDomain = businessDomainsCustomDomain.val();
+        if (businessDomainsCustomDomain.val() != CurrentManageDomainData.customDomain)
         {
-            changes.customDomain = businessDomainsCustomDomain.val();
-            if (businessDomainsCustomDomain.val() != CurrentManageDomainData.customDomain)
-            {
+            hasChanges = true;
+        }
+
+        let checkedSSLType = businessDomainsSslConfig.find('input[name="businessDomainSSLType"]:checked').attr("ssl-type");
+        changes.useCustomSSL = (checkedSSLType == "custom");
+
+        if (checkedSSLType == "custom" && CurrentManageDomainData.useCustomSSL == null) {
+            hasChanges = true;
+        }
+        else if (checkedSSLType == "custom" && CurrentManageDomainData.useCustomSSL) {
+            changes.sslCertificate = businessDomainsSslCertificate.val();
+            if (businessDomainsSslCertificate.val() != CurrentManageDomainData.sslCertificate) {
                 hasChanges = true;
             }
 
-            let isSSLEnabled = businessDomainsSslEnabled.prop("checked");
-            changes.sslEnabled = isSSLEnabled;
-            if (isSSLEnabled && CurrentManageDomainData.sslEnabled == null)
-            {
+            changes.sslPrivateKey = businessDomainsSslPrivateKey.val();
+            if (businessDomainsSslPrivateKey.val() != CurrentManageDomainData.sslPrivateKey) {
                 hasChanges = true;
-            }
-            else if (isSSLEnabled && CurrentManageDomainData.sslEnabled)
-            {
-                let checkedSSLType = businessDomainsSslConfig.find('input[name="businessDomainSSLType"]:checked').attr("ssl-type");
-                changes.useLetsEncryptSSL = (checkedSSLType != "custom");
-                if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL == null)
-                {
-                    hasChanges = true;
-                }
-                else if (checkedSSLType == "custom" && CurrentManageDomainData.useLetsEncryptSSL)
-                {
-                    changes.sslCertificate = businessDomainsSslCertificate.val();
-                    if (businessDomainsSslCertificate.val() != CurrentManageDomainData.sslCertificate)
-                    {
-                        hasChanges = true;
-                    }
-
-                    changes.sslPrivateKey = businessDomainsSslPrivateKey.val();
-                    if (businessDomainsSslPrivateKey.val() != CurrentManageDomainData.sslPrivateKey)
-                    {
-                        hasChanges = true;
-                    }
-                }
             }
         }
     }
@@ -1975,20 +1957,6 @@ function initSettingsTab()
                 businessDomainsCustomDomainContainer.removeClass("d-none");
             }
         });
-
-        businessDomainsSslEnabled.on("change", (event) => {
-            let current = $(event.currentTarget);
-            let currentChecked = current.prop("checked");
-
-            if (currentChecked)
-            {
-                businessDomainsSslConfig.removeClass("d-none");
-            }
-            else
-            {
-                businessDomainsSslConfig.addClass("d-none");
-            }
-        });
     
         $("#settings-inner-tab button.nav-link").on("show.bs.tab", (event) => {
             let newTabId = $(event.target).attr("id");
@@ -2186,7 +2154,7 @@ function initSettingsTab()
         addNewBusinessDomainButton.on("click", (event) => {
             event.preventDefault();
 
-            ResetSettingsDomainsManageTab();
+            ResetSettingsDomainsManageTab(false);
             currentBusinessDomainName.text("New Domain");
             saveBusinessDomainButton.prop("disabled", true);
 
@@ -2235,7 +2203,7 @@ function initSettingsTab()
 
            let currentDomainData = BusinessFullData.businessWhiteLabelDomain.find(x => x.id == currentDomainId);
 
-           ResetSettingsDomainsManageTab();
+           ResetSettingsDomainsManageTab(true);
 
            if (currentDomainData.type.value == 1)
            {
@@ -2251,7 +2219,6 @@ function initSettingsTab()
            CurrentManageDomainData = currentDomainData;
 
            FillSettingsDomainsManageTab(currentDomainData);
-
            ShowSettingsDomainsManageTab();
 
            IsManagerDomainTabOpened = true;

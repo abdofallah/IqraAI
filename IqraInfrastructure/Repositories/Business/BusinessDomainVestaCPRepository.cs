@@ -1,6 +1,5 @@
 ﻿using FluentFTP;
 using IqraCore.Entities.Helpers;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json;
 
@@ -16,14 +15,31 @@ namespace IqraInfrastructure.Repositories.Business
         private string _domainDefaultIP;
         private string _businessDomain;
 
-        private readonly string _defaultHTTPProxyTemplateName = "iqrabusiness.http";
-        private readonly string _defaultHTTPSProxyTemplateName = "iqrabusiness.https";
-        private readonly string _maintenanceProxyTemplateFile = "IqraBusinessesMaintenance";
+        private readonly string _proxyTemplateFTPHostname;
+        private readonly string _proxyTemplateFTPUsername;
+        private readonly string _proxyTemplateFTPPassword;
+
+        private readonly string _defaultHTTPSProxyTemplateName = "iqrabusiness-https";
+        private readonly string _maintenanceProxyTemplateFile = "iqrabusiness-maintenance";
 
         private HttpClient _httpClient;
 
-        public BusinessDomainVestaCPRepository(string hostname, string adminUsername, string businessesUsername, string password, string domainDefaultIP, string businessDomain)
-        {  
+        public BusinessDomainVestaCPRepository(
+            string hostname,
+            string adminUsername,
+            string businessesUsername,
+            string password,
+            string domainDefaultIP,
+            string businessDomain,
+            string proxyTemplateFTPHostname,
+            string proxyTemplateFTPUsername,
+            string proxyTemplateFTPPassword
+        )
+        {
+            Console.ForegroundColor = ConsoleColor.DarkBlue;
+            Console.WriteLine("[BusinessDomainVestaCPRepository] Initializing...");
+            Console.ResetColor();
+
             _hostname = hostname;
             _adminUsername = adminUsername;
             _businessesUsername = businessesUsername;
@@ -31,6 +47,10 @@ namespace IqraInfrastructure.Repositories.Business
 
             _domainDefaultIP = domainDefaultIP;
             _businessDomain = businessDomain;
+
+            _proxyTemplateFTPHostname = proxyTemplateFTPHostname;
+            _proxyTemplateFTPUsername = proxyTemplateFTPUsername;
+            _proxyTemplateFTPPassword = proxyTemplateFTPPassword;
 
             var httpClientHandler = new HttpClientHandler();
             httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
@@ -43,7 +63,27 @@ namespace IqraInfrastructure.Repositories.Business
                 Timeout = TimeSpan.FromSeconds(30),
             };
 
+            // Validate API Works Fine
             ValidateVestaCPAccounts().GetAwaiter().GetResult();
+            
+            // Upload the latest templates files
+            UpdateTemplatesFiles();
+
+            // Rebuild all the web with the latest templates files
+            var rebuildAdminResult = RebuildAdminWeb(true).GetAwaiter().GetResult();
+            if (!rebuildAdminResult.Success)
+            {
+                throw new Exception(rebuildAdminResult.Message);
+            }
+            var rebuildBusinessesResult = RebuildBusinessesWeb(true).GetAwaiter().GetResult();
+            if (!rebuildBusinessesResult.Success)
+            {
+                throw new Exception(rebuildBusinessesResult.Message);
+            }
+
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine("[BusinessDomainVestaCPRepository] Initialization Complete");
+            Console.ResetColor();
         }
 
         private async Task ValidateVestaCPAccounts()
@@ -73,6 +113,41 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
+        private void UpdateTemplatesFiles()
+        {
+            string templatesFolderFTPPath = "vestacpnginxtemplates";
+            string templatesFolderLocalPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "VestaCP", "ProxyTemplates");
+
+            using (var ftp = new FtpClient(_proxyTemplateFTPHostname, _proxyTemplateFTPUsername, _proxyTemplateFTPPassword))
+            {
+                ftp.Connect();
+
+                ftp.UploadBytes(
+                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".tpl"))),
+                    Path.Combine(templatesFolderFTPPath, (_defaultHTTPSProxyTemplateName + ".tpl")),
+                    FtpRemoteExists.Overwrite
+                );
+                ftp.UploadBytes(
+                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".stpl"))),
+                    Path.Combine(templatesFolderFTPPath, (_defaultHTTPSProxyTemplateName + ".stpl")),
+                    FtpRemoteExists.Overwrite
+                );
+
+                ftp.UploadBytes(
+                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".tpl"))),
+                    Path.Combine(templatesFolderFTPPath, (_maintenanceProxyTemplateFile + ".tpl")),
+                    FtpRemoteExists.Overwrite
+                );
+                ftp.UploadBytes(
+                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".stpl"))),
+                    Path.Combine(templatesFolderFTPPath, (_maintenanceProxyTemplateFile + ".stpl")),
+                    FtpRemoteExists.Overwrite
+                );
+
+                ftp.Disconnect();
+            }
+        }
+
         /** 
          * 
          * Publicize Variables
@@ -82,6 +157,11 @@ namespace IqraInfrastructure.Repositories.Business
         public string GetBusinessDomain()
         {
             return _businessDomain;
+        }
+
+        public string GetBusinessDomainDefaultIP()
+        {
+            return _domainDefaultIP;
         }
 
         /** 
@@ -216,7 +296,7 @@ namespace IqraInfrastructure.Repositories.Business
                 ("arg2", domain),
                 ("arg3", _domainDefaultIP),
                 ("arg4", restart ? "yes" : "no"),
-                ("arg5", ""),
+                ("arg5", "none"),
                 ("arg6", "")
             );
         }
@@ -315,18 +395,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultHTTPProxyTemplate(string domain, bool restart)
-        {
-            return await ChangeWebProxy(
-                _businessesUsername,
-                domain,
-                _defaultHTTPProxyTemplateName,
-                "",
-                restart
-            );
-        }
-
-        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultHTTPSProxyTemplate(string domain, bool restart)
+        public async Task<FunctionReturnResult<string?>> SetCustomDomainDefaultProxyTemplate(string domain, bool restart)
         {
             return await ChangeWebProxy(
                 _businessesUsername,
@@ -422,18 +491,7 @@ namespace IqraInfrastructure.Repositories.Business
             );
         }
 
-        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultHTTPProxyTemplate(string subdomain, bool restart)
-        {
-            return await ChangeWebProxy(
-                _businessesUsername,
-                (subdomain + "." + _businessDomain),
-                _defaultHTTPProxyTemplateName,
-                "",
-                restart
-            );
-        }
-
-        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultHTTPSProxyTemplate(string subdomain, bool restart)
+        public async Task<FunctionReturnResult<string?>> SetIqraSubDomainDefaultProxyTemplate(string subdomain, bool restart)
         {
             return await ChangeWebProxy(
                 _businessesUsername,
