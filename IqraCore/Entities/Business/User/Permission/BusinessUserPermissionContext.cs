@@ -2,7 +2,7 @@
 {
     public class BusinessUserPermissionContext
     {
-        public bool ContextTabEnabled { get; set; } = false;
+        public bool TabEnabled { get; set; } = false;
         
         public BusinessUserPermissionContextBranding Branding { get; set; } = new BusinessUserPermissionContextBranding();
         public BusinessUserPermissionContextBranches Branches { get; set; } = new BusinessUserPermissionContextBranches();

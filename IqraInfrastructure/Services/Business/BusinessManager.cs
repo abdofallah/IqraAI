@@ -701,7 +701,7 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<BusinessUser?>> AddOrUpdateUserBusinessSubUser(long businessId, IFormCollection formData, string postType, BusinessUser? businessUserData)
+        public async Task<FunctionReturnResult<BusinessUser?>> AddOrUpdateUserBusinessSubUser(long businessId, IFormCollection formData, string postType, List<long> businesDatasWhiteLabelDomainIds)
         {
             var result = new FunctionReturnResult<BusinessUser?>();
 
@@ -803,7 +803,376 @@ namespace IqraInfrastructure.Services.Business
                 }
             }
 
-            // todo general, whiteLabel, permission
+            BusinessUser newSubUserData = new BusinessUser();
+
+            // General Tab
+            var generalTabRootElement = generalTabChanges.RootElement;
+
+            string? subUserEmail = generalTabRootElement.GetProperty("email").GetString();
+            if (string.IsNullOrWhiteSpace(subUserEmail) || !EmailAddressValidationHelper.IsValid(subUserEmail))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:13";
+                result.Message = "Subuser email not found or is invalid.";
+                return result;
+            }
+            newSubUserData.Email = subUserEmail;
+
+            string? subUserPassword = generalTabRootElement.GetProperty("password").GetString();
+            if (string.IsNullOrWhiteSpace(subUserPassword) || subUserPassword.Length <= 7)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:14";
+                result.Message = "Subuser password not found or is not 8 characters long.";
+                return result;
+            }
+            newSubUserData.Password = subUserPassword;
+
+            bool? subUserLoginDisabled = generalTabRootElement.GetProperty("isLoginDisableChecked").GetBoolean();
+            if (subUserLoginDisabled == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:15";
+                result.Message = "Subuser login disabled not found.";
+                return result;
+            }
+            
+            string? subUserLoginDisabledReason = null;
+            if (subUserLoginDisabled.Value == true)
+            {
+                newSubUserData.DisabledUserLoginAt = DateTime.UtcNow;
+
+                subUserLoginDisabledReason = generalTabRootElement.GetProperty("loginDisabledReason").GetString();
+                if (!string.IsNullOrWhiteSpace(subUserLoginDisabledReason))
+                {
+                    newSubUserData.DisabledUserLoginReason = subUserLoginDisabledReason;
+                }
+            }
+
+            // WhiteLabel Tab
+            var whiteLabelTabRootElement = whiteLabelTabChanges.RootElement;
+
+            // WhiteLabel General Tab
+            var whiteLabelTabGeneralTabRootElement = whiteLabelTabChanges.RootElement.GetProperty("general");
+
+            string? subUserWhiteLabelPlatformName = whiteLabelTabGeneralTabRootElement.GetProperty("platformName").GetString();
+            if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformName))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:16";
+                result.Message = "Subuser whitelabel platform name not found.";
+                return result;
+            }
+            newSubUserData.WhiteLabel.PlatformName = subUserWhiteLabelPlatformName;
+
+            string? subUserWhiteLabelPlatformTitle = whiteLabelTabGeneralTabRootElement.GetProperty("platformTitle").GetString();
+            if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformTitle))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:17";
+                result.Message = "Subuser whitelabel platform title not found.";
+                return result;
+            }
+            newSubUserData.WhiteLabel.PlatformTitle = subUserWhiteLabelPlatformTitle;
+
+            string? subUserWhiteLabelPlatformDescription = whiteLabelTabGeneralTabRootElement.GetProperty("platformDescription").GetString();
+            if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformDescription))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:18";
+                result.Message = "Subuser whitelabel platform description not found.";
+                return result;
+            }
+            newSubUserData.WhiteLabel.PlatformDescription = subUserWhiteLabelPlatformDescription;
+
+            string? subUserWhiteLabelDomainId = whiteLabelTabGeneralTabRootElement.GetProperty("domainId").GetString();
+            if (string.IsNullOrWhiteSpace(subUserWhiteLabelDomainId))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:19";
+                result.Message = "Subuser whitelabel domain id not found.";
+                return result;
+            }
+            
+            if (long.TryParse(subUserWhiteLabelDomainId, out long whiteLabelDomainId) == false)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:20";
+                result.Message = "Subuser whitelabel domain id is not a number.";
+                return result;
+            }
+
+            if (!businesDatasWhiteLabelDomainIds.Contains(whiteLabelDomainId))
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:21";
+                result.Message = "Subuser whitelabel domain id is not valid.";
+                return result;
+            }
+            newSubUserData.WhiteLabel.DomainId = whiteLabelDomainId;
+
+            // WhiteLabel Styles
+            var whiteLabelTabStylesTabRootElement = whiteLabelTabChanges.RootElement.GetProperty("styles");
+
+            string? subUserWhiteLabelStyleCustomCSS = whiteLabelTabStylesTabRootElement.GetProperty("customCSS").GetString();
+            if (!string.IsNullOrWhiteSpace(subUserWhiteLabelStyleCustomCSS))
+            {
+                // todo validate css
+                newSubUserData.WhiteLabel.CustomCSS = subUserWhiteLabelStyleCustomCSS;
+            }
+            
+            string? whiteLabelStyleCustomJavaScript = whiteLabelTabStylesTabRootElement.GetProperty("customJavaScript").GetString();
+            if (!string.IsNullOrWhiteSpace(whiteLabelStyleCustomJavaScript))
+            {
+                // todo validate js
+                newSubUserData.WhiteLabel.CustomJavaScript = whiteLabelStyleCustomJavaScript;
+            }
+
+            // WhiteLabel Permissions
+            var whiteLabelTabPermissionsTabRootElement = whiteLabelTabChanges.RootElement.GetProperty("permissions");
+
+            var validateAndPopulateBusinessSubUserPermissionsResult = await ValidateAndPopulateBusinessSubUserPermissions(whiteLabelTabPermissionsTabRootElement);
+            if (validateAndPopulateBusinessSubUserPermissionsResult.Code != null)
+            {
+                result.Code = "AddOrUpdateUserBusinessDomain:" + validateAndPopulateBusinessSubUserPermissionsResult.Code;
+                result.Message = validateAndPopulateBusinessSubUserPermissionsResult.Message;
+                return result;
+            }
+            newSubUserData.Permission = validateAndPopulateBusinessSubUserPermissionsResult.Data;
+
+            // WhiteLabel Logo
+            if (subuserWhiteLabelLogo != null)
+            {
+                var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(subuserWhiteLabelLogo);
+                bool fileExists = await _businessLogoRepository.FileExists(hash);
+                if (!fileExists)
+                {
+                    await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
+                }
+
+                newSubUserData.WhiteLabel.LogoURL = hash;
+            }
+
+            // WhiteLabel Favicon
+            if (subuserWhiteLabelFavicon != null)
+            {
+                var (webpImage, hash) = await ImageHelper.ConvertScaleAndHashToWebp(subuserWhiteLabelFavicon);
+                bool fileExists = await _businessLogoRepository.FileExists(hash);
+                if (!fileExists)
+                {
+                    await _businessLogoRepository.PutFileAsByteData(hash + ".webp", webpImage, new Dictionary<string, string>());
+                }
+
+                newSubUserData.WhiteLabel.FaviconIconURL = hash;
+            }
+
+            // Update Add
+            if (postType == "new")
+            {
+                var addResult = await _businessRepository.AddBusinessSubUserAsync(businessId, newSubUserData);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:22";
+                    result.Message = "Failed to add subuser.";
+                    return result;
+                }
+            }
+
+            if (postType == "edit")
+            {
+                var replaceResult = await _businessRepository.ReplaceBusinessSubUserAsync(businessId, newSubUserData);
+                if (!replaceResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessDomain:23";
+                    result.Message = "Failed to replace subuser.";
+                    return result;
+                }
+            }
+
+            // Return Success
+            result.Success = true;
+            result.Data = newSubUserData;
+            return result;
+        }
+
+        private async Task<FunctionReturnResult<BusinessUserPermission?>> ValidateAndPopulateBusinessSubUserPermissions (JsonElement whiteLabelTabPermissionsTabRootElement)
+        {
+            var result = new FunctionReturnResult<BusinessUserPermission?>();
+
+            BusinessUserPermission newBusinessSubUserPermissions = new BusinessUserPermission();
+
+            // SubUser Routings Permissions
+            var subUserRoutingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionRouting>(whiteLabelTabPermissionsTabRootElement.GetProperty("routing").GetRawText());
+            if (subUserRoutingsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:1";
+                result.Message = "Subuser routings permissions not found.";
+                return result;
+            }
+
+            if (!subUserRoutingsPermissions.TabEnabled)
+            {
+                subUserRoutingsPermissions = new BusinessUserPermissionRouting();
+            }
+            
+            newBusinessSubUserPermissions.Routing = subUserRoutingsPermissions;
+
+            // SubUser Tools Permissions
+            var subUserToolsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionTools>(whiteLabelTabPermissionsTabRootElement.GetProperty("tools").GetRawText());
+            if (subUserToolsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:2";
+                result.Message = "Subuser tools permissions not found.";
+                return result;
+            }
+
+            if (!subUserToolsPermissions.TabEnabled)
+            {
+                subUserToolsPermissions = new BusinessUserPermissionTools();
+            }
+
+            newBusinessSubUserPermissions.Tools = subUserToolsPermissions;
+
+            // SubUser Agents Permissions
+            var subUserAgentsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionAgents>(whiteLabelTabPermissionsTabRootElement.GetProperty("agents").GetRawText());
+            if (subUserAgentsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:3";
+                result.Message = "Subuser agents permissions not found.";
+                return result;
+            }
+
+            if (!subUserAgentsPermissions.TabEnabled)
+            {
+                subUserAgentsPermissions = new BusinessUserPermissionAgents();
+            }
+
+            newBusinessSubUserPermissions.Agents = subUserAgentsPermissions;
+
+            // SubUser Context Permissions
+            var subUserContextPermissions = JsonSerializer.Deserialize<BusinessUserPermissionContext>(whiteLabelTabPermissionsTabRootElement.GetProperty("context").GetRawText());
+            if (subUserContextPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:4";
+                result.Message = "Subuser context permissions not found.";
+                return result;
+            }
+
+            if (subUserContextPermissions.TabEnabled)
+            {
+                // SubUser Context Branding Permissions
+                if (!subUserContextPermissions.Branding.TabEnabled)
+                {
+                    subUserContextPermissions.Branding.Edit = false;
+                }
+
+                // SubUser Context Branches Permissions
+                if (!subUserContextPermissions.Branches.TabEnabled)
+                {
+                    subUserContextPermissions.Branches.Add = false;
+                    subUserContextPermissions.Branches.Edit = false;
+                    subUserContextPermissions.Branches.Delete = false;
+                }
+
+                // SubUser Context Services Permissions
+                if (!subUserContextPermissions.Services.TabEnabled)
+                {
+                    subUserContextPermissions.Services.Add = false;
+                    subUserContextPermissions.Services.Edit = false;
+                    subUserContextPermissions.Services.Delete = false;
+                }
+
+                // SubUser Context Products Permissions
+                if (!subUserContextPermissions.Products.TabEnabled)
+                {
+                    subUserContextPermissions.Products.Add = false;
+                    subUserContextPermissions.Products.Edit = false;
+                    subUserContextPermissions.Products.Delete = false;
+                }
+            }
+            else
+            {
+                subUserContextPermissions = new BusinessUserPermissionContext();
+            }
+
+            newBusinessSubUserPermissions.Context = subUserContextPermissions;
+
+            // SubUser Make Calls Tab
+            var subUserMakeCallsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionMakeCalls>(whiteLabelTabPermissionsTabRootElement.GetProperty("makeCalls").GetRawText());
+            if (subUserMakeCallsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:5";
+                result.Message = "Subuser make calls permissions not found.";
+                return result;
+            }
+
+            if (!subUserMakeCallsPermissions.TabEnabled)
+            {
+                subUserMakeCallsPermissions = new BusinessUserPermissionMakeCalls();
+            }
+
+            newBusinessSubUserPermissions.MakeCalls = subUserMakeCallsPermissions;
+
+            // SubUser Conversations Tab
+            var subUserConversationsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionConversations>(whiteLabelTabPermissionsTabRootElement.GetProperty("conversations").GetRawText());
+            if (subUserConversationsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:6";
+                result.Message = "Subuser conversations permissions not found.";
+                return result;
+            }
+
+            if (subUserConversationsPermissions.TabEnabled)
+            {
+                if (!subUserConversationsPermissions.Inbound.TabEnabled)
+                {
+                    subUserConversationsPermissions.Inbound = new BusinessUserPermissionConversationsInboundCall();
+                }
+
+                if (!subUserConversationsPermissions.Outbound.TabEnabled)
+                {
+                    subUserConversationsPermissions.Outbound = new BusinessUserPermissionConversationsOutboundCall();
+                }
+
+                if (!subUserConversationsPermissions.Websocket.TabEnabled)
+                {
+                    subUserConversationsPermissions.Websocket = new BusinessUserPermissionConversationsWebsocket();
+                }
+            }
+            else
+            {
+                subUserConversationsPermissions = new BusinessUserPermissionConversations();
+            }
+
+            newBusinessSubUserPermissions.Conversations = subUserConversationsPermissions;
+
+            // SubUser Settings Tab
+            var subUserSettingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionSettings>(whiteLabelTabPermissionsTabRootElement.GetProperty("settings").GetRawText());
+            if (subUserSettingsPermissions == null)
+            {
+                result.Code = "ValidateAndPopulateBusinessSubUserPermissions:7";
+                result.Message = "Subuser settings permissions not found.";
+                return result;
+            }
+
+            if (subUserSettingsPermissions.TabEnabled)
+            {
+                if (!subUserSettingsPermissions.General.TabEnabled)
+                {
+                    subUserSettingsPermissions.General = new BusinessUserPermissionSettingsGeneral();
+                }
+
+                if (!subUserSettingsPermissions.Languages.TabEnabled)
+                {
+                    subUserSettingsPermissions.Languages = new BusinessUserPermissionSettingsLanguages();
+                }
+
+                if (!subUserSettingsPermissions.Users.TabEnabled)
+                {
+                    subUserSettingsPermissions.Users = new BusinessUserPermissionSettingsUsers();
+                }
+            }
+            else
+            {
+                subUserSettingsPermissions = new BusinessUserPermissionSettings();
+            }
+
+            newBusinessSubUserPermissions.Settings = subUserSettingsPermissions;
+
+            // Return Result
+            result.Success = true;
+            result.Data = newBusinessSubUserPermissions;
 
             return result;
         }

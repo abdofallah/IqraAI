@@ -328,7 +328,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (businessUserData != null)
                 {
                     result.Code = "SaveBusinessSubUser:9";
-                    result.Message = "The business already owns this subuser.";
+                    result.Message = "The business already owns this subuser email.";
                     return result;
                 }
             }
@@ -338,12 +338,12 @@ namespace ProjectIqraFrontend.Controllers
                 if (businessUserData == null)
                 {
                     result.Code = "SaveBusinessSubUser:10";
-                    result.Message = "The business does not own this subuser.";
+                    result.Message = "The business does not own this subuser email.";
                     return result;
                 }
             }     
 
-            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessUserData);
+            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessSubUser:" + addOrUpdateResult.Code;
