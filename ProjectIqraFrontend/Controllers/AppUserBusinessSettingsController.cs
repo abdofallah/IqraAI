@@ -343,7 +343,7 @@ namespace ProjectIqraFrontend.Controllers
                 }
             }     
 
-            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds);
+            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds, businessUserData);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessSubUser:" + addOrUpdateResult.Code;

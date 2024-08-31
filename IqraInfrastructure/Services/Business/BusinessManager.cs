@@ -701,14 +701,14 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<BusinessUser?>> AddOrUpdateUserBusinessSubUser(long businessId, IFormCollection formData, string postType, List<long> businesDatasWhiteLabelDomainIds)
+        public async Task<FunctionReturnResult<BusinessUser?>> AddOrUpdateUserBusinessSubUser(long businessId, IFormCollection formData, string postType, List<long> businesDatasWhiteLabelDomainIds, BusinessUser? editBusinessUserData)
         {
             var result = new FunctionReturnResult<BusinessUser?>();
 
             string? generalTabChangesString = formData["general"];
             if (string.IsNullOrWhiteSpace(generalTabChangesString))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:1";
+                result.Code = "AddOrUpdateUserBusinessSubUser:1";
                 result.Message = "Changes data not found.";
                 return result;
             }
@@ -716,7 +716,7 @@ namespace IqraInfrastructure.Services.Business
             JsonDocument? generalTabChanges = JsonDocument.Parse(generalTabChangesString);
             if (generalTabChanges == null)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:2";
+                result.Code = "AddOrUpdateUserBusinessSubUser:2";
                 result.Message = "Changes data not found.";
                 return result;
             }
@@ -724,7 +724,7 @@ namespace IqraInfrastructure.Services.Business
             string? whiteLabelTabChangesString = formData["whiteLabel"];
             if (string.IsNullOrWhiteSpace(whiteLabelTabChangesString))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:3";
+                result.Code = "AddOrUpdateUserBusinessSubUser:3";
                 result.Message = "Changes data not found.";
                 return result;
             }
@@ -732,15 +732,15 @@ namespace IqraInfrastructure.Services.Business
             JsonDocument? whiteLabelTabChanges = JsonDocument.Parse(whiteLabelTabChangesString);
             if (whiteLabelTabChanges == null)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:4";
+                result.Code = "AddOrUpdateUserBusinessSubUser:4";
                 result.Message = "Changes data not found.";
                 return result;
             }
 
-            string? permissionTabChangesString = formData["permission"];
+            string? permissionTabChangesString = formData["permissions"];
             if (string.IsNullOrWhiteSpace(permissionTabChangesString))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:5";
+                result.Code = "AddOrUpdateUserBusinessSubUser:5";
                 result.Message = "Changes data not found.";
                 return result;
             }
@@ -748,7 +748,7 @@ namespace IqraInfrastructure.Services.Business
             JsonDocument? permissionTabChanges = JsonDocument.Parse(permissionTabChangesString);
             if (permissionTabChanges == null)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:6";
+                result.Code = "AddOrUpdateUserBusinessSubUser:6";
                 result.Message = "Changes data not found.";
                 return result;
             }
@@ -760,19 +760,19 @@ namespace IqraInfrastructure.Services.Business
 
                 if (logoValidateResult == 0)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:7";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:7";
                     result.Message = "The whitelabel style logo file is too big. Maximum size is 5MB.";
                     return result;
                 }
                 else if (logoValidateResult == 1)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:8";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:8";
                     result.Message = "The whitelabel style logo file is not valid.";
                     return result;
                 }
                 else if (logoValidateResult != 200)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:9";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:9";
                     result.Message = "The whitelabel style logo file is not valid.";
                     return result;
                 }
@@ -785,19 +785,19 @@ namespace IqraInfrastructure.Services.Business
 
                 if (faviconValidateResult == 0)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:10";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:10";
                     result.Message = "The whitelabel style favicon file is too big. Maximum size is 5MB.";
                     return result;
                 }
                 else if (faviconValidateResult == 1)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:11";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:11";
                     result.Message = "The whitelabel style favicon file is not valid.";
                     return result;
                 }
                 else if (faviconValidateResult != 200)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:12";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:12";
                     result.Message = "The whitelabel style favicon file is not valid.";
                     return result;
                 }
@@ -811,7 +811,7 @@ namespace IqraInfrastructure.Services.Business
             string? subUserEmail = generalTabRootElement.GetProperty("email").GetString();
             if (string.IsNullOrWhiteSpace(subUserEmail) || !EmailAddressValidationHelper.IsValid(subUserEmail))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:13";
+                result.Code = "AddOrUpdateUserBusinessSubUser:13";
                 result.Message = "Subuser email not found or is invalid.";
                 return result;
             }
@@ -820,16 +820,16 @@ namespace IqraInfrastructure.Services.Business
             string? subUserPassword = generalTabRootElement.GetProperty("password").GetString();
             if (string.IsNullOrWhiteSpace(subUserPassword) || subUserPassword.Length <= 7)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:14";
+                result.Code = "AddOrUpdateUserBusinessSubUser:14";
                 result.Message = "Subuser password not found or is not 8 characters long.";
                 return result;
             }
             newSubUserData.Password = subUserPassword;
 
-            bool? subUserLoginDisabled = generalTabRootElement.GetProperty("isLoginDisableChecked").GetBoolean();
+            bool? subUserLoginDisabled = generalTabRootElement.GetProperty("isLoginDisabled").GetBoolean();
             if (subUserLoginDisabled == null)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:15";
+                result.Code = "AddOrUpdateUserBusinessSubUser:15";
                 result.Message = "Subuser login disabled not found.";
                 return result;
             }
@@ -837,7 +837,17 @@ namespace IqraInfrastructure.Services.Business
             string? subUserLoginDisabledReason = null;
             if (subUserLoginDisabled.Value == true)
             {
-                newSubUserData.DisabledUserLoginAt = DateTime.UtcNow;
+                if (postType == "new")
+                {
+                    newSubUserData.DisabledUserLoginAt = DateTime.UtcNow;
+                }
+                else if (postType == "edit")
+                {
+                    if (editBusinessUserData.DisabledUserLoginAt != null)
+                    {
+                        newSubUserData.DisabledUserLoginAt = editBusinessUserData.DisabledUserLoginAt;
+                    } 
+                }
 
                 subUserLoginDisabledReason = generalTabRootElement.GetProperty("loginDisabledReason").GetString();
                 if (!string.IsNullOrWhiteSpace(subUserLoginDisabledReason))
@@ -855,7 +865,7 @@ namespace IqraInfrastructure.Services.Business
             string? subUserWhiteLabelPlatformName = whiteLabelTabGeneralTabRootElement.GetProperty("platformName").GetString();
             if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformName))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:16";
+                result.Code = "AddOrUpdateUserBusinessSubUser:16";
                 result.Message = "Subuser whitelabel platform name not found.";
                 return result;
             }
@@ -864,7 +874,7 @@ namespace IqraInfrastructure.Services.Business
             string? subUserWhiteLabelPlatformTitle = whiteLabelTabGeneralTabRootElement.GetProperty("platformTitle").GetString();
             if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformTitle))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:17";
+                result.Code = "AddOrUpdateUserBusinessSubUser:17";
                 result.Message = "Subuser whitelabel platform title not found.";
                 return result;
             }
@@ -873,7 +883,7 @@ namespace IqraInfrastructure.Services.Business
             string? subUserWhiteLabelPlatformDescription = whiteLabelTabGeneralTabRootElement.GetProperty("platformDescription").GetString();
             if (string.IsNullOrWhiteSpace(subUserWhiteLabelPlatformDescription))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:18";
+                result.Code = "AddOrUpdateUserBusinessSubUser:18";
                 result.Message = "Subuser whitelabel platform description not found.";
                 return result;
             }
@@ -882,7 +892,7 @@ namespace IqraInfrastructure.Services.Business
             string? subUserWhiteLabelDomainId = whiteLabelTabGeneralTabRootElement.GetProperty("domainId").GetString();
             if (string.IsNullOrWhiteSpace(subUserWhiteLabelDomainId))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:19";
+                result.Code = "AddOrUpdateUserBusinessSubUser:19";
                 result.Message = "Subuser whitelabel domain id not found.";
                 return result;
             }
@@ -896,7 +906,7 @@ namespace IqraInfrastructure.Services.Business
 
             if (!businesDatasWhiteLabelDomainIds.Contains(whiteLabelDomainId))
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:21";
+                result.Code = "AddOrUpdateUserBusinessSubUser:21";
                 result.Message = "Subuser whitelabel domain id is not valid.";
                 return result;
             }
@@ -920,12 +930,12 @@ namespace IqraInfrastructure.Services.Business
             }
 
             // WhiteLabel Permissions
-            var whiteLabelTabPermissionsTabRootElement = whiteLabelTabChanges.RootElement.GetProperty("permissions");
+            var whiteLabelTabPermissionsTabRootElement = permissionTabChanges.RootElement;
 
             var validateAndPopulateBusinessSubUserPermissionsResult = await ValidateAndPopulateBusinessSubUserPermissions(whiteLabelTabPermissionsTabRootElement);
             if (validateAndPopulateBusinessSubUserPermissionsResult.Code != null)
             {
-                result.Code = "AddOrUpdateUserBusinessDomain:" + validateAndPopulateBusinessSubUserPermissionsResult.Code;
+                result.Code = "AddOrUpdateUserBusinessSubUser:" + validateAndPopulateBusinessSubUserPermissionsResult.Code;
                 result.Message = validateAndPopulateBusinessSubUserPermissionsResult.Message;
                 return result;
             }
@@ -963,7 +973,7 @@ namespace IqraInfrastructure.Services.Business
                 var addResult = await _businessRepository.AddBusinessSubUserAsync(businessId, newSubUserData);
                 if (!addResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:22";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:22";
                     result.Message = "Failed to add subuser.";
                     return result;
                 }
@@ -974,7 +984,7 @@ namespace IqraInfrastructure.Services.Business
                 var replaceResult = await _businessRepository.ReplaceBusinessSubUserAsync(businessId, newSubUserData);
                 if (!replaceResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessDomain:23";
+                    result.Code = "AddOrUpdateUserBusinessSubUser:23";
                     result.Message = "Failed to replace subuser.";
                     return result;
                 }
@@ -988,12 +998,18 @@ namespace IqraInfrastructure.Services.Business
 
         private async Task<FunctionReturnResult<BusinessUserPermission?>> ValidateAndPopulateBusinessSubUserPermissions (JsonElement whiteLabelTabPermissionsTabRootElement)
         {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
             var result = new FunctionReturnResult<BusinessUserPermission?>();
 
             BusinessUserPermission newBusinessSubUserPermissions = new BusinessUserPermission();
 
             // SubUser Routings Permissions
-            var subUserRoutingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionRouting>(whiteLabelTabPermissionsTabRootElement.GetProperty("routing").GetRawText());
+            var subUserRoutingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionRouting>(whiteLabelTabPermissionsTabRootElement.GetProperty("routing").GetRawText(), options);
             if (subUserRoutingsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:1";
@@ -1009,7 +1025,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.Routing = subUserRoutingsPermissions;
 
             // SubUser Tools Permissions
-            var subUserToolsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionTools>(whiteLabelTabPermissionsTabRootElement.GetProperty("tools").GetRawText());
+            var subUserToolsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionTools>(whiteLabelTabPermissionsTabRootElement.GetProperty("tools").GetRawText(), options);
             if (subUserToolsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:2";
@@ -1025,7 +1041,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.Tools = subUserToolsPermissions;
 
             // SubUser Agents Permissions
-            var subUserAgentsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionAgents>(whiteLabelTabPermissionsTabRootElement.GetProperty("agents").GetRawText());
+            var subUserAgentsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionAgents>(whiteLabelTabPermissionsTabRootElement.GetProperty("agents").GetRawText(), options);
             if (subUserAgentsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:3";
@@ -1041,7 +1057,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.Agents = subUserAgentsPermissions;
 
             // SubUser Context Permissions
-            var subUserContextPermissions = JsonSerializer.Deserialize<BusinessUserPermissionContext>(whiteLabelTabPermissionsTabRootElement.GetProperty("context").GetRawText());
+            var subUserContextPermissions = JsonSerializer.Deserialize<BusinessUserPermissionContext>(whiteLabelTabPermissionsTabRootElement.GetProperty("context").GetRawText(), options);
             if (subUserContextPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:4";
@@ -1089,7 +1105,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.Context = subUserContextPermissions;
 
             // SubUser Make Calls Tab
-            var subUserMakeCallsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionMakeCalls>(whiteLabelTabPermissionsTabRootElement.GetProperty("makeCalls").GetRawText());
+            var subUserMakeCallsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionMakeCalls>(whiteLabelTabPermissionsTabRootElement.GetProperty("makeCalls").GetRawText(), options);
             if (subUserMakeCallsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:5";
@@ -1105,7 +1121,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.MakeCalls = subUserMakeCallsPermissions;
 
             // SubUser Conversations Tab
-            var subUserConversationsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionConversations>(whiteLabelTabPermissionsTabRootElement.GetProperty("conversations").GetRawText());
+            var subUserConversationsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionConversations>(whiteLabelTabPermissionsTabRootElement.GetProperty("conversations").GetRawText(), options);
             if (subUserConversationsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:6";
@@ -1138,7 +1154,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessSubUserPermissions.Conversations = subUserConversationsPermissions;
 
             // SubUser Settings Tab
-            var subUserSettingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionSettings>(whiteLabelTabPermissionsTabRootElement.GetProperty("settings").GetRawText());
+            var subUserSettingsPermissions = JsonSerializer.Deserialize<BusinessUserPermissionSettings>(whiteLabelTabPermissionsTabRootElement.GetProperty("settings").GetRawText(), options);
             if (subUserSettingsPermissions == null)
             {
                 result.Code = "ValidateAndPopulateBusinessSubUserPermissions:7";
