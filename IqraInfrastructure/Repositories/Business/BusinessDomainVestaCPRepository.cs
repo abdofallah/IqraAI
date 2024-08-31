@@ -1,5 +1,8 @@
-﻿using FluentFTP;
+﻿using Amazon.Runtime.Internal.Transform;
+using FluentFTP;
 using IqraCore.Entities.Helpers;
+using IqraCore.Utilities;
+using IqraInfrastructure.Repositories.App;
 using System.Text;
 using System.Text.Json;
 
@@ -22,6 +25,8 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly string _defaultHTTPSProxyTemplateName = "iqrabusiness-https";
         private readonly string _maintenanceProxyTemplateFile = "iqrabusiness-maintenance";
 
+        private readonly AppRepository _appRepository;
+
         private HttpClient _httpClient;
 
         public BusinessDomainVestaCPRepository(
@@ -33,7 +38,8 @@ namespace IqraInfrastructure.Repositories.Business
             string businessDomain,
             string proxyTemplateFTPHostname,
             string proxyTemplateFTPUsername,
-            string proxyTemplateFTPPassword
+            string proxyTemplateFTPPassword,
+            AppRepository appRepository
         )
         {
             Console.ForegroundColor = ConsoleColor.DarkBlue;
@@ -52,6 +58,8 @@ namespace IqraInfrastructure.Repositories.Business
             _proxyTemplateFTPUsername = proxyTemplateFTPUsername;
             _proxyTemplateFTPPassword = proxyTemplateFTPPassword;
 
+            _appRepository = appRepository;
+
             var httpClientHandler = new HttpClientHandler();
             httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
             {
@@ -67,7 +75,7 @@ namespace IqraInfrastructure.Repositories.Business
             ValidateVestaCPAccounts().GetAwaiter().GetResult();
             
             // Upload the latest templates files
-            UpdateTemplatesFiles();
+            UpdateTemplatesFiles().GetAwaiter().GetResult();
 
             // Rebuild all the web with the latest templates files
             var rebuildAdminResult = RebuildAdminWeb(true).GetAwaiter().GetResult();
@@ -113,33 +121,75 @@ namespace IqraInfrastructure.Repositories.Business
             }
         }
 
-        private void UpdateTemplatesFiles()
+        private async Task UpdateTemplatesFiles()
         {
             string templatesFolderFTPPath = "vestacpnginxtemplates";
             string templatesFolderLocalPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "VestaCP", "ProxyTemplates");
+
+            byte[] defaultHTTPSProxyTemplateTPLBytes = File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".tpl")));
+            byte[] defaultHTTPSProxyTemplateSTPLBytes = File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".stpl")));
+
+            byte[] maintenanceProxyTemplateTPLBytes = File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".tpl")));
+            byte[] maintenanceProxyTemplateSTPLBytes = File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".stpl")));
+
+            var templatesHashesInDatabase = await _appRepository.GetVestaCPProxyTemplatesHash();
+            
+            Dictionary<string, string> templateHashes = new Dictionary<string, string>();
+            templateHashes.Add((_defaultHTTPSProxyTemplateName + ".tpl"), XXHashHelper.ComputeHashInUlong(Encoding.Default.GetString(defaultHTTPSProxyTemplateTPLBytes)).ToString());
+            templateHashes.Add((_defaultHTTPSProxyTemplateName + ".stpl"), XXHashHelper.ComputeHashInUlong(Encoding.Default.GetString(defaultHTTPSProxyTemplateSTPLBytes)).ToString());
+            templateHashes.Add((_maintenanceProxyTemplateFile + ".tpl"), XXHashHelper.ComputeHashInUlong(Encoding.Default.GetString(maintenanceProxyTemplateTPLBytes)).ToString());
+            templateHashes.Add((_maintenanceProxyTemplateFile + ".stpl"), XXHashHelper.ComputeHashInUlong(Encoding.Default.GetString(maintenanceProxyTemplateSTPLBytes)).ToString());
+           
+            bool shouldProceed = false;
+
+            if (templatesHashesInDatabase == null || templatesHashesInDatabase.TemplateHashes.Count != templateHashes.Count)
+            {
+                shouldProceed = true;
+            }
+            else
+            {
+                foreach (var templateHash in templateHashes)
+                {
+                    if (!templatesHashesInDatabase.TemplateHashes.ContainsKey(templateHash.Key) || templatesHashesInDatabase.TemplateHashes[templateHash.Key] != templateHash.Value)
+                    {
+                        shouldProceed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (shouldProceed) {
+                await _appRepository.AddVestaCPProxyTemplatesHash(templateHashes);
+                Console.WriteLine("[BusinessDomainVestaCPRepository] Updating templates files and rebuilding web.");
+            }
+            else
+            {
+                Console.WriteLine("[BusinessDomainVestaCPRepository] No need to update templates files and rebuild web.");
+                return;
+            }
 
             using (var ftp = new FtpClient(_proxyTemplateFTPHostname, _proxyTemplateFTPUsername, _proxyTemplateFTPPassword))
             {
                 ftp.Connect();
 
                 ftp.UploadBytes(
-                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".tpl"))),
+                    defaultHTTPSProxyTemplateTPLBytes,
                     Path.Combine(templatesFolderFTPPath, (_defaultHTTPSProxyTemplateName + ".tpl")),
                     FtpRemoteExists.Overwrite
                 );
                 ftp.UploadBytes(
-                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_defaultHTTPSProxyTemplateName + ".stpl"))),
+                    defaultHTTPSProxyTemplateSTPLBytes,
                     Path.Combine(templatesFolderFTPPath, (_defaultHTTPSProxyTemplateName + ".stpl")),
                     FtpRemoteExists.Overwrite
                 );
 
                 ftp.UploadBytes(
-                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".tpl"))),
+                    maintenanceProxyTemplateTPLBytes,
                     Path.Combine(templatesFolderFTPPath, (_maintenanceProxyTemplateFile + ".tpl")),
                     FtpRemoteExists.Overwrite
                 );
                 ftp.UploadBytes(
-                    File.ReadAllBytes(Path.Combine(templatesFolderLocalPath, (_maintenanceProxyTemplateFile + ".stpl"))),
+                    maintenanceProxyTemplateSTPLBytes,
                     Path.Combine(templatesFolderFTPPath, (_maintenanceProxyTemplateFile + ".stpl")),
                     FtpRemoteExists.Overwrite
                 );

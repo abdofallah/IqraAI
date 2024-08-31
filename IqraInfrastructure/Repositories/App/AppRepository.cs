@@ -25,7 +25,13 @@ namespace IqraInfrastructure.Repositories.App
         **/
 
         private const string ApiKeyField = "ApiKeys";
+        private const string VestaCPProxyTemplatesHash = "VestaCPProxyTemplatesHash";
 
+        /**
+         * 
+         * API Keys 
+         * 
+        **/ 
         public async Task<bool> AddApiKey(string apiKey)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", ApiKeyField);
@@ -58,6 +64,32 @@ namespace IqraInfrastructure.Repositories.App
             var result = GetApiKeyData(apiKey);
 
             return result != null;
+        }
+
+        /**
+         * 
+         * VestaCP Proxy Templates Hash
+         * 
+        **/
+
+        public async Task<bool> AddVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHash);
+            var update = Builders<BsonDocument>.Update.Set("TemplateHashes", templateHashes);
+
+            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+            return result.ModifiedCount > 0 || result.UpsertedId != null;
+        }
+
+        public async Task<VestaCPProxyTemplateHashes?> GetVestaCPProxyTemplatesHash()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHash);
+
+            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            return BsonSerializer.Deserialize<VestaCPProxyTemplateHashes>(result);
         }
     }
 }

@@ -25,6 +25,13 @@ namespace ProjectIqraFrontend
 
             var appConfig = builder.Configuration;
 
+            // App Repo
+
+            AppRepository appRepository = new AppRepository(
+                appConfig["AppDatabase:ConnectionString"],
+                appConfig["AppDatabase:DatabaseName"]
+            );
+
             // Region
 
             RegionRepository regionRepository = new RegionRepository(
@@ -79,7 +86,8 @@ namespace ProjectIqraFrontend
                 appConfig["BusinessDomainHostingRepository:IqraBusinessDomain"],
                 appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Endpoint"],
                 appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Username"],
-                appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"]
+                appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"],
+                appRepository
             );
 
             BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository);
