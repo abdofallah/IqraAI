@@ -1,10 +1,12 @@
 using IqraCore.Entities.Frontend;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Number;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
+using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using ProjectIqraFrontend.Middlewares;
@@ -13,7 +15,7 @@ namespace ProjectIqraFrontend
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -102,6 +104,16 @@ namespace ProjectIqraFrontend
 
             NumberManager numberManager = new NumberManager(numberRepository);
             builder.Services.AddSingleton<NumberManager>(numberManager);
+
+            // LLM Provider
+            LLMProviderRepository lLMProviderRepository = new LLMProviderRepository(
+                appConfig["LLMProviderDatabase:ConnectionString"],
+                appConfig["LLMProviderDatabase:DatabaseName"]
+            );
+            LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository);
+            builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
+
+            await llmProviderManager.InitializeProvidersAsync();
 
             // Views Links Config
             ViewLinkConfiguration viewLinkConfiguration = new ViewLinkConfiguration()

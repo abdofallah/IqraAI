@@ -1,9 +1,9 @@
 ﻿using Anthropic.SDK;
-using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 
-namespace IqraInfrastructure.Services
+namespace IqraInfrastructure.Services.LLM.Providers
 {
     public class AnthropicClaudeStreamingLLMService : IAIService
     {
@@ -20,13 +20,13 @@ namespace IqraInfrastructure.Services
 
         public event EventHandler<object> MessageStreamed;
 
-        public AnthropicClaudeStreamingLLMService(string apiKey)
+        public AnthropicClaudeStreamingLLMService(string apiKey, int maxOutputToken, decimal temperature, string model)
         {
             _client = new AnthropicClient(apiKey);
 
-            _maxTokens = 128;
-            _model = AnthropicModels.Claude3Haiku;
-            _temperature = 1m;
+            _maxTokens = maxOutputToken;
+            _temperature = temperature;
+            _model = model;
 
             _initialMessages = new List<Message>();
             _messagesMemory = new List<Message>();
@@ -56,8 +56,8 @@ namespace IqraInfrastructure.Services
                 Model = _model,
                 Stream = true,
                 Temperature = _temperature,
-            }; 
-            
+            };
+
             try
             {
                 await foreach (var res in _client.Messages.StreamClaudeMessageAsync(parameters, cancellationToken))
@@ -137,9 +137,14 @@ namespace IqraInfrastructure.Services
             );
         }
 
-        public string GetProviderName()
+        public string GetProviderFullName()
         {
-            return "anthropic_claude";
+            return "Anthropic Claude";
+        }
+
+        public static InterfaceLLMProviderEnum GetProviderType()
+        {
+            return InterfaceLLMProviderEnum.AnthropicClaude;
         }
     }
 }

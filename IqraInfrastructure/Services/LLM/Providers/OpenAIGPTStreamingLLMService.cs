@@ -1,9 +1,10 @@
-﻿using IqraCore.Interfaces.AI;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Interfaces.AI;
 using OpenAI;
 using OpenAI.Managers;
 using OpenAI.ObjectModels.RequestModels;
 
-namespace IqraInfrastructure.Services.LLM
+namespace IqraInfrastructure.Services.LLM.Providers
 {
     public class OpenAIGPTStreamingLLMService : IAIService
     {
@@ -20,16 +21,16 @@ namespace IqraInfrastructure.Services.LLM
 
         public event EventHandler<object> MessageStreamed;
 
-        public OpenAIGPTStreamingLLMService(string apiKey)
+        public OpenAIGPTStreamingLLMService(string apiKey, int maxOutputToken, float temperature, string model)
         {
             _client = new OpenAIService(new OpenAiOptions()
             {
                 ApiKey = apiKey
             });
 
-            _maxTokens = 128;
-            _model = OpenAI.ObjectModels.Models.Gpt_4o;
-            _temperature = 1;
+            _maxTokens = maxOutputToken;
+            _temperature = temperature;
+            _model = model;
 
             _initialMessages = new List<ChatMessage>();
             _messagesMemory = new List<ChatMessage>();
@@ -121,9 +122,14 @@ namespace IqraInfrastructure.Services.LLM
             );
         }
 
-        public string GetProviderName()
+        public string GetProviderFullName()
         {
-            return "openai_gpt";
+            return "OpenAI GPT";
+        }
+
+        public static InterfaceLLMProviderEnum GetProviderType()
+        {
+            return InterfaceLLMProviderEnum.OpenAIGPT;
         }
     }
 }

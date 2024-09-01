@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using IqraCore.Entities.Interfaces;
 
 namespace IqraCore.Interfaces.AI
 {
@@ -15,6 +14,10 @@ namespace IqraCore.Interfaces.AI
         void AddAssistantMessage(string message);
         event EventHandler<object> MessageStreamed;
 
-        string GetProviderName();
+        string GetProviderFullName();
+        static InterfaceLLMProviderEnum GetProviderType()
+        {
+            return InterfaceLLMProviderEnum.Unknown;
+        }
     }
 }
