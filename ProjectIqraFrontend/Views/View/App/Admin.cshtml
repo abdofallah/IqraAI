@@ -36,7 +36,7 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a href="#" class="nav_link active" for="users-tab">
+                    <a href="#" class="nav_link" for="users-tab">
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
@@ -52,6 +52,10 @@
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
+                    <a href="#" class="nav_link active" for="llm-provider-tab">
+                        <i class='fa-regular fa-message-text nav_icon'></i>
+                        <span class="nav_name">LLM Provider</span>
+                    </a>
                 </div>
             </div>
             <div class="bottom-navigation">
@@ -66,7 +70,7 @@
 
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Users Container -->
-        <div class="main-container fade w-100 show" id="users-tab">
+        <div class="main-container fade w-100 d-none" id="users-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -1370,6 +1374,218 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LLM Provider Container -->
+        <div class="main-container fade w-100 show" id="llm-provider-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-message-text nav_icon'></i> <span>LLM Provider</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="llm-provider-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="llm-provider-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-analytics" type="button" role="tab" aria-controls="llm-provider-analytics" aria-selected="true">Analytics</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="llm-provider-list-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-list" type="button" role="tab" aria-controls="llm-provider-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="llm-provider-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToLLMProviderListTabFromManageTab">Providers</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLLMProviderName">Provider</span></li>
+                        </ol>
+                    </nav>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="llm-provider-model-manager-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelLLMProviderName">Provider</span></li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToLLMProviderManagerModelsListTabFromModelTab">Models</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLLMProviderModelName">Model</span></li>
+                        </ol>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div class="tab-content" id="llm-provider-tab-content">
+
+                    <!-- Analytics -->
+                    <div class="tab-pane fade w-100" id="llm-provider-analytics" role="tabpanel" aria-labelledby="llm-provider-analytics-tab" tabindex="0">
+                        analytics
+                    </div>
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="llm-provider-list" role="tabpanel" aria-labelledby="llm-provider-list-tab" tabindex="0">
+
+                        <!-- Table Tab -->
+                        <div class="fade w-100 show" id="llmProviderListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="LLM Provider Name or Id" aria-label="LLM Provider Name or Id" aria-describedby="searchLLMProviderButton">
+                                    <button class="input-group-button btn btn-primary" id="searchLLMProviderButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="llmProviderListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Disabled</th>
+                                        <th scope="col">Models</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Provider Manage Tab -->
+                        <div class="fade w-100 d-none" id="llmProviderManageTab">
+                            <!-- Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="llm-provider-manager-inner-tab-container">
+                                <ul class="nav fade show" id="llm-provider-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="llm-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-general" type="button" role="tab" aria-controls="llm-provider-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link disabled" id="llm-provider-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-analytics" type="button" role="tab" aria-controls="llm-provider-manager-analytics" aria-selected="true">Analytics</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="llm-provider-manager-manage-tab-content">
+
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="llm-provider-manager-general" role="tabpanel" aria-labelledby="llm-provider-manager-general-tab" tabindex="0">
+
+                                </div>
+
+                                <!-- Models -->
+                                <div class="tab-pane fade w-100" id="llm-provider-manager-models" role="tabpanel" aria-labelledby="llm-provider-manager-models-tab" tabindex="0">
+
+                                    <!-- List Tab -->
+                                    <div class="fade w-100 show" id="llmProviderManagerModelsListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                            <div style="min-width: 200px" class="me-4">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewLLMProviderModelButton">
+                                                    <span>+ Add New Model</span>
+                                                </button>
+                                            </div>
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchLLMProviderModelButton">
+                                                <button class="input-group-button btn btn-primary" id="searchLLMProviderModelButton">
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <table id="llmProviderModelListTable" class="table w-100">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Disabled</th>
+                                                    <th scope="col">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Dynamically Generated -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Manage Tab -->
+                                    <div class="fade w-100 d-none" id="llmProviderManagerModelManageTab">
+                                        <!-- Manager Inner Tabs -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                            <ul class="nav" id="llm-provider-model-manager-inner-tab" role="tablist">
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="llm-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-general" type="button" role="tab" aria-controls="llm-provider-model-manager-general" aria-selected="true">General</button>
+                                                </li>
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link disabled" id="llm-provider-model-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-analytics" type="button" role="tab" aria-controls="llm-provider-model-manager-analytics" aria-selected="true">Analytics</button>
+                                                </li>
+                                            </ul>
+                                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderModelButton">
+                                                <i class='fa-regular fa-floppy-disk'></i>
+                                                <span> Save</span>
+                                            </button>
+                                        </div>
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="llm-provider-model-manager-manage-tab-content">
+                                            <!-- General -->
+                                            <div class="tab-pane fade w-100 show active" id="llm-provider-model-manager-general" role="tabpanel" aria-labelledby="llm-provider-model-manager-general-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageLLMProviderModelIdInput">Identifer</label>
+                                                    <input type="text" class="form-control" id="manageLLMProviderModelIdInput" placeholder="Model Identifer">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageLLMProviderModelNameInput">Name</label>
+                                                    <input type="text" class="form-control" id="manageLLMProviderModelNameInput" placeholder="Model Name">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Input (Price/Token Unit)</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" placeholder="Price" id="manageLLMProviderModelInputPriceInput">
+                                                        <span class="input-group-text">/</span>
+                                                        <input type="number" class="form-control" placeholder="For x Tokens" id="manageLLMProviderModelInputTokensInput">
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Output (Price/Token Unit)</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" placeholder="Price" id="manageLLMProviderModelOutputPriceInput">
+                                                        <span class="input-group-text">/</span>
+                                                        <input type="number" class="form-control" placeholder="For x Tokens" id="manageLLMProviderModelOutputTokensInput">
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Tokens Length (Input/Output)</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" placeholder="Input Length" id="manageLLMProviderModelInputLengthInput">
+                                                        <span class="input-group-text">/</span>
+                                                        <input type="number" class="form-control" placeholder="Output Length" id="manageLLMProviderModelOutputLengthInput">
+                                                    </div>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageLLMProviderModelDisabledInput">
+                                                    <label class="form-check-label" for="manageLLMProviderModelDisabledInput">Disabled</label>
+                                                </div>
+                                            </div>
+                                            <!-- Analytics -->
+                                            <div class="tab-pane fade w-100" id="llm-provider-model-manager-analytics" role="tabpanel" aria-labelledby="llm-provider-model-manager-analytics-tab" tabindex="0">
+                                                Analytics
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Analytics -->
+                                <div class="tab-pane fade w-100" id="llm-provider-manager-analytics" role="tabpanel" aria-labelledby="llm-provider-manager-analytics-tab" tabindex="0">
+                                    Analytics
+                                </div>
+
+                            </div>
+
+                        </div>
+
                     </div>
                 </div>
             </div>

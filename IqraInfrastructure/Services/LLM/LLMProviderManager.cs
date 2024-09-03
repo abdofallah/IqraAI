@@ -156,32 +156,6 @@ namespace IqraInfrastructure.Services.LLM
             return result;
         }
 
-        public async Task<FunctionReturnResult<bool>> RemoveProvider(InterfaceLLMProviderEnum providerId)
-        {
-            var result = new FunctionReturnResult<bool>();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "RemoveProvider:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var deleteResult = await _llmProviderRepository.RemoveProviderAsync(providerId);
-            if (!deleteResult.IsAcknowledged || deleteResult.DeletedCount == 0)
-            {
-                result.Code = "RemoveProvider:2";
-                result.Message = "Provider not found";
-                return result;
-            }
-
-            _llmProviderClasses.Remove(providerId);
-
-            result.Success = true;
-            result.Data = true;
-            return result;
-        }
-
         public async Task<FunctionReturnResult<LLMProviderData>> AddModel(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
         {
             var result = new FunctionReturnResult<LLMProviderData>();
