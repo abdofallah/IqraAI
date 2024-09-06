@@ -33,7 +33,7 @@ namespace IqraInfrastructure.Repositories.LLM
             var filter = Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerData.Id);
             var update = Builders<LLMProviderData>.Update
                 .Set(x => x.DisabledAt, providerData.DisabledAt)
-                .Set(x => x.LLMProviderModelData, providerData.LLMProviderModelData);
+                .Set(x => x.Models, providerData.Models);
             return await _llmProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -64,7 +64,7 @@ namespace IqraInfrastructure.Repositories.LLM
         public async Task<UpdateResult> AddModelAsync(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
         {
             var filter = Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerId);
-            var update = Builders<LLMProviderData>.Update.Push(x => x.LLMProviderModelData, modelData);
+            var update = Builders<LLMProviderData>.Update.Push(x => x.Models, modelData);
             return await _llmProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -72,9 +72,9 @@ namespace IqraInfrastructure.Repositories.LLM
         {
             var filter = Builders<LLMProviderData>.Filter.And(
                 Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<LLMProviderData>.Filter.ElemMatch(x => x.LLMProviderModelData, m => m.Id == modelData.Id)
+                Builders<LLMProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelData.Id)
             );
-            var update = Builders<LLMProviderData>.Update.Set(x => x.LLMProviderModelData.FirstMatchingElement(), modelData);
+            var update = Builders<LLMProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), modelData);
             return await _llmProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -82,17 +82,38 @@ namespace IqraInfrastructure.Repositories.LLM
         {
             var filter = Builders<LLMProviderData>.Filter.And(
                 Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<LLMProviderData>.Filter.ElemMatch(x => x.LLMProviderModelData, m => m.Id == modelId)
+                Builders<LLMProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelId)
             );
-            var update = Builders<LLMProviderData>.Update.Set(x => x.LLMProviderModelData.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
+            var update = Builders<LLMProviderData>.Update.Set(x => x.Models.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
             return await _llmProviderCollection.UpdateOneAsync(filter, update);
         }
 
         public async Task<UpdateResult> RemoveModelAsync(InterfaceLLMProviderEnum providerId, string modelId)
         {
             var filter = Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerId);
-            var update = Builders<LLMProviderData>.Update.PullFilter(x => x.LLMProviderModelData, m => m.Id == modelId);
+            var update = Builders<LLMProviderData>.Update.PullFilter(x => x.Models, m => m.Id == modelId);
             return await _llmProviderCollection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task<UpdateResult> UpdateModelPromptTemplatesAsync(InterfaceLLMProviderEnum providerId, string modelId, Dictionary<string, string> promptTemplates)
+        {
+            var filter = Builders<LLMProviderData>.Filter.And(
+                Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerId),
+                Builders<LLMProviderData>.Filter.ElemMatch(x => x.Models, m => m.Id == modelId)
+            );
+            var update = Builders<LLMProviderData>.Update
+                .Set(x => x.Models.FirstMatchingElement().PromptTemplates, promptTemplates);
+            return await _llmProviderCollection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task<List<LLMProviderData>?> GetProviderListAsync(int page, int pageSize)
+        {
+            return await _llmProviderCollection
+                .Find(_ => true)
+                .SortByDescending(x => x.Id)
+                .Skip(page * pageSize)
+                .Limit(pageSize)
+                .ToListAsync();
         }
     }
 }

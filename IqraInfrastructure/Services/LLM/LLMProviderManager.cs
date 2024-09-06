@@ -67,6 +67,23 @@ namespace IqraInfrastructure.Services.LLM
             throw new Exception($"No matching IAIService implementation found for provider: {providerEnum}");
         }
 
+        public async Task<FunctionReturnResult<List<LLMProviderData>?>> GetProviderList(int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<LLMProviderData>?>();
+
+            var providerList = await _llmProviderRepository.GetProviderListAsync(page, pageSize);
+            if (providerList == null)
+            {
+                result.Code = "GetProviderList:1";
+                result.Message = "No providers found";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = providerList;
+            return result;
+        }
+
         public async Task<FunctionReturnResult<LLMProviderData>> AddProvider(LLMProviderData providerData)
         {
             var result = new FunctionReturnResult<LLMProviderData>();
@@ -156,9 +173,9 @@ namespace IqraInfrastructure.Services.LLM
             return result;
         }
 
-        public async Task<FunctionReturnResult<LLMProviderData>> AddModel(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
+        public async Task<FunctionReturnResult<bool>> AddModel(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
         {
-            var result = new FunctionReturnResult<LLMProviderData>();
+            var result = new FunctionReturnResult<bool>();
 
             if (providerId == InterfaceLLMProviderEnum.Unknown)
             {
@@ -176,37 +193,36 @@ namespace IqraInfrastructure.Services.LLM
             }
 
             result.Success = true;
-            result.Data = await _llmProviderRepository.GetProviderAsync(providerId);
             return result;
         }
 
-        public async Task<FunctionReturnResult<LLMProviderData>> UpdateModel(InterfaceLLMProviderEnum providerId, LLMProviderModelData modelData)
+        public async Task<FunctionReturnResult<bool>> UpdateModelPromptTemplates(InterfaceLLMProviderEnum providerId, string modelId, Dictionary<string, string> promptTemplates)
         {
-            var result = new FunctionReturnResult<LLMProviderData>();
+            var result = new FunctionReturnResult<bool>();
 
             if (providerId == InterfaceLLMProviderEnum.Unknown)
             {
-                result.Code = "UpdateModel:1";
+                result.Code = "UpdateModelPromptTemplates:1";
                 result.Message = "Invalid provider ID";
                 return result;
             }
 
-            var updateResult = await _llmProviderRepository.UpdateModelAsync(providerId, modelData);
+            var updateResult = await _llmProviderRepository.UpdateModelPromptTemplatesAsync(providerId, modelId, promptTemplates);
             if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
             {
-                result.Code = "UpdateModel:2";
+                result.Code = "UpdateModelPromptTemplates:2";
                 result.Message = "Provider or model not found";
                 return result;
             }
 
             result.Success = true;
-            result.Data = await _llmProviderRepository.GetProviderAsync(providerId);
+            result.Data = true;
             return result;
         }
 
-        public async Task<FunctionReturnResult<LLMProviderData>> DisableModel(InterfaceLLMProviderEnum providerId, string modelId)
+        public async Task<FunctionReturnResult<bool>> DisableModel(InterfaceLLMProviderEnum providerId, string modelId)
         {
-            var result = new FunctionReturnResult<LLMProviderData>();
+            var result = new FunctionReturnResult<bool>();
 
             if (providerId == InterfaceLLMProviderEnum.Unknown)
             {
@@ -224,31 +240,6 @@ namespace IqraInfrastructure.Services.LLM
             }
 
             result.Success = true;
-            result.Data = await _llmProviderRepository.GetProviderAsync(providerId);
-            return result;
-        }
-
-        public async Task<FunctionReturnResult<LLMProviderData>> RemoveModel(InterfaceLLMProviderEnum providerId, string modelId)
-        {
-            var result = new FunctionReturnResult<LLMProviderData>();
-
-            if (providerId == InterfaceLLMProviderEnum.Unknown)
-            {
-                result.Code = "RemoveModel:1";
-                result.Message = "Invalid provider ID";
-                return result;
-            }
-
-            var updateResult = await _llmProviderRepository.RemoveModelAsync(providerId, modelId);
-            if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
-            {
-                result.Code = "RemoveModel:2";
-                result.Message = "Provider or model not found";
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = await _llmProviderRepository.GetProviderAsync(providerId);
             return result;
         }
 

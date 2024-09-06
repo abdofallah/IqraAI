@@ -1,11 +1,13 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Number;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.LLM;
 using IqraCore.Entities.Number;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
+using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
@@ -18,13 +20,15 @@ namespace ProjectIqraFrontend.Controllers
         private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
         private readonly NumberManager _numberManager;
+        private readonly LLMProviderManager _llmProviderManager;
 
-        public AppAdminController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager, NumberManager numberManager)
+        public AppAdminController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager, NumberManager numberManager, LLMProviderManager llmProviderManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
             _regionManager = regionManager;
             _numberManager = numberManager;
+            _llmProviderManager = llmProviderManager;
         }
 
         /**
@@ -582,6 +586,63 @@ namespace ProjectIqraFrontend.Controllers
             result.Success = true;
             result.Data = numbersResult.Data;
 
+            return result;
+        }
+
+        /**
+         * 
+         * LLM Providers
+         * 
+        **/
+
+        [HttpPost("/app/admin/llmproviders")]
+        public async Task<FunctionReturnResult<List<LLMProviderData>?>> GetLLMProviders(int page = 0, int pageSize = 10)
+        {
+            var result = new FunctionReturnResult<List<LLMProviderData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetLLMProviders:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetLLMProviders:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetLLMProviders:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = "GetLLMProviders:4";
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            var providersResult = await _llmProviderManager.GetProviderList(page, pageSize);
+            if (!providersResult.Success)
+            {
+                result.Code = "GetLLMProviders:" + providersResult.Code;
+                result.Message = providersResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = providersResult.Data;
             return result;
         }
     }

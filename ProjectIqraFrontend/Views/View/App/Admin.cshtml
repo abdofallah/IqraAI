@@ -1454,31 +1454,19 @@
                             <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="llm-provider-manager-inner-tab-container">
                                 <ul class="nav fade show" id="llm-provider-manager-inner-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="llm-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-general" type="button" role="tab" aria-controls="llm-provider-manager-general" aria-selected="true">General</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
+                                        <button class="nav-link active" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link disabled" id="llm-provider-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-analytics" type="button" role="tab" aria-controls="llm-provider-manager-analytics" aria-selected="true">Analytics</button>
                                     </li>
                                 </ul>
-                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderButton">
-                                    <i class='fa-regular fa-floppy-disk'></i>
-                                    <span> Save</span>
-                                </button>
                             </div>
 
                             <!-- Tab Content -->
                             <div class="tab-content" id="llm-provider-manager-manage-tab-content">
 
-                                <!-- General -->
-                                <div class="tab-pane fade w-100 show active" id="llm-provider-manager-general" role="tabpanel" aria-labelledby="llm-provider-manager-general-tab" tabindex="0">
-
-                                </div>
-
                                 <!-- Models -->
-                                <div class="tab-pane fade w-100" id="llm-provider-manager-models" role="tabpanel" aria-labelledby="llm-provider-manager-models-tab" tabindex="0">
+                                <div class="tab-pane fade w-100 show active" id="llm-provider-manager-models" role="tabpanel" aria-labelledby="llm-provider-manager-models-tab" tabindex="0">
 
                                     <!-- List Tab -->
                                     <div class="fade w-100 show" id="llmProviderManagerModelsListTab">
@@ -1609,6 +1597,7 @@
         var CurrentUsersList = null;
         var CurrentBusinessesList = null;
         var CurrentRegionsList = null;
+        var CurrentLLMProvidersList = null;
 
         // API Related Calls
 
@@ -1838,6 +1827,29 @@
             });
         }
 
+        function FetchLLMProvidersFromAPI(page, pageSize, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/llmproviders',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    page: page,
+                    pageSize: pageSize
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response, true);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error, false);
+                }
+            });
+        }
+
         // Other Functions
 
         function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
@@ -1903,6 +1915,8 @@
                     CurrentTwilioNumbersList != null
                     &&
                     CurrentVonageNumbersList != null
+                    &&
+                    CurrentLLMProvidersList != null
                 ) {
                     clearInterval(PageLoaderInterval);      
 
@@ -3476,6 +3490,8 @@
 
         const addNewRegionServerButton = regionTab.find("#addNewRegionServerButton");
 
+        /** Functions **/
+
         function CreateRegionListTableElement(regionData) {
             let countryData = CountriesList[regionData.countryCode.toUpperCase()]
 
@@ -3637,6 +3653,8 @@
             regionManagerServerManageTab.find("table tbody").empty();
         }
 
+        /** Initalizer **/
+
         $(document).ready(() => {
             $(document).on("click", "#region-tab #regionListTable tr td button[button-type=edit-region]", (event) => {
                 event.preventDefault();
@@ -3740,6 +3758,180 @@
                     });
                     
                     console.log("Error occured while fetching regions: ", regionsError);
+                }
+            );
+        });
+    </script>
+
+    <!-- LLM Provider Tab -->
+    <script>
+        var CurrentManageLLMProviderData = null;
+
+        /** Elements **/
+        const LLMProviderTab = $("#llm-provider-tab");
+
+        const llmProviderInnerTab = LLMProviderTab.find("#llm-provider-inner-tab");
+        const llmProviderManageBreadcrumb = LLMProviderTab.find("#llm-provider-manage-breadcrumb");
+
+        const switchBackToLLMProviderListTabFromManageTab = llmProviderManageBreadcrumb.find("#switchBackToLLMProviderListTabFromManageTab");
+
+        const LLMProviderListTableTab = LLMProviderTab.find("#llmProviderListTableTab");
+        const LLMProviderListTable = LLMProviderListTableTab.find("#llmProviderListTable");
+
+        const LLMProviderManageTab = LLMProviderTab.find("#llmProviderManageTab");
+        const llmProviderModelListTable = LLMProviderManageTab.find("#llmProviderModelListTable");
+        const addNewLLMProviderModelButton = LLMProviderManageTab.find("#addNewLLMProviderModelButton");
+
+        /** Functions **/
+        function CreateLLMProviderListTableElement(llmProviderData) {
+            let disabledData = "";
+            if (llmProviderData.disabledAt == null)
+            {
+                disabledData = "-";
+            }
+            else
+            {
+                disabledData = `<span class="badge bg-danger">${llmProviderData.disabledAt}</span>`;
+            }
+
+            let element = $(`
+                <tr>
+                    <td>${llmProviderData.id.value}</td>
+                    <td>${llmProviderData.id.name}</td>
+                    <td>${disabledData}</td>
+                    <td>${llmProviderData.models.length}</td>
+                    <td>
+                        <button class="btn btn-info btn-sm" provider-id="${llmProviderData.id.value}" button-type="edit-llm-provider">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+
+            return element;
+        }
+
+        function ResetAndEmptyLLMProvidersManageTab()
+        {
+            llmProviderModelListTable.find("tbody").empty();
+        }
+
+        function ShowLLMProviderManageTab() {
+            LLMProviderListTableTab.removeClass("show");
+            llmProviderInnerTab.removeClass("show");
+
+            setTimeout(() => {
+                
+                LLMProviderListTableTab.addClass("d-none");
+                llmProviderInnerTab.addClass("d-none");
+
+                LLMProviderManageTab.removeClass("d-none");
+                llmProviderManageBreadcrumb.removeClass("d-none");
+
+                setTimeout(() => {
+                    
+                    LLMProviderManageTab.addClass("show");
+                    llmProviderManageBreadcrumb.addClass("show");
+
+                }, 10)
+
+            }, 300)
+        }
+
+        function ShowLLMProviderListTab()
+        {
+            LLMProviderManageTab.removeClass("show");
+            llmProviderManageBreadcrumb.removeClass("show");
+
+            setTimeout(() => {
+                
+                LLMProviderManageTab.addClass("d-none");
+                llmProviderManageBreadcrumb.addClass("d-none");
+
+                LLMProviderListTableTab.removeClass("d-none");
+                llmProviderInnerTab.removeClass("d-none");
+
+                setTimeout(() => {
+                    
+                    LLMProviderListTableTab.addClass("show");
+                    llmProviderInnerTab.addClass("show");
+
+                }, 10)
+
+            }, 300)
+        }
+
+        function CreateLLMProviderModelListTableElement()
+        {
+            let element = $(`<tr>
+                <td>${modelData.id}</td>
+            </tr>`);
+
+            return element;
+        }
+
+        function FillLLMProviderManageTab(llmProviderData)
+        {
+            if (llmProviderData.models.length != 0)
+            {
+                llmProviderData.models.forEach((modelData) => {
+                    llmProviderModelListTable.find("tbody").append(CreateLLMProviderModelListTableElement(modelData));
+                })
+            }
+            else
+            {
+                llmProviderModelListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No models</td></tr>');
+            }
+        }
+
+        /** Initalizer **/
+
+        $(document).ready(() => {
+
+            addNewLLMProviderModelButton.on("click", (event) => {
+                event.preventDefault();
+
+                alert("TODO show models manager tab")
+            })
+
+            LLMProviderListTable.on("click", "button[button-type=edit-llm-provider]", (event) => {
+                event.preventDefault();
+
+                let providerId = $(event.currentTarget).attr("provider-id");
+                CurrentManageLLMProviderData = CurrentLLMProvidersList.find((provider) => provider.id.value == providerId);
+
+                ResetAndEmptyLLMProvidersManageTab();
+
+                FillLLMProviderManageTab(CurrentManageLLMProviderData);
+
+                ShowLLMProviderManageTab();
+            });
+
+            switchBackToLLMProviderListTabFromManageTab.on("click", (event) => {
+               event.preventDefault();
+
+                ShowLLMProviderListTab();
+            });
+
+            FetchLLMProvidersFromAPI(
+                0,
+                100,
+                (llmProvidersData) => {
+                    console.log("llmProviderData: ", llmProvidersData);
+                    CurrentLLMProvidersList = llmProvidersData;
+
+                    CurrentLLMProvidersList.forEach((llmProviderData) => {
+                        LLMProviderListTable.append(CreateLLMProviderListTableElement(llmProviderData));
+                    })
+                },
+                (llmProviderError, isUnsuccessful) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: 'Error occured while fetching llm providers. Check browser console for logs.',
+                        timeout: 5000
+                    });
+                    
+                    console.log("Error occured while fetching llm providers: ", llmProviderError);
                 }
             );
         });

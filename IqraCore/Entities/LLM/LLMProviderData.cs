@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Interfaces;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.LLM
@@ -10,6 +11,6 @@ namespace IqraCore.Entities.LLM
 
         public DateTime? DisabledAt { get; set; } = null;
 
-        public List<LLMProviderModelData> LLMProviderModelData { get; set; } = new List<LLMProviderModelData>();
+        public List<LLMProviderModelData> Models { get; set; } = new List<LLMProviderModelData>();
     }
 }
