@@ -52,9 +52,13 @@
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
-                    <a href="#" class="nav_link active" for="llm-provider-tab">
+                    <a href="#" class="nav_link" for="llm-provider-tab">
                         <i class='fa-regular fa-message-text nav_icon'></i>
                         <span class="nav_name">LLM Provider</span>
+                    </a>
+                    <a href="#" class="nav_link active" for="languages-tab">
+                        <i class='fa-regular fa-language nav_icon'></i>
+                        <span class="nav_name">Languages</span>
                     </a>
                 </div>
             </div>
@@ -1380,15 +1384,12 @@
         </div>
 
         <!-- LLM Provider Container -->
-        <div class="main-container fade w-100 show" id="llm-provider-tab">
+        <div class="main-container fade w-100 d-none" id="llm-provider-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-message-text nav_icon'></i> <span>LLM Provider</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
                 <div class="mb-3">
                     <ul class="nav w-100 fade show" id="llm-provider-inner-tab" role="tablist">
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link disabled" id="llm-provider-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-analytics" type="button" role="tab" aria-controls="llm-provider-analytics" aria-selected="true">Analytics</button>
-                        </li>
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="llm-provider-list-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-list" type="button" role="tab" aria-controls="llm-provider-list" aria-selected="true">List</button>
                         </li>
@@ -1413,11 +1414,6 @@
                 </div>
                 <!-- Tab Content -->
                 <div class="tab-content" id="llm-provider-tab-content">
-
-                    <!-- Analytics -->
-                    <div class="tab-pane fade w-100" id="llm-provider-analytics" role="tabpanel" aria-labelledby="llm-provider-analytics-tab" tabindex="0">
-                        analytics
-                    </div>
 
                     <!-- List -->
                     <div class="tab-pane fade w-100 show active" id="llm-provider-list" role="tabpanel" aria-labelledby="llm-provider-list-tab" tabindex="0">
@@ -1455,9 +1451,6 @@
                                 <ul class="nav fade show" id="llm-provider-manager-inner-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link active" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link disabled" id="llm-provider-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-analytics" type="button" role="tab" aria-controls="llm-provider-manager-analytics" aria-selected="true">Analytics</button>
                                     </li>
                                 </ul>
                             </div>
@@ -1506,8 +1499,8 @@
                                                 <li class="nav-item me-2" role="presentation">
                                                     <button class="nav-link active" id="llm-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-general" type="button" role="tab" aria-controls="llm-provider-model-manager-general" aria-selected="true">General</button>
                                                 </li>
-                                                <li class="nav-item me-2" role="presentation">
-                                                    <button class="nav-link disabled" id="llm-provider-model-manager-analytics-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-analytics" type="button" role="tab" aria-controls="llm-provider-model-manager-analytics" aria-selected="true">Analytics</button>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="llm-provider-model-manager-prompts-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-prompts" type="button" role="tab" aria-controls="llm-provider-model-manager-prompts" aria-selected="true">Prompts</button>
                                                 </li>
                                             </ul>
                                             <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderModelButton">
@@ -1552,22 +1545,20 @@
                                                     </div>
                                                 </div>
                                                 <div class="form-check form-switch mb-3">
-                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageLLMProviderModelDisabledInput">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageLLMProviderModelDisabledInput" checked>
                                                     <label class="form-check-label" for="manageLLMProviderModelDisabledInput">Disabled</label>
                                                 </div>
                                             </div>
-                                            <!-- Analytics -->
-                                            <div class="tab-pane fade w-100" id="llm-provider-model-manager-analytics" role="tabpanel" aria-labelledby="llm-provider-model-manager-analytics-tab" tabindex="0">
-                                                Analytics
+                                            <!-- Prompts -->
+                                            <div class="tab-pane fade w-100" id="llm-provider-model-manager-prompts" role="tabpanel" aria-labelledby="llm-provider-model-manager-prompts-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageLLMProviderModelPromptTemplateInput">Prompt Template</label>
+                                                    <textarea class="form-control" id="manageLLMProviderModelPromptTemplateInput" rows="30"></textarea>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                </div>
-
-                                <!-- Analytics -->
-                                <div class="tab-pane fade w-100" id="llm-provider-manager-analytics" role="tabpanel" aria-labelledby="llm-provider-manager-analytics-tab" tabindex="0">
-                                    Analytics
                                 </div>
 
                             </div>
@@ -1575,6 +1566,96 @@
                         </div>
 
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Languages Contaienr -->
+        <div class="main-container fade w-100 show" id="languages-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="languages-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="languages-list-tab" data-bs-toggle="pill" data-bs-target="#languages-list" type="button" role="tab" aria-controls="languages-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="languages-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToLanguagesListTabFromManageTab">Languages</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLanguageName">Language</span></li>
+                        </ol>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div class="tab-content" id="languages-tab-content">
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="languages-list" role="tabpanel" aria-labelledby="languages-list-tab" tabindex="0">
+
+                        <!-- Table Tab -->
+                        <div class="fade w-100 show" id="languagesListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Language Name or Id" aria-label="Language Name or Id" aria-describedby="searchlanguagesButton">
+                                    <button class="input-group-button btn btn-primary" id="searchlanguagesButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="languagesListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Disabled</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Manage Tab -->
+                        <div class="fade w-100 d-none" id="languagesManageTab">
+
+                            <!-- Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                <ul class="nav fade show" id="languages-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="languages-manager-general-tab" data-bs-toggle="pill" data-bs-target="#languages-manager-general" type="button" role="tab" aria-controls="languages-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLanguagesButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="languages-manager-manage-tab-content">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="languages-manager-general" role="tabpanel" aria-labelledby="languages-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageLanguagesIdInput">Identifer</label>
+                                        <input type="text" class="form-control" id="manageLanguagesIdInput" placeholder="Language Code">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageLanguagesNameInput">Name</label>
+                                        <input type="text" class="form-control" id="manageLanguagesNameInput" placeholder="Language Name">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -3765,7 +3846,11 @@
 
     <!-- LLM Provider Tab -->
     <script>
+        var CurrentManageLLMProviderType = null;
         var CurrentManageLLMProviderData = null;
+
+        var CurrentManageLLMProviderModelType = null;
+        var CurrentManageLLMProviderModelData = null;
 
         /** Elements **/
         const LLMProviderTab = $("#llm-provider-tab");
@@ -3774,6 +3859,7 @@
         const llmProviderManageBreadcrumb = LLMProviderTab.find("#llm-provider-manage-breadcrumb");
 
         const switchBackToLLMProviderListTabFromManageTab = llmProviderManageBreadcrumb.find("#switchBackToLLMProviderListTabFromManageTab");
+        const currentManageLLMProviderName = llmProviderManageBreadcrumb.find("#currentManageLLMProviderName");
 
         const LLMProviderListTableTab = LLMProviderTab.find("#llmProviderListTableTab");
         const LLMProviderListTable = LLMProviderListTableTab.find("#llmProviderListTable");
@@ -3781,6 +3867,33 @@
         const LLMProviderManageTab = LLMProviderTab.find("#llmProviderManageTab");
         const llmProviderModelListTable = LLMProviderManageTab.find("#llmProviderModelListTable");
         const addNewLLMProviderModelButton = LLMProviderManageTab.find("#addNewLLMProviderModelButton");
+
+        const llmProviderManagerInnerTabContainer = LLMProviderManageTab.find("#llm-provider-manager-inner-tab-container");
+        const llmProviderModelManagerBreadcrumb = LLMProviderTab.find("#llm-provider-model-manager-breadcrumb");
+
+        const currentManageModelLLMProviderName = llmProviderModelManagerBreadcrumb.find("#currentManageModelLLMProviderName");
+        const currentManageLLMProviderModelName = llmProviderModelManagerBreadcrumb.find("#currentManageLLMProviderModelName");
+        const switchBackToLLMProviderManagerModelsListTabFromModelTab = llmProviderModelManagerBreadcrumb.find("#switchBackToLLMProviderManagerModelsListTabFromModelTab");
+
+        const llmProviderManagerModelsListTab = LLMProviderManageTab.find("#llmProviderManagerModelsListTab");
+
+        const llmProviderManagerModelManageTab = LLMProviderManageTab.find("#llmProviderManagerModelManageTab");
+
+        const manageLLMProviderModelIdInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelIdInput");
+        const manageLLMProviderModelNameInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelNameInput");
+
+        const manageLLMProviderModelInputPriceInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelInputPriceInput");
+        const manageLLMProviderModelInputTokensInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelInputTokensInput");
+
+        const manageLLMProviderModelOutputPriceInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelOutputPriceInput");
+        const manageLLMProviderModelOutputTokensInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelOutputTokensInput");
+
+        const manageLLMProviderModelInputLengthInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelInputLengthInput");
+        const manageLLMProviderModelOutputLengthInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelOutputLengthInput");
+
+        const manageLLMProviderModelDisabledInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelDisabledInput");
+
+        const saveManageLLMProviderModelButton = llmProviderManagerModelManageTab.find("#saveManageLLMProviderModelButton");
 
         /** Functions **/
         function CreateLLMProviderListTableElement(llmProviderData) {
@@ -3884,21 +3997,164 @@
             }
         }
 
+        function ShowLLMProviderModelManageTab()
+        {
+            llmProviderManagerModelsListTab.removeClass("show");
+            llmProviderManagerInnerTabContainer.removeClass("show");
+            llmProviderManageBreadcrumb.removeClass("show");
+
+            setTimeout(() => {
+
+                llmProviderManagerModelsListTab.addClass("d-none");
+                llmProviderManagerInnerTabContainer.addClass("d-none");
+                llmProviderManageBreadcrumb.addClass("d-none");
+
+                llmProviderManagerModelManageTab.removeClass("d-none");
+                llmProviderModelManagerBreadcrumb.removeClass("d-none");
+                
+                setTimeout(() => {
+                    
+                    llmProviderManagerModelManageTab.addClass("show");
+                    llmProviderModelManagerBreadcrumb.addClass("show");
+
+                }, 10);
+
+            }, 300);
+        }
+
+        function ShowLLMProviderModelListTab()
+        {
+            llmProviderManagerModelManageTab.removeClass("show");
+            llmProviderModelManagerBreadcrumb.removeClass("show");
+
+            setTimeout(() => {
+
+                llmProviderManagerModelManageTab.addClass("d-none");
+                llmProviderModelManagerBreadcrumb.addClass("d-none");
+
+                llmProviderManagerModelsListTab.removeClass("d-none");
+                llmProviderManagerInnerTabContainer.removeClass("d-none");
+                llmProviderManageBreadcrumb.removeClass("d-none");
+                
+                setTimeout(() => {
+                    
+                    llmProviderManagerModelsListTab.addClass("show");
+                    llmProviderManagerInnerTabContainer.addClass("show");
+                    llmProviderManageBreadcrumb.addClass("show");
+
+                }, 10);
+
+            }, 300);
+        }
+
+        function CheckLLMProviderModelManageTabHasChanges()
+        {
+            let changes = {};
+            let hasChanges = false;
+
+            changes.id = manageLLMProviderModelIdInput.val();
+            if (CurrentManageLLMProviderModelData.id != changes.id)
+            {
+                hasChanges = true;
+            }
+
+            changes.name = manageLLMProviderModelNameInput.val();
+            if (CurrentManageLLMProviderModelData.name != changes.name)
+            {
+                hasChanges = true;
+            }
+
+            changes.disabled = manageLLMProviderModelDisabledCheckbox.prop("checked");
+            if (changes.disabled == (CurrentManageLLMProviderModelData.disabled == null))
+            {
+                hasChanges = true;
+            }
+
+            changes.inputPrice = manageLLMProviderModelInputPriceInput.val();
+            if (CurrentManageLLMProviderModelData.inputPrice != changes.inputPrice)
+            {
+                hasChanges = true;
+            }
+
+            changes.inputPriceTokenUnit = manageLLMProviderModelInputPriceTokenUnitInput.val();
+            if (CurrentManageLLMProviderModelData.inputPriceTokenUnit != changes.inputPriceTokenUnit)
+            {
+                hasChanges = true;
+            }
+
+            changes.outputPrice = manageLLMProviderModelOutputPriceInput.val();
+            if (CurrentManageLLMProviderModelData.outputPrice != changes.outputPrice)
+            {
+                hasChanges = true;
+            }   
+
+            changes.outputPriceTokenUnit = manageLLMProviderModelOutputPriceTokenUnitInput.val();
+            if (CurrentManageLLMProviderModelData.outputPriceTokenUnit != changes.outputPriceTokenUnit)
+            {
+                hasChanges = true;
+            }
+
+            changes.maxInputTokenLength = manageLLMProviderModelMaxInputTokenLengthInput.val();
+            if (CurrentManageLLMProviderModelData.maxInputTokenLength != changes.maxInputTokenLength)
+            {
+                hasChanges = true;
+            }
+
+            changes.maxOutputTokenLength = manageLLMProviderModelMaxOutputTokenLengthInput.val();
+            if (CurrentManageLLMProviderModelData.maxOutputTokenLength != changes.maxOutputTokenLength)
+            {
+                hasChanges = true;
+            }
+
+            // TODO prompt templates
+            alert("todo prompt templates");
+
+            return {
+                hasChanges: hasChanges,
+                changes: changes
+            }
+        }
+
         /** Initalizer **/
 
         $(document).ready(() => {
 
+            saveManageLLMProviderModelButton.on("click", (event) => {
+                event.preventDefault();
+
+                // todo alert todo
+                alert("Todo saving");
+            })
+
+            switchBackToLLMProviderManagerModelsListTabFromModelTab.on("click", (event) => {
+                event.preventDefault();
+
+                CurrentManageLLMProviderModelType = null;
+
+                ShowLLMProviderModelListTab();
+            })
+
             addNewLLMProviderModelButton.on("click", (event) => {
                 event.preventDefault();
 
-                alert("TODO show models manager tab")
+                CurrentManageLLMProviderModelType = "new";
+
+                currentManageModelLLMProviderName.text(CurrentManageLLMProviderData.id.name);
+                currentManageLLMProviderModelName.text("New Model");
+
+
+                ShowLLMProviderModelManageTab();
             })
 
             LLMProviderListTable.on("click", "button[button-type=edit-llm-provider]", (event) => {
                 event.preventDefault();
 
+                CurrentManageLLMProviderType = "edit";
+
                 let providerId = $(event.currentTarget).attr("provider-id");
                 CurrentManageLLMProviderData = CurrentLLMProvidersList.find((provider) => provider.id.value == providerId);
+
+                currentManageLLMProviderName.text(CurrentManageLLMProviderData.id.name);
 
                 ResetAndEmptyLLMProvidersManageTab();
 
@@ -3909,6 +4165,8 @@
 
             switchBackToLLMProviderListTabFromManageTab.on("click", (event) => {
                event.preventDefault();
+
+               CurrentManageLLMProviderType = null;
 
                 ShowLLMProviderListTab();
             });
@@ -3935,6 +4193,11 @@
                 }
             );
         });
+    </script>
+
+    <!-- Languages Tab -->
+    <script>
+
     </script>
 </body>
 
