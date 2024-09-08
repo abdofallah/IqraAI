@@ -24,5 +24,28 @@ namespace IqraInfrastructure.Repositories.Languages
                 .Limit(pageSize)
                 .ToListAsync();
         }
+
+        public async Task<LanguagesData?> GetLanguageByCode(string languageCode)
+        {
+            var filter = Builders<LanguagesData>.Filter.Eq(d => d.Id, languageCode);
+
+            return await _languagesCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> AddNewLanguage(LanguagesData newLanguagesData)
+        {
+            await _languagesCollection.InsertOneAsync(newLanguagesData);
+
+            return true;
+        }
+
+        public async Task<bool> ReplaceLanguage(LanguagesData newLanguagesData)
+        {
+            var filter = Builders<LanguagesData>.Filter.Eq(d => d.Id, newLanguagesData.Id);
+
+            var result = await _languagesCollection.ReplaceOneAsync(filter, newLanguagesData);
+
+            return result.IsAcknowledged && result.ModifiedCount > 0;
+        }
     }
 }
