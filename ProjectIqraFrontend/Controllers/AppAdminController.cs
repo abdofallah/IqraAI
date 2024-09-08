@@ -1,12 +1,14 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Number;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.Number;
 using IqraCore.Entities.Region;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
+using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
@@ -21,21 +23,23 @@ namespace ProjectIqraFrontend.Controllers
         private readonly RegionManager _regionManager;
         private readonly NumberManager _numberManager;
         private readonly LLMProviderManager _llmProviderManager;
+        private readonly LanguagesManager _languagesManager;
 
-        public AppAdminController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager, NumberManager numberManager, LLMProviderManager llmProviderManager)
+        public AppAdminController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager, NumberManager numberManager, LLMProviderManager llmProviderManager, LanguagesManager languagesManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
             _regionManager = regionManager;
             _numberManager = numberManager;
             _llmProviderManager = llmProviderManager;
+            _languagesManager = languagesManager;
         }
 
         /**
          * 
          * Users
          * 
-        **/ 
+        **/
 
         [HttpPost("/app/admin/users")]
         public async Task<FunctionReturnResult<List<UserData>?>> GetUsers(int page = 0, int pageSize = 10)
@@ -140,7 +144,7 @@ namespace ProjectIqraFrontend.Controllers
 
             return result;
         }
-        
+
         [HttpPost("/app/admin/user/businesses")]
         public async Task<FunctionReturnResult<List<BusinessData>?>> GetUserBusinesses(string inputUserEmail, List<long> businessIds)
         {
@@ -643,6 +647,63 @@ namespace ProjectIqraFrontend.Controllers
 
             result.Success = true;
             result.Data = providersResult.Data;
+            return result;
+        }
+
+        /**
+         * 
+         * Languages
+         * 
+        **/
+
+        [HttpPost("/app/admin/languages")]
+        public async Task<FunctionReturnResult<List<LanguagesData>?>> GetLanguages(int page = 0, int pageSize = 10)
+        {
+            var result = new FunctionReturnResult<List<LanguagesData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetLanguages:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetLanguages:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetLanguages:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = "GetLanguages:4";
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            var languagesResult = await _languagesManager.GetLanguagesList(page, pageSize);
+            if (!languagesResult.Success)
+            {
+                result.Code = "GetLanguages:" + languagesResult.Code;
+                result.Message = languagesResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = languagesResult.Data;
             return result;
         }
     }

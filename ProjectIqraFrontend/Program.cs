@@ -1,11 +1,13 @@
 using IqraCore.Entities.Frontend;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Number;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
+using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
@@ -33,6 +35,15 @@ namespace ProjectIqraFrontend
                 appConfig["AppDatabase:ConnectionString"],
                 appConfig["AppDatabase:DatabaseName"]
             );
+
+            // Languages
+
+            LanguagesRepository languagesRepository = new LanguagesRepository(
+                appConfig["LanguagesDatabase:ConnectionString"],
+                appConfig["LanguagesDatabase:DatabaseName"]
+            );
+            LanguagesManager languagesManager = new LanguagesManager(languagesRepository);
+            builder.Services.AddSingleton<LanguagesManager>(languagesManager);
 
             // Region
 
