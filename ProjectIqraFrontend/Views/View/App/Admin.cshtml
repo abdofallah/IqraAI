@@ -1963,6 +1963,30 @@
             });
         }
 
+        function SaveLanguagesData(formData, successCallback, errorCallback)
+        {
+            $.ajax({
+                type: "POST",
+                url: "/app/admin/languages/save",
+                data: formData,
+                dataType: "json",
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        errorCallback(response, true);
+                        return;
+                    }
+
+                    successCallback(response);
+                },
+                error: (error) => {
+                    errorCallback(error, false);
+                }
+            });
+        }
+
         // Other Functions
 
         function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
@@ -4229,6 +4253,8 @@
 
     <!-- Languages Tab -->
     <script>
+        var CurrentLanguagesList = [];
+
         var CurrentManageLanguageType = null;
         var CurrentManageLanguageData = null;
 
@@ -4320,6 +4346,28 @@
             return result;
         }
 
+        function CreateLanguagesListTableElement(languagesData)
+        {
+            let disabledAt = "-";
+            if (languagesData.disabledAt != null)
+            {
+                disabledAt = `<span class="badge bg-danger">${languagesData.disabledAt}</span>`
+            }
+
+            let element = $(`<tr>
+                <td>${languagesData.id}</td>
+                <td>${languagesData.localeName} | ${languagesData.name}</td>
+                <td>${disabledAt}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" language-id="${languagesData.id}" button-type="edit-language">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                </td>
+            </tr>`);
+
+            return element;
+        }
+
         function CheckLanguageManageTabHasChanges(enableDisableButton = true)
         {
             let changes = {};
@@ -4344,7 +4392,7 @@
             }
 
             changes.disabled = manageLanguagesDisabledInput.prop("checked");
-            if (changes.disabled != (CurrentManageLanguageData.disabledAt == null))
+            if (changes.disabled == (CurrentManageLanguageData.disabledAt == null))
             {
                 hasChanges = true;
             }
@@ -4360,30 +4408,146 @@
             }
         }
 
-        function CreateLanguagesListTableElement(languagesData)
+        function ValidateLanguageManageTabFields(onlyRemove = true)
         {
-            let disabledAt = "-";
-            if (languagesData.disabledAt != null)
+            let errors = [];
+            let validated = true;
+
+            let languageId = manageLanguagesIdInput.val();
+            if (!languageId || languageId.trim().length === 0 || languageId === '')
             {
-                disabledAt = `<span class="badge bg-danger">${languagesData.disabledAt}</span>`
+                validated = false;
+                errors.push("Language id is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLanguagesIdInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLanguagesIdInput.removeClass("is-invalid");
             }
 
-            let element = $(`<tr>
-                <td>${languagesData.id}</td>
-                <td>${languagesData.localeName} | ${languagesData.name}</td>
-                <td>${disabledAt}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" language-id="${languagesData.id}" button-type="edit-language">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                </td>
-            </tr>`);
+            let languageLocaleName = manageLanguagesLocaleNameInput.val();
+            if (!languageLocaleName || languageLocaleName.trim().length === 0 || languageLocaleName === '')
+            {
+                validated = false;
+                errors.push("Language locale name is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLanguagesLocaleNameInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLanguagesLocaleNameInput.removeClass("is-invalid");
+            }
 
-            return element;
+            let languageName = manageLanguagesNameInput.val();
+            if (!languageName || languageName.trim().length === 0 || languageName === '')
+            {
+                validated = false;
+                errors.push("Language name is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLanguagesNameInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLanguagesNameInput.removeClass("is-invalid");
+            }
+
+            return {
+                validated: validated,
+                errors: errors
+            }
+        }
+
+        function FillLanguagesManageTabData(languagesData)
+        {
+            manageLanguagesIdInput.val(languagesData.id);
+            manageLanguagesNameInput.val(languagesData.name);
+            manageLanguagesLocaleNameInput.val(languagesData.localeName);
+            manageLanguagesDisabledInput.prop("checked", languagesData.disabledAt != null);
         }
 
         /** Initializer **/
         $(document).ready(() => {
+
+            languagesListTableTab.on("click", "button[button-type=edit-language]", (event) => {
+                event.preventDefault();
+
+                let languageId = $(event.currentTarget).attr("language-id");
+                let languageData = CurrentLanguagesList.find((language) => language.id == languageId);
+
+                CurrentManageLanguageType = "edit";
+                CurrentManageLanguageData = languageData;
+
+                currentManageLanguageName.text(languageData.name);
+
+                ResetAndEmptyLanguagesManageTab();
+                FillLanguagesManageTabData(languageData);
+                ShowLanguagesManageTab();
+            });
+
+            saveManageLanguagesButton.on("click", (event) => {
+                event.preventDefault();
+
+                let validation = ValidateLanguageManageTabFields(false);
+                if (!validation.validated)
+                {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Validation for required fields failed.<br><br>' + validation.errors.join('<br>'),
+                        timeout: 6000
+                    });
+
+                    return;
+                }
+
+                let changes = CheckLanguageManageTabHasChanges();
+                if (!changes.hasChanges)
+                {
+                    return;
+                }
+
+                saveManageLanguagesButton.prop("disabled", true);
+
+                let formData = new FormData();
+                formData.append("postType", CurrentManageLanguageType);
+                formData.append("languageCode", changes.changes.id);
+
+                formData.append("changes", JSON.stringify(changes.changes));
+
+                SaveLanguagesData(
+                    formData,
+                    (saveResponse) => {
+                        if (saveResponse.success)
+                        {
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1);
+                        }
+
+                        saveManageLanguagesButton.prop("disabled", false);
+                    },
+                    (saveError, isUnsuccessful) => {
+                        AlertManager.createAlert({
+                            type: 'danger',
+                            message: 'Error occured while saving languages data. Check browser console for logs.',
+                            timeout: 6000
+                        });
+
+                        console.log('Error occured while saving languages data: ', saveError);
+
+                        saveManageLanguagesButton.prop("disabled", false);
+                    }
+                )
+            });
 
             languagesManageTab.on("change, input", "input, textarea", (event) => {
                 CheckLanguageManageTabHasChanges(true);
@@ -4414,7 +4578,7 @@
                 0,
                 100,
                 (languagesData) => {
-                    console.log("languagesData: ", languagesData);
+                    CurrentLanguagesList = languagesData;
 
                     if (languagesData.length > 0)
                     {
