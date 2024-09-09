@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Repositories.LLM
             await _llmProviderCollection.InsertOneAsync(providerData);
         }
 
-        public async Task<LLMProviderData> GetProviderAsync(InterfaceLLMProviderEnum id)
+        public async Task<LLMProviderData?> GetProviderAsync(InterfaceLLMProviderEnum id)
         {
             return await _llmProviderCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }

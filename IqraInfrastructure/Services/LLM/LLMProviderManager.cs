@@ -3,6 +3,7 @@ using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
 using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Repositories.LLM;
+using Microsoft.AspNetCore.Http;
 using System.Reflection;
 
 namespace IqraInfrastructure.Services.LLM
@@ -250,6 +251,19 @@ namespace IqraInfrastructure.Services.LLM
                 return service;
             }
             return null;
+        }
+
+        public async Task<LLMProviderData?> GetProviderData(InterfaceLLMProviderEnum providerId)
+        {
+            return await _llmProviderRepository.GetProviderAsync(providerId);
+        }
+
+        public async Task<FunctionReturnResult<LLMProviderModelData?>> AddUpdateProviderModel(LLMProviderData provider, string modelId, string postType, LLMProviderModelData? oldModelData, IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<LLMProviderModelData?>();
+
+
+            return result;
         }
     }
 }
