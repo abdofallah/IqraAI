@@ -25,6 +25,13 @@ namespace IqraInfrastructure.Repositories.Languages
                 .ToListAsync();
         }
 
+        public async Task<List<LanguagesData>?> GetAllLanguagesList()
+        {
+            return await _languagesCollection
+                .Find(_ => true)
+                .ToListAsync();
+        }
+
         public async Task<LanguagesData?> GetLanguageByCode(string languageCode)
         {
             var filter = Builders<LanguagesData>.Filter.Eq(d => d.Id, languageCode);

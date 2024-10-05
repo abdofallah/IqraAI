@@ -1281,3 +1281,26 @@ table.table>thead>*>* {
     --bs-spinner-border-width: 0.15em;
     margin-left: 4px;
 }
+
+.multilanguage-dropdown .dropdown-menu {
+    border: 1px solid #777777;;
+}
+
+.multilanguage-dropdown .dropdown-menu,
+.multilanguage-dropdown .dropdown-toggle {
+    min-width: 220px;
+    max-width: 80vw;
+}
+
+.multilanguage-dropdown .dropdown-toggle {
+    border: 1px solid #777777;
+}
+
+.multilanguage-dropdown .dropdown-item:active, .multilanguage-dropdown .dropdown-item.active {
+    background-color: var(--tcolor-dark-green);
+    color: black !important;
+}
+
+.multilanguage-dropdown .dropdown-item.active:hover {
+    color: black !important;
+}

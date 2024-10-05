@@ -651,6 +651,80 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
+        [HttpPost("/app/admin/llmproviders/save")]
+        public async Task<FunctionReturnResult<LLMProviderData?>> SaveLLMProvider(IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<LLMProviderData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "SaveLLMProvider:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "SaveLLMProvider:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "SaveLLMProvider:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!user.Permission.IsAdmin)
+            {
+                result.Code = "SaveLLMProvider:4";
+                result.Message = "User is not an admin";
+                return result;
+            }
+
+            string? providerId = formData["providerId"];
+            if (string.IsNullOrEmpty(providerId))
+            {
+                result.Code = "SaveLLMProvider:5";
+                result.Message = "Provider id is required";
+                return result;
+            }
+
+            if (!Enum.TryParse(typeof(InterfaceLLMProviderEnum), providerId, true, out object? providerIdEnum))
+            {
+                result.Code = "SaveLLMProvider:6";
+                result.Message = "Invalid provider id enum";
+                return result;
+            }
+
+            LLMProviderData? provider = await _llmProviderManager.GetProviderData(((InterfaceLLMProviderEnum)providerIdEnum));
+            if (provider == null)
+            {
+                result.Code = "SaveLLMProvider:7";
+                result.Message = "Provider not found";
+                return result;
+            }
+
+            var saveResult = await _llmProviderManager.UpdateProvider(provider, formData);
+            if (!saveResult.Success)
+            {
+                result.Code = "SaveLLMProvider:" + saveResult.Code;
+                result.Message = saveResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = saveResult.Data;
+            return result;
+        }
+
         [HttpPost("/app/admin/llmproviders/model/save")]
         public async Task<FunctionReturnResult<LLMProviderModelData?>> SaveLLMProviderModel(IFormCollection formData)
         {

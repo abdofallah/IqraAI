@@ -52,11 +52,11 @@
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
-                    <a href="#" class="nav_link" for="llm-provider-tab">
+                    <a href="#" class="nav_link active" for="llm-provider-tab">
                         <i class='fa-regular fa-message-text nav_icon'></i>
                         <span class="nav_name">LLM Provider</span>
                     </a>
-                    <a href="#" class="nav_link active" for="languages-tab">
+                    <a href="#" class="nav_link" for="languages-tab">
                         <i class='fa-regular fa-language nav_icon'></i>
                         <span class="nav_name">Languages</span>
                     </a>
@@ -1377,7 +1377,7 @@
         </div>
 
         <!-- LLM Provider Container -->
-        <div class="main-container fade w-100 d-none" id="llm-provider-tab">
+        <div class="main-container fade w-100 show" id="llm-provider-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-message-text nav_icon'></i> <span>LLM Provider</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -1396,13 +1396,19 @@
                         </ol>
                     </nav>
                     <nav class="w-100 fade d-none" aria-label="breadcrumb" id="llm-provider-model-manager-breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelLLMProviderName">Provider</span></li>
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToLLMProviderManagerModelsListTabFromModelTab">Models</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLLMProviderModelName">Model</span></li>
-                        </ol>
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelLLMProviderName">Provider</span></li>
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToLLMProviderManagerModelsListTabFromModelTab">Models</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page"><span id="currentManageLLMProviderModelName">Model</span></li>
+                            </ol>
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderModelButton">
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save</span>
+                            </button>
+                        </div>
                     </nav>
                 </div>
                 <!-- Tab Content -->
@@ -1443,16 +1449,35 @@
                             <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="llm-provider-manager-inner-tab-container">
                                 <ul class="nav fade show" id="llm-provider-manager-inner-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
+                                        <button class="nav-link active" id="llm-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-general" type="button" role="tab" aria-controls="llm-provider-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
                                     </li>
                                 </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderButton" disabled>
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
                             </div>
 
                             <!-- Tab Content -->
                             <div class="tab-content" id="llm-provider-manager-manage-tab-content">
 
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="llm-provider-manager-general" role="tabpanel" aria-labelledby="llm-provider-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageLLMProviderIdInput">Identifer</label>
+                                        <input type="text" class="form-control" id="manageLLMProviderIdInput" placeholder="Identifer" disabled>
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageLLMProviderDisabledInput">
+                                        <label class="form-check-label" for="manageLLMProviderDisabledInput">Disabled</label>
+                                    </div>
+                                </div>
+
                                 <!-- Models -->
-                                <div class="tab-pane fade w-100 show active" id="llm-provider-manager-models" role="tabpanel" aria-labelledby="llm-provider-manager-models-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="llm-provider-manager-models" role="tabpanel" aria-labelledby="llm-provider-manager-models-tab" tabindex="0">
 
                                     <!-- List Tab -->
                                     <div class="fade w-100 show" id="llmProviderManagerModelsListTab">
@@ -1496,10 +1521,10 @@
                                                     <button class="nav-link" id="llm-provider-model-manager-prompts-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-model-manager-prompts" type="button" role="tab" aria-controls="llm-provider-model-manager-prompts" aria-selected="true">Prompts</button>
                                                 </li>
                                             </ul>
-                                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageLLMProviderModelButton">
-                                                <i class='fa-regular fa-floppy-disk'></i>
-                                                <span> Save</span>
-                                            </button>
+
+                                            <div id="manageLLMProviderModelLanguageContainer">
+                                                <!-- Dynamically Generated -->
+                                            </div>
                                         </div>
                                         <!-- Tab Content -->
                                         <div class="tab-content" id="llm-provider-model-manager-manage-tab-content">
@@ -1545,7 +1570,10 @@
                                             <!-- Prompts -->
                                             <div class="tab-pane fade w-100" id="llm-provider-model-manager-prompts" role="tabpanel" aria-labelledby="llm-provider-model-manager-prompts-tab" tabindex="0">
                                                 <div class="mb-3">
-                                                    <label class="form-label" for="manageLLMProviderModelPromptTemplateInput">Prompt Template</label>
+                                                    <label class="form-label" for="manageLLMProviderModelPromptTemplateInput">
+                                                        <span>Prompt Template</span>
+                                                        <i class="fa-regular fa-language"></i>
+                                                    </label>
                                                     <textarea class="form-control" id="manageLLMProviderModelPromptTemplateInput" rows="30"></textarea>
                                                 </div>
                                             </div>
@@ -1564,7 +1592,7 @@
         </div>
 
         <!-- Languages Contaienr -->
-        <div class="main-container fade w-100 show" id="languages-tab">
+        <div class="main-container fade w-100 d-none" id="languages-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -1678,6 +1706,7 @@
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
     <script src="~/js/confirm_dialog.js"></script>
+    <script src="~/js/multilanguage_dropdown.js"></script>
     <script src="~/js/script.js"></script>
 
     <!-- Global -->
@@ -1688,6 +1717,7 @@
         var CurrentBusinessesList = null;
         var CurrentRegionsList = null;
         var CurrentLLMProvidersList = null;
+        var CurrentLanguagesList = null;
 
         // API Related Calls
 
@@ -2054,6 +2084,8 @@
                     CurrentVonageNumbersList != null
                     &&
                     CurrentLLMProvidersList != null
+                    &&
+                    CurrentLanguagesList != null
                 ) {
                     clearInterval(PageLoaderInterval);      
 
@@ -2064,6 +2096,18 @@
                 }
             }
         , 100);
+
+        function RunActionAfterLanguagesLoad(action)
+        {
+            var languagesCheckInterval = setInterval(
+                () => {
+                    if (CurrentLanguagesList != null) {
+                        clearInterval(languagesCheckInterval);
+                        action();
+                    }
+                }
+            , 100);
+        }
     </script>
 
     <!-- Users Tab -->
@@ -3907,6 +3951,7 @@
 
         var CurrentManageLLMProviderModelType = null;
         var CurrentManageLLMProviderModelData = null;
+        var CurrentManageLLMProviderModelPromptLanguageNewData = null;
 
         /** Elements **/
         const LLMProviderTab = $("#llm-provider-tab");
@@ -3925,11 +3970,19 @@
         const addNewLLMProviderModelButton = LLMProviderManageTab.find("#addNewLLMProviderModelButton");
 
         const llmProviderManagerInnerTabContainer = LLMProviderManageTab.find("#llm-provider-manager-inner-tab-container");
+        const llmProviderManagerInnerTab = llmProviderManagerInnerTabContainer.find("#llm-provider-manager-inner-tab");
         const llmProviderModelManagerBreadcrumb = LLMProviderTab.find("#llm-provider-model-manager-breadcrumb");
+        const saveManageLLMProviderModelButton = llmProviderModelManagerBreadcrumb.find("#saveManageLLMProviderModelButton");
+        const saveManageLLMProviderButton = llmProviderManagerInnerTabContainer.find("#saveManageLLMProviderButton");
 
         const currentManageModelLLMProviderName = llmProviderModelManagerBreadcrumb.find("#currentManageModelLLMProviderName");
         const currentManageLLMProviderModelName = llmProviderModelManagerBreadcrumb.find("#currentManageLLMProviderModelName");
         const switchBackToLLMProviderManagerModelsListTabFromModelTab = llmProviderModelManagerBreadcrumb.find("#switchBackToLLMProviderManagerModelsListTabFromModelTab");
+
+        const llmProviderManagerGeneral = LLMProviderManageTab.find("#llm-provider-manager-general");
+
+        const manageLLMProviderIdInput = llmProviderManagerGeneral.find("#manageLLMProviderIdInput");
+        const manageLLMProviderDisabledInput = llmProviderManagerGeneral.find("#manageLLMProviderDisabledInput");
 
         const llmProviderManagerModelsListTab = LLMProviderManageTab.find("#llmProviderManagerModelsListTab");
 
@@ -3949,7 +4002,10 @@
 
         const manageLLMProviderModelDisabledInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelDisabledInput");
 
-        const saveManageLLMProviderModelButton = llmProviderManagerModelManageTab.find("#saveManageLLMProviderModelButton");
+        const manageLLMProviderModelPromptTemplateInput = llmProviderManagerModelManageTab.find("#manageLLMProviderModelPromptTemplateInput");
+
+        var manageLLMProviderModelLanguageDropdown = null;
+        RunActionAfterLanguagesLoad(() => { manageLLMProviderModelLanguageDropdown = new MultiLanguageDropdown("manageLLMProviderModelLanguageContainer", CurrentLanguagesList); })
 
         /** Functions **/
         function CreateLLMProviderListTableElement(llmProviderData) {
@@ -3982,6 +4038,8 @@
 
         function ResetAndEmptyLLMProvidersManageTab()
         {
+            manageLLMProviderIdInput.val("");
+            manageLLMProviderDisabledInput.prop("checked", false).change();
             llmProviderModelListTable.find("tbody").empty();
         }
 
@@ -4041,6 +4099,9 @@
 
         function FillLLMProviderManageTab(llmProviderData)
         {
+            manageLLMProviderIdInput.val(llmProviderData.id.name);
+            manageLLMProviderDisabledInput.prop("checked", llmProviderData.disabledAt != null);
+
             if (llmProviderData.models.length != 0)
             {
                 llmProviderData.models.forEach((modelData) => {
@@ -4103,7 +4164,7 @@
             }, 300);
         }
 
-        function CheckLLMProviderModelManageTabHasChanges()
+        function CheckLLMProviderModelManageTabHasChanges(enableDisableButton = true)
         {
             let changes = {};
             let hasChanges = false;
@@ -4162,8 +4223,19 @@
                 hasChanges = true;
             }
 
-            // TODO prompt templates
-            alert("todo prompt templates");
+            CurrentLanguagesList.forEach((language) => {
+                changes.promptTemplates[language.id] = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
+
+                if (CurrentManageLLMProviderModelPromptLanguageNewData[language.id] != changes.promptTemplates[language.id])
+                {
+                    hasChanges = true;
+                }
+            })
+
+            if (enableDisableButton == true)
+            {
+                saveManageLLMProviderModelButton.prop("disabled", !hasChanges);
+            }
 
             return {
                 hasChanges: hasChanges,
@@ -4171,9 +4243,84 @@
             }
         }
 
+        function CheckLLMProviderManageTabHasChanges(enableDisableButton = true)
+        {
+            let changes = {};
+            let hasChanges = false;
+
+            changes.disabled = manageLLMProviderDisabledInput.prop("checked");
+            if (changes.disabled == (CurrentManageLLMProviderData.disabledAt == null))
+            {
+                hasChanges = true;
+            }
+
+            if (enableDisableButton == true)
+            {
+                saveManageLLMProviderButton.prop("disabled", !hasChanges);
+            }
+
+            return {
+                hasChanges: hasChanges,
+                changes: changes
+            }
+        }
+
+        function ResetAndEmptyLLMProviderModelManageTab()
+        {
+            llmProviderManagerModelManageTab.find("input, textarea").val("").change();
+            llmProviderManagerModelManageTab.find(".is-invalid").removeClass("is-invalid");
+            manageLLMProviderModelDisabledInput.prop("checked", true);
+        }
+
+        function CreateDefaultLLMProviderModelObject()
+        {
+            let object = {
+                id: "",
+                name: "",
+                disabled: null,
+                inputPrice: 0,
+                inputPriceTokenUnit: "",
+                outputPrice: 0,
+                outputPriceTokenUnit: "",
+                maxInputTokenLength: 0,
+                maxOutputTokenLength: 0,
+                promptTemplates: {}
+            };
+
+            CurrentLanguagesList.forEach((language) => {
+                object.promptTemplates[language.id] = "";
+            });
+
+            return object;
+        }
+
         /** Initalizer **/
 
         $(document).ready(() => {
+
+            llmProviderManagerGeneral.on("input, change", "input, textarea", (event) => {
+                CheckLLMProviderManageTabHasChanges(true);
+            })
+
+            saveManageLLMProviderButton.on("click", (event) => {
+                event.preventDefault();
+
+                // todo
+                alert("todo saving");
+            })
+
+            llmProviderManagerInnerTab.find('button[data-bs-toggle="pill"]').on('shown.bs.tab', (event) => {
+                let newTab = event.target;
+
+                if (newTab.id == "llm-provider-manager-general-tab")
+                {
+                    saveManageLLMProviderButton.removeClass("d-none");
+                }
+                else
+                {
+                    saveManageLLMProviderButton.addClass("d-none");
+                }
+            })
 
             saveManageLLMProviderModelButton.on("click", (event) => {
                 event.preventDefault();
@@ -4186,6 +4333,7 @@
                 event.preventDefault();
 
                 CurrentManageLLMProviderModelType = null;
+                CurrentManageLLMProviderModelPromptLanguageNewData = null;
 
                 ShowLLMProviderModelListTab();
             })
@@ -4195,9 +4343,13 @@
 
                 CurrentManageLLMProviderModelType = "new";
 
+                CurrentManageLLMProviderModelData = CreateDefaultLLMProviderModelObject();
+                CurrentManageLLMProviderModelPromptLanguageNewData = CreateDefaultLLMProviderModelObject().promptTemplates;
+
                 currentManageModelLLMProviderName.text(CurrentManageLLMProviderData.id.name);
                 currentManageLLMProviderModelName.text("New Model");
 
+                ResetAndEmptyLLMProviderModelManageTab();
 
                 ShowLLMProviderModelManageTab();
             })
@@ -4220,12 +4372,36 @@
             });
 
             switchBackToLLMProviderListTabFromManageTab.on("click", (event) => {
-               event.preventDefault();
+                event.preventDefault();
 
-               CurrentManageLLMProviderType = null;
+                CurrentManageLLMProviderType = null;
+
 
                 ShowLLMProviderListTab();
             });
+
+            var checkManageLLMProviderModelLanguageDropdownInterval = setInterval(() => {
+                if (manageLLMProviderModelLanguageDropdown != null)
+                {
+                    manageLLMProviderModelPromptTemplateInput.on("input change", (event) => {
+                        let currentLanguage = manageLLMProviderModelLanguageDropdown.getSelectedLanguage();
+
+                        let value = manageLLMProviderModelPromptTemplateInput.val();
+
+                        CurrentManageLLMProviderModelPromptLanguageNewData[currentLanguage.id] = value;
+
+                        let valueIsInComplete = !value || value == "" || value.trim() == "";
+                        manageLLMProviderModelLanguageDropdown.setLanguageStatus(currentLanguage.id, valueIsInComplete ? "incomplete" : "complete");
+                    });
+                    
+                    manageLLMProviderModelLanguageDropdown.onLanguageChange((language) => {
+                        let promptTemplate = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
+                        manageLLMProviderModelPromptTemplateInput.val(promptTemplate);
+                    });
+
+                    clearInterval(checkManageLLMProviderModelLanguageDropdownInterval);
+                }
+            }, 100);        
 
             FetchLLMProvidersFromAPI(
                 0,
@@ -4253,8 +4429,6 @@
 
     <!-- Languages Tab -->
     <script>
-        var CurrentLanguagesList = [];
-
         var CurrentManageLanguageType = null;
         var CurrentManageLanguageData = null;
 

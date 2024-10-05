@@ -144,5 +144,21 @@ namespace IqraInfrastructure.Services.Languages
             result.Data = getResult;
             return result;
         }
+
+        public async Task<FunctionReturnResult<List<LanguagesData>?>> GetAllLanguagesList()
+        {
+            var result = new FunctionReturnResult<List<LanguagesData>?>();
+
+            var getResult = await _languagesRepository.GetAllLanguagesList();
+            if (getResult == null)
+            {
+                result.Code = "GetAllLanguagesList:1";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = getResult;
+            return result;
+        }
     }
 }

@@ -121,7 +121,7 @@ namespace ProjectIqraFrontend
                 appConfig["LLMProviderDatabase:ConnectionString"],
                 appConfig["LLMProviderDatabase:DatabaseName"]
             );
-            LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository);
+            LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository, languagesManager);
             builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
 
             await llmProviderManager.InitializeProvidersAsync();

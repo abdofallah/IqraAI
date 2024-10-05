@@ -2,20 +2,27 @@
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
 using IqraCore.Interfaces.AI;
+using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Services.Languages;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 using System.Reflection;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Services.LLM
 {
     public class LLMProviderManager
     {
         private readonly LLMProviderRepository _llmProviderRepository;
+        private readonly LanguagesManager _languagesManager;
+
         private Dictionary<InterfaceLLMProviderEnum, Type> _llmProviderClasses = new Dictionary<InterfaceLLMProviderEnum, Type>();
 
-        public LLMProviderManager(LLMProviderRepository llmProviderRepository)
+        public LLMProviderManager(LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager)
         {
             _llmProviderRepository = llmProviderRepository;
+            _languagesManager = languagesManager;
         }
 
         public async Task InitializeProvidersAsync()
@@ -262,6 +269,219 @@ namespace IqraInfrastructure.Services.LLM
         {
             var result = new FunctionReturnResult<LLMProviderModelData?>();
 
+            var newModelData = new LLMProviderModelData()
+            {
+                Id = modelId
+            };
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddUpdateProviderModel:1";
+                result.Message = "Changes data not found";
+                return result;
+            }
+
+            if (string.IsNullOrEmpty(changesJsonString))
+            {
+                result.Code = "AddUpdateProviderModel:2";
+                result.Message = "Changes data is empty";
+                return result;
+            }
+
+            JsonDocument changesJsonElement;
+            try
+            {
+                changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+            }
+            catch (JsonException)
+            {
+                result.Code = "AddUpdateProviderModel:3";
+                result.Message = "Invalid JSON format for changes";
+                return result;
+            }
+
+            if (changesJsonElement == null)
+            {
+                result.Code = "AddUpdateProviderModel:3";
+                result.Message = "Failed to parse changes JSON";
+                return result;
+            }
+
+            // Model Name
+            if (!changesJsonElement.RootElement.TryGetProperty("name", out var modelNameElement))
+            {
+                result.Code = "AddUpdateProviderModel:4";
+                result.Message = "Model name not found";
+                return result;
+            }
+            string? modelName = modelNameElement.GetString();
+            if (string.IsNullOrEmpty(modelName))
+            {
+                result.Code = "AddUpdateProviderModel:5";
+                result.Message = "Model name is empty";
+                return result;
+            }
+            newModelData.Name = modelName;
+
+            // Disabled
+            if (changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+            {
+                bool isDisabled = disabledElement.GetBoolean();
+                if (isDisabled)
+                {
+                    if (postType == "edit" && oldModelData?.DisabledAt != null)
+                    {
+                        newModelData.DisabledAt = oldModelData.DisabledAt;
+                    }
+                    else
+                    {
+                        newModelData.DisabledAt = DateTime.UtcNow;
+                    }
+                }
+                else
+                {
+                    newModelData.DisabledAt = null;
+                }
+            }
+
+            // Input Price
+            if (changesJsonElement.RootElement.TryGetProperty("inputPrice", out var inputPriceElement))
+            {
+                if (inputPriceElement.TryGetDecimal(out decimal inputPrice))
+                {
+                    newModelData.InputPrice = inputPrice;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:6";
+                    result.Message = "Invalid input price";
+                    return result;
+                }
+            }
+
+            // Input Price Token Unit
+            if (changesJsonElement.RootElement.TryGetProperty("inputPriceTokenUnit", out var inputPriceTokenUnitElement))
+            {
+                if (inputPriceTokenUnitElement.TryGetInt32(out int inputPriceTokenUnit))
+                {
+                    newModelData.InputPriceTokenUnit = inputPriceTokenUnit;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:7";
+                    result.Message = "Invalid input price token unit";
+                    return result;
+                }
+            }
+
+            // Output Price
+            if (changesJsonElement.RootElement.TryGetProperty("outputPrice", out var outputPriceElement))
+            {
+                if (outputPriceElement.TryGetDecimal(out decimal outputPrice))
+                {
+                    newModelData.OutputPrice = outputPrice;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:8";
+                    result.Message = "Invalid output price";
+                    return result;
+                }
+            }
+
+            // Output Price Token Unit
+            if (changesJsonElement.RootElement.TryGetProperty("outputPriceTokenUnit", out var outputPriceTokenUnitElement))
+            {
+                if (outputPriceTokenUnitElement.TryGetInt32(out int outputPriceTokenUnit))
+                {
+                    newModelData.OutputPriceTokenUnit = outputPriceTokenUnit;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:9";
+                    result.Message = "Invalid output price token unit";
+                    return result;
+                }
+            }
+
+            // Max Input Token Length
+            if (changesJsonElement.RootElement.TryGetProperty("maxInputTokenLength", out var maxInputTokenLengthElement))
+            {
+                if (maxInputTokenLengthElement.TryGetInt32(out int maxInputTokenLength))
+                {
+                    newModelData.MaxInputTokenLength = maxInputTokenLength;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:10";
+                    result.Message = "Invalid max input token length";
+                    return result;
+                }
+            }
+
+            // Max Output Token Length
+            if (changesJsonElement.RootElement.TryGetProperty("maxOutputTokenLength", out var maxOutputTokenLengthElement))
+            {
+                if (maxOutputTokenLengthElement.TryGetInt32(out int maxOutputTokenLength))
+                {
+                    newModelData.MaxOutputTokenLength = maxOutputTokenLength;
+                }
+                else
+                {
+                    result.Code = "AddUpdateProviderModel:11";
+                    result.Message = "Invalid max output token length";
+                    return result;
+                }
+            }
+
+            // Prompts
+            var appLanguages = await _languagesManager.GetAllLanguagesList();
+            var promptValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                appLanguages.Data,
+                changesJsonElement.RootElement,
+                "promptTemplates",
+                newModelData.PromptTemplates
+            );
+
+            if (!promptValidationResult.Success)
+            {
+                result.Code = "AddUpdateProviderModel:" + promptValidationResult.Code;
+                result.Message = promptValidationResult.Message;
+                return result;
+            }
+
+            // Saving new data to database
+            if (postType == "new")
+            {
+                var addResult = await _llmProviderRepository.AddModelAsync(provider.Id, newModelData);
+                if (!addResult.IsAcknowledged || addResult.ModifiedCount == 0)
+                {
+                    result.Code = "AddUpdateProviderModel:13";
+                    result.Message = "Failed to add model";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                var editResult = await _llmProviderRepository.UpdateModelAsync(provider.Id, newModelData);
+                if (!editResult.IsAcknowledged || editResult.ModifiedCount == 0)
+                {
+                    result.Code = "AddUpdateProviderModel:14";
+                    result.Message = "Failed to edit model";
+                    return result;
+                }
+            }
+
+            result.Data = newModelData;
+            result.Success = true;
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<LLMProviderData?>> UpdateProvider(LLMProviderData provider, IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<LLMProviderData?>();
+
+            // todo
 
             return result;
         }
