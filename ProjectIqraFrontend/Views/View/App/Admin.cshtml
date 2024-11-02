@@ -2017,6 +2017,30 @@
             });
         }
 
+        function SaveLLMProviderModelData(formData, successCallback, errorCallback)
+        {
+            $.ajax({
+                type: "POST",
+                url: "/app/admin/llmproviders/model/save",
+                data: formData,
+                dataType: "json",
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success)
+                    {
+                        errorCallback(response, true);
+                        return;
+                    }
+
+                    successCallback(response);
+                },
+                error: (error) => {
+                    errorCallback(error, false);
+                }
+            });
+        }
+
         // Other Functions
 
         function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
@@ -4088,10 +4112,27 @@
             }, 300)
         }
 
-        function CreateLLMProviderModelListTableElement()
+        function CreateLLMProviderModelListTableElement(modelData)
         {
+            let disabledData = "";
+            if (modelData.disabledAt == null)
+            {
+                disabledData = "-";
+            }
+            else
+            {
+                disabledData = `<span class="badge bg-danger">${modelData.disabledAt}</span>`;
+            }
+
             let element = $(`<tr>
                 <td>${modelData.id}</td>
+                <td>${modelData.name}</td>
+                <td>${disabledData}</td>
+                <td>
+                    <button class="btn btn-info btn-sm" model-id="${modelData.id}" button-type="edit-llm-provider-model">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                </td>
             </tr>`);
 
             return element;
@@ -4181,7 +4222,7 @@
                 hasChanges = true;
             }
 
-            changes.disabled = manageLLMProviderModelDisabledCheckbox.prop("checked");
+            changes.disabled = manageLLMProviderModelDisabledInput.prop("checked");
             if (changes.disabled == (CurrentManageLLMProviderModelData.disabled == null))
             {
                 hasChanges = true;
@@ -4193,7 +4234,7 @@
                 hasChanges = true;
             }
 
-            changes.inputPriceTokenUnit = manageLLMProviderModelInputPriceTokenUnitInput.val();
+            changes.inputPriceTokenUnit = manageLLMProviderModelInputTokensInput.val();
             if (CurrentManageLLMProviderModelData.inputPriceTokenUnit != changes.inputPriceTokenUnit)
             {
                 hasChanges = true;
@@ -4205,24 +4246,25 @@
                 hasChanges = true;
             }   
 
-            changes.outputPriceTokenUnit = manageLLMProviderModelOutputPriceTokenUnitInput.val();
+            changes.outputPriceTokenUnit = manageLLMProviderModelOutputTokensInput.val();
             if (CurrentManageLLMProviderModelData.outputPriceTokenUnit != changes.outputPriceTokenUnit)
             {
                 hasChanges = true;
             }
 
-            changes.maxInputTokenLength = manageLLMProviderModelMaxInputTokenLengthInput.val();
+            changes.maxInputTokenLength = manageLLMProviderModelInputLengthInput.val();
             if (CurrentManageLLMProviderModelData.maxInputTokenLength != changes.maxInputTokenLength)
             {
                 hasChanges = true;
             }
 
-            changes.maxOutputTokenLength = manageLLMProviderModelMaxOutputTokenLengthInput.val();
+            changes.maxOutputTokenLength = manageLLMProviderModelOutputLengthInput.val();
             if (CurrentManageLLMProviderModelData.maxOutputTokenLength != changes.maxOutputTokenLength)
             {
                 hasChanges = true;
             }
 
+            changes.promptTemplates = {};
             CurrentLanguagesList.forEach((language) => {
                 changes.promptTemplates[language.id] = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
 
@@ -4294,6 +4336,168 @@
             return object;
         }
 
+        function ValidateLLMProviderModelManageTabFields(onlyRemove = false)
+        {
+            let errors = [];
+            let validated = true;
+
+            // General Tab Fields
+
+            let modelId = manageLLMProviderModelIdInput.val();
+            if (!modelId || modelId.trim().length === 0 || modelId === '')
+            {
+                validated = false;
+                errors.push("Model id is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelIdInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelIdInput.removeClass("is-invalid");
+            }
+
+            let modelName = manageLLMProviderModelNameInput.val();
+            if (!modelName || modelName.trim().length === 0 || modelName === '')
+            {
+                validated = false;
+                errors.push("Model name is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelNameInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelNameInput.removeClass("is-invalid");
+            }
+
+            let modelInputPrice = manageLLMProviderModelInputPriceInput.val();
+            if (!modelInputPrice || modelInputPrice.trim().length === 0 || modelInputPrice === '')
+            {
+                validated = false;
+                errors.push("Input price is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelInputPriceInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelInputPriceInput.removeClass("is-invalid");
+            }
+
+            let modelInputPriceTokenUnit = manageLLMProviderModelInputTokensInput.val();
+            if (!modelInputPriceTokenUnit || modelInputPriceTokenUnit.trim().length === 0 || modelInputPriceTokenUnit === '')
+            {
+                validated = false;
+                errors.push("Input price token unit is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelInputTokensInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelInputTokensInput.removeClass("is-invalid");
+            }
+
+            let modelOutputPrice = manageLLMProviderModelOutputPriceInput.val();
+            if (!modelOutputPrice || modelOutputPrice.trim().length === 0 || modelOutputPrice === '')
+            {
+                validated = false;
+                errors.push("Output price is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelOutputPriceInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelOutputPriceInput.removeClass("is-invalid");
+            }
+
+            let modelOutputPriceTokenUnit = manageLLMProviderModelOutputTokensInput.val();
+            if (!modelOutputPriceTokenUnit || modelOutputPriceTokenUnit.trim().length === 0 || modelOutputPriceTokenUnit === '')
+            {
+                validated = false;
+                errors.push("Output price token unit is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelOutputTokensInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelOutputTokensInput.removeClass("is-invalid");
+            }
+
+            let modelMaxInputTokenLength = manageLLMProviderModelInputLengthInput.val();
+            if (!modelMaxInputTokenLength || modelMaxInputTokenLength.trim().length === 0 || modelMaxInputTokenLength === '')
+            {
+                validated = false;
+                errors.push("Max input token length is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelInputLengthInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelInputLengthInput.removeClass("is-invalid");
+            }
+
+            let modelMaxOutputTokenLength = manageLLMProviderModelOutputLengthInput.val();
+            if (!modelMaxOutputTokenLength || modelMaxOutputTokenLength.trim().length === 0 || modelMaxOutputTokenLength === '')
+            {
+                validated = false;
+                errors.push("Max output token length is required and can not be empty.");
+                
+                if (!onlyRemove)
+                {
+                    manageLLMProviderModelOutputLengthInput.addClass("is-invalid");
+                }
+            }
+            else
+            {
+                manageLLMProviderModelOutputLengthInput.removeClass("is-invalid");
+            }
+
+            // Prompts Tab Fields
+
+            Object.keys(CurrentManageLLMProviderModelPromptLanguageNewData).forEach((proxyTemplateLanguageDataKey) => {
+                let proxyTemplateLanguageData = CurrentManageLLMProviderModelPromptLanguageNewData[proxyTemplateLanguageDataKey];
+
+                if (!proxyTemplateLanguageData || proxyTemplateLanguageData.trim().length === 0 || proxyTemplateLanguageData === '')
+                {
+                    validated = false;
+                    errors.push(`Prompt template for language ${proxyTemplateLanguageDataKey} is required and can not be empty.`);
+                    
+                    if (!onlyRemove)
+                    {
+                        manageLLMProviderModelPromptTemplateInput.addClass("is-invalid");
+                    }
+                }
+                else
+                {
+                    manageLLMProviderModelPromptTemplateInput.removeClass("is-invalid");
+                }
+            });
+
+            return {
+                validated: validated,
+                errors: errors
+            }
+        }
+
         /** Initalizer **/
 
         $(document).ready(() => {
@@ -4325,8 +4529,54 @@
             saveManageLLMProviderModelButton.on("click", (event) => {
                 event.preventDefault();
 
-                // todo alert todo
-                alert("Todo saving");
+                let validation = ValidateLLMProviderModelManageTabFields(false);
+                if (!validation.validated)
+                {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Validation for required fields failed.<br><br>' + validation.errors.join('<br>'),
+                        timeout: 6000
+                    });
+
+                    return;
+                }
+
+                let changes = CheckLLMProviderModelManageTabHasChanges();
+                if (!changes.hasChanges)
+                {
+                    return;
+                }
+
+                saveManageLLMProviderModelButton.prop("disabled", true);
+
+                let formData = new FormData();
+                formData.append("postType", CurrentManageLLMProviderModelType);
+                formData.append("providerId", CurrentManageLLMProviderData.id.name);
+                formData.append("modelId", changes.changes.id);
+                formData.append("changes", JSON.stringify(changes.changes));
+
+                SaveLLMProviderModelData(
+                    formData,
+                    (saveResponse) => {
+                        if (saveResponse.success)
+                        {
+                            alert("Successfully saved LLM Provider Model but todo");
+                        }
+
+                        saveManageLLMProviderModelButton.prop("disabled", false);
+                    },
+                    (saveError, isUnsuccessful) => {
+                        AlertManager.createAlert({
+                            type: 'danger',
+                            message: 'Error occured while saving LLM provider model data. Check browser console for logs.',
+                            timeout: 6000
+                        });
+
+                        console.log('Error occured while saving LLM provider model data: ', saveError);
+
+                        saveManageLLMProviderModelButton.prop("disabled", false);
+                    }
+                )
             })
 
             switchBackToLLMProviderManagerModelsListTabFromModelTab.on("click", (event) => {
@@ -4378,6 +4628,25 @@
 
 
                 ShowLLMProviderListTab();
+            });
+
+            llmProviderModelListTable.on("click", "button[button-type=edit-llm-provider-model]", (event) => {
+                event.preventDefault();
+
+                let currentModelId = $(event.currentTarget).attr("model-id");
+
+                CurrentManageLLMProviderModelType = "edit";
+
+                CurrentManageLLMProviderModelData = CurrentManageLLMProviderData.models.find((model) => model.id == currentModelId);
+                CurrentManageLLMProviderModelPromptLanguageNewData = CurrentManageLLMProviderModelData.promptTemplates;
+
+                currentManageModelLLMProviderName.text(CurrentManageLLMProviderData.id.name);
+                currentManageLLMProviderModelName.text(CurrentManageLLMProviderModelData.name);
+
+                ResetAndEmptyLLMProviderModelManageTab();
+                //FillLLMProviderModelManageTab();
+
+                ShowLLMProviderModelManageTab();
             });
 
             var checkManageLLMProviderModelLanguageDropdownInterval = setInterval(() => {

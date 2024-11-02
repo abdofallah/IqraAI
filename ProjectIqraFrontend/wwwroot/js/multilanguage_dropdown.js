@@ -113,4 +113,8 @@ class MultiLanguageDropdown {
             callback(language);
         });
     }
+
+    isIncomplete() {
+        return this.incompleteCount > 0;
+    }
 }

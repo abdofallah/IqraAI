@@ -347,7 +347,7 @@ namespace IqraInfrastructure.Services.LLM
             // Input Price
             if (changesJsonElement.RootElement.TryGetProperty("inputPrice", out var inputPriceElement))
             {
-                if (inputPriceElement.TryGetDecimal(out decimal inputPrice))
+                if (decimal.TryParse(inputPriceElement.GetString(), out decimal inputPrice))
                 {
                     newModelData.InputPrice = inputPrice;
                 }
@@ -362,7 +362,7 @@ namespace IqraInfrastructure.Services.LLM
             // Input Price Token Unit
             if (changesJsonElement.RootElement.TryGetProperty("inputPriceTokenUnit", out var inputPriceTokenUnitElement))
             {
-                if (inputPriceTokenUnitElement.TryGetInt32(out int inputPriceTokenUnit))
+                if (int.TryParse(inputPriceTokenUnitElement.GetString(), out int inputPriceTokenUnit))
                 {
                     newModelData.InputPriceTokenUnit = inputPriceTokenUnit;
                 }
@@ -377,7 +377,7 @@ namespace IqraInfrastructure.Services.LLM
             // Output Price
             if (changesJsonElement.RootElement.TryGetProperty("outputPrice", out var outputPriceElement))
             {
-                if (outputPriceElement.TryGetDecimal(out decimal outputPrice))
+                if (decimal.TryParse(outputPriceElement.GetString(), out decimal outputPrice))
                 {
                     newModelData.OutputPrice = outputPrice;
                 }
@@ -392,7 +392,7 @@ namespace IqraInfrastructure.Services.LLM
             // Output Price Token Unit
             if (changesJsonElement.RootElement.TryGetProperty("outputPriceTokenUnit", out var outputPriceTokenUnitElement))
             {
-                if (outputPriceTokenUnitElement.TryGetInt32(out int outputPriceTokenUnit))
+                if (int.TryParse(outputPriceTokenUnitElement.GetString(), out int outputPriceTokenUnit))
                 {
                     newModelData.OutputPriceTokenUnit = outputPriceTokenUnit;
                 }
@@ -407,7 +407,7 @@ namespace IqraInfrastructure.Services.LLM
             // Max Input Token Length
             if (changesJsonElement.RootElement.TryGetProperty("maxInputTokenLength", out var maxInputTokenLengthElement))
             {
-                if (maxInputTokenLengthElement.TryGetInt32(out int maxInputTokenLength))
+                if (int.TryParse(maxInputTokenLengthElement.GetString(), out int maxInputTokenLength))
                 {
                     newModelData.MaxInputTokenLength = maxInputTokenLength;
                 }
@@ -422,7 +422,7 @@ namespace IqraInfrastructure.Services.LLM
             // Max Output Token Length
             if (changesJsonElement.RootElement.TryGetProperty("maxOutputTokenLength", out var maxOutputTokenLengthElement))
             {
-                if (maxOutputTokenLengthElement.TryGetInt32(out int maxOutputTokenLength))
+                if (int.TryParse(maxOutputTokenLengthElement.GetString(), out int maxOutputTokenLength))
                 {
                     newModelData.MaxOutputTokenLength = maxOutputTokenLength;
                 }
