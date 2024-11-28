@@ -20,6 +20,7 @@ namespace IqraCore.Entities.LLM
 
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/llmproviders")]
+        [IncludeInEndpoint("/app/admin/llmproviders/model/save")]
         [MultiLanguageProperty]
         public Dictionary<string, string> PromptTemplates { get; set; } = new Dictionary<string, string>();
     }

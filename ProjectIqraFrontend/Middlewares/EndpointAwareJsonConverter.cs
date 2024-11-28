@@ -249,6 +249,12 @@ namespace ProjectIqraFrontend.Middlewares
                 return true;
             }
 
+            if (underlyingType == typeof(decimal))
+            {
+                writer.WriteNumberValue((decimal)value);
+                return true;
+            }
+
             if (underlyingType == typeof(float))
             {
                 writer.WriteNumberValue((float)value);
