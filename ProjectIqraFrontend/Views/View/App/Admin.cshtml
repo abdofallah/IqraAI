@@ -4130,7 +4130,7 @@
                 disabledData = `<span class="badge bg-danger">${modelData.disabledAt}</span>`;
             }
 
-            let element = $(`<tr>
+            let element = $(`<tr model-id="${modelData.id}">
                 <td>${modelData.id}</td>
                 <td>${modelData.name}</td>
                 <td>${disabledData}</td>
@@ -4518,7 +4518,7 @@
             manageLLMProviderModelOutputTokensInput.val(modelData.outputPriceTokenUnit);
             manageLLMProviderModelInputLengthInput.val(modelData.maxInputTokenLength);
             manageLLMProviderModelOutputLengthInput.val(modelData.maxOutputTokenLength);
-            manageLLMProviderDisabledInput.prop("checked", modelData.disabledAt != null);
+            manageLLMProviderModelDisabledInput.prop("checked", modelData.disabledAt != null);
             
             Object.keys(modelData.promptTemplates).forEach((proxyTemplateLanguageDataKey) => {
                 let value = modelData.promptTemplates[proxyTemplateLanguageDataKey];
@@ -4596,15 +4596,21 @@
                             CurrentManageLLMProviderModelData = saveResponse.data;
                             CurrentManageLLMProviderModelPromptLanguageNewData = saveResponse.data.promptTemplates;
 
+                            let newTableElement = CreateLLMProviderModelListTableElement(CurrentManageLLMProviderModelData);
+
                             if (CurrentManageLLMProviderModelType == "new")
                             {
                                 CurrentManageLLMProviderData.models.push(CurrentManageLLMProviderModelData);
                                 CurrentManageLLMProviderModelType = "edit";
+
+                                llmProviderModelListTable.find(`tbody tr[model-id="${CurrentManageLLMProviderModelData.id}"]`).append(newTableElement);
                             }
                             else if (CurrentManageLLMProviderModelType == "edit")
                             {
                                 let currentModelIndex = CurrentManageLLMProviderData.models.findIndex((model) => model.id == saveResponse.data.id);
                                 CurrentManageLLMProviderData.models.splice(currentModelIndex, 0, CurrentManageLLMProviderModelData);
+
+                                llmProviderModelListTable.find(`tbody tr[model-id="${CurrentManageLLMProviderModelData.id}"]`).replaceWith(newTableElement);
                             }
 
                             currentManageLLMProviderModelName.text(CurrentManageLLMProviderModelData.name);
