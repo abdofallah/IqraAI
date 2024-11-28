@@ -4151,6 +4151,7 @@
                                     <th scope="col">Code</th>
                                     <th scope="col">Language</th>
                                     <th scope="col">Action</th>
+                                    <th scope="col"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -4724,7 +4725,7 @@
             });
         }
     </script>
-    <script src="~/js/countrycode_languages_list.js"></script> <!-- Make this Dynamic -->
+    
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
     <script src="~/js/confirm_dialog.js"></script>
@@ -4738,6 +4739,7 @@
         const CurrentBusinessId = GetIdFromURLPath();
 
         var BusinessFullData = null;
+        var SpecificationLanguagesListData = null;
 
         // API Related Functions
 
@@ -4745,6 +4747,25 @@
         {
             $.ajax({
                 url: '/app/user/business/' + businessId,
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback)
+        {
+            $.ajax({
+                url: '/app/specification/languages/',
                 type: 'POST',
                 success: (response) => {
                     if (!response.success) {
@@ -4864,6 +4885,8 @@
         var PageLoaderInterval = setInterval(
             () => {
                 if (
+                    SpecificationLanguagesListData != null
+                    &&
                     BusinessFullData != null
                 ) {
                     clearInterval(PageLoaderInterval);
@@ -4880,32 +4903,47 @@
     <!-- Initalizers -->
     <script>
         $(document).ready(() => {
-            FetchBusinessDataFromAPI(CurrentBusinessId,
-                (businessData) => {
-                    BusinessFullData = businessData;
+            FetchSpecificationLanguagesDataFromAPI(
+                (langaugesListData) => {
+                    SpecificationLanguagesListData = langaugesListData;
 
-                    initSettingsTab();
+                    FetchBusinessDataFromAPI(CurrentBusinessId,
+                        (businessData) => {
+                            BusinessFullData = businessData;
 
-                    let businessTutorials = BusinessFullData.businessData.tutorials;
-                    if (businessTutorials)
-                    {
-                        if (businessTutorials.newBusinessTutorial)
-                        {
-                            // todo enable again
-                            //InitalizeNewBusinessTutorial();
+                            initSettingsTab();
+
+                            let businessTutorials = BusinessFullData.businessData.tutorials;
+                            if (businessTutorials)
+                            {
+                                if (businessTutorials.newBusinessTutorial)
+                                {
+                                    // todo enable again
+                                    //InitalizeNewBusinessTutorial();
+                                }
+                            }
+                        },
+                        (businessDataError) => {
+                            AlertManager.createAlert({
+                                type: 'danger',
+                                message: 'Error occured while fetching business data. Check browser console for logs.',
+                                enableDismiss: false
+                            });
+
+                            console.log('Error occured while fetching business data: ', businessDataError);
                         }
-                    }
+                    );
                 },
-                (businessDataError) => {
+                (langaugesListDataError) => {
                     AlertManager.createAlert({
                         type: 'danger',
-                        message: 'Error occured while fetching business data. Check browser console for logs.',
+                        message: 'Error occured while fetching specification languages data. Check browser console for logs.',
                         enableDismiss: false
                     });
 
-                    console.log('Error occured while fetching business data: ', businessDataError);
+                    console.log('Error occured while fetching specification languages data: ', langaugesListDataError);
                 }
-            )
+            );
         });
     </script>
 

@@ -127,7 +127,7 @@ a:focus {
 .new-business-type-card h4 {
     margin: 0;
     font-size: 20px;
-    margin-bottom: 6px;;
+    margin-bottom: 6px;
 }
 
 .new-business-type-card i {
@@ -387,7 +387,6 @@ a:focus {
     background-color: var(--tcolor-dark);
     padding: 4px 5px;
     border-radius: 6px;
-    ;
 }
 
 .analytics-card .percentage-positive {
@@ -1303,4 +1302,14 @@ table.table>thead>*>* {
 
 .multilanguage-dropdown .dropdown-item.active:hover {
     color: black !important;
+}
+
+.disabled-language {
+    background-color: rgb(233, 70, 70) !important;
+    color: white !important;
+}
+
+.disabled-language span {
+    font-weight: 500 !important;
+    letter-spacing: 0.015em;
 }
