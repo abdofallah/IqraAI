@@ -146,6 +146,11 @@ const toolAudioAfterSpeakingSelect = toolManagerTab.find("#toolAudioAfterSpeakin
 const toolAudioAfterSpeakingBox = toolManagerTab.find("#toolAudioAfterSpeakingBox");
 const toolAudioAfterSpeakingUpload = toolManagerTab.find("#toolAudioAfterSpeakingUpload");
 
+// Audio
+const toolAudioBeforeSpeakingUploadInput = toolManagerTab.find("#toolAudioBeforeSpeakingUploadInput");
+const toolAudioDuringSpeakingUploadInput = toolManagerTab.find("#toolAudioDuringSpeakingUploadInput");
+const toolAudioAfterSpeakingUploadInput = toolManagerTab.find("#toolAudioAfterSpeakingUploadInput");
+
 let manageToolsLanguageDropdown = null;
 RunActionAfterBusinessDataLoad(() => {
 	RunActionAfterLanguagesSpecificationLoad(() => {
@@ -765,6 +770,24 @@ function validateToolsAllMultilanguageElements() {
 	});
 }
 
+function onToolsAudioUploadValidation(event) {
+	const selectedFile = event.currentTarget.files[0];
+
+	if (selectedFile != null) {
+		// check file size is lower than 25mb
+		if (selectedFile.size > 25 * 1024 * 1024) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: "Audio file size should not exceed 25MB.",
+				enableDismiss: false,
+			});
+
+			toolAudioBeforeSpeakingUploadInput.val("");
+			return;
+		}
+	}
+}
+
 require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 	$(document).ready(() => {
 		addNewToolbutton.on("click", (event) => {
@@ -1110,6 +1133,12 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 				toolAudioAfterSpeakingUpload.addClass("d-none");
 			}
 		});
+
+		toolAudioBeforeSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
+
+		toolAudioDuringSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
+
+		toolAudioAfterSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
 
 		const manageToolsLanguageDropdownInterval = setInterval(() => {
 			if (manageToolsLanguageDropdown != null) {
