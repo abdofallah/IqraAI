@@ -600,12 +600,7 @@ function FillSettingsUsersManageTab(usersData) {
 	businessSubuserEmail.val(usersData.email);
 	businessSubuserPassword.val(usersData.password);
 
-	SetPermissionInput(
-		businessSubuserLoginDisabledInput,
-		businessSubuserLoginDisabledReasonInput,
-		usersData.disabledUserLoginAt,
-		usersData.disabledUserLoginReason,
-	);
+	SetPermissionInput(businessSubuserLoginDisabledInput, businessSubuserLoginDisabledReasonInput, usersData.disabledUserLoginAt, usersData.disabledUserLoginReason);
 
 	// Permissions
 	FillSettingsUsersManageTabPermissionsTab(usersData.permission);
@@ -891,10 +886,7 @@ function CheckSettingsSubusersGeneralTabHasChanges() {
 
 	const isLoginDisableChecked = businessSubuserLoginDisabledInput.prop("checked");
 	changes.isLoginDisabled = isLoginDisableChecked;
-	if (
-		(isLoginDisableChecked === true && CurrentManageSubUserData.disabledUserLoginAt == null) ||
-		(isLoginDisableChecked === false && CurrentManageSubUserData.disabledUserLoginAt != null)
-	) {
+	if ((isLoginDisableChecked === true && CurrentManageSubUserData.disabledUserLoginAt == null) || (isLoginDisableChecked === false && CurrentManageSubUserData.disabledUserLoginAt != null)) {
 		hasChanges = true;
 	}
 
@@ -1133,9 +1125,7 @@ function CheckSettingsSubusersPermissionsTabHasChanges() {
 
 		// outbound
 		changes.conversations.outbound.tabEnabled = businessSubuserConversationsOutboundCallTabEnabled.prop("checked");
-		if (
-			businessSubuserConversationsOutboundCallTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.outbound.tabEnabled
-		) {
+		if (businessSubuserConversationsOutboundCallTabEnabled.prop("checked") !== CurrentManageSubUserData.permission.conversations.outbound.tabEnabled) {
 			hasChanges = true;
 		}
 
@@ -1429,25 +1419,13 @@ function CreateSettingsDefaultSubuserObject() {
 
 function EventListenersSettingsSubusersPermissionsEnableHelper() {
 	// Routings
-	EnableFullPermissionHelper(businessSubuserRoutingTabEnabled, [
-		businessSubuserRoutingAddNewRoute,
-		businessSubuserRoutingEditRoute,
-		businessSubuserRoutingDeleteRoute,
-	]);
+	EnableFullPermissionHelper(businessSubuserRoutingTabEnabled, [businessSubuserRoutingAddNewRoute, businessSubuserRoutingEditRoute, businessSubuserRoutingDeleteRoute]);
 
 	// Tools
-	EnableFullPermissionHelper(businessSubuserToolsTabEnabled, [
-		businessSubuserToolsAddNewTool,
-		businessSubuserToolsEditTool,
-		businessSubuserToolsDeleteTool,
-	]);
+	EnableFullPermissionHelper(businessSubuserToolsTabEnabled, [businessSubuserToolsAddNewTool, businessSubuserToolsEditTool, businessSubuserToolsDeleteTool]);
 
 	// Agents
-	EnableFullPermissionHelper(businessSubuserAgentsTabEnabled, [
-		businessSubuserAgentsAddNewAgent,
-		businessSubuserAgentsEditAgent,
-		businessSubuserAgentsDeleteAgent,
-	]);
+	EnableFullPermissionHelper(businessSubuserAgentsTabEnabled, [businessSubuserAgentsAddNewAgent, businessSubuserAgentsEditAgent, businessSubuserAgentsDeleteAgent]);
 
 	// Context
 	EnableFullPermissionHelper(businessSubuserContextTabEnabled, [
@@ -1459,29 +1437,14 @@ function EventListenersSettingsSubusersPermissionsEnableHelper() {
 
 	EnableFullPermissionHelper(businessSubuserContextBrandingTabEnabled, [businessSubuserContextEditBranding]);
 
-	EnableFullPermissionHelper(businessSubuserContextBranchesTabEnabled, [
-		businessSubuserContextAddNewBranch,
-		businessSubuserContextEditBranch,
-		businessSubuserContextDeleteBranch,
-	]);
+	EnableFullPermissionHelper(businessSubuserContextBranchesTabEnabled, [businessSubuserContextAddNewBranch, businessSubuserContextEditBranch, businessSubuserContextDeleteBranch]);
 
-	EnableFullPermissionHelper(businessSubuserContextServicesTabEnabled, [
-		businessSubuserContextAddNewService,
-		businessSubuserContextEditService,
-		businessSubuserContextDeleteService,
-	]);
+	EnableFullPermissionHelper(businessSubuserContextServicesTabEnabled, [businessSubuserContextAddNewService, businessSubuserContextEditService, businessSubuserContextDeleteService]);
 
-	EnableFullPermissionHelper(businessSubuserContextProductsTabEnabled, [
-		businessSubuserContextAddNewProduct,
-		businessSubuserContextEditProduct,
-		businessSubuserContextDeleteProduct,
-	]);
+	EnableFullPermissionHelper(businessSubuserContextProductsTabEnabled, [businessSubuserContextAddNewProduct, businessSubuserContextEditProduct, businessSubuserContextDeleteProduct]);
 
 	// Make Calls
-	EnableFullPermissionHelper(businessSubuserMakeCallsTabEnabled, [
-		businessSubuserMakeCallsSingleCallEnabled,
-		businessSubuserMakeCallsBulkCallEnabled,
-	]);
+	EnableFullPermissionHelper(businessSubuserMakeCallsTabEnabled, [businessSubuserMakeCallsSingleCallEnabled, businessSubuserMakeCallsBulkCallEnabled]);
 
 	// Conversations
 	EnableFullPermissionHelper(businessSubuserConversationsTabEnabled, [
@@ -1490,41 +1453,20 @@ function EventListenersSettingsSubusersPermissionsEnableHelper() {
 		businessSubuserConversationsWebsocketTabEnabled,
 	]);
 
-	EnableFullPermissionHelper(businessSubuserConversationsInboundCallTabEnabled, [
-		businessSubuserConversationsDeleteInboundCall,
-		businessSubuserConversationsExportInboundCall,
-	]);
+	EnableFullPermissionHelper(businessSubuserConversationsInboundCallTabEnabled, [businessSubuserConversationsDeleteInboundCall, businessSubuserConversationsExportInboundCall]);
 
-	EnableFullPermissionHelper(businessSubuserConversationsOutboundCallTabEnabled, [
-		businessSubuserConversationsDeleteOutboundCall,
-		businessSubuserConversationsExportOutboundCall,
-	]);
+	EnableFullPermissionHelper(businessSubuserConversationsOutboundCallTabEnabled, [businessSubuserConversationsDeleteOutboundCall, businessSubuserConversationsExportOutboundCall]);
 
-	EnableFullPermissionHelper(businessSubuserConversationsWebsocketTabEnabled, [
-		businessSubuserConversationsDeleteWebsocket,
-		businessSubuserConversationsExportWebsocket,
-	]);
+	EnableFullPermissionHelper(businessSubuserConversationsWebsocketTabEnabled, [businessSubuserConversationsDeleteWebsocket, businessSubuserConversationsExportWebsocket]);
 
 	// Settings
-	EnableFullPermissionHelper(businessSubuserSettingsTabEnabled, [
-		businessSubuserSettingsGeneralTabEnabled,
-		businessSubuserSettingsLanguagesTabEnabled,
-		businessSubuserSettingsUsersTabEnabled,
-	]);
+	EnableFullPermissionHelper(businessSubuserSettingsTabEnabled, [businessSubuserSettingsGeneralTabEnabled, businessSubuserSettingsLanguagesTabEnabled, businessSubuserSettingsUsersTabEnabled]);
 
 	EnableFullPermissionHelper(businessSubuserSettingsGeneralTabEnabled, [businessSubuserSettingsEditGeneral]);
 
-	EnableFullPermissionHelper(businessSubuserSettingsLanguagesTabEnabled, [
-		businessSubuserSettingsEditLanguages,
-		businessSubuserSettingsAddLanguages,
-		businessSubuserSettingsDeleteLanguages,
-	]);
+	EnableFullPermissionHelper(businessSubuserSettingsLanguagesTabEnabled, [businessSubuserSettingsEditLanguages, businessSubuserSettingsAddLanguages, businessSubuserSettingsDeleteLanguages]);
 
-	EnableFullPermissionHelper(businessSubuserSettingsUsersTabEnabled, [
-		businessSubuserSettingsEditUsers,
-		businessSubuserSettingsAddUsers,
-		businessSubuserSettingsDeleteUsers,
-	]);
+	EnableFullPermissionHelper(businessSubuserSettingsUsersTabEnabled, [businessSubuserSettingsEditUsers, businessSubuserSettingsAddUsers, businessSubuserSettingsDeleteUsers]);
 }
 
 function ShowSettingsDomainsManageTab() {
@@ -1653,11 +1595,7 @@ function CheckIfSettingsDomainManagerHasChanges(enableDisableButton = true) {
 	}
 
 	if (enableDisableButton) {
-		if (hasChanges) {
-			saveBusinessDomainButton.prop("disabled", false);
-		} else {
-			saveBusinessDomainButton.prop("disabled", true);
-		}
+		saveBusinessDomainButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -2088,6 +2026,8 @@ function initSettingsTab() {
 					const confirmCloseMangeDomainResult = await confirmCloseMangeDomainDialog.show();
 					if (confirmCloseMangeDomainResult) {
 						switchBackToBusinessDomainsTab.click();
+
+						saveBusinessDomainButton.prop("disabled", true);
 					} else {
 						event.preventDefault();
 						return;

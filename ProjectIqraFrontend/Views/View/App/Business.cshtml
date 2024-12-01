@@ -64,7 +64,7 @@
                         <i class='fa-regular fa-database nav_icon'></i>
                         <span class="nav_name">Knowledge Base</span>
                     </a>
-                    <a class="nav_link" for="tools-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link active" for="tools-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-wrench nav_icon'></i>
                         <span class="nav_name">Tools</span>
                     </a>
@@ -79,7 +79,7 @@
                         <span class="nav_name">Conversations</span>
                     </a>
                     <span class="mt-4 nav-category-label">Other</span>
-                    <a class="nav_link mb-0 active" for="settings-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link mb-0" for="settings-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-gear nav_icon'></i>
                         <span class="nav_name">Settings</span>
                     </a>
@@ -2316,11 +2316,63 @@
         </div>
 
         <!-- Tools Container -->
-        <div class="main-container fade d-none w-100" id="tools-tab">
+        <div class="main-container fade show w-100" id="tools-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-wrench'></i> <span>Tools</span></h3>
-            <div class="inner-container">
+            <div class="inner-header-container d-none fade w-100 mb-3" id="tool-manager-header"> 
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
+                        </ol>
+                    </nav>
+                    <div>
+                        <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
+                            <i class='fa-regular fa-wrench text-dark'></i>
+                            <span> Debug</span>
+                        </button>
+                        <div class="btn-group" id="publishToolDropdown">
+                            <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class='fa-regular fa-wrench'></i>
+                                <span> Publish</span>
+                            </button>
+                            <div class="dropdown-menu p-3">
+                                <div class="mb-2 d-none" id="tool-last-published">
+                                    <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
+                                    <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
+                                        Published
+                                        20 minutes ago
+                                    </p>
+                                </div>
+                                <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton" disabled>
+                                    <span>Update</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex flex-row align-items-center justify-content-between">
+                    <ul class="nav" id="toolManager-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="toolManager-inner-general-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-general" type="button" role="tab" aria-controls="toolManager-inner-general" aria-selected="true">General</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="toolManager-inner-config-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-config" type="button" role="tab" aria-controls="toolManager-inner-config" aria-selected="true">Configuration</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="toolManager-inner-response-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-response" type="button" role="tab" aria-controls="toolManager-inner-response" aria-selected="true">Response</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="toolManager-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-audio" type="button" role="tab" aria-controls="toolManager-inner-audio" aria-selected="true">Audio</button>
+                        </li>
+                    </ul>
+                    <div id="manageToolsLanguageDropdown" style="max-width: 300px">
+                    </div>
+                </div>
+            </div>
+            <div class="">
                 <!-- Tools List Tab -->
-                <div class="fade show w-100" id="toolListTab">
+                <div class="fade show w-100 inner-container" id="toolListTab">
                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                         <div style="min-width: 200px" class="me-4">
                             <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
@@ -2338,137 +2390,35 @@
                         <table id="customToolsTable" class="table w-100">
                             <thead>
                                 <tr>
-                                    <th scope="col">Status</th>
                                     <th scope="col">Name</th>
-                                    <th scope="col">Type</th>
-                                    <th scope="col">Service</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <th scope="row">
-                                        <span class="badge bg-success">Active</span>
-                                    </th>
-                                    <td>
-                                        <b>Make Appointment</b>
-                                    </td>
-                                    <td>POST</td>
-                                    <td>Badal System</td>
-                                    <td>
-                                        <button class="btn btn-info btn-sm">
-                                            <i class="fa-regular fa-pen-to-square"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-sm">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </td>
+                                <tr tr-type="none-notice">
+                                    <td colspan="2">No tools added yet...</td>
                                 </tr>
-                                <tr>
-                                    <th scope="row">
-                                        <span class="badge bg-danger">Disabled</span>
-                                    </th>
-                                    <td>
-                                        <b>Make Appointment</b>
-                                    </td>
-                                    <td>POST</td>
-                                    <td>Google Calendar</td>
-                                    <td>
-                                        <button class="btn btn-info btn-sm">
-                                            <i class="fa-regular fa-pen-to-square"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-sm">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row">
-                                        <span class="badge bg-danger">Disabled</span>
-                                    </th>
-                                    <td>
-                                        <b>Make Appointment</b>
-                                    </td>
-                                    <td>POST</td>
-                                    <td>Calendar.com</td>
-                                    <td>
-                                        <button class="btn btn-info btn-sm">
-                                            <i class="fa-regular fa-pen-to-square"></i>
-                                        </button>
-                                        <button class="btn btn-danger btn-sm">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                <!-- Dynamically Generated -->
                             </tbody>
                         </table>
                     </div>
                 </div>
                 <!-- Tools Manager Tab -->
-                <div class="fade d-none w-100" id="toolManagerTab">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
-                                <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
-                            </ol>
-                        </nav>
-                        <div>
-                            <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
-                                <i class='fa-regular fa-wrench text-dark'></i>
-                                <span> Debug</span>
-                            </button>
-                            <div class="btn-group" id="publishToolDropdown">
-                                <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class='fa-regular fa-wrench'></i>
-                                    <span> Publish</span>
-                                </button>
-                                <div class="dropdown-menu p-3">
-                                    <div class="mb-2">
-                                        <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
-                                        <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
-                                            Published
-                                            20 minutes ago
-                                        </p>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton">
-                                        <span>Update</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                        <ul class="nav" id="toolManager-inner-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="toolManager-inner-general-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-general" type="button" role="tab" aria-controls="toolManager-inner-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="toolManager-inner-config-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-config" type="button" role="tab" aria-controls="toolManager-inner-config" aria-selected="true">Configuration</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="toolManager-inner-response-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-response" type="button" role="tab" aria-controls="toolManager-inner-response" aria-selected="true">Response</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="toolManager-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-audio" type="button" role="tab" aria-controls="toolManager-inner-audio" aria-selected="true">Audio</button>
-                            </li>
-                        </ul>
-                        <select class="form-select" style="max-width: 300px">
-                            <option value="en-us" selected>English | EN-US</option>
-                            <option value="en-ar">Arabic | AR-OM</option>
-                        </select>
-                    </div>
+                <div class="fade d-none w-100 inner-container" id="toolManagerTab">
                     <div class="tab-content" id="toolManager-inner-tabContent w-100">
                         <!-- General -->
                         <div class="tab-pane fade show active w-100" id="toolManager-inner-general" role="tabpanel" aria-labelledby="toolManager-inner-general-tab" tabindex="0">
                             <div class="mb-3">
-                                <label for="inputToolName" class="form-label">Name</label>
+                                <label for="inputToolName" class="form-label">
+                                    <span>Name</span>
+                                    <i class="fa-regular fa-language"></i>
+                                </label>
                                 <input type="text" class="form-control" id="inputToolName" placeholder="Tool Name">
                             </div>
                             <div class="mb-3">
                                 <label for="inputToolShortDescription" class="form-label">
-                                    Short
-                                    Description
+                                    <span>Short Description</span>
+                                    <i class="fa-regular fa-language"></i>
                                 </label>
                                 <input type="text" class="form-control" id="inputToolShortDescription" placeholder="Tool Description for AI">
                             </div>
@@ -2495,23 +2445,11 @@
                                     <option value="6">OPTIONS</option>
                                 </select>
                             </div>
-                            <div class="mb-3 d-flex flex-row align-items-center justify-content-center w-100">
-                                <div class="w-100 me-3">
-                                    <label for="inputToolURL" class="form-label btn-ic-span-align">
-                                        <span>URL (Endpoint)</span>
-                                    </label>
-                                    <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
-                                </div>
-                                <div class="w-100">
-                                    <label for="inputToolServiceName" class="form-label btn-ic-span-align">
-                                        <span>Service Name</span>
-
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Friendly service name is shown instead of the URL/Endpoint where needed.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <input type="text" class="form-control w-100" id="inputToolServiceName" placeholder="Friendly Service Name">
-                                </div>
+                            <div class="mb-3">
+                                <label for="inputToolURL" class="form-label btn-ic-span-align">
+                                    <span>URL (Endpoint)</span>
+                                </label>
+                                <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label d-block">Headers</label>
@@ -4042,7 +3980,7 @@
 
         -->
         <!-- Settings Container -->
-        <div class="main-container fade w-100 show" id="settings-tab">
+        <div class="main-container fade w-100 d-none" id="settings-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
             <div class="inner-header-container mb-3">
                 <!-- Tabs Buttons -->
@@ -4726,6 +4664,7 @@
         }
     </script>
     
+    <script src="~/js/multilanguage_dropdown.js"></script>
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
     <script src="~/js/confirm_dialog.js"></script>
@@ -4780,6 +4719,8 @@
                 }
             });
         }
+    
+
     </script>
 
     <!-- New Business Tutorial -->
@@ -4898,6 +4839,30 @@
                 }
             }
             , 100);
+    
+        function RunActionAfterBusinessDataLoad(action)
+        {
+            var businessDataCheckInterval = setInterval(
+                () => {
+                    if (BusinessFullData != null) {
+                        clearInterval(businessDataCheckInterval);
+                        action();
+                    }
+                }
+            , 100);
+        }
+
+        function RunActionAfterLanguagesSpecificationLoad(action)
+        {
+            var specificationLanguagesCheckInterval = setInterval(
+                () => {
+                    if (SpecificationLanguagesListData != null) {
+                        clearInterval(specificationLanguagesCheckInterval);
+                        action();
+                    }
+                }
+            , 100);
+        }
     </script>
 
     <!-- Initalizers -->

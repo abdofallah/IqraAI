@@ -2,12 +2,13 @@
 {
     public enum HttpMethodEnum
     {
-        Get = 0,
-        Post = 1,
-        Put = 2,
-        Delete = 3,
-        Patch = 4,
-        Head = 5,
-        Options = 6,
+        Unknown = 0,
+        Get = 1,
+        Post = 2,
+        Put = 3,
+        Delete = 4,
+        Patch = 5,
+        Head = 6,
+        Options = 7,
     }
 }

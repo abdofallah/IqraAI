@@ -1,190 +1,171 @@
-var CurrentTabHasHeader = false;
+let CurrentTabHasHeader = false;
 
-$(document).ready(() =>
-{
-     const showNavbar = (toggleId, navId, bodyId, headerId) =>
-     {
-          const toggle = document.getElementById(toggleId),
-               nav = document.getElementById(navId),
-               bodypd = document.getElementById(bodyId),
-               headerpd = document.getElementById(headerId);
+const dynamicCSSElement = $("#dynamicCSS");
 
-          // Validate that all variables exist
-          if (toggle && nav && bodypd && headerpd)
-          {
-               toggle.addEventListener('click', () =>
-               {
-                    // show navbar
-                    nav.classList.toggle('show');
-                    // change icon
-                    toggle.classList.toggle('fa-xmark');
-                    // add padding to body
-                    bodypd.classList.toggle('body-pd');
-                    // add padding to header
-                    headerpd.classList.toggle('header-body-pd');
-               });
-          }
-     };
+function setDynamicBodyHeight(shouldIncludeInnerHeaderContainer = false, headerElement = null) {
+	$("body").css("overflow", "hidden");
 
-     showNavbar('header-toggle', 'nav-bar', 'body-pd', 'header');
+	setTimeout(() => {
+		const windowHeight = $(window)[0].innerHeight;
+		const headerHeight = $("#header")[0].clientHeight;
+		const mainContainerWrapperPaddingHeight = parseInt($(".main-container-wrapper").css("padding-top")) + parseInt($(".main-container-wrapper").css("padding-bottom"));
 
-     /*===== LINK ACTIVE =====*/
-     $(document).on('click', '.l-navbar .nav_link', async (event) =>
-     {
-          event.preventDefault();
+		let headerTextHeight = 60; // get this dynamically but 50 should always be good
+		if (shouldIncludeInnerHeaderContainer) {
+			headerTextHeight += headerElement[0].clientHeight;
+		}
 
-          let currentElement = $(event.currentTarget);
-          let forTab = currentElement.attr('for');
+		const bodyCalculatedHeight = windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15); // 15 to make sure no random scroll - find out why this is even needed
 
-          let activeElement = $('.l-navbar .nav_link.active');
-          let activeElementFor  = activeElement.attr('for');
+		dynamicCSSElement.html(`.inner-container{min-height: ${bodyCalculatedHeight}px !important;}`);
 
-          if (activeElementFor === forTab)
-          {
-               return;
-          }
+		$("body").css("overflow", "initial");
+	}, 10);
+}
 
-          if (currentElement.hasClass("disabled"))
-          {
-               return;
-          }
+function setDynamicSidebarHeight() {
+	$("body").css("overflow", "hidden");
 
-          const tabChangeEvent = new CustomEvent('tabChange', {
-               bubbles: true,
-               cancelable: true,
-               detail: {
-                    from: activeElementFor,
-                    to: forTab
-               }
-          });
+	setTimeout(() => {
+		const windowHeight = $(window)[0].innerHeight;
+		const upperNavHeight = $(".upper-navigation")[0].clientHeight;
+		const lowerNavHeight = $(".bottom-navigation")[0].clientHeight;
 
-          // Dispatch event and wait for all listeners to complete
-          const listeners = jQuery._data($("#nav-bar")[0], "events")?.tabChange || [];
-          const results = await Promise.all(listeners.map(listener => 
-               new Promise(resolve => {
-                    const result = listener.handler(tabChangeEvent);
-                    if (result instanceof Promise) {
-                         result.then(() => resolve(!tabChangeEvent.defaultPrevented));
-                    } else {
-                         resolve(!tabChangeEvent.defaultPrevented);
-                    }
-               })
-          ));
+		const totalNavHeight = upperNavHeight + lowerNavHeight;
 
-          // Check if any listener prevented default
-          const shouldProceed = results.every(result => result);
+		if (totalNavHeight > windowHeight) {
+			$(".l-navbar").css("max-height", `${windowHeight}px`).css("height", "").css("overflow-y", "scroll");
 
-          // If the event was cancelled (preventDefault was called), don't proceed
-          if (!shouldProceed) {
-               return;
-          }
+			$(".bottom-navigation").css("margin-top", "2em");
+		} else {
+			$(".l-navbar").css("max-height", "").css("height", "100vh").css("overflow-y", "hidden");
 
-          // hide previous tab and link
-          activeElement.removeClass("active");
-          $("#tabs-list .main-container.show").each((index, element) =>
-          {
-               $(element).removeClass("show");
-               setTimeout(() =>
-               {
-                    $(element).addClass("d-none");
-               }, 150);
-          });
+			$(".bottom-navigation").css("margin-top", "");
+		}
 
-          // enable new link
-          let newTabElement = $("#" + forTab);
-          setTimeout(() =>
-          {
-               currentElement.addClass("active");
+		$("body").css("overflow", "initial");
+	}, 10);
+}
 
-               newTabElement.removeClass("d-none");
-               setTimeout(() =>
-               {
-                    $("#" + forTab).addClass("show");
-                    
-                    setTimeout(() => {
-                         CurrentTabHasHeader = newTabElement.find(".inner-header-container").length > 0;
-                         setDynamicBodyHeight(CurrentTabHasHeader);
-                    }, 10);
-               }, 10);
-          }, 150);
-     });
+$(document).ready(() => {
+	const showNavbar = (toggleId, navId, bodyId, headerId) => {
+		const toggle = document.getElementById(toggleId),
+			nav = document.getElementById(navId),
+			bodypd = document.getElementById(bodyId),
+			headerpd = document.getElementById(headerId);
 
-     var dynamicCSSElement = $("#dynamicCSS");
+		// Validate that all variables exist
+		if (toggle && nav && bodypd && headerpd) {
+			toggle.addEventListener("click", () => {
+				// show navbar
+				nav.classList.toggle("show");
+				// change icon
+				toggle.classList.toggle("fa-xmark");
+				// add padding to body
+				bodypd.classList.toggle("body-pd");
+				// add padding to header
+				headerpd.classList.toggle("header-body-pd");
+			});
+		}
+	};
 
-     function setDynamicBodyHeight (shouldIncludeInnerHeaderContainer = false)
-     {
-          $('body').css('overflow', 'hidden');
+	showNavbar("header-toggle", "nav-bar", "body-pd", "header");
 
-          setTimeout(() =>
-          {
-               var windowHeight = $(window)[0].innerHeight;
-               var headerHeight = $("#header")[ 0 ].clientHeight;
-               var mainContainerWrapperPaddingHeight = (parseInt($(".main-container-wrapper").css('padding-top')) + parseInt($(".main-container-wrapper").css('padding-bottom')));
+	/*===== LINK ACTIVE =====*/
+	$(document).on("click", ".l-navbar .nav_link", async (event) => {
+		event.preventDefault();
 
-               var headerTextHeight = 50; // get this dynamically but 50 should always be good
-               if (shouldIncludeInnerHeaderContainer)
-               {
-                    headerTextHeight += 110;
-               }
+		let currentElement = $(event.currentTarget);
+		let forTab = currentElement.attr("for");
 
-               var bodyCalculatedHeight = (windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15)); // 15 to make sure no random scroll - find out why this is even needed
+		let activeElement = $(".l-navbar .nav_link.active");
+		let activeElementFor = activeElement.attr("for");
 
-               dynamicCSSElement.html(
-                    `.inner-container{min-height: ${ bodyCalculatedHeight }px !important;}`
-               );
+		if (activeElementFor === forTab) {
+			return;
+		}
 
-               $('body').css('overflow', 'initial');
-          }, 10);
-     }
+		if (currentElement.hasClass("disabled")) {
+			return;
+		}
 
-     function setDynamicSidebarHeight()
-     {
-          $('body').css('overflow', 'hidden');
+		const tabChangeEvent = new CustomEvent("tabChange", {
+			bubbles: true,
+			cancelable: true,
+			detail: {
+				from: activeElementFor,
+				to: forTab,
+			},
+		});
 
-          setTimeout(() =>
-          {
-               var windowHeight = $(window)[0].innerHeight;
-               var upperNavHeight = $(".upper-navigation")[0].clientHeight;
-               var lowerNavHeight = $(".bottom-navigation")[0].clientHeight;
+		// Dispatch event and wait for all listeners to complete
+		const listeners = jQuery._data($("#nav-bar")[0], "events")?.tabChange || [];
+		const results = await Promise.all(
+			listeners.map(
+				(listener) =>
+					new Promise((resolve) => {
+						const result = listener.handler(tabChangeEvent);
+						if (result instanceof Promise) {
+							result.then(() => resolve(!tabChangeEvent.defaultPrevented));
+						} else {
+							resolve(!tabChangeEvent.defaultPrevented);
+						}
+					}),
+			),
+		);
 
-               var totalNavHeight = upperNavHeight + lowerNavHeight;
+		// Check if any listener prevented default
+		const shouldProceed = results.every((result) => result);
 
-               if (totalNavHeight > windowHeight)
-               {
-                    $('.l-navbar')
-                    .css('max-height', `${windowHeight}px`)
-                    .css('height', '')
-                    .css('overflow-y', 'scroll');
+		// If the event was cancelled (preventDefault was called), don't proceed
+		if (!shouldProceed) {
+			return;
+		}
 
-                    $(".bottom-navigation")
-                    .css('margin-top', '2em')
-               }
-               else
-               {
-                    $('.l-navbar')
-                    .css('max-height', '')
-                    .css('height', '100vh')
-                    .css('overflow-y', 'hidden');
+		// hide previous tab and link
+		activeElement.removeClass("active");
+		$("#tabs-list .main-container.show").each((index, element) => {
+			$(element).removeClass("show");
+			setTimeout(() => {
+				$(element).addClass("d-none");
+			}, 150);
+		});
 
-                    $(".bottom-navigation")
-                    .css('margin-top', '')
-               }
+		// enable new link
+		const newTabElement = $(`#${forTab}`);
+		setTimeout(() => {
+			currentElement.addClass("active");
 
-               $('body').css('overflow', 'initial');
-          }, 10);
-     }
+			newTabElement.removeClass("d-none");
+			setTimeout(() => {
+				$(`#${forTab}`).addClass("show");
 
-     $(window).on('resize', (event) =>
-     {
-          setDynamicSidebarHeight()
-          setTimeout(() => {
-               CurrentTabHasHeader = $('#' + $('.l-navbar .nav_link.active').attr('for')).find(".inner-header-container").length > 0;
-               setDynamicBodyHeight(CurrentTabHasHeader);
-          }, 50);    
-     });
+				setTimeout(() => {
+					const headerContainer = newTabElement.find(".inner-header-container");
 
-     CurrentTabHasHeader = $('#' + $('.l-navbar .nav_link.active').attr('for')).find(".inner-header-container").length > 0;
+					CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
 
-     setDynamicSidebarHeight();
-     setDynamicBodyHeight(CurrentTabHasHeader);
+					setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
+				}, 10);
+			}, 10);
+		}, 150);
+	});
+
+	$(window).on("resize", (event) => {
+		setDynamicSidebarHeight();
+		setTimeout(() => {
+			const headerContainer = $(`#${$(".l-navbar .nav_link.active").attr("for")}`).find(".inner-header-container");
+
+			CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
+
+			setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
+		}, 50);
+	});
+
+	const headerContainer = $(`#${$(".l-navbar .nav_link.active").attr("for")}`).find(".inner-header-container");
+
+	CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
+
+	setDynamicSidebarHeight();
+	setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
 });

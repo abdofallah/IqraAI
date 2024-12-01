@@ -23,8 +23,10 @@ namespace IqraCore.Entities.Business
 
     public class BusinessAppToolAudio
     {
-        public string? BeforeSpeaking { get; set; } = null;
-        public string? DuringSpeaking { get; set; } = null;
-        public string? AfterSpeaking { get; set; } = null;
+        //public string? BeforeSpeaking { get; set; } = null;
+        //public string? DuringSpeaking { get; set; } = null;
+        //public string? AfterSpeaking { get; set; } = null;
+
+        // todo
     }
 }
