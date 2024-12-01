@@ -13,7 +13,7 @@ class MultiLanguageDropdown {
                 <button class="btn btn-dark dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>
                     <i class="complete-number bg-success fa-solid fa-check ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle" style="display: none; line-height: 13px; font-size: 14px; padding: 5px;"></i>
-                    <span class="me-2">${this.selectedLanguage.localeName} | ${this.selectedLanguage.name}</span>
+                    <span class="me-2">${this.selectedLanguage.localeName}${this.selectedLanguage.localeName !== this.selectedLanguage.name ? ` | ${this.selectedLanguage.name}` : ""}</span>
                     <i class="fa-solid fa-circle-xmark text-danger me-auto selected-status"></i>
                 </button>
                 <ul class="dropdown-menu">
@@ -22,7 +22,7 @@ class MultiLanguageDropdown {
 												(lang) => `
                         <li>
                             <a class="dropdown-item d-flex align-items-center ${lang.id === this.selectedLanguage.id ? "active" : ""}" href="#" data-lang-id="${lang.id}">
-                                <span class="me-2">${lang.localeName} | ${lang.name}</span>
+                                <span class="me-2${lang.disabledAt != null ? " text-danger" : ""}">${lang.disabledAt != null ? "<i class='fa-solid fa-triangle-exclamation'></i> Disabled<br>" : ""}${lang.localeName}${lang.localeName !== lang.name ? ` | ${lang.name}` : ""}</span>
                                 <span class="ms-auto status-indicator" data-status="incomplete">
                                     <i class="fa-solid fa-circle-xmark text-danger"></i>
                                 </span>
@@ -65,7 +65,7 @@ class MultiLanguageDropdown {
 		$button.html(`
             <span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>
             <i class="complete-number bg-success fa-solid fa-check ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle" style="display: none; line-height: 13px; font-size: 14px; padding: 5px;"></i>
-            <span class="me-2">${this.selectedLanguage.localeName} | ${this.selectedLanguage.name}</span>
+            <span class="me-2">${this.selectedLanguage.localeName}${this.selectedLanguage.localeName !== this.selectedLanguage.name ? ` | ${this.selectedLanguage.name}` : ""}</span>
             ${statusIcon}
         `);
 		this.updateIncompleteCount();

@@ -77,9 +77,10 @@ let ManageToolType = null;
 let CurrentManageToolData = null;
 let CurrentManageToolSchemeaListIndex = 0;
 
-let CurrentManageToolNameMultiLangData = {};
-let CurrentManageToolShortDescriptionMultiLangData = {};
-let CurrentManageToolResponseStaticResponse = {};
+const CurrentManageToolNameMultiLangData = {};
+const CurrentManageToolShortDescriptionMultiLangData = {};
+const CurrentManageToolInputSchemeaMultiLangData = {};
+const CurrentManageToolResponseStaticResponse = {};
 
 /** Elements Variables **/
 const toolsTab = $("#tools-tab");
@@ -427,7 +428,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		}
 	});
 
-	changes.general.shortDescription = inputToolShortDescription.val();
+	changes.general.shortDescription = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
 
@@ -449,8 +450,6 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	changes.configuration = {};
 
 	function checkInputArguementsList() {
-		// todo multilanguage name and description
-
 		const inputArgumentsList = [];
 		const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
 
@@ -463,8 +462,8 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 			const index = parseInt(currentElement.attr("data-index"));
 			const argumentData = {
-				name: {}, // Dictionary for multilanguage support
-				description: {}, // Dictionary for multilanguage support
+				name: {},
+				description: {},
 				type: parseInt(currentElement.find('[data-type="typeSelect"]').val()),
 				isArray: element.querySelector(
 					`[data-type="required"]#toolInputArguementArray${element.querySelector('[data-type="required"][id^="toolInputArguementArray"]').id.replace("toolInputArguementArray", "")}`,
@@ -474,19 +473,24 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				).checked,
 			};
 
-			argumentData.name["en-us"] = currentElement.find('[data-type="name"]').val();
-			argumentData.description["en-us"] = currentElement.find('[data-type="description"]').val();
+			BusinessFullData.businessData.languages.forEach((language) => {
+				argumentData.name[language] = CurrentManageToolInputSchemeaMultiLangData[index].name[language];
+				argumentData.description[language] = CurrentManageToolInputSchemeaMultiLangData[index].description[language];
+
+				const previousData = CurrentManageToolData.configuration.inputSchemea[index];
+				if (!previousData) {
+					hasChanges = true;
+				} else {
+					if (previousData.name[language] !== argumentData.name[language] || previousData.description[language] !== argumentData.description[language]) {
+						hasChanges = true;
+					}
+				}
+			});
 
 			if (index < CurrentManageToolData.configuration.inputSchemea.length) {
 				const originalArgument = CurrentManageToolData.configuration.inputSchemea[index];
 
-				if (
-					originalArgument.name["en-us"] !== argumentData.name["en-us"] ||
-					originalArgument.description["en-us"] !== argumentData.description["en-us"] ||
-					originalArgument.type !== argumentData.type ||
-					originalArgument.isArray !== argumentData.isArray ||
-					originalArgument.isRequired !== argumentData.isRequired
-				) {
+				if (originalArgument.type !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
 					hasChanges = true;
 				}
 			} else {
@@ -586,6 +590,8 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 					}
 				}
 			});
+
+			changes.configuration.bodyData = formKeyValData;
 		}
 
 		if (changes.configuration.bodyType === "raw") {
@@ -605,7 +611,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			hasChanges = true;
 		}
 
-		responseStatusMonacoEditors.forEach((idx, data) => {
+		responseStatusMonacoEditors.forEach((data) => {
 			const statusType = data.statusType;
 			const editor = data.editor;
 			const editorValue = editor.getValue();
@@ -620,14 +626,16 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			if (!previousData) {
 				hasChanges = true;
 			} else {
-				if (previousData.javascript !== changes.response[statusType].editorValue) {
+				if (previousData.javascript !== response[statusType].editorValue) {
 					hasChanges = true;
 				}
 
-				if (previousData.hasStaticResponse !== changes.response[statusType].hasStaticResponse) {
+				if (previousData.hasStaticResponse !== response[statusType].hasStaticResponse) {
 					hasChanges = true;
 				}
+			}
 
+			if (response[statusType].hasStaticResponse) {
 				BusinessFullData.businessData.languages.forEach((language) => {
 					const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
 
@@ -635,10 +643,10 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 						return false;
 					}
 
-					const value = toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`).val(); // todo take multi language value not the input element itself
-					changes.response[statusType].staticResponse[language] = value;
+					const value = CurrentManageToolResponseStaticResponse[statusType][language];
+					response[statusType].staticResponse[language] = value;
 
-					if (previousData.staticResponse[language] !== value) {
+					if (previousData && previousData.staticResponse[language] !== value) {
 						hasChanges = true;
 					}
 				});
@@ -662,39 +670,15 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	};
 }
 
-require(["vs/editor/editor.main", "esprima"], (_, parser) => {
-	$(document).ready(() => {
-		addNewToolbutton.on("click", (event) => {
-			event.preventDefault();
+function CreateToolsConfigurationInputSchemeaElement(index) {
+	const dateTimeNow = Date.now();
 
-			ResetAndEmptyToolsManageTab();
-			currentToolName.text("New Tool");
-
-			ManageToolType = "new";
-			CurrentManageToolData = CreateToolsDefaultToolObject();
-
-			ShowToolsManageTab();
-		});
-
-		switchBackToToolsTab.on("click", (event) => {
-			event.preventDefault();
-
-			toolManagerTab.removeClass("show");
-
-			ShowToolsListTab();
-		});
-
-		addToolInputArgumentButton.on("click", (event) => {
-			event.preventDefault();
-
-			const dateTimeNow = Date.now();
-			console.log(dateTimeNow);
-			toolInputArguementsList.append(`
-                <div class="toolInputArguementBox input-group mt-1" data-index="${CurrentManageToolSchemeaListIndex++}">
+	const element = `
+                <div class="toolInputArguementBox input-group mt-1" data-index="${index}">
                     <div style="width: calc(100% - 50px)">
                         <div class="input-group">
-                                <input type="text" class="form-control" data-type="name" placeholder="Argument Name" style="max-width: 250px; border-bottom-left-radius: 0; border-bottom: none;">
-                                <input type="text" class="form-control" data-type="description" placeholder="Description (explanation for AI)" style="border-bottom-right-radius: 0; border-top-right-radius: 0; border-bottom: none;">
+                                <input type="text" class="form-control" data-type="name" placeholder="Argument Name &#xf1ab;" style="max-width: 250px; border-bottom-left-radius: 0; border-bottom: none;font-family: Roboto, 'Font Awesome 6 Pro'">
+                                <input type="text" class="form-control" data-type="description" placeholder="Description &#xf1ab;" style="border-bottom-right-radius: 0; border-top-right-radius: 0; border-bottom: none;font-family: Roboto, 'Font Awesome 6 Pro'">
                         </div>
                         <div class="input-group">
                                 <select class="form-select" data-type="typeSelect" select-type="toolInputArgumentTypeSelect" style="border-top-left-radius: 0;">
@@ -726,7 +710,101 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
                         <i class="fa-regular fa-trash"></i>
                     </button>
                 </div>
-            `);
+            `;
+
+	return element;
+}
+
+function validateToolsAllMultilanguageElements() {
+	if (ManageToolType == null) return;
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentSelectedLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+
+		// Tool Name
+		const toolName = CurrentManageToolNameMultiLangData[currentSelectedLanguage.id];
+		const toolNameIsInComplete = !toolName || toolName === "" || toolName.trim() === "";
+
+		// Tool Description
+		const toolShortDescription = CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id];
+		const toolShortDescriptionIsInComplete = !toolShortDescription || toolShortDescription === "" || toolShortDescription.trim() === "";
+
+		// Tool Input Schemea List
+		let isAnyInputSchemeaElementsInComplete = false;
+		Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
+			if (isAnyInputSchemeaElementsInComplete) return;
+
+			const currentInputElement = CurrentManageToolInputSchemeaMultiLangData[key];
+			const currentInputElementName = currentInputElement.name[currentSelectedLanguage.id];
+			const currentInputElementDescription = currentInputElement.description[currentSelectedLanguage.id];
+
+			const isCurrentElementNameInComplete = !currentInputElementName || currentInputElementName === "" || currentInputElementName.trim() === "";
+			const isCurrentElementDescriptionInComplete = !currentInputElementDescription || currentInputElementDescription === "" || currentInputElementDescription.trim() === "";
+
+			if (isCurrentElementNameInComplete || isCurrentElementDescriptionInComplete) {
+				isAnyInputSchemeaElementsInComplete = true;
+			}
+		});
+
+		// Tool Static Response List
+		let isAnyResponseStaticResponseInComplete = false;
+		Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
+			if (isAnyResponseStaticResponseInComplete) return;
+
+			const currentInputElementValue = CurrentManageToolResponseStaticResponse[key][currentSelectedLanguage.id];
+			const isCurrentElementValueInComplete = !currentInputElementValue || currentInputElementValue === "" || currentInputElementValue.trim() === "";
+
+			if (isCurrentElementValueInComplete) {
+				isAnyResponseStaticResponseInComplete = true;
+			}
+		});
+
+		// Final
+		const isAnyInComplete = toolNameIsInComplete || toolShortDescriptionIsInComplete || isAnyInputSchemeaElementsInComplete || isAnyResponseStaticResponseInComplete;
+		manageToolsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyInComplete ? "incomplete" : "complete");
+	});
+}
+
+require(["vs/editor/editor.main", "esprima"], (_, parser) => {
+	$(document).ready(() => {
+		addNewToolbutton.on("click", (event) => {
+			event.preventDefault();
+
+			ResetAndEmptyToolsManageTab();
+			currentToolName.text("New Tool");
+
+			ManageToolType = "new";
+			CurrentManageToolData = CreateToolsDefaultToolObject();
+
+			ShowToolsManageTab();
+		});
+
+		switchBackToToolsTab.on("click", (event) => {
+			event.preventDefault();
+
+			toolManagerTab.removeClass("show");
+
+			ShowToolsListTab();
+		});
+
+		addToolInputArgumentButton.on("click", (event) => {
+			event.preventDefault();
+
+			const index = CurrentManageToolSchemeaListIndex++;
+
+			CurrentManageToolInputSchemeaMultiLangData[index] = {
+				name: {},
+				description: {},
+			};
+
+			BusinessFullData.businessData.languages.forEach((language) => {
+				CurrentManageToolInputSchemeaMultiLangData[index].name[language] = "";
+				CurrentManageToolInputSchemeaMultiLangData[index].description[language] = "";
+			});
+
+			toolInputArguementsList.append($(CreateToolsConfigurationInputSchemeaElement(index)));
+
+			validateToolsAllMultilanguageElements();
 		});
 
 		$(document).on("change", '[select-type="toolInputArgumentTypeSelect" ]', (event) => {
@@ -744,7 +822,16 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 		$(document).on("click", '[button-type="removeToolInputArgument"]', (event) => {
 			event.preventDefault();
 
-			$(event.currentTarget).parent().remove();
+			const currentElement = $(event.currentTarget);
+			const parentElement = currentElement.parent();
+
+			const dataIndex = parentElement.attr("data-index");
+
+			delete CurrentManageToolInputSchemeaMultiLangData[dataIndex];
+
+			parentElement.remove();
+
+			validateToolsAllMultilanguageElements();
 		});
 
 		addToolHeaderButton.on("click", (event) => {
@@ -898,6 +985,20 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			const statusType = $(event.currentTarget).attr("status-type");
 
 			$(`[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`).parent().toggleClass("d-none");
+
+			const isChecked = $(event.currentTarget).is(":checked");
+
+			if (isChecked) {
+				CurrentManageToolResponseStaticResponse[statusType] = {};
+
+				BusinessFullData.businessData.languages.forEach((language) => {
+					CurrentManageToolResponseStaticResponse[statusType][language] = "";
+				});
+			} else {
+				delete CurrentManageToolResponseStaticResponse[statusType];
+			}
+
+			validateToolsAllMultilanguageElements();
 		});
 
 		$(document).on("click", '[button-type="removeToolResponseStatusType"]', (event) => {
@@ -943,6 +1044,10 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			if (toolResponseStatusTypeListButtons.children().length > 0) {
 				toolResponseStatusTypeListButtons.children()[0].click();
 			}
+
+			delete CurrentManageToolResponseStaticResponse[statusType];
+
+			validateToolsAllMultilanguageElements();
 		});
 
 		$(document).on("click", '[button-type="selectToolResponseStatusType"]', (event) => {
@@ -1006,7 +1111,95 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			}
 		});
 
-		// init
-		FillToolsTab();
+		const manageToolsLanguageDropdownInterval = setInterval(() => {
+			if (manageToolsLanguageDropdown != null) {
+				manageToolsLanguageDropdown.onLanguageChange((language) => {
+					// Tool Name
+					const toolNameValue = CurrentManageToolNameMultiLangData[language.id];
+					inputToolName.val(toolNameValue);
+
+					// Tool Description
+					const toolShortDescriptionValue = CurrentManageToolShortDescriptionMultiLangData[language.id];
+					inputToolShortDescription.val(toolShortDescriptionValue);
+
+					// Tool Input Schema
+					Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
+						const inputSchemeaValue = CurrentManageToolInputSchemeaMultiLangData[key];
+
+						toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="name"]`).val(inputSchemeaValue.name[language.id]);
+						toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="description"]`).val(inputSchemeaValue.description[language.id]);
+					});
+
+					// Tool Status Static Response
+					Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
+						const staticResponseValue = CurrentManageToolResponseStaticResponse[key][language.id];
+
+						toolResponseStatusTypeList.find(`input[status-type="${key}"][input-type="toolResponseStatusSpeakStaticResponseText"]`).val(staticResponseValue);
+					});
+
+					validateToolsAllMultilanguageElements();
+				});
+
+				inputToolName.on("input textInput change", (event) => {
+					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+					const currentValue = $(event.currentTarget).val();
+
+					CurrentManageToolNameMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+					validateToolsAllMultilanguageElements();
+				});
+
+				inputToolShortDescription.on("input textInput change", (event) => {
+					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+					const currentValue = $(event.currentTarget).val();
+
+					CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+					validateToolsAllMultilanguageElements();
+				});
+
+				toolInputArguementsList.on("input textInput change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
+					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+					const currentElement = $(event.currentTarget);
+					const elementBoxParent = currentElement.parent().parent().parent();
+
+					const dataType = currentElement.attr("data-type");
+					const dataIndex = elementBoxParent.attr("data-index");
+
+					if (dataType === "name") {
+						if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].name) {
+							CurrentManageToolInputSchemeaMultiLangData[dataIndex].name = {};
+						}
+
+						CurrentManageToolInputSchemeaMultiLangData[dataIndex].name[currentSelectedLanguage.id] = currentElement.val();
+					} else if (dataType === "description") {
+						if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].description) {
+							CurrentManageToolInputSchemeaMultiLangData[dataIndex].description = {};
+						}
+
+						CurrentManageToolInputSchemeaMultiLangData[dataIndex].description[currentSelectedLanguage.id] = currentElement.val();
+					}
+
+					validateToolsAllMultilanguageElements();
+				});
+
+				toolResponseStatusTypeList.on("input textInput change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
+					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+					const currentElement = $(event.currentTarget);
+					const statusType = currentElement.attr("status-type");
+					const currentValue = currentElement.val();
+
+					CurrentManageToolResponseStaticResponse[statusType][currentSelectedLanguage.id] = currentValue;
+
+					validateToolsAllMultilanguageElements();
+				});
+
+				clearInterval(manageToolsLanguageDropdownInterval);
+			}
+		}, 100);
 	});
 });

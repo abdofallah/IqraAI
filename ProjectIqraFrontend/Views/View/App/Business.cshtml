@@ -2540,7 +2540,6 @@
                                 <select class="form-select" id="toolAudioBeforeSpeakingSelect">
                                     <option value="none" selected>None</option>
                                     <option value="custom">Custom (Upload)</option>
-                                    <option value="keyboard_typing">Keyboard (Typing)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioBeforeSpeakingBox">
                                     <div id="toolAudioBeforeSpeakingUpload" class="mb-3 d-none">
@@ -2564,7 +2563,6 @@
                                 <select class="form-select" id="toolAudioDuringSpeakingSelect">
                                     <option value="none">None</option>
                                     <option value="custom">Custom (Upload)</option>
-                                    <option value="keyboard_typing">Keyboard (Typing)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringSpeakingBox">
                                     <div id="toolAudioDuringSpeakingUpload" class="mb-3 d-none">
@@ -2588,7 +2586,6 @@
                                 <select class="form-select" id="toolAudioAfterSpeakingSelect">
                                     <option value="none">None</option>
                                     <option value="custom">Custom (Upload)</option>
-                                    <option value="keyboard_typing">Keyboard (Typing)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterSpeakingBox">
                                     <div id="toolAudioAfterSpeakingUpload" class="mb-3 d-none">
@@ -4877,6 +4874,7 @@
                             BusinessFullData = businessData;
 
                             initSettingsTab();
+		                    FillToolsTab();
 
                             let businessTutorials = BusinessFullData.businessData.tutorials;
                             if (businessTutorials)
