@@ -2542,9 +2542,36 @@
                                     <option value="custom">Custom (Upload)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioBeforeSpeakingBox">
-                                    <div id="toolAudioBeforeSpeakingUpload" class="mb-3 d-none">
-                                        <label class="form-label" for="toolAudioBeforeSpeakingUploadInput">Upload</label>
-                                        <input type="file" class="form-control" id="toolAudioBeforeSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                    <div id="toolAudioBeforeSpeakingInputBox">
+                                        <label class="form-label d-block">Audio</label>
+                                        <div class="mb-3 recording-container">   
+                                            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                                <div class="recording-container-waveform d-none" id="tool-audio-before-waveform">
+                                                </div>
+                                                <div class="no-audio-notice">
+                                                    <span>No audio uploaded yet...</span>
+                                                </div>
+                                                <button class="btn btn-sm btn-light mb-auto" id="tool-audio-before-upload-btn">Upload</button>
+                                                <input type="file" class="form-control d-none" id="toolAudioBeforeSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                            </div>
+                                            <div class="audio-controller d-none">
+                                                <div class="speed-controller me-5">
+                                                    <label for="slider-tool-audio-before-waveform">
+                                                        <i class="fa-regular fa-gauge"></i>
+                                                    </label>
+                                                    <input class="mx-1" type="slider" id="range-tool-audio-before-waveform" min="0.1" max="4" value="1" step="0.1">
+                                                </div>
+                                                <div class="volume-controller me-5">
+                                                    <label for="slider-tool-audio-before-waveform">
+                                                        <i class="fa-regular fa-volume"></i>
+                                                    </label>
+                                                    <input type="range" id="slider-tool-audio-before-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                </div>
+                                                <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                    <i class="fa-regular fa-play"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="form-label" for="toolAudioBeforeSpeakingVolumeInput">Volume</label>
@@ -2565,9 +2592,36 @@
                                     <option value="custom">Custom (Upload)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringSpeakingBox">
-                                    <div id="toolAudioDuringSpeakingUpload" class="mb-3 d-none">
-                                        <label class="form-label" for="toolAudioDuringSpeakingUploadInput">Upload</label>
-                                        <input type="file" class="form-control" id="toolAudioDuringSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                    <div id="toolAudioDuringSpeakingInputBox">
+                                        <label class="form-label d-block">Audio</label>
+                                        <div class="mb-3 recording-container">   
+                                            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                                <div class="recording-container-waveform d-none" id="tool-audio-during-waveform">
+                                                </div>
+                                                <div class="no-audio-notice">
+                                                    <span>No audio uploaded yet...</span>
+                                                </div>
+                                                <button class="btn btn-sm btn-light mb-auto" id="tool-audio-durning-upload-btn">Upload</button>
+                                                <input type="file" class="form-control d-none" id="toolAudioDuringSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                            </div>
+                                            <div class="audio-controller d-none">
+                                                <div class="speed-controller me-5">
+                                                    <label for="slider-tool-audio-durning-waveform">
+                                                        <i class="fa-regular fa-gauge"></i>
+                                                    </label>
+                                                    <input class="mx-1" type="slider" id="range-tool-audio-durning-waveform" min="0.1" max="4" value="1" step="0.1">
+                                                </div>
+                                                <div class="volume-controller me-5">
+                                                    <label for="slider-tool-audio-durning-waveform">
+                                                        <i class="fa-regular fa-volume"></i>
+                                                    </label>
+                                                    <input type="range" id="slider-tool-audio-durning-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                </div>
+                                                <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                    <i class="fa-regular fa-play"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="form-label" for="toolAudioDuringSpeakingVolumeInput">Volume</label>
@@ -2588,10 +2642,37 @@
                                     <option value="custom">Custom (Upload)</option>
                                 </select>
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterSpeakingBox">
-                                    <div id="toolAudioAfterSpeakingUpload" class="mb-3 d-none">
-                                        <label class="form-label" for="toolAudioAfterSpeakingUploadInput">Upload</label>
-                                        <input type="file" class="form-control" id="toolAudioAfterSpeakingUploadInput" accept="audio/mp3,audio/wav">
-                                    </div>
+                                    <div id="toolAudioAfterSpeakingInputBox">
+                                        <label class="form-label d-block">Audio</label>
+                                        <div class="mb-3 recording-container">   
+                                            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                                <div class="recording-container-waveform d-none" id="tool-audio-after-waveform">
+                                                </div>
+                                                <div class="no-audio-notice">
+                                                    <span>No audio uploaded yet...</span>
+                                                </div>
+                                                <button class="btn btn-sm btn-light mb-auto" id="tool-audio-after-upload-btn">Upload</button>
+                                                <input type="file" class="form-control d-none" id="toolAudioAfterSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                            </div>
+                                            <div class="audio-controller d-none">
+                                                <div class="speed-controller me-5">
+                                                    <label for="slider-tool-audio-after-waveform">
+                                                        <i class="fa-regular fa-gauge"></i>
+                                                    </label>
+                                                    <input class="mx-1" type="slider" id="range-tool-audio-after-waveform" min="0.1" max="4" value="1" step="0.1">
+                                                </div>
+                                                <div class="volume-controller me-5">
+                                                    <label for="slider-tool-audio-after-waveform">
+                                                        <i class="fa-regular fa-volume"></i>
+                                                    </label>
+                                                    <input type="range" id="slider-tool-audio-after-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                </div>
+                                                <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                    <i class="fa-regular fa-play"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>   
                                     <div>
                                         <label class="form-label" for="toolAudioAfterSpeakingVolumeInput">Volume</label>
                                         <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioAfterSpeakingVolumeInput">
@@ -4605,8 +4686,8 @@
     <script src="~/js/moment-with-locales.js"></script>
     <script src="~/js/moment-timezone-with-data.js"></script>
 
-    <script src="~/libs/wavesurfer.js-7.8.0/dist/wavesurfer.min.js"></script>
-    <script src="~/libs/wavesurfer.js-7.8.0/dist/plugins/hover.min.js"></script>
+    <script src="~/libs/wavesurfer.js-7.8.10/dist/wavesurfer.min.js"></script>
+    <script src="~/libs/wavesurfer.js-7.8.10/dist/plugins/hover.min.js"></script>
 
     <script src="~/libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
 

@@ -983,7 +983,7 @@ table.table > thead > * > * {
 	vertical-align: middle;
 }
 
-.conversation-recording .recording-container {
+.recording-container {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -995,18 +995,25 @@ table.table > thead > * > * {
 	position: relative;
 }
 
-.conversation-recording .recording-container .recording-container-waveform {
+.recording-container .recording-container-waveform {
 	width: 100%;
+	transition: all 300ms;
+	margin-bottom: 0;
+	margin-right: 10px;
 }
 
-.conversation-recording .recording-container i.typeofconvo {
+.recording-container:hover .recording-container-waveform {
+	margin-bottom: 30px;
+}
+
+.recording-container i.typeofconvo {
 	font-size: 24px;
 	padding-left: 20px;
 	padding-right: 30px;
 	z-index: 99999;
 }
 
-.conversation-recording .audio-controller {
+.recording-container .audio-controller {
 	position: absolute;
 	bottom: 0;
 	left: 0;
@@ -1024,11 +1031,11 @@ table.table > thead > * > * {
 	border-radius: 6px;
 }
 
-.conversation-recording .recording-container:hover .audio-controller {
+.recording-container:hover .audio-controller {
 	opacity: 1;
 }
 
-.conversation-recording .audio-controller button {
+.recording-container .audio-controller button {
 	padding: 10px;
 	margin: 0;
 	background-color: transparent;
@@ -1036,15 +1043,15 @@ table.table > thead > * > * {
 	font-size: 16px;
 }
 
-.conversation-recording .audio-controller .volume-controller,
-.conversation-recording .audio-controller .speed-controller {
+.recording-container .audio-controller .volume-controller,
+.recording-container .audio-controller .speed-controller {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
 }
 
-.conversation-recording .audio-controller .speed-controller input {
+.recording-container .audio-controller .speed-controller input {
 	width: 28px;
 	height: 18px;
 	text-align: center;
@@ -1366,4 +1373,12 @@ table.table > thead > * > * {
 .disabled-language span {
 	font-weight: 500 !important;
 	letter-spacing: 0.015em;
+}
+
+.toolAudioExtraOptionsBox #tool-audio-durning-upload-btn {
+	width: 100px;
+}
+
+.toolAudioExtraOptionsBox .recording-container-waveform {
+	width: calc(100% - 110px);
 }

@@ -63,8 +63,6 @@ const HTTPStatusCodeList = [
 	{ code: 511, name: "Network Authentication Required" },
 ]; // Make this dynamic - app/specification
 
-let responseStatusMonacoEditors = []; // { statusType: xxx, editor: xyz}
-
 require.config({
 	paths: {
 		vs: "/libs/monaco-editor-0.48.0/package/min/vs",
@@ -73,9 +71,15 @@ require.config({
 });
 
 /** Dynamic Variables **/
+let responseStatusMonacoEditors = [];
+
 let ManageToolType = null;
 let CurrentManageToolData = null;
 let CurrentManageToolSchemeaListIndex = 0;
+
+let ToolAudioBeforeSpeakingWaveSurfer = null;
+let ToolAudioDuringSpeakingWaveSurfer = null;
+let ToolAudioAfterSpeakingWaveSurfer = null;
 
 const CurrentManageToolNameMultiLangData = {};
 const CurrentManageToolShortDescriptionMultiLangData = {};
@@ -103,6 +107,8 @@ const switchBackToToolsTab = toolManagerHeader.find("#switchBackToToolsTab");
 const currentToolName = toolManagerHeader.find("#currentToolName");
 
 const confirmPublishToolButton = toolManagerHeader.find("#confirmPublishToolButton");
+
+const toolManagerInnerGeneralTab = toolManagerHeader.find("#toolManager-inner-general-tab");
 
 // General
 const inputToolName = toolManagerTab.find("#inputToolName");
@@ -134,22 +140,27 @@ const toolResponseStatusTypeList = toolManagerTab.find("#toolResponseStatusTypeL
 const toolResponseStatusSelect = toolManagerTab.find("#toolResponseStatusSelect");
 const addToolResponseStatusTypeButton = toolManagerTab.find("#addToolResponseStatusType");
 
-const toolAudioBeforeSpeakingSelect = toolManagerTab.find("#toolAudioBeforeSpeakingSelect");
-const toolAudioBeforeSpeakingBox = toolManagerTab.find("#toolAudioBeforeSpeakingBox");
-const toolAudioBeforeSpeakingUpload = toolManagerTab.find("#toolAudioBeforeSpeakingUpload");
-
-const toolAudioDuringSpeakingSelect = toolManagerTab.find("#toolAudioDuringSpeakingSelect");
-const toolAudioDuringSpeakingBox = toolManagerTab.find("#toolAudioDuringSpeakingBox");
-const toolAudioDuringSpeakingUpload = toolManagerTab.find("#toolAudioDuringSpeakingUpload");
-
-const toolAudioAfterSpeakingSelect = toolManagerTab.find("#toolAudioAfterSpeakingSelect");
-const toolAudioAfterSpeakingBox = toolManagerTab.find("#toolAudioAfterSpeakingBox");
-const toolAudioAfterSpeakingUpload = toolManagerTab.find("#toolAudioAfterSpeakingUpload");
-
 // Audio
-const toolAudioBeforeSpeakingUploadInput = toolManagerTab.find("#toolAudioBeforeSpeakingUploadInput");
-const toolAudioDuringSpeakingUploadInput = toolManagerTab.find("#toolAudioDuringSpeakingUploadInput");
-const toolAudioAfterSpeakingUploadInput = toolManagerTab.find("#toolAudioAfterSpeakingUploadInput");
+const toolAudioBeforeSpeakingBox = toolManagerTab.find("#toolAudioBeforeSpeakingBox");
+const toolAudioBeforeSpeakingSelect = toolManagerTab.find("#toolAudioBeforeSpeakingSelect");
+const toolAudioBeforeSpeakingInputBox = toolAudioBeforeSpeakingBox.find("#toolAudioBeforeSpeakingInputBox");
+const toolAudioBeforeSpeakingUploadBtn = toolAudioBeforeSpeakingInputBox.find("#tool-audio-before-upload-btn");
+const toolAudioBeforeSpeakingUploadInput = toolAudioBeforeSpeakingInputBox.find("#toolAudioBeforeSpeakingUploadInput");
+const toolAudioBeforeSpeakingVolumeInput = toolAudioBeforeSpeakingBox.find("#toolAudioBeforeSpeakingVolumeInput");
+
+const toolAudioDuringSpeakingBox = toolManagerTab.find("#toolAudioDuringSpeakingBox");
+const toolAudioDuringSpeakingSelect = toolManagerTab.find("#toolAudioDuringSpeakingSelect");
+const toolAudioDuringSpeakingInputBox = toolAudioDuringSpeakingBox.find("#toolAudioDuringSpeakingInputBox");
+const toolAudioDuringSpeakingUploadBtn = toolAudioDuringSpeakingInputBox.find("#tool-audio-durning-upload-btn");
+const toolAudioDuringSpeakingUploadInput = toolAudioDuringSpeakingInputBox.find("#toolAudioDuringSpeakingUploadInput");
+const toolAudioDuringSpeakingVolumeInput = toolAudioDuringSpeakingBox.find("#toolAudioDuringSpeakingVolumeInput");
+
+const toolAudioAfterSpeakingBox = toolManagerTab.find("#toolAudioAfterSpeakingBox");
+const toolAudioAfterSpeakingSelect = toolManagerTab.find("#toolAudioAfterSpeakingSelect");
+const toolAudioAfterSpeakingInputBox = toolAudioAfterSpeakingBox.find("#toolAudioAfterSpeakingInputBox");
+const toolAudioAfterSpeakingUploadBtn = toolAudioAfterSpeakingInputBox.find("#tool-audio-after-upload-btn");
+const toolAudioAfterSpeakingUploadInput = toolAudioAfterSpeakingInputBox.find("#toolAudioAfterSpeakingUploadInput");
+const toolAudioAfterSpeakingVolumeInput = toolAudioAfterSpeakingBox.find("#toolAudioAfterSpeakingVolumeInput");
 
 let manageToolsLanguageDropdown = null;
 RunActionAfterBusinessDataLoad(() => {
@@ -165,8 +176,6 @@ RunActionAfterBusinessDataLoad(() => {
 				businessLanguages.push(countryCodeLanguage);
 			}
 		});
-
-		console.log(businessLanguages);
 
 		manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", businessLanguages);
 	});
@@ -365,6 +374,48 @@ function ResetAndEmptyToolsManageTab() {
 	HTTPStatusCodeList.forEach((element) => {
 		toolResponseStatusSelect.append(`<option value="${element.code}">${element.code} | ${element.name}</option>`);
 	});
+
+	if (ToolAudioBeforeSpeakingWaveSurfer?.destroy) {
+		ToolAudioBeforeSpeakingWaveSurfer.destroy();
+	}
+
+	if (ToolAudioDuringSpeakingWaveSurfer?.destroy) {
+		ToolAudioDuringSpeakingWaveSurfer.destroy();
+	}
+
+	if (ToolAudioAfterSpeakingWaveSurfer?.destroy) {
+		ToolAudioAfterSpeakingWaveSurfer.destroy();
+	}
+
+	ToolAudioBeforeSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-before-waveform");
+	ToolAudioDuringSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-during-waveform");
+	ToolAudioAfterSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-after-waveform");
+
+	toolAudioBeforeSpeakingVolumeInput.val("100");
+	toolAudioDuringSpeakingVolumeInput.val("100");
+	toolAudioAfterSpeakingVolumeInput.val("100");
+
+	toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+	toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+	toolAudioBeforeSpeakingInputBox.find(".audio-controller").addClass("d-none");
+
+	toolAudioDuringSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+	toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+	toolAudioDuringSpeakingInputBox.find(".audio-controller").addClass("d-none");
+
+	toolAudioAfterSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+	toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+	toolAudioAfterSpeakingInputBox.find(".audio-controller").addClass("d-none");
+
+	toolAudioBeforeSpeakingUploadInput.val("");
+	toolAudioDuringSpeakingUploadInput.val("");
+	toolAudioAfterSpeakingUploadInput.val("");
+
+	toolAudioBeforeSpeakingSelect.val("none").change();
+	toolAudioDuringSpeakingSelect.val("none").change();
+	toolAudioAfterSpeakingSelect.val("none").change();
+
+	toolManagerInnerGeneralTab.click();
 }
 
 function ShowToolsListTab() {
@@ -773,19 +824,65 @@ function validateToolsAllMultilanguageElements() {
 function onToolsAudioUploadValidation(event) {
 	const selectedFile = event.currentTarget.files[0];
 
-	if (selectedFile != null) {
-		// check file size is lower than 25mb
-		if (selectedFile.size > 25 * 1024 * 1024) {
-			AlertManager.createAlert({
-				type: "danger",
-				message: "Audio file size should not exceed 25MB.",
-				enableDismiss: false,
-			});
-
-			toolAudioBeforeSpeakingUploadInput.val("");
-			return;
-		}
+	if (selectedFile == null) {
+		return false;
 	}
+
+	if (selectedFile.size > 25 * 1024 * 1024) {
+		AlertManager.createAlert({
+			type: "danger",
+			message: "Audio file size should not exceed 25MB.",
+			enableDismiss: false,
+		});
+
+		toolAudioBeforeSpeakingUploadInput.val("");
+		return false;
+	}
+
+	return true;
+}
+
+function CreateToolAudioWavesurfer(containerId) {
+	const waveSurferConversation = WaveSurfer.create({
+		container: containerId,
+		waveColor: "#5f6833",
+		progressColor: "#CBE54E",
+		height: 35,
+		barWidth: 2,
+		barHeight: 0.7,
+		fillParent: true,
+		audioRate: 1,
+		plugins: [
+			WaveSurfer.Hover.create({
+				lineColor: "#fff",
+				lineWidth: 2,
+				labelBackground: "#555",
+				labelColor: "#fff",
+				labelSize: "11px",
+			}),
+		],
+	});
+
+	const audioPlayPauseButton = $(containerId).parent().parent().find('.audio-controller button[button-type="start-stop-audio"]');
+	audioPlayPauseButton.on("click", (event) => {
+		waveSurferConversation.playPause();
+
+		const currentMode = $(event.currentTarget).attr("mode");
+
+		if (currentMode === "play") {
+			$(event.currentTarget).attr("mode", "pause");
+			$(event.currentTarget).find("i").removeClass("fa-play").addClass("fa-pause");
+		} else {
+			$(event.currentTarget).attr("mode", "play");
+			$(event.currentTarget).find("i").removeClass("fa-pause").addClass("fa-play");
+		}
+	});
+
+	waveSurferConversation.on("ready", (duration) => {
+		audioPlayPauseButton.prop("disabled", false);
+	});
+
+	return waveSurferConversation;
 }
 
 require(["vs/editor/editor.main", "esprima"], (_, parser) => {
@@ -1096,9 +1193,9 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			}
 
 			if (selectedValue === "custom") {
-				toolAudioBeforeSpeakingUpload.removeClass("d-none");
+				toolAudioBeforeSpeakingInputBox.removeClass("d-none");
 			} else {
-				toolAudioBeforeSpeakingUpload.addClass("d-none");
+				toolAudioBeforeSpeakingInputBox.addClass("d-none");
 			}
 		});
 
@@ -1112,9 +1209,9 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			}
 
 			if (selectedValue === "custom") {
-				toolAudioDuringSpeakingUpload.removeClass("d-none");
+				toolAudioDuringSpeakingInputBox.removeClass("d-none");
 			} else {
-				toolAudioDuringSpeakingUpload.addClass("d-none");
+				toolAudioDuringSpeakingInputBox.addClass("d-none");
 			}
 		});
 
@@ -1128,17 +1225,119 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 			}
 
 			if (selectedValue === "custom") {
-				toolAudioAfterSpeakingUpload.removeClass("d-none");
+				toolAudioAfterSpeakingInputBox.removeClass("d-none");
 			} else {
-				toolAudioAfterSpeakingUpload.addClass("d-none");
+				toolAudioAfterSpeakingInputBox.addClass("d-none");
 			}
 		});
 
-		toolAudioBeforeSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
+		toolAudioBeforeSpeakingUploadBtn.on("click", (event) => {
+			event.preventDefault();
 
-		toolAudioDuringSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
+			toolAudioBeforeSpeakingUploadInput.click();
+		});
 
-		toolAudioAfterSpeakingUploadInput.on("change", onToolsAudioUploadValidation);
+		toolAudioDuringSpeakingUploadBtn.on("click", (event) => {
+			event.preventDefault();
+
+			toolAudioDuringSpeakingUploadInput.click();
+		});
+
+		toolAudioAfterSpeakingUploadBtn.on("click", (event) => {
+			event.preventDefault();
+
+			toolAudioAfterSpeakingUploadInput.click();
+		});
+
+		toolAudioBeforeSpeakingUploadInput.on("change", (event) => {
+			const resultValidate = onToolsAudioUploadValidation(event);
+
+			if (resultValidate) {
+				const file = toolAudioBeforeSpeakingUploadInput[0].files[0];
+
+				const reader = new FileReader();
+
+				reader.onload = (evt) => {
+					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+					ToolAudioBeforeSpeakingWaveSurfer.loadBlob(blob);
+
+					toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+					toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+					toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+				};
+
+				reader.onerror = (evt) => {
+					AlertManager.createAlert({
+						type: "error",
+						message: "Error reading audio file for tool audio before speaking upload.",
+						enableDismiss: false,
+					});
+				};
+
+				// Read File as an ArrayBuffer
+				reader.readAsArrayBuffer(file);
+			}
+		});
+
+		toolAudioDuringSpeakingUploadInput.on("change", (event) => {
+			const resultValidate = onToolsAudioUploadValidation(event);
+
+			if (resultValidate) {
+				const file = toolAudioDuringSpeakingUploadInput[0].files[0];
+
+				const reader = new FileReader();
+
+				reader.onload = (evt) => {
+					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+					ToolAudioDuringSpeakingWaveSurfer.loadBlob(blob);
+
+					toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+					toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+					toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+				};
+
+				reader.onerror = (evt) => {
+					AlertManager.createAlert({
+						type: "error",
+						message: "Error reading audio file for tool audio during speaking upload.",
+						enableDismiss: false,
+					});
+				};
+
+				// Read File as an ArrayBuffer
+				reader.readAsArrayBuffer(file);
+			}
+		});
+
+		toolAudioAfterSpeakingUploadInput.on("change", (event) => {
+			const resultValidate = onToolsAudioUploadValidation(event);
+
+			if (resultValidate) {
+				const file = toolAudioAfterSpeakingUploadInput[0].files[0];
+
+				const reader = new FileReader();
+
+				reader.onload = (evt) => {
+					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+					ToolAudioAfterSpeakingWaveSurfer.loadBlob(blob);
+
+					toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+					toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+					toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+				};
+
+				reader.onerror = (evt) => {
+					AlertManager.createAlert({
+						type: "error",
+						message: "Error reading audio file for tool audio after speaking upload.",
+						enableDismiss: false,
+					});
+				};
+
+				// Read File as an ArrayBuffer
+				reader.readAsArrayBuffer(file);
+			}
+		});
 
 		const manageToolsLanguageDropdownInterval = setInterval(() => {
 			if (manageToolsLanguageDropdown != null) {
