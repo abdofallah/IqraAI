@@ -142,6 +142,13 @@ namespace IqraInfrastructure.Repositories.Business
             return result.ModifiedCount > 0;
         }
 
+        public async Task<List<string>> GetBusinessLanguages(long businessId)
+        {
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
+            var projection = Builders<BusinessData>.Projection.Include(b => b.Languages).Include(b => b.Id);
 
+            var business = await _businessCollection.Find(filter).Project<BusinessData>(projection).FirstOrDefaultAsync();
+            return business.Languages;
+        }
     }
 }

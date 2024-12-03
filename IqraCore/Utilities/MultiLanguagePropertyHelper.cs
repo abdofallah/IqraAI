@@ -7,6 +7,17 @@ namespace IqraCore.Utilities
     public class MultiLanguagePropertyHelper
     {
         public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageProperty(
+            IEnumerable<string> languages,
+            JsonElement jsonElement,
+            string propertyKey,
+            IDictionary<string, string> targetDictionary)
+        {
+            List<LanguagesData> languageList = languages.Select(x => new LanguagesData() { Id = x }).ToList();
+
+            return ValidateAndAssignMultiLanguageProperty(languageList, jsonElement, propertyKey, targetDictionary);
+        }
+
+        public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageProperty(
             IEnumerable<LanguagesData> languages,
             JsonElement jsonElement,
             string propertyKey,

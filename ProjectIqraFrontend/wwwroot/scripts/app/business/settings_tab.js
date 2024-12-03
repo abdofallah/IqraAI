@@ -1998,6 +1998,9 @@ function initSettingsTab() {
 		});
 
 		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "settings-tab") return;
+
 			if (IsManagerDomainTabOpened) {
 				if (IsSavingDomainTab) {
 					AlertManager.createAlert({
@@ -2115,6 +2118,8 @@ function initSettingsTab() {
 
 		saveBusinessSubuserButton.on("click", (event) => {
 			event.preventDefault();
+
+			if (IsSavingUsersTab) return;
 
 			const generalTabValidation = ValidateSettingsSubusersGeneralFields(false);
 			if (!generalTabValidation.validated) {

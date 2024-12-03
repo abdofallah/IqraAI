@@ -2331,24 +2331,13 @@
                             <i class='fa-regular fa-wrench text-dark'></i>
                             <span> Debug</span>
                         </button>
-                        <div class="btn-group" id="publishToolDropdown">
-                            <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class='fa-regular fa-wrench'></i>
-                                <span> Publish</span>
-                            </button>
-                            <div class="dropdown-menu p-3">
-                                <div class="mb-2 d-none" id="tool-last-published">
-                                    <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
-                                    <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
-                                        Published
-                                        20 minutes ago
-                                    </p>
-                                </div>
-                                <button class="btn btn-primary btn-sm w-100" id="confirmPublishToolButton" disabled>
-                                    <span>Update</span>
-                                </button>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmPublishToolButton" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span>Update</span>
+                            <div class="spinner-border save-button-spinner d-none" role="status">
+                                <span class="visually-hidden">Loading...</span>
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </div>
                 <div class="d-flex flex-row align-items-center justify-content-between">
@@ -2469,19 +2458,19 @@
                                 </label>
                                 <div class="mb-2">
                                     <div class="form-check form-check-inline me-3">
-                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="none" id="toolBodyTypeNone" checked>
+                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="0" id="toolBodyTypeNone" checked>
                                         <label class="form-check-label" for="toolBodyTypeNone">none</label>
                                     </div>
                                     <div class="form-check form-check-inline me-3">
-                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="form-data" id="toolBodyTypeFormData">
+                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="1" id="toolBodyTypeFormData">
                                         <label class="form-check-label" for="toolBodyTypeFormData">form-data</label>
                                     </div>
                                     <div class="form-check form-check-inline me-3">
-                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="x-www-form-urlencoded" id="toolBodyTypeXWwwFormUrlEncoded">
+                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="2" id="toolBodyTypeXWwwFormUrlEncoded">
                                         <label class="form-check-label" for="toolBodyTypeXWwwFormUrlEncoded">x-www-form-urlencoded</label>
                                     </div>
                                     <div class="form-check form-check-inline me-3">
-                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="raw" id="toolBodyTypeRaw">
+                                        <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="3" id="toolBodyTypeRaw">
                                         <label class="form-check-label" for="toolBodyTypeRaw">raw</label>
                                     </div>
                                 </div>

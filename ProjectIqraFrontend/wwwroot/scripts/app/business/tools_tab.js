@@ -81,10 +81,12 @@ let ToolAudioBeforeSpeakingWaveSurfer = null;
 let ToolAudioDuringSpeakingWaveSurfer = null;
 let ToolAudioAfterSpeakingWaveSurfer = null;
 
-const CurrentManageToolNameMultiLangData = {};
-const CurrentManageToolShortDescriptionMultiLangData = {};
+let CurrentManageToolNameMultiLangData = {};
+let CurrentManageToolShortDescriptionMultiLangData = {};
 const CurrentManageToolInputSchemeaMultiLangData = {};
 const CurrentManageToolResponseStaticResponse = {};
+
+let IsSavingToolManageTab = false;
 
 /** Elements Variables **/
 const toolsTab = $("#tools-tab");
@@ -107,6 +109,7 @@ const switchBackToToolsTab = toolManagerHeader.find("#switchBackToToolsTab");
 const currentToolName = toolManagerHeader.find("#currentToolName");
 
 const confirmPublishToolButton = toolManagerHeader.find("#confirmPublishToolButton");
+const confirmPublishToolButtonSpinner = confirmPublishToolButton.find(".save-button-spinner");
 
 const toolManagerInnerGeneralTab = toolManagerHeader.find("#toolManager-inner-general-tab");
 
@@ -180,6 +183,32 @@ RunActionAfterBusinessDataLoad(() => {
 		manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", businessLanguages);
 	});
 });
+
+// Api Functions
+
+function SaveBusinessTool(changes, successCallback, errorCallback) {
+	$.ajax({
+		type: "POST",
+		url: `/app/user/business/${CurrentBusinessId}/tools/save`,
+		data: changes,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, false);
+				return;
+			}
+
+			successCallback(response);
+		},
+		error: (error) => {
+			errorCallback(error, true);
+		},
+	});
+}
+
+// Functions
 
 function ShowToolsManageTab() {
 	toolListTab.removeClass("show");
@@ -416,6 +445,15 @@ function ResetAndEmptyToolsManageTab() {
 	toolAudioAfterSpeakingSelect.val("none").change();
 
 	toolManagerInnerGeneralTab.click();
+
+	CurrentManageToolNameMultiLangData = {};
+	CurrentManageToolShortDescriptionMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentManageToolNameMultiLangData[language] = "";
+		CurrentManageToolShortDescriptionMultiLangData[language] = "";
+	});
+
+	confirmPublishToolButton.prop("disabled", true);
 }
 
 function ShowToolsListTab() {
@@ -452,9 +490,16 @@ function CreateToolsDefaultToolObject() {
 		},
 		response: {},
 		audio: {
-			//todo
+			beforeSpeaking: null,
+			duringSpeaking: null,
+			afterSpeaking: null,
 		},
 	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		object.general.name[language] = "";
+		object.general.shortDescription[language] = "";
+	});
 
 	return object;
 }
@@ -464,172 +509,111 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	let hasChanges = false;
 
 	// General
-	changes.general = {};
+	function CheckGeneralTabHasChanges() {
+		changes.general = {};
 
-	changes.general.name = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
+		changes.general.name = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			changes.general.name[language] = CurrentManageToolNameMultiLangData[language];
 
-		if (fullLanguageData.distabledAt != null) {
-			return false;
-		}
+			const previousData = CurrentManageToolData.general.name[language];
+			if (previousData !== changes.general.name[language]) {
+				hasChanges = true;
+			}
+		});
 
-		changes.general.name[language] = CurrentManageToolNameMultiLangData[language];
+		changes.general.shortDescription = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			changes.general.shortDescription[language] = CurrentManageToolShortDescriptionMultiLangData[language];
 
-		const previousData = CurrentManageToolData.general.name[language];
-		if (!previousData) {
-			hasChanges = true;
-		} else if (previousData !== changes.general.name[language]) {
-			hasChanges = true;
-		}
-	});
-
-	changes.general.shortDescription = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
-
-		if (fullLanguageData.distabledAt != null) {
-			return false;
-		}
-
-		changes.general.shortDescription[language] = CurrentManageToolShortDescriptionMultiLangData[language];
-
-		const previousData = CurrentManageToolData.general.shortDescription[language];
-		if (!previousData) {
-			hasChanges = true;
-		} else if (previousData !== changes.general.shortDescription[language]) {
-			hasChanges = true;
-		}
-	});
+			const previousData = CurrentManageToolData.general.shortDescription[language];
+			if (previousData !== changes.general.shortDescription[language]) {
+				hasChanges = true;
+			}
+		});
+	}
+	CheckGeneralTabHasChanges();
 
 	// Configuration
-	changes.configuration = {};
+	function CheckConfigurationTabHasChanges() {
+		changes.configuration = {};
 
-	function checkInputArguementsList() {
-		const inputArgumentsList = [];
-		const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
+		function checkInputArguementsList() {
+			const inputArgumentsList = [];
+			const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
 
-		if (argumentElements.length !== CurrentManageToolData.configuration.inputSchemea.length) {
-			hasChanges = true;
-		}
+			if (argumentElements.length !== CurrentManageToolData.configuration.inputSchemea.length) {
+				hasChanges = true;
+			}
 
-		argumentElements.each((idx, element) => {
-			const currentElement = $(element);
+			argumentElements.each((idx, element) => {
+				const currentElement = $(element);
 
-			const index = parseInt(currentElement.attr("data-index"));
-			const argumentData = {
-				name: {},
-				description: {},
-				type: parseInt(currentElement.find('[data-type="typeSelect"]').val()),
-				isArray: element.querySelector(
-					`[data-type="required"]#toolInputArguementArray${element.querySelector('[data-type="required"][id^="toolInputArguementArray"]').id.replace("toolInputArguementArray", "")}`,
-				).checked,
-				isRequired: element.querySelector(
-					`[data-type="required"]#toolInputArguementRequired${element.querySelector('[data-type="required"][id^="toolInputArguementRequired"]').id.replace("toolInputArguementRequired", "")}`,
-				).checked,
-			};
+				const index = parseInt(currentElement.attr("data-index"));
+				const argumentData = {
+					name: {},
+					description: {},
+					type: parseInt(currentElement.find('[data-type="typeSelect"]').val()),
+					isArray: element.querySelector(
+						`[data-type="required"]#toolInputArguementArray${element.querySelector('[data-type="required"][id^="toolInputArguementArray"]').id.replace("toolInputArguementArray", "")}`,
+					).checked,
+					isRequired: element.querySelector(
+						`[data-type="required"]#toolInputArguementRequired${element.querySelector('[data-type="required"][id^="toolInputArguementRequired"]').id.replace("toolInputArguementRequired", "")}`,
+					).checked,
+				};
 
-			BusinessFullData.businessData.languages.forEach((language) => {
-				argumentData.name[language] = CurrentManageToolInputSchemeaMultiLangData[index].name[language];
-				argumentData.description[language] = CurrentManageToolInputSchemeaMultiLangData[index].description[language];
+				BusinessFullData.businessData.languages.forEach((language) => {
+					argumentData.name[language] = CurrentManageToolInputSchemeaMultiLangData[index].name[language];
+					argumentData.description[language] = CurrentManageToolInputSchemeaMultiLangData[index].description[language];
 
-				const previousData = CurrentManageToolData.configuration.inputSchemea[index];
-				if (!previousData) {
-					hasChanges = true;
-				} else {
-					if (previousData.name[language] !== argumentData.name[language] || previousData.description[language] !== argumentData.description[language]) {
+					const previousData = CurrentManageToolData.configuration.inputSchemea[index];
+					if (!previousData) {
 						hasChanges = true;
-					}
-				}
-			});
-
-			if (index < CurrentManageToolData.configuration.inputSchemea.length) {
-				const originalArgument = CurrentManageToolData.configuration.inputSchemea[index];
-
-				if (originalArgument.type !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
-					hasChanges = true;
-				}
-			} else {
-				hasChanges = true;
-			}
-
-			inputArgumentsList.push(argumentData);
-		});
-
-		return inputArgumentsList;
-	}
-	changes.configuration.inputSchemea = checkInputArguementsList();
-
-	changes.configuration.requestType = inputToolType.val();
-	if (inputToolType.val() !== CurrentManageToolData.configuration.requestType) {
-		hasChanges = true;
-	}
-
-	changes.configuration.endpoint = inputToolURL.val();
-	if (inputToolURL.val() !== CurrentManageToolData.configuration.endpoint) {
-		hasChanges = true;
-	}
-
-	function checkHeadersList() {
-		const headers = {};
-		const headerElements = toolHeadersList.find(".tool-header-box");
-
-		const currentHeaderCount = headerElements.length;
-		const originalHeaderCount = Object.keys(CurrentManageToolData.configuration.headers).length;
-		if (currentHeaderCount !== originalHeaderCount) {
-			hasChanges = true;
-		}
-
-		headerElements.each((idx, element) => {
-			const currentElement = $(element);
-
-			const keyInput = currentElement.find('[data-type="key"]');
-			const valueInput = currentElement.find('[data-type="value"]');
-
-			const key = keyInput.val().trim();
-			const value = valueInput.val().trim();
-
-			headers[key] = value;
-
-			if (!CurrentManageToolData.configuration.headers.hasOwnProperty(key) || CurrentManageToolData.headers[key] !== value) {
-				hasChanges = true;
-			}
-		});
-
-		Object.keys(CurrentManageToolData.configuration.headers).forEach((originalKey) => {
-			if (!headers.hasOwnProperty(originalKey)) {
-				hasChanges = true;
-			}
-		});
-
-		return headers;
-	}
-	changes.configuration.headers = checkHeadersList();
-
-	changes.configuration.bodyType = toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val();
-	if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType) {
-		hasChanges = true;
-	}
-	if (changes.configuration.bodyType !== "none") {
-		if (changes.configuration.bodyType === "form-data" || changes.configuration.bodyType === "x-www-form-urlencoded") {
-			const formKeyValData = {};
-			const formKeyValElements = toolBodyKeyValueViewList.children();
-
-			if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
-				const currentFormKeyValCount = formKeyValElements.length;
-				const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
-				if (currentFormKeyValCount !== originalFormKeyValCount) {
-					hasChanges = true;
-				}
-
-				Object.keys(CurrentManageToolData.configuration.bodyData).forEach((originalKey) => {
-					if (!formKeyValData.hasOwnProperty(originalKey)) {
-						hasChanges = true;
+					} else {
+						if (previousData.name[language] !== argumentData.name[language] || previousData.description[language] !== argumentData.description[language]) {
+							hasChanges = true;
+						}
 					}
 				});
+
+				if (index < CurrentManageToolData.configuration.inputSchemea.length) {
+					const originalArgument = CurrentManageToolData.configuration.inputSchemea[index];
+
+					if (originalArgument.type !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
+						hasChanges = true;
+					}
+				} else {
+					hasChanges = true;
+				}
+
+				inputArgumentsList.push(argumentData);
+			});
+
+			return inputArgumentsList;
+		}
+		changes.configuration.inputSchemea = checkInputArguementsList();
+
+		changes.configuration.requestType = inputToolType.val();
+		if (parseInt(inputToolType.val()) !== CurrentManageToolData.configuration.requestType) {
+			hasChanges = true;
+		}
+
+		changes.configuration.endpoint = inputToolURL.val();
+		if (inputToolURL.val() !== CurrentManageToolData.configuration.endpoint) {
+			hasChanges = true;
+		}
+
+		function checkHeadersList() {
+			const headers = {};
+			const headerElements = toolHeadersList.find(".tool-header-box");
+
+			const currentHeaderCount = headerElements.length;
+			const originalHeaderCount = Object.keys(CurrentManageToolData.configuration.headers).length;
+			if (currentHeaderCount !== originalHeaderCount) {
+				hasChanges = true;
 			}
 
-			formKeyValElements.each((idx, element) => {
+			headerElements.each((idx, element) => {
 				const currentElement = $(element);
 
 				const keyInput = currentElement.find('[data-type="key"]');
@@ -638,83 +622,148 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				const key = keyInput.val().trim();
 				const value = valueInput.val().trim();
 
-				formKeyValData[key] = value;
+				headers[key] = value;
 
-				if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
-					if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.bodyData[key] !== value) {
-						hasChanges = true;
-					}
+				if (!CurrentManageToolData.configuration.headers.hasOwnProperty(key) || CurrentManageToolData.headers[key] !== value) {
+					hasChanges = true;
 				}
 			});
 
-			changes.configuration.bodyData = formKeyValData;
+			Object.keys(CurrentManageToolData.configuration.headers).forEach((originalKey) => {
+				if (!headers.hasOwnProperty(originalKey)) {
+					hasChanges = true;
+				}
+			});
+
+			return headers;
 		}
+		changes.configuration.headers = checkHeadersList();
 
-		if (changes.configuration.bodyType === "raw") {
-			changes.configuration.bodyData = toolBodyRawTextarea.val();
+		changes.configuration.bodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
+		if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType) {
+			hasChanges = true;
+		}
+		if (changes.configuration.bodyType !== "none") {
+			if (changes.configuration.bodyType === "form-data" || changes.configuration.bodyType === "x-www-form-urlencoded") {
+				const formKeyValData = {};
+				const formKeyValElements = toolBodyKeyValueViewList.children();
 
-			if (CurrentManageToolData.configuration.bodyType === "raw" && CurrentManageToolData.configuration.bodyData !== toolBodyRawTextarea.val()) {
-				hasChanges = true;
+				if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
+					const currentFormKeyValCount = formKeyValElements.length;
+					const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
+					if (currentFormKeyValCount !== originalFormKeyValCount) {
+						hasChanges = true;
+					}
+
+					Object.keys(CurrentManageToolData.configuration.bodyData).forEach((originalKey) => {
+						if (!formKeyValData.hasOwnProperty(originalKey)) {
+							hasChanges = true;
+						}
+					});
+				}
+
+				formKeyValElements.each((idx, element) => {
+					const currentElement = $(element);
+
+					const keyInput = currentElement.find('[data-type="key"]');
+					const valueInput = currentElement.find('[data-type="value"]');
+
+					const key = keyInput.val().trim();
+					const value = valueInput.val().trim();
+
+					formKeyValData[key] = value;
+
+					if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
+						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.bodyData[key] !== value) {
+							hasChanges = true;
+						}
+					}
+				});
+
+				changes.configuration.bodyData = formKeyValData;
+			}
+
+			if (changes.configuration.bodyType === "raw") {
+				changes.configuration.bodyData = toolBodyRawTextarea.val();
+
+				if (CurrentManageToolData.configuration.bodyType === "raw" && CurrentManageToolData.configuration.bodyData !== toolBodyRawTextarea.val()) {
+					hasChanges = true;
+				}
 			}
 		}
 	}
+	CheckConfigurationTabHasChanges();
 
 	// Response
-	function checkResponseList() {
-		const response = {};
+	function CheckResponseTabHasChanges() {
+		function checkResponseList() {
+			const response = {};
 
-		if (responseStatusMonacoEditors.length !== CurrentManageToolData.response.length) {
+			if (responseStatusMonacoEditors.length !== Object.keys(CurrentManageToolData.response).length) {
+				hasChanges = true;
+			}
+
+			responseStatusMonacoEditors.forEach((data) => {
+				const statusType = data.statusType;
+				const editor = data.editor;
+				const editorValue = editor.getValue();
+
+				response[statusType] = {
+					javascript: editorValue,
+					hasStaticResponse: toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked"),
+					staticResponse: {},
+				};
+
+				const previousData = CurrentManageToolData.response[statusType];
+				if (!previousData) {
+					hasChanges = true;
+				} else {
+					if (previousData.javascript !== response[statusType].editorValue) {
+						hasChanges = true;
+					}
+
+					if (previousData.hasStaticResponse !== response[statusType].hasStaticResponse) {
+						hasChanges = true;
+					}
+				}
+
+				if (response[statusType].hasStaticResponse) {
+					BusinessFullData.businessData.languages.forEach((language) => {
+						const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
+
+						const value = CurrentManageToolResponseStaticResponse[statusType][language];
+						response[statusType].staticResponse[language] = value;
+
+						if (previousData && previousData.staticResponse[language] !== value) {
+							hasChanges = true;
+						}
+					});
+				}
+			});
+
+			return response;
+		}
+		changes.response = checkResponseList();
+	}
+	CheckResponseTabHasChanges();
+
+	// Audio
+	function CheckAudioTabHasChanges() {
+		changes.audio = {};
+
+		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
 			hasChanges = true;
 		}
 
-		responseStatusMonacoEditors.forEach((data) => {
-			const statusType = data.statusType;
-			const editor = data.editor;
-			const editorValue = editor.getValue();
+		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+			hasChanges = true;
+		}
 
-			response[statusType] = {
-				javascript: editorValue,
-				hasStaticResponse: toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked"),
-				staticResponse: {},
-			};
-
-			const previousData = CurrentManageToolData.response[statusType];
-			if (!previousData) {
-				hasChanges = true;
-			} else {
-				if (previousData.javascript !== response[statusType].editorValue) {
-					hasChanges = true;
-				}
-
-				if (previousData.hasStaticResponse !== response[statusType].hasStaticResponse) {
-					hasChanges = true;
-				}
-			}
-
-			if (response[statusType].hasStaticResponse) {
-				BusinessFullData.businessData.languages.forEach((language) => {
-					const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
-
-					if (fullLanguageData.distabledAt != null) {
-						return false;
-					}
-
-					const value = CurrentManageToolResponseStaticResponse[statusType][language];
-					response[statusType].staticResponse[language] = value;
-
-					if (previousData && previousData.staticResponse[language] !== value) {
-						hasChanges = true;
-					}
-				});
-			}
-		});
-
-		return response;
+		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+			hasChanges = true;
+		}
 	}
-	changes.response = checkResponseList();
-
-	// Audio
-	// TODO TODO TODO
+	CheckAudioTabHasChanges();
 
 	if (enableDisableButton) {
 		confirmPublishToolButton.prop("disabled", !hasChanges);
@@ -976,14 +1025,14 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 
 		toolBodyType.on("change", (event) => {
 			const target = $(event.currentTarget);
-			const value = target.val();
+			const value = parseInt(target.val());
 
-			if (value === "form-data" || value === "x-www-form-urlencoded") {
+			if (value === 1 || value === 2) {
 				toolBodyNone.addClass("d-none");
 				toolBodyRawView.addClass("d-none");
 
 				toolBodyKeyValueView.removeClass("d-none");
-			} else if (value === "raw") {
+			} else if (value === 3) {
 				toolBodyNone.addClass("d-none");
 				toolBodyKeyValueView.addClass("d-none");
 
@@ -1368,7 +1417,7 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 					validateToolsAllMultilanguageElements();
 				});
 
-				inputToolName.on("input textInput change", (event) => {
+				inputToolName.on("input change", (event) => {
 					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
 
 					const currentValue = $(event.currentTarget).val();
@@ -1378,7 +1427,7 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 					validateToolsAllMultilanguageElements();
 				});
 
-				inputToolShortDescription.on("input textInput change", (event) => {
+				inputToolShortDescription.on("input change", (event) => {
 					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
 
 					const currentValue = $(event.currentTarget).val();
@@ -1388,7 +1437,7 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 					validateToolsAllMultilanguageElements();
 				});
 
-				toolInputArguementsList.on("input textInput change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
+				toolInputArguementsList.on("input change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
 					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
 
 					const currentElement = $(event.currentTarget);
@@ -1414,7 +1463,7 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 					validateToolsAllMultilanguageElements();
 				});
 
-				toolResponseStatusTypeList.on("input textInput change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
+				toolResponseStatusTypeList.on("input change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
 					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
 
 					const currentElement = $(event.currentTarget);
@@ -1429,5 +1478,104 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 				clearInterval(manageToolsLanguageDropdownInterval);
 			}
 		}, 100);
+
+		toolManagerTab.on("input change", "input, textarea", (event) => {
+			event.stopPropagation();
+
+			if (ManageToolType == null) return;
+
+			CheckToolsManageTabHasChanges(true);
+		});
+
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "tools-tab") return;
+
+			if (ManageToolType == null) return;
+
+			const toolsChanges = CheckToolsManageTabHasChanges(false);
+			if (toolsChanges.hasChanges) {
+				const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+					title: "Unsaved Changes Pending",
+					message: "You have unsaved changes in tools manage tab. Are you sure you want to discard these changes and leave the tools tab?",
+					confirmText: "Discard",
+					cancelText: "Cancel",
+					confirmButtonClass: "btn-danger",
+					modalClass: "modal-lg",
+				});
+
+				const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+
+				if (!confirmDiscardChangesResult) {
+					event.preventDefault();
+					return;
+				}
+
+				switchBackToToolsTab.click();
+				ManageToolType = null;
+			}
+		});
+
+		confirmPublishToolButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingToolManageTab) return;
+
+			// TODO PERFORM VALIDATIONS
+
+			const toolsManageTabChanges = CheckToolsManageTabHasChanges(false);
+			if (!toolsManageTabChanges.hasChanges) {
+				return;
+			}
+
+			confirmPublishToolButton.prop("disabled", true);
+			confirmPublishToolButtonSpinner.removeClass("d-none");
+
+			IsSavingToolManageTab = true;
+
+			const formData = new FormData();
+
+			formData.append("postType", ManageToolType);
+			formData.append("changes", JSON.stringify(toolsManageTabChanges.changes));
+
+			if (ManageToolType === "edit") {
+				formData.append("exisitingToolId", ManageToolId);
+			}
+
+			if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+				formData.append("audioBeforeSpeaking", toolAudioBeforeSpeakingUploadInput[0].files[0]);
+			}
+
+			if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
+				formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
+			}
+
+			if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
+				formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
+			}
+
+			SaveBusinessTool(
+				formData,
+				(saveResponse) => {
+					// todo
+
+					alert("success saving tool manage data");
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occured while saving business tool data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occured while saving business tool data: ", saveError);
+
+					confirmPublishToolButton.prop("disabled", false);
+					confirmPublishToolButtonSpinner.addClass("d-none");
+
+					IsSavingToolManageTab = false;
+				},
+			);
+		});
 	});
 });

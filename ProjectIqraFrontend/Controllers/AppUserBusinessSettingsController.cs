@@ -89,7 +89,7 @@ namespace ProjectIqraFrontend.Controllers
             if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
             {
                 result.Code = "SaveBusinessSettings:6";
-                result.Message = "Business does not have permission to edit settings";
+                result.Message = "Business is currently disabled";
 
                 if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
                 {

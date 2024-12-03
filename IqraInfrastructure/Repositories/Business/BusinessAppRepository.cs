@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -50,6 +51,36 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessApp.Id);
             var result = await _businessAppCollection.ReplaceOneAsync(filter, businessApp);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> CheckBusinessAppToolExists(long businessId, string toolId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == toolId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> UpdateBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == newBusinessAppToolData.Id)
+            );
+                
+            var update = Builders<BusinessApp>.Update.Set(b => b.Tools.FirstMatchingElement(), newBusinessAppToolData);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddBusinessAppTool(long businessId, BusinessAppTool newBusinessAppToolData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Tools, newBusinessAppToolData);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
     }

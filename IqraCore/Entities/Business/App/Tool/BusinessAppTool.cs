@@ -5,7 +5,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppTool
     {
-        public long Id { get; set; }
+        public string Id { get; set; }
         public BusinessAppToolGeneral General { get; set; } = new BusinessAppToolGeneral();
         public BusinessAppToolConfiguration Configuration { get; set; } = new BusinessAppToolConfiguration();
         public Dictionary<HttpStatusEnum, BusinessAppToolResponse> Response { get; set; } = new Dictionary<HttpStatusEnum, BusinessAppToolResponse>();
