@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
+using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
@@ -20,14 +21,27 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
         private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
+        private readonly BusinessToolAudioRepository _businessToolAudioRepository;
 
-        public BusinessManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessLogoRepository businessLogoRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
+        private readonly AudioFileProcessor _audioProcessor;
+
+        public BusinessManager(
+            BusinessRepository businessRepository,
+            BusinessAppRepository businessAppRepository,
+            BusinessLogoRepository businessLogoRepository,
+            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
+            BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository,
+            BusinessToolAudioRepository businessToolAudioRepository
+        )
         {
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
             _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
+            _businessToolAudioRepository = businessToolAudioRepository;
+
+            _audioProcessor = new AudioFileProcessor();
         }
 
         public async Task<FunctionReturnResult<BusinessData?>> AddBusiness(BusinessData businessData, IFormFile? businessLogoFile)
@@ -1304,7 +1318,7 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    if (!inputScheme.TryGetProperty("inputs", out var inputSchemeTypeProperty))
+                    if (!inputScheme.TryGetProperty("type", out var inputSchemeTypeProperty))
                     {
                         result.Code = "AddOrUpdateUserBusinessTools:6";
                         result.Message = "Configuration tab input scheme type property not found.";
@@ -1340,10 +1354,12 @@ namespace IqraInfrastructure.Services.Business
                     }
                     newInputSchemeaData.IsRequired = isRequiredProperty.GetBoolean();
 
+                    newInputSchemeaData.Id = Guid.NewGuid().ToString(); // todo make more name friendly
+
                     NewBusinessAppToolData.Configuration.InputSchemea.Add(newInputSchemeaData);
                 }
 
-                if (!configurationTabRootElement.TryGetProperty("configurationRequestType", out var configurationRequestTypeProperty))
+                if (!configurationTabRootElement.TryGetProperty("requestType", out var configurationRequestTypeProperty))
                 {
                     result.Code = "AddOrUpdateUserBusinessTools:10";
                     result.Message = "Configuration tab configuration request type property not found.";
@@ -1575,7 +1591,6 @@ namespace IqraInfrastructure.Services.Business
                 }
             }
 
-
             // Audio Tab
             if (formData.Files.Count > 0)
             {
@@ -1585,26 +1600,86 @@ namespace IqraInfrastructure.Services.Business
 
                 if (beforeSpeakingAudio != null)
                 {
-                    // todo
-                    // validate file
-                    // upload file to minio
-                    // set the minio fileid to data
+                    var validationResult = await _audioProcessor.ValidateAudioFile(beforeSpeakingAudio);
+                    if (!validationResult.IsValid)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:34";
+                        result.Message = $"Before speaking audio validation failed: {validationResult.ErrorMessage}.";
+                        return result;
+                    }
+
+                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
+                    if (!fileExists)
+                    {
+                        var metadata = new Dictionary<string, string>
+                        {
+                            { "ContentType", validationResult.ContentType }
+                        };
+
+                        await _businessLogoRepository.PutFileAsByteData(
+                            validationResult.Hash,
+                            validationResult.FileBytes,
+                            metadata
+                        );
+                    }
+
+                    NewBusinessAppToolData.Audio.BeforeSpeaking = validationResult.Hash;
                 }
 
                 if (duringSpeakingAudio != null)
                 {
-                    // todo
-                    // validate file
-                    // upload file to minio
-                    // set the minio fileid to data
+                    var validationResult = await _audioProcessor.ValidateAudioFile(duringSpeakingAudio);
+                    if (!validationResult.IsValid)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:35";
+                        result.Message = $"During speaking audio validation failed: {validationResult.ErrorMessage}.";
+                        return result;
+                    }
+
+                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
+                    if (!fileExists)
+                    {
+                        var metadata = new Dictionary<string, string>
+                        {
+                            { "ContentType", validationResult.ContentType }
+                        };
+
+                        await _businessLogoRepository.PutFileAsByteData(
+                            validationResult.Hash,
+                            validationResult.FileBytes,
+                            metadata
+                        );
+                    }
+
+                    NewBusinessAppToolData.Audio.DuringSpeaking = validationResult.Hash;
                 }
 
                 if (afterSpeakingAudio != null)
                 {
-                    // todo
-                    // validate file
-                    // upload file to minio
-                    // set the minio fileid to data
+                    var validationResult = await _audioProcessor.ValidateAudioFile(afterSpeakingAudio);
+                    if (!validationResult.IsValid)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:36";
+                        result.Message = $"After speaking audio validation failed: {validationResult.ErrorMessage}.";
+                        return result;
+                    }
+
+                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
+                    if (!fileExists)
+                    {
+                        var metadata = new Dictionary<string, string>
+                        {
+                            { "ContentType", validationResult.ContentType }
+                        };
+
+                        await _businessLogoRepository.PutFileAsByteData(
+                            validationResult.Hash,
+                            validationResult.FileBytes,
+                            metadata
+                        );
+                    }
+
+                    NewBusinessAppToolData.Audio.AfterSpeaking = validationResult.Hash;
                 }
             }
 
@@ -1616,7 +1691,7 @@ namespace IqraInfrastructure.Services.Business
                 var addBusinessAppToolResult = await _businessAppRepository.AddBusinessAppTool(businessId, NewBusinessAppToolData);
                 if (!addBusinessAppToolResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessTools:34";
+                    result.Code = "AddOrUpdateUserBusinessTools:37";
                     result.Message = "Failed to add business app tool.";
                     return result;
                 }
@@ -1628,7 +1703,7 @@ namespace IqraInfrastructure.Services.Business
                 var saveBusinessAppToolResult = await _businessAppRepository.UpdateBusinessAppTool(businessId, NewBusinessAppToolData);
                 if (!saveBusinessAppToolResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessTools:34";
+                    result.Code = "AddOrUpdateUserBusinessTools:38";
                     result.Message = "Failed to save business app tool.";
                     return result;
                 }

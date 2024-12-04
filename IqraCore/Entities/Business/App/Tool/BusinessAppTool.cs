@@ -1,5 +1,7 @@
 ﻿using IqraCore.Attributes;
 using IqraCore.Entities.Helper;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Options;
 
 namespace IqraCore.Entities.Business
 {
@@ -8,7 +10,9 @@ namespace IqraCore.Entities.Business
         public string Id { get; set; }
         public BusinessAppToolGeneral General { get; set; } = new BusinessAppToolGeneral();
         public BusinessAppToolConfiguration Configuration { get; set; } = new BusinessAppToolConfiguration();
-        public Dictionary<HttpStatusEnum, BusinessAppToolResponse> Response { get; set; } = new Dictionary<HttpStatusEnum, BusinessAppToolResponse>();
+
+        [BsonDictionaryOptions(DictionaryRepresentation.Document)]
+        public DictionaryStringEnumValue<string, HttpStatusEnum, BusinessAppToolResponse> Response { get; set; } = new DictionaryStringEnumValue<string, HttpStatusEnum, BusinessAppToolResponse>();
         public BusinessAppToolAudio Audio { get; set; } = new BusinessAppToolAudio();
     }
 

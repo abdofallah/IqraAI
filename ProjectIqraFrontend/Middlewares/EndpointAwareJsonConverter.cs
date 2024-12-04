@@ -1,10 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using IqraCore.Attributes;
+using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper;
 
 namespace ProjectIqraFrontend.Middlewares
 {
@@ -278,6 +281,24 @@ namespace ProjectIqraFrontend.Middlewares
                 writer.WriteStartObject();
                 writer.WriteNumber("value", Convert.ToInt32(value));
                 writer.WriteString("name", Enum.GetName(value.GetType(), value));
+                writer.WriteEndObject();
+                return true;
+            }
+
+            if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(DictionaryStringEnumValue<,,>))
+            {
+                writer.WriteStartObject();
+
+                if (value is IInternalDictionaryProvider dictionaryProvider)
+                {
+                    var dictionary = dictionaryProvider.GetInternalDictionary();
+                    foreach (DictionaryEntry entry in dictionary)
+                    {
+                        writer.WritePropertyName(entry.Key.ToString() ?? string.Empty);
+                        JsonSerializer.Serialize(writer, entry.Value, options);
+                    }
+                }
+
                 writer.WriteEndObject();
                 return true;
             }

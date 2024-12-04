@@ -102,8 +102,16 @@ namespace ProjectIqraFrontend
                 appConfig["BusinessDomainHostingRepository:ProxyTemplatesFTP:Password"],
                 appRepository
             );
+            BusinessToolAudioRepository businessToolAudioRepository = new BusinessToolAudioRepository(
+                appConfig["BusinessToolAudioRepository:Endpoint"],
+                int.Parse(appConfig["BusinessToolAudioRepository:Port"]),
+                appConfig["BusinessToolAudioRepository:AccessKey"],
+                appConfig["BusinessToolAudioRepository:SecretKey"],
+                appConfig["BusinessToolAudioRepository:BucketName"],
+                bool.Parse(appConfig["BusinessToolAudioRepository:IsSecure"])
+            );
 
-            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository);
+            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository, businessToolAudioRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             // Number

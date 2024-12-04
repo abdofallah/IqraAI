@@ -1,5 +1,4 @@
-﻿using Amazon.Runtime.Internal.Transform;
-using FluentFTP;
+﻿using FluentFTP;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.App;

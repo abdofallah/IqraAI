@@ -593,13 +593,13 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		}
 		changes.configuration.inputSchemea = checkInputArguementsList();
 
-		changes.configuration.requestType = inputToolType.val();
-		if (parseInt(inputToolType.val()) !== CurrentManageToolData.configuration.requestType) {
+		changes.configuration.requestType = parseInt(inputToolType.val());
+		if (changes.configuration.requestType !== CurrentManageToolData.configuration.requestType) {
 			hasChanges = true;
 		}
 
 		changes.configuration.endpoint = inputToolURL.val();
-		if (inputToolURL.val() !== CurrentManageToolData.configuration.endpoint) {
+		if (changes.configuration.endpoint !== CurrentManageToolData.configuration.endpoint) {
 			hasChanges = true;
 		}
 
@@ -643,12 +643,12 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType) {
 			hasChanges = true;
 		}
-		if (changes.configuration.bodyType !== "none") {
-			if (changes.configuration.bodyType === "form-data" || changes.configuration.bodyType === "x-www-form-urlencoded") {
+		if (changes.configuration.bodyType !== 0) {
+			if (changes.configuration.bodyType === 1 || changes.configuration.bodyType === 2) {
 				const formKeyValData = {};
 				const formKeyValElements = toolBodyKeyValueViewList.children();
 
-				if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
+				if (CurrentManageToolData.configuration.bodyType === 1 || CurrentManageToolData.configuration.bodyType === 2) {
 					const currentFormKeyValCount = formKeyValElements.length;
 					const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
 					if (currentFormKeyValCount !== originalFormKeyValCount) {
@@ -673,7 +673,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 					formKeyValData[key] = value;
 
-					if (CurrentManageToolData.configuration.bodyType === "form-data" || CurrentManageToolData.configuration.bodyType === "x-www-form-urlencoded") {
+					if (CurrentManageToolData.configuration.bodyType === 1 || CurrentManageToolData.configuration.bodyType === 2) {
 						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.bodyData[key] !== value) {
 							hasChanges = true;
 						}
@@ -683,10 +683,10 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				changes.configuration.bodyData = formKeyValData;
 			}
 
-			if (changes.configuration.bodyType === "raw") {
+			if (changes.configuration.bodyType === 3) {
 				changes.configuration.bodyData = toolBodyRawTextarea.val();
 
-				if (CurrentManageToolData.configuration.bodyType === "raw" && CurrentManageToolData.configuration.bodyData !== toolBodyRawTextarea.val()) {
+				if (CurrentManageToolData.configuration.bodyType === 3 && CurrentManageToolData.configuration.bodyData !== toolBodyRawTextarea.val()) {
 					hasChanges = true;
 				}
 			}
@@ -1546,8 +1546,8 @@ require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 				formData.append("audioBeforeSpeaking", toolAudioBeforeSpeakingUploadInput[0].files[0]);
 			}
 
-			if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
-				formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
+			if (toolAudioDuringSpeakingUploadInput[0].files.length > 0) {
+				formData.append("audioDuringSpeaking", toolAudioDuringSpeakingUploadInput[0].files[0]);
 			}
 
 			if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
