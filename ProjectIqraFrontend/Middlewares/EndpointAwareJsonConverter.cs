@@ -294,8 +294,12 @@ namespace ProjectIqraFrontend.Middlewares
                     var dictionary = dictionaryProvider.GetInternalDictionary();
                     foreach (DictionaryEntry entry in dictionary)
                     {
-                        writer.WritePropertyName(entry.Key.ToString() ?? string.Empty);
-                        JsonSerializer.Serialize(writer, entry.Value, options);
+                        var enumType = valueType.GenericTypeArguments[1];
+                        if (Enum.TryParse(enumType, entry.Key.ToString(), out object? enumValue))
+                        {
+                            writer.WritePropertyName(Convert.ToInt32(enumValue).ToString());
+                            JsonSerializer.Serialize(writer, entry.Value, options);
+                        }
                     }
                 }
 

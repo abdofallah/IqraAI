@@ -2333,7 +2333,7 @@
                         </button>
                         <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmPublishToolButton" disabled>
                             <i class='fa-regular fa-floppy-disk'></i>
-                            <span>Update</span>
+                            <span>Save</span>
                             <div class="spinner-border save-button-spinner d-none" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -4663,6 +4663,7 @@
     <!-- ASP -->
     <script>
         const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
+        const BusinessToolAudioURL = "@(TempData["BusinessToolAudioURL"])";
     </script>
 
     <!-- Libraries -->
@@ -4746,6 +4747,7 @@
 
         var BusinessFullData = null;
         var SpecificationLanguagesListData = null;
+        var BusinessDefaultLanguage = null;
 
         // API Related Functions
 
@@ -4786,8 +4788,6 @@
                 }
             });
         }
-    
-
     </script>
 
     <!-- New Business Tutorial -->
@@ -4942,9 +4942,10 @@
                     FetchBusinessDataFromAPI(CurrentBusinessId,
                         (businessData) => {
                             BusinessFullData = businessData;
+                            BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
 
                             initSettingsTab();
-		                    FillToolsTab();
+		                    initToolsTab();
 
                             let businessTutorials = BusinessFullData.businessData.tutorials;
                             if (businessTutorials)

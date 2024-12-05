@@ -137,7 +137,8 @@ namespace ProjectIqraFrontend
             // Views Links Config
             ViewLinkConfiguration viewLinkConfiguration = new ViewLinkConfiguration()
             {
-                BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"]
+                BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"],
+                BusinessToolAudioURL = appConfig["BusinessToolAudioRepository:PublicURL"] + "/" + appConfig["BusinessToolAudioRepository:BucketName"],
             };
             builder.Services.AddSingleton<ViewLinkConfiguration>(viewLinkConfiguration);
 

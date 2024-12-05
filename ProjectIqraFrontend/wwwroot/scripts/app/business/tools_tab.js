@@ -83,10 +83,12 @@ let ToolAudioAfterSpeakingWaveSurfer = null;
 
 let CurrentManageToolNameMultiLangData = {};
 let CurrentManageToolShortDescriptionMultiLangData = {};
-const CurrentManageToolInputSchemeaMultiLangData = {};
-const CurrentManageToolResponseStaticResponse = {};
+let CurrentManageToolInputSchemeaMultiLangData = {};
+let CurrentManageToolResponseStaticResponse = {};
 
 let IsSavingToolManageTab = false;
+
+let manageToolsLanguageDropdown = null;
 
 /** Elements Variables **/
 const toolsTab = $("#tools-tab");
@@ -164,25 +166,6 @@ const toolAudioAfterSpeakingInputBox = toolAudioAfterSpeakingBox.find("#toolAudi
 const toolAudioAfterSpeakingUploadBtn = toolAudioAfterSpeakingInputBox.find("#tool-audio-after-upload-btn");
 const toolAudioAfterSpeakingUploadInput = toolAudioAfterSpeakingInputBox.find("#toolAudioAfterSpeakingUploadInput");
 const toolAudioAfterSpeakingVolumeInput = toolAudioAfterSpeakingBox.find("#toolAudioAfterSpeakingVolumeInput");
-
-let manageToolsLanguageDropdown = null;
-RunActionAfterBusinessDataLoad(() => {
-	RunActionAfterLanguagesSpecificationLoad(() => {
-		const businessLanguages = [];
-
-		BusinessFullData.businessData.languages.forEach((value, index) => {
-			const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
-				return data.id === value;
-			});
-
-			if (countryCodeLanguage) {
-				businessLanguages.push(countryCodeLanguage);
-			}
-		});
-
-		manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", businessLanguages);
-	});
-});
 
 // Api Functions
 
@@ -345,7 +328,7 @@ function CreateToolsTableElement(data) {
 	const element = `
         <tr tool-id="${data.id}">
             <td>
-                <b>${data.general.name}</b>
+                <b>${data.general.name[BusinessDefaultLanguage]}</b>
             </td>
             <td>
                 <button class="btn btn-info btn-sm" button-type="edit-tool" tool-id="${data.id}">
@@ -454,6 +437,8 @@ function ResetAndEmptyToolsManageTab() {
 	});
 
 	confirmPublishToolButton.prop("disabled", true);
+
+	toolManagerTab.find(".is-invalid").removeClass("is-invalid");
 }
 
 function ShowToolsListTab() {
@@ -482,10 +467,14 @@ function CreateToolsDefaultToolObject() {
 		},
 		configuration: {
 			inputSchemea: [],
-			requestType: 0,
+			requestType: {
+				value: 0,
+			},
 			endpoint: "",
 			headers: {},
-			bodyType: 0,
+			bodyType: {
+				value: 0,
+			},
 			bodyData: null,
 		},
 		response: {},
@@ -579,7 +568,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				if (index < CurrentManageToolData.configuration.inputSchemea.length) {
 					const originalArgument = CurrentManageToolData.configuration.inputSchemea[index];
 
-					if (originalArgument.type !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
+					if (originalArgument.type.value !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
 						hasChanges = true;
 					}
 				} else {
@@ -594,7 +583,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		changes.configuration.inputSchemea = checkInputArguementsList();
 
 		changes.configuration.requestType = parseInt(inputToolType.val());
-		if (changes.configuration.requestType !== CurrentManageToolData.configuration.requestType) {
+		if (changes.configuration.requestType !== CurrentManageToolData.configuration.requestType.value) {
 			hasChanges = true;
 		}
 
@@ -624,7 +613,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 				headers[key] = value;
 
-				if (!CurrentManageToolData.configuration.headers.hasOwnProperty(key) || CurrentManageToolData.headers[key] !== value) {
+				if (!CurrentManageToolData.configuration.headers.hasOwnProperty(key) || CurrentManageToolData.configuration.headers[key] !== value) {
 					hasChanges = true;
 				}
 			});
@@ -640,7 +629,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		changes.configuration.headers = checkHeadersList();
 
 		changes.configuration.bodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
-		if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType) {
+		if (changes.configuration.bodyType !== CurrentManageToolData.configuration.bodyType.value) {
 			hasChanges = true;
 		}
 		if (changes.configuration.bodyType !== 0) {
@@ -648,7 +637,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				const formKeyValData = {};
 				const formKeyValElements = toolBodyKeyValueViewList.children();
 
-				if (CurrentManageToolData.configuration.bodyType === 1 || CurrentManageToolData.configuration.bodyType === 2) {
+				if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
 					const currentFormKeyValCount = formKeyValElements.length;
 					const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
 					if (currentFormKeyValCount !== originalFormKeyValCount) {
@@ -673,7 +662,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 					formKeyValData[key] = value;
 
-					if (CurrentManageToolData.configuration.bodyType === 1 || CurrentManageToolData.configuration.bodyType === 2) {
+					if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
 						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.bodyData[key] !== value) {
 							hasChanges = true;
 						}
@@ -718,7 +707,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				if (!previousData) {
 					hasChanges = true;
 				} else {
-					if (previousData.javascript !== response[statusType].editorValue) {
+					if (previousData.javascript !== response[statusType].javascript) {
 						hasChanges = true;
 					}
 
@@ -729,8 +718,6 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 				if (response[statusType].hasStaticResponse) {
 					BusinessFullData.businessData.languages.forEach((language) => {
-						const fullLanguageData = SpecificationLanguagesListData.find((d) => d.id === language);
-
 						const value = CurrentManageToolResponseStaticResponse[statusType][language];
 						response[statusType].staticResponse[language] = value;
 
@@ -751,15 +738,30 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	function CheckAudioTabHasChanges() {
 		changes.audio = {};
 
-		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+		if (CurrentManageToolData.audio.beforeSpeaking != null && toolAudioBeforeSpeakingSelect.val() === "none") {
+			hasChanges = true;
+		} else if (CurrentManageToolData.audio.beforeSpeaking == null && toolAudioBeforeSpeakingSelect.val() === "custom") {
+			hasChanges = true;
+		}
+		if (toolAudioBeforeSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
 			hasChanges = true;
 		}
 
-		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+		if (CurrentManageToolData.audio.duringSpeaking != null && toolAudioDuringSpeakingSelect.val() === "none") {
+			hasChanges = true;
+		} else if (CurrentManageToolData.audio.duringSpeaking == null && toolAudioDuringSpeakingSelect.val() === "custom") {
+			hasChanges = true;
+		}
+		if (toolAudioDuringSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
 			hasChanges = true;
 		}
 
-		if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+		if (CurrentManageToolData.audio.afterSpeaking != null && toolAudioAfterSpeakingSelect.val() === "none") {
+			hasChanges = true;
+		} else if (CurrentManageToolData.audio.afterSpeaking == null && toolAudioAfterSpeakingSelect.val() === "custom") {
+			hasChanges = true;
+		}
+		if (toolAudioAfterSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
 			hasChanges = true;
 		}
 	}
@@ -884,7 +886,7 @@ function onToolsAudioUploadValidation(event) {
 			enableDismiss: false,
 		});
 
-		toolAudioBeforeSpeakingUploadInput.val("");
+		$(event.currentTarget).val("");
 		return false;
 	}
 
@@ -934,648 +936,1112 @@ function CreateToolAudioWavesurfer(containerId) {
 	return waveSurferConversation;
 }
 
-require(["vs/editor/editor.main", "esprima"], (_, parser) => {
-	$(document).ready(() => {
-		addNewToolbutton.on("click", (event) => {
-			event.preventDefault();
+function CreateToolConfigurationHeaderElement() {
+	const element = `
+		<div class="input-group mt-1 tool-header-box">
+			<input type="text" class="form-control" data-type="key" placeholder="Key">
+			<input type="text" class="form-control" data-type="value" placeholder="Value">
+			<button class="btn btn-danger" button-type="removeToolHeader">
+				<i class="fa-regular fa-trash"></i>
+			</button>
+		</div>
+	`;
 
-			ResetAndEmptyToolsManageTab();
-			currentToolName.text("New Tool");
+	return element;
+}
 
-			ManageToolType = "new";
-			CurrentManageToolData = CreateToolsDefaultToolObject();
+function CreateToolConfigurationBodyKeyValueElement() {
+	const element = `
+		<div class="input-group mt-1">
+			<input type="text" class="form-control" data-type="key" placeholder="Key">
+			<input type="text" class="form-control" data-type="value" placeholder="Value">
+			<button class="btn btn-danger" button-type="removeToolBodyKeyValue">
+				<i class="fa-regular fa-trash"></i>
+			</button>
+		</div>
+	`;
 
-			ShowToolsManageTab();
+	return element;
+}
+
+function CreateToolResponseMonacoStatus(selectedResponseType) {
+	const selectedOptionElementChild = toolResponseStatusSelect.children();
+
+	let selectedOptionElement = null;
+	selectedOptionElementChild.each((index, element) => {
+		if ($(element).val() === selectedResponseType) {
+			selectedOptionElement = $(element);
+		}
+	});
+
+	addToolResponseStatusTypeButton.prop("disabled", true);
+	setTimeout(
+		() => {
+			addToolResponseStatusTypeButton.prop("disabled", false);
+		},
+		toolResponseStatusTypeListButtons.children().length === 0 ? 500 : 100,
+	);
+
+	if (!selectedOptionElement) {
+		alert("Please select a valid status code");
+		return;
+	}
+
+	$(".responseStatusBox").addClass("d-none");
+
+	const editorId = `responseStatus${selectedResponseType}CodeInput`;
+
+	const elementData = $(`
+		<div class="responseStatusBox" status-type="${selectedResponseType}">
+			<h5 class="mb-3">${selectedResponseType} Response</h5>
+			<div class="mb-3">
+				<div class="d-flex flex-row align-items-center justify-content-between mb-2">
+						<label class="form-label mb-0">Javascript Code</label>
+						<button class="btn btn-danger" button-type="removeToolResponseStatusType" status-type="${selectedResponseType}">
+							<i class="fa-regular fa-trash"></i>
+						</button>
+				</div>
+				<div id="${editorId}" element-type="toolResponseStatusElement" status-code="${selectedResponseType}">
+						<div class="mon-editor"></div>
+						<div class="error-result-container">
+							<p class="returnAlert d-none m-0 mt-2">
+								<span class="d-block"><i class="fa-regular fa-circle-exclamation"></i> Does not contain a return statement.<br>Make sure a value is returned in every possible scenario.</span>
+								<span style="color: orange" class="d-block">- Every If condition that is returning a value must have an else statement returning a value too. Even if the condition will always be true.<br>- Wrapping or using IIFE in the code is not supported: <code>(() => { ... })()</code></span>
+							</p>
+
+							<ul></ul>
+						</div>
+				</div>
+			</div>
+			<div>
+				<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" role="switch" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseCheck" id="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
+						<label class="form-check-label" for="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
+							<span>Speak Static Response</span>
+							<i class="fa-regular fa-language"></i>
+						</label>
+						<a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Predefined response for AI to speak rather than a generated one.<br><br>Use {{response_data}} variable to include the response data in the spoken response.">
+							<i class="fa-regular fa-circle-question"></i>
+						</a>
+				</div>
+				<div class="mt-2 d-none">
+						<input type="text" class="form-control" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseText" id="toolResponseStatusSpeakStaticResponseText${selectedResponseType}" placeholder="Static response for AI to speak">
+				</div>
+			</div>
+		</div>
+	`);
+	toolResponseStatusTypeList.append(elementData);
+
+	const staticResponseTooltip = new bootstrap.Tooltip(elementData.find('a[data-bs-toggle="tooltip"]'));
+
+	initResponseCodeEditor(selectedResponseType, editorId);
+
+	$('[button-type="selectToolResponseStatusType"]').removeClass("active");
+	toolResponseStatusTypeListButtons.append(`
+						<button class="btn btn-light me-2 active" button-type="selectToolResponseStatusType" status-type="${selectedResponseType}">
+							${selectedResponseType}
+						</button>
+					`);
+
+	selectedOptionElement.remove();
+}
+
+function FillToolsManageTab(toolData) {
+	// General
+	function fillGeneralTab() {
+		CurrentManageToolNameMultiLangData = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			CurrentManageToolNameMultiLangData[language] = toolData.general.name[language];
 		});
+		inputToolName.val(CurrentManageToolNameMultiLangData[BusinessDefaultLanguage]);
 
-		switchBackToToolsTab.on("click", (event) => {
-			event.preventDefault();
-
-			toolManagerTab.removeClass("show");
-
-			ShowToolsListTab();
+		CurrentManageToolShortDescriptionMultiLangData = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			CurrentManageToolShortDescriptionMultiLangData[language] = toolData.general.shortDescription[language];
 		});
+		inputToolShortDescription.val(CurrentManageToolShortDescriptionMultiLangData[BusinessDefaultLanguage]);
+	}
+	fillGeneralTab();
 
-		addToolInputArgumentButton.on("click", (event) => {
-			event.preventDefault();
+	// Configuration
+	function fillConfigurationTab() {
+		inputToolType.val(toolData.configuration.requestType.value).change();
+		inputToolURL.val(toolData.configuration.endpoint);
 
-			const index = CurrentManageToolSchemeaListIndex++;
+		CurrentManageToolInputSchemeaMultiLangData = {};
+		toolData.configuration.inputSchemea.forEach((schema, index) => {
+			const argumentBox = $(CreateToolsConfigurationInputSchemeaElement(index));
+
+			toolInputArguementsList.append(argumentBox);
+
+			argumentBox.find('[data-type="typeSelect"]').val(schema.type.value).change();
+			argumentBox.find(`[data-type="required"][id^="toolInputArguementArray"]`).prop("checked", schema.isArray);
+			argumentBox.find(`[data-type="required"][id^="toolInputArguementRequired"]`).prop("checked", schema.isRequired);
 
 			CurrentManageToolInputSchemeaMultiLangData[index] = {
-				name: {},
-				description: {},
+				name: schema.name,
+				description: schema.description,
 			};
 
+			argumentBox.find('[data-type="name"]').val(schema.name[BusinessDefaultLanguage]);
+			argumentBox.find('[data-type="description"]').val(schema.description[BusinessDefaultLanguage]);
+		});
+
+		Object.entries(toolData.configuration.headers).forEach(([key, value]) => {
+			const headerBox = $(CreateToolConfigurationHeaderElement());
+
+			toolHeadersList.append(headerBox);
+
+			headerBox.find('[data-type="key"]').val(key);
+			headerBox.find('[data-type="value"]').val(value);
+		});
+
+		toolManagerTab.find(`[name="toolBodyTypeCheckbox"][value="${toolData.configuration.bodyType.value}"]`).prop("checked", true).change();
+
+		if (toolData.configuration.bodyType.value !== 0) {
+			if (toolData.configuration.bodyType.value === 1 || toolData.configuration.bodyType.value === 2) {
+				Object.entries(toolData.configuration.bodyData).forEach(([key, value]) => {
+					const keyValBox = $(CreateToolConfigurationBodyKeyValueElement());
+
+					toolBodyKeyValueViewList.append(keyValBox);
+
+					keyValBox.find('[data-type="key"]').val(key);
+					keyValBox.find('[data-type="value"]').val(value);
+				});
+			} else if (toolData.configuration.bodyType.value === 3) {
+				toolBodyRawTextarea.val(toolData.configuration.bodyData);
+			}
+		}
+	}
+	fillConfigurationTab();
+
+	// Response
+	function fillResponseTab() {
+		responseStatusMonacoEditors = [];
+		CurrentManageToolResponseStaticResponse = {};
+
+		Object.entries(toolData.response).forEach(([statusType, responseData]) => {
+			CreateToolResponseMonacoStatus(statusType);
+
+			const editor = responseStatusMonacoEditors.find((e) => e.statusType === statusType)?.editor;
+			if (editor) {
+				editor.setValue(responseData.javascript);
+
+				toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked", responseData.hasStaticResponse).change();
+
+				if (responseData.hasStaticResponse && responseData.staticResponse) {
+					CurrentManageToolResponseStaticResponse[statusType] = responseData.staticResponse;
+
+					toolManagerTab
+						.find(`input[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`)
+						.val(CurrentManageToolResponseStaticResponse[statusType][BusinessDefaultLanguage]);
+				}
+			}
+		});
+	}
+	fillResponseTab();
+
+	// Audio
+	function fillAudioTab() {
+		if (toolData.audio.beforeSpeaking) {
+			toolAudioBeforeSpeakingSelect.val("custom").change();
+
+			ToolAudioBeforeSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.beforeSpeaking}`);
+
+			toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+			toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+			toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+		}
+		if (toolData.audio.duringSpeaking) {
+			toolAudioDuringSpeakingSelect.val("custom").change();
+
+			ToolAudioDuringSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringSpeaking}`);
+
+			toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+			toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+			toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+		}
+		if (toolData.audio.afterSpeaking) {
+			toolAudioAfterSpeakingSelect.val("custom").change();
+
+			ToolAudioAfterSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterSpeaking}`);
+
+			toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+			toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+			toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+		}
+	}
+	fillAudioTab();
+}
+
+function ValidateToolsManageTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	// General Tab Validation
+	function validateGeneralTab() {
+		// Name validation for all languages
+		BusinessFullData.businessData.languages.forEach((language) => {
+			if (!CurrentManageToolNameMultiLangData[language] || CurrentManageToolNameMultiLangData[language].trim().length === 0) {
+				validated = false;
+				errors.push(`Tool name for language ${language} is required and cannot be empty.`);
+
+				if (!onlyRemove) {
+					inputToolName.addClass("is-invalid");
+				}
+			} else {
+				inputToolName.removeClass("is-invalid");
+			}
+		});
+
+		// Short description validation for all languages
+		BusinessFullData.businessData.languages.forEach((language) => {
+			if (!CurrentManageToolShortDescriptionMultiLangData[language] || CurrentManageToolShortDescriptionMultiLangData[language].trim().length === 0) {
+				validated = false;
+				errors.push(`Tool short description for language ${language} is required and cannot be empty.`);
+
+				if (!onlyRemove) {
+					inputToolShortDescription.addClass("is-invalid");
+				}
+			} else {
+				inputToolShortDescription.removeClass("is-invalid");
+			}
+		});
+	}
+
+	// Configuration Tab Validation
+	function validateConfigurationTab() {
+		// Request type validation
+		if (inputToolType.val() === "-1" || inputToolType.val() === null) {
+			validated = false;
+			errors.push("Request type is required.");
+
+			if (!onlyRemove) {
+				inputToolType.addClass("is-invalid");
+			}
+		} else {
+			inputToolType.removeClass("is-invalid");
+		}
+
+		// Endpoint validation
+		if (inputToolURL.val().trim() === "") {
+			validated = false;
+			errors.push("Endpoint URL is required and cannot be empty.");
+
+			if (!onlyRemove) {
+				inputToolURL.addClass("is-invalid");
+			}
+		} else {
+			inputToolURL.removeClass("is-invalid");
+		}
+
+		// Input schema validation for each argument
+		const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
+		argumentElements.each((idx, element) => {
+			const currentElement = $(element);
+			const index = parseInt(currentElement.attr("data-index"));
+			const typeSelect = currentElement.find('[data-type="typeSelect"]');
+
+			// Validate multilanguage name for each argument
 			BusinessFullData.businessData.languages.forEach((language) => {
-				CurrentManageToolInputSchemeaMultiLangData[index].name[language] = "";
-				CurrentManageToolInputSchemeaMultiLangData[index].description[language] = "";
-			});
+				if (!CurrentManageToolInputSchemeaMultiLangData[index]?.name[language] || CurrentManageToolInputSchemeaMultiLangData[index].name[language].trim().length === 0) {
+					validated = false;
+					errors.push(`Input argument #${idx + 1} name for language ${language} is required.`);
 
-			toolInputArguementsList.append($(CreateToolsConfigurationInputSchemeaElement(index)));
-
-			validateToolsAllMultilanguageElements();
-		});
-
-		$(document).on("change", '[select-type="toolInputArgumentTypeSelect" ]', (event) => {
-			const target = $(event.currentTarget);
-
-			const selectedValue = target.val();
-
-			if (selectedValue === "datetime") {
-				target.parent().find('[data-type="datetime-format"]').removeClass("d-none");
-			} else {
-				target.parent().find('[data-type="datetime-format"]').addClass("d-none");
-			}
-		});
-
-		$(document).on("click", '[button-type="removeToolInputArgument"]', (event) => {
-			event.preventDefault();
-
-			const currentElement = $(event.currentTarget);
-			const parentElement = currentElement.parent();
-
-			const dataIndex = parentElement.attr("data-index");
-
-			delete CurrentManageToolInputSchemeaMultiLangData[dataIndex];
-
-			parentElement.remove();
-
-			validateToolsAllMultilanguageElements();
-		});
-
-		addToolHeaderButton.on("click", (event) => {
-			event.preventDefault();
-
-			toolHeadersList.append(`
-                              <div class="input-group mt-1 tool-header-box">
-                                   <input type="text" class="form-control" data-type="key" placeholder="Key">
-                                   <input type="text" class="form-control" data-type="value" placeholder="Value">
-                                   <button class="btn btn-danger" button-type="removeToolHeader">
-                                        <i class="fa-regular fa-trash"></i>
-                                   </button>
-                              </div>
-                         `);
-		});
-
-		$(document).on("click", '[button-type="removeToolHeader"]', (event) => {
-			event.preventDefault();
-
-			$(event.currentTarget).parent().remove();
-		});
-
-		toolBodyType.on("change", (event) => {
-			const target = $(event.currentTarget);
-			const value = parseInt(target.val());
-
-			if (value === 1 || value === 2) {
-				toolBodyNone.addClass("d-none");
-				toolBodyRawView.addClass("d-none");
-
-				toolBodyKeyValueView.removeClass("d-none");
-			} else if (value === 3) {
-				toolBodyNone.addClass("d-none");
-				toolBodyKeyValueView.addClass("d-none");
-
-				toolBodyRawView.removeClass("d-none");
-			} else {
-				toolBodyKeyValueView.addClass("d-none");
-				toolBodyRawView.addClass("d-none");
-
-				toolBodyNone.removeClass("d-none");
-			}
-		});
-
-		addToolBodyKeyValueButton.on("click", (event) => {
-			event.preventDefault();
-
-			toolBodyKeyValueViewList.append(`
-                              <div class="input-group mt-1">
-                                   <input type="text" class="form-control" data-type="key" placeholder="Key">
-                                   <input type="text" class="form-control" data-type="value" placeholder="Value">
-                                   <button class="btn btn-danger" button-type="removeToolBodyKeyValue">
-                                        <i class="fa-regular fa-trash"></i>
-                                   </button>
-                              </div>
-                         `);
-		});
-
-		$(document).on("click", '[button-type="removeToolBodyKeyValue"]', (event) => {
-			event.preventDefault();
-
-			$(event.currentTarget).parent().remove();
-		});
-
-		addToolResponseStatusTypeButton.on("click", (event) => {
-			event.preventDefault();
-
-			addToolResponseStatusTypeButton.prop("disabled", true);
-			setTimeout(
-				() => {
-					addToolResponseStatusTypeButton.prop("disabled", false);
-				},
-				toolResponseStatusTypeListButtons.children().length === 0 ? 500 : 100,
-			);
-
-			const selectedResponseType = toolResponseStatusSelect.val();
-			const selectedOptionElementChild = toolResponseStatusSelect.children();
-
-			let selectedOptionElement = null;
-			selectedOptionElementChild.each((index, element) => {
-				if ($(element).val() === selectedResponseType) {
-					selectedOptionElement = $(element);
+					if (!onlyRemove) {
+						currentElement.find('[data-type="name"]').addClass("is-invalid");
+					}
+				} else {
+					currentElement.find('[data-type="name"]').removeClass("is-invalid");
 				}
 			});
 
-			if (!selectedOptionElement) {
-				alert("Please select a valid status code");
-				return;
+			// Validate multilanguage description for each argument
+			BusinessFullData.businessData.languages.forEach((language) => {
+				if (!CurrentManageToolInputSchemeaMultiLangData[index]?.description[language] || CurrentManageToolInputSchemeaMultiLangData[index].description[language].trim().length === 0) {
+					validated = false;
+					errors.push(`Input argument #${idx + 1} description for language ${language} is required.`);
+
+					if (!onlyRemove) {
+						currentElement.find('[data-type="description"]').addClass("is-invalid");
+					}
+				} else {
+					currentElement.find('[data-type="description"]').removeClass("is-invalid");
+				}
+			});
+
+			if (typeSelect.val() === "0") {
+				validated = false;
+				errors.push(`Input argument #${idx + 1} type must be selected.`);
+
+				if (!onlyRemove) {
+					typeSelect.addClass("is-invalid");
+				}
+			} else {
+				typeSelect.removeClass("is-invalid");
 			}
-
-			$(".responseStatusBox").addClass("d-none");
-
-			const editorId = `responseStatus${selectedResponseType}CodeInput`;
-
-			const elementData = $(`
-                <div class="responseStatusBox" status-type="${selectedResponseType}">
-                    <h5 class="mb-3">${selectedResponseType} Response</h5>
-                    <div class="mb-3">
-                        <div class="d-flex flex-row align-items-center justify-content-between mb-2">
-                                <label class="form-label mb-0">Javascript Code</label>
-                                <button class="btn btn-danger" button-type="removeToolResponseStatusType" status-type="${selectedResponseType}">
-                                    <i class="fa-regular fa-trash"></i>
-                                </button>
-                        </div>
-                        <div id="${editorId}" element-type="toolResponseStatusElement" status-code="${selectedResponseType}">
-                                <div class="mon-editor"></div>
-                                <div class="error-result-container">
-                                    <p class="returnAlert d-none m-0 mt-2">
-                                        <span class="d-block"><i class="fa-regular fa-circle-exclamation"></i> Does not contain a return statement.<br>Make sure a value is returned in every possible scenario.</span>
-                                        <span style="color: orange" class="d-block">- Every If condition that is returning a value must have an else statement returning a value too. Even if the condition will always be true.<br>- Wrapping or using IIFE in the code is not supported: <code>(() => { ... })()</code></span>
-                                    </p>
-
-                                    <ul></ul>
-                                </div>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseCheck" id="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
-                                <label class="form-check-label" for="toolResponseStatusSpeakStaticResponseCheck${selectedResponseType}">
-                                    <span>Speak Static Response</span>
-									<i class="fa-regular fa-language"></i>
-                                </label>
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Predefined response for AI to speak rather than a generated one.<br><br>Use {{response_data}} variable to include the response data in the spoken response.">
-                                    <i class="fa-regular fa-circle-question"></i>
-                                </a>
-                        </div>
-                        <div class="mt-2 d-none">
-                                <input type="text" class="form-control" status-type="${selectedResponseType}" input-type="toolResponseStatusSpeakStaticResponseText" id="toolResponseStatusSpeakStaticResponseText${selectedResponseType}" placeholder="Static response for AI to speak">
-                        </div>
-                    </div>
-                </div>
-            `);
-			toolResponseStatusTypeList.append(elementData);
-
-			const staticResponseTooltip = new bootstrap.Tooltip(elementData.find('a[data-bs-toggle="tooltip"]'));
-
-			initResponseCodeEditor(selectedResponseType, editorId);
-
-			$('[button-type="selectToolResponseStatusType"]').removeClass("active");
-			toolResponseStatusTypeListButtons.append(`
-                              <button class="btn btn-light me-2 active" button-type="selectToolResponseStatusType" status-type="${selectedResponseType}">
-                                   ${selectedResponseType}
-                              </button>
-                         `);
-
-			selectedOptionElement.remove();
 		});
 
-		$(document).on("click", '[input-type="toolResponseStatusSpeakStaticResponseCheck"]', (event) => {
-			const statusType = $(event.currentTarget).attr("status-type");
+		// Headers validation
+		const headerElements = toolHeadersList.find(".tool-header-box");
+		headerElements.each((idx, element) => {
+			const currentElement = $(element);
+			const keyInput = currentElement.find('[data-type="key"]');
+			const valueInput = currentElement.find('[data-type="value"]');
 
-			$(`[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`).parent().toggleClass("d-none");
+			if (keyInput.val().trim() === "") {
+				validated = false;
+				errors.push(`Header #${idx + 1} key is required.`);
 
-			const isChecked = $(event.currentTarget).is(":checked");
+				if (!onlyRemove) {
+					keyInput.addClass("is-invalid");
+				}
+			} else {
+				keyInput.removeClass("is-invalid");
+			}
 
-			if (isChecked) {
-				CurrentManageToolResponseStaticResponse[statusType] = {};
+			if (valueInput.val().trim() === "") {
+				validated = false;
+				errors.push(`Header #${idx + 1} value is required.`);
+
+				if (!onlyRemove) {
+					valueInput.addClass("is-invalid");
+				}
+			} else {
+				valueInput.removeClass("is-invalid");
+			}
+		});
+
+		// Body validation based on type
+		const selectedBodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
+		if (selectedBodyType === 1 || selectedBodyType === 2) {
+			// Form-data or x-www-form-urlencoded
+			const bodyElements = toolBodyKeyValueViewList.find(".tool-body-keyval-box");
+			bodyElements.each((idx, element) => {
+				const currentElement = $(element);
+				const keyInput = currentElement.find('[data-type="key"]');
+				const valueInput = currentElement.find('[data-type="value"]');
+
+				if (keyInput.val().trim() === "") {
+					validated = false;
+					errors.push(`Body form data #${idx + 1} key is required.`);
+
+					if (!onlyRemove) {
+						keyInput.addClass("is-invalid");
+					}
+				} else {
+					keyInput.removeClass("is-invalid");
+				}
+
+				if (valueInput.val().trim() === "") {
+					validated = false;
+					errors.push(`Body form data #${idx + 1} value is required.`);
+
+					if (!onlyRemove) {
+						valueInput.addClass("is-invalid");
+					}
+				} else {
+					valueInput.removeClass("is-invalid");
+				}
+			});
+		} else if (selectedBodyType === 3) {
+			// Raw
+			if (toolBodyRawTextarea.val().trim() === "") {
+				validated = false;
+				errors.push("Raw body content is required.");
+
+				if (!onlyRemove) {
+					toolBodyRawTextarea.addClass("is-invalid");
+				}
+			} else {
+				toolBodyRawTextarea.removeClass("is-invalid");
+			}
+		}
+	}
+
+	// Response Tab Validation
+	function validateResponseTab() {
+		responseStatusMonacoEditors.forEach((editorData) => {
+			const statusType = editorData.statusType;
+			const editor = editorData.editor;
+
+			if (editor.getValue().trim() === "") {
+				validated = false;
+				errors.push(`Response JavaScript for status ${statusType} is required.`);
+				// Monaco editor might need different invalid styling
+			}
+
+			const hasStaticResponse = toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked");
+
+			if (hasStaticResponse) {
+				// Validate static response for all languages
+				BusinessFullData.businessData.languages.forEach((language) => {
+					if (!CurrentManageToolResponseStaticResponse[statusType]?.[language] || CurrentManageToolResponseStaticResponse[statusType][language].trim().length === 0) {
+						validated = false;
+						errors.push(`Static response text for status ${statusType} in language ${language} is required.`);
+
+						if (!onlyRemove) {
+							toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`).addClass("is-invalid");
+						}
+					} else {
+						toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`).removeClass("is-invalid");
+					}
+				});
+			}
+		});
+	}
+
+	validateGeneralTab();
+	validateConfigurationTab();
+	validateResponseTab();
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function initToolsTab() {
+	require(["vs/editor/editor.main", "esprima"], (_, parser) => {
+		$(document).ready(() => {
+			addNewToolbutton.on("click", (event) => {
+				event.preventDefault();
+
+				ResetAndEmptyToolsManageTab();
+				currentToolName.text("New Tool");
+
+				ManageToolType = "new";
+				CurrentManageToolData = CreateToolsDefaultToolObject();
+
+				ShowToolsManageTab();
+			});
+
+			switchBackToToolsTab.on("click", (event) => {
+				event.preventDefault();
+
+				ManageToolType = null;
+
+				toolManagerTab.removeClass("show");
+
+				ShowToolsListTab();
+			});
+
+			addToolInputArgumentButton.on("click", (event) => {
+				event.preventDefault();
+
+				const index = CurrentManageToolSchemeaListIndex++;
+
+				CurrentManageToolInputSchemeaMultiLangData[index] = {
+					name: {},
+					description: {},
+				};
 
 				BusinessFullData.businessData.languages.forEach((language) => {
-					CurrentManageToolResponseStaticResponse[statusType][language] = "";
+					CurrentManageToolInputSchemeaMultiLangData[index].name[language] = "";
+					CurrentManageToolInputSchemeaMultiLangData[index].description[language] = "";
 				});
-			} else {
-				delete CurrentManageToolResponseStaticResponse[statusType];
-			}
 
-			validateToolsAllMultilanguageElements();
-		});
+				toolInputArguementsList.append($(CreateToolsConfigurationInputSchemeaElement(index)));
 
-		$(document).on("click", '[button-type="removeToolResponseStatusType"]', (event) => {
-			event.preventDefault();
+				validateToolsAllMultilanguageElements();
+				CheckToolsManageTabHasChanges(true);
+			});
 
-			const statusType = $(event.currentTarget).attr("status-type");
+			toolInputArguementsList.on("change", '[select-type="toolInputArgumentTypeSelect" ]', (event) => {
+				event.stopPropagation();
 
-			const thisStatusMonacoEditorIndex = responseStatusMonacoEditors.findIndex((x) => x.statusType === statusType);
-			if (thisStatusMonacoEditorIndex === -1) {
-				alert("Please select a valid status code. Error 0");
-				return;
-			}
+				const target = $(event.currentTarget);
 
-			const thisStatusMonacoEditor = responseStatusMonacoEditors[thisStatusMonacoEditorIndex];
+				const selectedValue = target.val();
 
-			thisStatusMonacoEditor.editor.dispose();
-			const allMonacoModels = monaco.editor.getModels();
-			const thisEditorModelIndex = allMonacoModels.findIndex((x) => x._associatedResource._formatted === `ts:filename/response${statusType}.d.ts`);
-			if (thisEditorModelIndex === -1) {
-				alert("Please select a valid status code. Error 1");
-				return;
-			}
-			allMonacoModels[thisEditorModelIndex].dispose();
-
-			responseStatusMonacoEditors.splice(thisStatusMonacoEditorIndex, 1);
-			toolResponseStatusTypeList.find(`[status-type="${statusType}"]`).remove();
-
-			const statusTypeData = HTTPStatusCodeList.find((x) => x.code === parseInt(statusType));
-			toolResponseStatusSelect.children().each((index, element) => {
-				if (parseInt($(element).val()) > parseInt(statusType)) {
-					$(`<option value="${statusTypeData.code}">${statusTypeData.code} | ${statusTypeData.name}</option>`).insertBefore(element);
-					return false;
-				}
-
-				if (index + 1 === toolResponseStatusSelect.children().length) {
-					$(`<option value="${statusTypeData.code}">${statusTypeData.code} | ${statusTypeData.name}</option>`).insertAfter(element);
-					return false;
+				if (selectedValue === 4) {
+					target.parent().find('[data-type="datetime-format"]').removeClass("d-none");
+				} else {
+					target.parent().find('[data-type="datetime-format"]').addClass("d-none");
 				}
 			});
 
-			$(`[button-type="selectToolResponseStatusType"][status-type="${statusType}"]`).remove();
+			toolInputArguementsList.on("click", '[button-type="removeToolInputArgument"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
 
-			if (toolResponseStatusTypeListButtons.children().length > 0) {
-				toolResponseStatusTypeListButtons.children()[0].click();
-			}
+				const currentElement = $(event.currentTarget);
+				const parentElement = currentElement.parent();
 
-			delete CurrentManageToolResponseStaticResponse[statusType];
+				const dataIndex = parentElement.attr("data-index");
 
-			validateToolsAllMultilanguageElements();
-		});
+				delete CurrentManageToolInputSchemeaMultiLangData[dataIndex];
 
-		$(document).on("click", '[button-type="selectToolResponseStatusType"]', (event) => {
-			event.preventDefault();
+				parentElement.remove();
 
-			const statusType = $(event.currentTarget).attr("status-type");
+				validateToolsAllMultilanguageElements();
+				CheckToolsManageTabHasChanges(true);
+			});
 
-			$(".responseStatusBox").addClass("d-none");
+			addToolHeaderButton.on("click", (event) => {
+				event.preventDefault();
 
-			$(`.responseStatusBox[status-type="${statusType}"]`).removeClass("d-none");
+				toolHeadersList.append($(CreateToolConfigurationHeaderElement()));
 
-			$('[button-type="selectToolResponseStatusType"]').removeClass("active");
-			$(event.currentTarget).addClass("active");
-		});
+				CheckToolsManageTabHasChanges(true);
+			});
 
-		toolAudioBeforeSpeakingSelect.on("change", (event) => {
-			const selectedValue = $(event.currentTarget).val();
+			toolHeadersList.on("click", '[button-type="removeToolHeader"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
 
-			if (selectedValue === "none") {
-				toolAudioBeforeSpeakingBox.addClass("d-none");
-			} else {
-				toolAudioBeforeSpeakingBox.removeClass("d-none");
-			}
+				$(event.currentTarget).parent().remove();
 
-			if (selectedValue === "custom") {
-				toolAudioBeforeSpeakingInputBox.removeClass("d-none");
-			} else {
-				toolAudioBeforeSpeakingInputBox.addClass("d-none");
-			}
-		});
+				CheckToolsManageTabHasChanges(true);
+			});
 
-		toolAudioDuringSpeakingSelect.on("change", (event) => {
-			const selectedValue = $(event.currentTarget).val();
+			toolBodyType.on("change", (event) => {
+				const target = $(event.currentTarget);
+				const value = parseInt(target.val());
 
-			if (selectedValue === "none") {
-				toolAudioDuringSpeakingBox.addClass("d-none");
-			} else {
-				toolAudioDuringSpeakingBox.removeClass("d-none");
-			}
+				if (value === 1 || value === 2) {
+					toolBodyNone.addClass("d-none");
+					toolBodyRawView.addClass("d-none");
 
-			if (selectedValue === "custom") {
-				toolAudioDuringSpeakingInputBox.removeClass("d-none");
-			} else {
-				toolAudioDuringSpeakingInputBox.addClass("d-none");
-			}
-		});
+					toolBodyKeyValueView.removeClass("d-none");
+				} else if (value === 3) {
+					toolBodyNone.addClass("d-none");
+					toolBodyKeyValueView.addClass("d-none");
 
-		toolAudioAfterSpeakingSelect.on("change", (event) => {
-			const selectedValue = $(event.currentTarget).val();
+					toolBodyRawView.removeClass("d-none");
+				} else {
+					toolBodyKeyValueView.addClass("d-none");
+					toolBodyRawView.addClass("d-none");
 
-			if (selectedValue === "none") {
-				toolAudioAfterSpeakingBox.addClass("d-none");
-			} else {
-				toolAudioAfterSpeakingBox.removeClass("d-none");
-			}
+					toolBodyNone.removeClass("d-none");
+				}
+			});
 
-			if (selectedValue === "custom") {
-				toolAudioAfterSpeakingInputBox.removeClass("d-none");
-			} else {
-				toolAudioAfterSpeakingInputBox.addClass("d-none");
-			}
-		});
+			addToolBodyKeyValueButton.on("click", (event) => {
+				event.preventDefault();
 
-		toolAudioBeforeSpeakingUploadBtn.on("click", (event) => {
-			event.preventDefault();
+				toolBodyKeyValueViewList.append($(CreateToolConfigurationBodyKeyValueElement()));
+			});
 
-			toolAudioBeforeSpeakingUploadInput.click();
-		});
+			toolBodyKeyValueViewList.on("click", '[button-type="removeToolBodyKeyValue"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
 
-		toolAudioDuringSpeakingUploadBtn.on("click", (event) => {
-			event.preventDefault();
+				$(event.currentTarget).parent().remove();
 
-			toolAudioDuringSpeakingUploadInput.click();
-		});
+				CheckToolsManageTabHasChanges(true);
+			});
 
-		toolAudioAfterSpeakingUploadBtn.on("click", (event) => {
-			event.preventDefault();
+			addToolResponseStatusTypeButton.on("click", (event) => {
+				event.preventDefault();
 
-			toolAudioAfterSpeakingUploadInput.click();
-		});
+				const selectedResponseType = toolResponseStatusSelect.val();
 
-		toolAudioBeforeSpeakingUploadInput.on("change", (event) => {
-			const resultValidate = onToolsAudioUploadValidation(event);
+				CreateToolResponseMonacoStatus(selectedResponseType);
+			});
 
-			if (resultValidate) {
-				const file = toolAudioBeforeSpeakingUploadInput[0].files[0];
+			toolResponseStatusTypeList.on("change", 'input[input-type="toolResponseStatusSpeakStaticResponseCheck"]', (event) => {
+				event.stopPropagation();
 
-				const reader = new FileReader();
+				const statusType = $(event.currentTarget).attr("status-type");
 
-				reader.onload = (evt) => {
-					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-					ToolAudioBeforeSpeakingWaveSurfer.loadBlob(blob);
+				const textField = $(`[input-type="toolResponseStatusSpeakStaticResponseText"][status-type="${statusType}"]`);
 
-					toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-					toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-					toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
-				};
+				textField.parent().toggleClass("d-none");
 
-				reader.onerror = (evt) => {
-					AlertManager.createAlert({
-						type: "error",
-						message: "Error reading audio file for tool audio before speaking upload.",
-						enableDismiss: false,
+				const isChecked = $(event.currentTarget).is(":checked");
+
+				if (isChecked) {
+					CurrentManageToolResponseStaticResponse[statusType] = {};
+
+					BusinessFullData.businessData.languages.forEach((language) => {
+						CurrentManageToolResponseStaticResponse[statusType][language] = "";
 					});
-				};
+				} else {
+					delete CurrentManageToolResponseStaticResponse[statusType];
+					textField.val("");
+				}
 
-				// Read File as an ArrayBuffer
-				reader.readAsArrayBuffer(file);
-			}
-		});
+				validateToolsAllMultilanguageElements();
+				if (ManageToolType != null) {
+					CheckToolsManageTabHasChanges(true);
+				}
+			});
 
-		toolAudioDuringSpeakingUploadInput.on("change", (event) => {
-			const resultValidate = onToolsAudioUploadValidation(event);
+			toolResponseStatusTypeList.on("click", '[button-type="removeToolResponseStatusType"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
 
-			if (resultValidate) {
-				const file = toolAudioDuringSpeakingUploadInput[0].files[0];
+				const statusType = $(event.currentTarget).attr("status-type");
 
-				const reader = new FileReader();
-
-				reader.onload = (evt) => {
-					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-					ToolAudioDuringSpeakingWaveSurfer.loadBlob(blob);
-
-					toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-					toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-					toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
-				};
-
-				reader.onerror = (evt) => {
-					AlertManager.createAlert({
-						type: "error",
-						message: "Error reading audio file for tool audio during speaking upload.",
-						enableDismiss: false,
-					});
-				};
-
-				// Read File as an ArrayBuffer
-				reader.readAsArrayBuffer(file);
-			}
-		});
-
-		toolAudioAfterSpeakingUploadInput.on("change", (event) => {
-			const resultValidate = onToolsAudioUploadValidation(event);
-
-			if (resultValidate) {
-				const file = toolAudioAfterSpeakingUploadInput[0].files[0];
-
-				const reader = new FileReader();
-
-				reader.onload = (evt) => {
-					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-					ToolAudioAfterSpeakingWaveSurfer.loadBlob(blob);
-
-					toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-					toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-					toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
-				};
-
-				reader.onerror = (evt) => {
-					AlertManager.createAlert({
-						type: "error",
-						message: "Error reading audio file for tool audio after speaking upload.",
-						enableDismiss: false,
-					});
-				};
-
-				// Read File as an ArrayBuffer
-				reader.readAsArrayBuffer(file);
-			}
-		});
-
-		const manageToolsLanguageDropdownInterval = setInterval(() => {
-			if (manageToolsLanguageDropdown != null) {
-				manageToolsLanguageDropdown.onLanguageChange((language) => {
-					// Tool Name
-					const toolNameValue = CurrentManageToolNameMultiLangData[language.id];
-					inputToolName.val(toolNameValue);
-
-					// Tool Description
-					const toolShortDescriptionValue = CurrentManageToolShortDescriptionMultiLangData[language.id];
-					inputToolShortDescription.val(toolShortDescriptionValue);
-
-					// Tool Input Schema
-					Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
-						const inputSchemeaValue = CurrentManageToolInputSchemeaMultiLangData[key];
-
-						toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="name"]`).val(inputSchemeaValue.name[language.id]);
-						toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="description"]`).val(inputSchemeaValue.description[language.id]);
-					});
-
-					// Tool Status Static Response
-					Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
-						const staticResponseValue = CurrentManageToolResponseStaticResponse[key][language.id];
-
-						toolResponseStatusTypeList.find(`input[status-type="${key}"][input-type="toolResponseStatusSpeakStaticResponseText"]`).val(staticResponseValue);
-					});
-
-					validateToolsAllMultilanguageElements();
-				});
-
-				inputToolName.on("input change", (event) => {
-					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-					const currentValue = $(event.currentTarget).val();
-
-					CurrentManageToolNameMultiLangData[currentSelectedLanguage.id] = currentValue;
-
-					validateToolsAllMultilanguageElements();
-				});
-
-				inputToolShortDescription.on("input change", (event) => {
-					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-					const currentValue = $(event.currentTarget).val();
-
-					CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentValue;
-
-					validateToolsAllMultilanguageElements();
-				});
-
-				toolInputArguementsList.on("input change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
-					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-					const currentElement = $(event.currentTarget);
-					const elementBoxParent = currentElement.parent().parent().parent();
-
-					const dataType = currentElement.attr("data-type");
-					const dataIndex = elementBoxParent.attr("data-index");
-
-					if (dataType === "name") {
-						if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].name) {
-							CurrentManageToolInputSchemeaMultiLangData[dataIndex].name = {};
-						}
-
-						CurrentManageToolInputSchemeaMultiLangData[dataIndex].name[currentSelectedLanguage.id] = currentElement.val();
-					} else if (dataType === "description") {
-						if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].description) {
-							CurrentManageToolInputSchemeaMultiLangData[dataIndex].description = {};
-						}
-
-						CurrentManageToolInputSchemeaMultiLangData[dataIndex].description[currentSelectedLanguage.id] = currentElement.val();
-					}
-
-					validateToolsAllMultilanguageElements();
-				});
-
-				toolResponseStatusTypeList.on("input change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
-					const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-					const currentElement = $(event.currentTarget);
-					const statusType = currentElement.attr("status-type");
-					const currentValue = currentElement.val();
-
-					CurrentManageToolResponseStaticResponse[statusType][currentSelectedLanguage.id] = currentValue;
-
-					validateToolsAllMultilanguageElements();
-				});
-
-				clearInterval(manageToolsLanguageDropdownInterval);
-			}
-		}, 100);
-
-		toolManagerTab.on("input change", "input, textarea", (event) => {
-			event.stopPropagation();
-
-			if (ManageToolType == null) return;
-
-			CheckToolsManageTabHasChanges(true);
-		});
-
-		$("#nav-bar").on("tabChange", async (event) => {
-			const activeTab = event.detail.from;
-			if (activeTab !== "tools-tab") return;
-
-			if (ManageToolType == null) return;
-
-			const toolsChanges = CheckToolsManageTabHasChanges(false);
-			if (toolsChanges.hasChanges) {
-				const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
-					title: "Unsaved Changes Pending",
-					message: "You have unsaved changes in tools manage tab. Are you sure you want to discard these changes and leave the tools tab?",
-					confirmText: "Discard",
-					cancelText: "Cancel",
-					confirmButtonClass: "btn-danger",
-					modalClass: "modal-lg",
-				});
-
-				const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
-
-				if (!confirmDiscardChangesResult) {
-					event.preventDefault();
+				const thisStatusMonacoEditorIndex = responseStatusMonacoEditors.findIndex((x) => x.statusType === statusType);
+				if (thisStatusMonacoEditorIndex === -1) {
+					alert("Please select a valid status code. Error 0");
 					return;
 				}
 
-				switchBackToToolsTab.click();
-				ManageToolType = null;
-			}
-		});
+				const thisStatusMonacoEditor = responseStatusMonacoEditors[thisStatusMonacoEditorIndex];
 
-		confirmPublishToolButton.on("click", async (event) => {
-			event.preventDefault();
+				thisStatusMonacoEditor.editor.dispose();
+				const allMonacoModels = monaco.editor.getModels();
+				const thisEditorModelIndex = allMonacoModels.findIndex((x) => x._associatedResource._formatted === `ts:filename/response${statusType}.d.ts`);
+				if (thisEditorModelIndex === -1) {
+					alert("Please select a valid status code. Error 1");
+					return;
+				}
+				allMonacoModels[thisEditorModelIndex].dispose();
 
-			if (IsSavingToolManageTab) return;
+				responseStatusMonacoEditors.splice(thisStatusMonacoEditorIndex, 1);
+				toolResponseStatusTypeList.find(`[status-type="${statusType}"]`).remove();
 
-			// TODO PERFORM VALIDATIONS
+				const statusTypeData = HTTPStatusCodeList.find((x) => x.code === parseInt(statusType));
+				toolResponseStatusSelect.children().each((index, element) => {
+					if (parseInt($(element).val()) > parseInt(statusType)) {
+						$(`<option value="${statusTypeData.code}">${statusTypeData.code} | ${statusTypeData.name}</option>`).insertBefore(element);
+						return false;
+					}
 
-			const toolsManageTabChanges = CheckToolsManageTabHasChanges(false);
-			if (!toolsManageTabChanges.hasChanges) {
-				return;
-			}
+					if (index + 1 === toolResponseStatusSelect.children().length) {
+						$(`<option value="${statusTypeData.code}">${statusTypeData.code} | ${statusTypeData.name}</option>`).insertAfter(element);
+						return false;
+					}
+				});
 
-			confirmPublishToolButton.prop("disabled", true);
-			confirmPublishToolButtonSpinner.removeClass("d-none");
+				$(`[button-type="selectToolResponseStatusType"][status-type="${statusType}"]`).remove();
 
-			IsSavingToolManageTab = true;
+				if (toolResponseStatusTypeListButtons.children().length > 0) {
+					toolResponseStatusTypeListButtons.children()[0].click();
+				}
 
-			const formData = new FormData();
+				delete CurrentManageToolResponseStaticResponse[statusType];
 
-			formData.append("postType", ManageToolType);
-			formData.append("changes", JSON.stringify(toolsManageTabChanges.changes));
+				validateToolsAllMultilanguageElements();
+			});
 
-			if (ManageToolType === "edit") {
-				formData.append("exisitingToolId", ManageToolId);
-			}
+			toolResponseStatusTypeList.on("click", '[button-type="selectToolResponseStatusType"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
 
-			if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
-				formData.append("audioBeforeSpeaking", toolAudioBeforeSpeakingUploadInput[0].files[0]);
-			}
+				const statusType = $(event.currentTarget).attr("status-type");
 
-			if (toolAudioDuringSpeakingUploadInput[0].files.length > 0) {
-				formData.append("audioDuringSpeaking", toolAudioDuringSpeakingUploadInput[0].files[0]);
-			}
+				$(".responseStatusBox").addClass("d-none");
 
-			if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
-				formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
-			}
+				$(`.responseStatusBox[status-type="${statusType}"]`).removeClass("d-none");
 
-			SaveBusinessTool(
-				formData,
-				(saveResponse) => {
-					// todo
+				$('[button-type="selectToolResponseStatusType"]').removeClass("active");
+				$(event.currentTarget).addClass("active");
+			});
 
-					alert("success saving tool manage data");
-				},
-				(saveError, isUnsuccessful) => {
+			toolAudioBeforeSpeakingSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+
+				if (selectedValue === "none") {
+					toolAudioBeforeSpeakingBox.addClass("d-none");
+					toolAudioBeforeSpeakingUploadInput.val("");
+
+					toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+					toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+					toolAudioBeforeSpeakingInputBox.find(".audio-controller").addClass("d-none");
+				} else {
+					toolAudioBeforeSpeakingBox.removeClass("d-none");
+				}
+
+				if (selectedValue === "custom") {
+					toolAudioBeforeSpeakingInputBox.removeClass("d-none");
+				} else {
+					toolAudioBeforeSpeakingInputBox.addClass("d-none");
+				}
+			});
+
+			toolAudioDuringSpeakingSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+
+				if (selectedValue === "none") {
+					toolAudioDuringSpeakingBox.addClass("d-none");
+					toolAudioDuringSpeakingUploadInput.val("");
+
+					toolAudioDuringSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+					toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+					toolAudioDuringSpeakingInputBox.find(".audio-controller").addClass("d-none");
+				} else {
+					toolAudioDuringSpeakingBox.removeClass("d-none");
+				}
+
+				if (selectedValue === "custom") {
+					toolAudioDuringSpeakingInputBox.removeClass("d-none");
+				} else {
+					toolAudioDuringSpeakingInputBox.addClass("d-none");
+				}
+			});
+
+			toolAudioAfterSpeakingSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+
+				if (selectedValue === "none") {
+					toolAudioAfterSpeakingBox.addClass("d-none");
+					toolAudioAfterSpeakingUploadInput.val("");
+
+					toolAudioAfterSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
+					toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
+					toolAudioAfterSpeakingInputBox.find(".audio-controller").addClass("d-none");
+				} else {
+					toolAudioAfterSpeakingBox.removeClass("d-none");
+				}
+
+				if (selectedValue === "custom") {
+					toolAudioAfterSpeakingInputBox.removeClass("d-none");
+				} else {
+					toolAudioAfterSpeakingInputBox.addClass("d-none");
+				}
+			});
+
+			toolAudioBeforeSpeakingUploadBtn.on("click", (event) => {
+				event.preventDefault();
+
+				toolAudioBeforeSpeakingUploadInput.click();
+			});
+
+			toolAudioDuringSpeakingUploadBtn.on("click", (event) => {
+				event.preventDefault();
+
+				toolAudioDuringSpeakingUploadInput.click();
+			});
+
+			toolAudioAfterSpeakingUploadBtn.on("click", (event) => {
+				event.preventDefault();
+
+				toolAudioAfterSpeakingUploadInput.click();
+			});
+
+			toolAudioBeforeSpeakingUploadInput.on("change", (event) => {
+				const resultValidate = onToolsAudioUploadValidation(event);
+
+				if (resultValidate) {
+					const file = toolAudioBeforeSpeakingUploadInput[0].files[0];
+
+					const reader = new FileReader();
+
+					reader.onload = (evt) => {
+						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+						ToolAudioBeforeSpeakingWaveSurfer.loadBlob(blob);
+
+						toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+						toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+						toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+					};
+
+					reader.onerror = (evt) => {
+						AlertManager.createAlert({
+							type: "error",
+							message: "Error reading audio file for tool audio before speaking upload.",
+							enableDismiss: false,
+						});
+					};
+
+					// Read File as an ArrayBuffer
+					reader.readAsArrayBuffer(file);
+				}
+			});
+
+			toolAudioDuringSpeakingUploadInput.on("change", (event) => {
+				const resultValidate = onToolsAudioUploadValidation(event);
+
+				if (resultValidate) {
+					const file = toolAudioDuringSpeakingUploadInput[0].files[0];
+
+					const reader = new FileReader();
+
+					reader.onload = (evt) => {
+						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+						ToolAudioDuringSpeakingWaveSurfer.loadBlob(blob);
+
+						toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+						toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+						toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+					};
+
+					reader.onerror = (evt) => {
+						AlertManager.createAlert({
+							type: "error",
+							message: "Error reading audio file for tool audio during speaking upload.",
+							enableDismiss: false,
+						});
+					};
+
+					// Read File as an ArrayBuffer
+					reader.readAsArrayBuffer(file);
+				}
+			});
+
+			toolAudioAfterSpeakingUploadInput.on("change", (event) => {
+				const resultValidate = onToolsAudioUploadValidation(event);
+
+				if (resultValidate) {
+					const file = toolAudioAfterSpeakingUploadInput[0].files[0];
+
+					const reader = new FileReader();
+
+					reader.onload = (evt) => {
+						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+						ToolAudioAfterSpeakingWaveSurfer.loadBlob(blob);
+
+						toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
+						toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
+						toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+					};
+
+					reader.onerror = (evt) => {
+						AlertManager.createAlert({
+							type: "error",
+							message: "Error reading audio file for tool audio after speaking upload.",
+							enableDismiss: false,
+						});
+					};
+
+					// Read File as an ArrayBuffer
+					reader.readAsArrayBuffer(file);
+				}
+			});
+
+			toolManagerTab.on("input change", "input[type='text'], input[type='number'], input[type='file'], textarea, select", (event) => {
+				event.stopPropagation();
+
+				if (ManageToolType == null) return;
+
+				CheckToolsManageTabHasChanges(true);
+				ValidateToolsManageTab(true);
+			});
+
+			$("#nav-bar").on("tabChange", async (event) => {
+				const activeTab = event.detail.from;
+				if (activeTab !== "tools-tab") return;
+
+				if (ManageToolType == null) return;
+
+				const toolsChanges = CheckToolsManageTabHasChanges(false);
+				if (toolsChanges.hasChanges) {
+					const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+						title: "Unsaved Changes Pending",
+						message: "You have unsaved changes in tools manage tab. Are you sure you want to discard these changes and leave the tools tab?",
+						confirmText: "Discard",
+						cancelText: "Cancel",
+						confirmButtonClass: "btn-danger",
+						modalClass: "modal-lg",
+					});
+
+					const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+
+					if (!confirmDiscardChangesResult) {
+						event.preventDefault();
+						return;
+					}
+
+					switchBackToToolsTab.click();
+					ManageToolType = null;
+				}
+			});
+
+			confirmPublishToolButton.on("click", async (event) => {
+				event.preventDefault();
+
+				if (IsSavingToolManageTab) return;
+
+				const validationResult = ValidateToolsManageTab(false);
+				if (!validationResult.validated) {
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while saving business tool data. Check browser console for logs.",
+						message: `Validation for required tools manage tab fields failed.<br><br>${validationResult.errors.join("<br>")}`,
 						timeout: 6000,
 					});
 
-					console.log("Error occured while saving business tool data: ", saveError);
+					return;
+				}
 
-					confirmPublishToolButton.prop("disabled", false);
-					confirmPublishToolButtonSpinner.addClass("d-none");
+				const toolsManageTabChanges = CheckToolsManageTabHasChanges(false);
+				if (!toolsManageTabChanges.hasChanges) {
+					return;
+				}
 
-					IsSavingToolManageTab = false;
-				},
-			);
+				confirmPublishToolButton.prop("disabled", true);
+				confirmPublishToolButtonSpinner.removeClass("d-none");
+
+				IsSavingToolManageTab = true;
+
+				const formData = new FormData();
+
+				formData.append("postType", ManageToolType);
+				formData.append("changes", JSON.stringify(toolsManageTabChanges.changes));
+
+				if (ManageToolType === "edit") {
+					formData.append("exisitingToolId", CurrentManageToolData.id);
+				}
+
+				if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
+					formData.append("audioBeforeSpeaking", toolAudioBeforeSpeakingUploadInput[0].files[0]);
+				}
+
+				if (toolAudioDuringSpeakingUploadInput[0].files.length > 0) {
+					formData.append("audioDuringSpeaking", toolAudioDuringSpeakingUploadInput[0].files[0]);
+				}
+
+				if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
+					formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
+				}
+
+				SaveBusinessTool(
+					formData,
+					(saveResponse) => {
+						// todo
+
+						alert("success saving tool manage data");
+					},
+					(saveError, isUnsuccessful) => {
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error occured while saving business tool data. Check browser console for logs.",
+							timeout: 6000,
+						});
+
+						console.log("Error occured while saving business tool data: ", saveError);
+
+						confirmPublishToolButton.prop("disabled", false);
+						confirmPublishToolButtonSpinner.addClass("d-none");
+
+						IsSavingToolManageTab = false;
+					},
+				);
+			});
+
+			customToolsTable.on("click", 'button[button-type="edit-tool"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const toolId = $(event.currentTarget).attr("tool-id");
+
+				const currentToolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === toolId);
+
+				CurrentManageToolData = currentToolData;
+
+				ResetAndEmptyToolsManageTab();
+
+				FillToolsManageTab(currentToolData);
+				currentToolName.text(currentToolData.general.name[BusinessDefaultLanguage]);
+
+				ManageToolType = "edit";
+
+				validateToolsAllMultilanguageElements();
+				CheckToolsManageTabHasChanges(true);
+
+				ShowToolsManageTab();
+			});
+
+			RunActionAfterBusinessDataLoad(() => {
+				RunActionAfterLanguagesSpecificationLoad(() => {
+					const businessLanguages = [];
+
+					BusinessFullData.businessData.languages.forEach((value, index) => {
+						const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
+							return data.id === value;
+						});
+
+						if (countryCodeLanguage) {
+							businessLanguages.push(countryCodeLanguage);
+						}
+					});
+
+					manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", businessLanguages);
+
+					/** EVENT HANDLERS **/
+
+					manageToolsLanguageDropdown.onLanguageChange((language) => {
+						// Tool Name
+						const toolNameValue = CurrentManageToolNameMultiLangData[language.id];
+						inputToolName.val(toolNameValue);
+
+						// Tool Description
+						const toolShortDescriptionValue = CurrentManageToolShortDescriptionMultiLangData[language.id];
+						inputToolShortDescription.val(toolShortDescriptionValue);
+
+						// Tool Input Schema
+						Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
+							const inputSchemeaValue = CurrentManageToolInputSchemeaMultiLangData[key];
+
+							toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="name"]`).val(inputSchemeaValue.name[language.id]);
+							toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="description"]`).val(inputSchemeaValue.description[language.id]);
+						});
+
+						// Tool Status Static Response
+						Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
+							const staticResponseValue = CurrentManageToolResponseStaticResponse[key][language.id];
+
+							toolResponseStatusTypeList.find(`input[status-type="${key}"][input-type="toolResponseStatusSpeakStaticResponseText"]`).val(staticResponseValue);
+						});
+
+						validateToolsAllMultilanguageElements();
+					});
+
+					inputToolName.on("input change", (event) => {
+						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+						const currentValue = $(event.currentTarget).val();
+
+						CurrentManageToolNameMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+						validateToolsAllMultilanguageElements();
+					});
+
+					inputToolShortDescription.on("input change", (event) => {
+						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+						const currentValue = $(event.currentTarget).val();
+
+						CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+						validateToolsAllMultilanguageElements();
+					});
+
+					toolInputArguementsList.on("input change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
+						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+						const currentElement = $(event.currentTarget);
+						const elementBoxParent = currentElement.parent().parent().parent();
+
+						const dataType = currentElement.attr("data-type");
+						const dataIndex = elementBoxParent.attr("data-index");
+
+						if (dataType === "name") {
+							if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].name) {
+								CurrentManageToolInputSchemeaMultiLangData[dataIndex].name = {};
+							}
+
+							CurrentManageToolInputSchemeaMultiLangData[dataIndex].name[currentSelectedLanguage.id] = currentElement.val();
+						} else if (dataType === "description") {
+							if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].description) {
+								CurrentManageToolInputSchemeaMultiLangData[dataIndex].description = {};
+							}
+
+							CurrentManageToolInputSchemeaMultiLangData[dataIndex].description[currentSelectedLanguage.id] = currentElement.val();
+						}
+
+						validateToolsAllMultilanguageElements();
+					});
+
+					toolResponseStatusTypeList.on("input change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
+						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+						const currentElement = $(event.currentTarget);
+						const statusType = currentElement.attr("status-type");
+						const currentValue = currentElement.val();
+
+						CurrentManageToolResponseStaticResponse[statusType][currentSelectedLanguage.id] = currentValue;
+
+						validateToolsAllMultilanguageElements();
+					});
+				});
+			});
+
+			// Initalize
+			FillToolsTab();
 		});
 	});
-});
+}

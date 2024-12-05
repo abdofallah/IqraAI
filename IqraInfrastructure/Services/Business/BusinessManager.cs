@@ -1613,10 +1613,10 @@ namespace IqraInfrastructure.Services.Business
                     {
                         var metadata = new Dictionary<string, string>
                         {
-                            { "ContentType", validationResult.ContentType }
+                            { "fileContentType", validationResult.ContentType }
                         };
 
-                        await _businessLogoRepository.PutFileAsByteData(
+                        await _businessToolAudioRepository.PutFileAsByteData(
                             validationResult.Hash,
                             validationResult.FileBytes,
                             metadata
@@ -1644,7 +1644,7 @@ namespace IqraInfrastructure.Services.Business
                             { "ContentType", validationResult.ContentType }
                         };
 
-                        await _businessLogoRepository.PutFileAsByteData(
+                        await _businessToolAudioRepository.PutFileAsByteData(
                             validationResult.Hash,
                             validationResult.FileBytes,
                             metadata
@@ -1672,7 +1672,7 @@ namespace IqraInfrastructure.Services.Business
                             { "ContentType", validationResult.ContentType }
                         };
 
-                        await _businessLogoRepository.PutFileAsByteData(
+                        await _businessToolAudioRepository.PutFileAsByteData(
                             validationResult.Hash,
                             validationResult.FileBytes,
                             metadata

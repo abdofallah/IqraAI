@@ -139,6 +139,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
+            TempData.TryAdd("BusinessToolAudioURL", _viewLinkConfiguration.BusinessToolAudioURL);
 
             return View("App/Business");
         }
