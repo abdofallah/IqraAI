@@ -328,7 +328,7 @@ function CreateToolsTableElement(data) {
 	const element = `
         <tr tool-id="${data.id}">
             <td>
-                <b>${data.general.name[BusinessDefaultLanguage]}</b>
+                <b class="tool-name">${data.general.name[BusinessDefaultLanguage]}</b>
             </td>
             <td>
                 <button class="btn btn-info btn-sm" button-type="edit-tool" tool-id="${data.id}">
@@ -347,7 +347,7 @@ function CreateToolsTableElement(data) {
 function FillToolsTab() {
 	customToolsTable.find("tbody").empty();
 
-	const toolsList = BusinessFullData.businessApp.tools;
+	const toolsList = BusinessFullData.businessApp.tools.reverse();
 
 	if (toolsList.length === 0) {
 		customToolsTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="2">No tools added yet...</td></tr>`);
@@ -1178,9 +1178,8 @@ function ValidateToolsManageTab(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
 
-	// General Tab Validation
+	// General Tab
 	function validateGeneralTab() {
-		// Name validation for all languages
 		BusinessFullData.businessData.languages.forEach((language) => {
 			if (!CurrentManageToolNameMultiLangData[language] || CurrentManageToolNameMultiLangData[language].trim().length === 0) {
 				validated = false;
@@ -1192,10 +1191,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			} else {
 				inputToolName.removeClass("is-invalid");
 			}
-		});
 
-		// Short description validation for all languages
-		BusinessFullData.businessData.languages.forEach((language) => {
 			if (!CurrentManageToolShortDescriptionMultiLangData[language] || CurrentManageToolShortDescriptionMultiLangData[language].trim().length === 0) {
 				validated = false;
 				errors.push(`Tool short description for language ${language} is required and cannot be empty.`);
@@ -1209,10 +1205,10 @@ function ValidateToolsManageTab(onlyRemove = true) {
 		});
 	}
 
-	// Configuration Tab Validation
+	// Configuration Tab
 	function validateConfigurationTab() {
-		// Request type validation
-		if (inputToolType.val() === "-1" || inputToolType.val() === null) {
+		const requestTypeValue = inputToolType.val();
+		if (!requestTypeValue || inputToolType.val() === null) {
 			validated = false;
 			errors.push("Request type is required.");
 
@@ -1223,7 +1219,6 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			inputToolType.removeClass("is-invalid");
 		}
 
-		// Endpoint validation
 		if (inputToolURL.val().trim() === "") {
 			validated = false;
 			errors.push("Endpoint URL is required and cannot be empty.");
@@ -1235,14 +1230,13 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			inputToolURL.removeClass("is-invalid");
 		}
 
-		// Input schema validation for each argument
+		// Input schema
 		const argumentElements = toolInputArguementsList.find(".toolInputArguementBox");
 		argumentElements.each((idx, element) => {
 			const currentElement = $(element);
 			const index = parseInt(currentElement.attr("data-index"));
 			const typeSelect = currentElement.find('[data-type="typeSelect"]');
 
-			// Validate multilanguage name for each argument
 			BusinessFullData.businessData.languages.forEach((language) => {
 				if (!CurrentManageToolInputSchemeaMultiLangData[index]?.name[language] || CurrentManageToolInputSchemeaMultiLangData[index].name[language].trim().length === 0) {
 					validated = false;
@@ -1254,10 +1248,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 				} else {
 					currentElement.find('[data-type="name"]').removeClass("is-invalid");
 				}
-			});
 
-			// Validate multilanguage description for each argument
-			BusinessFullData.businessData.languages.forEach((language) => {
 				if (!CurrentManageToolInputSchemeaMultiLangData[index]?.description[language] || CurrentManageToolInputSchemeaMultiLangData[index].description[language].trim().length === 0) {
 					validated = false;
 					errors.push(`Input argument #${idx + 1} description for language ${language} is required.`);
@@ -1270,7 +1261,8 @@ function ValidateToolsManageTab(onlyRemove = true) {
 				}
 			});
 
-			if (typeSelect.val() === "0") {
+			const typeSelectValue = typeSelect.val();
+			if (!typeSelectValue || typeSelectValue == null) {
 				validated = false;
 				errors.push(`Input argument #${idx + 1} type must be selected.`);
 
@@ -1278,7 +1270,22 @@ function ValidateToolsManageTab(onlyRemove = true) {
 					typeSelect.addClass("is-invalid");
 				}
 			} else {
-				typeSelect.removeClass("is-invalid");
+				if (typeSelectValue === "4") {
+					const dateTimeField = currentElement.find('[data-type="datetime-format"]');
+
+					if (dateTimeField.val().trim() === "") {
+						validated = false;
+						errors.push(`Input argument #${idx + 1} date time format field is required.`);
+
+						if (!onlyRemove) {
+							dateTimeField.addClass("is-invalid");
+						}
+					} else {
+						dateTimeField.removeClass("is-invalid");
+					}
+				} else {
+					typeSelect.removeClass("is-invalid");
+				}
 			}
 		});
 
@@ -1312,11 +1319,11 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			}
 		});
 
-		// Body validation based on type
+		// Body validation
 		const selectedBodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
 		if (selectedBodyType === 1 || selectedBodyType === 2) {
 			// Form-data or x-www-form-urlencoded
-			const bodyElements = toolBodyKeyValueViewList.find(".tool-body-keyval-box");
+			const bodyElements = toolBodyKeyValueViewList.children();
 			bodyElements.each((idx, element) => {
 				const currentElement = $(element);
 				const keyInput = currentElement.find('[data-type="key"]');
@@ -1374,7 +1381,6 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			const hasStaticResponse = toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked");
 
 			if (hasStaticResponse) {
-				// Validate static response for all languages
 				BusinessFullData.businessData.languages.forEach((language) => {
 					if (!CurrentManageToolResponseStaticResponse[statusType]?.[language] || CurrentManageToolResponseStaticResponse[statusType][language].trim().length === 0) {
 						validated = false;
@@ -1391,9 +1397,46 @@ function ValidateToolsManageTab(onlyRemove = true) {
 		});
 	}
 
+	// Audio Tab Validation
+	function validateAudioTab() {
+		if (toolAudioBeforeSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.beforeSpeaking == null) {
+			validated = false;
+			errors.push("Audio file for before speaking is required.");
+
+			if (!onlyRemove) {
+				toolAudioBeforeSpeakingSelect.addClass("is-invalid");
+			}
+		} else {
+			toolAudioBeforeSpeakingSelect.removeClass("is-invalid");
+		}
+
+		if (toolAudioDuringSpeakingSelect.val() === "custom" && toolAudioDuringSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringSpeaking == null) {
+			validated = false;
+			errors.push("Audio file for during speaking is required.");
+
+			if (!onlyRemove) {
+				toolAudioDuringSpeakingSelect.addClass("is-invalid");
+			}
+		} else {
+			toolAudioDuringSpeakingSelect.removeClass("is-invalid");
+		}
+
+		if (toolAudioAfterSpeakingSelect.val() === "custom" && toolAudioAfterSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterSpeaking == null) {
+			validated = false;
+			errors.push("Audio file for after speaking is required.");
+
+			if (!onlyRemove) {
+				toolAudioAfterSpeakingSelect.addClass("is-invalid");
+			}
+		} else {
+			toolAudioAfterSpeakingSelect.removeClass("is-invalid");
+		}
+	}
+
 	validateGeneralTab();
 	validateConfigurationTab();
 	validateResponseTab();
+	validateAudioTab();
 
 	return {
 		validated: validated,
@@ -1419,9 +1462,17 @@ function initToolsTab() {
 			switchBackToToolsTab.on("click", (event) => {
 				event.preventDefault();
 
-				ManageToolType = null;
+				if (IsSavingToolManageTab) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "Tool manage tab is currently being saved. Please wait for the save to finish.",
+						enableDismiss: false,
+					});
 
-				toolManagerTab.removeClass("show");
+					return;
+				}
+
+				ManageToolType = null;
 
 				ShowToolsListTab();
 			});
@@ -1454,7 +1505,7 @@ function initToolsTab() {
 
 				const selectedValue = target.val();
 
-				if (selectedValue === 4) {
+				if (selectedValue === "4") {
 					target.parent().find('[data-type="datetime-format"]').removeClass("d-none");
 				} else {
 					target.parent().find('[data-type="datetime-format"]').addClass("d-none");
@@ -1818,6 +1869,17 @@ function initToolsTab() {
 
 				if (ManageToolType == null) return;
 
+				if (IsSavingToolManageTab) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "Tool manage tab is currently being saved. Please wait for the save to finish.",
+						enableDismiss: false,
+					});
+
+					event.preventDefault();
+					return;
+				}
+
 				const toolsChanges = CheckToolsManageTabHasChanges(false);
 				if (toolsChanges.hasChanges) {
 					const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
@@ -1891,9 +1953,31 @@ function initToolsTab() {
 				SaveBusinessTool(
 					formData,
 					(saveResponse) => {
-						// todo
+						CurrentManageToolData = saveResponse.data;
 
-						alert("success saving tool manage data");
+						currentToolName.text(CurrentManageToolData.general.name[BusinessDefaultLanguage]);
+
+						if (ManageToolType === "edit") {
+							const exisitingDataIndex = BusinessFullData.businessApp.tools.findIndex((tool) => tool.id === CurrentManageToolData.id);
+							BusinessFullData.businessApp.tools[exisitingDataIndex] = CurrentManageToolData;
+
+							customToolsTable.find(`[tool-id="${CurrentManageToolData.id}"]`).find(".tool-name").text(CurrentManageToolData.general.name[BusinessDefaultLanguage]);
+						} else if (ManageToolType === "new") {
+							BusinessFullData.businessApp.tools.push(CurrentManageToolData);
+
+							customToolsTable.find("tbody").append(CreateToolsTableElement(CurrentManageToolData));
+						}
+
+						confirmPublishToolButton.prop("disabled", true);
+						confirmPublishToolButtonSpinner.addClass("d-none");
+
+						IsSavingToolManageTab = false;
+
+						AlertManager.createAlert({
+							type: "success",
+							message: "Business tool added successfully.",
+							timeout: 6000,
+						});
 					},
 					(saveError, isUnsuccessful) => {
 						AlertManager.createAlert({
@@ -1933,6 +2017,15 @@ function initToolsTab() {
 				CheckToolsManageTabHasChanges(true);
 
 				ShowToolsManageTab();
+			});
+
+			customToolsTable.on("click", 'button[button-type="remove-tool"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const toolId = $(event.currentTarget).attr("tool-id");
+
+				alert("TODO delete tool");
 			});
 
 			RunActionAfterBusinessDataLoad(() => {
