@@ -93,8 +93,8 @@ let manageToolsLanguageDropdown = null;
 /** Elements Variables **/
 const toolsTab = $("#tools-tab");
 
-const tooltipTriggerList = document.querySelectorAll('#tools-tab [data-bs-toggle="tooltip"]');
-const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+const toolsTabtipTriggerList = document.querySelectorAll('#tools-tab [data-bs-toggle="tooltip"]');
+const toolsTabtipList = [...toolsTabtipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
 // Tools List Tab
 const toolListTab = toolsTab.find("#toolListTab");
@@ -204,7 +204,7 @@ function ShowToolsManageTab() {
 			toolManagerTab.addClass("show");
 			toolManagerHeader.addClass("show");
 
-			setDynamicBodyHeight(true, toolManagerHeader);
+			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
@@ -451,7 +451,7 @@ function ShowToolsListTab() {
 
 		toolListTab.removeClass("d-none");
 
-		setDynamicBodyHeight(false);
+		setDynamicBodyHeight();
 		setTimeout(() => {
 			toolListTab.addClass("show");
 		}, 10);
@@ -1375,7 +1375,8 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			if (editor.getValue().trim() === "") {
 				validated = false;
 				errors.push(`Response JavaScript for status ${statusType} is required.`);
-				// Monaco editor might need different invalid styling
+			} else {
+				// todo validate the javascript is correct
 			}
 
 			const hasStaticResponse = toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked");
@@ -1444,9 +1445,45 @@ function ValidateToolsManageTab(onlyRemove = true) {
 	};
 }
 
+async function canLeaveToolsTab(leaveMessage = "") {
+	if (IsSavingToolManageTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Tool manage tab is currently being saved. Please wait for the save to finish.",
+			enableDismiss: false,
+		});
+
+		return false;
+	}
+
+	const toolsChanges = CheckToolsManageTabHasChanges(false);
+	if (toolsChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in tools manage tab.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function initToolsTab() {
 	require(["vs/editor/editor.main", "esprima"], (_, parser) => {
 		$(document).ready(() => {
+			manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", BusinessFullLanguagesData);
+
+			/** Event Handlers **/
+
 			addNewToolbutton.on("click", (event) => {
 				event.preventDefault();
 
@@ -1459,17 +1496,12 @@ function initToolsTab() {
 				ShowToolsManageTab();
 			});
 
-			switchBackToToolsTab.on("click", (event) => {
+			switchBackToToolsTab.on("click", async (event) => {
 				event.preventDefault();
 
-				if (IsSavingToolManageTab) {
-					AlertManager.createAlert({
-						type: "warning",
-						message: "Tool manage tab is currently being saved. Please wait for the save to finish.",
-						enableDismiss: false,
-					});
-
-					return;
+				const canLeaveResult = await canLeaveToolsTab(" Are you sure you want to discard these changes and leave the tool manage tab?");
+				if (!canLeaveResult) {
+					return false;
 				}
 
 				ManageToolType = null;
@@ -1869,37 +1901,15 @@ function initToolsTab() {
 
 				if (ManageToolType == null) return;
 
-				if (IsSavingToolManageTab) {
-					AlertManager.createAlert({
-						type: "warning",
-						message: "Tool manage tab is currently being saved. Please wait for the save to finish.",
-						enableDismiss: false,
-					});
+				const canLeaveResult = await canLeaveToolsTab(" Are you sure you want to discard these changes and leave the tools tab?");
 
-					event.preventDefault();
-					return;
-				}
-
-				const toolsChanges = CheckToolsManageTabHasChanges(false);
-				if (toolsChanges.hasChanges) {
-					const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
-						title: "Unsaved Changes Pending",
-						message: "You have unsaved changes in tools manage tab. Are you sure you want to discard these changes and leave the tools tab?",
-						confirmText: "Discard",
-						cancelText: "Cancel",
-						confirmButtonClass: "btn-danger",
-						modalClass: "modal-lg",
-					});
-
-					const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
-
-					if (!confirmDiscardChangesResult) {
-						event.preventDefault();
-						return;
+				if (canLeaveResult) {
+					if (ManageToolType != null) {
+						switchBackToToolsTab.click();
+						ManageToolType = null;
 					}
-
-					switchBackToToolsTab.click();
-					ManageToolType = null;
+				} else {
+					event.preventDefault();
 				}
 			});
 
@@ -2028,109 +2038,89 @@ function initToolsTab() {
 				alert("TODO delete tool");
 			});
 
-			RunActionAfterBusinessDataLoad(() => {
-				RunActionAfterLanguagesSpecificationLoad(() => {
-					const businessLanguages = [];
+			manageToolsLanguageDropdown.onLanguageChange((language) => {
+				// Tool Name
+				const toolNameValue = CurrentManageToolNameMultiLangData[language.id];
+				inputToolName.val(toolNameValue);
 
-					BusinessFullData.businessData.languages.forEach((value, index) => {
-						const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
-							return data.id === value;
-						});
+				// Tool Description
+				const toolShortDescriptionValue = CurrentManageToolShortDescriptionMultiLangData[language.id];
+				inputToolShortDescription.val(toolShortDescriptionValue);
 
-						if (countryCodeLanguage) {
-							businessLanguages.push(countryCodeLanguage);
-						}
-					});
+				// Tool Input Schema
+				Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
+					const inputSchemeaValue = CurrentManageToolInputSchemeaMultiLangData[key];
 
-					manageToolsLanguageDropdown = new MultiLanguageDropdown("manageToolsLanguageDropdown", businessLanguages);
-
-					/** EVENT HANDLERS **/
-
-					manageToolsLanguageDropdown.onLanguageChange((language) => {
-						// Tool Name
-						const toolNameValue = CurrentManageToolNameMultiLangData[language.id];
-						inputToolName.val(toolNameValue);
-
-						// Tool Description
-						const toolShortDescriptionValue = CurrentManageToolShortDescriptionMultiLangData[language.id];
-						inputToolShortDescription.val(toolShortDescriptionValue);
-
-						// Tool Input Schema
-						Object.keys(CurrentManageToolInputSchemeaMultiLangData).forEach((key) => {
-							const inputSchemeaValue = CurrentManageToolInputSchemeaMultiLangData[key];
-
-							toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="name"]`).val(inputSchemeaValue.name[language.id]);
-							toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="description"]`).val(inputSchemeaValue.description[language.id]);
-						});
-
-						// Tool Status Static Response
-						Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
-							const staticResponseValue = CurrentManageToolResponseStaticResponse[key][language.id];
-
-							toolResponseStatusTypeList.find(`input[status-type="${key}"][input-type="toolResponseStatusSpeakStaticResponseText"]`).val(staticResponseValue);
-						});
-
-						validateToolsAllMultilanguageElements();
-					});
-
-					inputToolName.on("input change", (event) => {
-						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-						const currentValue = $(event.currentTarget).val();
-
-						CurrentManageToolNameMultiLangData[currentSelectedLanguage.id] = currentValue;
-
-						validateToolsAllMultilanguageElements();
-					});
-
-					inputToolShortDescription.on("input change", (event) => {
-						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-						const currentValue = $(event.currentTarget).val();
-
-						CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentValue;
-
-						validateToolsAllMultilanguageElements();
-					});
-
-					toolInputArguementsList.on("input change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
-						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-						const currentElement = $(event.currentTarget);
-						const elementBoxParent = currentElement.parent().parent().parent();
-
-						const dataType = currentElement.attr("data-type");
-						const dataIndex = elementBoxParent.attr("data-index");
-
-						if (dataType === "name") {
-							if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].name) {
-								CurrentManageToolInputSchemeaMultiLangData[dataIndex].name = {};
-							}
-
-							CurrentManageToolInputSchemeaMultiLangData[dataIndex].name[currentSelectedLanguage.id] = currentElement.val();
-						} else if (dataType === "description") {
-							if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].description) {
-								CurrentManageToolInputSchemeaMultiLangData[dataIndex].description = {};
-							}
-
-							CurrentManageToolInputSchemeaMultiLangData[dataIndex].description[currentSelectedLanguage.id] = currentElement.val();
-						}
-
-						validateToolsAllMultilanguageElements();
-					});
-
-					toolResponseStatusTypeList.on("input change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
-						const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
-
-						const currentElement = $(event.currentTarget);
-						const statusType = currentElement.attr("status-type");
-						const currentValue = currentElement.val();
-
-						CurrentManageToolResponseStaticResponse[statusType][currentSelectedLanguage.id] = currentValue;
-
-						validateToolsAllMultilanguageElements();
-					});
+					toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="name"]`).val(inputSchemeaValue.name[language.id]);
+					toolInputArguementsList.find(`.toolInputArguementBox[data-index="${key}"] input[data-type="description"]`).val(inputSchemeaValue.description[language.id]);
 				});
+
+				// Tool Status Static Response
+				Object.keys(CurrentManageToolResponseStaticResponse).forEach((key) => {
+					const staticResponseValue = CurrentManageToolResponseStaticResponse[key][language.id];
+
+					toolResponseStatusTypeList.find(`input[status-type="${key}"][input-type="toolResponseStatusSpeakStaticResponseText"]`).val(staticResponseValue);
+				});
+
+				validateToolsAllMultilanguageElements();
+			});
+
+			inputToolName.on("input change", (event) => {
+				const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+				const currentValue = $(event.currentTarget).val();
+
+				CurrentManageToolNameMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+				validateToolsAllMultilanguageElements();
+			});
+
+			inputToolShortDescription.on("input change", (event) => {
+				const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+				const currentValue = $(event.currentTarget).val();
+
+				CurrentManageToolShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentValue;
+
+				validateToolsAllMultilanguageElements();
+			});
+
+			toolInputArguementsList.on("input change", '.toolInputArguementBox input[data-type="name"], .toolInputArguementBox input[data-type="description"]', (event) => {
+				const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+				const currentElement = $(event.currentTarget);
+				const elementBoxParent = currentElement.parent().parent().parent();
+
+				const dataType = currentElement.attr("data-type");
+				const dataIndex = elementBoxParent.attr("data-index");
+
+				if (dataType === "name") {
+					if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].name) {
+						CurrentManageToolInputSchemeaMultiLangData[dataIndex].name = {};
+					}
+
+					CurrentManageToolInputSchemeaMultiLangData[dataIndex].name[currentSelectedLanguage.id] = currentElement.val();
+				} else if (dataType === "description") {
+					if (!CurrentManageToolInputSchemeaMultiLangData[dataIndex].description) {
+						CurrentManageToolInputSchemeaMultiLangData[dataIndex].description = {};
+					}
+
+					CurrentManageToolInputSchemeaMultiLangData[dataIndex].description[currentSelectedLanguage.id] = currentElement.val();
+				}
+
+				validateToolsAllMultilanguageElements();
+			});
+
+			toolResponseStatusTypeList.on("input change", 'input[input-type="toolResponseStatusSpeakStaticResponseText"]', (event) => {
+				const currentSelectedLanguage = manageToolsLanguageDropdown.getSelectedLanguage();
+
+				const currentElement = $(event.currentTarget);
+				const statusType = currentElement.attr("status-type");
+				const currentValue = currentElement.val();
+
+				CurrentManageToolResponseStaticResponse[statusType][currentSelectedLanguage.id] = currentValue;
+
+				validateToolsAllMultilanguageElements();
 			});
 
 			// Initalize

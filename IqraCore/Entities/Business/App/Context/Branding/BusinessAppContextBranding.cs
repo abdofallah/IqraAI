@@ -20,6 +20,6 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> Website { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
-        public Dictionary<string, List<Dictionary<string, string>>> OtherInformation { get; set; } = new Dictionary<string, List<Dictionary<string, string>>>();
+        public Dictionary<string, Dictionary<string, string>> OtherInformation { get; set; } = new Dictionary<string, Dictionary<string, string>>();
     }
 }

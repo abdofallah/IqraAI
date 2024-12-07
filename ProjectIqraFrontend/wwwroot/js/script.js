@@ -1,25 +1,37 @@
 let CurrentTabHasHeader = false;
 
-const dynamicCSSElement = $("#dynamicCSS");
-
-function setDynamicBodyHeight(shouldIncludeInnerHeaderContainer = false, headerElement = null) {
+function setDynamicBodyHeight(containerId = null) {
 	$("body").css("overflow", "hidden");
 
 	setTimeout(() => {
+		if (containerId == null) {
+			containerId = $(".l-navbar .nav_link.active").attr("for");
+		}
+
+		const activeTabContainer = $(`#${containerId}`).find(".inner-container");
+		const activeTabHeaderContainer = $(`#${containerId}`).find(".inner-header-container");
+
 		const windowHeight = $(window)[0].innerHeight;
 		const headerHeight = $("#header")[0].clientHeight;
 		const mainContainerWrapperPaddingHeight = parseInt($(".main-container-wrapper").css("padding-top")) + parseInt($(".main-container-wrapper").css("padding-bottom"));
 
 		let headerTextHeight = 60; // get this dynamically but 50 should always be good
-		if (shouldIncludeInnerHeaderContainer) {
-			headerTextHeight += headerElement[0].clientHeight;
+		if (activeTabHeaderContainer.length > 0 && activeTabHeaderContainer.hasClass("d-none") === false) {
+			headerTextHeight += activeTabHeaderContainer[0].clientHeight;
 		}
 
 		const bodyCalculatedHeight = windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15); // 15 to make sure no random scroll - find out why this is even needed
 
-		dynamicCSSElement.html(`.inner-container{min-height: ${bodyCalculatedHeight}px !important;}`);
+		activeTabContainer.animate(
+			{
+				"min-height": `${bodyCalculatedHeight}px`,
+			},
+			300,
+		);
 
-		$("body").css("overflow", "initial");
+		setTimeout(() => {
+			$("body").css("overflow", "initial");
+		}, 310);
 	}, 10);
 }
 
@@ -47,39 +59,36 @@ function setDynamicSidebarHeight() {
 	}, 10);
 }
 
+function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
+	const toggle = document.getElementById(toggleId);
+	const nav = document.getElementById(navId);
+	const bodypd = document.getElementById(bodyId);
+	const headerpd = document.getElementById(headerId);
+
+	// Validate that all variables exist
+	if (toggle && nav && bodypd && headerpd) {
+		toggle.addEventListener("click", () => {
+			// show navbar
+			nav.classList.toggle("show");
+			// change icon
+			toggle.classList.toggle("fa-xmark");
+			// add padding to body
+			bodypd.classList.toggle("body-pd");
+			// add padding to header
+			headerpd.classList.toggle("header-body-pd");
+		});
+	}
+}
+
 $(document).ready(() => {
-	const showNavbar = (toggleId, navId, bodyId, headerId) => {
-		const toggle = document.getElementById(toggleId),
-			nav = document.getElementById(navId),
-			bodypd = document.getElementById(bodyId),
-			headerpd = document.getElementById(headerId);
-
-		// Validate that all variables exist
-		if (toggle && nav && bodypd && headerpd) {
-			toggle.addEventListener("click", () => {
-				// show navbar
-				nav.classList.toggle("show");
-				// change icon
-				toggle.classList.toggle("fa-xmark");
-				// add padding to body
-				bodypd.classList.toggle("body-pd");
-				// add padding to header
-				headerpd.classList.toggle("header-body-pd");
-			});
-		}
-	};
-
-	showNavbar("header-toggle", "nav-bar", "body-pd", "header");
-
-	/*===== LINK ACTIVE =====*/
 	$(document).on("click", ".l-navbar .nav_link", async (event) => {
 		event.preventDefault();
 
-		let currentElement = $(event.currentTarget);
-		let forTab = currentElement.attr("for");
+		const currentElement = $(event.currentTarget);
+		const forTab = currentElement.attr("for");
 
-		let activeElement = $(".l-navbar .nav_link.active");
-		let activeElementFor = activeElement.attr("for");
+		const activeElement = $(".l-navbar .nav_link.active");
+		const activeElementFor = activeElement.attr("for");
 
 		if (activeElementFor === forTab) {
 			return;
@@ -141,31 +150,27 @@ $(document).ready(() => {
 				$(`#${forTab}`).addClass("show");
 
 				setTimeout(() => {
-					const headerContainer = newTabElement.find(".inner-header-container");
-
-					CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
-
-					setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
+					setDynamicBodyHeight(forTab);
 				}, 10);
 			}, 10);
 		}, 150);
 	});
 
 	$(window).on("resize", (event) => {
-		setDynamicSidebarHeight();
 		setTimeout(() => {
-			const headerContainer = $(`#${$(".l-navbar .nav_link.active").attr("for")}`).find(".inner-header-container");
-
-			CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
-
-			setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
-		}, 50);
+			const currentActiveTabId = $(".l-navbar .nav_link.active").attr("for");
+			setDynamicBodyHeight(currentActiveTabId);
+		}, 100);
 	});
 
-	const headerContainer = $(`#${$(".l-navbar .nav_link.active").attr("for")}`).find(".inner-header-container");
+	// Init
+	changeActiveSidebarLink("header-toggle", "nav-bar", "body-pd", "header");
 
-	CurrentTabHasHeader = headerContainer.length > 0 && headerContainer.hasClass("d-none") === false;
+	$(document)
+		.find(".l-navbar .nav_link")
+		.each((index, element) => {
+			const containerId = $(element).attr("for");
 
-	setDynamicSidebarHeight();
-	setDynamicBodyHeight(CurrentTabHasHeader, headerContainer);
+			setDynamicBodyHeight(containerId);
+		});
 });

@@ -35,7 +35,8 @@ img {
 	color: var(--tcolor-dark);
 }
 
-.btn-primary {
+.btn-primary,
+.btn-primary.show {
 	background-color: var(--tcolor-light-green);
 	border-color: var(--tcolor-light-green);
 	color: var(--tcolor-dark);
@@ -43,6 +44,7 @@ img {
 
 .btn-primary.disabled,
 .btn-primary:disabled,
+.btn-primary.show:disabled,
 fieldset:disabled .btn-primary {
 	color: var(--tcolor-dark);
 	pointer-events: none;
@@ -64,7 +66,6 @@ a {
 .btn-primary:active,
 .btn-primary:focus,
 .btn-primary.active,
-.btn-primary.show,
 .btn-primary:first-child:active,
 :not(.btn-check) + .btn-primary:active {
 	background-color: var(--tcolor-dark-green) !important;
@@ -1381,4 +1382,8 @@ table.table > thead > * > * {
 
 .toolAudioExtraOptionsBox .recording-container-waveform {
 	width: calc(100% - 110px);
+}
+
+.fade:not(.show) {
+	opacity: 0 !important;
 }

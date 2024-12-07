@@ -1,9 +1,15 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Attributes;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppToolConfigurationInputSchemea
     {
         public string Id { get; set; }
+
+        [MultiLanguageProperty]
         public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();
+
+        [MultiLanguageProperty]
         public Dictionary<string, string> Description { get; set; } = new Dictionary<string, string>();
         public BusinessAppToolConfigurationInputSchemeaTypeEnum Type { get; set; } = BusinessAppToolConfigurationInputSchemeaTypeEnum.Unknown;
         public bool IsArray { get; set; } = false;
