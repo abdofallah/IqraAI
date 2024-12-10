@@ -644,41 +644,42 @@ function createContextBranchesTableElement(branch) {
 	return branchRow;
 }
 
+function FillContextBrandingTab() {
+	// Set current data
+	CurrentContextBrandingData = BusinessFullData.businessApp.context.branding;
+
+	// Initialize multilanguage data
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextBrandingNameMultiLangData[language] = CurrentContextBrandingData.name[language];
+		CurrentContextBrandingCountryMultiLangData[language] = CurrentContextBrandingData.country[language];
+		CurrentContextBrandingEmailMultiLangData[language] = CurrentContextBrandingData.email[language];
+		CurrentContextBrandingPhoneMultiLangData[language] = CurrentContextBrandingData.phone[language];
+		CurrentContextBrandingWebsiteMultiLangData[language] = CurrentContextBrandingData.website[language];
+		CurrentContextBrandingOtherInformationMultiLangData[language] = {};
+
+		// Initialize other information for each language
+		Object.keys(CurrentContextBrandingData.otherInformation[language] || {}).forEach((key) => {
+			CurrentContextBrandingOtherInformationMultiLangData[language][key] = CurrentContextBrandingData.otherInformation[language][key];
+		});
+	});
+
+	// Fill default language values
+	brandingBrandNameInput.val(CurrentContextBrandingData.name[BusinessDefaultLanguage]);
+	brandingBrandCountryInput.val(CurrentContextBrandingData.country[BusinessDefaultLanguage]);
+	brandingGlobalContactInput.val(CurrentContextBrandingData.email[BusinessDefaultLanguage]);
+	brandingGlobalPhoneInput.val(CurrentContextBrandingData.phone[BusinessDefaultLanguage]);
+	brandingGlobalWebsiteInput.val(CurrentContextBrandingData.website[BusinessDefaultLanguage]);
+
+	// Fill other information for default language
+	fillOtherInformationForLanguage(BusinessDefaultLanguage);
+
+	validateContextBrandingAllMultilanguageElements();
+	saveContextBrandingButton.prop("disabled", true);
+}
+
 function FillContextTab() {
 	// Branding
-	function fillBrandingTab() {
-		// Set current data
-		CurrentContextBrandingData = BusinessFullData.businessApp.context.branding;
-
-		// Initialize multilanguage data
-		BusinessFullData.businessData.languages.forEach((language) => {
-			CurrentContextBrandingNameMultiLangData[language] = CurrentContextBrandingData.name[language];
-			CurrentContextBrandingCountryMultiLangData[language] = CurrentContextBrandingData.country[language];
-			CurrentContextBrandingEmailMultiLangData[language] = CurrentContextBrandingData.email[language];
-			CurrentContextBrandingPhoneMultiLangData[language] = CurrentContextBrandingData.phone[language];
-			CurrentContextBrandingWebsiteMultiLangData[language] = CurrentContextBrandingData.website[language];
-			CurrentContextBrandingOtherInformationMultiLangData[language] = {};
-
-			// Initialize other information for each language
-			Object.keys(CurrentContextBrandingData.otherInformation[language] || {}).forEach((key) => {
-				CurrentContextBrandingOtherInformationMultiLangData[language][key] = CurrentContextBrandingData.otherInformation[language][key];
-			});
-		});
-
-		// Fill default language values
-		brandingBrandNameInput.val(CurrentContextBrandingData.name[BusinessDefaultLanguage]);
-		brandingBrandCountryInput.val(CurrentContextBrandingData.country[BusinessDefaultLanguage]);
-		brandingGlobalContactInput.val(CurrentContextBrandingData.email[BusinessDefaultLanguage]);
-		brandingGlobalPhoneInput.val(CurrentContextBrandingData.phone[BusinessDefaultLanguage]);
-		brandingGlobalWebsiteInput.val(CurrentContextBrandingData.website[BusinessDefaultLanguage]);
-
-		// Fill other information for default language
-		fillOtherInformationForLanguage(BusinessDefaultLanguage);
-
-		validateContextBrandingAllMultilanguageElements();
-		saveContextBrandingButton.prop("disabled", true);
-	}
-	fillBrandingTab();
+	FillContextBrandingTab();
 
 	// Branches
 	function fillBranchesTab() {
@@ -1689,7 +1690,7 @@ function initContextTab() {
 			if (!canLeaveBrandingTabResult) {
 				event.preventDefault();
 			} else {
-				// todo - reset and refill branding
+				FillContextBrandingTab();
 			}
 
 			const canLeaveBranchesTabResult = await canLeaveContextBranchesTab(" Are you sure you want to discard these changes and leave the context tab?");
