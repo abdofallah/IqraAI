@@ -5,12 +5,12 @@ let ContentTabMultiLanguageDropdown = null;
 
 // Context Branding State
 let CurrentContextBrandingData = null;
-let CurrentContextBrandingNameMultiLangData = {};
-let CurrentContextBrandingCountryMultiLangData = {};
-let CurrentContextBrandingEmailMultiLangData = {};
-let CurrentContextBrandingPhoneMultiLangData = {};
-let CurrentContextBrandingWebsiteMultiLangData = {};
-let CurrentContextBrandingOtherInformationMultiLangData = {};
+const CurrentContextBrandingNameMultiLangData = {};
+const CurrentContextBrandingCountryMultiLangData = {};
+const CurrentContextBrandingEmailMultiLangData = {};
+const CurrentContextBrandingPhoneMultiLangData = {};
+const CurrentContextBrandingWebsiteMultiLangData = {};
+const CurrentContextBrandingOtherInformationMultiLangData = {};
 
 // Context Branch State
 let CurrentContextBranchData = null;
@@ -21,23 +21,23 @@ let CurrentContextBranchPhoneMultiLangData = {};
 let CurrentContextBranchEmailMultiLangData = {};
 let CurrentContextBranchWebsiteMultiLangData = {};
 let CurrentContextBranchOtherInformationMultiLangData = {};
-let CurrentContextBranchTeamMultiLangData = {};
+let CurrentContextBranchTeamMultiLangData = [];
 
 // Context Service State
 let CurrentContextServiceData = null;
 let ManageContextServiceType = null; // new or edit
-let CurrentContextServiceNameMultiLangData = {};
-let CurrentContextServiceShortDescriptionMultiLangData = {};
-let CurrentContextServiceLongDescriptionMultiLangData = {};
-let CurrentContextServiceOtherInformationMultiLangData = {};
+const CurrentContextServiceNameMultiLangData = {};
+const CurrentContextServiceShortDescriptionMultiLangData = {};
+const CurrentContextServiceLongDescriptionMultiLangData = {};
+const CurrentContextServiceOtherInformationMultiLangData = {};
 
 // Context Product State
 let CurrentContextProductData = null;
 let ManageContextProductType = null; // new or edit
-let CurrentContextProductNameMultiLangData = {};
-let CurrentContextProductShortDescriptionMultiLangData = {};
-let CurrentContextProductLongDescriptionMultiLangData = {};
-let CurrentContextProductOtherInformationMultiLangData = {};
+const CurrentContextProductNameMultiLangData = {};
+const CurrentContextProductShortDescriptionMultiLangData = {};
+const CurrentContextProductLongDescriptionMultiLangData = {};
+const CurrentContextProductOtherInformationMultiLangData = {};
 
 // Saving States
 let IsSavingContextBrandingTab = false;
@@ -56,6 +56,7 @@ const contextTabHeader = contextTab.find(".inner-header-container");
 const contextTabButtonHeader = contextTabHeader.find("#contextTabButtonHeader");
 
 const saveContextBrandingButton = contextTabHeader.find("#saveContextBrandingButton");
+const saveContextBrandingButtonSpinner = saveContextBrandingButton.find(".spinner-border");
 
 // Branding
 const brandingTab = contextTab.find("#context-inner-branding");
@@ -85,7 +86,6 @@ const saveContextBranchesButton = contextTabHeader.find("#saveContextBranchesBut
 
 const branchesManagerTab = contextTab.find("#branchesManagerTab");
 
-const editBranchUniqueIDInput = branchesManagerTab.find("#editBranchUniqueIDInput");
 const editBranchNameInput = branchesManagerTab.find("#editBranchNameInput");
 const editBranchAddressInput = branchesManagerTab.find("#editBranchAddressInput");
 const editBranchPhoneInput = branchesManagerTab.find("#editBranchPhoneInput");
@@ -155,10 +155,29 @@ const linkedContextProductBranchesList = contextTab.find("#linkedContextProductB
 const addNewContextProductInformationButton = contextTab.find("#addNewContextProductInformation");
 const contextProductInformationList = contextTab.find("#contextProductInformationList");
 
-/** Functions  **/
+/** API Functions */
+function SaveBusinessContextBranding(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/context/branding/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
 
+/** Functions  **/
 function resetOrClearBranchManager() {
-	$("#editBranchUniqueIDInput").val("");
 	$("#editBranchNameInput").val("");
 	$("#editBranchAddressInput").val("");
 	$("#editBranchPhoneInput").val("");
@@ -175,6 +194,23 @@ function resetOrClearBranchManager() {
 
 	editBranchTeamInputsList.children().remove();
 	$("#branding-branch-manager-general-tab").click();
+
+	CurrentContextBranchNameMultiLangData = {};
+	CurrentContextBranchAddressMultiLangData = {};
+	CurrentContextBranchPhoneMultiLangData = {};
+	CurrentContextBranchEmailMultiLangData = {};
+	CurrentContextBranchWebsiteMultiLangData = {};
+	CurrentContextBranchOtherInformationMultiLangData = {};
+	CurrentContextBranchTeamMultiLangData = [];
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextBranchNameMultiLangData[language] = "";
+		CurrentContextBranchAddressMultiLangData[language] = "";
+		CurrentContextBranchPhoneMultiLangData[language] = "";
+		CurrentContextBranchEmailMultiLangData[language] = "";
+		CurrentContextBranchWebsiteMultiLangData[language] = "";
+		CurrentContextBranchOtherInformationMultiLangData[language] = {};
+	});
 }
 
 function resetOrClearServiceManager() {
@@ -539,35 +575,10 @@ function ValidateContextBrandingTab(onlyRemove = true) {
 		}
 	});
 
-	// Other Information validation
-	const infoElements = brandingBranchInformationList.children();
-	infoElements.each((idx, element) => {
-		const currentElement = $(element);
-		const keyInput = currentElement.find('[data-type="key"]');
-		const valueInput = currentElement.find('[data-type="value"]');
-
-		if (keyInput.val().trim() === "") {
-			validated = false;
-			errors.push(`Information type #${idx + 1} is required.`);
-
-			if (!onlyRemove) {
-				keyInput.addClass("is-invalid");
-			}
-		} else {
-			keyInput.removeClass("is-invalid");
-		}
-
-		if (valueInput.val().trim() === "") {
-			validated = false;
-			errors.push(`Information value #${idx + 1} is required.`);
-
-			if (!onlyRemove) {
-				valueInput.addClass("is-invalid");
-			}
-		} else {
-			valueInput.removeClass("is-invalid");
-		}
-	});
+	if (!validateBrandingOtherInformationKeys()) {
+		validated = false;
+		errors.push("Duplicate information types found. Please ensure all information types are unique.");
+	}
 
 	return {
 		validated: validated,
@@ -670,6 +681,574 @@ function CreateContextBrandingOtherInformationElement() {
 	return element;
 }
 
+function validateBrandingOtherInformationKeys() {
+	const seenKeys = new Set();
+	let hasDuplicates = false;
+
+	brandingBranchInformationList.children().each((idx, element) => {
+		const currentElement = $(element);
+		const keyInput = currentElement.find('[data-type="key"]');
+		const key = keyInput.val().trim();
+
+		if (key && seenKeys.has(key)) {
+			hasDuplicates = true;
+			keyInput.addClass("is-invalid");
+		} else {
+			keyInput.removeClass("is-invalid");
+			if (key) {
+				seenKeys.add(key);
+			}
+		}
+	});
+
+	return !hasDuplicates;
+}
+
+async function canLeaveContextBrandingTab(leaveMessage = "") {
+	if (IsSavingContextBrandingTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Branding tab is currently being saved. Please wait for the save to finish.",
+			enableDismiss: false,
+		});
+		return false;
+	}
+
+	const brandingChanges = CheckContextBrandingTabHasChanges(false);
+	if (brandingChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in branding tab.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function CheckContextBranchTabHasChanges(enableDisableButton = true) {
+	const changes = {
+		id: CurrentContextBranchData.id,
+	};
+	let hasChanges = false;
+
+	// Check general section
+	function checkGeneralTab() {
+		changes.general = {
+			name: {},
+			address: {},
+			phone: {},
+			email: {},
+			website: {},
+			otherInformation: {},
+		};
+
+		BusinessFullData.businessData.languages.forEach((language) => {
+			// Name changes
+			changes.general.name[language] = CurrentContextBranchNameMultiLangData[language];
+			if (CurrentContextBranchData.general.name[language] !== changes.general.name[language]) {
+				hasChanges = true;
+			}
+
+			// Address changes
+			changes.general.address[language] = CurrentContextBranchAddressMultiLangData[language];
+			if (CurrentContextBranchData.general.address[language] !== changes.general.address[language]) {
+				hasChanges = true;
+			}
+
+			// Phone changes
+			changes.general.phone[language] = CurrentContextBranchPhoneMultiLangData[language];
+			if (CurrentContextBranchData.general.phone[language] !== changes.general.phone[language]) {
+				hasChanges = true;
+			}
+
+			// Email changes
+			changes.general.email[language] = CurrentContextBranchEmailMultiLangData[language];
+			if (CurrentContextBranchData.general.email[language] !== changes.general.email[language]) {
+				hasChanges = true;
+			}
+
+			// Website changes
+			changes.general.website[language] = CurrentContextBranchWebsiteMultiLangData[language];
+			if (CurrentContextBranchData.general.website[language] !== changes.general.website[language]) {
+				hasChanges = true;
+			}
+
+			// Other Information changes
+			changes.general.otherInformation[language] = CurrentContextBranchOtherInformationMultiLangData[language] || {};
+			if (JSON.stringify(CurrentContextBranchData.general.otherInformation[language]) !== JSON.stringify(changes.general.otherInformation[language])) {
+				hasChanges = true;
+			}
+		});
+	}
+	checkGeneralTab();
+
+	// Working Hours changes
+	function checkWorkingHoursTab() {
+		changes.workingHours = {};
+		DAYS.forEach((day) => {
+			changes.workingHours[day] = {
+				isClosed: $(`#editBranchOpeningHours${day}Input`).is(":checked"),
+				timings: [],
+			};
+
+			const timingsList = $(`.workingHoursTimingList[day-value="${day}"]`).children();
+			timingsList.each((idx, element) => {
+				const fromTime = $(element).find('[time-type="from"]').val();
+				const toTime = $(element).find('[time-type="to"]').val();
+				if (fromTime && toTime) {
+					changes.workingHours[day].timings.push([fromTime, toTime]);
+				}
+			});
+
+			if (JSON.stringify(CurrentContextBranchData.workingHours[day]) !== JSON.stringify(changes.workingHours[day])) {
+				hasChanges = true;
+			}
+		});
+	}
+	checkWorkingHoursTab();
+
+	// Team changes
+	changes.team = CurrentContextBranchTeamMultiLangData;
+	if (JSON.stringify(CurrentContextBranchData.team) !== JSON.stringify(changes.team)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		saveContextBranchesButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+function validateContextBranchAllMultilanguageElements() {
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+		let isAnyFieldIncomplete = false;
+
+		// Validate general section fields
+		if (!CurrentContextBranchNameMultiLangData[language] || CurrentContextBranchNameMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		if (!CurrentContextBranchAddressMultiLangData[language] || CurrentContextBranchAddressMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		if (!CurrentContextBranchPhoneMultiLangData[language] || CurrentContextBranchPhoneMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		if (!CurrentContextBranchEmailMultiLangData[language] || CurrentContextBranchEmailMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		if (!CurrentContextBranchWebsiteMultiLangData[language] || CurrentContextBranchWebsiteMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Other Information
+		if (language === ContentTabMultiLanguageDropdown.getSelectedLanguage().id) {
+			contextBranchInformationList.children().each((idx, element) => {
+				const key = $(element).find("input").val().trim();
+				const value = $(element).find("textarea").val().trim();
+				if (!key || !value) {
+					isAnyFieldIncomplete = true;
+				}
+			});
+		}
+
+		// Update language status in dropdown
+		ContentTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
+	});
+}
+
+function ValidateContextBranchTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// Branch Name validation
+		if (!CurrentContextBranchNameMultiLangData[language] || CurrentContextBranchNameMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Branch name for language ${language} is required.`);
+			if (!onlyRemove) {
+				editBranchNameInput.addClass("is-invalid");
+			}
+		} else {
+			editBranchNameInput.removeClass("is-invalid");
+		}
+
+		// Branch Address validation
+		if (!CurrentContextBranchAddressMultiLangData[language] || CurrentContextBranchAddressMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Branch address for language ${language} is required.`);
+			if (!onlyRemove) {
+				editBranchAddressInput.addClass("is-invalid");
+			}
+		} else {
+			editBranchAddressInput.removeClass("is-invalid");
+		}
+
+		// Branch Phone validation
+		if (!CurrentContextBranchPhoneMultiLangData[language] || CurrentContextBranchPhoneMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Branch phone for language ${language} is required.`);
+			if (!onlyRemove) {
+				editBranchPhoneInput.addClass("is-invalid");
+			}
+		} else {
+			editBranchPhoneInput.removeClass("is-invalid");
+		}
+
+		// Branch Email validation
+		if (!CurrentContextBranchEmailMultiLangData[language] || CurrentContextBranchEmailMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Branch email for language ${language} is required.`);
+			if (!onlyRemove) {
+				editBranchEmailInput.addClass("is-invalid");
+			}
+		} else {
+			// Additional email format validation
+			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			if (!emailRegex.test(CurrentContextBranchEmailMultiLangData[language].trim())) {
+				validated = false;
+				errors.push(`Invalid email format for language ${language}.`);
+				if (!onlyRemove) {
+					editBranchEmailInput.addClass("is-invalid");
+				}
+			} else {
+				editBranchEmailInput.removeClass("is-invalid");
+			}
+		}
+
+		// Branch Website validation
+		if (!CurrentContextBranchWebsiteMultiLangData[language] || CurrentContextBranchWebsiteMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Branch website for language ${language} is required.`);
+			if (!onlyRemove) {
+				editBranchWebsiteInput.addClass("is-invalid");
+			}
+		} else {
+			editBranchWebsiteInput.removeClass("is-invalid");
+		}
+	});
+
+	// Validate Working Hours
+	let hasWorkingHours = false;
+	DAYS.forEach((day) => {
+		const isClosed = $(`#editBranchOpeningHours${day}Input`).is(":checked");
+		if (!isClosed) {
+			const timings = $(`.workingHoursTimingList[day-value="${day}"]`).children();
+			if (timings.length > 0) {
+				hasWorkingHours = true;
+
+				// Validate each timing entry
+				timings.each((idx, element) => {
+					const fromTime = $(element).find('[time-type="from"]').val();
+					const toTime = $(element).find('[time-type="to"]').val();
+
+					if (!fromTime || !toTime) {
+						validated = false;
+						errors.push(`Incomplete timing entry for ${day}. Both start and end times are required.`);
+						if (!onlyRemove) {
+							$(element).find('input[type="time"]').addClass("is-invalid");
+						}
+					} else if (fromTime >= toTime) {
+						validated = false;
+						errors.push(`Invalid timing for ${day}: End time must be after start time.`);
+						if (!onlyRemove) {
+							$(element).find('input[type="time"]').addClass("is-invalid");
+						}
+					} else {
+						$(element).find('input[type="time"]').removeClass("is-invalid");
+					}
+				});
+			}
+		}
+	});
+
+	if (!hasWorkingHours) {
+		validated = false;
+		errors.push("At least one working hour timing must be set for open days.");
+	}
+
+	// Validate Team Members
+	editBranchTeamInputsList.children().each((idx, teamElement) => {
+		const teamMember = $(teamElement);
+		BusinessFullData.businessData.languages.forEach((language) => {
+			const nameInput = teamMember.find('[data-field="name"]');
+			const roleInput = teamMember.find('[data-field="role"]');
+			const emailInput = teamMember.find('[data-field="email"]');
+			const phoneInput = teamMember.find('[data-field="phone"]');
+
+			// Required fields validation
+			if (!nameInput.val().trim()) {
+				validated = false;
+				errors.push(`Team member name is required for language ${language}.`);
+				if (!onlyRemove) {
+					nameInput.addClass("is-invalid");
+				}
+			} else {
+				nameInput.removeClass("is-invalid");
+			}
+
+			if (!roleInput.val().trim()) {
+				validated = false;
+				errors.push(`Team member role is required for language ${language}.`);
+				if (!onlyRemove) {
+					roleInput.addClass("is-invalid");
+				}
+			} else {
+				roleInput.removeClass("is-invalid");
+			}
+
+			// Email format validation if provided
+			if (emailInput.val().trim()) {
+				const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+				if (!emailRegex.test(emailInput.val().trim())) {
+					validated = false;
+					errors.push(`Invalid email format for team member ${nameInput.val() || "unnamed"}.`);
+					if (!onlyRemove) {
+						emailInput.addClass("is-invalid");
+					}
+				} else {
+					emailInput.removeClass("is-invalid");
+				}
+			}
+		});
+	});
+
+	// Validate other information keys for duplicates
+	if (!validateBranchOtherInformationKeys()) {
+		validated = false;
+		errors.push("Duplicate information types found. Please ensure all information types are unique.");
+	}
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function updateContextBranchOtherInformation(languageId) {
+	CurrentContextBranchOtherInformationMultiLangData[languageId] = {};
+
+	contextBranchInformationList.children().each((idx, element) => {
+		const infoType = $(element).find("input").val().trim();
+		const infoValue = $(element).find("textarea").val().trim();
+
+		if (infoType) {
+			CurrentContextBranchOtherInformationMultiLangData[languageId][infoType] = infoValue;
+		}
+	});
+}
+
+function createDefaultContextBranchesObject() {
+	const object = {
+		id: null,
+		general: {
+			name: {},
+			address: {},
+			phone: {},
+			email: {},
+			website: {},
+			otherInformation: {},
+		},
+		workingHours: {},
+		team: [],
+	};
+
+	DAYS.forEach((day, index) => {
+		object.workingHours[day] = {
+			isClosed: false,
+			timings: [],
+		};
+	});
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		object.general.name[language] = "";
+		object.general.address[language] = "";
+		object.general.phone[language] = "";
+		object.general.email[language] = "";
+		object.general.website[language] = "";
+		object.general.otherInformation[language] = {};
+	});
+
+	return object;
+}
+
+function fillContextBranchManager(branchData = null) {
+	CurrentContextBranchData = branchData || createDefaultContextBranchesObject();
+
+	// Fill general section
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextBranchNameMultiLangData[language] = CurrentContextBranchData.general.name[language];
+		CurrentContextBranchAddressMultiLangData[language] = CurrentContextBranchData.general.address[language];
+		CurrentContextBranchPhoneMultiLangData[language] = CurrentContextBranchData.general.phone[language];
+		CurrentContextBranchEmailMultiLangData[language] = CurrentContextBranchData.general.email[language];
+		CurrentContextBranchWebsiteMultiLangData[language] = CurrentContextBranchData.general.website[language];
+		CurrentContextBranchOtherInformationMultiLangData[language] = CurrentContextBranchData.general.otherInformation[language] || {};
+	});
+
+	// Fill form with default language values
+	editBranchNameInput.val(CurrentContextBranchData.general.name[BusinessDefaultLanguage]);
+	editBranchAddressInput.val(CurrentContextBranchData.general.address[BusinessDefaultLanguage]);
+	editBranchPhoneInput.val(CurrentContextBranchData.general.phone[BusinessDefaultLanguage]);
+	editBranchEmailInput.val(CurrentContextBranchData.general.email[BusinessDefaultLanguage]);
+	editBranchWebsiteInput.val(CurrentContextBranchData.general.website[BusinessDefaultLanguage]);
+
+	// Fill working hours
+	DAYS.forEach((day) => {
+		const dayData = CurrentContextBranchData.workingHours[day];
+		$(`#editBranchOpeningHours${day}Input`).prop("checked", dayData.isClosed);
+
+		const timingsList = $(`.workingHoursTimingList[day-value="${day}"]`);
+		timingsList.empty();
+
+		dayData.timings.forEach((timing) => {
+			const timingElement = $(`
+                <div class="d-flex flex-row mt-1">
+                    <input type="time" class="form-control" time-type="from" value="${timing[0]}" 
+                           style="border-top-right-radius: 0; border-bottom-right-radius: 0">
+                    <input type="time" class="form-control" time-type="to" value="${timing[1]}" 
+                           style="border-radius: 0; border-left: none;">
+                    <button class="btn btn-danger" button-type="removeBranchWorkingHour" 
+                            style="border-top-left-radius: 0; border-bottom-left-radius: 0">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </div>
+            `);
+			timingsList.append(timingElement);
+		});
+	});
+
+	// Fill team members
+	editBranchTeamInputsList.empty();
+	CurrentContextBranchData.team.forEach((teamMember) => {
+		// Add team member UI element and fill data
+		const teamMemberElement = createTeamMemberElement(teamMember);
+		editBranchTeamInputsList.append(teamMemberElement);
+	});
+
+	validateContextBranchAllMultilanguageElements();
+	saveContextBranchesButton.prop("disabled", true);
+}
+
+function createTeamMemberElement(teamMember = null) {
+	const element = $(`
+        <div class="col-12 col-md-6 mt-3">
+            <div class="editBranchTeamBox">
+                <div class="d-flex flex-row gap-2 mb-2">
+                    <div class="w-100">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" data-field="name" value="${teamMember?.name[BusinessDefaultLanguage] || ""}">
+                    </div>
+                    <div class="w-100">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" data-field="role" value="${teamMember?.role[BusinessDefaultLanguage] || ""}">
+                    </div>
+                </div>
+                <div class="d-flex flex-row gap-2 mb-2">
+                    <div class="w-100">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" data-field="email" value="${teamMember?.email[BusinessDefaultLanguage] || ""}">
+                    </div>
+                    <div class="w-100">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-control" data-field="phone" value="${teamMember?.phone[BusinessDefaultLanguage] || ""}">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Information</label>
+                    <textarea class="form-control" data-field="information" style="min-height: 70px">${teamMember?.information[BusinessDefaultLanguage] || ""}</textarea>
+                </div>
+                <button class="btn btn-danger w-100" button-type="removeEditBranchTeam">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `);
+
+	return element;
+}
+
+function validateBranchOtherInformationKeys() {
+	const seenKeys = new Set();
+	let hasDuplicates = false;
+
+	contextBranchInformationList.children().each((idx, element) => {
+		const currentElement = $(element);
+		const keyInput = currentElement.find('[data-type="key"]');
+		const key = keyInput.val().trim();
+
+		if (key && seenKeys.has(key)) {
+			hasDuplicates = true;
+			keyInput.addClass("is-invalid");
+		} else {
+			keyInput.removeClass("is-invalid");
+			if (key) {
+				seenKeys.add(key);
+			}
+		}
+	});
+
+	return !hasDuplicates;
+}
+
+function createContextBranchOtherInformationElement() {
+	const element = `
+		<div class="mt-2">
+			<div class="input-group">
+				<input data-type="key" type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+				<button class="btn btn-danger" button-type="contextBranchInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+						<i class='fa-regular fa-trash'></i>
+				</button>
+			</div>
+			<textarea data-type="value" class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+		</div>
+	`;
+
+	return element;
+}
+
+function updateTeamMembersData(languageId) {
+	const teamMembers = [];
+
+	editBranchTeamInputsList.children().each((idx, element) => {
+		const memberElement = $(element);
+		const existingMember = CurrentContextBranchTeamMultiLangData[idx] || {
+			name: {},
+			role: {},
+			email: {},
+			phone: {},
+			information: {},
+		};
+
+		// Update current language data while preserving other languages
+		existingMember.name[languageId] = memberElement.find('[data-field="name"]').val();
+		existingMember.role[languageId] = memberElement.find('[data-field="role"]').val();
+		existingMember.email[languageId] = memberElement.find('[data-field="email"]').val();
+		existingMember.phone[languageId] = memberElement.find('[data-field="phone"]').val();
+		existingMember.information[languageId] = memberElement.find('[data-field="information"]').val();
+
+		teamMembers.push(existingMember);
+	});
+
+	CurrentContextBranchTeamMultiLangData = teamMembers;
+}
+
 function initContextTab() {
 	$(document).ready(() => {
 		ContentTabMultiLanguageDropdown = new MultiLanguageDropdown("contentTabMultiLanguageSelectContainer", BusinessFullLanguagesData);
@@ -708,8 +1287,9 @@ function initContextTab() {
 			CheckContextBrandingTabHasChanges(true);
 		});
 
-		$(document).on("click", '[button-type="brandingInformationRemove"]', (event) => {
+		brandingBranchInformationList.on("click", '[button-type="brandingInformationRemove"]', (event) => {
 			event.preventDefault();
+			event.stopPropagation();
 			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
 
 			$(event.currentTarget).parent().parent().remove();
@@ -727,6 +1307,9 @@ function initContextTab() {
 			resetOrClearBranchManager();
 
 			ShowContextBranchesManagerTab();
+
+			ManageContextBranchType = "new";
+			CurrentContextBranchData = createDefaultContextBranchesObject();
 		});
 
 		switchBackToBranchesTab.on("click", (event) => {
@@ -737,27 +1320,30 @@ function initContextTab() {
 
 		addContextBranchInformationButton.on("click", (event) => {
 			event.preventDefault();
+			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
 
-			contextBranchInformationList.append(`
-                              <div class="mt-2">
-                                   <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
-                                        <button class="btn btn-danger" button-type="contextBranchInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>
-                         `);
+			contextBranchInformationList.append($(createContextBranchOtherInformationElement()));
+
+			updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			CheckContextBranchTabHasChanges(true);
+			validateContextBranchAllMultilanguageElements();
 		});
 
-		$(document).on("click", '[button-type="contextBranchInformationRemove"]', (event) => {
+		contextBranchInformationList.on("click", '[button-type="contextBranchInformationRemove"]', (event) => {
 			event.preventDefault();
+			event.stopPropagation();
+			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
 
 			$(event.currentTarget).parent().parent().remove();
+
+			updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			CheckContextBranchTabHasChanges(true);
+			validateContextBranchAllMultilanguageElements();
 		});
 
-		$(document).on("click", '[checkbox-type="branchWorkingHourIsClosed"]', (event) => {
+		editBranchOpeningHoursInputsList.on("click", '[checkbox-type="branchWorkingHourIsClosed"]', (event) => {
+			event.stopPropagation();
+
 			const dayValue = $(event.currentTarget).attr("day-value");
 			const isChecked = $(event.currentTarget).is(":checked");
 
@@ -771,7 +1357,9 @@ function initContextTab() {
 			}
 		});
 
-		$(document).on("click", '[button-type="addBranchWorkingHour"]', (event) => {
+		editBranchOpeningHoursInputsList.on("click", '[button-type="addBranchWorkingHour"]', (event) => {
+			event.stopPropagation();
+
 			const dayValue = $(event.currentTarget).attr("day-value");
 
 			const dayTimingsList = $(`.workingHoursTimingList[day-value="${dayValue}"]`);
@@ -787,51 +1375,21 @@ function initContextTab() {
                          `);
 		});
 
-		$(document).on("click", '[button-type="removeBranchWorkingHour"]', (event) => {
+		editBranchOpeningHoursInputsList.on("click", '[button-type="removeBranchWorkingHour"]', (event) => {
+			event.stopPropagation();
+
 			$(event.currentTarget).parent().remove();
 		});
 
 		editBranchAddTeamMember.on("click", (event) => {
 			event.preventDefault();
 
-			editBranchTeamInputsList.append(`
-                              <div class="col-12 col-md-6 mt-3">
-                                   <div class="editBranchTeamBox">
-                                        <div class="d-flex flex-row gap-2 mb-2">
-                                             <div class="w-100">
-                                                  <label for="editBranchTeamNameInput" class="form-label">Name</label>
-                                                  <input type="text" class="form-control" id="editBranchTeamNameInput" placeholder="Name">
-                                             </div>
-                                             <div class="w-100">
-                                                  <label for="editBranchTeamRoleInput" class="form-label">Role</label>
-                                                  <input type="text" class="form-control" id="editBranchTeamRoleInput" placeholder="Role">
-                                             </div>
-                                        </div>
-                                        <div class="d-flex flex-row gap-2 mb-2">
-                                             <div class="w-100">
-                                                  <label for="editBranchTeamEmailInput" class="form-label">Email</label>
-                                                  <input type="text" class="form-control" id="editBranchTeamEmailInput" placeholder="Email">
-                                             </div>
-                                             <div class="w-100">
-                                                  <label for="editBranchTeamPhoneInput" class="form-label">Phone</label>
-                                                  <input type="tel" class="form-control" id="editBranchTeamPhoneInput" placeholder="Phone">
-                                             </div>
-                                        </div>
-
-                                        <div class="mb-2">
-                                             <label for="editBranchTeamInformationInput" class="form-label">Information</label>
-                                             <textarea class="form-control" id="editBranchTeamInformationInput" placeholder="Information" style="min-height: 70px"></textarea>
-                                        </div>
-
-                                        <button class="btn btn-danger w-100" button-type="removeEditBranchTeam">
-                                             <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                   </div>
-                              </div>
-                         `);
+			editBranchTeamInputsList.append($(createTeamMemberElement(null)));
 		});
 
-		$(document).on("click", '[button-type="removeEditBranchTeam"]', (event) => {
+		editBranchTeamInputsList.on("click", '[button-type="removeEditBranchTeam"]', (event) => {
+			event.stopPropagation();
+
 			$(event.currentTarget).parent().parent().remove();
 		});
 
@@ -867,7 +1425,9 @@ function initContextTab() {
                          `);
 		});
 
-		$(document).on("click", '[button-type="contextServiceInformationRemove"]', (event) => {
+		contextServiceInformationList.on("click", '[button-type="contextServiceInformationRemove"]', (event) => {
+			event.stopPropagation();
+
 			$(event.currentTarget).parent().parent().remove();
 		});
 
@@ -903,7 +1463,9 @@ function initContextTab() {
                          `);
 		});
 
-		$(document).on("click", '[button-type="contextProductInformationRemove"]', (event) => {
+		contextProductInformationList.on("click", '[button-type="contextProductInformationRemove"]', (event) => {
+			event.stopPropagation();
+
 			$(event.currentTarget).parent().parent().remove();
 		});
 
@@ -930,14 +1492,12 @@ function initContextTab() {
 		});
 
 		ContentTabMultiLanguageDropdown.onLanguageChange((language) => {
-			// Update branding fields
+			// Branding Tab
 			brandingBrandNameInput.val(CurrentContextBrandingNameMultiLangData[language.id] || "");
 			brandingBrandCountryInput.val(CurrentContextBrandingCountryMultiLangData[language.id] || "");
 			brandingGlobalContactInput.val(CurrentContextBrandingEmailMultiLangData[language.id] || "");
 			brandingGlobalPhoneInput.val(CurrentContextBrandingPhoneMultiLangData[language.id] || "");
 			brandingGlobalWebsiteInput.val(CurrentContextBrandingWebsiteMultiLangData[language.id] || "");
-
-			// Update other information list
 			fillOtherInformationForLanguage(language.id);
 
 			validateContextBrandingAllMultilanguageElements();
@@ -968,11 +1528,160 @@ function initContextTab() {
 
 			// Update other information when those fields change
 			if ($(event.target).closest("#brandingBranchInformationList").length > 0) {
-				updateBrandingOtherInformation(currentSelectedLanguage.id);
+				if (validateBrandingOtherInformationKeys()) {
+					updateBrandingOtherInformation(currentSelectedLanguage.id);
+				}
 			}
 
 			validateContextBrandingAllMultilanguageElements();
 			CheckContextBrandingTabHasChanges(true);
+		});
+
+		saveContextBrandingButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingContextBrandingTab) return;
+
+			const validationResult = ValidateContextBrandingTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation for required branding fields failed.<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const brandingTabChanges = CheckContextBrandingTabHasChanges(false);
+			if (!brandingTabChanges.hasChanges) {
+				return;
+			}
+
+			saveContextBrandingButton.prop("disabled", true);
+			saveContextBrandingButtonSpinner.removeClass("d-none");
+
+			IsSavingContextBrandingTab = true;
+
+			const formData = new FormData();
+			formData.append("changes", JSON.stringify(brandingTabChanges.changes));
+
+			SaveBusinessContextBranding(
+				formData,
+				(saveResponse) => {
+					CurrentContextBrandingData = saveResponse.data;
+
+					BusinessFullData.businessApp.context.branding = CurrentContextBrandingData;
+
+					saveContextBrandingButton.prop("disabled", true);
+					saveContextBrandingButtonSpinner.addClass("d-none");
+
+					IsSavingContextBrandingTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: "Business branding updated successfully.",
+						timeout: 6000,
+					});
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving business branding data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving business branding data: ", saveError);
+
+					saveContextBrandingButton.prop("disabled", false);
+					saveContextBrandingButtonSpinner.addClass("d-none");
+
+					IsSavingContextBrandingTab = false;
+				},
+			);
+		});
+
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "context-tab") return;
+
+			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveBrandingTabResult) {
+				event.preventDefault();
+			} else {
+				FillContextTab();
+			}
+		});
+
+		branchesManagerTab.on(
+			"input change",
+			"#branding-branch-manager-general input[type='text'], #branding-branch-manager-general input[type='email'], #branding-branch-manager-general input[type='tel'], #branding-branch-manager-general textarea",
+			(event) => {
+				const currentElement = $(event.currentTarget);
+				const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+
+				switch (currentElement.attr("id")) {
+					case "editBranchNameInput":
+						CurrentContextBranchNameMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+						break;
+					case "editBranchAddressInput":
+						CurrentContextBranchAddressMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+						break;
+					case "editBranchPhoneInput":
+						CurrentContextBranchPhoneMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+						break;
+					case "editBranchEmailInput":
+						CurrentContextBranchEmailMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+						break;
+					case "editBranchWebsiteInput":
+						CurrentContextBranchWebsiteMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+						break;
+				}
+
+				validateContextBranchAllMultilanguageElements();
+				CheckContextBranchTabHasChanges(true);
+			},
+		);
+
+		contextBranchInformationList.on("input change", "input, textarea", (event) => {
+			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+
+			if (validateBranchOtherInformationKeys()) {
+				updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			}
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		editBranchTeamInputsList.on("input change", "input, textarea", (event) => {
+			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+
+			updateTeamMembersData(currentSelectedLanguage.id);
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		editBranchOpeningHoursInputsList.on("change", 'input[type="time"]', (event) => {
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		saveContextBranchesButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingContextBranchTab) return;
+
+			const validationResult = ValidateContextBranchTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			// Save implementation...
 		});
 
 		// Init

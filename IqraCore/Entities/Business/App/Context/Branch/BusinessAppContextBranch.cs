@@ -1,4 +1,7 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Options;
 
 namespace IqraCore.Entities.Business
 {
@@ -6,7 +9,9 @@ namespace IqraCore.Entities.Business
     {
         public long Id { get; set; }
         public BusinessAppContextBranchGeneral General { get; set; } = new BusinessAppContextBranchGeneral();
-        public BusinessAppContextBranchWorkingHours WorkingHours { get; set; } = new BusinessAppContextBranchWorkingHours();
+
+        [BsonDictionaryOptions(DictionaryRepresentation.Document)]
+        public DictionaryStringEnumValue<string, DayOfWeek, BusinessAppContextBranchWorkingHours> WorkingHours { get; set; } = new DictionaryStringEnumValue<string, DayOfWeek, BusinessAppContextBranchWorkingHours>();
         public List<BusinessAppContextBranchTeam> Team { get; set; } = new List<BusinessAppContextBranchTeam>();
     }
 
@@ -28,12 +33,11 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> Website { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
-        public Dictionary<string, List<Dictionary<string, string>>> OtherInformation { get; set; } = new Dictionary<string, List<Dictionary<string, string>>>();
+        public Dictionary<string, Dictionary<string, string>> OtherInformation { get; set; } = new Dictionary<string, Dictionary<string, string>>();
     }
 
     public class BusinessAppContextBranchWorkingHours
     {
-        public DayOfWeek Day { get; set; }
         public bool IsClosed { get; set; } = false;
         public List<(TimeOnly, TimeOnly)> Timings { get; set; } = new List<(TimeOnly, TimeOnly)>();
     }
