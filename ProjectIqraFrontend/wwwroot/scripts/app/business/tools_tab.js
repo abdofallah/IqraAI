@@ -1446,6 +1446,8 @@ function ValidateToolsManageTab(onlyRemove = true) {
 }
 
 async function canLeaveToolsTab(leaveMessage = "") {
+	if (ManageToolType == null) return true;
+
 	if (IsSavingToolManageTab) {
 		AlertManager.createAlert({
 			type: "warning",

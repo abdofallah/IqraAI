@@ -10,18 +10,20 @@ namespace IqraCore.Utilities
             IEnumerable<string> languages,
             JsonElement jsonElement,
             string propertyKey,
-            IDictionary<string, string> targetDictionary)
+            IDictionary<string, string> targetDictionary,
+            bool isOptional = false)
         {
             List<LanguagesData> languageList = languages.Select(x => new LanguagesData() { Id = x }).ToList();
 
-            return ValidateAndAssignMultiLanguageProperty(languageList, jsonElement, propertyKey, targetDictionary);
+            return ValidateAndAssignMultiLanguageProperty(languageList, jsonElement, propertyKey, targetDictionary, isOptional);
         }
 
         public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageProperty(
             IEnumerable<LanguagesData> languages,
             JsonElement jsonElement,
             string propertyKey,
-            IDictionary<string, string> targetDictionary)
+            IDictionary<string, string> targetDictionary,
+            bool isOptional = false)
         {
             var result = new FunctionReturnResult<bool>();
 
@@ -49,7 +51,7 @@ namespace IqraCore.Utilities
             foreach (var language in languages)
             {
                 if (!tempDictionary.TryGetValue(language.Id, out var value)
-                    || string.IsNullOrWhiteSpace(value))
+                    || (string.IsNullOrWhiteSpace(value) && !isOptional))
                 {
                     result.Code = "MultiLanguagePropertyValidation:3";
                     result.Message = $"Missing or empty {propertyKey} for language: {language.Id}";

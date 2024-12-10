@@ -2099,7 +2099,8 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     teamMember,
                     "email",
-                    newTeamMember.Email
+                    newTeamMember.Email,
+                    true
                 );
                 if (!teamEmailValidationResult.Success)
                 {
@@ -2113,7 +2114,8 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     teamMember,
                     "phone",
-                    newTeamMember.Phone
+                    newTeamMember.Phone,
+                    true
                 );
                 if (!teamPhoneValidationResult.Success)
                 {
@@ -2127,7 +2129,8 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     teamMember,
                     "information",
-                    newTeamMember.Information
+                    newTeamMember.Information,
+                    true
                 );
                 if (!teamInformationValidationResult.Success)
                 {

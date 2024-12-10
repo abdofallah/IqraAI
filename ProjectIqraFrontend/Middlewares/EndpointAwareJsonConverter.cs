@@ -1,12 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using IqraCore.Attributes;
-using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper;
 
 namespace ProjectIqraFrontend.Middlewares
@@ -270,11 +268,18 @@ namespace ProjectIqraFrontend.Middlewares
                 return true;
             }
 
+            if (underlyingType == typeof(TimeOnly))
+            {
+                var timeOnly = (TimeOnly)value;
+                writer.WriteStringValue(timeOnly.ToString("HH:mm", CultureInfo.InvariantCulture));
+                return true;
+            }
+
             if (underlyingType == typeof(DateTime))
             {
                 JsonSerializer.Serialize(writer, (DateTime)value, underlyingType, options);
                 return true;
-            }
+            }         
 
             if (underlyingType.IsEnum)
             {
@@ -304,6 +309,23 @@ namespace ProjectIqraFrontend.Middlewares
                 }
 
                 writer.WriteEndObject();
+                return true;
+            }
+
+            if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>) && underlyingType.GetGenericArguments()[0] == typeof((TimeOnly, TimeOnly)))
+            {
+                writer.WriteStartArray();
+                var timeRanges = (List<(TimeOnly, TimeOnly)>)value;
+
+                foreach (var (start, end) in timeRanges)
+                {
+                    writer.WriteStartArray();
+                    JsonSerializer.Serialize(writer, start, options);
+                    JsonSerializer.Serialize(writer, end, options);
+                    writer.WriteEndArray();
+                }
+
+                writer.WriteEndArray();
                 return true;
             }
 
