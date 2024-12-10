@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppContextBranch
     {
-        public long Id { get; set; }
+        public string Id { get; set; }
         public BusinessAppContextBranchGeneral General { get; set; } = new BusinessAppContextBranchGeneral();
 
         [BsonDictionaryOptions(DictionaryRepresentation.Document)]

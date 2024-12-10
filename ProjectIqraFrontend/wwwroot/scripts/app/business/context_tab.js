@@ -599,6 +599,26 @@ function updateBrandingOtherInformation(languageId) {
 	});
 }
 
+function createContextBranchesTableElement(branch) {
+	const branchRow = `
+		<tr>
+			<td>
+				<b>${branch.general.name[BusinessDefaultLanguage]}</b>
+			</td>
+			<td>
+				<button class="btn btn-info btn-sm" branch-id="${branch.id}" button-type="editBranch">
+					<i class="fa-regular fa-pen-to-square"></i>
+				</button>
+				<button class="btn btn-danger btn-sm" branch-id="${branch.id}" button-type="deleteBranch">
+					<i class="fa-regular fa-trash"></i>
+				</button>
+			</td>
+		</tr>
+	`;
+
+	return branchRow;
+}
+
 function FillContextTab() {
 	// Branding
 	function fillBrandingTab() {
@@ -637,7 +657,16 @@ function FillContextTab() {
 
 	// Branches
 	function fillBranchesTab() {
-		// Implementation coming next
+		const branchesData = BusinessFullData.businessApp.context.branches || [];
+		branchesTable.find("tbody").empty();
+
+		if (branchesData.length === 0) {
+			branchesTable.find("tbody").append("<tr tr-type='none-notice'><td colspan='2'>No branches found</td></tr>");
+		} else {
+			branchesData.forEach((branch) => {
+				branchesTable.find("tbody").append($(createContextBranchesTableElement(branch)));
+			});
+		}
 	}
 	fillBranchesTab();
 
