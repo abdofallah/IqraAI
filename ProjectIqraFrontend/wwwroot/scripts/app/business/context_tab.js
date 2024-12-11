@@ -26,18 +26,18 @@ let CurrentContextBranchTeamMultiLangData = [];
 // Context Service State
 let CurrentContextServiceData = null;
 let ManageContextServiceType = null; // new or edit
-const CurrentContextServiceNameMultiLangData = {};
-const CurrentContextServiceShortDescriptionMultiLangData = {};
-const CurrentContextServiceLongDescriptionMultiLangData = {};
-const CurrentContextServiceOtherInformationMultiLangData = {};
+let CurrentContextServiceNameMultiLangData = {};
+let CurrentContextServiceShortDescriptionMultiLangData = {};
+let CurrentContextServiceLongDescriptionMultiLangData = {};
+let CurrentContextServiceOtherInformationMultiLangData = {};
 
 // Context Product State
 let CurrentContextProductData = null;
 let ManageContextProductType = null; // new or edit
-const CurrentContextProductNameMultiLangData = {};
-const CurrentContextProductShortDescriptionMultiLangData = {};
-const CurrentContextProductLongDescriptionMultiLangData = {};
-const CurrentContextProductOtherInformationMultiLangData = {};
+let CurrentContextProductNameMultiLangData = {};
+let CurrentContextProductShortDescriptionMultiLangData = {};
+let CurrentContextProductLongDescriptionMultiLangData = {};
+let CurrentContextProductOtherInformationMultiLangData = {};
 
 // Saving States
 let IsSavingContextBrandingTab = false;
@@ -113,6 +113,7 @@ const switchBackToContextServicesTab = contextTabHeader.find("#switchBackToConte
 const currentContextServiceName = contextTabHeader.find("#currentContextServiceName");
 const servicesManageTabHeader = contextTabHeader.find("#contextServicesManageTabHeader");
 const saveContextServicesButton = contextTabHeader.find("#saveContextServicesButton");
+const saveContextServicesButtonSpinner = saveContextServicesButton.find(".spinner-border");
 
 const contextServicesManagerTab = contextTab.find("#contextServicesManagerTab");
 
@@ -143,6 +144,7 @@ const switchBackToContextProductsTab = contextTabHeader.find("#switchBackToConte
 const currentContextProductName = contextTabHeader.find("#currentContextProductName");
 const productsManageTabHeader = contextTabHeader.find("#contextProductsManageTabHeader");
 const saveContextProductsButton = contextTabHeader.find("#saveContextProductsButton");
+const saveContextProductsButtonSpinner = saveContextProductsButton.find(".spinner-border");
 
 const contextProductsManagerTab = contextTab.find("#contextProductsManagerTab");
 
@@ -151,6 +153,7 @@ const inputContextProductShortDescription = contextProductsManagerTab.find("#inp
 const inputContextProductFullDescription = contextProductsManagerTab.find("#inputContextProductFullDescription");
 
 const linkContextProductBranchSelect = contextTab.find("#linkContextProductBranchSelect");
+const linkContextProductBranchButton = contextTab.find("#linkContextProductBranch");
 const linkedContextProductBranchesList = contextTab.find("#linkedContextProductBranchesList");
 
 const addNewContextProductInformationButton = contextTab.find("#addNewContextProductInformation");
@@ -197,23 +200,53 @@ function SaveBusinessContextBranch(formData, onSuccess, onError) {
 	});
 }
 
+function SaveBusinessContextService(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/context/services/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function SaveBusinessContextProduct(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/context/products/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
 /** Functions **/
 
 function FillContextTab() {
 	FillContextBrandingTab();
 	FillContextBranchesTab();
-
-	// Services
-	function fillServicesTab() {
-		// Implementation coming next
-	}
-	fillServicesTab();
-
-	// Products
-	function fillProductsTab() {
-		// Implementation coming next
-	}
-	fillProductsTab();
+	fillContextServicesTab();
+	fillContextProductsTab();
 }
 
 // TAB | Branding
@@ -1249,6 +1282,22 @@ function resetOrClearContextServiceManager() {
 	linkedContextServiceProductsList.children().remove();
 
 	contextServiceInformationList.children().remove();
+
+	CurrentContextServiceNameMultiLangData = {};
+	CurrentContextServiceShortDescriptionMultiLangData = {};
+	CurrentContextServiceLongDescriptionMultiLangData = {};
+	CurrentContextServiceOtherInformationMultiLangData = {};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextServiceNameMultiLangData[language] = "";
+		CurrentContextServiceShortDescriptionMultiLangData[language] = "";
+		CurrentContextServiceLongDescriptionMultiLangData[language] = "";
+		CurrentContextServiceOtherInformationMultiLangData[language] = {};
+	});
+
+	contextServicesManagerTab.find(".is-invalid").removeClass("is-invalid");
+
+	saveContextServicesButton.prop("disabled", true);
 }
 
 function ShowContextServicesManagerTab() {
@@ -1291,6 +1340,358 @@ function ShowContextServicesListTab() {
 	}, 300);
 }
 
+function createDefaultContextServicesObject() {
+	const object = {
+		name: {},
+		shortDescription: {},
+		longDescription: {},
+		availableAtBranches: [],
+		relatedProducts: [],
+		otherInformation: {},
+	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		object.name[language] = "";
+		object.shortDescription[language] = "";
+		object.longDescription[language] = "";
+		object.otherInformation[language] = {};
+	});
+
+	return object;
+}
+
+function createContextServiceTableElement(service) {
+	const serviceRow = `
+        <tr service-id="${service.id}">
+            <td>
+                <b>${service.name[BusinessDefaultLanguage]}</b>
+            </td>
+            <td>
+                <button class="btn btn-info btn-sm" service-id="${service.id}" button-type="editService">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" service-id="${service.id}" button-type="deleteService">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+
+	return serviceRow;
+}
+
+function createContextServiceOtherInformationElement() {
+	const element = `
+        <div class="mt-2">
+            <div class="input-group">
+                <input data-type="key" type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                <button class="btn btn-danger" button-type="contextServiceInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                    <i class='fa-regular fa-trash'></i>
+                </button>
+            </div>
+            <textarea data-type="value" class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+        </div>
+    `;
+
+	return element;
+}
+
+function fillContextServiceManager(serviceData) {
+	// Fill multilanguage data
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextServiceNameMultiLangData[language] = serviceData.name[language];
+		CurrentContextServiceShortDescriptionMultiLangData[language] = serviceData.shortDescription[language];
+		CurrentContextServiceLongDescriptionMultiLangData[language] = serviceData.longDescription[language];
+		CurrentContextServiceOtherInformationMultiLangData[language] = serviceData.otherInformation[language] || {};
+	});
+
+	// Fill form with default language values
+	inputContextServiceName.val(serviceData.name[BusinessDefaultLanguage]);
+	inputContextServiceShortDescription.val(serviceData.shortDescription[BusinessDefaultLanguage]);
+	inputContextServiceFullDescription.val(serviceData.longDescription[BusinessDefaultLanguage]);
+
+	// Fill branches list
+	linkedContextServiceBranchesList.empty();
+	serviceData.availableAtBranches.forEach((branchId) => {
+		const branch = BusinessFullData.businessApp.context.branches.find((b) => b.id === branchId);
+		if (branch) {
+			linkedContextServiceBranchesList.append(`
+                <li class="list-group-item" branch-id="${branch.id}">
+                    <div class="d-flex flex-row align-items-center justify-content-between">
+                        <span>${branch.general.name[BusinessDefaultLanguage]}</span>
+                        <button class="btn btn-danger btn-sm" button-type="removeLinkedBranch">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            `);
+		}
+	});
+
+	// Fill products list
+	linkedContextServiceProductsList.empty();
+	serviceData.relatedProducts.forEach((productId) => {
+		const product = BusinessFullData.businessApp.context.products.find((p) => p.id === productId);
+		if (product) {
+			linkedContextServiceProductsList.append(`
+                <li class="list-group-item" product-id="${product.id}">
+                    <div class="d-flex flex-row align-items-center justify-content-between">
+                        <span>${product.name[BusinessDefaultLanguage]}</span>
+                        <button class="btn btn-danger btn-sm" button-type="removeLinkedProduct">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            `);
+		}
+	});
+
+	// Fill other information
+	contextServiceInformationList.empty();
+	Object.entries(serviceData.otherInformation[BusinessDefaultLanguage] || {}).forEach(([key, value]) => {
+		const infoElement = $(createContextServiceOtherInformationElement());
+		infoElement.find('[data-type="key"]').val(key);
+		infoElement.find('[data-type="value"]').val(value);
+		contextServiceInformationList.append(infoElement);
+	});
+
+	validateContextServiceAllMultilanguageElements();
+	saveContextServicesButton.prop("disabled", true);
+}
+
+function validateContextServiceAllMultilanguageElements() {
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+		let isAnyFieldIncomplete = false;
+
+		// Validate Name
+		if (!CurrentContextServiceNameMultiLangData[language] || CurrentContextServiceNameMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Short Description
+		if (!CurrentContextServiceShortDescriptionMultiLangData[language] || CurrentContextServiceShortDescriptionMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Long Description
+		if (!CurrentContextServiceLongDescriptionMultiLangData[language] || CurrentContextServiceLongDescriptionMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Other Information
+		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
+			contextServiceInformationList.children().each((idx, element) => {
+				const key = $(element).find('[data-type="key"]').val().trim();
+				const value = $(element).find('[data-type="value"]').val().trim();
+				if (!key || !value) {
+					isAnyFieldIncomplete = true;
+				}
+			});
+		}
+
+		// Update language status in dropdown
+		ContextTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
+	});
+}
+
+function ValidateContextServiceTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// Name validation
+		if (!CurrentContextServiceNameMultiLangData[language] || CurrentContextServiceNameMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Service name for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextServiceName.addClass("is-invalid");
+			}
+		} else {
+			inputContextServiceName.removeClass("is-invalid");
+		}
+
+		// Short Description validation
+		if (!CurrentContextServiceShortDescriptionMultiLangData[language] || CurrentContextServiceShortDescriptionMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Service short description for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextServiceShortDescription.addClass("is-invalid");
+			}
+		} else {
+			inputContextServiceShortDescription.removeClass("is-invalid");
+		}
+
+		// Long Description validation
+		if (!CurrentContextServiceLongDescriptionMultiLangData[language] || CurrentContextServiceLongDescriptionMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Service full description for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextServiceFullDescription.addClass("is-invalid");
+			}
+		} else {
+			inputContextServiceFullDescription.removeClass("is-invalid");
+		}
+	});
+
+	// Validate other information keys for duplicates
+	if (!validateServiceOtherInformationKeys()) {
+		validated = false;
+		errors.push("Duplicate information types found. Please ensure all information types are unique.");
+	}
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function validateServiceOtherInformationKeys() {
+	const seenKeys = new Set();
+	let hasDuplicates = false;
+
+	contextServiceInformationList.children().each((idx, element) => {
+		const currentElement = $(element);
+		const keyInput = currentElement.find('[data-type="key"]');
+		const key = keyInput.val().trim();
+
+		if (key && seenKeys.has(key)) {
+			hasDuplicates = true;
+			keyInput.addClass("is-invalid");
+		} else {
+			keyInput.removeClass("is-invalid");
+			if (key) {
+				seenKeys.add(key);
+			}
+		}
+	});
+
+	return !hasDuplicates;
+}
+
+function CheckContextServiceTabHasChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Check multilanguage fields
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// Name changes
+		if (!changes.name) changes.name = {};
+		changes.name[language] = CurrentContextServiceNameMultiLangData[language];
+		if (CurrentContextServiceData.name[language] !== changes.name[language]) {
+			hasChanges = true;
+		}
+
+		// Short Description changes
+		if (!changes.shortDescription) changes.shortDescription = {};
+		changes.shortDescription[language] = CurrentContextServiceShortDescriptionMultiLangData[language];
+		if (CurrentContextServiceData.shortDescription[language] !== changes.shortDescription[language]) {
+			hasChanges = true;
+		}
+
+		// Long Description changes
+		if (!changes.longDescription) changes.longDescription = {};
+		changes.longDescription[language] = CurrentContextServiceLongDescriptionMultiLangData[language];
+		if (CurrentContextServiceData.longDescription[language] !== changes.longDescription[language]) {
+			hasChanges = true;
+		}
+
+		// Other Information changes
+		if (!changes.otherInformation) changes.otherInformation = {};
+		changes.otherInformation[language] = CurrentContextServiceOtherInformationMultiLangData[language] || {};
+		if (JSON.stringify(CurrentContextServiceData.otherInformation[language]) !== JSON.stringify(changes.otherInformation[language])) {
+			hasChanges = true;
+		}
+	});
+
+	// Check branches
+	changes.availableAtBranches = [];
+	linkedContextServiceBranchesList.children().each((idx, element) => {
+		const branchId = $(element).attr("branch-id");
+		changes.availableAtBranches.push(branchId);
+	});
+	if (JSON.stringify(CurrentContextServiceData.availableAtBranches) !== JSON.stringify(changes.availableAtBranches)) {
+		hasChanges = true;
+	}
+
+	// Check products
+	changes.relatedProducts = [];
+	linkedContextServiceProductsList.children().each((idx, element) => {
+		const productId = $(element).attr("product-id");
+		changes.relatedProducts.push(productId);
+	});
+	if (JSON.stringify(CurrentContextServiceData.relatedProducts) !== JSON.stringify(changes.relatedProducts)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		saveContextServicesButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+function updateContextServiceOtherInformation(languageId) {
+	CurrentContextServiceOtherInformationMultiLangData[languageId] = {};
+
+	contextServiceInformationList.children().each((idx, element) => {
+		const infoType = $(element).find('[data-type="key"]').val().trim();
+		const infoValue = $(element).find('[data-type="value"]').val().trim();
+
+		if (infoType) {
+			CurrentContextServiceOtherInformationMultiLangData[languageId][infoType] = infoValue;
+		}
+	});
+}
+
+async function canLeaveContextServicesTab(leaveMessage = "") {
+	if (ManageContextServiceType == null) return true;
+
+	if (IsSavingContextServiceTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Service manager tab is currently being saved. Please wait for the save to finish.",
+			enableDismiss: false,
+		});
+		return false;
+	}
+
+	const serviceManagerChanges = CheckContextServiceTabHasChanges(false);
+	if (serviceManagerChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in service manager tab.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function fillContextServicesTab() {
+	const servicesData = BusinessFullData.businessApp.context.services || [];
+	contextServicesTable.find("tbody").empty();
+
+	if (servicesData.length === 0) {
+		contextServicesTable.find("tbody").append("<tr tr-type='none-notice'><td colspan='2'>No services found</td></tr>");
+	} else {
+		servicesData.forEach((service) => {
+			contextServicesTable.find("tbody").append($(createContextServiceTableElement(service)));
+		});
+	}
+}
+
 // TAB | Products
 
 function resetOrClearContextProductManager() {
@@ -1302,6 +1703,22 @@ function resetOrClearContextProductManager() {
 	linkedContextProductBranchesList.children().remove();
 
 	contextProductInformationList.children().remove();
+
+	CurrentContextProductNameMultiLangData = {};
+	CurrentContextProductShortDescriptionMultiLangData = {};
+	CurrentContextProductLongDescriptionMultiLangData = {};
+	CurrentContextProductOtherInformationMultiLangData = {};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextProductNameMultiLangData[language] = "";
+		CurrentContextProductShortDescriptionMultiLangData[language] = "";
+		CurrentContextProductLongDescriptionMultiLangData[language] = "";
+		CurrentContextProductOtherInformationMultiLangData[language] = {};
+	});
+
+	contextProductsManagerTab.find(".is-invalid").removeClass("is-invalid");
+
+	saveContextProductsButton.prop("disabled", true);
 }
 
 function ShowContextProductsManagerTab() {
@@ -1344,6 +1761,329 @@ function ShowContextProductsListTab() {
 	}, 150);
 }
 
+function createDefaultContextProductsObject() {
+	const object = {
+		name: {},
+		shortDescription: {},
+		longDescription: {},
+		availableAtBranches: [],
+		otherInformation: {},
+	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		object.name[language] = "";
+		object.shortDescription[language] = "";
+		object.longDescription[language] = "";
+		object.otherInformation[language] = {};
+	});
+
+	return object;
+}
+
+function createContextProductTableElement(product) {
+	const productRow = `
+        <tr product-id="${product.id}">
+            <td>
+                <b>${product.name[BusinessDefaultLanguage]}</b>
+            </td>
+            <td>
+                <button class="btn btn-info btn-sm" product-id="${product.id}" button-type="editProduct">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" product-id="${product.id}" button-type="deleteProduct">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+
+	return productRow;
+}
+
+function createContextProductOtherInformationElement() {
+	const element = `
+        <div class="mt-2">
+            <div class="input-group">
+                <input data-type="key" type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                <button class="btn btn-danger" button-type="contextProductInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                    <i class='fa-regular fa-trash'></i>
+                </button>
+            </div>
+            <textarea data-type="value" class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+        </div>
+    `;
+
+	return element;
+}
+
+function fillContextProductManager(productData) {
+	// Fill multilanguage data
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextProductNameMultiLangData[language] = productData.name[language];
+		CurrentContextProductShortDescriptionMultiLangData[language] = productData.shortDescription[language];
+		CurrentContextProductLongDescriptionMultiLangData[language] = productData.longDescription[language];
+		CurrentContextProductOtherInformationMultiLangData[language] = productData.otherInformation[language] || {};
+	});
+
+	// Fill form with default language values
+	inputContextProductName.val(productData.name[BusinessDefaultLanguage]);
+	inputContextProductShortDescription.val(productData.shortDescription[BusinessDefaultLanguage]);
+	inputContextProductFullDescription.val(productData.longDescription[BusinessDefaultLanguage]);
+
+	// Fill branches list
+	linkedContextProductBranchesList.empty();
+	productData.availableAtBranches.forEach((branchId) => {
+		const branch = BusinessFullData.businessApp.context.branches.find((b) => b.id === branchId);
+		if (branch) {
+			linkedContextProductBranchesList.append(`
+                <li class="list-group-item" branch-id="${branch.id}">
+                    <div class="d-flex flex-row align-items-center justify-content-between">
+                        <span>${branch.general.name[BusinessDefaultLanguage]}</span>
+                        <button class="btn btn-danger btn-sm" button-type="removeLinkedBranch">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            `);
+		}
+	});
+
+	// Fill other information
+	contextProductInformationList.empty();
+	Object.entries(productData.otherInformation[BusinessDefaultLanguage] || {}).forEach(([key, value]) => {
+		const infoElement = $(createContextProductOtherInformationElement());
+		infoElement.find('[data-type="key"]').val(key);
+		infoElement.find('[data-type="value"]').val(value);
+		contextProductInformationList.append(infoElement);
+	});
+
+	validateContextProductAllMultilanguageElements();
+	saveContextProductsButton.prop("disabled", true);
+}
+
+function fillContextProductsTab() {
+	const productsData = BusinessFullData.businessApp.context.products || [];
+	contextProductsTable.find("tbody").empty();
+
+	if (productsData.length === 0) {
+		contextProductsTable.find("tbody").append("<tr tr-type='none-notice'><td colspan='2'>No products found</td></tr>");
+	} else {
+		productsData.forEach((product) => {
+			contextProductsTable.find("tbody").append($(createContextProductTableElement(product)));
+		});
+	}
+}
+
+function validateContextProductAllMultilanguageElements() {
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+		let isAnyFieldIncomplete = false;
+
+		// Validate Name
+		if (!CurrentContextProductNameMultiLangData[language] || CurrentContextProductNameMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Short Description
+		if (!CurrentContextProductShortDescriptionMultiLangData[language] || CurrentContextProductShortDescriptionMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Long Description
+		if (!CurrentContextProductLongDescriptionMultiLangData[language] || CurrentContextProductLongDescriptionMultiLangData[language].trim() === "") {
+			isAnyFieldIncomplete = true;
+		}
+
+		// Validate Other Information
+		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
+			contextProductInformationList.children().each((idx, element) => {
+				const key = $(element).find('[data-type="key"]').val().trim();
+				const value = $(element).find('[data-type="value"]').val().trim();
+				if (!key || !value) {
+					isAnyFieldIncomplete = true;
+				}
+			});
+		}
+
+		// Update language status in dropdown
+		ContextTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
+	});
+}
+
+function ValidateContextProductTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// Name validation
+		if (!CurrentContextProductNameMultiLangData[language] || CurrentContextProductNameMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Product name for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextProductName.addClass("is-invalid");
+			}
+		} else {
+			inputContextProductName.removeClass("is-invalid");
+		}
+
+		// Short Description validation
+		if (!CurrentContextProductShortDescriptionMultiLangData[language] || CurrentContextProductShortDescriptionMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Product short description for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextProductShortDescription.addClass("is-invalid");
+			}
+		} else {
+			inputContextProductShortDescription.removeClass("is-invalid");
+		}
+
+		// Long Description validation
+		if (!CurrentContextProductLongDescriptionMultiLangData[language] || CurrentContextProductLongDescriptionMultiLangData[language].trim().length === 0) {
+			validated = false;
+			errors.push(`Product full description for language ${language} is required.`);
+			if (!onlyRemove) {
+				inputContextProductFullDescription.addClass("is-invalid");
+			}
+		} else {
+			inputContextProductFullDescription.removeClass("is-invalid");
+		}
+	});
+
+	// Validate other information keys for duplicates
+	if (!validateProductOtherInformationKeys()) {
+		validated = false;
+		errors.push("Duplicate information types found. Please ensure all information types are unique.");
+	}
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function validateProductOtherInformationKeys() {
+	const seenKeys = new Set();
+	let hasDuplicates = false;
+
+	contextProductInformationList.children().each((idx, element) => {
+		const currentElement = $(element);
+		const keyInput = currentElement.find('[data-type="key"]');
+		const key = keyInput.val().trim();
+
+		if (key && seenKeys.has(key)) {
+			hasDuplicates = true;
+			keyInput.addClass("is-invalid");
+		} else {
+			keyInput.removeClass("is-invalid");
+			if (key) {
+				seenKeys.add(key);
+			}
+		}
+	});
+
+	return !hasDuplicates;
+}
+
+function CheckContextProductTabHasChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Check multilanguage fields
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// Name changes
+		if (!changes.name) changes.name = {};
+		changes.name[language] = CurrentContextProductNameMultiLangData[language];
+		if (CurrentContextProductData.name[language] !== changes.name[language]) {
+			hasChanges = true;
+		}
+
+		// Short Description changes
+		if (!changes.shortDescription) changes.shortDescription = {};
+		changes.shortDescription[language] = CurrentContextProductShortDescriptionMultiLangData[language];
+		if (CurrentContextProductData.shortDescription[language] !== changes.shortDescription[language]) {
+			hasChanges = true;
+		}
+
+		// Long Description changes
+		if (!changes.longDescription) changes.longDescription = {};
+		changes.longDescription[language] = CurrentContextProductLongDescriptionMultiLangData[language];
+		if (CurrentContextProductData.longDescription[language] !== changes.longDescription[language]) {
+			hasChanges = true;
+		}
+
+		// Other Information changes
+		if (!changes.otherInformation) changes.otherInformation = {};
+		changes.otherInformation[language] = CurrentContextProductOtherInformationMultiLangData[language] || {};
+		if (JSON.stringify(CurrentContextProductData.otherInformation[language]) !== JSON.stringify(changes.otherInformation[language])) {
+			hasChanges = true;
+		}
+	});
+
+	// Check branches
+	changes.availableAtBranches = [];
+	linkedContextProductBranchesList.children().each((idx, element) => {
+		const branchId = $(element).attr("branch-id");
+		changes.availableAtBranches.push(branchId);
+	});
+	if (JSON.stringify(CurrentContextProductData.availableAtBranches) !== JSON.stringify(changes.availableAtBranches)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		saveContextProductsButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+function updateContextProductOtherInformation(languageId) {
+	CurrentContextProductOtherInformationMultiLangData[languageId] = {};
+
+	contextProductInformationList.children().each((idx, element) => {
+		const infoType = $(element).find('[data-type="key"]').val().trim();
+		const infoValue = $(element).find('[data-type="value"]').val().trim();
+
+		if (infoType) {
+			CurrentContextProductOtherInformationMultiLangData[languageId][infoType] = infoValue;
+		}
+	});
+}
+
+async function canLeaveContextProductsTab(leaveMessage = "") {
+	if (ManageContextProductType == null) return true;
+
+	if (IsSavingContextProductTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Product manager tab is currently being saved. Please wait for the save to finish.",
+			enableDismiss: false,
+		});
+		return false;
+	}
+
+	const productManagerChanges = CheckContextProductTabHasChanges(false);
+	if (productManagerChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in product manager tab.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /** INIT **/
 
 function initContextTab() {
@@ -1380,17 +2120,37 @@ function initContextTab() {
 			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
 			if (!canLeaveBrandingTabResult) {
 				event.preventDefault();
-			} else {
+			} else if (ManageContextBranchType == null && ManageContextServiceType == null && ManageContextProductType == null) {
 				FillContextBrandingTab();
 			}
 
 			const canLeaveBranchesTabResult = await canLeaveContextBranchesTab(" Are you sure you want to discard these changes and leave the context tab?");
 			if (!canLeaveBranchesTabResult) {
 				event.preventDefault();
-			} else {
+			} else if (ManageContextBranchType != null) {
 				ManageContextBranchType = null;
 				CurrentContextBranchData = null;
 				ShowContextBranchesListTab();
+				contextTabHeader.find("#context-inner-branding-tab").click();
+			}
+
+			const canLeaveServicesTabResult = await canLeaveContextServicesTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveServicesTabResult) {
+				event.preventDefault();
+			} else if (ManageContextServiceType != null) {
+				ManageContextServiceType = null;
+				CurrentContextServiceData = null;
+				ShowContextServicesListTab();
+				contextTabHeader.find("#context-inner-branding-tab").click();
+			}
+
+			const canLeaveProductsTabResult = await canLeaveContextProductsTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveProductsTabResult) {
+				event.preventDefault();
+			} else if (ManageContextProductType != null) {
+				ManageContextProductType = null;
+				CurrentContextProductData = null;
+				ShowContextProductsListTab();
 				contextTabHeader.find("#context-inner-branding-tab").click();
 			}
 		});
@@ -1568,10 +2328,14 @@ function initContextTab() {
 			CurrentContextBranchData = createDefaultContextBranchesObject();
 		});
 
-		switchBackToBranchesTab.on("click", (event) => {
+		switchBackToBranchesTab.on("click", async (event) => {
 			event.preventDefault();
 
+			const canLeaveResult = await canLeaveContextBranchesTab();
+			if (!canLeaveResult) return;
+
 			ShowContextBranchesListTab();
+			ManageContextBranchType = null;
 		});
 
 		branchesTable.on("click", "button[button-type='editBranch']", (event) => {
@@ -1655,6 +2419,8 @@ function initContextTab() {
 						message: `Branch ${ManageContextBranchType === "new" ? "added" : "updated"} successfully.`,
 						timeout: 6000,
 					});
+
+					ManageContextBranchType = "edit";
 				},
 				(saveError, isUnsuccessful) => {
 					AlertManager.createAlert({
@@ -1812,36 +2578,299 @@ function initContextTab() {
 			currentContextServiceName.text("New Service");
 
 			resetOrClearContextServiceManager();
-
 			ShowContextServicesManagerTab();
+
+			ManageContextServiceType = "new";
+			CurrentContextServiceData = createDefaultContextServicesObject();
+
+			// Fill branch select options
+			linkContextServiceBranchSelect.empty();
+			BusinessFullData.businessApp.context.branches.forEach((branch) => {
+				linkContextServiceBranchSelect.append(`
+            <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+        `);
+			});
+
+			// Fill product select options
+			linkContextServiceProductSelect.empty();
+			BusinessFullData.businessApp.context.products.forEach((product) => {
+				linkContextServiceProductSelect.append(`
+            <option value="${product.id}">${product.name[BusinessDefaultLanguage]}</option>
+        `);
+			});
 		});
 
-		switchBackToContextServicesTab.on("click", (event) => {
+		switchBackToContextServicesTab.on("click", async (event) => {
 			event.preventDefault();
 
+			const canLeaveResult = await canLeaveContextServicesTab();
+			if (!canLeaveResult) return;
+
 			ShowContextServicesListTab();
+			ManageContextServiceType = null;
+		});
+
+		contextServicesTable.on("click", "button[button-type='editService']", (event) => {
+			event.preventDefault();
+
+			const serviceId = $(event.currentTarget).attr("service-id");
+
+			resetOrClearContextServiceManager();
+
+			CurrentContextServiceData = BusinessFullData.businessApp.context.services.find((service) => service.id === serviceId);
+
+			currentContextServiceName.text(CurrentContextServiceData.name[BusinessDefaultLanguage]);
+
+			// Fill branch select options
+			linkContextServiceBranchSelect.empty();
+			BusinessFullData.businessApp.context.branches.forEach((branch) => {
+				if (!CurrentContextServiceData.availableAtBranches.includes(branch.id)) {
+					linkContextServiceBranchSelect.append(`
+                <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+            `);
+				}
+			});
+
+			// Fill product select options
+			linkContextServiceProductSelect.empty();
+			BusinessFullData.businessApp.context.products.forEach((product) => {
+				if (!CurrentContextServiceData.relatedProducts.includes(product.id)) {
+					linkContextServiceProductSelect.append(`
+                <option value="${product.id}">${product.name[BusinessDefaultLanguage]}</option>
+            `);
+				}
+			});
+
+			fillContextServiceManager(CurrentContextServiceData);
+			ShowContextServicesManagerTab();
+
+			ManageContextServiceType = "edit";
 		});
 
 		addNewContextServiceInformationButton.on("click", (event) => {
 			event.preventDefault();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
-			contextServiceInformationList.append(`
-                              <div class="mt-2">
-                                   <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
-                                        <button class="btn btn-danger" button-type="contextServiceInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>
-                         `);
+			contextServiceInformationList.append($(createContextServiceOtherInformationElement()));
+
+			updateContextServiceOtherInformation(currentSelectedLanguage.id);
+			validateContextServiceAllMultilanguageElements();
+			CheckContextServiceTabHasChanges(true);
 		});
 
 		contextServiceInformationList.on("click", '[button-type="contextServiceInformationRemove"]', (event) => {
+			event.preventDefault();
 			event.stopPropagation();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
 			$(event.currentTarget).parent().parent().remove();
+
+			updateContextServiceOtherInformation(currentSelectedLanguage.id);
+			validateContextServiceAllMultilanguageElements();
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		contextServicesManagerTab.on("input change", "input[type='text'], textarea", (event) => {
+			if (ManageContextServiceType == null) return;
+
+			const currentElement = $(event.currentTarget);
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			switch (currentElement.attr("id")) {
+				case "inputContextServiceName":
+					CurrentContextServiceNameMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "inputContextServiceShortDescription":
+					CurrentContextServiceShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "inputContextServiceFullDescription":
+					CurrentContextServiceLongDescriptionMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+			}
+
+			validateContextServiceAllMultilanguageElements();
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		contextServiceInformationList.on("input change", "input, textarea", (event) => {
+			if (ManageContextServiceType == null) return;
+
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			if (validateServiceOtherInformationKeys()) {
+				updateContextServiceOtherInformation(currentSelectedLanguage.id);
+			}
+
+			validateContextServiceAllMultilanguageElements();
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		linkContextServiceBranchButton.on("click", (event) => {
+			event.preventDefault();
+
+			const selectedBranchId = linkContextServiceBranchSelect.val();
+			if (!selectedBranchId) return;
+
+			const selectedBranch = BusinessFullData.businessApp.context.branches.find((branch) => branch.id === selectedBranchId);
+			if (!selectedBranch) return;
+
+			linkedContextServiceBranchesList.append(`
+        <li class="list-group-item" branch-id="${selectedBranch.id}">
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <span>${selectedBranch.general.name[BusinessDefaultLanguage]}</span>
+                <button class="btn btn-danger btn-sm" button-type="removeLinkedBranch">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </li>
+    `);
+
+			// Remove from select
+			linkContextServiceBranchSelect.find(`option[value="${selectedBranch.id}"]`).remove();
+
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		linkedContextServiceBranchesList.on("click", '[button-type="removeLinkedBranch"]', (event) => {
+			event.preventDefault();
+			const listItem = $(event.currentTarget).closest(".list-group-item");
+			const branchId = listItem.attr("branch-id");
+
+			const branch = BusinessFullData.businessApp.context.branches.find((b) => b.id === branchId);
+			if (branch) {
+				linkContextServiceBranchSelect.append(`
+            <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+        `);
+			}
+
+			listItem.remove();
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		linkContextServiceProductButton.on("click", (event) => {
+			event.preventDefault();
+
+			const selectedProductId = linkContextServiceProductSelect.val();
+			if (!selectedProductId) return;
+
+			const selectedProduct = BusinessFullData.businessApp.context.products.find((product) => product.id === selectedProductId);
+			if (!selectedProduct) return;
+
+			linkedContextServiceProductsList.append(`
+        <li class="list-group-item" product-id="${selectedProduct.id}">
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <span>${selectedProduct.name[BusinessDefaultLanguage]}</span>
+                <button class="btn btn-danger btn-sm" button-type="removeLinkedProduct">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </li>
+    `);
+
+			// Remove from select
+			linkContextServiceProductSelect.find(`option[value="${selectedProduct.id}"]`).remove();
+
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		linkedContextServiceProductsList.on("click", '[button-type="removeLinkedProduct"]', (event) => {
+			event.preventDefault();
+			const listItem = $(event.currentTarget).closest(".list-group-item");
+			const productId = listItem.attr("product-id");
+
+			const product = BusinessFullData.businessApp.context.products.find((p) => p.id === productId);
+			if (product) {
+				linkContextServiceProductSelect.append(`
+            <option value="${product.id}">${product.name[BusinessDefaultLanguage]}</option>
+        `);
+			}
+
+			listItem.remove();
+			CheckContextServiceTabHasChanges(true);
+		});
+
+		saveContextServicesButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingContextServiceTab) return;
+
+			const validationResult = ValidateContextServiceTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation for required service fields failed.<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const serviceTabChanges = CheckContextServiceTabHasChanges(false);
+			if (!serviceTabChanges.hasChanges) {
+				return;
+			}
+
+			saveContextServicesButton.prop("disabled", true);
+			saveContextServicesButtonSpinner.removeClass("d-none");
+
+			IsSavingContextServiceTab = true;
+
+			const formData = new FormData();
+			formData.append("changes", JSON.stringify(serviceTabChanges.changes));
+			formData.append("postType", ManageContextServiceType);
+
+			if (ManageContextServiceType === "edit") {
+				formData.append("exisitingServiceId", CurrentContextServiceData.id);
+			}
+
+			SaveBusinessContextService(
+				formData,
+				(saveResponse) => {
+					CurrentContextServiceData = saveResponse.data;
+
+					currentContextServiceName.text(CurrentContextServiceData.name[BusinessDefaultLanguage]);
+
+					if (ManageContextServiceType === "new") {
+						BusinessFullData.businessApp.context.services.push(CurrentContextServiceData);
+						contextServicesTable.find("tbody").append($(createContextServiceTableElement(CurrentContextServiceData)));
+
+						contextServicesTable.find("tbody tr[tr-type='none-notice']").remove();
+					} else {
+						const serviceIndex = BusinessFullData.businessApp.context.services.findIndex((s) => s.id === CurrentContextServiceData.id);
+						if (serviceIndex !== -1) {
+							BusinessFullData.businessApp.context.services[serviceIndex] = CurrentContextServiceData;
+						}
+
+						contextServicesTable.find(`tbody tr[service-id="${CurrentContextServiceData.id}"]`).replaceWith($(createContextServiceTableElement(CurrentContextServiceData)));
+					}
+
+					saveContextServicesButton.prop("disabled", true);
+					saveContextServicesButtonSpinner.addClass("d-none");
+
+					IsSavingContextServiceTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: `Service ${ManageContextServiceType === "new" ? "added" : "updated"} successfully.`,
+						timeout: 6000,
+					});
+
+					ManageContextServiceType = "edit";
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving service data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving service data: ", saveError);
+
+					saveContextServicesButton.prop("disabled", false);
+					saveContextServicesButtonSpinner.addClass("d-none");
+
+					IsSavingContextServiceTab = false;
+				},
+			);
 		});
 
 		// TAB | Products
@@ -1852,36 +2881,239 @@ function initContextTab() {
 			currentContextProductName.text("New Product");
 
 			resetOrClearContextProductManager();
-
 			ShowContextProductsManagerTab();
+
+			ManageContextProductType = "new";
+			CurrentContextProductData = createDefaultContextProductsObject();
+
+			// Fill branch select options
+			linkContextProductBranchSelect.empty();
+			BusinessFullData.businessApp.context.branches.forEach((branch) => {
+				linkContextProductBranchSelect.append(`
+            <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+        `);
+			});
 		});
 
-		switchBackToContextProductsTab.on("click", (event) => {
+		switchBackToContextProductsTab.on("click", async (event) => {
 			event.preventDefault();
 
+			const canLeaveResult = await canLeaveContextProductsTab();
+			if (!canLeaveResult) return;
+
 			ShowContextProductsListTab();
+			ManageContextProductType = null;
+		});
+
+		contextProductsTable.on("click", "button[button-type='editProduct']", (event) => {
+			event.preventDefault();
+
+			const productId = $(event.currentTarget).attr("product-id");
+
+			resetOrClearContextProductManager();
+
+			CurrentContextProductData = BusinessFullData.businessApp.context.products.find((product) => product.id === productId);
+
+			currentContextProductName.text(CurrentContextProductData.name[BusinessDefaultLanguage]);
+
+			// Fill branch select options
+			linkContextProductBranchSelect.empty();
+			BusinessFullData.businessApp.context.branches.forEach((branch) => {
+				if (!CurrentContextProductData.availableAtBranches.includes(branch.id)) {
+					linkContextProductBranchSelect.append(`
+                <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+            `);
+				}
+			});
+
+			fillContextProductManager(CurrentContextProductData);
+			ShowContextProductsManagerTab();
+
+			ManageContextProductType = "edit";
+		});
+
+		contextProductsManagerTab.on("input change", "input[type='text'], textarea", (event) => {
+			if (ManageContextProductType == null) return;
+
+			const currentElement = $(event.currentTarget);
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			switch (currentElement.attr("id")) {
+				case "inputContextProductName":
+					CurrentContextProductNameMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "inputContextProductShortDescription":
+					CurrentContextProductShortDescriptionMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "inputContextProductFullDescription":
+					CurrentContextProductLongDescriptionMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+			}
+
+			validateContextProductAllMultilanguageElements();
+			CheckContextProductTabHasChanges(true);
 		});
 
 		addNewContextProductInformationButton.on("click", (event) => {
 			event.preventDefault();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
-			contextProductInformationList.append(`
-                              <div class="mt-2">
-                                   <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
-                                        <button class="btn btn-danger" button-type="contextProductInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>
-                         `);
+			contextProductInformationList.append($(createContextProductOtherInformationElement()));
+
+			updateContextProductOtherInformation(currentSelectedLanguage.id);
+			validateContextProductAllMultilanguageElements();
+			CheckContextProductTabHasChanges(true);
 		});
 
 		contextProductInformationList.on("click", '[button-type="contextProductInformationRemove"]', (event) => {
+			event.preventDefault();
 			event.stopPropagation();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
 			$(event.currentTarget).parent().parent().remove();
+
+			updateContextProductOtherInformation(currentSelectedLanguage.id);
+			validateContextProductAllMultilanguageElements();
+			CheckContextProductTabHasChanges(true);
+		});
+
+		contextProductInformationList.on("input change", "input, textarea", (event) => {
+			if (ManageContextProductType == null) return;
+
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			if (validateProductOtherInformationKeys()) {
+				updateContextProductOtherInformation(currentSelectedLanguage.id);
+			}
+
+			validateContextProductAllMultilanguageElements();
+			CheckContextProductTabHasChanges(true);
+		});
+
+		linkContextProductBranchButton.on("click", (event) => {
+			event.preventDefault();
+
+			const selectedBranchId = linkContextProductBranchSelect.val();
+			if (!selectedBranchId) return;
+
+			const selectedBranch = BusinessFullData.businessApp.context.branches.find((branch) => branch.id === selectedBranchId);
+			if (!selectedBranch) return;
+
+			linkedContextProductBranchesList.append(`
+        <li class="list-group-item" branch-id="${selectedBranch.id}">
+            <div class="d-flex flex-row align-items-center justify-content-between">
+                <span>${selectedBranch.general.name[BusinessDefaultLanguage]}</span>
+                <button class="btn btn-danger btn-sm" button-type="removeLinkedBranch">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </li>
+    `);
+
+			// Remove from select
+			linkContextProductBranchSelect.find(`option[value="${selectedBranch.id}"]`).remove();
+
+			CheckContextProductTabHasChanges(true);
+		});
+
+		linkedContextProductBranchesList.on("click", '[button-type="removeLinkedBranch"]', (event) => {
+			event.preventDefault();
+			const listItem = $(event.currentTarget).closest(".list-group-item");
+			const branchId = listItem.attr("branch-id");
+
+			const branch = BusinessFullData.businessApp.context.branches.find((b) => b.id === branchId);
+			if (branch) {
+				linkContextProductBranchSelect.append(`
+            <option value="${branch.id}">${branch.general.name[BusinessDefaultLanguage]}</option>
+        `);
+			}
+
+			listItem.remove();
+			CheckContextProductTabHasChanges(true);
+		});
+
+		saveContextProductsButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingContextProductTab) return;
+
+			const validationResult = ValidateContextProductTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation for required product fields failed.<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const productTabChanges = CheckContextProductTabHasChanges(false);
+			if (!productTabChanges.hasChanges) {
+				return;
+			}
+
+			saveContextProductsButton.prop("disabled", true);
+			saveContextProductsButtonSpinner.removeClass("d-none");
+
+			IsSavingContextProductTab = true;
+
+			const formData = new FormData();
+			formData.append("changes", JSON.stringify(productTabChanges.changes));
+			formData.append("postType", ManageContextProductType);
+
+			if (ManageContextProductType === "edit") {
+				formData.append("exisitingProductId", CurrentContextProductData.id);
+			}
+
+			SaveBusinessContextProduct(
+				formData,
+				(saveResponse) => {
+					CurrentContextProductData = saveResponse.data;
+
+					currentContextProductName.text(CurrentContextProductData.name[BusinessDefaultLanguage]);
+
+					if (ManageContextProductType === "new") {
+						BusinessFullData.businessApp.context.products.push(CurrentContextProductData);
+						contextProductsTable.find("tbody").append($(createContextProductTableElement(CurrentContextProductData)));
+
+						contextProductsTable.find("tbody tr[tr-type='none-notice']").remove();
+					} else {
+						const productIndex = BusinessFullData.businessApp.context.products.findIndex((p) => p.id === CurrentContextProductData.id);
+						if (productIndex !== -1) {
+							BusinessFullData.businessApp.context.products[productIndex] = CurrentContextProductData;
+						}
+
+						contextProductsTable.find(`tbody tr[product-id="${CurrentContextProductData.id}"]`).replaceWith($(createContextProductTableElement(CurrentContextProductData)));
+					}
+
+					saveContextProductsButton.prop("disabled", true);
+					saveContextProductsButtonSpinner.addClass("d-none");
+
+					IsSavingContextProductTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: `Product ${ManageContextProductType === "new" ? "added" : "updated"} successfully.`,
+						timeout: 6000,
+					});
+
+					ManageContextProductType = "edit";
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving product data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving product data: ", saveError);
+
+					saveContextProductsButton.prop("disabled", false);
+					saveContextProductsButtonSpinner.addClass("d-none");
+
+					IsSavingContextProductTab = false;
+				},
+			);
 		});
 
 		/** Init **/

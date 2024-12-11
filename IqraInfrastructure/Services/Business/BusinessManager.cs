@@ -2178,5 +2178,364 @@ namespace IqraInfrastructure.Services.Business
 
             return result;
         }
+
+        public async Task<FunctionReturnResult<BusinessAppContextService?>> AddOrUpdateUserBusinessContextService(long businessId, IFormCollection formData, string postType, string? existingServiceId)
+        {
+            var result = new FunctionReturnResult<BusinessAppContextService?>();
+
+            List<string> businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newBusinessContextService = new BusinessAppContextService();
+
+            // Name validation and assignment
+            var nameValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "name",
+                newBusinessContextService.Name
+            );
+            if (!nameValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:" + nameValidationResult.Code;
+                result.Message = nameValidationResult.Message;
+                return result;
+            }
+
+            // Short Description validation and assignment
+            var shortDescValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "shortDescription",
+                newBusinessContextService.ShortDescription
+            );
+            if (!shortDescValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:" + shortDescValidationResult.Code;
+                result.Message = shortDescValidationResult.Message;
+                return result;
+            }
+
+            // Long Description validation and assignment
+            var longDescValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "longDescription",
+                newBusinessContextService.LongDescription
+            );
+            if (!longDescValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:" + longDescValidationResult.Code;
+                result.Message = longDescValidationResult.Message;
+                return result;
+            }
+
+            // Available Branches validation
+            if (!changes.RootElement.TryGetProperty("availableAtBranches", out var branchesElement))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:3";
+                result.Message = "Available branches not found.";
+                return result;
+            }
+
+            foreach (var branchId in branchesElement.EnumerateArray())
+            {
+                string? branchIdString = branchId.GetString();
+                if (string.IsNullOrWhiteSpace(branchIdString))
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:4";
+                    result.Message = "Invalid branch id found.";
+                    return result;
+                }
+
+                bool branchExists = await CheckBusinessBranchExists(businessId, branchIdString);
+                if (!branchExists)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:5";
+                    result.Message = $"Branch not found: {branchIdString}";
+                    return result;
+                }
+
+                newBusinessContextService.AvailableAtBranches.Add(branchIdString);
+            }
+
+            // Related Products validation
+            if (!changes.RootElement.TryGetProperty("relatedProducts", out var productsElement))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:6";
+                result.Message = "Related products not found.";
+                return result;
+            }
+
+            foreach (var productId in productsElement.EnumerateArray())
+            {
+                string? productIdString = productId.GetString();
+                if (string.IsNullOrWhiteSpace(productIdString))
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:7";
+                    result.Message = "Invalid product id found.";
+                    return result;
+                }
+
+                bool productExists = await CheckBusinessProductExists(businessId, productIdString);
+                if (!productExists)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:8";
+                    result.Message = $"Product not found: {productIdString}";
+                    return result;
+                }
+
+                newBusinessContextService.RelatedProducts.Add(productIdString);
+            }
+
+            // Other Information validation and assignment
+            if (!changes.RootElement.TryGetProperty("otherInformation", out var otherInfoElement))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextService:9";
+                result.Message = "Other information not found.";
+                return result;
+            }
+
+            foreach (var language in businessLanguages)
+            {
+                if (!otherInfoElement.TryGetProperty(language, out var languageElement))
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:10";
+                    result.Message = $"Other information for language {language} not found.";
+                    return result;
+                }
+
+                var languageInfo = new Dictionary<string, string>();
+                foreach (var info in languageElement.EnumerateObject())
+                {
+                    string key = info.Name;
+                    string? value = info.Value.GetString();
+
+                    if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessContextService:11";
+                        result.Message = $"Invalid other information entry for language {language}";
+                        return result;
+                    }
+
+                    languageInfo.Add(key, value);
+                }
+                newBusinessContextService.OtherInformation[language] = languageInfo;
+            }
+
+            // Save to database
+            if (postType == "new")
+            {
+                newBusinessContextService.Id = Guid.NewGuid().ToString();
+                var addResult = await _businessAppRepository.AddBusinessContextService(businessId, newBusinessContextService);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:12";
+                    result.Message = "Failed to add business context service.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newBusinessContextService.Id = existingServiceId;
+                var updateResult = await _businessAppRepository.UpdateBusinessContextService(businessId, newBusinessContextService);
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextService:13";
+                    result.Message = "Failed to update business context service.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newBusinessContextService;
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessServiceExists(long businessId, string exisitingServiceId)
+        {
+            var result = await _businessAppRepository.CheckBusinessAppContextServiceExists(businessId, exisitingServiceId);
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppContextProduct?>> AddOrUpdateUserBusinessContextProduct(long businessId, IFormCollection formData, string postType, string? existingProductId)
+        {
+            var result = new FunctionReturnResult<BusinessAppContextProduct?>();
+
+            List<string> businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newBusinessContextProduct = new BusinessAppContextProduct();
+
+            // Name validation and assignment
+            var nameValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "name",
+                newBusinessContextProduct.Name
+            );
+            if (!nameValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:" + nameValidationResult.Code;
+                result.Message = nameValidationResult.Message;
+                return result;
+            }
+
+            // Short Description validation and assignment
+            var shortDescValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "shortDescription",
+                newBusinessContextProduct.ShortDescription
+            );
+            if (!shortDescValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:" + shortDescValidationResult.Code;
+                result.Message = shortDescValidationResult.Message;
+                return result;
+            }
+
+            // Long Description validation and assignment
+            var longDescValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                businessLanguages,
+                changes.RootElement,
+                "longDescription",
+                newBusinessContextProduct.LongDescription
+            );
+            if (!longDescValidationResult.Success)
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:" + longDescValidationResult.Code;
+                result.Message = longDescValidationResult.Message;
+                return result;
+            }
+
+            // Available Branches validation
+            if (!changes.RootElement.TryGetProperty("availableAtBranches", out var branchesElement))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:3";
+                result.Message = "Available branches not found.";
+                return result;
+            }
+
+            foreach (var branchId in branchesElement.EnumerateArray())
+            {
+                string? branchIdString = branchId.GetString();
+                if (string.IsNullOrWhiteSpace(branchIdString))
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextProduct:4";
+                    result.Message = "Invalid branch id found.";
+                    return result;
+                }
+
+                bool branchExists = await CheckBusinessBranchExists(businessId, branchIdString);
+                if (!branchExists)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextProduct:5";
+                    result.Message = $"Branch not found: {branchIdString}";
+                    return result;
+                }
+
+                newBusinessContextProduct.AvailableAtBranches.Add(branchIdString);
+            }
+
+            // Other Information validation and assignment
+            if (!changes.RootElement.TryGetProperty("otherInformation", out var otherInfoElement))
+            {
+                result.Code = "AddOrUpdateUserBusinessContextProduct:6";
+                result.Message = "Other information not found.";
+                return result;
+            }
+
+            foreach (var language in businessLanguages)
+            {
+                if (!otherInfoElement.TryGetProperty(language, out var languageElement))
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextProduct:7";
+                    result.Message = $"Other information for language {language} not found.";
+                    return result;
+                }
+
+                var languageInfo = new Dictionary<string, string>();
+                foreach (var info in languageElement.EnumerateObject())
+                {
+                    string key = info.Name;
+                    string? value = info.Value.GetString();
+
+                    if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessContextProduct:8";
+                        result.Message = $"Invalid other information entry for language {language}";
+                        return result;
+                    }
+
+                    languageInfo.Add(key, value);
+                }
+                newBusinessContextProduct.OtherInformation[language] = languageInfo;
+            }
+
+            // Save to database
+            if (postType == "new")
+            {
+                newBusinessContextProduct.Id = Guid.NewGuid().ToString();
+                var addResult = await _businessAppRepository.AddBusinessContextProduct(businessId, newBusinessContextProduct);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextProduct:9";
+                    result.Message = "Failed to add business context product.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newBusinessContextProduct.Id = existingProductId;
+                var updateResult = await _businessAppRepository.UpdateBusinessContextProduct(businessId, newBusinessContextProduct);
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateUserBusinessContextProduct:10";
+                    result.Message = "Failed to update business context product.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newBusinessContextProduct;
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessProductExists(long businessId, string productId)
+        {
+            var result = await _businessAppRepository.CheckBusinessAppProductExists(businessId, productId);
+
+            return result;
+        }
     }
 }

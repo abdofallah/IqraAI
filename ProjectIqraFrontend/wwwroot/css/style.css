@@ -1388,6 +1388,7 @@ table.table > thead > * > * {
 	opacity: 0 !important;
 }
 
-.is-invalid {
-	border-bottom: var(--bs-border-width) solid var(--bs-border-color) !important;
+.form-control.is-invalid {
+	border-bottom: var(--bs-border-width) solid
+		var(--bs-form-invalid-border-color) !important;
 }

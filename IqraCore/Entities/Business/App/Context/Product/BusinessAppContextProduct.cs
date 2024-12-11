@@ -4,7 +4,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppContextProduct
     {
-        public long Id { get; set; }
+        public string Id { get; set; }
 
         [MultiLanguageProperty]
         public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();
@@ -15,9 +15,9 @@ namespace IqraCore.Entities.Business
         [MultiLanguageProperty]
         public Dictionary<string, string> LongDescription { get; set; } = new Dictionary<string, string>();
 
-        public List<long> AvailableAtBranches { get; set; } = new List<long>();
+        public List<string> AvailableAtBranches { get; set; } = new List<string>();
 
         [MultiLanguageProperty]
-        public Dictionary<string, List<Dictionary<string, string>>> OtherInformation { get; set; } = new Dictionary<string, List<Dictionary<string, string>>>();
+        public Dictionary<string, Dictionary<string, string>> OtherInformation { get; set; } = new Dictionary<string, Dictionary<string, string>>();
     }
 }

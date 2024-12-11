@@ -1990,6 +1990,8 @@ function initToolsTab() {
 							message: "Business tool added successfully.",
 							timeout: 6000,
 						});
+
+						ManageToolType = "edit";
 					},
 					(saveError, isUnsuccessful) => {
 						AlertManager.createAlert({
