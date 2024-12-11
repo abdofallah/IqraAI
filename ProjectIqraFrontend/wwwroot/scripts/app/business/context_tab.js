@@ -1,7 +1,7 @@
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]; // TODO get directly from server as specification
 
 /** Dynamic Variables **/
-let ContentTabMultiLanguageDropdown = null;
+let ContextTabMultiLanguageDropdown = null;
 
 // Context Branding State
 let CurrentContextBrandingData = null;
@@ -177,7 +177,7 @@ function SaveBusinessContextBranding(formData, onSuccess, onError) {
 	});
 }
 
-function SaveBusinessContextBranch(formData, postType, onSuccess, onError) {
+function SaveBusinessContextBranch(formData, onSuccess, onError) {
 	$.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/context/branches/save`,
 		method: "POST",
@@ -197,195 +197,26 @@ function SaveBusinessContextBranch(formData, postType, onSuccess, onError) {
 	});
 }
 
-/** Functions  **/
-function resetOrClearBranchManager() {
-	$("#editBranchNameInput").val("");
-	$("#editBranchAddressInput").val("");
-	$("#editBranchPhoneInput").val("");
-	$("#editBranchEmailInput").val("");
-	$("#editBranchWebsiteInput").val("");
+/** Functions **/
 
-	contextBranchInformationList.children().remove();
+function FillContextTab() {
+	FillContextBrandingTab();
+	FillContextBranchesTab();
 
-	DAYS.forEach((day) => {
-		editBranchOpeningHoursInputsList.find(`#editBranchOpeningHours${day}Input`).prop("checked", false);
-		editBranchOpeningHoursInputsList.find(`[button-type="addBranchWorkingHour"][day-value="${day}"]`).prop("disabled", false);
-		editBranchOpeningHoursInputsList.find(`.workingHoursTimingList[day-value="${day}"]`).children().remove();
-	});
+	// Services
+	function fillServicesTab() {
+		// Implementation coming next
+	}
+	fillServicesTab();
 
-	editBranchTeamInputsList.children().remove();
-	$("#branding-branch-manager-general-tab").click();
-
-	CurrentContextBranchNameMultiLangData = {};
-	CurrentContextBranchAddressMultiLangData = {};
-	CurrentContextBranchPhoneMultiLangData = {};
-	CurrentContextBranchEmailMultiLangData = {};
-	CurrentContextBranchWebsiteMultiLangData = {};
-	CurrentContextBranchOtherInformationMultiLangData = {};
-	CurrentContextBranchTeamMultiLangData = [];
-
-	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentContextBranchNameMultiLangData[language] = "";
-		CurrentContextBranchAddressMultiLangData[language] = "";
-		CurrentContextBranchPhoneMultiLangData[language] = "";
-		CurrentContextBranchEmailMultiLangData[language] = "";
-		CurrentContextBranchWebsiteMultiLangData[language] = "";
-		CurrentContextBranchOtherInformationMultiLangData[language] = {};
-	});
-
-	branchesManagerTab.find(".is-invalid").removeClass("is-invalid");
-
-	saveContextBranchesButton.prop("disabled", true);
+	// Products
+	function fillProductsTab() {
+		// Implementation coming next
+	}
+	fillProductsTab();
 }
 
-function resetOrClearServiceManager() {
-	$("#inputContextServiceName").val("");
-	$("#inputContextServiceShortDescription").val("");
-	$("#inputContextServiceFullDescription").val("");
-
-	linkContextServiceBranchSelect.children().remove();
-	linkedContextServiceBranchesList.children().remove();
-
-	linkContextServiceProductSelect.children().remove();
-	linkedContextServiceProductsList.children().remove();
-
-	contextServiceInformationList.children().remove();
-}
-
-function resetOrClearProductManager() {
-	$("#inputContextProductName").val("");
-	$("#inputContextProductShortDescription").val("");
-	$("#inputContextProductFullDescription").val("");
-
-	linkContextProductBranchSelect.children().remove();
-	linkedContextProductBranchesList.children().remove();
-
-	contextProductInformationList.children().remove();
-}
-
-function ShowContextBranchesManagerTab() {
-	branchesListTab.removeClass("show");
-	contextTabButtonHeader.removeClass("show");
-	setTimeout(() => {
-		branchesListTab.addClass("d-none");
-		contextTabButtonHeader.addClass("d-none");
-
-		branchesManagerTab.removeClass("d-none");
-		branchesManagerTabButtonHeader.removeClass("d-none");
-		branchesManageTabHeader.removeClass("d-none");
-		saveContextBranchesButton.removeClass("d-none");
-		setTimeout(() => {
-			branchesManagerTab.addClass("show");
-			branchesManagerTabButtonHeader.addClass("show");
-			branchesManageTabHeader.addClass("show");
-			saveContextBranchesButton.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 300);
-}
-
-function ShowContextBranchesListTab() {
-	branchesManagerTab.removeClass("show");
-	branchesManagerTabButtonHeader.removeClass("show");
-	branchesManageTabHeader.removeClass("show");
-	saveContextBranchesButton.removeClass("d-none");
-	setTimeout(() => {
-		branchesManagerTab.addClass("d-none");
-		branchesManagerTabButtonHeader.addClass("d-none");
-		branchesManageTabHeader.addClass("d-none");
-		saveContextBranchesButton.addClass("d-none");
-
-		branchesListTab.removeClass("d-none");
-		contextTabButtonHeader.removeClass("d-none");
-		setTimeout(() => {
-			branchesListTab.addClass("show");
-			contextTabButtonHeader.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 300);
-}
-
-function ShowContextServicesManagerTab() {
-	contextServicesListTab.removeClass("show");
-	contextTabButtonHeader.removeClass("show");
-	setTimeout(() => {
-		contextServicesListTab.addClass("d-none");
-		contextTabButtonHeader.addClass("d-none");
-
-		contextServicesManagerTab.removeClass("d-none");
-		servicesManageTabHeader.removeClass("d-none");
-		saveContextServicesButton.removeClass("d-none");
-		setTimeout(() => {
-			contextServicesManagerTab.addClass("show");
-			servicesManageTabHeader.addClass("show");
-			saveContextServicesButton.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 300);
-}
-
-function ShowContextServicesListTab() {
-	contextServicesManagerTab.removeClass("show");
-	servicesManageTabHeader.removeClass("show");
-	saveContextServicesButton.removeClass("d-none");
-	setTimeout(() => {
-		contextServicesManagerTab.addClass("d-none");
-		servicesManageTabHeader.addClass("d-none");
-		saveContextServicesButton.addClass("d-none");
-
-		contextServicesListTab.removeClass("d-none");
-		contextTabButtonHeader.removeClass("d-none");
-		setTimeout(() => {
-			contextServicesListTab.addClass("show");
-			contextTabButtonHeader.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 300);
-}
-
-function ShowContextProductsManagerTab() {
-	contextProductsListTab.removeClass("show");
-	contextTabButtonHeader.removeClass("show");
-	setTimeout(() => {
-		contextProductsListTab.addClass("d-none");
-		contextTabButtonHeader.addClass("d-none");
-
-		contextProductsManagerTab.removeClass("d-none");
-		productsManageTabHeader.removeClass("d-none");
-		saveContextProductsButton.removeClass("d-none");
-		setTimeout(() => {
-			contextProductsManagerTab.addClass("show");
-			productsManageTabHeader.addClass("show");
-			saveContextProductsButton.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 300);
-}
-
-function ShowContextProductsListTab() {
-	contextProductsManagerTab.removeClass("show");
-	productsManageTabHeader.removeClass("show");
-	saveContextProductsButton.removeClass("d-none");
-	setTimeout(() => {
-		contextProductsManagerTab.addClass("d-none");
-		productsManageTabHeader.addClass("d-none");
-		saveContextProductsButton.addClass("d-none");
-
-		contextProductsListTab.removeClass("d-none");
-		contextTabButtonHeader.removeClass("d-none");
-		setTimeout(() => {
-			contextProductsListTab.addClass("show");
-			contextTabButtonHeader.addClass("show");
-
-			setDynamicBodyHeight();
-		}, 10);
-	}, 150);
-}
+// TAB | Branding
 
 function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
 	const changes = {};
@@ -443,7 +274,7 @@ function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
 		const originalOtherInfo = CurrentContextBrandingData.otherInformation[language] || {};
 
 		// Only check current elements if it's the selected language
-		if (language === ContentTabMultiLanguageDropdown.getSelectedLanguage().id) {
+		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
 			brandingBranchInformationList.children().each((idx, element) => {
 				const currentElement = $(element);
 				const key = currentElement.find('[data-type="key"]').val().trim();
@@ -509,7 +340,7 @@ function validateContextBrandingAllMultilanguageElements() {
 		}
 
 		// Other Information validation - now language specific
-		if (language === ContentTabMultiLanguageDropdown.getSelectedLanguage().id) {
+		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
 			brandingBranchInformationList.children().each((idx, element) => {
 				const currentElement = $(element);
 				const key = currentElement.find('[data-type="key"]').val().trim();
@@ -529,7 +360,7 @@ function validateContextBrandingAllMultilanguageElements() {
 		}
 
 		// Update language status in dropdown
-		ContentTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
+		ContextTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
 	});
 }
 
@@ -624,26 +455,6 @@ function updateBrandingOtherInformation(languageId) {
 	});
 }
 
-function createContextBranchesTableElement(branch) {
-	const branchRow = `
-		<tr branch-id="${branch.id}">
-			<td>
-				<b>${branch.general.name[BusinessDefaultLanguage]}</b>
-			</td>
-			<td>
-				<button class="btn btn-info btn-sm" branch-id="${branch.id}" button-type="editBranch">
-					<i class="fa-regular fa-pen-to-square"></i>
-				</button>
-				<button class="btn btn-danger btn-sm" branch-id="${branch.id}" button-type="deleteBranch">
-					<i class="fa-regular fa-trash"></i>
-				</button>
-			</td>
-		</tr>
-	`;
-
-	return branchRow;
-}
-
 function FillContextBrandingTab() {
 	// Set current data
 	CurrentContextBrandingData = BusinessFullData.businessApp.context.branding;
@@ -671,53 +482,10 @@ function FillContextBrandingTab() {
 	brandingGlobalWebsiteInput.val(CurrentContextBrandingData.website[BusinessDefaultLanguage]);
 
 	// Fill other information for default language
-	fillOtherInformationForLanguage(BusinessDefaultLanguage);
+	fillContextBranchOtherInformationForLanguage(BusinessDefaultLanguage);
 
 	validateContextBrandingAllMultilanguageElements();
 	saveContextBrandingButton.prop("disabled", true);
-}
-
-function FillContextTab() {
-	// Branding
-	FillContextBrandingTab();
-
-	// Branches
-	function fillBranchesTab() {
-		const branchesData = BusinessFullData.businessApp.context.branches || [];
-		branchesTable.find("tbody").empty();
-
-		if (branchesData.length === 0) {
-			branchesTable.find("tbody").append("<tr tr-type='none-notice'><td colspan='2'>No branches found</td></tr>");
-		} else {
-			branchesData.forEach((branch) => {
-				branchesTable.find("tbody").append($(createContextBranchesTableElement(branch)));
-			});
-		}
-	}
-	fillBranchesTab();
-
-	// Services
-	function fillServicesTab() {
-		// Implementation coming next
-	}
-	fillServicesTab();
-
-	// Products
-	function fillProductsTab() {
-		// Implementation coming next
-	}
-	fillProductsTab();
-}
-
-function fillOtherInformationForLanguage(language) {
-	brandingBranchInformationList.empty();
-	Object.entries(CurrentContextBrandingOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
-		const infoBox = $(CreateContextBrandingOtherInformationElement());
-		brandingBranchInformationList.append(infoBox);
-
-		infoBox.find('[data-type="key"]').val(key);
-		infoBox.find('[data-type="value"]').val(value);
-	});
 }
 
 function CreateContextBrandingOtherInformationElement() {
@@ -787,6 +555,125 @@ async function canLeaveContextBrandingTab(leaveMessage = "") {
 	}
 
 	return true;
+}
+
+// TAB | Branches
+
+function resetOrClearContextBranchManager() {
+	$("#editBranchNameInput").val("");
+	$("#editBranchAddressInput").val("");
+	$("#editBranchPhoneInput").val("");
+	$("#editBranchEmailInput").val("");
+	$("#editBranchWebsiteInput").val("");
+
+	contextBranchInformationList.children().remove();
+
+	DAYS.forEach((day) => {
+		editBranchOpeningHoursInputsList.find(`#editBranchOpeningHours${day}Input`).prop("checked", false);
+		editBranchOpeningHoursInputsList.find(`[button-type="addBranchWorkingHour"][day-value="${day}"]`).prop("disabled", false);
+		editBranchOpeningHoursInputsList.find(`.workingHoursTimingList[day-value="${day}"]`).children().remove();
+	});
+
+	editBranchTeamInputsList.children().remove();
+	$("#branding-branch-manager-general-tab").click();
+
+	CurrentContextBranchNameMultiLangData = {};
+	CurrentContextBranchAddressMultiLangData = {};
+	CurrentContextBranchPhoneMultiLangData = {};
+	CurrentContextBranchEmailMultiLangData = {};
+	CurrentContextBranchWebsiteMultiLangData = {};
+	CurrentContextBranchOtherInformationMultiLangData = {};
+	CurrentContextBranchTeamMultiLangData = [];
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentContextBranchNameMultiLangData[language] = "";
+		CurrentContextBranchAddressMultiLangData[language] = "";
+		CurrentContextBranchPhoneMultiLangData[language] = "";
+		CurrentContextBranchEmailMultiLangData[language] = "";
+		CurrentContextBranchWebsiteMultiLangData[language] = "";
+		CurrentContextBranchOtherInformationMultiLangData[language] = {};
+	});
+
+	branchesManagerTab.find(".is-invalid").removeClass("is-invalid");
+
+	saveContextBranchesButton.prop("disabled", true);
+}
+
+function ShowContextBranchesManagerTab() {
+	branchesListTab.removeClass("show");
+	contextTabButtonHeader.removeClass("show");
+	setTimeout(() => {
+		branchesListTab.addClass("d-none");
+		contextTabButtonHeader.addClass("d-none");
+
+		branchesManagerTab.removeClass("d-none");
+		branchesManagerTabButtonHeader.removeClass("d-none");
+		branchesManageTabHeader.removeClass("d-none");
+		saveContextBranchesButton.removeClass("d-none");
+		setTimeout(() => {
+			branchesManagerTab.addClass("show");
+			branchesManagerTabButtonHeader.addClass("show");
+			branchesManageTabHeader.addClass("show");
+			saveContextBranchesButton.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+function ShowContextBranchesListTab() {
+	branchesManagerTab.removeClass("show");
+	branchesManagerTabButtonHeader.removeClass("show");
+	branchesManageTabHeader.removeClass("show");
+	saveContextBranchesButton.removeClass("d-none");
+	setTimeout(() => {
+		branchesManagerTab.addClass("d-none");
+		branchesManagerTabButtonHeader.addClass("d-none");
+		branchesManageTabHeader.addClass("d-none");
+		saveContextBranchesButton.addClass("d-none");
+
+		branchesListTab.removeClass("d-none");
+		contextTabButtonHeader.removeClass("d-none");
+		setTimeout(() => {
+			branchesListTab.addClass("show");
+			contextTabButtonHeader.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+function createContextBranchesTableElement(branch) {
+	const branchRow = `
+		<tr branch-id="${branch.id}">
+			<td>
+				<b>${branch.general.name[BusinessDefaultLanguage]}</b>
+			</td>
+			<td>
+				<button class="btn btn-info btn-sm" branch-id="${branch.id}" button-type="editBranch">
+					<i class="fa-regular fa-pen-to-square"></i>
+				</button>
+				<button class="btn btn-danger btn-sm" branch-id="${branch.id}" button-type="deleteBranch">
+					<i class="fa-regular fa-trash"></i>
+				</button>
+			</td>
+		</tr>
+	`;
+
+	return branchRow;
+}
+
+function FillContextBranchesTab() {
+	const branchesData = BusinessFullData.businessApp.context.branches || [];
+	branchesTable.find("tbody").empty();
+
+	if (branchesData.length === 0) {
+		branchesTable.find("tbody").append("<tr tr-type='none-notice'><td colspan='2'>No branches found</td></tr>");
+	} else {
+		branchesData.forEach((branch) => {
+			branchesTable.find("tbody").append($(createContextBranchesTableElement(branch)));
+		});
+	}
 }
 
 function CheckContextBranchTabHasChanges(enableDisableButton = true) {
@@ -912,7 +799,7 @@ function validateContextBranchAllMultilanguageElements() {
 		}
 
 		// Validate Other Information
-		if (language === ContentTabMultiLanguageDropdown.getSelectedLanguage().id) {
+		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
 			contextBranchInformationList.children().each((idx, element) => {
 				const key = $(element).find("input").val().trim();
 				const value = $(element).find("textarea").val().trim();
@@ -923,7 +810,7 @@ function validateContextBranchAllMultilanguageElements() {
 		}
 
 		// Update language status in dropdown
-		ContentTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
+		ContextTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
 	});
 }
 
@@ -1179,7 +1066,7 @@ function fillContextBranchManager(branchData) {
 	// Fill team members
 	editBranchTeamInputsList.empty();
 	branchData.team.forEach((teamMember) => {
-		const teamMemberElement = createTeamMemberElement(teamMember);
+		const teamMemberElement = createContextBranchTeamElement(teamMember);
 		editBranchTeamInputsList.append(teamMemberElement);
 		CurrentContextBranchTeamMultiLangData.push(JSON.parse(JSON.stringify(teamMember)));
 	});
@@ -1188,7 +1075,7 @@ function fillContextBranchManager(branchData) {
 	saveContextBranchesButton.prop("disabled", true);
 }
 
-function createTeamMemberElement(teamMember = null) {
+function createContextBranchTeamElement(teamMember = null) {
 	const element = $(`
         <div class="col-12 col-md-6 mt-3">
             <div class="editBranchTeamBox">
@@ -1224,6 +1111,17 @@ function createTeamMemberElement(teamMember = null) {
     `);
 
 	return element;
+}
+
+function fillContextBranchOtherInformationForLanguage(language) {
+	brandingBranchInformationList.empty();
+	Object.entries(CurrentContextBrandingOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
+		const infoBox = $(CreateContextBrandingOtherInformationElement());
+		brandingBranchInformationList.append(infoBox);
+
+		infoBox.find('[data-type="key"]').val(key);
+		infoBox.find('[data-type="value"]').val(value);
+	});
 }
 
 function validateBranchOtherInformationKeys() {
@@ -1265,7 +1163,7 @@ function createContextBranchOtherInformationElement() {
 	return element;
 }
 
-function updateTeamMembersData(languageId) {
+function updateContextBranchTeamMembersData(languageId) {
 	const teamMembers = [];
 
 	editBranchTeamInputsList.children().each((idx, element) => {
@@ -1337,9 +1235,120 @@ async function canLeaveContextBranchesTab(leaveMessage = "") {
 	return true;
 }
 
+// TAB | Services
+
+function resetOrClearContextServiceManager() {
+	$("#inputContextServiceName").val("");
+	$("#inputContextServiceShortDescription").val("");
+	$("#inputContextServiceFullDescription").val("");
+
+	linkContextServiceBranchSelect.children().remove();
+	linkedContextServiceBranchesList.children().remove();
+
+	linkContextServiceProductSelect.children().remove();
+	linkedContextServiceProductsList.children().remove();
+
+	contextServiceInformationList.children().remove();
+}
+
+function ShowContextServicesManagerTab() {
+	contextServicesListTab.removeClass("show");
+	contextTabButtonHeader.removeClass("show");
+	setTimeout(() => {
+		contextServicesListTab.addClass("d-none");
+		contextTabButtonHeader.addClass("d-none");
+
+		contextServicesManagerTab.removeClass("d-none");
+		servicesManageTabHeader.removeClass("d-none");
+		saveContextServicesButton.removeClass("d-none");
+		setTimeout(() => {
+			contextServicesManagerTab.addClass("show");
+			servicesManageTabHeader.addClass("show");
+			saveContextServicesButton.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+function ShowContextServicesListTab() {
+	contextServicesManagerTab.removeClass("show");
+	servicesManageTabHeader.removeClass("show");
+	saveContextServicesButton.removeClass("d-none");
+	setTimeout(() => {
+		contextServicesManagerTab.addClass("d-none");
+		servicesManageTabHeader.addClass("d-none");
+		saveContextServicesButton.addClass("d-none");
+
+		contextServicesListTab.removeClass("d-none");
+		contextTabButtonHeader.removeClass("d-none");
+		setTimeout(() => {
+			contextServicesListTab.addClass("show");
+			contextTabButtonHeader.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+// TAB | Products
+
+function resetOrClearContextProductManager() {
+	$("#inputContextProductName").val("");
+	$("#inputContextProductShortDescription").val("");
+	$("#inputContextProductFullDescription").val("");
+
+	linkContextProductBranchSelect.children().remove();
+	linkedContextProductBranchesList.children().remove();
+
+	contextProductInformationList.children().remove();
+}
+
+function ShowContextProductsManagerTab() {
+	contextProductsListTab.removeClass("show");
+	contextTabButtonHeader.removeClass("show");
+	setTimeout(() => {
+		contextProductsListTab.addClass("d-none");
+		contextTabButtonHeader.addClass("d-none");
+
+		contextProductsManagerTab.removeClass("d-none");
+		productsManageTabHeader.removeClass("d-none");
+		saveContextProductsButton.removeClass("d-none");
+		setTimeout(() => {
+			contextProductsManagerTab.addClass("show");
+			productsManageTabHeader.addClass("show");
+			saveContextProductsButton.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+function ShowContextProductsListTab() {
+	contextProductsManagerTab.removeClass("show");
+	productsManageTabHeader.removeClass("show");
+	saveContextProductsButton.removeClass("d-none");
+	setTimeout(() => {
+		contextProductsManagerTab.addClass("d-none");
+		productsManageTabHeader.addClass("d-none");
+		saveContextProductsButton.addClass("d-none");
+
+		contextProductsListTab.removeClass("d-none");
+		contextTabButtonHeader.removeClass("d-none");
+		setTimeout(() => {
+			contextProductsListTab.addClass("show");
+			contextTabButtonHeader.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 150);
+}
+
+/** INIT **/
+
 function initContextTab() {
 	$(document).ready(() => {
-		ContentTabMultiLanguageDropdown = new MultiLanguageDropdown("contentTabMultiLanguageSelectContainer", BusinessFullLanguagesData);
+		ContextTabMultiLanguageDropdown = new MultiLanguageDropdown("contentTabMultiLanguageSelectContainer", BusinessFullLanguagesData);
 
 		DAYS.forEach((day) => {
 			editBranchOpeningHoursInputsList.append(`
@@ -1364,189 +1373,38 @@ function initContextTab() {
 
 		/** Event Handlers **/
 
-		addNewBrandInformationButton.on("click", (event) => {
-			event.preventDefault();
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "context-tab") return;
 
-			brandingBranchInformationList.append($(CreateContextBrandingOtherInformationElement()));
-
-			updateBrandingOtherInformation(currentSelectedLanguage.id);
-			validateContextBrandingAllMultilanguageElements();
-			CheckContextBrandingTabHasChanges(true);
-		});
-
-		brandingBranchInformationList.on("click", '[button-type="brandingInformationRemove"]', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
-
-			$(event.currentTarget).parent().parent().remove();
-
-			updateBrandingOtherInformation(currentSelectedLanguage.id);
-			validateContextBrandingAllMultilanguageElements();
-			CheckContextBrandingTabHasChanges(true);
-		});
-
-		addNewBranchButton.on("click", (event) => {
-			event.preventDefault();
-
-			currentBranchName.text("New Branch");
-
-			resetOrClearBranchManager();
-
-			ShowContextBranchesManagerTab();
-
-			ManageContextBranchType = "new";
-			CurrentContextBranchData = createDefaultContextBranchesObject();
-		});
-
-		switchBackToBranchesTab.on("click", (event) => {
-			event.preventDefault();
-
-			ShowContextBranchesListTab();
-		});
-
-		addContextBranchInformationButton.on("click", (event) => {
-			event.preventDefault();
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
-
-			contextBranchInformationList.append($(createContextBranchOtherInformationElement()));
-
-			updateContextBranchOtherInformation(currentSelectedLanguage.id);
-			CheckContextBranchTabHasChanges(true);
-			validateContextBranchAllMultilanguageElements();
-		});
-
-		contextBranchInformationList.on("click", '[button-type="contextBranchInformationRemove"]', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
-
-			$(event.currentTarget).parent().parent().remove();
-
-			updateContextBranchOtherInformation(currentSelectedLanguage.id);
-			CheckContextBranchTabHasChanges(true);
-			validateContextBranchAllMultilanguageElements();
-		});
-
-		editBranchOpeningHoursInputsList.on("click", '[checkbox-type="branchWorkingHourIsClosed"]', (event) => {
-			event.stopPropagation();
-
-			const dayValue = $(event.currentTarget).attr("day-value");
-			const isChecked = $(event.currentTarget).is(":checked");
-
-			$(`[button-type="addBranchWorkingHour"][day-value="${dayValue}"]`).prop("disabled", isChecked);
-
-			const dayTimingsList = $(`.workingHoursTimingList[day-value="${dayValue}"]`);
-			if (isChecked) {
-				dayTimingsList.addClass("d-none");
+			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveBrandingTabResult) {
+				event.preventDefault();
 			} else {
-				dayTimingsList.removeClass("d-none");
+				FillContextBrandingTab();
+			}
+
+			const canLeaveBranchesTabResult = await canLeaveContextBranchesTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveBranchesTabResult) {
+				event.preventDefault();
+			} else {
+				ManageContextBranchType = null;
+				CurrentContextBranchData = null;
+				ShowContextBranchesListTab();
+				contextTabHeader.find("#context-inner-branding-tab").click();
 			}
 		});
 
-		editBranchOpeningHoursInputsList.on("click", '[button-type="addBranchWorkingHour"]', (event) => {
-			event.stopPropagation();
+		ContextTabMultiLanguageDropdown.onLanguageChange((language) => {
+			// Branding Tab
+			brandingBrandNameInput.val(CurrentContextBrandingNameMultiLangData[language.id] || "");
+			brandingBrandCountryInput.val(CurrentContextBrandingCountryMultiLangData[language.id] || "");
+			brandingGlobalContactInput.val(CurrentContextBrandingEmailMultiLangData[language.id] || "");
+			brandingGlobalPhoneInput.val(CurrentContextBrandingPhoneMultiLangData[language.id] || "");
+			brandingGlobalWebsiteInput.val(CurrentContextBrandingWebsiteMultiLangData[language.id] || "");
+			fillContextBranchOtherInformationForLanguage(language.id);
 
-			const dayValue = $(event.currentTarget).attr("day-value");
-
-			const dayTimingsList = $(`.workingHoursTimingList[day-value="${dayValue}"]`);
-
-			dayTimingsList.append($(createContextBranchWorkingHourElement()));
-		});
-
-		editBranchOpeningHoursInputsList.on("click", '[button-type="removeBranchWorkingHour"]', (event) => {
-			event.stopPropagation();
-
-			$(event.currentTarget).parent().remove();
-		});
-
-		editBranchAddTeamMember.on("click", (event) => {
-			event.preventDefault();
-
-			editBranchTeamInputsList.append($(createTeamMemberElement(null)));
-		});
-
-		editBranchTeamInputsList.on("click", '[button-type="removeEditBranchTeam"]', (event) => {
-			event.stopPropagation();
-
-			$(event.currentTarget).parent().parent().remove();
-		});
-
-		addNewServiceButton.on("click", (event) => {
-			event.preventDefault();
-
-			currentContextServiceName.text("New Service");
-
-			resetOrClearServiceManager();
-
-			ShowContextServicesManagerTab();
-		});
-
-		switchBackToContextServicesTab.on("click", (event) => {
-			event.preventDefault();
-
-			ShowContextServicesListTab();
-		});
-
-		addNewContextServiceInformationButton.on("click", (event) => {
-			event.preventDefault();
-
-			contextServiceInformationList.append(`
-                              <div class="mt-2">
-                                   <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
-                                        <button class="btn btn-danger" button-type="contextServiceInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>
-                         `);
-		});
-
-		contextServiceInformationList.on("click", '[button-type="contextServiceInformationRemove"]', (event) => {
-			event.stopPropagation();
-
-			$(event.currentTarget).parent().parent().remove();
-		});
-
-		addNewProductButton.on("click", (event) => {
-			event.preventDefault();
-
-			currentContextProductName.text("New Product");
-
-			resetOrClearProductManager();
-
-			ShowContextProductsManagerTab();
-		});
-
-		switchBackToContextProductsTab.on("click", (event) => {
-			event.preventDefault();
-
-			ShowContextProductsListTab();
-		});
-
-		addNewContextProductInformationButton.on("click", (event) => {
-			event.preventDefault();
-
-			contextProductInformationList.append(`
-                              <div class="mt-2">
-                                   <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
-                                        <button class="btn btn-danger" button-type="contextProductInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
-                              </div>
-                         `);
-		});
-
-		contextProductInformationList.on("click", '[button-type="contextProductInformationRemove"]', (event) => {
-			event.stopPropagation();
-
-			$(event.currentTarget).parent().parent().remove();
+			validateContextBrandingAllMultilanguageElements();
 		});
 
 		$("#context-inner-tab button.nav-link").on("show.bs.tab", (event) => {
@@ -1573,21 +1431,34 @@ function initContextTab() {
 			}
 		});
 
-		ContentTabMultiLanguageDropdown.onLanguageChange((language) => {
-			// Branding Tab
-			brandingBrandNameInput.val(CurrentContextBrandingNameMultiLangData[language.id] || "");
-			brandingBrandCountryInput.val(CurrentContextBrandingCountryMultiLangData[language.id] || "");
-			brandingGlobalContactInput.val(CurrentContextBrandingEmailMultiLangData[language.id] || "");
-			brandingGlobalPhoneInput.val(CurrentContextBrandingPhoneMultiLangData[language.id] || "");
-			brandingGlobalWebsiteInput.val(CurrentContextBrandingWebsiteMultiLangData[language.id] || "");
-			fillOtherInformationForLanguage(language.id);
+		// TAB | Branding
 
+		addNewBrandInformationButton.on("click", (event) => {
+			event.preventDefault();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			brandingBranchInformationList.append($(CreateContextBrandingOtherInformationElement()));
+
+			updateBrandingOtherInformation(currentSelectedLanguage.id);
 			validateContextBrandingAllMultilanguageElements();
+			CheckContextBrandingTabHasChanges(true);
+		});
+
+		brandingBranchInformationList.on("click", '[button-type="brandingInformationRemove"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			$(event.currentTarget).parent().parent().remove();
+
+			updateBrandingOtherInformation(currentSelectedLanguage.id);
+			validateContextBrandingAllMultilanguageElements();
+			CheckContextBrandingTabHasChanges(true);
 		});
 
 		brandingTab.on("input change", "input[type='text'], input[type='email'], input[type='tel'], textarea", (event) => {
 			const currentElement = $(event.currentTarget);
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
 			// Update corresponding multilanguage data based on input id
 			switch (currentElement.attr("id")) {
@@ -1682,84 +1553,42 @@ function initContextTab() {
 			);
 		});
 
-		$("#nav-bar").on("tabChange", async (event) => {
-			const activeTab = event.detail.from;
-			if (activeTab !== "context-tab") return;
+		// TAB | Branches
 
-			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
-			if (!canLeaveBrandingTabResult) {
-				event.preventDefault();
-			} else {
-				FillContextBrandingTab();
-			}
+		addNewBranchButton.on("click", (event) => {
+			event.preventDefault();
 
-			const canLeaveBranchesTabResult = await canLeaveContextBranchesTab(" Are you sure you want to discard these changes and leave the context tab?");
-			if (!canLeaveBranchesTabResult) {
-				event.preventDefault();
-			} else {
-				ManageContextBranchType = null;
-				CurrentContextBranchData = null;
-				ShowContextBranchesListTab();
-				contextTabHeader.find("#context-inner-branding-tab").click();
-			}
+			currentBranchName.text("New Branch");
+
+			resetOrClearContextBranchManager();
+
+			ShowContextBranchesManagerTab();
+
+			ManageContextBranchType = "new";
+			CurrentContextBranchData = createDefaultContextBranchesObject();
 		});
 
-		branchesManagerTab.on("input change", "input[type='text'], input[type='email'], input[type='tel'], textarea", (event) => {
-			if (ManageContextBranchType == null) return;
+		switchBackToBranchesTab.on("click", (event) => {
+			event.preventDefault();
 
-			const currentElement = $(event.currentTarget);
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
-
-			switch (currentElement.attr("id")) {
-				case "editBranchNameInput":
-					CurrentContextBranchNameMultiLangData[currentSelectedLanguage.id] = currentElement.val();
-					break;
-				case "editBranchAddressInput":
-					CurrentContextBranchAddressMultiLangData[currentSelectedLanguage.id] = currentElement.val();
-					break;
-				case "editBranchPhoneInput":
-					CurrentContextBranchPhoneMultiLangData[currentSelectedLanguage.id] = currentElement.val();
-					break;
-				case "editBranchEmailInput":
-					CurrentContextBranchEmailMultiLangData[currentSelectedLanguage.id] = currentElement.val();
-					break;
-				case "editBranchWebsiteInput":
-					CurrentContextBranchWebsiteMultiLangData[currentSelectedLanguage.id] = currentElement.val();
-					break;
-			}
-
-			validateContextBranchAllMultilanguageElements();
-			CheckContextBranchTabHasChanges(true);
+			ShowContextBranchesListTab();
 		});
 
-		contextBranchInformationList.on("input change", "input, textarea", (event) => {
-			if (ManageContextBranchType == null) return;
+		branchesTable.on("click", "button[button-type='editBranch']", (event) => {
+			event.preventDefault();
 
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+			const branchId = $(event.currentTarget).attr("branch-id");
 
-			if (validateBranchOtherInformationKeys()) {
-				updateContextBranchOtherInformation(currentSelectedLanguage.id);
-			}
+			resetOrClearContextBranchManager();
 
-			validateContextBranchAllMultilanguageElements();
-			CheckContextBranchTabHasChanges(true);
-		});
+			CurrentContextBranchData = BusinessFullData.businessApp.context.branches.find((branch) => branch.id === branchId);
 
-		editBranchTeamInputsList.on("input change", "input, textarea", (event) => {
-			if (ManageContextBranchType == null) return;
+			currentBranchName.text(CurrentContextBranchData.general.name[BusinessDefaultLanguage]);
 
-			const currentSelectedLanguage = ContentTabMultiLanguageDropdown.getSelectedLanguage();
+			fillContextBranchManager(CurrentContextBranchData);
+			ShowContextBranchesManagerTab();
 
-			updateTeamMembersData(currentSelectedLanguage.id);
-
-			validateContextBranchAllMultilanguageElements();
-			CheckContextBranchTabHasChanges(true);
-		});
-
-		editBranchOpeningHoursInputsList.on("change", 'input[type="time"]', (event) => {
-			if (ManageContextBranchType == null) return;
-
-			CheckContextBranchTabHasChanges(true);
+			ManageContextBranchType = "edit";
 		});
 
 		saveContextBranchesButton.on("click", async (event) => {
@@ -1797,7 +1626,6 @@ function initContextTab() {
 
 			SaveBusinessContextBranch(
 				formData,
-				ManageContextBranchType,
 				(saveResponse) => {
 					CurrentContextBranchData = saveResponse.data;
 
@@ -1845,24 +1673,218 @@ function initContextTab() {
 			);
 		});
 
-		branchesTable.on("click", "button[button-type='editBranch']", (event) => {
+		// Branches - General
+
+		addContextBranchInformationButton.on("click", (event) => {
 			event.preventDefault();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
-			const branchId = $(event.currentTarget).attr("branch-id");
+			contextBranchInformationList.append($(createContextBranchOtherInformationElement()));
 
-			resetOrClearBranchManager();
-
-			CurrentContextBranchData = BusinessFullData.businessApp.context.branches.find((branch) => branch.id === branchId);
-
-			currentBranchName.text(CurrentContextBranchData.general.name[BusinessDefaultLanguage]);
-
-			fillContextBranchManager(CurrentContextBranchData);
-			ShowContextBranchesManagerTab();
-
-			ManageContextBranchType = "edit";
+			updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			CheckContextBranchTabHasChanges(true);
+			validateContextBranchAllMultilanguageElements();
 		});
 
-		// Init
+		contextBranchInformationList.on("click", '[button-type="contextBranchInformationRemove"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			$(event.currentTarget).parent().parent().remove();
+
+			updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			CheckContextBranchTabHasChanges(true);
+			validateContextBranchAllMultilanguageElements();
+		});
+
+		branchesManagerTab.on("input change", "input[type='text'], input[type='email'], input[type='tel'], textarea", (event) => {
+			if (ManageContextBranchType == null) return;
+
+			const currentElement = $(event.currentTarget);
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			switch (currentElement.attr("id")) {
+				case "editBranchNameInput":
+					CurrentContextBranchNameMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "editBranchAddressInput":
+					CurrentContextBranchAddressMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "editBranchPhoneInput":
+					CurrentContextBranchPhoneMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "editBranchEmailInput":
+					CurrentContextBranchEmailMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+				case "editBranchWebsiteInput":
+					CurrentContextBranchWebsiteMultiLangData[currentSelectedLanguage.id] = currentElement.val();
+					break;
+			}
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		contextBranchInformationList.on("input change", "input, textarea", (event) => {
+			if (ManageContextBranchType == null) return;
+
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			if (validateBranchOtherInformationKeys()) {
+				updateContextBranchOtherInformation(currentSelectedLanguage.id);
+			}
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		// Branches - Working Hours
+
+		editBranchOpeningHoursInputsList.on("click", '[checkbox-type="branchWorkingHourIsClosed"]', (event) => {
+			event.stopPropagation();
+
+			const dayValue = $(event.currentTarget).attr("day-value");
+			const isChecked = $(event.currentTarget).is(":checked");
+
+			$(`[button-type="addBranchWorkingHour"][day-value="${dayValue}"]`).prop("disabled", isChecked);
+
+			const dayTimingsList = $(`.workingHoursTimingList[day-value="${dayValue}"]`);
+			if (isChecked) {
+				dayTimingsList.addClass("d-none");
+			} else {
+				dayTimingsList.removeClass("d-none");
+			}
+		});
+
+		editBranchOpeningHoursInputsList.on("click", '[button-type="addBranchWorkingHour"]', (event) => {
+			event.stopPropagation();
+
+			const dayValue = $(event.currentTarget).attr("day-value");
+
+			const dayTimingsList = $(`.workingHoursTimingList[day-value="${dayValue}"]`);
+
+			dayTimingsList.append($(createContextBranchWorkingHourElement()));
+		});
+
+		editBranchOpeningHoursInputsList.on("click", '[button-type="removeBranchWorkingHour"]', (event) => {
+			event.stopPropagation();
+
+			$(event.currentTarget).parent().remove();
+		});
+
+		editBranchOpeningHoursInputsList.on("change", 'input[type="time"]', (event) => {
+			if (ManageContextBranchType == null) return;
+
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		// Branches - Teams
+
+		editBranchAddTeamMember.on("click", (event) => {
+			event.preventDefault();
+
+			editBranchTeamInputsList.append($(createContextBranchTeamElement(null)));
+		});
+
+		editBranchTeamInputsList.on("click", '[button-type="removeEditBranchTeam"]', (event) => {
+			event.stopPropagation();
+
+			$(event.currentTarget).parent().parent().remove();
+		});
+
+		editBranchTeamInputsList.on("input change", "input, textarea", (event) => {
+			if (ManageContextBranchType == null) return;
+
+			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
+
+			updateContextBranchTeamMembersData(currentSelectedLanguage.id);
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges(true);
+		});
+
+		// TAB | Services
+
+		addNewServiceButton.on("click", (event) => {
+			event.preventDefault();
+
+			currentContextServiceName.text("New Service");
+
+			resetOrClearContextServiceManager();
+
+			ShowContextServicesManagerTab();
+		});
+
+		switchBackToContextServicesTab.on("click", (event) => {
+			event.preventDefault();
+
+			ShowContextServicesListTab();
+		});
+
+		addNewContextServiceInformationButton.on("click", (event) => {
+			event.preventDefault();
+
+			contextServiceInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="contextServiceInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='fa-regular fa-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>
+                         `);
+		});
+
+		contextServiceInformationList.on("click", '[button-type="contextServiceInformationRemove"]', (event) => {
+			event.stopPropagation();
+
+			$(event.currentTarget).parent().parent().remove();
+		});
+
+		// TAB | Products
+
+		addNewProductButton.on("click", (event) => {
+			event.preventDefault();
+
+			currentContextProductName.text("New Product");
+
+			resetOrClearContextProductManager();
+
+			ShowContextProductsManagerTab();
+		});
+
+		switchBackToContextProductsTab.on("click", (event) => {
+			event.preventDefault();
+
+			ShowContextProductsListTab();
+		});
+
+		addNewContextProductInformationButton.on("click", (event) => {
+			event.preventDefault();
+
+			contextProductInformationList.append(`
+                              <div class="mt-2">
+                                   <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Information Type" aria-label="Information Type" value="" style="border-bottom: none; border-bottom-left-radius: 0;">
+                                        <button class="btn btn-danger" button-type="contextProductInformationRemove" style="border-bottom: none; border-bottom-right-radius: 0;">
+                                             <i class='fa-regular fa-trash'></i>
+                                        </button>
+                                   </div>
+                                   <textarea class="form-control" placeholder="Information" aria-label="Information" style="border-top-left-radius: 0; border-top-right-radius: 0"></textarea>
+                              </div>
+                         `);
+		});
+
+		contextProductInformationList.on("click", '[button-type="contextProductInformationRemove"]', (event) => {
+			event.stopPropagation();
+
+			$(event.currentTarget).parent().parent().remove();
+		});
+
+		/** Init **/
 		FillContextTab();
 	});
 }
