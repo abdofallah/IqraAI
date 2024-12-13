@@ -2,8 +2,8 @@
 {
     public class BusinessAppAgentIntegrations
     {
-        public BusinessAppAgentIntegrationSTT STT { get; set; } = new BusinessAppAgentIntegrationSTT();
-        public BusinessAppAgentIntegrationTTS TTS { get; set; } = new BusinessAppAgentIntegrationTTS();
-        public BusinessAppAgentIntegrationLLM LLM { get; set; } = new BusinessAppAgentIntegrationLLM();
+        public List<string> STT { get; set; } = new List<string>();
+        public List<string> TTS { get; set; } = new List<string>();
+        public List<string> LLM { get; set; } = new List<string>();
     }
 }

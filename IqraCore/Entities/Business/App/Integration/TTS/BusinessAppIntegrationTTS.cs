@@ -1,7 +1,8 @@
-﻿namespace IqraCore.Entities.Business
+﻿namespace IqraCore.Entities.Business.Integration
 {
-    public class BusinessAppAgentIntegrationTTS
+    public class BusinessAppIntegrationTTS
     {
+        public string Id { get; set; }
         public string? SelectedProvider { get; set; } = null;
         public Dictionary<string, string> Configuration { get; set; } = new Dictionary<string, string>();
 

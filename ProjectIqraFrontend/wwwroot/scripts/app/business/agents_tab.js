@@ -1,147 +1,172 @@
-$(document).ready(() => {
-    const agentIconPicker = new EmojiPicker({
-        trigger: [
-            {
-                selector: '#editAgentIconButton',
-                insertInto: '#editAgentIconButton'
-            }
-        ],
-        closeButton: true,
-        closeOnInsert: true
-    });
+/** Dynamic Variables **/
 
-    const tooltipTriggerList = document.querySelectorAll('#agents-tab [data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+let CurrentManageAgentData = null;
+let ManageAgentType = null; // new or edit
 
-    const addNewAgentButton = $("#addNewAgentButton");
+/** Element Variables **/
 
-    const agentsListTab = $("#agentsListTab");
-    const agentsManagerTab = $("#agentsManagerTab");
+const agentIconPicker = new EmojiPicker({
+	trigger: [
+		{
+			selector: "#editAgentIconButton",
+			insertInto: "#editAgentIconButton",
+		},
+	],
+	closeButton: true,
+	closeOnInsert: true,
+});
 
-    const switchBackToAgentsTab = $("#switchBackToAgentsTab");
+const agentstooltipTriggerList = document.querySelectorAll('#agents-tab [data-bs-toggle="tooltip"]');
+const agentstooltipList = [...agentstooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    const currentAgentName = $("#currentAgentName");
+// Agent Tab
+const agentTab = $("#agents-tab");
 
-    const addNewAgentScriptButton = $("#addNewAgentScriptButton");
+const addNewAgentButton = agentTab.find("#addNewAgentButton");
 
-    const agentScriptsListTab = $("#agentScriptsListTab");
-    const agentScriptsManagerTab = $("#agentScriptsManagerTab");
+// Agent - List Tab
+const agentsListTab = agentTab.find("#agentsListTab");
 
-    const switchBackToAgentsScriptManagerTab = $("#switchBackToAgentsScriptManagerTab");
+// Agent - Manager Tab
+const agentsManagerHeader = agentTab.find("#agents-manager-header");
 
-    const currentAgentScriptName = $("#currentAgentScriptName");
+const switchBackToAgentsTab = agentsManagerHeader.find("#switchBackToAgentsTab");
+const currentAgentName = agentsManagerHeader.find("#currentAgentName");
 
-    const addAgentScriptConditionValueButton = $("#addAgentScriptConditionValue");
-    const editAgentScriptConditionValueInputs = $("#editAgentScriptConditionValueInputs");
+const agentsManagerTab = agentTab.find("#agentsManagerTab");
 
-    const addAgentScriptConversationMessageButton = $("#addAgentScriptConversationMessage");
+// SUB | Script Tab
+const addNewAgentScriptButton = agentTab.find("#addNewAgentScriptButton");
 
-    const agentScriptConversationMessages = $(".agentScriptConversationMessages");
+// SUB | Script - List Tab
+const agentScriptsListTab = agentTab.find("#agentScriptsListTab");
 
-    const noMessagesInConversationAlert = $(".no-messages-conversation");
+// SUB | Script - Manager Tab
+const switchBackToAgentsScriptManagerTab = agentTab.find("#switchBackToAgentsScriptManagerTab");
+const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
 
-    const editAgentIntegrationSTTProviderSelect = $("#editAgentIntegrationSTTProviderSelect");
-    const editAgentIntegrationSTTConfigurationList = $("#editAgentIntegrationSTTConfigurationList");
+const agentScriptsManagerTab = agentTab.find("#agentScriptsManagerTab");
 
-    const editAgentIntegrationLLMProviderSelect = $("#editAgentIntegrationLLMProviderSelect");
-    const editAgentIntegrationLLMConfigurationList = $("#editAgentIntegrationLLMConfigurationList");
+const addAgentScriptConditionValueButton = agentScriptsManagerTab.find("#addAgentScriptConditionValue");
+const editAgentScriptConditionValueInputs = agentScriptsManagerTab.find("#editAgentScriptConditionValueInputs");
 
-    const ttsConfigAzureSilenceTypeSelect = $("#ttsConfigAzureSilenceTypeSelect");
-    const addTTSConfigAzureSilenceTypeButton = $("#addTTSConfigAzureSilenceType");
-    const ttsConfigAzureSilenceTypeList = $("#ttsConfigAzureSilenceTypeList");
+const addAgentScriptConversationMessageButton = agentScriptsManagerTab.find("#addAgentScriptConversationMessage");
 
-    const editAgentBackgroundAudioSelect = $("#editAgentBackgroundAudioSelect");
+const agentScriptConversationMessages = agentScriptsManagerTab.find(".agentScriptConversationMessages");
 
-    const addNewMessageCacheGroupQueryButton = $("#addNewMessageCacheGroupQueryButton");
+const noMessagesInConversationAlert = agentScriptsManagerTab.find(".no-messages-conversation");
 
-    const messageCacheGroupQueriesListTab = $("#messageCacheGroupQueriesListTab");
-    const messageCacheGroupMessageManagerTab = $("#messageCacheGroupMessageManagerTab");
+// SUB | Integrations Tab
+const editAgentIntegrationSTTProviderSelect = agentTab.find("#editAgentIntegrationSTTProviderSelect");
+const editAgentIntegrationSTTConfigurationList = agentTab.find("#editAgentIntegrationSTTConfigurationList");
 
-    const currentMessageCacheGroupQueryName = $("#currentMessageCacheGroupQueryName");
+const editAgentIntegrationLLMProviderSelect = agentTab.find("#editAgentIntegrationLLMProviderSelect");
+const editAgentIntegrationLLMConfigurationList = agentTab.find("#editAgentIntegrationLLMConfigurationList");
 
-    const switchBackToMessageCacheGroupQueriesListTab = $("#switchBackToMessageCacheGroupQueriesListTab");
+const ttsConfigAzureSilenceTypeSelect = agentTab.find("#ttsConfigAzureSilenceTypeSelect");
+const addTTSConfigAzureSilenceTypeButton = agentTab.find("#addTTSConfigAzureSilenceType");
+const ttsConfigAzureSilenceTypeList = agentTab.find("#ttsConfigAzureSilenceTypeList");
 
-    const cacheInnerTab = $("#cache-inner-tab");
+// SUB | Settings Tab
+const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
 
-    const cacheMessagesInnerBreadcrumb = $("#cache-messages-inner-breadcrumb");
+// SUB | Cache Tab
+const cacheInnerTab = agentTab.find("#cache-inner-tab");
 
-    const addNewAudioCacheQueryButton = $("#addNewAudioCacheQueryButton");
+// SUB | Cache - Messages Tab
+const cacheMessagesInnerBreadcrumb = agentTab.find("#cache-messages-inner-breadcrumb");
 
-    const audioCacheGroupQueriesListTab = $("#audioCacheGroupQueriesListTab");
-    const audioCacheGroupAddQueryTab = $("#audioCacheGroupAddQueryTab");
+const addNewMessageCacheGroupQueryButton = agentTab.find("#addNewMessageCacheGroupQueryButton");
 
-    const cacheAudioInnerBreadcrumb = $("#cache-audio-inner-breadcrumb");
+const messageCacheGroupQueriesListTab = agentTab.find("#messageCacheGroupQueriesListTab");
+const messageCacheGroupMessageManagerTab = agentTab.find("#messageCacheGroupMessageManagerTab");
 
-    const switchBackToAudioCacheGroupQueriesListTab = $("#switchBackToAudioCacheGroupQueriesListTab");
-    const currentAudioCacheGroupQueryName = $("#currentAudioCacheGroupQueryName");
+const currentMessageCacheGroupQueryName = agentTab.find("#currentMessageCacheGroupQueryName");
 
-    const agentCacheAutoCacheAudioResponseCheck = $("#agentCacheAutoCacheAudioResponseCheck");
-    const agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox = $("#agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox");
+const switchBackToMessageCacheGroupQueriesListTab = agentTab.find("#switchBackToMessageCacheGroupQueriesListTab");
 
-    addNewAgentButton.on("click", (event) => {
-        event.preventDefault();
+// SUB | Cache - Audio Tab
+const cacheAudioInnerBreadcrumb = agentTab.find("#cache-audio-inner-breadcrumb");
 
-        currentAgentName.text("New Agent");
+const addNewAudioCacheQueryButton = agentTab.find("#addNewAudioCacheQueryButton");
 
-        agentsListTab.removeClass("show");
-        setTimeout(() => {
-            agentsListTab.addClass("d-none");
+const audioCacheGroupQueriesListTab = agentTab.find("#audioCacheGroupQueriesListTab");
+const audioCacheGroupAddQueryTab = agentTab.find("#audioCacheGroupAddQueryTab");
 
-            agentsManagerTab.removeClass("d-none");
-            setTimeout(() => {
-                agentsManagerTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+const switchBackToAudioCacheGroupQueriesListTab = agentTab.find("#switchBackToAudioCacheGroupQueriesListTab");
+const currentAudioCacheGroupQueryName = agentTab.find("#currentAudioCacheGroupQueryName");
 
-    switchBackToAgentsTab.on("click", (event) => {
-        event.preventDefault();
+const agentCacheAutoCacheAudioResponseCheck = agentTab.find("#agentCacheAutoCacheAudioResponseCheck");
+const agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox = agentTab.find("#agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox");
 
-        agentsManagerTab.removeClass("show");
-        setTimeout(() => {
-            agentsManagerTab.addClass("d-none");
+/** Functions **/
 
-            agentsListTab.removeClass("d-none");
-            setTimeout(() => {
-                agentsListTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+function initAgentTab() {
+	$(document).ready(() => {
+		addNewAgentButton.on("click", (event) => {
+			event.preventDefault();
 
-    addNewAgentScriptButton.on("click", (event) => {
-        event.preventDefault();
+			currentAgentName.text("New Agent");
 
-        currentAgentScriptName.text("New Script");
+			agentsListTab.removeClass("show");
+			setTimeout(() => {
+				agentsListTab.addClass("d-none");
 
-        agentScriptsListTab.removeClass("show");
-        setTimeout(() => {
-            agentScriptsListTab.addClass("d-none");
+				agentsManagerTab.removeClass("d-none");
+				setTimeout(() => {
+					agentsManagerTab.addClass("show");
+				}, 10);
+			}, 150);
+		});
 
-            agentScriptsManagerTab.removeClass("d-none");
-            setTimeout(() => {
-                agentScriptsManagerTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+		switchBackToAgentsTab.on("click", (event) => {
+			event.preventDefault();
 
-    switchBackToAgentsScriptManagerTab.on("click", (event) => {
-        event.preventDefault();
+			agentsManagerTab.removeClass("show");
+			setTimeout(() => {
+				agentsManagerTab.addClass("d-none");
 
-        agentScriptsManagerTab.removeClass("show");
-        setTimeout(() => {
-            agentScriptsManagerTab.addClass("d-none");
+				agentsListTab.removeClass("d-none");
+				setTimeout(() => {
+					agentsListTab.addClass("show");
+				}, 10);
+			}, 150);
+		});
 
-            agentScriptsListTab.removeClass("d-none");
-            setTimeout(() => {
-                agentScriptsListTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+		addNewAgentScriptButton.on("click", (event) => {
+			event.preventDefault();
 
-    addAgentScriptConditionValueButton.on("click", (event) => {
-        event.preventDefault();
+			currentAgentScriptName.text("New Script");
 
-        editAgentScriptConditionValueInputs.append(`
+			agentScriptsListTab.removeClass("show");
+			setTimeout(() => {
+				agentScriptsListTab.addClass("d-none");
+
+				agentScriptsManagerTab.removeClass("d-none");
+				setTimeout(() => {
+					agentScriptsManagerTab.addClass("show");
+				}, 10);
+			}, 150);
+		});
+
+		switchBackToAgentsScriptManagerTab.on("click", (event) => {
+			event.preventDefault();
+
+			agentScriptsManagerTab.removeClass("show");
+			setTimeout(() => {
+				agentScriptsManagerTab.addClass("d-none");
+
+				agentScriptsListTab.removeClass("d-none");
+				setTimeout(() => {
+					agentScriptsListTab.addClass("show");
+				}, 10);
+			}, 150);
+		});
+
+		addAgentScriptConditionValueButton.on("click", (event) => {
+			event.preventDefault();
+
+			editAgentScriptConditionValueInputs.append(`
                               <div class="input-group mb-1">
                                    <input type="text" class="form-control" placeholder="Script Condition" aria-label="Condition Value" value="">
                                    <button class="btn btn-danger" button-type="editAgentScriptConditionValueRemove">
@@ -149,20 +174,20 @@ $(document).ready(() => {
                                    </button>
                               </div>
                          `);
-    });
+		});
 
-    $(document).on('click', '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+		$(document).on("click", '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        $(event.currentTarget).parent().remove();
-    });
+			$(event.currentTarget).parent().remove();
+		});
 
-    addAgentScriptConversationMessageButton.on("click", (event) => {
-        // todo try to make the options of functions static
+		addAgentScriptConversationMessageButton.on("click", (event) => {
+			// todo try to make the options of functions static
 
-        agentScriptConversationMessages.append(`
+			agentScriptConversationMessages.append(`
                               <div class="conversationMessage">
                                    <div class="user-message singleMessage">
                                         <div class="input-group">
@@ -194,10 +219,10 @@ $(document).ready(() => {
                                                        <option value="transfer_to_agent" can-continue="false" is-custom-tool="false">Transfer to Agent</option>
                                                        <option value="transfer_to_human" can-continue="false" is-custom-tool="false">Transfer to Human</option>
                                                        <option value="end_call" can-continue="false" is-custom-tool="false">End Call</option>
-                                                       ${(
-                // todo
-                ""
-            )}
+                                                       ${
+																													// todo
+																													""
+																												}
                                                   </select>
                                              </div>
                                         </div>
@@ -221,207 +246,190 @@ $(document).ready(() => {
                               </div>
                          `);
 
-        agentScriptConversationMessages.stop().animate({ scrollTop: agentScriptConversationMessages[0].scrollHeight }, 500, 'linear', () => { });
+			agentScriptConversationMessages.stop().animate({ scrollTop: agentScriptConversationMessages[0].scrollHeight }, 500, "linear", () => {});
 
-        noMessagesInConversationAlert.addClass("d-none");
-    });
+			noMessagesInConversationAlert.addClass("d-none");
+		});
 
-    $(document).on('click', '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+		$(document).on("click", '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        let actualParent = $(event.currentTarget).parent().parent().parent();
+			let actualParent = $(event.currentTarget).parent().parent().parent();
 
-        let toolType = actualParent.find('[select-type="set-ai-response-type"]').val();
+			let toolType = actualParent.find('[select-type="set-ai-response-type"]').val();
 
-        if (toolType === "response_to_system") {
-            let selectedToolValue = actualParent.find('[select-type="set-ai-response-tool"]').val();
-            let selectedToolOption = actualParent.find('[select-type="set-ai-response-tool"] option[value="' + selectedToolValue + '"]');
+			if (toolType === "response_to_system") {
+				let selectedToolValue = actualParent.find('[select-type="set-ai-response-tool"]').val();
+				let selectedToolOption = actualParent.find('[select-type="set-ai-response-tool"] option[value="' + selectedToolValue + '"]');
 
-            let isToolThatCanContinue = selectedToolOption.attr('can-continue');
+				let isToolThatCanContinue = selectedToolOption.attr("can-continue");
 
-            if (
-                typeof (isToolThatCanContinue) !== "undefined"
-                &&
-                (isToolThatCanContinue == "false" || isToolThatCanContinue == "false")
-            ) {
-                addAgentScriptConversationMessageButton.prop("disabled", false);
-            }
-        }
+				if (typeof isToolThatCanContinue !== "undefined" && (isToolThatCanContinue == "false" || isToolThatCanContinue == "false")) {
+					addAgentScriptConversationMessageButton.prop("disabled", false);
+				}
+			}
 
-        actualParent.remove();
+			actualParent.remove();
 
-        if (agentScriptConversationMessages.children().length === 0) {
-            noMessagesInConversationAlert.removeClass("d-none");
-        }
-    });
+			if (agentScriptConversationMessages.children().length === 0) {
+				noMessagesInConversationAlert.removeClass("d-none");
+			}
+		});
 
-    $(document).on('change', '[select-type="set-ai-response-type"]', (event) => {
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+		$(document).on("change", '[select-type="set-ai-response-type"]', (event) => {
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        let target = $(event.currentTarget);
-        let selectedValue = target.val();
+			let target = $(event.currentTarget);
+			let selectedValue = target.val();
 
-        let parent = target.parent();
-        let textAreaForUserResponse = parent.find('[textarea-type="set-ai-response-text-area"]');
-        let toolForUserResponse = parent.find('[select-type="set-ai-response-tool"]');
+			let parent = target.parent();
+			let textAreaForUserResponse = parent.find('[textarea-type="set-ai-response-text-area"]');
+			let toolForUserResponse = parent.find('[select-type="set-ai-response-tool"]');
 
-        let toolStatusElement = parent.parent().parent().find('[data-type="tool-status-conditional-conversation"]');
+			let toolStatusElement = parent.parent().parent().find('[data-type="tool-status-conditional-conversation"]');
 
-        let transferToAgentElement = parent.parent().parent().find('[data-type="transfer-to-agent-type"]');
-        let transferToAgentElementSelect = transferToAgentElement.find('[select-type="transfer-to-agent-type-select"]');
+			let transferToAgentElement = parent.parent().parent().find('[data-type="transfer-to-agent-type"]');
+			let transferToAgentElementSelect = transferToAgentElement.find('[select-type="transfer-to-agent-type-select"]');
 
-        if (selectedValue === "response_to_user") {
-            textAreaForUserResponse.removeClass("d-none");
-            toolForUserResponse.addClass("d-none");
+			if (selectedValue === "response_to_user") {
+				textAreaForUserResponse.removeClass("d-none");
+				toolForUserResponse.addClass("d-none");
 
-            toolStatusElement.addClass("d-none");
-            transferToAgentElement.addClass("d-none");
+				toolStatusElement.addClass("d-none");
+				transferToAgentElement.addClass("d-none");
 
-            addAgentScriptConversationMessageButton.prop("disabled", false);
+				addAgentScriptConversationMessageButton.prop("disabled", false);
 
-            toolForUserResponse.val("none");
-            toolForUserResponse.change();
+				toolForUserResponse.val("none");
+				toolForUserResponse.change();
 
-            transferToAgentElementSelect.val("-1");
-            transferToAgentElementSelect.change();
-        }
-        else if (selectedValue === "response_to_system") {
-            textAreaForUserResponse.addClass("d-none");
-            toolForUserResponse.removeClass("d-none");
+				transferToAgentElementSelect.val("-1");
+				transferToAgentElementSelect.change();
+			} else if (selectedValue === "response_to_system") {
+				textAreaForUserResponse.addClass("d-none");
+				toolForUserResponse.removeClass("d-none");
 
-            toolForUserResponse.change();
-        }
-    });
+				toolForUserResponse.change();
+			}
+		});
 
-    $(document).on('change', '[select-type="set-ai-response-tool"]', (event) => {
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+		$(document).on("change", '[select-type="set-ai-response-tool"]', (event) => {
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        let target = $(event.currentTarget);
-        let selectedValue = target.val();
+			let target = $(event.currentTarget);
+			let selectedValue = target.val();
 
-        let selectedOption = target.find('option[value="' + selectedValue + '"]');
+			let selectedOption = target.find('option[value="' + selectedValue + '"]');
 
-        let canContinueAfterTool = selectedOption.attr("can-continue");
-        let isCustomTool = selectedOption.attr("is-custom-tool");
+			let canContinueAfterTool = selectedOption.attr("can-continue");
+			let isCustomTool = selectedOption.attr("is-custom-tool");
 
-        let messagesListLength = agentScriptConversationMessages.children().length;
-        let messagePositionInConversationList = target.parent().parent().parent().parent().index();
+			let messagesListLength = agentScriptConversationMessages.children().length;
+			let messagePositionInConversationList = target.parent().parent().parent().parent().index();
 
-        let customToolStatusConditionalConversationElement = target.parent().parent().parent().find('[data-type="tool-status-conditional-conversation"]');
-        let transferToAgentElement = target.parent().parent().parent().find('[data-type="transfer-to-agent-type"]');
+			let customToolStatusConditionalConversationElement = target.parent().parent().parent().find('[data-type="tool-status-conditional-conversation"]');
+			let transferToAgentElement = target.parent().parent().parent().find('[data-type="transfer-to-agent-type"]');
 
-        if (
-            typeof (canContinueAfterTool) !== "undefined"
-            &&
-            (canContinueAfterTool == "false" || canContinueAfterTool == false)
-        ) {
-            if (messagesListLength > (messagePositionInConversationList + 1)) {
-                if (!confirm("Using this tool will ignore the rest of the conversation. Are you sure you want to continue?\n\n Confirming will delete every other message after this message.")) {
-                    event.preventDefault();
-                    target.val(target.attr("previous-value"));
-                    return false;
-                }
-                else {
-                    agentScriptConversationMessages.children().each((index, data) => {
-                        if (index > messagePositionInConversationList) data.remove();
-                    });
-                }
-            }
+			if (typeof canContinueAfterTool !== "undefined" && (canContinueAfterTool == "false" || canContinueAfterTool == false)) {
+				if (messagesListLength > messagePositionInConversationList + 1) {
+					if (!confirm("Using this tool will ignore the rest of the conversation. Are you sure you want to continue?\n\n Confirming will delete every other message after this message.")) {
+						event.preventDefault();
+						target.val(target.attr("previous-value"));
+						return false;
+					} else {
+						agentScriptConversationMessages.children().each((index, data) => {
+							if (index > messagePositionInConversationList) data.remove();
+						});
+					}
+				}
 
-            messagesListLength = agentScriptConversationMessages.children().length;
+				messagesListLength = agentScriptConversationMessages.children().length;
 
-            if (messagesListLength === (messagePositionInConversationList + 1)) {
-                addAgentScriptConversationMessageButton.prop("disabled", true);
-            }
-        }
-        else {
-            if (messagesListLength === (messagePositionInConversationList + 1)) {
-                addAgentScriptConversationMessageButton.prop("disabled", false);
-            }
-        }
+				if (messagesListLength === messagePositionInConversationList + 1) {
+					addAgentScriptConversationMessageButton.prop("disabled", true);
+				}
+			} else {
+				if (messagesListLength === messagePositionInConversationList + 1) {
+					addAgentScriptConversationMessageButton.prop("disabled", false);
+				}
+			}
 
-        if (
-            typeof (isCustomTool) !== "undefined"
-            &&
-            (isCustomTool == "true" || isCustomTool == true)
-        ) {
-            customToolStatusConditionalConversationElement.removeClass("d-none");
-        }
-        else {
-            customToolStatusConditionalConversationElement.addClass("d-none");
-        }
+			if (typeof isCustomTool !== "undefined" && (isCustomTool == "true" || isCustomTool == true)) {
+				customToolStatusConditionalConversationElement.removeClass("d-none");
+			} else {
+				customToolStatusConditionalConversationElement.addClass("d-none");
+			}
 
-        if (selectedValue === "transfer_to_agent") {
-            transferToAgentElement.removeClass("d-none");
-        }
-        else {
-            transferToAgentElement.addClass("d-none");
-        }
+			if (selectedValue === "transfer_to_agent") {
+				transferToAgentElement.removeClass("d-none");
+			} else {
+				transferToAgentElement.addClass("d-none");
+			}
 
-        target.attr("previous-value", selectedValue);
-    });
+			target.attr("previous-value", selectedValue);
+		});
 
-    editAgentIntegrationSTTProviderSelect.on('change', (event) => {
-        let selectedValue = editAgentIntegrationSTTProviderSelect.val();
+		editAgentIntegrationSTTProviderSelect.on("change", (event) => {
+			let selectedValue = editAgentIntegrationSTTProviderSelect.val();
 
-        let activeConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"].show');
-        let activeConfigElementFor = activeConfigElement.attr('config-for');
+			let activeConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"].show');
+			let activeConfigElementFor = activeConfigElement.attr("config-for");
 
-        if (activeConfigElementFor === selectedValue) return;
+			if (activeConfigElementFor === selectedValue) return;
 
-        let selectedConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"][config-for="' + selectedValue + '"]');
+			let selectedConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"][config-for="' + selectedValue + '"]');
 
-        activeConfigElement.removeClass('show');
-        setTimeout(() => {
-            activeConfigElement.addClass('d-none');
+			activeConfigElement.removeClass("show");
+			setTimeout(() => {
+				activeConfigElement.addClass("d-none");
 
-            selectedConfigElement.removeClass('d-none');
-            setTimeout(() => {
-                selectedConfigElement.addClass('show');
-            }, 10);
-        }, 150);
-    });
+				selectedConfigElement.removeClass("d-none");
+				setTimeout(() => {
+					selectedConfigElement.addClass("show");
+				}, 10);
+			}, 150);
+		});
 
-    editAgentIntegrationLLMProviderSelect.on('change', (event) => {
-        let selectedValue = editAgentIntegrationLLMProviderSelect.val();
+		editAgentIntegrationLLMProviderSelect.on("change", (event) => {
+			let selectedValue = editAgentIntegrationLLMProviderSelect.val();
 
-        let activeConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"].show');
-        let activeConfigElementFor = activeConfigElement.attr('config-for');
+			let activeConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"].show');
+			let activeConfigElementFor = activeConfigElement.attr("config-for");
 
-        if (activeConfigElementFor === selectedValue) return;
+			if (activeConfigElementFor === selectedValue) return;
 
-        let selectedConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"][config-for="' + selectedValue + '"]');
+			let selectedConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"][config-for="' + selectedValue + '"]');
 
-        activeConfigElement.removeClass('show');
-        setTimeout(() => {
-            activeConfigElement.addClass('d-none');
+			activeConfigElement.removeClass("show");
+			setTimeout(() => {
+				activeConfigElement.addClass("d-none");
 
-            selectedConfigElement.removeClass('d-none');
-            setTimeout(() => {
-                selectedConfigElement.addClass('show');
-            }, 10);
-        }, 150);
-    });
+				selectedConfigElement.removeClass("d-none");
+				setTimeout(() => {
+					selectedConfigElement.addClass("show");
+				}, 10);
+			}, 150);
+		});
 
-    ttsConfigAzureSilenceTypeSelect.on('change', (event) => {
-        let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
-        if (!selectedValue) return;
+		ttsConfigAzureSilenceTypeSelect.on("change", (event) => {
+			let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
+			if (!selectedValue) return;
 
-        addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
-    });
+			addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
+		});
 
-    addTTSConfigAzureSilenceTypeButton.on('click', (event) => {
-        let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
-        if (!selectedValue) return;
+		addTTSConfigAzureSilenceTypeButton.on("click", (event) => {
+			let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
+			if (!selectedValue) return;
 
-        let selectedOption = ttsConfigAzureSilenceTypeSelect.find('option[value="' + selectedValue + '"]');
-        let selectedOptionTextSplit = selectedOption.text().split(' - ');
+			let selectedOption = ttsConfigAzureSilenceTypeSelect.find('option[value="' + selectedValue + '"]');
+			let selectedOptionTextSplit = selectedOption.text().split(" - ");
 
-        let newElement = $(`
+			let newElement = $(`
                               <div class="mt-1">
                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceType${selectedValue}">
                                         <span>${selectedOptionTextSplit[0]}</span>
@@ -439,156 +447,156 @@ $(document).ready(() => {
                               </div>
                          `);
 
-        let toolTip = new bootstrap.Tooltip(newElement.find('[data-bs-toggle="tooltip"]')[0]);
+			let toolTip = new bootstrap.Tooltip(newElement.find('[data-bs-toggle="tooltip"]')[0]);
 
-        ttsConfigAzureSilenceTypeList.append(newElement);
+			ttsConfigAzureSilenceTypeList.append(newElement);
 
-        selectedOption.remove();
+			selectedOption.remove();
 
-        if (ttsConfigAzureSilenceTypeSelect.children().length === 1) {
-            ttsConfigAzureSilenceTypeSelect.val("none");
-            ttsConfigAzureSilenceTypeSelect.change();
-            addTTSConfigAzureSilenceTypeButton.prop("disabled", true);
-        }
-    });
+			if (ttsConfigAzureSilenceTypeSelect.children().length === 1) {
+				ttsConfigAzureSilenceTypeSelect.val("none");
+				ttsConfigAzureSilenceTypeSelect.change();
+				addTTSConfigAzureSilenceTypeButton.prop("disabled", true);
+			}
+		});
 
-    $(document).on('click', '[button-type="removeTTSConfigAzureSilenceType"]', (event) => {
-        let target = $(event.currentTarget);
-        let parent = target.parent();
-        let parentToRemove = parent.parent();
+		$(document).on("click", '[button-type="removeTTSConfigAzureSilenceType"]', (event) => {
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        let silenceType = parent.attr("silence-type");
+			let target = $(event.currentTarget);
+			let parent = target.parent();
+			let parentToRemove = parent.parent();
 
-        let labelValue = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] span`).text();
-        let toolTipDescription = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] a`).attr("data-bs-title");
+			let silenceType = parent.attr("silence-type");
 
-        ttsConfigAzureSilenceTypeSelect.append(
-            `<option value="${silenceType}">${labelValue} - ${toolTipDescription}</option>`
-        );
+			let labelValue = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] span`).text();
+			let toolTipDescription = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] a`).attr("data-bs-title");
 
-        parentToRemove.remove();
+			ttsConfigAzureSilenceTypeSelect.append(`<option value="${silenceType}">${labelValue} - ${toolTipDescription}</option>`);
 
-        if (ttsConfigAzureSilenceTypeSelect.children().length > 1) {
-            addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
-        }
-    });
+			parentToRemove.remove();
 
-    editAgentBackgroundAudioSelect.on('change', (event) => {
-        let selectedValue = editAgentBackgroundAudioSelect.val();
+			if (ttsConfigAzureSilenceTypeSelect.children().length > 1) {
+				addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
+			}
+		});
 
-        if (!selectedValue) return;
+		editAgentBackgroundAudioSelect.on("change", (event) => {
+			let selectedValue = editAgentBackgroundAudioSelect.val();
 
-        let audioConfigBox = $(".agent-background-audio-box");
+			if (!selectedValue) return;
 
-        if (selectedValue === "none") {
-            audioConfigBox.addClass('d-none');
-            return;
-        }
+			let audioConfigBox = $(".agent-background-audio-box");
 
-        let customAudioBox = $(".agent-background-custom-audio-box");
+			if (selectedValue === "none") {
+				audioConfigBox.addClass("d-none");
+				return;
+			}
 
-        if (selectedValue === "custom") {
-            customAudioBox.removeClass('d-none');
-        }
-        else {
-            customAudioBox.addClass('d-none');
-        }
+			let customAudioBox = $(".agent-background-custom-audio-box");
 
-        audioConfigBox.removeClass('d-none');
-    });
+			if (selectedValue === "custom") {
+				customAudioBox.removeClass("d-none");
+			} else {
+				customAudioBox.addClass("d-none");
+			}
 
-    addNewMessageCacheGroupQueryButton.on('click', (event) => {
-        event.preventDefault();
+			audioConfigBox.removeClass("d-none");
+		});
 
-        cacheInnerTab.removeClass("show");
-        messageCacheGroupQueriesListTab.removeClass("show");
-        setTimeout(() => {
-            currentMessageCacheGroupQueryName.text("New Query");
+		addNewMessageCacheGroupQueryButton.on("click", (event) => {
+			event.preventDefault();
 
-            cacheInnerTab.addClass("d-none");
-            messageCacheGroupQueriesListTab.addClass("d-none");
+			cacheInnerTab.removeClass("show");
+			messageCacheGroupQueriesListTab.removeClass("show");
+			setTimeout(() => {
+				currentMessageCacheGroupQueryName.text("New Query");
 
-            cacheMessagesInnerBreadcrumb.removeClass("d-none");
-            messageCacheGroupMessageManagerTab.removeClass("d-none");
-            setTimeout(() => {
-                cacheMessagesInnerBreadcrumb.addClass("show");
-                messageCacheGroupMessageManagerTab.addClass("show");
-            }, 10);
-        }, 300);
-    })
+				cacheInnerTab.addClass("d-none");
+				messageCacheGroupQueriesListTab.addClass("d-none");
 
-    switchBackToMessageCacheGroupQueriesListTab.on('click', (event) => {
-        event.preventDefault();
+				cacheMessagesInnerBreadcrumb.removeClass("d-none");
+				messageCacheGroupMessageManagerTab.removeClass("d-none");
+				setTimeout(() => {
+					cacheMessagesInnerBreadcrumb.addClass("show");
+					messageCacheGroupMessageManagerTab.addClass("show");
+				}, 10);
+			}, 300);
+		});
 
-        cacheMessagesInnerBreadcrumb.removeClass("show");
-        messageCacheGroupMessageManagerTab.removeClass("show");
-        setTimeout(() => {
-            cacheMessagesInnerBreadcrumb.addClass("d-none");
-            messageCacheGroupMessageManagerTab.addClass("d-none");
+		switchBackToMessageCacheGroupQueriesListTab.on("click", (event) => {
+			event.preventDefault();
 
-            cacheInnerTab.removeClass("d-none");
-            messageCacheGroupQueriesListTab.removeClass("d-none");
+			cacheMessagesInnerBreadcrumb.removeClass("show");
+			messageCacheGroupMessageManagerTab.removeClass("show");
+			setTimeout(() => {
+				cacheMessagesInnerBreadcrumb.addClass("d-none");
+				messageCacheGroupMessageManagerTab.addClass("d-none");
 
-            setTimeout(() => {
-                cacheInnerTab.addClass("show");
-                messageCacheGroupQueriesListTab.addClass("show");
-            }, 10);
-        }, 300);
-    })
+				cacheInnerTab.removeClass("d-none");
+				messageCacheGroupQueriesListTab.removeClass("d-none");
 
-    addNewAudioCacheQueryButton.on('click', (event) => {
-        event.preventDefault();
+				setTimeout(() => {
+					cacheInnerTab.addClass("show");
+					messageCacheGroupQueriesListTab.addClass("show");
+				}, 10);
+			}, 300);
+		});
 
-        cacheInnerTab.removeClass("show");
-        audioCacheGroupQueriesListTab.removeClass("show");
-        setTimeout(() => {
-            currentAudioCacheGroupQueryName.text("New Query");
+		addNewAudioCacheQueryButton.on("click", (event) => {
+			event.preventDefault();
 
-            cacheInnerTab.addClass("d-none");
-            audioCacheGroupQueriesListTab.addClass("d-none");
+			cacheInnerTab.removeClass("show");
+			audioCacheGroupQueriesListTab.removeClass("show");
+			setTimeout(() => {
+				currentAudioCacheGroupQueryName.text("New Query");
 
-            cacheAudioInnerBreadcrumb.removeClass("d-none");
-            audioCacheGroupAddQueryTab.removeClass("d-none");
-            setTimeout(() => {
-                cacheAudioInnerBreadcrumb.addClass("show");
-                audioCacheGroupAddQueryTab.addClass("show");
-            }, 10);
-        }, 300);
-    })
+				cacheInnerTab.addClass("d-none");
+				audioCacheGroupQueriesListTab.addClass("d-none");
 
-    switchBackToAudioCacheGroupQueriesListTab.on('click', (event) => {
-        event.preventDefault();
+				cacheAudioInnerBreadcrumb.removeClass("d-none");
+				audioCacheGroupAddQueryTab.removeClass("d-none");
+				setTimeout(() => {
+					cacheAudioInnerBreadcrumb.addClass("show");
+					audioCacheGroupAddQueryTab.addClass("show");
+				}, 10);
+			}, 300);
+		});
 
-        cacheAudioInnerBreadcrumb.removeClass("show");
-        audioCacheGroupAddQueryTab.removeClass("show");
-        setTimeout(() => {
-            cacheAudioInnerBreadcrumb.addClass("d-none");
-            audioCacheGroupAddQueryTab.addClass("d-none");
+		switchBackToAudioCacheGroupQueriesListTab.on("click", (event) => {
+			event.preventDefault();
 
-            cacheInnerTab.removeClass("d-none");
-            audioCacheGroupQueriesListTab.removeClass("d-none");
+			cacheAudioInnerBreadcrumb.removeClass("show");
+			audioCacheGroupAddQueryTab.removeClass("show");
+			setTimeout(() => {
+				cacheAudioInnerBreadcrumb.addClass("d-none");
+				audioCacheGroupAddQueryTab.addClass("d-none");
 
-            setTimeout(() => {
-                cacheInnerTab.addClass("show");
-                audioCacheGroupQueriesListTab.addClass("show");
-            }, 10);
-        }, 300);
-    })
+				cacheInnerTab.removeClass("d-none");
+				audioCacheGroupQueriesListTab.removeClass("d-none");
 
-    agentCacheAutoCacheAudioResponseCheck.on('change', (event) => {
-        let isChecked = agentCacheAutoCacheAudioResponseCheck.is(':checked');
+				setTimeout(() => {
+					cacheInnerTab.addClass("show");
+					audioCacheGroupQueriesListTab.addClass("show");
+				}, 10);
+			}, 300);
+		});
 
-        if (isChecked) {
-            agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass('d-none');
-            setTimeout(() => {
-                agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass('show');
-            }, 10);
-        }
-        else {
-            agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass('show');
-            setTimeout(() => {
-                agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass('d-none');
-            }, 300);
-        }
-    })
-});
+		agentCacheAutoCacheAudioResponseCheck.on("change", (event) => {
+			let isChecked = agentCacheAutoCacheAudioResponseCheck.is(":checked");
+
+			if (isChecked) {
+				agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass("d-none");
+				setTimeout(() => {
+					agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass("show");
+				}, 10);
+			} else {
+				agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass("show");
+				setTimeout(() => {
+					agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass("d-none");
+				}, 300);
+			}
+		});
+	});
+}

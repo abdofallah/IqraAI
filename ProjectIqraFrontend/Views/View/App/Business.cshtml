@@ -54,7 +54,11 @@
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
-                    <a class="nav_link active" for="context-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link active" for="cache-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-recycle nav_icon'></i>
+                        <span class="nav_name">Cache</span> 
+                    </a>
+                    <a class="nav_link" for="context-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-book nav_icon'></i>
                         <span class="nav_name">Context</span>
                     </a>
@@ -784,40 +788,19 @@
         <!-- Agents Container -->
         <div class="main-container fade d-none w-100" id="agents-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-headset'></i> <span>Agents</span></h3>
-            <div class="inner-container">
-                <!-- Agents List Tab -->
-                <div class="fade show w-100" id="agentsListTab">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <div style="min-width: 200px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentButton">
-                                <span>+ Add New Agent</span>
-                            </button>
-                        </div>
-                        <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Agent Name" aria-label="Agent Name" aria-describedby="searchAgentButton">
-                            <button class="input-group-button btn btn-primary" id="searchAgentButton">
-                                <i class='fa-regular fa-magnifying-glass'></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-lg-4 col-md-6 col-12">
-                            <div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="51221">
-                                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                                    <span class="agent-icon">🤖</span>
-                                    <h4>Opening Agent</h4>
-                                </div>
-                                <div>
-                                    <h5 class="h5-info agent-description">
-                                        <span>Checks kind of agent to transfer call to</span>
-                                    </h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="inner-header-container w-100 mb-3" id="agents-header"> 
+                <div class="w-100 fade show" id="agents-main-header">
+                    <ul class="nav" id="agents-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="agents-inner-agents-tab" data-bs-toggle="pill" data-bs-target="#agents-inner-agents" type="button" role="tab" aria-controls="agents-inner-agents" aria-selected="true">Agents</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="agents-inner-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-inner-integrations" type="button" role="tab" aria-controls="agents-inner-integrations" aria-selected="true">Integrations</button>
+                        </li>
+                    </ul>
                 </div>
-                <!-- Agents Manager Tab -->
-                <div class="fade d-none w-100" id="agentsManagerTab">
+                <div class="w-100 fade d-none" id="agent-manager-header">
+                    <!-- Breadcrumb and Save -->
                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                         <nav aria-label="breadcrumb">
                             <ol class="breadcrumb mb-0">
@@ -832,913 +815,937 @@
                                 <i class='fa-regular fa-wrench text-dark'></i>
                                 <span> Debug</span>
                             </button>
-                            <div class="btn-group" id="publishAgentDropdown">
-                                <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class='fa-regular fa-wrench'></i>
-                                    <span> Publish</span>
-                                </button>
-                                <div class="dropdown-menu p-3">
-                                    <div class="mb-2">
-                                        <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
-                                        <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
-                                            Published
-                                            20 minutes ago
-                                        </p>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm w-100" id="confirmPublishAgentButton">
-                                        <span>Update</span>
+                            <button class="btn btn-primary btn-sm w-100" id="confirmPublishAgentButton">
+                                <span>Update</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manager Inner Tabs -->
+                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                        <ul class="nav" id="agents-manager-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-context-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-context" type="button" role="tab" aria-controls="agents-manager-context" aria-selected="true">Context</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-personality-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-personality" type="button" role="tab" aria-controls="agents-manager-personality" aria-selected="true">Personality</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-utterances-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-utterances" type="button" role="tab" aria-controls="agents-manager-utterances" aria-selected="true">Utterances</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="agents-manager-cache-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache" type="button" role="tab" aria-controls="agents-manager-cache" aria-selected="true">Cache</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
+                            </li>
+                        </ul>
+                        <select class="form-select" style="max-width: 300px">
+                            <option value="en-us" selected>English | EN-US</option>
+                            <option value="en-ar">Arabic | AR-OM</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="inner-container">
+                <div class="tab-content w-100" id="agents-inner-tabContent">
+                    <!-- Agents Tab -->
+                    <div class="tab-pane fade w-100 show active" id="agents-inner-agents" role="tabpanel" aria-labelledby="agents-inner-agents-tab" tabindex="0">
+                        <!-- Agents List Tab -->
+                        <div class="fade show w-100" id="agentsListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentButton">
+                                        <span>+ Add New Agent</span>
                                     </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Agent Name" aria-label="Agent Name" aria-describedby="searchAgentButton">
+                                    <button class="input-group-button btn btn-primary" id="searchAgentButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-4 col-md-6 col-12">
+                                    <div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="51221">
+                                        <div class="d-flex flex-row align-items-center justify-content-start mb-4">
+                                            <span class="agent-icon">🤖</span>
+                                            <h4>Opening Agent</h4>
+                                        </div>
+                                        <div>
+                                            <h5 class="h5-info agent-description">
+                                                <span>Checks kind of agent to transfer call to</span>
+                                            </h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Agents Manager Tab -->
+                        <div class="fade d-none w-100" id="agentsManagerTab">
+                            <div>
+                                <div class="tab-content w-100" id="agents-manager-tabContent">
+                                    <!-- General -->
+                                    <div class="tab-pane fade w-100 show active" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="editAgentIdentifierInput">Identifier</label>
+                                            <div class="input-group">
+                                                <button class="btn btn-light" id="editAgentIconButton">🤖</button>
+                                                <input type="text" class="form-control" id="editAgentIdentifierInput" placeholder="Agent Identifier Name">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="editAgentDescriptionInput">Description</label>
+                                            <input type="text" class="form-control" id="editAgentDescriptionInput" placeholder="Agent Description">
+                                        </div>
+                                    </div>
+                                    <!-- Context -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-context" role="tabpanel" aria-labelledby="agents-manager-context-tab" tabindex="0">
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranding" checked>
+                                            <label class="form-check-label" for="agentEditContextEnableBranding">Use Branding</label>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branding information for this agent.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranches" checked>
+                                            <label class="form-check-label" for="agentEditContextEnableBranches">Use Branches</label>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branches information for this agent.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableServices" checked>
+                                            <label class="form-check-label" for="agentEditContextEnableServices">Use Services</label>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context services information for this agent.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </div>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableProducts" checked>
+                                            <label class="form-check-label" for="agentEditContextEnableProducts">Use Products</label>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context products information for this agent.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <!-- Personality -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-personality" role="tabpanel" aria-labelledby="agents-manager-personality-tab" tabindex="0">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="editAgentPersonalityInput">Name</label>
+                                            <input type="text" class="form-control" id="editAgentPersonalityInput" placeholder="Agent Name">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align d-block">
+                                                <span>Capabilities</span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Tasks, abilities, or skills the AI can perform.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
+                                                Add
+                                                Value
+                                            </button>
+                                            <div id="editAgentPersonalityValueInputs">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align d-block">
+                                                <span>Ethics</span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Specify the moral principles, ethical guidelines, and values that shape the AI's decision-making and actions.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
+                                                Add
+                                                Value
+                                            </button>
+                                            <div id="editAgentPersonalityValueInputs">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align d-block">
+                                                <span>Tone</span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="The AI's personality traits, emotional patterns, communication style, and overall demeanor.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
+                                                Add
+                                                Value
+                                            </button>
+                                            <div id="editAgentPersonalityValueInputs">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Utterances -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-utterances" role="tabpanel" aria-labelledby="agents-manager-utterances-tab" tabindex="0">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="editAgentGreetingStartTypeInput">
+                                                Opening
+                                                Type
+                                            </label>
+                                            <select class="form-select" id="editAgentGreetingStartTypeInput">
+                                                <option value="ai_first" selected>Agent Greets Right Away</option>
+                                                <option value="user_first">
+                                                    Wait for User To Speak Before Greeting
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="editAgentPersonalityGreetingInput">
+                                                Greeting
+                                                Message
+                                            </label>
+                                            <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align" for="editAgentPhrasesBeforeReply">
+                                                <span>Phrases Before Reply </span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Phrases to be spoken before the agent reply.<br>This is spoken while AI is generating reply hence decreasing the reply silence time.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <textarea class="form-control" id="editAgentPhrasesBeforeReply" rows="3" style="resize: none" placeholder="Enter phrases to be spoken before reply seperated by commas"></textarea>
+                                        </div>
+                                    </div>
+                                    <!-- Scripts -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
+                                        <!-- Scripts List Tab -->
+                                        <div class="fade show w-100" id="agentScriptsListTab">
+                                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                <div style="min-width: 200px" class="me-4">
+                                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentScriptButton">
+                                                        <span>+ Add New Script</span>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group w-100">
+                                                    <input type="text" class="form-control" placeholder="Script Name" aria-label="Script Name" aria-describedby="searchAgentScriptButton">
+                                                    <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
+                                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <table id="customToolsTable" class="table w-100">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">Order</th>
+                                                        <th scope="col">Name</th>
+                                                        <th scope="col">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>1</td>
+                                                        <td>
+                                                            <b>About myself</b>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>2</td>
+                                                        <td>
+                                                            <b>About the company</b>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>3</td>
+                                                        <td>
+                                                            <b>Transfer To Sales</b>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>4</td>
+                                                        <td>
+                                                            <b>Transfer to Technical</b>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>5</td>
+                                                        <td>
+                                                            <b>Transfer to Human</b>
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-info btn-sm">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                            </button>
+                                                            <button class="btn btn-danger btn-sm">
+                                                                <i class="fa-regular fa-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <!-- Agent Scripts Manager Tab -->
+                                        <div class="fade d-none w-100" id="agentScriptsManagerTab">
+                                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                                <nav aria-label="breadcrumb">
+                                                    <ol class="breadcrumb mb-0">
+                                                        <li class="breadcrumb-item">
+                                                            <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
+                                                        </li>
+                                                        <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
+                                                    </ol>
+                                                </nav>
+                                                <div>
+                                                    <div class="btn-group" id="publishAgentDropdown">
+                                                        <button class="btn btn-primary btn-sm btn-ic-span-align">
+                                                            <i class='fa-regular fa-floppy-disk'></i>
+                                                            <span> Save</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
+                                                    <li class="nav-item me-2" role="presentation">
+                                                        <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
+                                                    </li>
+                                                    <li class="nav-item me-2" role="presentation">
+                                                        <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
+                                                    </li>
+                                                </ul>
+                                                <div class="tab-content w-100" id="agents-manager-tabContent">
+                                                    <!-- General -->
+                                                    <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="inputAgentScriptName">Name</label>
+                                                            <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="inputAgentScriptDescription">Description</label>
+                                                            <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block">
+                                                                <span>Conditions</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">
+                                                                Add
+                                                                Condition
+                                                            </button>
+                                                            <div id="editAgentScriptConditionValueInputs">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
+                                                        <div class="mb-3" id="editAgentScriptConversationContainer">
+                                                            <span class="no-messages-conversation">
+                                                                No messages in
+                                                                the conversation yet...
+                                                            </span>
+                                                            <div class="agentScriptConversationMessages">
+                                                            </div>
+                                                            <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">
+                                                                Add New
+                                                                Message
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Integrations -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
+                                        <ul class="nav mb-3" id="agents-manager-integrations-inner-tab" role="tablist">
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">Speech-To-Text</button>
+                                            </li>
+                                            <li class="nav-item me-2" role="presentation">
+                                                <button class="nav-link" id="agents-manager-integrations-inner-llm-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-llm" type="button" role="tab" aria-controls="agents-manager-integrations-inner-llm" aria-selected="true">Large Language Model</button>
+                                            </li>
+                                            <li class="nav-item" role="presentation">
+                                                <button class="nav-link" id="agents-manager-integrations-inner-tts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-tts" type="button" role="tab" aria-controls="agents-manager-integrations-inner-tts" aria-selected="true">Text-To-Speech</button>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content w-100" id="agents-manager-integrations-inner-tabContent">
+                                            <!-- SST Config -->
+                                            <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-stt-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="editAgentIntegrationSTTProviderSelect">
+                                                        Selected
+                                                        Provider
+                                                    </label>
+                                                    <select class="form-select" id="editAgentIntegrationSTTProviderSelect">
+                                                        <option value="microsoft_azure_speech_services" selected>
+                                                            Microsoft Azure
+                                                        </option>
+                                                        <option value="google_cloud_speech" disabled>
+                                                            Google Cloud
+                                                        </option>
+                                                        <option value="deepgram" disabled>Deepgram</option>
+                                                        <option value="openai_whisper" disabled>
+                                                            OpenAI Whisper
+                                                        </option>
+                                                        <option value="assemblyai" disabled>AssemblyAI</option>
+                                                        <option value="revai" disabled>Rev AI</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3" id="editAgentIntegrationSTTConfigurationList">
+                                                    <div class="w-100 fade show" div-type="sstconfigbox" config-for="microsoft_azure_speech_services">
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block">
+                                                                <span>Regioncode</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="text" class="form-control" id="sstConfigAzureRegionCode" value="uaenorth" disabled>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="sstConfigAzureAPIKey">API Key</label>
+                                                            <input type="text" class="form-control" id="sstConfigAzureAPIKey">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block">
+                                                                <span>Silence Timeout (ms)</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long of silence to wait before considering user to stop speaking. 600ms is a golden default, lower values may cause incomplete sentences and higher values will increase latency.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="number" class="form-control" id="sstConfigAzureSilenceTimeout" value="600">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureSpeakerDiarization">
+                                                                <span>Speaker diarization</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Diarization is the process of separating speakers in audio data if there are multiple speakers. When enabled, the number of speakers is automatically detected and labeled in the results.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" role="switch" class="form-check-input" id="sstConfigAzureSpeakerDiarization">
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzurePhraseList">
+                                                                <span>Phrase list</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-title="<span><a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2183433' class='ms-Link root-500' tabindex='0'>Phrase list</a> are used to identify known phrases in audio data, like a person's name or a specific location. By providing a list of phrases, you improve the accuracy of speech recognition. See <a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2231353' class='ms-Link root-500' tabindex='-1'>supported languages</a> of phrase list.</span>">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <textarea class="form-control" id="sstConfigAzurePhraseList" rows="3" placeholder="Enter words or phrases to improve accuracy (seperated by comma or semicolon)"></textarea>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureCustomEndpointSelect">
+                                                                <span>Choose a custom endpoint</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <div class="input-group">
+                                                                <select class="form-select" id="sstConfigAzureCustomEndpointSelect" disabled>
+                                                                    <option selected>
+                                                                        Refresh to get all available
+                                                                        endpoints
+                                                                    </option>
+                                                                </select>
+                                                                <button class="btn btn-light" id="sstConfigAzureCustomEndpointRefreshButton">
+                                                                    Refresh
+                                                                    List
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- LLM Config -->
+                                            <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-llm" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-llm-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="editAgentIntegrationLLMProviderSelect">
+                                                        Selected
+                                                        Provider
+                                                    </label>
+                                                    <select class="form-select" id="editAgentIntegrationLLMProviderSelect">
+                                                        <option value="anthropic_claude" selected>
+                                                            Anthropic Claude
+                                                        </option>
+                                                        <option value="openai_gpt">OpenAI GPT</option>
+                                                        <option value="groq" disabled>Groq</option>
+                                                        <option value="cohere" disabled>Cohere</option>
+                                                        <option value="open_router" disabled>OpenRouter</option>
+                                                        <option value="custom_openai_spec" disabled>
+                                                            Custom OpenAI
+                                                            Spec
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3" id="editAgentIntegrationLLMConfigurationList">
+                                                    <div class="w-100 fade show" div-type="llmconfigbox" config-for="anthropic_claude">
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeModelSelect">Model</label>
+                                                            <select class="form-select" id="editAgentIntegrationLLMAntrhopicClaudeModelSelect">
+                                                                <option value="claude-3-haiku" selected>
+                                                                    Claude 3
+                                                                    Haiku
+                                                                </option>
+                                                                <option value="claude-3-sonnet">
+                                                                    Claude 3 Sonnet
+                                                                </option>
+                                                                <option value="claude-3-opus">
+                                                                    Claude 3 Opus
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="w-100 fade d-none" div-type="llmconfigbox" config-for="openai_gpt">
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="editAgentIntegrationLLMOpenAIGPTModelSelect">Model</label>
+                                                            <select class="form-select" id="editAgentIntegrationLLMOpenAIGPTModelSelect">
+                                                                <option value="gpt-4o" selected>GPT-4o</option>
+                                                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                                                <option value="gpt-3.5-turbo">
+                                                                    GPT-3.5 Turbo
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeTemperature">Temperature</label>
+                                                    <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeTemperature" value="0.7" max="1" min="0">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeMaxTokens">
+                                                        Max
+                                                        Tokens
+                                                    </label>
+                                                    <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeMaxTokens" value="500" max="4000" min="1">
+                                                </div>
+
+                                            </div>
+                                            <!-- TTS Config -->
+                                            <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-tts" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-tts-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="editAgentIntegrationTTSProviderSelect">
+                                                        Selected
+                                                        Provider
+                                                    </label>
+                                                    <select class="form-select" id="editAgentIntegrationTTSProviderSelect">
+                                                        <option value="microsoft_azure_speech_services" selected>
+                                                            Microsoft Azure
+                                                        </option>
+                                                        <option value="google_cloud_speech" disabled>
+                                                            Google Cloud
+                                                        </option>
+                                                        <option value="deepgram" disabled>Deepgram</option>
+                                                        <option value="elevenlabs" disabled>ElevenLabs</option>
+                                                        <option value="playht" disabled>PlayHT</option>
+                                                        <option value="openai_whisper" disabled>
+                                                            OpenAI Whisper
+                                                        </option>
+                                                        <option value="assemblyai" disabled>AssemblyAI</option>
+                                                        <option value="custom" disabled>Custom TTS API</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3" id="editAgentIntegrationTTSConfigurationList">
+                                                    <div class="w-100 fade show" div-type="ttsconfigbox" config-for="microsoft_azure_speech_services">
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureRegionCode">
+                                                                <span>Regioncode</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="text" class="form-control" id="ttsConfigAzureRegionCode" value="uaenorth" disabled>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label" for="ttsConfigAzureAPIKey">API Key</label>
+                                                            <input type="text" class="form-control" id="ttsConfigAzureAPIKey">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureLanguageSpeakerSelect">
+                                                                <span>Choose a speaker for language</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <div class="input-group">
+                                                                <select class="form-select" id="sstConfigAzureLanguageSpeakerSelect" disabled>
+                                                                    <option selected>
+                                                                        Refresh to get all available
+                                                                        speakers
+                                                                    </option>
+                                                                </select>
+                                                                <button class="btn btn-light" id="sstConfigAzureLanguageSpeakerRefreshButton">
+                                                                    Refresh
+                                                                    List
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSpeedRate">
+                                                                <span>Speed rate</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="used to slow up or speed up the overall speaking speed. 100% is default speed.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="number" class="form-control" id="ttsConfigAzureSpeedRate" value="100" max="+500" min="-500">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureVolume">
+                                                                <span>Volume</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker volume. 100% is default volume.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="number" class="form-control" id="ttsConfigAzureVolume" value="100" max="+500" min="-500">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzurePitch">
+                                                                <span>Pitch</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker pitch. 100% is default pitch.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <input type="number" class="form-control" id="ttsConfigAzurePitch" value="100" max="+500" min="-500">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceTypeSelect">
+                                                                <span>Silence</span>
+
+                                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Change the break/silence/pauses between different sentences/phrases.">
+                                                                    <i class="fa-regular fa-circle-question"></i>
+                                                                </a>
+                                                            </label>
+                                                            <div class="input-group">
+                                                                <select class="form-select" id="ttsConfigAzureSilenceTypeSelect" style="border-bottom-left-radius: 0;">
+                                                                    <option value="none" selected disabled>
+                                                                        Select
+                                                                        silence type
+                                                                    </option>
+                                                                    <option value="leading">
+                                                                        Leading - Additional
+                                                                        at beginning of a paragraph
+                                                                    </option>
+                                                                    <option value="sentenceboundary_exact">
+                                                                        SentenceBoundary-exact - Between
+                                                                        adjacent sentences
+                                                                    </option>
+                                                                    <option value="sentence_boundary">
+                                                                        SentenceBoundary - Additional between
+                                                                        adjacent sentences
+                                                                    </option>
+                                                                    <option value="trailing_exact">
+                                                                        Trailing-exact
+                                                                        - End of a paragraph
+                                                                    </option>
+                                                                    <option value="trailing">
+                                                                        Trailing -
+                                                                        Additional at the end of a paragraph
+                                                                    </option>
+                                                                    <option value="comma_exact">
+                                                                        Comma-exact - At
+                                                                        the comma in a half/full-width format
+                                                                    </option>
+                                                                    <option value="semicolon_exact">
+                                                                        Semicolon-exact - At the semicolon in a
+                                                                        half/full-width format
+                                                                    </option>
+                                                                    <option value="enumerationcomma_exact">
+                                                                        Enumerationcomma-exact - At the
+                                                                        enumeration comma in full-width format
+                                                                    </option>
+                                                                </select>
+                                                                <button class="btn btn-light" id="addTTSConfigAzureSilenceType" style="border-bottom-right-radius: 0;" disabled>Add</button>
+                                                            </div>
+                                                            <div id="ttsConfigAzureSilenceTypeList">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Cache -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
+                                        cache todo
+                                    </div>
+                                    <!-- Settings -->
+                                    <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioSelect">
+                                                <span>Background Audio </span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Audio to be played in the background of the call on repeat.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <select class="form-select" id="editAgentBackgroundAudioSelect">
+                                                <option value="none">None</option>
+                                                <option value="custom">Custom (Upload)</option>
+                                                <option value="office">Office (Keyboard)</option>
+                                                <option value="call_center">Call Center (People + Keyboard)</option>
+                                                <option value="coffee_shop">Coffee Shop (People + Music)</option>
+                                                <option value="restaurant">
+                                                    Restaurant (People + Plates/Spoons + Music)
+                                                </option>
+                                                <option value="driving">Driving (Road + Engine)</option>
+                                                <option value="city">City (Traffic + People)</option>
+                                                <option value="forest">Forest (Birds + Water + Wind)</option>
+                                            </select>
+                                            <div class="w-100 agent-background-audio-box d-none">
+                                                <div class="">
+                                                    <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioVolume">
+                                                        <span>Audio Volume </span>
+
+                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
+                                                            <i class="fa-regular fa-circle-question"></i>
+                                                        </a>
+                                                    </label>
+                                                    <input type="number" class="form-control" id="editAgentBackgroundAudioVolume" value="10">
+                                                </div>
+                                                <div class="agent-background-custom-audio-box d-none mt-3">
+                                                    <label class="form-label btn-ic-span-align" for="editAgentCustomBackgroundAudio">
+                                                        <span>Upload Custom Audio </span>
+
+                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
+                                                            <i class="fa-regular fa-circle-question"></i>
+                                                        </a>
+                                                    </label>
+                                                    <input type="file" class="form-control" id="editAgentCustomBackgroundAudio" accept="audio/mp3, audio/wav">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <!-- Manager Inner Tabs -->
-                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                            <ul class="nav" id="agents-manager-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-context-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-context" type="button" role="tab" aria-controls="agents-manager-context" aria-selected="true">Context</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-personality-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-personality" type="button" role="tab" aria-controls="agents-manager-personality" aria-selected="true">Personality</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="agents-manager-utterances-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-utterances" type="button" role="tab" aria-controls="agents-manager-utterances" aria-selected="true">Utterances</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-cache-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache" type="button" role="tab" aria-controls="agents-manager-cache" aria-selected="true">Cache</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
-                                </li>
-                            </ul>
-                            <select class="form-select" style="max-width: 300px">
-                                <option value="en-us" selected>English | EN-US</option>
-                                <option value="en-ar">Arabic | AR-OM</option>
-                            </select>
-                        </div>
 
-                        <div class="tab-content w-100" id="agents-manager-tabContent">
-                            <!-- General -->
-                            <div class="tab-pane fade w-100 show active" id="agents-manager-general" role="tabpanel" aria-labelledby="agents-manager-general-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label" for="editAgentIdentifierInput">Identifier</label>
-                                    <div class="input-group">
-                                        <button class="btn btn-light" id="editAgentIconButton">🤖</button>
-                                        <input type="text" class="form-control" id="editAgentIdentifierInput" placeholder="Agent Identifier Name">
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label" for="editAgentDescriptionInput">Description</label>
-                                    <input type="text" class="form-control" id="editAgentDescriptionInput" placeholder="Agent Description">
-                                </div>
-                            </div>
-                            <!-- Context -->
-                            <div class="tab-pane fade w-100" id="agents-manager-context" role="tabpanel" aria-labelledby="agents-manager-context-tab" tabindex="0">
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranding" checked>
-                                    <label class="form-check-label" for="agentEditContextEnableBranding">Use Branding</label>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branding information for this agent.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </div>
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableBranches" checked>
-                                    <label class="form-check-label" for="agentEditContextEnableBranches">Use Branches</label>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context branches information for this agent.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </div>
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableServices" checked>
-                                    <label class="form-check-label" for="agentEditContextEnableServices">Use Services</label>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context services information for this agent.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </div>
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="agentEditContextEnableProducts" checked>
-                                    <label class="form-check-label" for="agentEditContextEnableProducts">Use Products</label>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the global context products information for this agent.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </div>
-                            </div>
-                            <!-- Personality -->
-                            <div class="tab-pane fade w-100" id="agents-manager-personality" role="tabpanel" aria-labelledby="agents-manager-personality-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label" for="editAgentPersonalityInput">Name</label>
-                                    <input type="text" class="form-control" id="editAgentPersonalityInput" placeholder="Agent Name">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align d-block">
-                                        <span>Capabilities</span>
+                    <!-- Integrations Tab -->
+                    <div class="tab-pane fade w-100" id="agents-inner-integrations" role="tabpanel" aria-labelledby="agents-inner-integrations-tab" tabindex="0">
+                        integrations todo
+                    </div>
+                </div>    
+            </div>
+        </div>
 
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Tasks, abilities, or skills the AI can perform.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
-                                        Add
-                                        Value
+        <!-- Cache Container -->
+        <div class="main-container fade show w-100" id="cache-tab">
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-recycle'></i> <span>Cache</span></h3>
+            <div class="inner-header-container w-100 mb-3" id="cache-header">
+                <!-- Tabs Buttons -->
+                <ul class="nav w-100 fade show w-100" id="cache-inner-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-messages" type="button" role="tab" aria-controls="cache-inner-messages" aria-selected="true">Messages</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="true">Audio</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="inner-container">
+                <!-- Messages Manager Breadcrumb -->
+                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-messages-inner-breadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToMessageCacheGroupQueriesListTab">Messages</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span id="currentMessageCacheGroupQueryName">Query Name</span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+                <!-- Audio Manager Breadcrumb -->
+                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-audio-inner-breadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToAudioCacheGroupQueriesListTab">Audio</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span id="currentAudioCacheGroupQueryName">Query Name</span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+                <!-- Tabs Content -->
+                <div class="tab-content" id="cache-inner-tabContent w-100">
+                    <!-- Messages -->
+                    <div class="tab-pane fade w-100 show active" id="cache-inner-messages" role="tabpanel" aria-labelledby="cache-inner-messages-tab" tabindex="0">
+                        <div class="fade w-100 show" id="messageCacheGroupQueriesListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 300px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageCacheGroupQueryButton">
+                                        <span>+ Add New Message Query</span>
                                     </button>
-                                    <div id="editAgentPersonalityValueInputs">
-                                    </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align d-block">
-                                        <span>Ethics</span>
-
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Specify the moral principles, ethical guidelines, and values that shape the AI's decision-making and actions.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
-                                        Add
-                                        Value
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Message Query" aria-label="Message Query" aria-describedby="searchMessageCacheGroupMessageButton">
+                                    <button class="input-group-button btn btn-primary" id="searchMessageCacheGroupMessageButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
-                                    <div id="editAgentPersonalityValueInputs">
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align d-block">
-                                        <span>Tone</span>
-
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="The AI's personality traits, emotional patterns, communication style, and overall demeanor.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <button class="btn btn-light btn-sm" id="addAgentPersonalityValue">
-                                        Add
-                                        Value
-                                    </button>
-                                    <div id="editAgentPersonalityValueInputs">
-                                    </div>
                                 </div>
                             </div>
-                            <!-- Utterances -->
-                            <div class="tab-pane fade w-100" id="agents-manager-utterances" role="tabpanel" aria-labelledby="agents-manager-utterances-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label" for="editAgentGreetingStartTypeInput">
-                                        Opening
-                                        Type
-                                    </label>
-                                    <select class="form-select" id="editAgentGreetingStartTypeInput">
-                                        <option value="ai_first" selected>Agent Greets Right Away</option>
-                                        <option value="user_first">
-                                            Wait for User To Speak Before Greeting
-                                        </option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label" for="editAgentPersonalityGreetingInput">
-                                        Greeting
-                                        Message
-                                    </label>
-                                    <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align" for="editAgentPhrasesBeforeReply">
-                                        <span>Phrases Before Reply </span>
-
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Phrases to be spoken before the agent reply.<br>This is spoken while AI is generating reply hence decreasing the reply silence time.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <textarea class="form-control" id="editAgentPhrasesBeforeReply" rows="3" style="resize: none" placeholder="Enter phrases to be spoken before reply seperated by commas"></textarea>
-                                </div>
-                            </div>
-                            <!-- Scripts -->
-                            <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
-                                <!-- Scripts List Tab -->
-                                <div class="fade show w-100" id="agentScriptsListTab">
-                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAgentScriptButton">
-                                                <span>+ Add New Script</span>
-                                            </button>
-                                        </div>
-                                        <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Script Name" aria-label="Script Name" aria-describedby="searchAgentScriptButton">
-                                            <button class="input-group-button btn btn-primary" id="searchAgentScriptButton">
-                                                <i class='fa-regular fa-magnifying-glass'></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <table id="customToolsTable" class="table w-100">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">Order</th>
-                                                <th scope="col">Name</th>
-                                                <th scope="col">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>1</td>
-                                                <td>
-                                                    <b>About myself</b>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>2</td>
-                                                <td>
-                                                    <b>About the company</b>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>3</td>
-                                                <td>
-                                                    <b>Transfer To Sales</b>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>4</td>
-                                                <td>
-                                                    <b>Transfer to Technical</b>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>5</td>
-                                                <td>
-                                                    <b>Transfer to Human</b>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-info btn-sm">
-                                                        <i class="fa-regular fa-pen-to-square"></i>
-                                                    </button>
-                                                    <button class="btn btn-danger btn-sm">
-                                                        <i class="fa-regular fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <!-- Agent Scripts Manager Tab -->
-                                <div class="fade d-none w-100" id="agentScriptsManagerTab">
-                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                        <nav aria-label="breadcrumb">
-                                            <ol class="breadcrumb mb-0">
-                                                <li class="breadcrumb-item">
-                                                    <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
-                                                </li>
-                                                <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
-                                            </ol>
-                                        </nav>
-                                        <div>
-                                            <div class="btn-group" id="publishAgentDropdown">
-                                                <button class="btn btn-primary btn-sm btn-ic-span-align">
-                                                    <i class='fa-regular fa-floppy-disk'></i>
-                                                    <span> Save</span>
+                            <div>
+                                <table id="customMessageCacheGroupMessagesTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Query</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                Who created you?
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-info btn-sm">
+                                                    <i class="fa-regular fa-pen-to-square"></i>
                                                 </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
-                                            <li class="nav-item me-2" role="presentation">
-                                                <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
-                                            </li>
-                                            <li class="nav-item me-2" role="presentation">
-                                                <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
-                                            </li>
-                                        </ul>
-                                        <div class="tab-content w-100" id="agents-manager-tabContent">
-                                            <!-- General -->
-                                            <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="inputAgentScriptName">Name</label>
-                                                    <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="inputAgentScriptDescription">Description</label>
-                                                    <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block">
-                                                        <span>Conditions</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">
-                                                        Add
-                                                        Condition
-                                                    </button>
-                                                    <div id="editAgentScriptConditionValueInputs">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
-                                                <div class="mb-3" id="editAgentScriptConversationContainer">
-                                                    <span class="no-messages-conversation">
-                                                        No messages in
-                                                        the conversation yet...
-                                                    </span>
-                                                    <div class="agentScriptConversationMessages">
-                                                    </div>
-                                                    <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">
-                                                        Add New
-                                                        Message
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                                <button class="btn btn-danger btn-sm">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <!-- Integrations -->
-                            <div class="tab-pane fade w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
-                                <ul class="nav mb-3" id="agents-manager-integrations-inner-tab" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">Speech-To-Text</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="agents-manager-integrations-inner-llm-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-llm" type="button" role="tab" aria-controls="agents-manager-integrations-inner-llm" aria-selected="true">Large Language Model</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="agents-manager-integrations-inner-tts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-tts" type="button" role="tab" aria-controls="agents-manager-integrations-inner-tts" aria-selected="true">Text-To-Speech</button>
-                                    </li>
-                                </ul>
-                                <div class="tab-content w-100" id="agents-manager-integrations-inner-tabContent">
-                                    <!-- SST Config -->
-                                    <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-stt-tab" tabindex="0">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="editAgentIntegrationSTTProviderSelect">
-                                                Selected
-                                                Provider
-                                            </label>
-                                            <select class="form-select" id="editAgentIntegrationSTTProviderSelect">
-                                                <option value="microsoft_azure_speech_services" selected>
-                                                    Microsoft Azure
-                                                </option>
-                                                <option value="google_cloud_speech" disabled>
-                                                    Google Cloud
-                                                </option>
-                                                <option value="deepgram" disabled>Deepgram</option>
-                                                <option value="openai_whisper" disabled>
-                                                    OpenAI Whisper
-                                                </option>
-                                                <option value="assemblyai" disabled>AssemblyAI</option>
-                                                <option value="revai" disabled>Rev AI</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3" id="editAgentIntegrationSTTConfigurationList">
-                                            <div class="w-100 fade show" div-type="sstconfigbox" config-for="microsoft_azure_speech_services">
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block">
-                                                        <span>Regioncode</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="text" class="form-control" id="sstConfigAzureRegionCode" value="uaenorth" disabled>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="sstConfigAzureAPIKey">API Key</label>
-                                                    <input type="text" class="form-control" id="sstConfigAzureAPIKey">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block">
-                                                        <span>Silence Timeout (ms)</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long of silence to wait before considering user to stop speaking. 600ms is a golden default, lower values may cause incomplete sentences and higher values will increase latency.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="number" class="form-control" id="sstConfigAzureSilenceTimeout" value="600">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureSpeakerDiarization">
-                                                        <span>Speaker diarization</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Diarization is the process of separating speakers in audio data if there are multiple speakers. When enabled, the number of speakers is automatically detected and labeled in the results.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <div class="form-check form-switch">
-                                                        <input type="checkbox" role="switch" class="form-check-input" id="sstConfigAzureSpeakerDiarization">
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzurePhraseList">
-                                                        <span>Phrase list</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-title="<span><a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2183433' class='ms-Link root-500' tabindex='0'>Phrase list</a> are used to identify known phrases in audio data, like a person's name or a specific location. By providing a list of phrases, you improve the accuracy of speech recognition. See <a target='_blank' href='https://go.microsoft.com/fwlink/?linkid=2231353' class='ms-Link root-500' tabindex='-1'>supported languages</a> of phrase list.</span>">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <textarea class="form-control" id="sstConfigAzurePhraseList" rows="3" placeholder="Enter words or phrases to improve accuracy (seperated by comma or semicolon)"></textarea>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureCustomEndpointSelect">
-                                                        <span>Choose a custom endpoint</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <div class="input-group">
-                                                        <select class="form-select" id="sstConfigAzureCustomEndpointSelect" disabled>
-                                                            <option selected>
-                                                                Refresh to get all available
-                                                                endpoints
-                                                            </option>
-                                                        </select>
-                                                        <button class="btn btn-light" id="sstConfigAzureCustomEndpointRefreshButton">
-                                                            Refresh
-                                                            List
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- LLM Config -->
-                                    <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-llm" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-llm-tab" tabindex="0">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="editAgentIntegrationLLMProviderSelect">
-                                                Selected
-                                                Provider
-                                            </label>
-                                            <select class="form-select" id="editAgentIntegrationLLMProviderSelect">
-                                                <option value="anthropic_claude" selected>
-                                                    Anthropic Claude
-                                                </option>
-                                                <option value="openai_gpt">OpenAI GPT</option>
-                                                <option value="groq" disabled>Groq</option>
-                                                <option value="cohere" disabled>Cohere</option>
-                                                <option value="open_router" disabled>OpenRouter</option>
-                                                <option value="custom_openai_spec" disabled>
-                                                    Custom OpenAI
-                                                    Spec
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3" id="editAgentIntegrationLLMConfigurationList">
-                                            <div class="w-100 fade show" div-type="llmconfigbox" config-for="anthropic_claude">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeModelSelect">Model</label>
-                                                    <select class="form-select" id="editAgentIntegrationLLMAntrhopicClaudeModelSelect">
-                                                        <option value="claude-3-haiku" selected>
-                                                            Claude 3
-                                                            Haiku
-                                                        </option>
-                                                        <option value="claude-3-sonnet">
-                                                            Claude 3 Sonnet
-                                                        </option>
-                                                        <option value="claude-3-opus">
-                                                            Claude 3 Opus
-                                                        </option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="w-100 fade d-none" div-type="llmconfigbox" config-for="openai_gpt">
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="editAgentIntegrationLLMOpenAIGPTModelSelect">Model</label>
-                                                    <select class="form-select" id="editAgentIntegrationLLMOpenAIGPTModelSelect">
-                                                        <option value="gpt-4o" selected>GPT-4o</option>
-                                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                                                        <option value="gpt-3.5-turbo">
-                                                            GPT-3.5 Turbo
-                                                        </option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeTemperature">Temperature</label>
-                                            <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeTemperature" value="0.7" max="1" min="0">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label" for="editAgentIntegrationLLMAntrhopicClaudeMaxTokens">
-                                                Max
-                                                Tokens
-                                            </label>
-                                            <input type="number" class="form-control" id="editAgentIntegrationLLMAntrhopicClaudeMaxTokens" value="500" max="4000" min="1">
-                                        </div>
-
-                                    </div>
-                                    <!-- TTS Config -->
-                                    <div class="tab-pane fade w-100" id="agents-manager-integrations-inner-tts" role="tabpanel" aria-labelledby="agents-manager-integrations-inner-tts-tab" tabindex="0">
-                                        <div class="mb-3">
-                                            <label class="form-label" for="editAgentIntegrationTTSProviderSelect">
-                                                Selected
-                                                Provider
-                                            </label>
-                                            <select class="form-select" id="editAgentIntegrationTTSProviderSelect">
-                                                <option value="microsoft_azure_speech_services" selected>
-                                                    Microsoft Azure
-                                                </option>
-                                                <option value="google_cloud_speech" disabled>
-                                                    Google Cloud
-                                                </option>
-                                                <option value="deepgram" disabled>Deepgram</option>
-                                                <option value="elevenlabs" disabled>ElevenLabs</option>
-                                                <option value="playht" disabled>PlayHT</option>
-                                                <option value="openai_whisper" disabled>
-                                                    OpenAI Whisper
-                                                </option>
-                                                <option value="assemblyai" disabled>AssemblyAI</option>
-                                                <option value="custom" disabled>Custom TTS API</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3" id="editAgentIntegrationTTSConfigurationList">
-                                            <div class="w-100 fade show" div-type="ttsconfigbox" config-for="microsoft_azure_speech_services">
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureRegionCode">
-                                                        <span>Regioncode</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Region is automatically selected based on the region selected for the business (within business settings) for lowest latency possible.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="text" class="form-control" id="ttsConfigAzureRegionCode" value="uaenorth" disabled>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label" for="ttsConfigAzureAPIKey">API Key</label>
-                                                    <input type="text" class="form-control" id="ttsConfigAzureAPIKey">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align mb-1" for="sstConfigAzureLanguageSpeakerSelect">
-                                                        <span>Choose a speaker for language</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Custom endpoints can be deployed in Custom Speech projects to improve recognition accuracy and meet your particular business needs">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <div class="input-group">
-                                                        <select class="form-select" id="sstConfigAzureLanguageSpeakerSelect" disabled>
-                                                            <option selected>
-                                                                Refresh to get all available
-                                                                speakers
-                                                            </option>
-                                                        </select>
-                                                        <button class="btn btn-light" id="sstConfigAzureLanguageSpeakerRefreshButton">
-                                                            Refresh
-                                                            List
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSpeedRate">
-                                                        <span>Speed rate</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="used to slow up or speed up the overall speaking speed. 100% is default speed.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="number" class="form-control" id="ttsConfigAzureSpeedRate" value="100" max="+500" min="-500">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureVolume">
-                                                        <span>Volume</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker volume. 100% is default volume.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="number" class="form-control" id="ttsConfigAzureVolume" value="100" max="+500" min="-500">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzurePitch">
-                                                        <span>Pitch</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Increase or lower the speaker pitch. 100% is default pitch.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <input type="number" class="form-control" id="ttsConfigAzurePitch" value="100" max="+500" min="-500">
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceTypeSelect">
-                                                        <span>Silence</span>
-
-                                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Change the break/silence/pauses between different sentences/phrases.">
-                                                            <i class="fa-regular fa-circle-question"></i>
-                                                        </a>
-                                                    </label>
-                                                    <div class="input-group">
-                                                        <select class="form-select" id="ttsConfigAzureSilenceTypeSelect" style="border-bottom-left-radius: 0;">
-                                                            <option value="none" selected disabled>
-                                                                Select
-                                                                silence type
-                                                            </option>
-                                                            <option value="leading">
-                                                                Leading - Additional
-                                                                at beginning of a paragraph
-                                                            </option>
-                                                            <option value="sentenceboundary_exact">
-                                                                SentenceBoundary-exact - Between
-                                                                adjacent sentences
-                                                            </option>
-                                                            <option value="sentence_boundary">
-                                                                SentenceBoundary - Additional between
-                                                                adjacent sentences
-                                                            </option>
-                                                            <option value="trailing_exact">
-                                                                Trailing-exact
-                                                                - End of a paragraph
-                                                            </option>
-                                                            <option value="trailing">
-                                                                Trailing -
-                                                                Additional at the end of a paragraph
-                                                            </option>
-                                                            <option value="comma_exact">
-                                                                Comma-exact - At
-                                                                the comma in a half/full-width format
-                                                            </option>
-                                                            <option value="semicolon_exact">
-                                                                Semicolon-exact - At the semicolon in a
-                                                                half/full-width format
-                                                            </option>
-                                                            <option value="enumerationcomma_exact">
-                                                                Enumerationcomma-exact - At the
-                                                                enumeration comma in full-width format
-                                                            </option>
-                                                        </select>
-                                                        <button class="btn btn-light" id="addTTSConfigAzureSilenceType" style="border-bottom-right-radius: 0;" disabled>Add</button>
-                                                    </div>
-                                                    <div id="ttsConfigAzureSilenceTypeList">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="fade d-none w-100" id="messageCacheGroupMessageManagerTab">
+                            <div class="mb-3">
+                                <label class="form-label" for="messageCacheGroupMessageQueryInput">Query</label>
+                                <input type="text" class="form-control" id="messageCacheGroupMessageQueryInput" placeholder="Message Query">
                             </div>
-                            <!-- Cache -->
-                            <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
-                                <!-- Tabs Buttons -->
-                                <ul class="nav w-100 mb-4 fade show w-100" id="cache-inner-tab" role="tablist">
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-messages" type="button" role="tab" aria-controls="cache-inner-messages" aria-selected="true">Messages</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="true">Audio</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="cache-inner-settings-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-settings" type="button" role="tab" aria-controls="cache-inner-settings" aria-selected="true">Settings</button>
-                                    </li>
-                                </ul>
-                                <!-- Messages Manager Breadcrumb -->
-                                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-messages-inner-breadcrumb">
-                                    <nav aria-label="breadcrumb">
-                                        <ol class="breadcrumb mb-0">
-                                            <li class="breadcrumb-item">
-                                                <a href="#" id="switchBackToMessageCacheGroupQueriesListTab">Messages</a>
-                                            </li>
-                                            <li class="breadcrumb-item active" aria-current="page">
-                                                <span id="currentMessageCacheGroupQueryName">Query Name</span>
-                                            </li>
-                                        </ol>
-                                    </nav>
-                                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class='fa-regular fa-floppy-disk'></i>
-                                        <span> Save</span>
+                            <div class="mb-3">
+                                <label class="form-label" for="messageCacheGroupMessageResponseInput">Response</label>
+                                <input type="text" class="form-control" id="messageCacheGroupMessageResponseInput" placeholder="Message Response">
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="messageCacheGroupMessageCaseSensitiveCheck">
+                                <label class="form-check-label" for="messageCacheGroupMessageCaseSensitiveCheck">Is query case sensitive?</label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Audio -->
+                    <div class="tab-pane fade w-100" id="cache-inner-audio" role="tabpanel" aria-labelledby="cache-inner-audio-tab" tabindex="0">
+                        <div class="fade w-100 show" id="audioCacheGroupQueriesListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 300px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheQueryButton">
+                                        <span>+ Add New Audio Query</span>
                                     </button>
                                 </div>
-                                <!-- Audio Manager Breadcrumb -->
-                                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-audio-inner-breadcrumb">
-                                    <nav aria-label="breadcrumb">
-                                        <ol class="breadcrumb mb-0">
-                                            <li class="breadcrumb-item">
-                                                <a href="#" id="switchBackToAudioCacheGroupQueriesListTab">Audio</a>
-                                            </li>
-                                            <li class="breadcrumb-item active" aria-current="page">
-                                                <span id="currentAudioCacheGroupQueryName">Query Name</span>
-                                            </li>
-                                        </ol>
-                                    </nav>
-                                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class='fa-regular fa-floppy-disk'></i>
-                                        <span> Save</span>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Audio Query" aria-label="Audio Query" aria-describedby="searchAudioCacheQueryButton">
+                                    <button class="input-group-button btn btn-primary" id="searchAudioCacheQueryButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
                                 </div>
-                                <!-- Tabs Content -->
-                                <div class="tab-content" id="cache-inner-tabContent w-100">
-                                    <!-- Messages -->
-                                    <div class="tab-pane fade w-100 show active" id="cache-inner-messages" role="tabpanel" aria-labelledby="cache-inner-messages-tab" tabindex="0">
-                                        <div class="fade w-100 show" id="messageCacheGroupQueriesListTab">
-                                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                                <div style="min-width: 300px" class="me-4">
-                                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageCacheGroupQueryButton">
-                                                        <span>+ Add New Message Query</span>
-                                                    </button>
-                                                </div>
-                                                <div class="input-group w-100">
-                                                    <input type="text" class="form-control" placeholder="Message Query" aria-label="Message Query" aria-describedby="searchMessageCacheGroupMessageButton">
-                                                    <button class="input-group-button btn btn-primary" id="searchMessageCacheGroupMessageButton">
-                                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <table id="customMessageCacheGroupMessagesTable" class="table w-100">
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">Query</th>
-                                                            <th scope="col">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                Who created you?
-                                                            </td>
-                                                            <td>
-                                                                <button class="btn btn-info btn-sm">
-                                                                    <i class="fa-regular fa-pen-to-square"></i>
-                                                                </button>
-                                                                <button class="btn btn-danger btn-sm">
-                                                                    <i class="fa-regular fa-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div class="fade d-none w-100" id="messageCacheGroupMessageManagerTab">
-                                            <div class="mb-3">
-                                                <label class="form-label" for="messageCacheGroupMessageQueryInput">Query</label>
-                                                <input type="text" class="form-control" id="messageCacheGroupMessageQueryInput" placeholder="Message Query">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label" for="messageCacheGroupMessageResponseInput">Response</label>
-                                                <input type="text" class="form-control" id="messageCacheGroupMessageResponseInput" placeholder="Message Response">
-                                            </div>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="messageCacheGroupMessageCaseSensitiveCheck">
-                                                <label class="form-check-label" for="messageCacheGroupMessageCaseSensitiveCheck">Is query case sensitive?</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Audio -->
-                                    <div class="tab-pane fade w-100" id="cache-inner-audio" role="tabpanel" aria-labelledby="cache-inner-audio-tab" tabindex="0">
-                                        <div class="fade w-100 show" id="audioCacheGroupQueriesListTab">
-                                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                                <div style="min-width: 300px" class="me-4">
-                                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheQueryButton">
-                                                        <span>+ Add New Audio Query</span>
-                                                    </button>
-                                                </div>
-                                                <div class="input-group w-100">
-                                                    <input type="text" class="form-control" placeholder="Audio Query" aria-label="Audio Query" aria-describedby="searchAudioCacheQueryButton">
-                                                    <button class="input-group-button btn btn-primary" id="searchAudioCacheQueryButton">
-                                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <table id="customAudioCacheGroupTable" class="table w-100">
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">Query</th>
-                                                            <th scope="col">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr>
-                                                            <td>
-                                                                <b>I am made by Badal Technologies.</b>
-                                                            </td>
-                                                            <td>
-                                                                <button class="btn btn-info btn-sm">
-                                                                    <i class="fa-regular fa-pen-to-square"></i>
-                                                                </button>
-                                                                <button class="btn btn-danger btn-sm">
-                                                                    <i class="fa-regular fa-trash"></i>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div class="fade w-100 d-none" id="audioCacheGroupAddQueryTab">
-                                            <div class="mb-3">
-                                                <label class="form-label" for="audioCacheGroupQueryNameInput">Query</label>
-                                                <input type="text" class="form-control" id="audioCacheGroupQueryNameInput" placeholder="Audio Message Query">
-                                            </div>
-                                            <div class="">
-                                                <label class="form-label btn-ic-span-align" for="">
-                                                    <span>Unused Expiry (hours)</span>
-
-                                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The number of hours before the query expires if not used.">
-                                                        <i class="fa-regular fa-circle-question"></i>
-                                                    </a>
-                                                </label>
-                                                <input type="number" class="form-control" id="audioCacheGroupQueryExpiryInput" value="24">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Settings -->
-                                    <div class="tab-pane fade w-100" id="cache-inner-settings" role="tabpanel" aria-labelledby="cache-inner-settings-tab" tabindex="0">
-                                        <div class="form-check form-switch mb-2">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="agentCacheAutoCacheAudioResponseCheck">
-                                            <label class="form-check-label" for="agentCacheAutoCacheAudioResponseCheck">Auto Cache Audio Responses</label>
-                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Automatically cache all audio (text-to-speech) responses in the cache.">
-                                                <i class="fa-regular fa-circle-question"></i>
-                                            </a>
-                                        </div>
-                                        <div class="input-group fade d-none" id="agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox">
-                                            <span class="input-group-text">Default Expiry (hours)</span>
-                                            <input type="number" class="form-control" id="agentCacheAutoCacheAudioResponseExpiryDefaultHoursInput" value="24">
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
-                            <!-- Settings -->
-                            <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
-                                <div class="mb-3">
-                                    <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioSelect">
-                                        <span>Background Audio </span>
+                            <div>
+                                <table id="customAudioCacheGroupTable" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Query</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <b>I am made by Badal Technologies.</b>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-info btn-sm">
+                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-sm">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="fade w-100 d-none" id="audioCacheGroupAddQueryTab">
+                            <div class="mb-3">
+                                <label class="form-label" for="audioCacheGroupQueryNameInput">Query</label>
+                                <input type="text" class="form-control" id="audioCacheGroupQueryNameInput" placeholder="Audio Message Query">
+                            </div>
+                            <div class="">
+                                <label class="form-label btn-ic-span-align" for="">
+                                    <span>Unused Expiry (hours)</span>
 
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Audio to be played in the background of the call on repeat.">
-                                            <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                    </label>
-                                    <select class="form-select" id="editAgentBackgroundAudioSelect">
-                                        <option value="none">None</option>
-                                        <option value="custom">Custom (Upload)</option>
-                                        <option value="office">Office (Keyboard)</option>
-                                        <option value="call_center">Call Center (People + Keyboard)</option>
-                                        <option value="coffee_shop">Coffee Shop (People + Music)</option>
-                                        <option value="restaurant">
-                                            Restaurant (People + Plates/Spoons + Music)
-                                        </option>
-                                        <option value="driving">Driving (Road + Engine)</option>
-                                        <option value="city">City (Traffic + People)</option>
-                                        <option value="forest">Forest (Birds + Water + Wind)</option>
-                                    </select>
-                                    <div class="w-100 agent-background-audio-box d-none">
-                                        <div class="">
-                                            <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioVolume">
-                                                <span>Audio Volume </span>
-
-                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                    <i class="fa-regular fa-circle-question"></i>
-                                                </a>
-                                            </label>
-                                            <input type="number" class="form-control" id="editAgentBackgroundAudioVolume" value="10">
-                                        </div>
-                                        <div class="agent-background-custom-audio-box d-none mt-3">
-                                            <label class="form-label btn-ic-span-align" for="editAgentCustomBackgroundAudio">
-                                                <span>Upload Custom Audio </span>
-
-                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                    <i class="fa-regular fa-circle-question"></i>
-                                                </a>
-                                            </label>
-                                            <input type="file" class="form-control" id="editAgentCustomBackgroundAudio" accept="audio/mp3, audio/wav">
-                                        </div>
-                                    </div>
-                                </div>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The number of hours before the query expires if not used.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="audioCacheGroupQueryExpiryInput" value="24">
                             </div>
                         </div>
                     </div>
@@ -1747,7 +1754,7 @@
         </div>
 
         <!-- Context Container -->
-        <div class="main-container fade show w-100" id="context-tab">
+        <div class="main-container fade d-none w-100" id="context-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-book'></i> <span>Context</span></h3>
             <div class="inner-header-container mb-3">
                 <div class="d-flex flex-row align-items-center justify-content-between">
@@ -4915,6 +4922,7 @@
                             initSettingsTab();
 		                    initToolsTab();
                             initContextTab();
+                            initAgentTab();
 
                             let businessTutorials = BusinessFullData.businessData.tutorials;
                             if (businessTutorials)
