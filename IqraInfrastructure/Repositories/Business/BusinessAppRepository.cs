@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
@@ -177,6 +178,78 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Products.FirstMatchingElement(), newBusinessContextProduct);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddCacheMessageGroup(long businessId, BusinessAppCacheMessageGroup newMessageGroup)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.MessageGroups, newMessageGroup);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateMessageGroupName(long businessId, string messageGroupId, string newMessageGroupName)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, t => t.Id == messageGroupId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set(b => b.Cache.MessageGroups.FirstMatchingElement().Name, newMessageGroupName);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddMessageToGroup(long businessId, string groupId, string language, BusinessAppCacheMessage newMessage)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, t => t.Id == groupId)
+            );
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.MessageGroups.FirstMatchingElement().Messages[language], newMessage);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateMessageInGroup(long businessId, string groupId, string language, BusinessAppCacheMessage newMessage)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, g => g.Id == groupId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Cache.MessageGroups.$.Messages.{language}",
+                new BsonArray(new[] { newMessage.ToBsonDocument() })
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheMessageGroupExists(long businessId, string existingGroupId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, t => t.Id == existingGroupId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheMessageGroupMessageExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.MessageGroups, g =>
+                    g.Id == groupId &&
+                    g.Messages[language].Any(m => m.Id == existingCacheId)
+                )
+            );
+
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
         }
     }
 }

@@ -70,35 +70,6 @@ const ttsConfigAzureSilenceTypeList = agentTab.find("#ttsConfigAzureSilenceTypeL
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
 
-// SUB | Cache Tab
-const cacheInnerTab = agentTab.find("#cache-inner-tab");
-
-// SUB | Cache - Messages Tab
-const cacheMessagesInnerBreadcrumb = agentTab.find("#cache-messages-inner-breadcrumb");
-
-const addNewMessageCacheGroupQueryButton = agentTab.find("#addNewMessageCacheGroupQueryButton");
-
-const messageCacheGroupQueriesListTab = agentTab.find("#messageCacheGroupQueriesListTab");
-const messageCacheGroupMessageManagerTab = agentTab.find("#messageCacheGroupMessageManagerTab");
-
-const currentMessageCacheGroupQueryName = agentTab.find("#currentMessageCacheGroupQueryName");
-
-const switchBackToMessageCacheGroupQueriesListTab = agentTab.find("#switchBackToMessageCacheGroupQueriesListTab");
-
-// SUB | Cache - Audio Tab
-const cacheAudioInnerBreadcrumb = agentTab.find("#cache-audio-inner-breadcrumb");
-
-const addNewAudioCacheQueryButton = agentTab.find("#addNewAudioCacheQueryButton");
-
-const audioCacheGroupQueriesListTab = agentTab.find("#audioCacheGroupQueriesListTab");
-const audioCacheGroupAddQueryTab = agentTab.find("#audioCacheGroupAddQueryTab");
-
-const switchBackToAudioCacheGroupQueriesListTab = agentTab.find("#switchBackToAudioCacheGroupQueriesListTab");
-const currentAudioCacheGroupQueryName = agentTab.find("#currentAudioCacheGroupQueryName");
-
-const agentCacheAutoCacheAudioResponseCheck = agentTab.find("#agentCacheAutoCacheAudioResponseCheck");
-const agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox = agentTab.find("#agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox");
-
 /** Functions **/
 
 function initAgentTab() {
@@ -503,100 +474,6 @@ function initAgentTab() {
 			}
 
 			audioConfigBox.removeClass("d-none");
-		});
-
-		addNewMessageCacheGroupQueryButton.on("click", (event) => {
-			event.preventDefault();
-
-			cacheInnerTab.removeClass("show");
-			messageCacheGroupQueriesListTab.removeClass("show");
-			setTimeout(() => {
-				currentMessageCacheGroupQueryName.text("New Query");
-
-				cacheInnerTab.addClass("d-none");
-				messageCacheGroupQueriesListTab.addClass("d-none");
-
-				cacheMessagesInnerBreadcrumb.removeClass("d-none");
-				messageCacheGroupMessageManagerTab.removeClass("d-none");
-				setTimeout(() => {
-					cacheMessagesInnerBreadcrumb.addClass("show");
-					messageCacheGroupMessageManagerTab.addClass("show");
-				}, 10);
-			}, 300);
-		});
-
-		switchBackToMessageCacheGroupQueriesListTab.on("click", (event) => {
-			event.preventDefault();
-
-			cacheMessagesInnerBreadcrumb.removeClass("show");
-			messageCacheGroupMessageManagerTab.removeClass("show");
-			setTimeout(() => {
-				cacheMessagesInnerBreadcrumb.addClass("d-none");
-				messageCacheGroupMessageManagerTab.addClass("d-none");
-
-				cacheInnerTab.removeClass("d-none");
-				messageCacheGroupQueriesListTab.removeClass("d-none");
-
-				setTimeout(() => {
-					cacheInnerTab.addClass("show");
-					messageCacheGroupQueriesListTab.addClass("show");
-				}, 10);
-			}, 300);
-		});
-
-		addNewAudioCacheQueryButton.on("click", (event) => {
-			event.preventDefault();
-
-			cacheInnerTab.removeClass("show");
-			audioCacheGroupQueriesListTab.removeClass("show");
-			setTimeout(() => {
-				currentAudioCacheGroupQueryName.text("New Query");
-
-				cacheInnerTab.addClass("d-none");
-				audioCacheGroupQueriesListTab.addClass("d-none");
-
-				cacheAudioInnerBreadcrumb.removeClass("d-none");
-				audioCacheGroupAddQueryTab.removeClass("d-none");
-				setTimeout(() => {
-					cacheAudioInnerBreadcrumb.addClass("show");
-					audioCacheGroupAddQueryTab.addClass("show");
-				}, 10);
-			}, 300);
-		});
-
-		switchBackToAudioCacheGroupQueriesListTab.on("click", (event) => {
-			event.preventDefault();
-
-			cacheAudioInnerBreadcrumb.removeClass("show");
-			audioCacheGroupAddQueryTab.removeClass("show");
-			setTimeout(() => {
-				cacheAudioInnerBreadcrumb.addClass("d-none");
-				audioCacheGroupAddQueryTab.addClass("d-none");
-
-				cacheInnerTab.removeClass("d-none");
-				audioCacheGroupQueriesListTab.removeClass("d-none");
-
-				setTimeout(() => {
-					cacheInnerTab.addClass("show");
-					audioCacheGroupQueriesListTab.addClass("show");
-				}, 10);
-			}, 300);
-		});
-
-		agentCacheAutoCacheAudioResponseCheck.on("change", (event) => {
-			let isChecked = agentCacheAutoCacheAudioResponseCheck.is(":checked");
-
-			if (isChecked) {
-				agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass("d-none");
-				setTimeout(() => {
-					agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass("show");
-				}, 10);
-			} else {
-				agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.removeClass("show");
-				setTimeout(() => {
-					agentCacheAutoCacheAudioResponseExpiryDefaultHoursBox.addClass("d-none");
-				}, 300);
-			}
 		});
 	});
 }

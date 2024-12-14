@@ -1,9 +1,10 @@
 class MultiLanguageDropdown {
-	constructor(containerId, languages) {
+	constructor(containerId, languages, enableValidationIcons = true) {
 		this.$container = $(`#${containerId}`);
 		this.languages = languages;
 		this.selectedLanguage = languages[0];
 		this.incompleteCount = 0;
+		this.enableValidationIcons = enableValidationIcons;
 		this.render();
 	}
 
@@ -11,10 +12,10 @@ class MultiLanguageDropdown {
 		const dropdownHtml = `
             <div class="dropdown multilanguage-dropdown">
                 <button class="btn btn-dark dropdown-toggle d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>
+                    ${this.enableValidationIcons ? '<span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>' : ""}
                     <i class="complete-number bg-success fa-solid fa-check ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle" style="display: none; line-height: 13px; font-size: 14px; padding: 5px;"></i>
                     <span class="me-2">${this.selectedLanguage.localeName}${this.selectedLanguage.localeName !== this.selectedLanguage.name ? ` | ${this.selectedLanguage.name}` : ""}</span>
-                    <i class="fa-solid fa-circle-xmark text-danger me-auto selected-status"></i>
+                    ${this.enableValidationIcons ? '<i class="fa-solid fa-circle-xmark text-danger me-auto selected-status"></i>' : ""}
                 </button>
                 <ul class="dropdown-menu">
                     ${this.languages
@@ -23,9 +24,14 @@ class MultiLanguageDropdown {
                         <li>
                             <a class="dropdown-item d-flex align-items-center ${lang.id === this.selectedLanguage.id ? "active" : ""}" href="#" data-lang-id="${lang.id}">
                                 <span class="me-2${lang.disabledAt != null ? " text-danger" : ""}">${lang.disabledAt != null ? "<i class='fa-solid fa-triangle-exclamation'></i> Disabled<br>" : ""}${lang.localeName}${lang.localeName !== lang.name ? ` | ${lang.name}` : ""}</span>
-                                <span class="ms-auto status-indicator" data-status="incomplete">
+                                ${
+																	this.enableValidationIcons
+																		? `
+								<span class="ms-auto status-indicator" data-status="incomplete">
                                     <i class="fa-solid fa-circle-xmark text-danger"></i>
-                                </span>
+                                </span>`
+																		: ""
+																}
                             </a>
                         </li>
                     `,
@@ -63,10 +69,16 @@ class MultiLanguageDropdown {
 			selectedStatus === "complete" ? '<i class="fa-solid fa-circle-check text-success me-auto selected-status"></i>' : '<i class="fa-solid fa-circle-xmark text-danger me-auto selected-status"></i>';
 
 		$button.html(`
-            <span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>
-            <i class="complete-number bg-success fa-solid fa-check ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle" style="display: none; line-height: 13px; font-size: 14px; padding: 5px;"></i>
+            ${
+							this.enableValidationIcons
+								? `
+			<span class="incomplete-number bg-danger ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle badge" style="display: none;"></span>
+			<i class="complete-number bg-success fa-solid fa-check ms-auto position-absolute p-1 rounded-4 top-0 start-100 translate-middle" style="display: none; line-height: 13px; font-size: 14px; padding: 5px;"></i>`
+								: ""
+						}
+            
             <span class="me-2">${this.selectedLanguage.localeName}${this.selectedLanguage.localeName !== this.selectedLanguage.name ? ` | ${this.selectedLanguage.name}` : ""}</span>
-            ${statusIcon}
+            ${this.enableValidationIcons ? statusIcon : ""}
         `);
 		this.updateIncompleteCount();
 	}
@@ -77,6 +89,8 @@ class MultiLanguageDropdown {
 	}
 
 	setLanguageStatus(langId, status) {
+		if (!this.enableValidationIcons) return;
+
 		const $item = this.$container.find(`[data-lang-id="${langId}"]`);
 		if ($item.length) {
 			const $statusIndicator = $item.find(".status-indicator");
@@ -90,6 +104,8 @@ class MultiLanguageDropdown {
 	}
 
 	updateIncompleteCount() {
+		if (!this.enableValidationIcons) return;
+
 		const $incompleteItems = this.$container.find('.status-indicator[data-status="incomplete"]');
 		this.incompleteCount = $incompleteItems.length;
 

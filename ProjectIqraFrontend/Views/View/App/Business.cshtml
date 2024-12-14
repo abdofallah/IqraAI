@@ -1585,167 +1585,385 @@
         <!-- Cache Container -->
         <div class="main-container fade show w-100" id="cache-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-recycle'></i> <span>Cache</span></h3>
+            
+            <!-- Main Navigation Header -->
             <div class="inner-header-container w-100 mb-3" id="cache-header">
-                <!-- Tabs Buttons -->
-                <ul class="nav w-100 fade show w-100" id="cache-inner-tab" role="tablist">
+                <!-- Main Tabs Navigation -->
+                <ul class="nav w-100 fade show" id="cache-inner-tab" role="tablist">
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-messages" type="button" role="tab" aria-controls="cache-inner-messages" aria-selected="true">Messages</button>
+                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" 
+                                data-bs-target="#cache-inner-messages" type="button" role="tab" 
+                                aria-controls="cache-inner-messages" aria-selected="true">Messages</button>
                     </li>
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="true">Audio</button>
+                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" 
+                                data-bs-target="#cache-inner-audio" type="button" role="tab" 
+                                aria-controls="cache-inner-audio" aria-selected="false">Audio</button>
                     </li>
                 </ul>
+
+                <!-- Message Group Breadcrumb -->
+                <div class="d-flex flex-column align-items-center justify-content-center fade d-none w-100" id="messageGroupBreadcrumb">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToMessageGroupsListTab">Messages</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span id="currentMessageGroupName">Group Name</span>
+                                </li>
+                            </ol>
+                        </nav>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveMessageGroupButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                        <!-- Group Manager Tabs -->
+                        <ul class="nav w-100" id="messageGroupManagerInnerTab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="messageGroupManagerGeneralTab" 
+                                        data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" 
+                                        type="button" role="tab">General</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="messageGroupManagerListTab" 
+                                        data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" 
+                                        type="button" role="tab">List</button>
+                            </li>
+                        </ul>
+                        <div id="messageCacheGroupManagerMultilanguageContainer">
+                        
+                        </div>
+                    </div>
+                </div>
+                
+
+                <!-- Message Cache Breadcrumb -->
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
+                    id="messageCacheBreadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <span>Messages</span>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToMessageCacheListTab">
+                                    <span id="currentMessageGroupNameInCache">Group Name</span>
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span id="currentMessageCacheName">Cache Name</span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveMessageCacheButton">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+
+                <!-- Audio breadcrumbs to the header section -->
+                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
+                    id="audioGroupBreadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToAudioGroupsListTab">Audio</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span id="currentAudioGroupName">Group Name</span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAudioGroupButton">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+
+                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
+                    id="audioCacheBreadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToAudioGroupsListTab">Audio</a>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToAudioCacheListTab">
+                                    <span id="currentAudioGroupNameInCache">Group Name</span>
+                                </a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <span id="currentAudioCacheName">Cache Name</span>
+                            </li>
+                        </ol>
+                    </nav>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAudioCacheButton">
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
             </div>
+
             <div class="inner-container">
-                <!-- Messages Manager Breadcrumb -->
-                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-messages-inner-breadcrumb">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToMessageCacheGroupQueriesListTab">Messages</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page">
-                                <span id="currentMessageCacheGroupQueryName">Query Name</span>
-                            </li>
-                        </ol>
-                    </nav>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-                <!-- Audio Manager Breadcrumb -->
-                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="cache-audio-inner-breadcrumb">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToAudioCacheGroupQueriesListTab">Audio</a>
-                            </li>
-                            <li class="breadcrumb-item active" aria-current="page">
-                                <span id="currentAudioCacheGroupQueryName">Query Name</span>
-                            </li>
-                        </ol>
-                    </nav>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
-                </div>
-                <!-- Tabs Content -->
-                <div class="tab-content" id="cache-inner-tabContent w-100">
-                    <!-- Messages -->
-                    <div class="tab-pane fade w-100 show active" id="cache-inner-messages" role="tabpanel" aria-labelledby="cache-inner-messages-tab" tabindex="0">
-                        <div class="fade w-100 show" id="messageCacheGroupQueriesListTab">
+                <div class="tab-content" id="cache-inner-tabContent">
+                    <!-- Messages Groups Section -->
+                    <div class="tab-pane fade show active w-100" id="cache-inner-messages" role="tabpanel">
+                        <!-- Message Groups List -->
+                        <div class="fade show w-100" id="messageGroupsListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageCacheGroupQueryButton">
-                                        <span>+ Add New Message Query</span>
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                            id="addNewMessageGroupButton">
+                                        <span>+ Add New Message Group</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Message Query" aria-label="Message Query" aria-describedby="searchMessageCacheGroupMessageButton">
-                                    <button class="input-group-button btn btn-primary" id="searchMessageCacheGroupMessageButton">
+                                    <input type="text" class="form-control" placeholder="Message Group" 
+                                        aria-label="Message Group">
+                                    <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
                                 </div>
                             </div>
-                            <div>
-                                <table id="customMessageCacheGroupMessagesTable" class="table w-100">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Query</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                Who created you?
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-info btn-sm">
-                                                    <i class="fa-regular fa-pen-to-square"></i>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <table id="messageGroupsTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Groups will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Message Group Manager -->
+                        <div class="fade d-none w-100" id="messageGroupManagerTab">
+                            <!-- Group Manager Inner Tabs -->
+                            <ul class="nav mb-3 d-none fade" id="messageGroupManagerInnerTab" role="tablist">
+                                <li class="nav-item me-2" role="presentation">
+                                    <button class="nav-link active" id="messageGroupManagerGeneralTab" 
+                                            data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" 
+                                            type="button" role="tab">General</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="messageGroupManagerListTab" 
+                                            data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" 
+                                            type="button" role="tab">List</button>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content" id="messageGroupManagerTabContent">
+                                <!-- General Tab -->
+                                <div class="tab-pane fade show active" id="messageGroupManagerGeneral" 
+                                    role="tabpanel" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="messageGroupNameInput">Name</label>
+                                        <input type="text" class="form-control" id="messageGroupNameInput" 
+                                            placeholder="Group Name">
+                                    </div>
+                                </div>
+
+                                <!-- List Tab -->
+                                <div class="tab-pane fade" id="messageGroupManagerList" 
+                                    role="tabpanel" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 300px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                                    id="addNewMessageCacheButton">
+                                                <span>+ Add New Message</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Message Query" 
+                                                aria-label="Message Query">
+                                            <button class="input-group-button btn btn-primary">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <table id="messageCacheTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Query</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Messages will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                        <div class="fade d-none w-100" id="messageCacheGroupMessageManagerTab">
+
+                        <!-- Message Cache List -->
+                        <div class="fade d-none w-100" id="messageCacheListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 300px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                            id="addNewMessageCacheButton">
+                                        <span>+ Add New Message</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Message Query" 
+                                        aria-label="Message Query">
+                                    <button class="input-group-button btn btn-primary">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="messageCacheTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Query</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Messages will be populated here  -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Message Cache Manager -->
+                        <div class="fade d-none w-100" id="messageCacheManagerTab">
                             <div class="mb-3">
-                                <label class="form-label" for="messageCacheGroupMessageQueryInput">Query</label>
-                                <input type="text" class="form-control" id="messageCacheGroupMessageQueryInput" placeholder="Message Query">
+                                <label class="form-label" for="messageCacheQueryInput">Query</label>
+                                <input type="text" class="form-control" id="messageCacheQueryInput" 
+                                    placeholder="Message Query">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="messageCacheGroupMessageResponseInput">Response</label>
-                                <input type="text" class="form-control" id="messageCacheGroupMessageResponseInput" placeholder="Message Response">
+                                <label class="form-label" for="messageCacheResponseInput">Response</label>
+                                <input type="text" class="form-control" id="messageCacheResponseInput" 
+                                    placeholder="Message Response">
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="messageCacheGroupMessageCaseSensitiveCheck">
-                                <label class="form-check-label" for="messageCacheGroupMessageCaseSensitiveCheck">Is query case sensitive?</label>
+                                <input class="form-check-input" type="checkbox" role="switch" 
+                                    id="messageCacheCaseSensitiveCheck">
+                                <label class="form-check-label" for="messageCacheCaseSensitiveCheck">
+                                    Is query case sensitive?
+                                </label>
                             </div>
                         </div>
                     </div>
-                    <!-- Audio -->
-                    <div class="tab-pane fade w-100" id="cache-inner-audio" role="tabpanel" aria-labelledby="cache-inner-audio-tab" tabindex="0">
-                        <div class="fade w-100 show" id="audioCacheGroupQueriesListTab">
+
+                    <!-- Audio Groups Section -->
+                    <div class="tab-pane fade w-100" id="cache-inner-audio" role="tabpanel">
+                        <!-- Audio Groups List -->
+                        <div class="fade show w-100" id="audioGroupsListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheQueryButton">
-                                        <span>+ Add New Audio Query</span>
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                            id="addNewAudioGroupButton">
+                                        <span>+ Add New Audio Group</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Audio Query" aria-label="Audio Query" aria-describedby="searchAudioCacheQueryButton">
-                                    <button class="input-group-button btn btn-primary" id="searchAudioCacheQueryButton">
+                                    <input type="text" class="form-control" placeholder="Audio Group" 
+                                        aria-label="Audio Group">
+                                    <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
                                 </div>
                             </div>
-                            <div>
-                                <table id="customAudioCacheGroupTable" class="table w-100">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Query</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <b>I am made by Badal Technologies.</b>
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-info btn-sm">
-                                                    <i class="fa-regular fa-pen-to-square"></i>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <table id="audioGroupsTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Groups will be populated here --> 
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="fade w-100 d-none" id="audioCacheGroupAddQueryTab">
-                            <div class="mb-3">
-                                <label class="form-label" for="audioCacheGroupQueryNameInput">Query</label>
-                                <input type="text" class="form-control" id="audioCacheGroupQueryNameInput" placeholder="Audio Message Query">
-                            </div>
-                            <div class="">
-                                <label class="form-label btn-ic-span-align" for="">
-                                    <span>Unused Expiry (hours)</span>
 
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The number of hours before the query expires if not used.">
+                        <!-- Audio Group Manager -->
+                        <div class="fade d-none w-100" id="audioGroupManagerTab">
+                            <div class="mb-3">
+                                <label class="form-label" for="audioGroupNameInput">Name</label>
+                                <input type="text" class="form-control" id="audioGroupNameInput" 
+                                    placeholder="Group Name">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="audioGroupDescriptionInput">Description</label>
+                                <textarea class="form-control" id="audioGroupDescriptionInput" 
+                                        placeholder="Group Description"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align d-block">
+                                    <span>Default Unused Expiry (hours)</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" 
+                                    data-bs-placement="right" data-bs-html="true" 
+                                    data-bs-title="The default number of hours before an audio cache in this group expires if not used.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="audioCacheGroupQueryExpiryInput" value="24">
+                                <input type="number" class="form-control" id="audioGroupDefaultExpiryInput" value="24">
+                            </div>
+                        </div>
+
+                        <!-- Audio Cache List -->
+                        <div class="fade d-none w-100" id="audioCacheListTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 300px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                            id="addNewAudioCacheButton">
+                                        <span>+ Add New Audio</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Audio Query" 
+                                        aria-label="Audio Query">
+                                    <button class="input-group-button btn btn-primary">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="audioCacheTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Query</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Audio entries will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Audio Cache Manager -->
+                        <div class="fade d-none w-100" id="audioCacheManagerTab">
+                            <div class="mb-3">
+                                <label class="form-label" for="audioCacheQueryInput">Query</label>
+                                <input type="text" class="form-control" id="audioCacheQueryInput" 
+                                    placeholder="Audio Query">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align" for="audioCacheExpiryInput">
+                                    <span>Unused Expiry (hours)</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" 
+                                    data-bs-placement="right" data-bs-html="true" 
+                                    data-bs-title="The number of hours before this audio cache expires if not used. Leave empty to use group default.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="audioCacheExpiryInput" 
+                                    placeholder="Use group default">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="audioCacheFileInput">Audio File</label>
+                                <input type="file" class="form-control" id="audioCacheFileInput" 
+                                    accept="audio/*">
                             </div>
                         </div>
                     </div>
@@ -4890,10 +5108,11 @@
     <script src="~/scripts/app/business/settings_tab.js"></script>
     <script src="~/scripts/app/business/tools_tab.js"></script>
     <script src="~/scripts/app/business/context_tab.js"></script>
+    <script src="~/scripts/app/business/cache_tab.js"></script>
 
-    <script src="~/scripts/app/business/overview_tab.js"></script>
-    <script src="~/scripts/app/business/routing_tab.js"></script>
     <script src="~/scripts/app/business/agents_tab.js"></script>
+    <script src="~/scripts/app/business/overview_tab.js"></script>
+    <script src="~/scripts/app/business/routing_tab.js"></script> 
     <script src="~/scripts/app/business/make_calls_tab.js"></script>
     <script src="~/scripts/app/business/conversations_tab.js"></script>
     
@@ -4922,6 +5141,7 @@
                             initSettingsTab();
 		                    initToolsTab();
                             initContextTab();
+                            initCacheTab();
                             initAgentTab();
 
                             let businessTutorials = BusinessFullData.businessData.tutorials;

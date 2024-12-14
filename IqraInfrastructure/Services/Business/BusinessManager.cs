@@ -7,6 +7,7 @@ using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 using MongoDB.Driver;
 using Serilog;
 using System.Net;
@@ -98,7 +99,7 @@ namespace IqraInfrastructure.Services.Business
 
             long businessWhiteLabelId = addDefaultDomainResult.Data.Id;
             businessData.WhiteLabelDomainIds.Add(businessWhiteLabelId);
-            
+
             await _businessAppRepository.AddBusinessAppAsync(businessApp);
             await _businessRepository.AddBusinessAsync(businessData);
 
@@ -222,7 +223,7 @@ namespace IqraInfrastructure.Services.Business
 
             return result;
         }
-    
+
         public async Task<FunctionReturnResult<List<BusinessData>?>> SearchBusinesses(string query, int page, int pageSize)
         {
             var result = new FunctionReturnResult<List<BusinessData>?>();
@@ -274,7 +275,8 @@ namespace IqraInfrastructure.Services.Business
                     result.Message = "The business logo file is too big. Maximum size is 5MB.";
                     return result;
                 }
-                else if (logoValidateResult == 1) {
+                else if (logoValidateResult == 1)
+                {
                     result.Code = "UpdateUserBusinessSettings:3";
                     result.Message = "The business logo file is not valid.";
                     return result;
@@ -339,7 +341,7 @@ namespace IqraInfrastructure.Services.Business
                 // todo unpublish the business, calls etc if languages are different than saved ones
 
                 updateBusinessApp = true;
-            }         
+            }
 
             // Logo upload after all the validation
             if (businessLogo != null)
@@ -382,7 +384,7 @@ namespace IqraInfrastructure.Services.Business
                     result.Message = "Failed to update business app.";
                     return result;
                 }
-            }  
+            }
 
             result.Success = true;
             return result;
@@ -581,7 +583,7 @@ namespace IqraInfrastructure.Services.Business
             newDomainData.Type = ((BusinessUserWhiteLabelDomainTypeEnum)domainTypeEnum);
 
             if (postType == "new")
-            {    
+            {
                 if (((BusinessUserWhiteLabelDomainTypeEnum)domainTypeEnum) == BusinessUserWhiteLabelDomainTypeEnum.IqraSubdomain)
                 {
                     BusinessWhiteLabelIqraSubDomain currentIqraSubdomainData = (BusinessWhiteLabelIqraSubDomain)newDomainData;
@@ -603,7 +605,8 @@ namespace IqraInfrastructure.Services.Business
                     }
 
                     var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddIqraBusinessSubDomainLetsEncryptSSL(currentIqraSubdomainData.SubDomain);
-                    if (!addSSLResult.Success) {
+                    if (!addSSLResult.Success)
+                    {
                         result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
                         result.Message = addSSLResult.Message;
                         return result;
@@ -643,7 +646,8 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
                     }
-                    catch (Exception ex) {
+                    catch (Exception ex)
+                    {
                         result.Code = "AddOrUpdateUserBusinessDomain:15";
                         result.Message = ex.Message;
                         return result;
@@ -675,7 +679,7 @@ namespace IqraInfrastructure.Services.Business
                             result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
                             result.Message = addSSLResult.Message;
                             return result;
-                        }                    
+                        }
                     }
 
                     var setHTTPTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetCustomDomainDefaultProxyTemplate(currentCustomDomainData.CustomDomain, true);
@@ -848,7 +852,7 @@ namespace IqraInfrastructure.Services.Business
                 result.Message = "Subuser login disabled not found.";
                 return result;
             }
-            
+
             string? subUserLoginDisabledReason = null;
             if (subUserLoginDisabled.Value == true)
             {
@@ -861,7 +865,7 @@ namespace IqraInfrastructure.Services.Business
                     if (editBusinessUserData.DisabledUserLoginAt != null)
                     {
                         newSubUserData.DisabledUserLoginAt = editBusinessUserData.DisabledUserLoginAt;
-                    } 
+                    }
                 }
 
                 subUserLoginDisabledReason = generalTabRootElement.GetProperty("loginDisabledReason").GetString();
@@ -911,7 +915,7 @@ namespace IqraInfrastructure.Services.Business
                 result.Message = "Subuser whitelabel domain id not found.";
                 return result;
             }
-            
+
             if (long.TryParse(subUserWhiteLabelDomainId, out long whiteLabelDomainId) == false)
             {
                 result.Code = "AddOrUpdateUserBusinessDomain:20";
@@ -936,7 +940,7 @@ namespace IqraInfrastructure.Services.Business
                 // todo validate css
                 newSubUserData.WhiteLabel.CustomCSS = subUserWhiteLabelStyleCustomCSS;
             }
-            
+
             string? whiteLabelStyleCustomJavaScript = whiteLabelTabStylesTabRootElement.GetProperty("customJavaScript").GetString();
             if (!string.IsNullOrWhiteSpace(whiteLabelStyleCustomJavaScript))
             {
@@ -1011,7 +1015,7 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        private async Task<FunctionReturnResult<BusinessUserPermission?>> ValidateAndPopulateBusinessSubUserPermissions (JsonElement whiteLabelTabPermissionsTabRootElement)
+        private async Task<FunctionReturnResult<BusinessUserPermission?>> ValidateAndPopulateBusinessSubUserPermissions(JsonElement whiteLabelTabPermissionsTabRootElement)
         {
             var options = new JsonSerializerOptions
             {
@@ -1036,7 +1040,7 @@ namespace IqraInfrastructure.Services.Business
             {
                 subUserRoutingsPermissions = new BusinessUserPermissionRouting();
             }
-            
+
             newBusinessSubUserPermissions.Routing = subUserRoutingsPermissions;
 
             // SubUser Tools Permissions
@@ -1208,7 +1212,8 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        public async Task<bool> CheckBusinessToolExists(long businessId, string toolId) {
+        public async Task<bool> CheckBusinessToolExists(long businessId, string toolId)
+        {
             var result = await _businessAppRepository.CheckBusinessAppToolExists(businessId, toolId);
 
             return result;
@@ -1272,7 +1277,7 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
             }
-            
+
             // Configuration Tab
             if (!changes.RootElement.TryGetProperty("configuration", out var configurationTabRootElement))
             {
@@ -1503,7 +1508,7 @@ namespace IqraInfrastructure.Services.Business
                         break;
                 }
             }
-            
+
             // Response Tab
             if (!changes.RootElement.TryGetProperty("response", out var responseTabRootElement))
             {
@@ -2535,6 +2540,199 @@ namespace IqraInfrastructure.Services.Business
         {
             var result = await _businessAppRepository.CheckBusinessAppProductExists(businessId, productId);
 
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppCacheMessageGroup?>> AddOrUpdateMessageGroup(long businessId, IFormCollection formData, string postType, string? existingGroupId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheMessageGroup?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateMessageGroup:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateMessageGroup:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newMessageGroup = new BusinessAppCacheMessageGroup();
+
+            // Name validation
+            if (!changes.RootElement.TryGetProperty("name", out var nameElement))
+            {
+                result.Code = "AddOrUpdateMessageGroup:3";
+                result.Message = "Name not found.";
+                return result;
+            }
+
+            string? name = nameElement.GetString();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                result.Code = "AddOrUpdateMessageGroup:4";
+                result.Message = "Name is required.";
+                return result;
+            }
+            newMessageGroup.Name = name;
+
+            // Initialize messages dictionary for all business languages
+            List<string> businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+            foreach (var language in businessLanguages)
+            {
+                newMessageGroup.Messages[language] = new List<BusinessAppCacheMessage>();
+            }
+
+            // Saving or Updating
+            if (postType == "new")
+            {
+                newMessageGroup.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddCacheMessageGroup(businessId, newMessageGroup);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateMessageGroup:5";
+                    result.Message = "Failed to add message group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newMessageGroup.Id = existingGroupId;
+
+                var updateResult = await _businessAppRepository.UpdateMessageGroupName(businessId, newMessageGroup.Id, newMessageGroup.Name);
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateMessageGroup:6";
+                    result.Message = "Failed to update message group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newMessageGroup;
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppCacheMessage?>> AddOrUpdateMessageGroupMessage(long businessId, string groupId, IFormCollection formData, string postType, string language, string? existingMessageCacheId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheMessage?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newMessage = new BusinessAppCacheMessage();
+
+            // Query validation
+            if (!changes.RootElement.TryGetProperty("query", out var queryElement))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:3";
+                result.Message = "Query not found.";
+                return result;
+            }
+
+            string? query = queryElement.GetString();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:4";
+                result.Message = "Query is required.";
+                return result;
+            }
+            newMessage.Query = query;
+
+            // Response validation
+            if (!changes.RootElement.TryGetProperty("response", out var responseElement))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:5";
+                result.Message = "Response not found.";
+                return result;
+            }
+
+            string? response = responseElement.GetString();
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:6";
+                result.Message = "Response is required.";
+                return result;
+            }
+            newMessage.Response = response;
+
+            // Case sensitivity
+            if (!changes.RootElement.TryGetProperty("isQueryCaseSensitive", out var isCaseSensitiveElement))
+            {
+                result.Code = "AddOrUpdateMessageGroupMessage:7";
+                result.Message = "Query case sensitivity flag not found.";
+                return result;
+            }
+            newMessage.IsQueryCaseSensitive = isCaseSensitiveElement.GetBoolean();
+
+            // Saving or updating
+            if (postType == "new")
+            {
+                newMessage.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddMessageToGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newMessage
+                );
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateMessageGroupMessage:8";
+                    result.Message = "Failed to add message to group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newMessage.Id = existingMessageCacheId;
+
+                var updateResult = await _businessAppRepository.UpdateMessageInGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newMessage
+                );
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateMessageGroupMessage:9";
+                    result.Message = "Failed to update message in group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newMessage;
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessCacheMessageGroupExists(long businessId, string existingGroupId)
+        {
+            var result = await _businessAppRepository.CheckCacheMessageGroupExists(businessId, existingGroupId);
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessCacheMessageGroupMessageExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var result = await _businessAppRepository.CheckCacheMessageGroupMessageExists(businessId, groupId, language, existingCacheId);
             return result;
         }
     }
