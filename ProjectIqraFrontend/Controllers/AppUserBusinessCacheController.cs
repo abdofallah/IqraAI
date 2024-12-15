@@ -419,5 +419,406 @@ namespace ProjectIqraFrontend.Controllers
             result.Data = updateResult.Data;
             return result;
         }
+
+        [HttpPost("/app/user/business/{businessId}/cache/audiogroups/save")]
+        public async Task<FunctionReturnResult<BusinessAppCacheAudioGroup?>> SaveBusinessAudioGroup(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheAudioGroup?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "SaveBusinessAudioGroup:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "SaveBusinessAudioGroup:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "SaveBusinessAudioGroup:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroup:4";
+                result.Message = "User does not have permission to edit businesses";
+
+                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                }
+
+                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                {
+                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                }
+
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = "SaveBusinessAudioGroup:5";
+                result.Message = "User does not own this business";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
+            if (!businessResult.Success)
+            {
+                result.Code = "SaveBusinessAudioGroup:" + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroup:8";
+                result.Message = "Business is currently disabled";
+
+                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
+                }
+
+                return result;
+            }
+
+            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroup:9";
+                result.Message = "Business does not have permission to access cache";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            if (businessResult.Data.Permission.Cache.AudioGroup.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroup:10";
+                result.Message = "Business does not have permission to access audio groups";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            string? postType = formData["postType"].ToString();
+            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            {
+                result.Code = "SaveBusinessAudioGroup:11";
+                result.Message = "Invalid post type";
+                return result;
+            }
+
+            formData.TryGetValue("existingGroupId", out StringValues existingGroupIdValue);
+            string? existingGroupId = existingGroupIdValue.ToString();
+
+            if (postType == "edit")
+            {
+                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingAt != null)
+                {
+                    result.Code = "SaveBusinessAudioGroup:12";
+                    result.Message = "Business does not have permission to edit audio groups";
+
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason))
+                    {
+                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason;
+                    }
+
+                    return result;
+                }
+
+                if (string.IsNullOrWhiteSpace(existingGroupId))
+                {
+                    result.Code = "SaveBusinessAudioGroup:13";
+                    result.Message = "Missing existing group id";
+                    return result;
+                }
+
+                bool groupExists = await _businessManager.CheckBusinessCacheAudioGroupExists(businessId, existingGroupId);
+                if (!groupExists)
+                {
+                    result.Code = "SaveBusinessAudioGroup:14";
+                    result.Message = "Group not found";
+                    return result;
+                }
+            }
+            else if (postType == "new")
+            {
+                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingAt != null)
+                {
+                    result.Code = "SaveBusinessAudioGroup:15";
+                    result.Message = "Business does not have permission to add audio groups";
+
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason))
+                    {
+                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason;
+                    }
+
+                    return result;
+                }
+            }
+
+            var updateResult = await _businessManager.AddOrUpdateAudioGroup(businessId, formData, postType, existingGroupId);
+            if (!updateResult.Success)
+            {
+                result.Code = "SaveBusinessAudioGroup:" + updateResult.Code;
+                result.Message = updateResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = updateResult.Data;
+            return result;
+        }
+
+        [HttpPost("/app/user/business/{businessId}/cache/audiogroups/audios/save")]
+        public async Task<FunctionReturnResult<BusinessAppCacheAudio?>> SaveBusinessAudioGroupAudio(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:5";
+                result.Message = "User does not have permission to edit businesses";
+
+                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                }
+
+                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
+                {
+                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
+                }
+
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessId))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:6";
+                result.Message = "User does not own this business";
+                return result;
+            }
+
+            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
+            if (!businessResult.Success)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:" + businessResult.Code;
+                result.Message = businessResult.Message;
+                return result;
+            }
+
+            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:7";
+                result.Message = "Business is currently disabled";
+
+                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
+                }
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
+                }
+
+                return result;
+            }
+
+            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:8";
+                result.Message = "Business does not have permission to access cache";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            if (businessResult.Data.Permission.Cache.AudioGroup.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:9";
+                result.Message = "Business does not have permission to access audio groups";
+
+                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason))
+                {
+                    result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            formData.TryGetValue("groupId", out StringValues groupIdValue);
+            string? groupId = groupIdValue.ToString();
+
+            if (string.IsNullOrWhiteSpace(groupId))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:10";
+                result.Message = "Missing group id";
+                return result;
+            }
+
+            bool groupExists = await _businessManager.CheckBusinessCacheAudioGroupExists(businessId, groupId);
+            if (!groupExists)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:11";
+                result.Message = "Group not found";
+                return result;
+            }
+
+            if (!formData.TryGetValue("language", out var languageValue))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:12";
+                result.Message = "Language not specified.";
+                return result;
+            }
+            string language = languageValue.ToString();
+
+            if (!businessResult.Data.Languages.Contains(language))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:13";
+                result.Message = "Language not found for business.";
+                return result;
+            }
+
+            string? postType = formData["postType"].ToString();
+            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:14";
+                result.Message = "Invalid post type";
+                return result;
+            }
+
+            formData.TryGetValue("existingCacheId", out StringValues existingCacheIdValue);
+            string? existingCacheId = existingCacheIdValue.ToString();
+            if (postType == "edit")
+            {
+                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingAt != null)
+                {
+                    result.Code = "SaveBusinessAudioGroupAudio:15";
+                    result.Message = "Business does not have permission to edit audios";
+
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason))
+                    {
+                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason;
+                    }
+
+                    return result;
+                }
+
+                if (string.IsNullOrWhiteSpace(existingCacheId))
+                {
+                    result.Code = "SaveBusinessAudioGroupAudio:16";
+                    result.Message = "Missing existing cache id";
+                    return result;
+                }
+
+                bool audioExists = await _businessManager.CheckBusinessCacheAudioGroupAudioExists(
+                    businessId,
+                    groupId,
+                    language,
+                    existingCacheId
+                );
+
+                if (!audioExists)
+                {
+                    result.Code = "SaveBusinessAudioGroupAudio:17";
+                    result.Message = "Audio not found";
+                    return result;
+                }
+            }
+            else if (postType == "new")
+            {
+                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingAt != null)
+                {
+                    result.Code = "SaveBusinessAudioGroupAudio:18";
+                    result.Message = "Business does not have permission to add audios";
+
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason))
+                    {
+                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason;
+                    }
+
+                    return result;
+                }
+            }
+
+            var updateResult = await _businessManager.AddOrUpdateAudioGroupAudio(
+                businessId,
+                groupId,
+                formData,
+                postType,
+                language,
+                existingCacheId
+            );
+            if (!updateResult.Success)
+            {
+                result.Code = "SaveBusinessAudioGroupAudio:" + updateResult.Code;
+                result.Message = updateResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = updateResult.Data;
+            return result;
+        }
     }
 }

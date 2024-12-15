@@ -180,6 +180,13 @@ namespace IqraInfrastructure.Repositories.Business
             return result.ModifiedCount > 0;
         }
 
+        /**
+         * 
+         * Cache Tab
+         * Message Group | Message Cache
+         * 
+        **/
+
         public async Task<bool> AddCacheMessageGroup(long businessId, BusinessAppCacheMessageGroup newMessageGroup)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
@@ -248,6 +255,80 @@ namespace IqraInfrastructure.Repositories.Business
                 )
             );
 
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        /**
+         * 
+         * Cache Tab
+         * Audio Group | Audio Cache
+         * 
+        **/
+
+        public async Task<bool> AddCacheAudioGroup(long businessId, BusinessAppCacheAudioGroup newAudioGroup)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.AudioGroups, newAudioGroup);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateAudioGroupName(long businessId, string audioGroupId, string newAudioGroupName)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, t => t.Id == audioGroupId)
+            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.Cache.AudioGroups.FirstMatchingElement().Name, newAudioGroupName);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddAudioToGroup(long businessId, string groupId, string language, BusinessAppCacheAudio newAudio)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, t => t.Id == groupId)
+            );
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.AudioGroups.FirstMatchingElement().Audios[language], newAudio);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateAudioInGroup(long businessId, string groupId, string language, BusinessAppCacheAudio newAudio)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, g => g.Id == groupId)
+            );
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Cache.AudioGroups.$.Audios.{language}",
+                new BsonArray(new[] { newAudio.ToBsonDocument() })
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheAudioGroupExists(long businessId, string existingGroupId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, t => t.Id == existingGroupId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheAudioGroupAudioExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.AudioGroups, g =>
+                    g.Id == groupId &&
+                    g.Audios[language].Any(a => a.Id == existingCacheId)
+                )
+            );
             var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
             return result != null;
         }

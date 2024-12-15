@@ -54,6 +54,10 @@
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
+                    <a class="nav_link" for="integrations-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-cube nav_icon'></i>
+                        <span class="nav_name">Integrations</span> 
+                    </a>
                     <a class="nav_link active" for="cache-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-recycle nav_icon'></i>
                         <span class="nav_name">Cache</span> 
@@ -1582,6 +1586,15 @@
             </div>
         </div>
 
+        <!-- Integrations Container -->
+        <div class="main-container fade d-none w-100" id="integrations-tab">
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>Integrations</span></h3>
+
+            <div class="inner-container">
+                todo
+            </div>
+        </div>
+
         <!-- Cache Container -->
         <div class="main-container fade show w-100" id="cache-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-recycle'></i> <span>Cache</span></h3>
@@ -1593,12 +1606,12 @@
                     <li class="nav-item me-2" role="presentation">
                         <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" 
                                 data-bs-target="#cache-inner-messages" type="button" role="tab" 
-                                aria-controls="cache-inner-messages" aria-selected="true">Messages</button>
+                                aria-controls="cache-inner-messages" aria-selected="true">Messages Group</button>
                     </li>
                     <li class="nav-item me-2" role="presentation">
                         <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" 
                                 data-bs-target="#cache-inner-audio" type="button" role="tab" 
-                                aria-controls="cache-inner-audio" aria-selected="false">Audio</button>
+                                aria-controls="cache-inner-audio" aria-selected="false">Audios Group</button>
                     </li>
                 </ul>
 
@@ -1608,7 +1621,7 @@
                         <nav aria-label="breadcrumb">
                             <ol class="breadcrumb mb-0">
                                 <li class="breadcrumb-item">
-                                    <a href="#" id="switchBackToMessageGroupsListTab">Messages</a>
+                                    <a href="#" id="switchBackToMessageGroupsListTab">Messages Group</a>
                                 </li>
                                 <li class="breadcrumb-item active" aria-current="page">
                                     <span id="currentMessageGroupName">Group Name</span>
@@ -1640,14 +1653,13 @@
                     </div>
                 </div>
                 
-
                 <!-- Message Cache Breadcrumb -->
                 <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
                     id="messageCacheBreadcrumb">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
-                                <span>Messages</span>
+                                <span>Messages Group</span>
                             </li>
                             <li class="breadcrumb-item">
                                 <a href="#" id="switchBackToMessageCacheListTab">
@@ -1666,30 +1678,50 @@
                 </div>
 
                 <!-- Audio breadcrumbs to the header section -->
-                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
-                    id="audioGroupBreadcrumb">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
-                            <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToAudioGroupsListTab">Audio</a>
+                <div class="d-flex flex-column align-items-center justify-content-center fade d-none w-100" id="audioGroupBreadcrumb">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToAudioGroupsListTab">Audios Group</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span id="currentAudioGroupName">Group Name</span>
+                                </li>
+                            </ol>
+                        </nav>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAudioGroupButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                        <!-- Group Manager Tabs -->
+                        <ul class="nav w-100" id="audioGroupManagerInnerTab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="audioGroupManagerGeneralTab" 
+                                        data-bs-toggle="pill" data-bs-target="#audioGroupManagerGeneral" 
+                                        type="button" role="tab">General</button>
                             </li>
-                            <li class="breadcrumb-item active" aria-current="page">
-                                <span id="currentAudioGroupName">Group Name</span>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="audioGroupManagerListTab" 
+                                        data-bs-toggle="pill" data-bs-target="#audioGroupManagerList" 
+                                        type="button" role="tab">List</button>
                             </li>
-                        </ol>
-                    </nav>
-                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAudioGroupButton">
-                        <i class='fa-regular fa-floppy-disk'></i>
-                        <span> Save</span>
-                    </button>
+                        </ul>
+                        <div id="audioCacheGroupManagerMultilanguageContainer">
+                        
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3 d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
+                <!-- Audio Cache Breadcrumb -->
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
                     id="audioCacheBreadcrumb">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
-                                <a href="#" id="switchBackToAudioGroupsListTab">Audio</a>
+                                <span>Audios Group</span>
                             </li>
                             <li class="breadcrumb-item">
                                 <a href="#" id="switchBackToAudioCacheListTab">
@@ -1888,26 +1920,47 @@
 
                         <!-- Audio Group Manager -->
                         <div class="fade d-none w-100" id="audioGroupManagerTab">
-                            <div class="mb-3">
-                                <label class="form-label" for="audioGroupNameInput">Name</label>
-                                <input type="text" class="form-control" id="audioGroupNameInput" 
-                                    placeholder="Group Name">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="audioGroupDescriptionInput">Description</label>
-                                <textarea class="form-control" id="audioGroupDescriptionInput" 
-                                        placeholder="Group Description"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label btn-ic-span-align d-block">
-                                    <span>Default Unused Expiry (hours)</span>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" 
-                                    data-bs-placement="right" data-bs-html="true" 
-                                    data-bs-title="The default number of hours before an audio cache in this group expires if not used.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </label>
-                                <input type="number" class="form-control" id="audioGroupDefaultExpiryInput" value="24">
+                            <div class="tab-content" id="audioGroupManagerTabContent">
+                                <!-- General Tab -->
+                                <div class="tab-pane fade show active" id="audioGroupManagerGeneral" 
+                                    role="tabpanel" tabindex="0">
+                                    <div>
+                                        <label class="form-label" for="audioGroupNameInput">Name</label>
+                                        <input type="text" class="form-control" id="audioGroupNameInput" 
+                                            placeholder="Group Name">
+                                    </div>
+                                </div>
+
+                                <!-- List Tab -->
+                                <div class="tab-pane fade" id="audioGroupManagerList" 
+                                    role="tabpanel" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 300px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                                    id="addNewAudioCacheButton">
+                                                <span>+ Add New Audio</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Audio Query" 
+                                                aria-label="Audio Query">
+                                            <button class="input-group-button btn btn-primary">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <table id="audioCacheTable" class="table w-100">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Query</th>
+                                                <th scope="col">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Audio cache entries will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -1948,7 +2001,7 @@
                                 <input type="text" class="form-control" id="audioCacheQueryInput" 
                                     placeholder="Audio Query">
                             </div>
-                            <div class="mb-3">
+                            <div class="">
                                 <label class="form-label btn-ic-span-align" for="audioCacheExpiryInput">
                                     <span>Unused Expiry (hours)</span>
                                     <a href="#" class="d-inline-block" data-bs-toggle="tooltip" 
@@ -1959,11 +2012,6 @@
                                 </label>
                                 <input type="number" class="form-control" id="audioCacheExpiryInput" 
                                     placeholder="Use group default">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="audioCacheFileInput">Audio File</label>
-                                <input type="file" class="form-control" id="audioCacheFileInput" 
-                                    accept="audio/*">
                             </div>
                         </div>
                     </div>

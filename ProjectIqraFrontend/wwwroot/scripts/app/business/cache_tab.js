@@ -17,6 +17,11 @@ let ManageAudioGroupType = null; // new or edit
 let CurrentAudioCacheData = null;
 let ManageAudioCacheType = null; // new or edi
 
+let audioCacheGroupMultilanguage = null;
+
+let IsSavingAudioGroupTab = false;
+let IsSavingAudioCacheTab = false;
+
 /** Elements Variables **/
 
 // Cache Tab
@@ -54,6 +59,8 @@ const addNewAudioGroupButton = cacheTab.find("#addNewAudioGroupButton");
 const switchBackToAudioGroupsListTab = cacheTab.find("#switchBackToAudioGroupsListTab");
 const currentAudioGroupName = cacheTab.find("#currentAudioGroupName");
 const saveAudioGroupButton = cacheTab.find("#saveAudioGroupButton");
+const audioGroupsTable = cacheTab.find("#audioGroupsTable");
+const audioCacheTable = cacheTab.find("#audioCacheTable");
 
 // Audio Cache
 const audioCacheListTab = cacheTab.find("#audioCacheListTab");
@@ -63,6 +70,7 @@ const addNewAudioCacheButton = cacheTab.find("#addNewAudioCacheButton");
 const switchBackToAudioCacheListTab = cacheTab.find("#switchBackToAudioCacheListTab");
 const currentAudioCacheName = cacheTab.find("#currentAudioCacheName");
 const saveAudioCacheButton = cacheTab.find("#saveAudioCacheButton");
+const currentAudioGroupNameInCache = cacheTab.find("#currentAudioGroupNameInCache");
 
 /** Functions **/
 
@@ -108,6 +116,46 @@ function SaveBusinessContextMessageCache(formData, onSuccess, onError) {
 	});
 }
 
+function SaveBusinessContextAudioGroup(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/cache/audiogroups/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function SaveBusinessContextAudioCache(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/cache/audiogroups/audios/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
 // Message Group Functions
 function resetOrClearMessageGroupManager() {
 	$("#messageGroupNameInput").val("");
@@ -117,7 +165,7 @@ function resetOrClearMessageGroupManager() {
 
 	const messageTable = messageCacheTable.find("tbody");
 	messageTable.empty();
-	messageTable.append('<tr tr-type="none-notice"><td colspan="2">No messages found</td></tr>');
+	messageTable.append('<tr tr-type="none-notice"><td colspan="2">No message queries found</td></tr>');
 }
 
 function ShowMessageGroupManagerTab() {
@@ -197,7 +245,7 @@ function fillMessageGroupManager(groupData) {
 
 	const languageMessages = groupData.messages[currentLanguage] || [];
 	if (languageMessages.length === 0) {
-		messageTable.append('<tr tr-type="none-notice"><td colspan="2">No messages found</td></tr>');
+		messageTable.append('<tr tr-type="none-notice"><td colspan="2">No message queries found</td></tr>');
 	} else {
 		languageMessages.forEach((message) => {
 			messageTable.append($(createMessageCacheTableElement(message)));
@@ -463,6 +511,10 @@ function resetOrClearAudioGroupManager() {
 
 	audioGroupManagerTab.find(".is-invalid").removeClass("is-invalid");
 	saveAudioGroupButton.prop("disabled", true);
+
+	const audioTable = audioCacheTable.find("tbody");
+	audioTable.empty();
+	audioTable.append('<tr tr-type="none-notice"><td colspan="2">No audio queries found</td></tr>');
 }
 
 function ShowAudioGroupManagerTab() {
@@ -499,11 +551,167 @@ function ShowAudioGroupsListTab() {
 	}, 300);
 }
 
+function createDefaultAudioGroupObject() {
+	const object = {
+		name: "",
+		audios: {},
+	};
+
+	// Initialize audios for each language
+	BusinessFullData.businessData.languages.forEach((language) => {
+		object.audios[language] = [];
+	});
+
+	return object;
+}
+
+function createAudioGroupTableElement(audioGroup) {
+	return `
+        <tr tr-type="audio-group" data-id="${audioGroup.id}">
+            <td>${audioGroup.name}</td>
+            <td>
+                <button class="btn btn-info btn-sm" button-type="editAudioGroupCache" group-id="${audioGroup.id}">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" button-type="deleteAudioGroupCache" group-id="${audioGroup.id}">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>`;
+}
+
+function FillCacheAudioGroup() {
+	const audioGroups = BusinessFullData.businessApp.cache.audioGroups;
+
+	const audioGroupsTableBody = audioGroupsTable.find("tbody");
+	audioGroupsTableBody.empty();
+
+	if (audioGroups.length === 0) {
+		audioGroupsTableBody.append('<tr tr-type="none-notice"><td colspan="2">No audio groups found</td></tr>');
+	} else {
+		audioGroups.forEach((group) => {
+			audioGroupsTableBody.append($(createAudioGroupTableElement(group)));
+		});
+	}
+}
+
+function fillAudioGroupManager(groupData) {
+	// Fill general fields
+	$("#audioGroupNameInput").val(groupData.name);
+
+	// Get current language audios
+	const currentLanguage = audioCacheGroupMultilanguage.getSelectedLanguage().id;
+
+	// Populate audios table in List tab
+	const audioTable = audioCacheTable.find("tbody");
+	audioTable.empty();
+
+	const languageAudios = groupData.audios[currentLanguage] || [];
+	if (languageAudios.length === 0) {
+		audioTable.append('<tr tr-type="none-notice"><td colspan="2">No audio queries found</td></tr>');
+	} else {
+		languageAudios.forEach((audio) => {
+			audioTable.append($(createAudioCacheTableElement(audio)));
+		});
+	}
+
+	saveAudioGroupButton.prop("disabled", true);
+}
+
+function ValidateAudioGroupTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	// Validate name
+	const groupName = $("#audioGroupNameInput").val().trim();
+	if (!groupName || groupName.length === 0) {
+		validated = false;
+		errors.push("Group name is required.");
+		if (!onlyRemove) {
+			$("#audioGroupNameInput").addClass("is-invalid");
+		}
+	} else {
+		$("#audioGroupNameInput").removeClass("is-invalid");
+	}
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function CheckAudioGroupTabHasChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Check name changes
+	changes.name = $("#audioGroupNameInput").val().trim();
+	if (CurrentAudioGroupData.name !== changes.name) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		saveAudioGroupButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+async function canLeaveAudioGroupTab(leaveMessage = "") {
+	if (ManageAudioGroupType == null) return true;
+
+	const groupChanges = CheckAudioGroupTabHasChanges(false);
+	if (groupChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in audio group.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 // Audio Cache Functions
+function createDefaultAudioCacheObject() {
+	return {
+		query: "",
+		unusedExpiryHours: 24,
+	};
+}
+
+function createAudioCacheTableElement(audio) {
+	return `
+        <tr audio-id="${audio.id}">
+            <td>
+                <b>${audio.query}</b>
+            </td>
+            <td>
+                <button class="btn btn-info btn-sm" button-type="editAudioCache" audio-id="${audio.id}">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" button-type="deleteAudioCache" audio-id="${audio.id}">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
 function resetOrClearAudioCacheManager() {
 	$("#audioCacheQueryInput").val("");
-	$("#audioCacheExpiryInput").val("");
-	$("#audioCacheFileInput").val("");
+	$("#audioCacheExpiryInput").val("24");
 
 	audioCacheManagerTab.find(".is-invalid").removeClass("is-invalid");
 	saveAudioCacheButton.prop("disabled", true);
@@ -511,10 +719,10 @@ function resetOrClearAudioCacheManager() {
 
 function ShowAudioCacheManagerTab() {
 	audioGroupManagerTab.removeClass("show");
-	audioCacheListTab.removeClass("show");
+	audioGroupBreadcrumb.removeClass("show");
 	setTimeout(() => {
 		audioGroupManagerTab.addClass("d-none");
-		audioCacheListTab.addClass("d-none");
+		audioGroupBreadcrumb.addClass("d-none");
 
 		audioCacheBreadcrumb.removeClass("d-none");
 		audioCacheManagerTab.removeClass("d-none");
@@ -534,18 +742,110 @@ function ShowAudioCacheListTab() {
 		audioCacheManagerTab.addClass("d-none");
 
 		audioGroupManagerTab.removeClass("d-none");
-		audioCacheListTab.removeClass("d-none");
+		audioGroupBreadcrumb.removeClass("d-none");
 		setTimeout(() => {
 			audioGroupManagerTab.addClass("show");
-			audioCacheListTab.addClass("show");
+			audioGroupBreadcrumb.addClass("show");
 			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
+function fillAudioCacheManager(cacheData) {
+	// Fill form fields
+	$("#audioCacheQueryInput").val(cacheData.query);
+	$("#audioCacheExpiryInput").val(cacheData.unusedExpiryHours);
+
+	saveAudioCacheButton.prop("disabled", true);
+}
+
+function ValidateAudioCacheTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	// Validate query
+	const query = $("#audioCacheQueryInput").val().trim();
+	if (!query || query.length === 0) {
+		validated = false;
+		errors.push("Audio query is required.");
+		if (!onlyRemove) {
+			$("#audioCacheQueryInput").addClass("is-invalid");
+		}
+	} else {
+		$("#audioCacheQueryInput").removeClass("is-invalid");
+	}
+
+	// Validate expiry hours
+	const expiryHours = $("#audioCacheExpiryInput").val();
+	if (expiryHours && (!Number.isInteger(Number(expiryHours)) || Number(expiryHours) < 1)) {
+		validated = false;
+		errors.push("Expiry hours must be a positive whole number.");
+		if (!onlyRemove) {
+			$("#audioCacheExpiryInput").addClass("is-invalid");
+		}
+	} else {
+		$("#audioCacheExpiryInput").removeClass("is-invalid");
+	}
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
+}
+
+function CheckAudioCacheTabHasChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Check query changes
+	changes.query = $("#audioCacheQueryInput").val().trim();
+	if (CurrentAudioCacheData.query !== changes.query) {
+		hasChanges = true;
+	}
+
+	// Check expiry hours changes
+	changes.unusedExpiryHours = parseInt($("#audioCacheExpiryInput").val()) || 24;
+	if (CurrentAudioCacheData.unusedExpiryHours !== changes.unusedExpiryHours) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		saveAudioCacheButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+async function canLeaveAudioCacheTab(leaveMessage = "") {
+	if (ManageAudioCacheType == null) return true;
+
+	const cacheChanges = CheckAudioCacheTabHasChanges(false);
+	if (cacheChanges.hasChanges) {
+		const confirmDiscardChangesDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in audio cache.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmDiscardChangesResult = await confirmDiscardChangesDialog.show();
+		if (!confirmDiscardChangesResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 function initCacheTab() {
 	$(document).ready(() => {
 		messageCacheGroupMultilanguage = new MultiLanguageDropdown("messageCacheGroupManagerMultilanguageContainer", BusinessFullLanguagesData, false);
+		audioCacheGroupMultilanguage = new MultiLanguageDropdown("audioCacheGroupManagerMultilanguageContainer", BusinessFullLanguagesData, false);
 
 		// Message Group handlers
 		addNewMessageGroupButton.on("click", (event) => {
@@ -620,7 +920,7 @@ function initCacheTab() {
 
 			const languageMessages = CurrentMessageGroupData.messages[language.id] || [];
 			if (languageMessages.length === 0) {
-				messageTable.append('<tr tr-type="none-notice"><td colspan="2">No messages found</td></tr>');
+				messageTable.append('<tr tr-type="none-notice"><td colspan="2">No message queries found</td></tr>');
 			} else {
 				languageMessages.forEach((message) => {
 					messageTable.append($(createMessageCacheTableElement(message)));
@@ -713,7 +1013,6 @@ function initCacheTab() {
 		});
 
 		// Message Cache handlers
-
 		messageCacheListTab.on("click", "button[button-type='editMessageCache']", (event) => {
 			event.preventDefault();
 
@@ -856,7 +1155,301 @@ function initCacheTab() {
 			);
 		});
 
+		// Audio Group handlers
+		addNewAudioGroupButton.on("click", (event) => {
+			event.preventDefault();
+
+			currentAudioGroupName.text("New Group");
+			resetOrClearAudioGroupManager();
+			ShowAudioGroupManagerTab();
+
+			ManageAudioGroupType = "new";
+			CurrentAudioGroupData = createDefaultAudioGroupObject();
+		});
+
+		audioGroupsListTab.on("click", "button[button-type='editAudioGroupCache']", (event) => {
+			event.preventDefault();
+
+			const groupId = $(event.currentTarget).attr("group-id");
+
+			resetOrClearAudioGroupManager();
+			CurrentAudioGroupData = BusinessFullData.businessApp.cache.audioGroups.find((group) => group.id === groupId);
+
+			currentAudioGroupName.text(CurrentAudioGroupData.name);
+			fillAudioGroupManager(CurrentAudioGroupData);
+			ShowAudioGroupManagerTab();
+
+			ManageAudioGroupType = "edit";
+		});
+
+		switchBackToAudioGroupsListTab.on("click", async (event) => {
+			event.preventDefault();
+
+			const canLeaveResult = await canLeaveAudioGroupTab();
+			if (!canLeaveResult) return;
+
+			ShowAudioGroupsListTab();
+			ManageAudioGroupType = null;
+		});
+
+		audioGroupManagerTab.on("input change", "input[type='text']", (event) => {
+			if (ManageAudioGroupType == null) return;
+
+			CheckAudioGroupTabHasChanges(true);
+		});
+
+		saveAudioGroupButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingAudioGroupTab) return;
+
+			const validationResult = ValidateAudioGroupTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const groupChanges = CheckAudioGroupTabHasChanges(false);
+			if (!groupChanges.hasChanges) {
+				return;
+			}
+
+			saveAudioGroupButton.prop("disabled", true);
+			const saveButtonSpinner = saveAudioGroupButton.find(".spinner-border");
+			saveButtonSpinner.removeClass("d-none");
+
+			IsSavingAudioGroupTab = true;
+
+			const formData = new FormData();
+			formData.append("changes", JSON.stringify(groupChanges.changes));
+			formData.append("postType", ManageAudioGroupType);
+
+			if (ManageAudioGroupType === "edit") {
+				formData.append("existingGroupId", CurrentAudioGroupData.id);
+			}
+
+			SaveBusinessContextAudioGroup(
+				formData,
+				(saveResponse) => {
+					CurrentAudioGroupData = saveResponse.data;
+
+					currentAudioGroupName.text(CurrentAudioGroupData.name);
+
+					if (ManageAudioGroupType === "new") {
+						BusinessFullData.businessApp.cache.audioGroups.push(CurrentAudioGroupData);
+						audioGroupsTable.find("tbody tr[tr-type='none-notice']").remove();
+						audioGroupsTable.find("tbody").append($(createAudioGroupTableElement(CurrentAudioGroupData)));
+					} else {
+						const groupIndex = BusinessFullData.businessApp.cache.audioGroups.findIndex((g) => g.id === CurrentAudioGroupData.id);
+						if (groupIndex !== -1) {
+							BusinessFullData.businessApp.cache.audioGroups[groupIndex] = CurrentAudioGroupData;
+						}
+
+						audioGroupsTable.find(`tbody tr[data-id="${CurrentAudioGroupData.id}"]`).replaceWith($(createAudioGroupTableElement(CurrentAudioGroupData)));
+					}
+
+					ManageAudioGroupType = "edit";
+
+					saveAudioGroupButton.prop("disabled", true);
+					saveButtonSpinner.addClass("d-none");
+
+					IsSavingAudioGroupTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: `Audio group ${ManageAudioGroupType === "new" ? "added" : "updated"} successfully.`,
+						timeout: 6000,
+					});
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving audio group. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving audio group: ", saveError);
+
+					saveAudioGroupButton.prop("disabled", false);
+					saveButtonSpinner.addClass("d-none");
+
+					IsSavingAudioGroupTab = false;
+				},
+			);
+		});
+
+		audioCacheGroupMultilanguage.onLanguageChange((language) => {
+			if (!CurrentAudioGroupData) return;
+
+			const audioTable = audioCacheTable.find("tbody");
+			audioTable.empty();
+
+			const languageAudios = CurrentAudioGroupData.audios[language.id] || [];
+			if (languageAudios.length === 0) {
+				audioTable.append('<tr tr-type="none-notice"><td colspan="2">No audio queries found</td></tr>');
+			} else {
+				languageAudios.forEach((audio) => {
+					audioTable.append($(createAudioCacheTableElement(audio)));
+				});
+			}
+		});
+
+		// Audio Cache handlers
+		addNewAudioCacheButton.on("click", (event) => {
+			event.preventDefault();
+
+			if (ManageAudioGroupType === "new") {
+				AlertManager.createAlert({
+					type: "warning",
+					message: "Please save the audio group first before adding audios to it.",
+					timeout: 6000,
+				});
+				return;
+			}
+
+			currentAudioCacheName.text("New Audio");
+			currentAudioGroupNameInCache.text(CurrentAudioGroupData.name);
+
+			resetOrClearAudioCacheManager();
+			ShowAudioCacheManagerTab();
+
+			ManageAudioCacheType = "new";
+			CurrentAudioCacheData = createDefaultAudioCacheObject();
+		});
+
+		audioCacheTable.on("click", "button[button-type='editAudioCache']", (event) => {
+			event.preventDefault();
+
+			const audioId = $(event.currentTarget).attr("audio-id");
+			const currentLanguage = audioCacheGroupMultilanguage.getSelectedLanguage().id;
+
+			resetOrClearAudioCacheManager();
+			CurrentAudioCacheData = CurrentAudioGroupData.audios[currentLanguage].find((audio) => audio.id === audioId);
+
+			currentAudioCacheName.text(CurrentAudioCacheData.query);
+			currentAudioGroupNameInCache.text(CurrentAudioGroupData.name);
+
+			fillAudioCacheManager(CurrentAudioCacheData);
+			ShowAudioCacheManagerTab();
+
+			ManageAudioCacheType = "edit";
+		});
+
+		switchBackToAudioCacheListTab.on("click", async (event) => {
+			event.preventDefault();
+
+			const canLeaveResult = await canLeaveAudioCacheTab();
+			if (!canLeaveResult) return;
+
+			ShowAudioCacheListTab();
+			ManageAudioCacheType = null;
+		});
+
+		audioCacheManagerTab.on("input change", "input[type='text'], input[type='number']", (event) => {
+			if (ManageAudioCacheType == null) return;
+
+			CheckAudioCacheTabHasChanges(true);
+		});
+
+		saveAudioCacheButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingAudioCacheTab) return;
+
+			const validationResult = ValidateAudioCacheTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const cacheChanges = CheckAudioCacheTabHasChanges(false);
+			if (!cacheChanges.hasChanges) {
+				return;
+			}
+
+			saveAudioCacheButton.prop("disabled", true);
+			const saveButtonSpinner = saveAudioCacheButton.find(".spinner-border");
+			saveButtonSpinner.removeClass("d-none");
+
+			IsSavingAudioCacheTab = true;
+
+			const formData = new FormData();
+			formData.append("changes", JSON.stringify(cacheChanges.changes));
+			formData.append("postType", ManageAudioCacheType);
+			formData.append("groupId", CurrentAudioGroupData.id);
+			formData.append("language", audioCacheGroupMultilanguage.getSelectedLanguage().id);
+
+			if (ManageAudioCacheType === "edit") {
+				formData.append("existingCacheId", CurrentAudioCacheData.id);
+			}
+
+			SaveBusinessContextAudioCache(
+				formData,
+				(saveResponse) => {
+					CurrentAudioCacheData = saveResponse.data;
+
+					// Update the audios array for current language
+					const currentLanguage = audioCacheGroupMultilanguage.getSelectedLanguage().id;
+
+					if (ManageAudioCacheType === "new") {
+						if (!CurrentAudioGroupData.audios[currentLanguage]) {
+							CurrentAudioGroupData.audios[currentLanguage] = [];
+						}
+						CurrentAudioGroupData.audios[currentLanguage].push(CurrentAudioCacheData);
+
+						// Update table
+						audioCacheTable.find("tbody tr[tr-type='none-notice']").remove();
+						audioCacheTable.find("tbody").append($(createAudioCacheTableElement(CurrentAudioCacheData)));
+					} else {
+						const audioIndex = CurrentAudioGroupData.audios[currentLanguage].findIndex((a) => a.id === CurrentAudioCacheData.id);
+						if (audioIndex !== -1) {
+							CurrentAudioGroupData.audios[currentLanguage][audioIndex] = CurrentAudioCacheData;
+						}
+
+						audioCacheTable.find(`tbody tr[audio-id="${CurrentAudioCacheData.id}"]`).replaceWith($(createAudioCacheTableElement(CurrentAudioCacheData)));
+					}
+
+					currentAudioCacheName.text(CurrentAudioCacheData.query);
+					ManageAudioCacheType = "edit";
+
+					saveAudioCacheButton.prop("disabled", true);
+					saveButtonSpinner.addClass("d-none");
+
+					IsSavingAudioCacheTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: `Audio cache ${ManageAudioCacheType === "new" ? "added" : "updated"} successfully.`,
+						timeout: 6000,
+					});
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving audio cache. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving audio cache: ", saveError);
+
+					saveAudioCacheButton.prop("disabled", false);
+					saveButtonSpinner.addClass("d-none");
+
+					IsSavingAudioCacheTab = false;
+				},
+			);
+		});
+
 		// Init
 		FillCacheMessageGroup();
+		FillCacheAudioGroup();
 	});
 }

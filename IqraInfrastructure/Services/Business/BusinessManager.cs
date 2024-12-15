@@ -7,7 +7,6 @@ using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
 using MongoDB.Driver;
 using Serilog;
 using System.Net;
@@ -2543,6 +2542,13 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
+        /**
+         * 
+         * Cache Tab
+         * Message Group | Message Cache
+         * 
+        **/
+
         public async Task<FunctionReturnResult<BusinessAppCacheMessageGroup?>> AddOrUpdateMessageGroup(long businessId, IFormCollection formData, string postType, string? existingGroupId)
         {
             var result = new FunctionReturnResult<BusinessAppCacheMessageGroup?>();
@@ -2733,6 +2739,197 @@ namespace IqraInfrastructure.Services.Business
         public async Task<bool> CheckBusinessCacheMessageGroupMessageExists(long businessId, string groupId, string language, string existingCacheId)
         {
             var result = await _businessAppRepository.CheckCacheMessageGroupMessageExists(businessId, groupId, language, existingCacheId);
+            return result;
+        }
+
+        /**
+         * 
+         * Cache Tab
+         * Audio Group | Audio Cache
+         * 
+        **/
+
+        public async Task<FunctionReturnResult<BusinessAppCacheAudioGroup?>> AddOrUpdateAudioGroup(long businessId, IFormCollection formData, string postType, string? existingGroupId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheAudioGroup?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateAudioGroup:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateAudioGroup:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newAudioGroup = new BusinessAppCacheAudioGroup();
+
+            // Name validation
+            if (!changes.RootElement.TryGetProperty("name", out var nameElement))
+            {
+                result.Code = "AddOrUpdateAudioGroup:3";
+                result.Message = "Name not found.";
+                return result;
+            }
+
+            string? name = nameElement.GetString();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                result.Code = "AddOrUpdateAudioGroup:4";
+                result.Message = "Name is required.";
+                return result;
+            }
+            newAudioGroup.Name = name;
+
+            // Initialize audios dictionary for all business languages
+            List<string> businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+            foreach (var language in businessLanguages)
+            {
+                newAudioGroup.Audios[language] = new List<BusinessAppCacheAudio>();
+            }
+
+            // Saving or Updating
+            if (postType == "new")
+            {
+                newAudioGroup.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddCacheAudioGroup(businessId, newAudioGroup);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateAudioGroup:5";
+                    result.Message = "Failed to add audio group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newAudioGroup.Id = existingGroupId;
+
+                var updateResult = await _businessAppRepository.UpdateAudioGroupName(businessId, newAudioGroup.Id, newAudioGroup.Name);
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateAudioGroup:6";
+                    result.Message = "Failed to update audio group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newAudioGroup;
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppCacheAudio?>> AddOrUpdateAudioGroupAudio(long businessId, string groupId, IFormCollection formData, string postType, string language, string? existingAudioCacheId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateAudioGroupAudio:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateAudioGroupAudio:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newAudio = new BusinessAppCacheAudio();
+
+            // Query validation
+            if (!changes.RootElement.TryGetProperty("query", out var queryElement))
+            {
+                result.Code = "AddOrUpdateAudioGroupAudio:3";
+                result.Message = "Query not found.";
+                return result;
+            }
+
+            string? query = queryElement.GetString();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                result.Code = "AddOrUpdateAudioGroupAudio:4";
+                result.Message = "Query is required.";
+                return result;
+            }
+            newAudio.Query = query;
+
+            // Unused expiry hours validation
+            if (changes.RootElement.TryGetProperty("unusedExpiryHours", out var expiryElement))
+            {
+                int expiryHours = expiryElement.GetInt32();
+                if (expiryHours < 1)
+                {
+                    result.Code = "AddOrUpdateAudioGroupAudio:5";
+                    result.Message = "Expiry hours must be at least 1.";
+                    return result;
+                }
+                newAudio.UnusedExpiryHours = expiryHours;
+            }
+            else
+            {
+                newAudio.UnusedExpiryHours = 24; // Default value
+            }
+
+            // Saving or updating
+            if (postType == "new")
+            {
+                newAudio.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddAudioToGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newAudio
+                );
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateAudioGroupAudio:6";
+                    result.Message = "Failed to add audio to group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newAudio.Id = existingAudioCacheId;
+
+                var updateResult = await _businessAppRepository.UpdateAudioInGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newAudio
+                );
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateAudioGroupAudio:7";
+                    result.Message = "Failed to update audio in group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newAudio;
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessCacheAudioGroupExists(long businessId, string existingGroupId)
+        {
+            var result = await _businessAppRepository.CheckCacheAudioGroupExists(businessId, existingGroupId);
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessCacheAudioGroupAudioExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var result = await _businessAppRepository.CheckCacheAudioGroupAudioExists(businessId, groupId, language, existingCacheId);
             return result;
         }
     }
