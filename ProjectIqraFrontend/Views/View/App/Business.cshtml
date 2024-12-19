@@ -54,11 +54,11 @@
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
-                    <a class="nav_link" for="integrations-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link active" for="integrations-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-cube nav_icon'></i>
                         <span class="nav_name">Integrations</span> 
                     </a>
-                    <a class="nav_link active" for="cache-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="cache-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-recycle nav_icon'></i>
                         <span class="nav_name">Cache</span> 
                     </a>
@@ -1587,16 +1587,36 @@
         </div>
 
         <!-- Integrations Container -->
-        <div class="main-container fade d-none w-100" id="integrations-tab">
+        <div class="main-container fade show w-100" id="integrations-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>Integrations</span></h3>
 
             <div class="inner-container">
-                todo
+                <!-- Add Integration and Search Section -->
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                id="addNewIntegrationButton">
+                            <span>+ Add New Integration</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Search Integration" 
+                            aria-label="Search Integration">
+                        <button class="input-group-button btn btn-primary">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Integrations List -->
+                <div class="row" id="integrationsListContainer">
+                    <!-- Integration cards will be added here dynamically -->
+                </div>
             </div>
         </div>
 
         <!-- Cache Container -->
-        <div class="main-container fade show w-100" id="cache-tab">
+        <div class="main-container fade d-none w-100" id="cache-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-recycle'></i> <span>Cache</span></h3>
             
             <!-- Main Navigation Header -->
@@ -4876,6 +4896,56 @@
                 </div>
             </div>
         </div>
+
+        <!--
+
+                  Modals 
+
+        -->
+        <!-- Add New Integration Modal -->
+        <div class="modal modal-lg fade" id="addNewIntegrationModal" tabindex="-1" aria-labelledby="addNewIntegrationModalLabel">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addNewIntegrationModalLabel">Add New Integration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <!-- Available Integrations List -->
+                    <div class="modal-body fade show" id="availableIntegrationsContainer">
+                        <div class="row" id="availableIntegrationsList">
+                            <!-- Available integration cards will be added here dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Integration Manager Form -->
+                    <div class="modal-body fade d-none" id="integrationManagerContainer">
+                        <div class="mb-3">
+                            <label for="integrationFriendlyNameInput" class="form-label">Friendly Name</label>
+                            <input type="text" class="form-control" id="integrationFriendlyNameInput" 
+                                placeholder="Enter a name for this integration">
+                        </div>
+                        <div id="integrationFieldsContainer">
+                            <!-- Dynamic fields will be added here based on selected integration -->
+                        </div>
+                        <div id="integrationHelpContainer" class="mt-3">
+                            <!-- Help link will be added here -->
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <!-- Back button shown only in manager view -->
+                        <button type="button" class="btn btn-secondary d-none mb-3" id="backToIntegrationsListButton">
+                            Back to List
+                        </button>
+                        <button type="button" class="btn btn-primary d-none mb-3" id="saveIntegrationButton">
+                            Save Integration
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ASP -->
@@ -4887,7 +4957,7 @@
     <!-- Libraries -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
     <script src="~/libs/jquery-ui-1.13.3.custom/jquery-ui.min.js"></script>
-    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
     <script src="~/libs/esprima-4.0.1/dist/esprima.js"></script>
     <script src="~/libs/chart.js-4.4.2/package/dist/chart.umd.js"></script>
     <script src="~/js/vanillaEmojiPicker.js"></script>
@@ -5157,6 +5227,7 @@
     <script src="~/scripts/app/business/tools_tab.js"></script>
     <script src="~/scripts/app/business/context_tab.js"></script>
     <script src="~/scripts/app/business/cache_tab.js"></script>
+    <script src="~/scripts/app/business/integrations_tab.js"></script>
 
     <script src="~/scripts/app/business/agents_tab.js"></script>
     <script src="~/scripts/app/business/overview_tab.js"></script>
@@ -5190,6 +5261,7 @@
 		                    initToolsTab();
                             initContextTab();
                             initCacheTab();
+                            initIntegrationsTab();
                             initAgentTab();
 
                             let businessTutorials = BusinessFullData.businessData.tutorials;

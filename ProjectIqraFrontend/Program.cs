@@ -1,12 +1,14 @@
 using IqraCore.Entities.Frontend;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Number;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
+using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
@@ -133,6 +135,23 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
 
             await llmProviderManager.InitializeProvidersAsync();
+
+            // Integrations
+            IntegrationsRepository integrationsRepository = new IntegrationsRepository(
+                appConfig["IntegrationsDatabase:ConnectionString"],
+                appConfig["IntegrationsDatabase:DatabaseName"]
+            );
+            IntegrationsLogoRepository integrationsLogoRepository = new IntegrationsLogoRepository(
+                appConfig["IntegrationsLogoRepository:Endpoint"],
+                int.Parse(appConfig["IntegrationsLogoRepository:Port"]),
+                appConfig["IntegrationsLogoRepository:AccessKey"],
+                appConfig["IntegrationsLogoRepository:SecretKey"],
+                appConfig["IntegrationsLogoRepository:BucketName"],
+                bool.Parse(appConfig["IntegrationsLogoRepository:IsSecure"])
+            );
+            IntegrationsManager integrationsManager = new IntegrationsManager(integrationsRepository, businessAppRepository, integrationsLogoRepository);
+            builder.Services.AddSingleton<IntegrationsManager>(integrationsManager);
+
 
             // Views Links Config
             ViewLinkConfiguration viewLinkConfiguration = new ViewLinkConfiguration()

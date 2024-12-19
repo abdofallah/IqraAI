@@ -52,13 +52,17 @@
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
-                    <a href="#" class="nav_link active" for="llm-provider-tab">
+                    <a href="#" class="nav_link" for="llm-provider-tab">
                         <i class='fa-regular fa-message-text nav_icon'></i>
                         <span class="nav_name">LLM Provider</span>
                     </a>
                     <a href="#" class="nav_link" for="languages-tab">
                         <i class='fa-regular fa-language nav_icon'></i>
                         <span class="nav_name">Languages</span>
+                    </a>
+                    <a href="#" class="nav_link active" for="integrations-tab">
+                        <i class='fa-regular fa-cube nav_icon'></i>
+                        <span class="nav_name">Integrations</span>
                     </a>
                 </div>
             </div>
@@ -1377,7 +1381,7 @@
         </div>
 
         <!-- LLM Provider Container -->
-        <div class="main-container fade w-100 show" id="llm-provider-tab">
+        <div class="main-container fade w-100 d-none" id="llm-provider-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-message-text nav_icon'></i> <span>LLM Provider</span></h3>
             <div class="inner-container">
                 <!-- Manager Inner Tabs -->
@@ -1696,6 +1700,157 @@
                 </div>
             </div>
         </div>
+
+        <!-- Integrations Container -->
+        <div class="main-container fade show w-100" id="integrations-tab">
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>Integrations</span></h3>
+            
+            <!-- Main Navigation Header -->
+            <div class="inner-header-container w-100 mb-3" id="integrations-header">
+                <!-- Integrations List Breadcrumb -->
+                <div class="d-flex flex-column align-items-center justify-content-center w-100" id="integrationsListBreadcrumb">
+                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                        <div style="min-width: 300px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
+                                    id="addNewIntegrationButton">
+                                <span>+ Add New Integration</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Search Integration" 
+                                aria-label="Search Integration">
+                            <button class="input-group-button btn btn-primary">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Integration Manager Breadcrumb -->
+                <div class="d-flex flex-column align-items-bewteen justify-content-center fade d-none w-100" id="integrationManagerBreadcrumb">
+                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToIntegrationsListTab">Integrations</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <span id="currentIntegrationName">Integration Name</span>
+                                </li>
+                            </ol>
+                        </nav>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveIntegrationButton">
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                    </div>
+                    <ul class="nav nav-pill" id="integrationManagerInnerTab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="integration-basic-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#integration-basic" type="button" role="tab">
+                                Basic Information
+                            </button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="integration-fields-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#integration-fields" type="button" role="tab">
+                                Fields
+                            </button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="integration-help-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#integration-help" type="button" role="tab">
+                                Help
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="inner-container">
+                <!-- Integrations List -->
+                <div class="fade show w-100" id="integrationsListTab">
+                    <div class="row" id="integrationsListContainer">
+                        <!-- Integration cards will be added here -->
+                    </div>
+                </div>
+
+                <!-- Integration Manager -->
+                <div class="fade d-none w-100" id="integrationManagerTab">
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="integrationManagerTabContent">
+                        <!-- Basic Information Tab -->
+                        <div class="tab-pane fade show active" id="integration-basic" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="integrationIdInput" class="form-label">ID</label>
+                                <input type="text" class="form-control" id="integrationIdInput" 
+                                    placeholder="Integration ID (unique)">
+                            </div>
+                            <div class="mb-3">
+                                <label for="integrationNameInput" class="form-label">Name</label>
+                                <input type="text" class="form-control" id="integrationNameInput" 
+                                    placeholder="Integration Name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="integrationDescriptionInput" class="form-label">Description</label>
+                                <textarea class="form-control" id="integrationDescriptionInput" 
+                                    placeholder="Integration Description" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="integrationLogoInput" class="form-label">Logo</label>
+                                <div class="d-flex align-items-center">
+                                    <img src="/img/placeholder.png" id="integrationLogoPreview" 
+                                        class="me-3" style="width: 64px; height: 64px;">
+                                    <input type="file" class="form-control" id="integrationLogoInput" 
+                                        accept="image/*">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="integrationTypesInput" class="form-label">Types</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="integrationTypesInput" 
+                                        placeholder="Add type and press Enter">
+                                    <button class="btn btn-outline-secondary" type="button" id="addTypeButton">
+                                        Add
+                                    </button>
+                                </div>
+                                <div class="mt-2" id="integrationTypesList">
+                                    <!-- Type badges will be added here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fields Tab -->
+                        <div class="tab-pane fade" id="integration-fields" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0">Fields</h5>
+                                <button class="btn btn-primary btn-sm" id="addNewFieldButton">
+                                    <i class="fa-regular fa-plus"></i>
+                                    <span> Add Field</span>
+                                </button>
+                            </div>
+                            <div id="integrationFieldsList">
+                                <!-- Fields will be added here -->
+                            </div>
+                        </div>
+
+                        <!-- Help Tab -->
+                        <div class="tab-pane fade" id="integration-help" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="integrationHelpTextInput" class="form-label">Help Text</label>
+                                <input type="text" class="form-control" id="integrationHelpTextInput" 
+                                    placeholder="Help Text">
+                            </div>
+                            <div class="mb-3">
+                                <label for="integrationHelpUrlInput" class="form-label">Help URL</label>
+                                <input type="url" class="form-control" id="integrationHelpUrlInput" 
+                                    placeholder="Help URL">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- libs -->
@@ -1718,6 +1873,7 @@
         var CurrentRegionsList = null;
         var CurrentLLMProvidersList = null;
         var CurrentLanguagesList = null;
+        let CurrentIntegrationsList = null;
 
         // API Related Calls
 
@@ -2041,6 +2197,65 @@
             });
         }
 
+        function FetchIntegrationsFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/integrations',
+                type: 'GET',
+                dataType: "json",
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function SaveIntegrationToAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/integrations/save',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function DeleteIntegrationFromAPI(integrationId, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/admin/integrations/delete',
+                type: 'POST',
+                dataType: "json",
+                data: {
+                    integrationId: integrationId
+                },
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
         // Other Functions
 
         function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
@@ -2110,6 +2325,8 @@
                     CurrentLLMProvidersList != null
                     &&
                     CurrentLanguagesList != null
+                    &&
+                    CurrentIntegrationsList != null
                 ) {
                     clearInterval(PageLoaderInterval);      
 
@@ -5122,6 +5339,654 @@
                 }
             )
         });
+    </script>
+
+    <!-- Integrations -->
+    <script>
+        /** Dynamic Variables **/
+        let CurrentIntegrationData = null;
+        let ManageIntegrationType = null; // new or edit
+        let IsSavingIntegrationTab = false;
+
+        /** Elements Variables **/
+        const integrationsTab = $("#integrations-tab");
+        const integrationsHeader = integrationsTab.find("#integrations-header");
+
+        // List view elements
+        const integrationsListBreadcrumb = integrationsTab.find("#integrationsListBreadcrumb");
+        const integrationsListTab = integrationsTab.find("#integrationsListTab");
+        const integrationsListContainer = integrationsTab.find("#integrationsListContainer");
+        const addNewIntegrationButton = integrationsTab.find("#addNewIntegrationButton");
+
+        // Manager view elements
+        const integrationManagerBreadcrumb = integrationsTab.find("#integrationManagerBreadcrumb");
+        const integrationManagerTab = integrationsTab.find("#integrationManagerTab");
+        const currentIntegrationName = integrationsTab.find("#currentIntegrationName");
+        const saveIntegrationButton = integrationsTab.find("#saveIntegrationButton");
+        const switchBackToIntegrationsListTab = integrationsTab.find("#switchBackToIntegrationsListTab");
+
+        // Form elements
+        const integrationIdInput = $("#integrationIdInput");
+        const integrationNameInput = $("#integrationNameInput");
+        const integrationDescriptionInput = $("#integrationDescriptionInput");
+        const integrationLogoInput = $("#integrationLogoInput");
+        const integrationLogoPreview = $("#integrationLogoPreview");
+        const integrationTypesInput = $("#integrationTypesInput");
+        const integrationTypesList = $("#integrationTypesList");
+        const addTypeButton = $("#addTypeButton");
+        const addNewFieldButton = $("#addNewFieldButton");
+        const integrationFieldsList = $("#integrationFieldsList");
+        const integrationHelpTextInput = $("#integrationHelpTextInput");
+        const integrationHelpUrlInput = $("#integrationHelpUrlInput");
+
+        /** Core Functions **/
+
+        function createIntegrationCardElement(integration) {
+            const typesBadges = integration.type.map(type => 
+                `<span class="badge border border-dark text-dark me-1">${type}</span>`
+            ).join('');
+
+            return `
+                <div class="col-lg-4 col-md-6 col-12 mb-3">
+                    <div class="business-card d-flex flex-column align-items-start justify-content-center"
+                        data-integration-id="${integration.id}">
+                        <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                            <div class="d-flex flex-row align-items-center">
+                                <img src="${integration.logo}" class="me-3" style="width: 48px; height: 48px;">
+                                <div>
+                                    <h4 class="mb-1">${integration.name}</h4>
+                                    <div>${typesBadges}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-info btn-sm me-2" button-type="editIntegration">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" button-type="deleteIntegration">
+                                    <i class="fa-regular fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createFieldElement(fieldData = null) {
+            const fieldId = fieldData?.id || generateUniqueId();
+            
+            return `
+                <div class="card mb-3 integration-field" data-field-id="${fieldId}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h6 class="card-title mb-0">Field</h6>
+                            <button type="button" class="btn btn-danger btn-sm remove-field-button">
+                                <i class="fa-regular fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Field ID</label>
+                                <input type="text" class="form-control field-id-input" 
+                                    placeholder="Field ID" value="${fieldData?.id || ''}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-control field-name-input" 
+                                    placeholder="Field Name" value="${fieldData?.name || ''}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select field-type-select">
+                                    <option value="text" ${fieldData?.type === 'text' ? 'selected' : ''}>Text</option>
+                                    <option value="number" ${fieldData?.type === 'number' ? 'selected' : ''}>Number</option>
+                                    <option value="select" ${fieldData?.type === 'select' ? 'selected' : ''}>Select</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tooltip</label>
+                                <input type="text" class="form-control field-tooltip-input" 
+                                    placeholder="Field Tooltip" value="${fieldData?.tooltip || ''}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input field-required-check" type="checkbox" 
+                                        ${fieldData?.required ? 'checked' : ''}>
+                                    <label class="form-check-label">Required</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input field-encrypted-check" type="checkbox"
+                                        ${fieldData?.isEncrypted ? 'checked' : ''}>
+                                    <label class="form-check-label">Encrypted</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field-options-container ${fieldData?.type === 'select' ? '' : 'd-none'} mt-3">
+                            <label class="form-label">Options</label>
+                            <div class="field-options-list">
+                                ${fieldData?.options?.map(option => createFieldOptionElement(option)).join('') || ''}
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
+                                <i class="fa-regular fa-plus"></i> Add Option
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createFieldOptionElement(optionData = null) {
+            return `
+                <div class="input-group mb-2 field-option">
+                    <input type="text" class="form-control option-key-input" placeholder="Option Key"
+                        value="${optionData?.key || ''}">
+                    <input type="text" class="form-control option-value-input" placeholder="Option Value"
+                        value="${optionData?.value || ''}">
+                    <button class="btn btn-outline-danger remove-option-button" type="button">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function createTypeBadgeElement(type) {
+            return `
+                <span class="badge border me-1 mb-1">
+                    ${type}
+                    <button type="button" class="btn-close ms-1" aria-label="Remove"></button>
+                </span>
+            `;
+        }
+
+        function generateUniqueId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        function FillIntegrationsList() {
+            integrationsListContainer.empty();
+            
+            FetchIntegrationsFromAPI(
+                (integrations) => {
+                    CurrentIntegrationsList = integrations;
+                    
+                    if (integrations.length === 0) {
+                        integrationsListContainer.append(`
+                            <div class="col-12 text-center p-5">
+                                <p class="text-muted mb-0">No integrations found</p>
+                            </div>
+                        `);
+                        return;
+                    }
+
+                    integrations.forEach(integration => {
+                        integrationsListContainer.append($(createIntegrationCardElement(integration)));
+                    });
+                },
+                (error) => {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "Error loading integrations. Please try again.",
+                        timeout: 6000
+                    });
+                    console.error("Error loading integrations:", error);
+                }
+            );
+        }
+        
+        function ShowIntegrationsListTab() {
+            integrationManagerBreadcrumb.removeClass("show");
+            integrationManagerTab.removeClass("show");
+            setTimeout(() => {
+                integrationManagerBreadcrumb.addClass("d-none");
+                integrationManagerTab.addClass("d-none");
+
+                integrationsListBreadcrumb.removeClass("d-none");
+                integrationsListTab.removeClass("d-none");
+                setTimeout(() => {
+                    integrationsListBreadcrumb.addClass("show");
+                    integrationsListTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+
+        function ShowIntegrationManagerTab() {
+            integrationsListBreadcrumb.removeClass("show");
+            integrationsListTab.removeClass("show");
+            setTimeout(() => {
+                integrationsListBreadcrumb.addClass("d-none");
+                integrationsListTab.addClass("d-none");
+
+                integrationManagerBreadcrumb.removeClass("d-none");
+                integrationManagerTab.removeClass("d-none");
+                setTimeout(() => {
+                    integrationManagerBreadcrumb.addClass("show");
+                    integrationManagerTab.addClass("show");
+                }, 10);
+            }, 300);
+        }
+    
+        /** Validation and Changes Functions **/
+        function ValidateIntegrationTab(onlyRemove = true) {
+            const errors = [];
+            let validated = true;
+
+            // Basic info validation
+            const id = integrationIdInput.val().trim();
+            if (!id) {
+                validated = false;
+                errors.push("Integration ID is required");
+                if (!onlyRemove) integrationIdInput.addClass("is-invalid");
+            } else {
+                integrationIdInput.removeClass("is-invalid");
+            }
+
+            const name = integrationNameInput.val().trim();
+            if (!name) {
+                validated = false;
+                errors.push("Integration name is required");
+                if (!onlyRemove) integrationNameInput.addClass("is-invalid");
+            } else {
+                integrationNameInput.removeClass("is-invalid");
+            }
+
+            // Type validation
+            const types = collectTypes();
+            if (types.length === 0) {
+                validated = false;
+                errors.push("At least one integration type is required");
+                if (!onlyRemove) integrationTypesInput.addClass("is-invalid");
+            } else {
+                integrationTypesInput.removeClass("is-invalid");
+            }
+
+            // Fields validation
+            const fields = collectFields();
+            if (fields.length === 0) {
+                validated = false;
+                errors.push("At least one field is required");
+            }
+
+            // Validate each field
+            fields.forEach((field, index) => {
+                const fieldElement = $(`.integration-field[data-field-id="${field.id}"]`);
+                
+                if (!field.id.trim()) {
+                    validated = false;
+                    errors.push(`Field ${index + 1}: ID is required`);
+                    if (!onlyRemove) fieldElement.find(".field-id-input").addClass("is-invalid");
+                }
+                
+                if (!field.name.trim()) {
+                    validated = false;
+                    errors.push(`Field ${index + 1}: Name is required`);
+                    if (!onlyRemove) fieldElement.find(".field-name-input").addClass("is-invalid");
+                }
+
+                if (field.type === 'select' && (!field.options || field.options.length === 0)) {
+                    validated = false;
+                    errors.push(`Field ${index + 1}: Select field must have at least one option`);
+                }
+            });
+
+            return {
+                validated: validated,
+                errors: errors
+            };
+        }
+
+        function CheckIntegrationTabHasChanges(enableDisableButton = true) {
+            const changes = {
+                id: integrationIdInput.val().trim(),
+                name: integrationNameInput.val().trim(),
+                description: integrationDescriptionInput.val().trim(),
+                type: collectTypes(),
+                fields: collectFields(),
+                help: {
+                    text: integrationHelpTextInput.val().trim(),
+                    uri: integrationHelpUrlInput.val().trim()
+                }
+            };
+
+            let hasChanges = false;
+
+            if (ManageIntegrationType === "new") {
+                hasChanges = true;
+            } else {
+                // Compare with current data
+                hasChanges = JSON.stringify(changes) !== JSON.stringify(CurrentIntegrationData);
+            }
+
+            if (enableDisableButton) {
+                saveIntegrationButton.prop("disabled", !hasChanges);
+            }
+
+            return {
+                hasChanges: hasChanges,
+                changes: changes
+            };
+        }
+
+        function collectTypes() {
+            const types = [];
+            integrationTypesList.find(".badge").each(function() {
+                types.push($(this).text().trim());
+            });
+            return types;
+        }
+
+        function collectFields() {
+            const fields = [];
+            integrationFieldsList.find(".integration-field").each(function() {
+                const field = $(this);
+                const fieldData = {
+                    id: field.find(".field-id-input").val().trim(),
+                    name: field.find(".field-name-input").val().trim(),
+                    type: field.find(".field-type-select").val(),
+                    tooltip: field.find(".field-tooltip-input").val().trim(),
+                    required: field.find(".field-required-check").is(":checked"),
+                    isEncrypted: field.find(".field-encrypted-check").is(":checked")
+                };
+
+                if (fieldData.type === 'select') {
+                    fieldData.options = [];
+                    field.find(".field-option").each(function() {
+                        const option = $(this);
+                        fieldData.options.push({
+                            key: option.find(".option-key-input").val().trim(),
+                            value: option.find(".option-value-input").val().trim()
+                        });
+                    });
+                }
+
+                fields.push(fieldData);
+            });
+            return fields;
+        }
+
+        function resetOrClearIntegrationManager() {
+            integrationIdInput.val("");
+            integrationNameInput.val("");
+            integrationDescriptionInput.val("");
+            integrationLogoPreview.attr("src", "/img/placeholder.png");
+            integrationLogoInput.val("");
+            integrationTypesList.empty();
+            integrationFieldsList.empty();
+            integrationHelpTextInput.val("");
+            integrationHelpUrlInput.val("");
+
+            integrationManagerTab.find(".is-invalid").removeClass("is-invalid");
+            saveIntegrationButton.prop("disabled", true);
+        }
+
+        function fillIntegrationManager(integrationData) {
+            resetOrClearIntegrationManager();
+
+            integrationIdInput.val(integrationData.id);
+            integrationNameInput.val(integrationData.name);
+            integrationDescriptionInput.val(integrationData.description);
+            if (integrationData.logo) {
+                integrationLogoPreview.attr("src", integrationData.logo);
+            }
+
+            // Fill types
+            integrationData.type.forEach(type => {
+                integrationTypesList.append($(createTypeBadgeElement(type)));
+            });
+
+            // Fill fields
+            integrationData.fields.forEach(field => {
+                integrationFieldsList.append($(createFieldElement(field)));
+            });
+
+            // Fill help
+            integrationHelpTextInput.val(integrationData.help.text);
+            integrationHelpUrlInput.val(integrationData.help.uri);
+
+            saveIntegrationButton.prop("disabled", true);
+        }
+
+        /** Event Handlers **/
+        function initIntegrationsTab() {
+            // Add new integration
+            addNewIntegrationButton.on("click", (event) => {
+                event.preventDefault();
+                
+                ManageIntegrationType = "new";
+                CurrentIntegrationData = null;
+                currentIntegrationName.text("New Integration");
+                
+                resetOrClearIntegrationManager();
+                ShowIntegrationManagerTab();
+            });
+
+            // Switch back to list
+            switchBackToIntegrationsListTab.on("click", async (event) => {
+                event.preventDefault();
+
+                const changes = CheckIntegrationTabHasChanges(false);
+                if (changes.hasChanges) {
+                    const confirmDialog = new BootstrapConfirmDialog({
+                        title: "Unsaved Changes",
+                        message: "You have unsaved changes. Are you sure you want to discard them?",
+                        confirmText: "Discard",
+                        cancelText: "Stay",
+                        confirmButtonClass: "btn-danger"
+                    });
+
+                    const confirmed = await confirmDialog.show();
+                    if (!confirmed) return;
+                }
+
+                ShowIntegrationsListTab();
+                ManageIntegrationType = null;
+                CurrentIntegrationData = null;
+            });
+
+            // Edit integration
+            integrationsListContainer.on("click", "button[button-type='editIntegration']", (event) => {
+                event.preventDefault();
+                const card = $(event.currentTarget).closest(".business-card");
+                const integrationId = card.data("integration-id");
+                
+                CurrentIntegrationData = CurrentIntegrationsList.find(i => i.id === integrationId);
+                if (!CurrentIntegrationData) return;
+                
+                ManageIntegrationType = "edit";
+                currentIntegrationName.text(CurrentIntegrationData.name);
+                
+                fillIntegrationManager(CurrentIntegrationData);
+                ShowIntegrationManagerTab();
+            });
+
+            // Delete integration
+            integrationsListContainer.on("click", "button[button-type='deleteIntegration']", async (event) => {
+                event.preventDefault();
+                const card = $(event.currentTarget).closest(".business-card");
+                const integrationId = card.data("integration-id");
+
+                const confirmDialog = new BootstrapConfirmDialog({
+                    title: "Delete Integration",
+                    message: "Are you sure you want to delete this integration? This action cannot be undone.",
+                    confirmText: "Delete",
+                    cancelText: "Cancel",
+                    confirmButtonClass: "btn-danger"
+                });
+
+                const confirmed = await confirmDialog.show();
+                if (!confirmed) return;
+
+                DeleteIntegrationFromAPI(
+                    integrationId,
+                    () => {
+                        card.closest(".col-lg-4").remove();
+                        AlertManager.createAlert({
+                            type: "success",
+                            message: "Integration deleted successfully.",
+                            timeout: 6000
+                        });
+                    },
+                    (error) => {
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: error.message || "Error deleting integration. Please try again.",
+                            timeout: 6000
+                        });
+                        console.error("Error deleting integration:", error);
+                    }
+                );
+            });
+            
+            // Type management
+            addTypeButton.on("click", () => {
+                const type = integrationTypesInput.val().trim();
+                if (!type) return;
+
+                integrationTypesList.append($(createTypeBadgeElement(type)));
+                integrationTypesInput.val("");
+                CheckIntegrationTabHasChanges();
+            });
+
+            integrationTypesInput.on("keypress", (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    addTypeButton.click();
+                }
+            });
+
+            integrationTypesList.on("click", ".btn-close", function(event) {
+                $(this).closest(".badge").remove();
+                CheckIntegrationTabHasChanges();
+            });
+
+            // Field management
+            addNewFieldButton.on("click", () => {
+                integrationFieldsList.append($(createFieldElement()));
+                CheckIntegrationTabHasChanges();
+            });
+
+            integrationFieldsList.on("click", ".remove-field-button", function() {
+                $(this).closest(".integration-field").remove();
+                CheckIntegrationTabHasChanges();
+            });
+
+            integrationFieldsList.on("change", ".field-type-select", function() {
+                const optionsContainer = $(this).closest(".integration-field").find(".field-options-container");
+                if ($(this).val() === "select") {
+                    optionsContainer.removeClass("d-none");
+                } else {
+                    optionsContainer.addClass("d-none");
+                }
+                CheckIntegrationTabHasChanges();
+            });
+
+            // Field options management
+            integrationFieldsList.on("click", ".add-option-button", function() {
+                $(this).siblings(".field-options-list").append($(createFieldOptionElement()));
+                CheckIntegrationTabHasChanges();
+            });
+
+            integrationFieldsList.on("click", ".remove-option-button", function() {
+                $(this).closest(".field-option").remove();
+                CheckIntegrationTabHasChanges();
+            });
+
+            // Form changes
+            integrationManagerTab.on("input change", "input, select, textarea", () => {
+                CheckIntegrationTabHasChanges();
+            });
+
+            // Logo preview
+            integrationLogoInput.on("change", function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        integrationLogoPreview.attr("src", e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Save integration
+            saveIntegrationButton.on("click", async (event) => {
+                event.preventDefault();
+
+                if (IsSavingIntegrationTab) return;
+
+                const validationResult = ValidateIntegrationTab(false);
+                if (!validationResult.validated) {
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+                        timeout: 6000
+                    });
+                    return;
+                }
+
+                const changes = CheckIntegrationTabHasChanges(false);
+                if (!changes.hasChanges) return;
+
+                saveIntegrationButton.prop("disabled", true);
+                const saveButtonSpinner = saveIntegrationButton.find(".spinner-border");
+                saveButtonSpinner.removeClass("d-none");
+
+                IsSavingIntegrationTab = true;
+
+                const formData = new FormData();
+                formData.append("changes", JSON.stringify(changes.changes));
+                formData.append("postType", ManageIntegrationType);
+
+                if (ManageIntegrationType === "edit") {
+                    formData.append("existingIntegrationId", CurrentIntegrationData.id);
+                }
+
+                if (integrationLogoInput[0].files.length > 0) {
+                    formData.append("logo", integrationLogoInput[0].files[0]);
+                }
+
+                SaveIntegrationToAPI(
+                    formData,
+                    (savedIntegration) => {
+                        AlertManager.createAlert({
+                            type: "success",
+                            message: `Integration ${ManageIntegrationType === "new" ? "added" : "updated"} successfully.`,
+                            timeout: 6000
+                        });
+
+                        saveIntegrationButton.prop("disabled", true);
+                        saveButtonSpinner.addClass("d-none");
+                        IsSavingIntegrationTab = false;
+
+                        ShowIntegrationsListTab();
+                        FillIntegrationsList();
+                    },
+                    (error) => {
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: error.message || "Error saving integration. Please try again.",
+                            timeout: 6000
+                        });
+
+                        console.error("Error saving integration:", error);
+
+                        saveIntegrationButton.prop("disabled", false);
+                        saveButtonSpinner.addClass("d-none");
+                        IsSavingIntegrationTab = false;
+                    }
+                );
+            });
+
+            // Initial load
+            FillIntegrationsList();
+        }
+
+        initIntegrationsTab();
     </script>
 </body>
 

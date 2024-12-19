@@ -1,11 +1,10 @@
-﻿using IqraCore.Entities.Business.Integration;
-
-namespace IqraCore.Entities.Business
+﻿namespace IqraCore.Entities.Business
 {
     public class BusinessAppIntegration
     {
-        public List<BusinessAppIntegrationSTT> STT { get; set; } = new List<BusinessAppIntegrationSTT>();
-        public List<BusinessAppIntegrationTTS> TTS { get; set; } = new List<BusinessAppIntegrationTTS>();
-        public List<BusinessAppIntegrationLLM> LLM { get; set; } = new List<BusinessAppIntegrationLLM>();
+        public string Id { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string FriendlyName { get; set; } = string.Empty;
+        public Dictionary<string, string> Fields { get; set; } = new Dictionary<string, string>();
     }
 }

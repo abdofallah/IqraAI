@@ -1392,3 +1392,28 @@ table.table > thead > * > * {
 	border-bottom: var(--bs-border-width) solid
 		var(--bs-form-invalid-border-color) !important;
 }
+
+.available-integration-card {
+	cursor: pointer;
+}
+
+.available-integration-card img {
+	height: 64px;
+	max-width: -webkit-fill-available;
+	object-fit: contain;
+}
+
+#integrationTypesList .badge,
+.available-integration-card .badge {
+	border-color: #94b447 !important;
+	color: #94b447 !important;
+}
+
+#addNewIntegrationModal .modal-footer {
+	border: none !important;
+	padding: 0px !important;
+}
+
+#addNewIntegrationModal .modal-body {
+	padding-bottom: 0px !important;
+}
