@@ -1417,3 +1417,10 @@ table.table > thead > * > * {
 #addNewIntegrationModal .modal-body {
 	padding-bottom: 0px !important;
 }
+
+#integrationLogoPreview {
+	min-width: 124px;
+	max-width: 100%;
+	height: 64px;
+	object-fit: contain;
+}

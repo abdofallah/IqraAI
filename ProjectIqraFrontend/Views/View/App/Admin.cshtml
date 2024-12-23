@@ -1748,7 +1748,7 @@
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="integration-basic-tab" data-bs-toggle="tab" 
                                     data-bs-target="#integration-basic" type="button" role="tab">
-                                Basic Information
+                                General
                             </button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
@@ -1800,7 +1800,7 @@
                                 <label for="integrationLogoInput" class="form-label">Logo</label>
                                 <div class="d-flex align-items-center">
                                     <img src="/img/placeholder.png" id="integrationLogoPreview" 
-                                        class="me-3" style="width: 64px; height: 64px;">
+                                        class="me-3">
                                     <input type="file" class="form-control" id="integrationLogoInput" 
                                         accept="image/*">
                                 </div>
@@ -1816,6 +1816,14 @@
                                 </div>
                                 <div class="mt-2" id="integrationTypesList">
                                     <!-- Type badges will be added here -->
+                                </div>
+                            </div>
+                            <div class="">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="integrationDisabledCheck">
+                                    <label class="form-check-label" for="integrationDisabledCheck">
+                                        Is Disabled?
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -1852,6 +1860,12 @@
             </div>
         </div>
     </div>
+
+    <!-- ASP -->
+    <script>
+        const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
+        const IntegrationLogoURL = "@(TempData["IntegrationLogoURL"])";
+    </script>
 
     <!-- libs -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
@@ -2222,27 +2236,6 @@
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function DeleteIntegrationFromAPI(integrationId, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/admin/integrations/delete',
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    integrationId: integrationId
-                },
                 success: (response) => {
                     if (!response.success) {
                         errorCallback(response);
@@ -5378,35 +5371,28 @@
         const integrationFieldsList = $("#integrationFieldsList");
         const integrationHelpTextInput = $("#integrationHelpTextInput");
         const integrationHelpUrlInput = $("#integrationHelpUrlInput");
+        const integrationDisabledCheck = $("#integrationDisabledCheck");
 
         /** Core Functions **/
 
         function createIntegrationCardElement(integration) {
             const typesBadges = integration.type.map(type => 
-                `<span class="badge border border-dark text-dark me-1">${type}</span>`
+                `<span class="badge border border-dark text-dark me-1 mb-1">${type}</span>`
             ).join('');
 
             return `
                 <div class="col-lg-4 col-md-6 col-12 mb-3">
                     <div class="business-card d-flex flex-column align-items-start justify-content-center"
                         data-integration-id="${integration.id}">
-                        <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                        <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
                             <div class="d-flex flex-row align-items-center">
-                                <img src="${integration.logo}" class="me-3" style="width: 48px; height: 48px;">
+                                <img src="${IntegrationLogoURL + "/" + integration.logo + ".webp"}">
                                 <div>
-                                    <h4 class="mb-1">${integration.name}</h4>
-                                    <div>${typesBadges}</div>
+                                    <h4>${integration.name}</h4>
                                 </div>
                             </div>
-                            <div>
-                                <button class="btn btn-info btn-sm me-2" button-type="editIntegration">
-                                    <i class="fa-regular fa-pen-to-square"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm" button-type="deleteIntegration">
-                                    <i class="fa-regular fa-trash"></i>
-                                </button>
-                            </div>
                         </div>
+                        <div>${typesBadges}</div>
                     </div>
                 </div>
             `;
@@ -5452,6 +5438,19 @@
                             </div>
                         </div>
                         <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Placeholder</label>
+                                <input type="text" class="form-control field-placeholder-input" 
+                                    placeholder="Field Placeholder" value="${fieldData?.placeholder || ''}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Default Value</label>
+                                <input type="text" class="form-control field-default-value-input" 
+                                    placeholder="Default Value" value="${fieldData?.defaultValue || ''}"
+                                    ${fieldData?.type === 'select' ? 'disabled' : ''}>
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input field-required-check" type="checkbox" 
@@ -5488,13 +5487,16 @@
                         value="${optionData?.key || ''}">
                     <input type="text" class="form-control option-value-input" placeholder="Option Value"
                         value="${optionData?.value || ''}">
+                    <div class="input-group-text">
+                        <input class="form-check-input option-default-check mt-0" type="radio" name="defaultOption" ${optionData?.isDefault ? 'checked' : ''}>
+                        <label class="ms-2">Default?</label>
+                    </div>
                     <button class="btn btn-outline-danger remove-option-button" type="button">
                         <i class="fa-regular fa-trash"></i>
                     </button>
                 </div>
             `;
         }
-
         function createTypeBadgeElement(type) {
             return `
                 <span class="badge border me-1 mb-1">
@@ -5595,6 +5597,15 @@
                 integrationNameInput.removeClass("is-invalid");
             }
 
+            // Logo validation
+            if (ManageIntegrationType === "new" && integrationLogoInput[0].files.length === 0) {
+                validated = false;
+                errors.push("Integration logo is required");
+                if (!onlyRemove) integrationLogoInput.addClass("is-invalid");
+            } else {
+                integrationLogoInput.removeClass("is-invalid");
+            }
+
             // Type validation
             const types = collectTypes();
             if (types.length === 0) {
@@ -5632,6 +5643,15 @@
                     validated = false;
                     errors.push(`Field ${index + 1}: Select field must have at least one option`);
                 }
+
+                if (field.type === 'select' && field.options) {
+                    field.options.forEach((option, optionIndex) => {
+                        if (!option.key.trim() || !option.value.trim()) {
+                            validated = false;
+                            errors.push(`Field ${index + 1}: Option ${optionIndex + 1} must have both key and value`);
+                        }
+                    });
+                }
             });
 
             return {
@@ -5641,25 +5661,105 @@
         }
 
         function CheckIntegrationTabHasChanges(enableDisableButton = true) {
-            const changes = {
-                id: integrationIdInput.val().trim(),
-                name: integrationNameInput.val().trim(),
-                description: integrationDescriptionInput.val().trim(),
-                type: collectTypes(),
-                fields: collectFields(),
-                help: {
-                    text: integrationHelpTextInput.val().trim(),
-                    uri: integrationHelpUrlInput.val().trim()
-                }
-            };
-
+            let changes = {};
             let hasChanges = false;
 
-            if (ManageIntegrationType === "new") {
+            // Check basic fields
+            changes.id = integrationIdInput.val().trim();
+            if (ManageIntegrationType === "edit" && CurrentIntegrationData.id !== changes.id) {
                 hasChanges = true;
-            } else {
-                // Compare with current data
-                hasChanges = JSON.stringify(changes) !== JSON.stringify(CurrentIntegrationData);
+            }
+
+            changes.name = integrationNameInput.val().trim();
+            if (ManageIntegrationType === "edit" && CurrentIntegrationData.name !== changes.name) {
+                hasChanges = true;
+            }
+
+            changes.description = integrationDescriptionInput.val().trim();
+            if (ManageIntegrationType === "edit" && CurrentIntegrationData.description !== changes.description) {
+                hasChanges = true;
+            }
+
+            // Check disabled state
+            const isDisabled = integrationDisabledCheck.is(":checked");
+            changes.disabled = isDisabled;
+            if (ManageIntegrationType === "edit" && 
+                isDisabled === (CurrentIntegrationData.disabledAt == null)) {
+                hasChanges = true;
+            }
+
+            // Check types
+            changes.type = collectTypes();
+            if (ManageIntegrationType === "edit") {
+                if (changes.type.length !== CurrentIntegrationData.type.length) {
+                    hasChanges = true;
+                } else {
+                    for (let i = 0; i < changes.type.length; i++) {
+                        if (changes.type[i] !== CurrentIntegrationData.type[i]) {
+                            hasChanges = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Check help
+            changes.help = {
+                text: integrationHelpTextInput.val().trim(),
+                uri: integrationHelpUrlInput.val().trim()
+            };
+
+            if (ManageIntegrationType === "edit") {
+                if (changes.help.text !== CurrentIntegrationData.help.text ||
+                    changes.help.uri !== CurrentIntegrationData.help.uri) {
+                    hasChanges = true;
+                }
+            }
+
+            // Check fields
+            changes.fields = collectFields();
+            if (ManageIntegrationType === "edit") {
+                if (changes.fields.length !== CurrentIntegrationData.fields.length) {
+                    hasChanges = true;
+                } else {
+                    for (let i = 0; i < changes.fields.length; i++) {
+                        const newField = changes.fields[i];
+                        const oldField = CurrentIntegrationData.fields[i];
+
+                        if (newField.id !== oldField.id ||
+                            newField.name !== oldField.name ||
+                            newField.type !== oldField.type ||
+                            newField.tooltip !== oldField.tooltip ||
+                            newField.placeholder !== oldField.placeholder ||
+                            newField.defaultValue !== oldField.defaultValue ||
+                            newField.required !== oldField.required ||
+                            newField.isEncrypted !== oldField.isEncrypted) {
+                            hasChanges = true;
+                            break;
+                        }
+
+                        // Check options for select fields
+                        if (newField.type === 'select') {
+                            if (!oldField.options || 
+                                newField.options.length !== oldField.options.length) {
+                                hasChanges = true;
+                                break;
+                            }
+
+                            for (let j = 0; j < newField.options.length; j++) {
+                                const newOption = newField.options[j];
+                                const oldOption = oldField.options[j];
+
+                                if (newOption.key !== oldOption.key ||
+                                    newOption.value !== oldOption.value ||
+                                    newOption.isDefault !== oldOption.isDefault) {
+                                    hasChanges = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if (enableDisableButton) {
@@ -5689,6 +5789,8 @@
                     name: field.find(".field-name-input").val().trim(),
                     type: field.find(".field-type-select").val(),
                     tooltip: field.find(".field-tooltip-input").val().trim(),
+                    placeholder: field.find(".field-placeholder-input").val().trim(),
+                    defaultValue: field.find(".field-default-value-input").val().trim(),
                     required: field.find(".field-required-check").is(":checked"),
                     isEncrypted: field.find(".field-encrypted-check").is(":checked")
                 };
@@ -5699,18 +5801,20 @@
                         const option = $(this);
                         fieldData.options.push({
                             key: option.find(".option-key-input").val().trim(),
-                            value: option.find(".option-value-input").val().trim()
+                            value: option.find(".option-value-input").val().trim(),
+                            isDefault: option.find(".option-default-check").is(":checked")
                         });
                     });
+                    fieldData.defaultValue = ''; // Clear default value for select types
                 }
 
                 fields.push(fieldData);
             });
             return fields;
         }
-
         function resetOrClearIntegrationManager() {
             integrationIdInput.val("");
+            integrationIdInput.prop("disabled", false);
             integrationNameInput.val("");
             integrationDescriptionInput.val("");
             integrationLogoPreview.attr("src", "/img/placeholder.png");
@@ -5722,17 +5826,23 @@
 
             integrationManagerTab.find(".is-invalid").removeClass("is-invalid");
             saveIntegrationButton.prop("disabled", true);
+            integrationDisabledCheck.prop("checked", true);
         }
 
         function fillIntegrationManager(integrationData) {
             resetOrClearIntegrationManager();
 
             integrationIdInput.val(integrationData.id);
+            integrationIdInput.prop("disabled", true);
+
             integrationNameInput.val(integrationData.name);
             integrationDescriptionInput.val(integrationData.description);
             if (integrationData.logo) {
-                integrationLogoPreview.attr("src", integrationData.logo);
+                integrationLogoPreview.attr("src", IntegrationLogoURL + "/" + integrationData.logo + ".webp");
             }
+
+            // Set disabled state
+            integrationDisabledCheck.prop("checked", integrationData.disabledAt != null);
 
             // Fill types
             integrationData.type.forEach(type => {
@@ -5789,9 +5899,9 @@
             });
 
             // Edit integration
-            integrationsListContainer.on("click", "button[button-type='editIntegration']", (event) => {
+            integrationsListContainer.on("click", ".business-card", (event) => {
                 event.preventDefault();
-                const card = $(event.currentTarget).closest(".business-card");
+                const card = $(event.currentTarget);
                 const integrationId = card.data("integration-id");
                 
                 CurrentIntegrationData = CurrentIntegrationsList.find(i => i.id === integrationId);
@@ -5804,44 +5914,6 @@
                 ShowIntegrationManagerTab();
             });
 
-            // Delete integration
-            integrationsListContainer.on("click", "button[button-type='deleteIntegration']", async (event) => {
-                event.preventDefault();
-                const card = $(event.currentTarget).closest(".business-card");
-                const integrationId = card.data("integration-id");
-
-                const confirmDialog = new BootstrapConfirmDialog({
-                    title: "Delete Integration",
-                    message: "Are you sure you want to delete this integration? This action cannot be undone.",
-                    confirmText: "Delete",
-                    cancelText: "Cancel",
-                    confirmButtonClass: "btn-danger"
-                });
-
-                const confirmed = await confirmDialog.show();
-                if (!confirmed) return;
-
-                DeleteIntegrationFromAPI(
-                    integrationId,
-                    () => {
-                        card.closest(".col-lg-4").remove();
-                        AlertManager.createAlert({
-                            type: "success",
-                            message: "Integration deleted successfully.",
-                            timeout: 6000
-                        });
-                    },
-                    (error) => {
-                        AlertManager.createAlert({
-                            type: "danger",
-                            message: error.message || "Error deleting integration. Please try again.",
-                            timeout: 6000
-                        });
-                        console.error("Error deleting integration:", error);
-                    }
-                );
-            });
-            
             // Type management
             addTypeButton.on("click", () => {
                 const type = integrationTypesInput.val().trim();
@@ -5876,15 +5948,20 @@
             });
 
             integrationFieldsList.on("change", ".field-type-select", function() {
-                const optionsContainer = $(this).closest(".integration-field").find(".field-options-container");
+                const field = $(this).closest('.integration-field');
+                const optionsContainer = field.find(".field-options-container");
+                const defaultValueInput = field.find(".field-default-value-input");
+                
                 if ($(this).val() === "select") {
                     optionsContainer.removeClass("d-none");
+                    defaultValueInput.prop('disabled', true).val('');
                 } else {
                     optionsContainer.addClass("d-none");
+                    defaultValueInput.prop('disabled', false);
                 }
                 CheckIntegrationTabHasChanges();
             });
-
+            
             // Field options management
             integrationFieldsList.on("click", ".add-option-button", function() {
                 $(this).siblings(".field-options-list").append($(createFieldOptionElement()));
@@ -5893,6 +5970,13 @@
 
             integrationFieldsList.on("click", ".remove-option-button", function() {
                 $(this).closest(".field-option").remove();
+                CheckIntegrationTabHasChanges();
+            });
+
+            integrationFieldsList.on("change", ".option-default-check", function() {
+                const currentField = $(this).closest('.field-options-container');
+                // Uncheck other default options in the same field
+                currentField.find(".option-default-check").not(this).prop('checked', false);
                 CheckIntegrationTabHasChanges();
             });
 
@@ -5941,10 +6025,7 @@
                 const formData = new FormData();
                 formData.append("changes", JSON.stringify(changes.changes));
                 formData.append("postType", ManageIntegrationType);
-
-                if (ManageIntegrationType === "edit") {
-                    formData.append("existingIntegrationId", CurrentIntegrationData.id);
-                }
+                formData.append("currentIntegrationId", CurrentIntegrationData.id);
 
                 if (integrationLogoInput[0].files.length > 0) {
                     formData.append("logo", integrationLogoInput[0].files[0]);

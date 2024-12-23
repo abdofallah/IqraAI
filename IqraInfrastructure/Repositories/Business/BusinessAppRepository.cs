@@ -332,5 +332,31 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
             return result != null;
         }
+
+        public async Task<BusinessAppIntegration?> getBusinessIntegrationById(long businessId, string currentIntegrationId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, t => t.Id == currentIntegrationId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result?.Integrations.FirstOrDefault(t => t.Id == currentIntegrationId);
+        }
+
+        public async Task<bool> AddBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Integrations, newIntegration);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement(), newIntegration);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
     }
 }

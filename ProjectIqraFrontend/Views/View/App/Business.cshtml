@@ -4952,6 +4952,7 @@
     <script>
         const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
         const BusinessToolAudioURL = "@(TempData["BusinessToolAudioURL"])";
+        const IntegrationLogoURL = "@(TempData["IntegrationLogoURL"])";
     </script>
 
     <!-- Libraries -->
@@ -5035,6 +5036,7 @@
 
         var BusinessFullData = null;
         var SpecificationLanguagesListData = null;
+        var SpecificationIntegrationsListData = null;
 
         var BusinessFullLanguagesData = null;
         var BusinessDefaultLanguage = null;
@@ -5064,6 +5066,25 @@
         {
             $.ajax({
                 url: '/app/specification/languages/',
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationIntegrationsDataFromAPI(successCallback, errorCallback)
+        {
+            $.ajax({
+                url: '/app/specification/integrations/',
                 type: 'POST',
                 success: (response) => {
                     if (!response.success) {
@@ -5183,6 +5204,8 @@
         var PageLoaderInterval = setInterval(
             () => {
                 if (
+                    SpecificationIntegrationsListData != null
+                    && 
                     SpecificationLanguagesListData != null
                     &&
                     BusinessFullData != null
@@ -5241,47 +5264,62 @@
                 (langaugesListData) => {
                     SpecificationLanguagesListData = langaugesListData;
 
-                    FetchBusinessDataFromAPI(CurrentBusinessId,
-                        (businessData) => {
-                            BusinessFullData = businessData;
+                    FetchSpecificationIntegrationsDataFromAPI(
+                        (integrationsListData) => {
+                            SpecificationIntegrationsListData = integrationsListData;
 
-                            BusinessFullLanguagesData = [];
-                            BusinessFullData.businessData.languages.forEach((value, index) => {
-                                const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
-                                    return data.id === value;
-                                });
+                            FetchBusinessDataFromAPI(CurrentBusinessId,
+                                (businessData) => {
+                                    BusinessFullData = businessData;
 
-                                if (countryCodeLanguage) {
-                                    BusinessFullLanguagesData.push(countryCodeLanguage);
+                                    BusinessFullLanguagesData = [];
+                                    BusinessFullData.businessData.languages.forEach((value, index) => {
+                                        const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
+                                            return data.id === value;
+                                        });
+
+                                        if (countryCodeLanguage) {
+                                            BusinessFullLanguagesData.push(countryCodeLanguage);
+                                        }
+                                    });
+                                    BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
+
+                                    initSettingsTab();
+                                    initToolsTab();
+                                    initContextTab();
+                                    initCacheTab();
+                                    initIntegrationsTab();
+                                    initAgentTab();
+
+                                    let businessTutorials = BusinessFullData.businessData.tutorials;
+                                    if (businessTutorials)
+                                    {
+                                        if (businessTutorials.newBusinessTutorial)
+                                        {
+                                            // todo enable again
+                                            //InitalizeNewBusinessTutorial();
+                                        }
+                                    }
+                                },
+                                (businessDataError) => {
+                                    AlertManager.createAlert({
+                                        type: 'danger',
+                                        message: 'Error occured while fetching business data. Check browser console for logs.',
+                                        enableDismiss: false
+                                    });
+
+                                    console.log('Error occured while fetching business data: ', businessDataError);
                                 }
-                            });
-                            BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
-
-                            initSettingsTab();
-		                    initToolsTab();
-                            initContextTab();
-                            initCacheTab();
-                            initIntegrationsTab();
-                            initAgentTab();
-
-                            let businessTutorials = BusinessFullData.businessData.tutorials;
-                            if (businessTutorials)
-                            {
-                                if (businessTutorials.newBusinessTutorial)
-                                {
-                                    // todo enable again
-                                    //InitalizeNewBusinessTutorial();
-                                }
-                            }
+                            );
                         },
-                        (businessDataError) => {
+                        (integrationsListError) => {
                             AlertManager.createAlert({
                                 type: 'danger',
-                                message: 'Error occured while fetching business data. Check browser console for logs.',
+                                message: 'Error occured while fetching specification integrations data. Check browser console for logs.',
                                 enableDismiss: false
                             });
 
-                            console.log('Error occured while fetching business data: ', businessDataError);
+                            console.log('Error occured while fetching specification integrations data: ', integrationsListError);
                         }
                     );
                 },

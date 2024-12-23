@@ -16,6 +16,12 @@ namespace IqraInfrastructure.Repositories.Integrations
             _integrationsCollection = database.GetCollection<IntegrationData>(CollectionName);
         }
 
+        public async Task<bool> IsIntegrationIdUniqueAsync(string id)
+        {
+            var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, id);
+            return !await _integrationsCollection.Find(filter).AnyAsync();
+        }
+
         public async Task AddIntegrationAsync(IntegrationData integrationData)
         {
             await _integrationsCollection.InsertOneAsync(integrationData);
@@ -26,12 +32,22 @@ namespace IqraInfrastructure.Repositories.Integrations
             return await _integrationsCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
+        public async Task<DateTime?> GetIntegrationDisabledAtAsync(string id)
+        {
+            var result = await _integrationsCollection
+                .Find(x => x.Id == id)
+                .Project(x => x.DisabledAt)
+                .FirstOrDefaultAsync();
+            return result;
+        }
+
         public async Task<UpdateResult> UpdateIntegrationAsync(IntegrationData integrationData)
         {
             var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, integrationData.Id);
             var update = Builders<IntegrationData>.Update
                 .Set(x => x.Name, integrationData.Name)
                 .Set(x => x.Description, integrationData.Description)
+                .Set(x => x.DisabledAt, integrationData.DisabledAt)
                 .Set(x => x.Logo, integrationData.Logo)
                 .Set(x => x.Type, integrationData.Type)
                 .Set(x => x.Fields, integrationData.Fields)
@@ -151,6 +167,12 @@ namespace IqraInfrastructure.Repositories.Integrations
             );
 
             return await _integrationsCollection.BulkWriteAsync(updates);
+        }
+
+        public async Task<IntegrationData?> GetIntegrationById(string integrationId)
+        {
+            var filter = Builders<IntegrationData>.Filter.Eq(x => x.Id, integrationId);
+            return await _integrationsCollection.Find(filter).FirstOrDefaultAsync();
         }
     }
 }

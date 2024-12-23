@@ -1,4 +1,5 @@
 using IqraCore.Entities.Frontend;
+using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Integrations;
@@ -133,7 +134,6 @@ namespace ProjectIqraFrontend
             );
             LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository, languagesManager);
             builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
-
             await llmProviderManager.InitializeProvidersAsync();
 
             // Integrations
@@ -149,8 +149,9 @@ namespace ProjectIqraFrontend
                 appConfig["IntegrationsLogoRepository:BucketName"],
                 bool.Parse(appConfig["IntegrationsLogoRepository:IsSecure"])
             );
-            IntegrationsManager integrationsManager = new IntegrationsManager(integrationsRepository, businessAppRepository, integrationsLogoRepository);
-            builder.Services.AddSingleton<IntegrationsManager>(integrationsManager);
+            AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(appConfig["Integrations:EncryptionKey"]);
+            IntegrationsManager integrationsManager = new IntegrationsManager(integrationsRepository, businessAppRepository, integrationsLogoRepository, integrationFieldsEncryptionService);
+            builder.Services.AddSingleton<IntegrationsManager>(integrationsManager);      
 
 
             // Views Links Config
@@ -158,6 +159,7 @@ namespace ProjectIqraFrontend
             {
                 BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"],
                 BusinessToolAudioURL = appConfig["BusinessToolAudioRepository:PublicURL"] + "/" + appConfig["BusinessToolAudioRepository:BucketName"],
+                IntegrationLogoURL = appConfig["IntegrationsLogoRepository:PublicURL"] + "/" + appConfig["IntegrationsLogoRepository:BucketName"]
             };
             builder.Services.AddSingleton<ViewLinkConfiguration>(viewLinkConfiguration);
 

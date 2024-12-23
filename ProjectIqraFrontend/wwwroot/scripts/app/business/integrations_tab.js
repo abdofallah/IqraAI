@@ -1,88 +1,5 @@
 /** Dynamic Variables **/
 let CurrentIntegrationData = null;
-const AvailableIntegrationsData = [
-	{
-		id: "whatsapp",
-		name: "WhatsApp",
-		description: "Connect your WhatsApp Business account",
-		logo: "/img/temp/whatsapp.png",
-		type: ["messaging", "customer-support"],
-		fields: [
-			{
-				id: "api_key",
-				name: "API Key",
-				type: "text",
-				tooltip: "Find this in your WhatsApp Business dashboard",
-				required: true,
-				isEncrypted: true,
-			},
-			{
-				id: "phone_number",
-				name: "Phone Number",
-				type: "text",
-				required: true,
-				isEncrypted: false,
-			},
-		],
-		help: {
-			text: "How to get WhatsApp Business API key?",
-			uri: "https://business.whatsapp.com/products/business-platform",
-		},
-	},
-	{
-		id: "telegram",
-		name: "Telegram",
-		description: "Connect your Telegram bot",
-		logo: "/img/temp/telegram.png",
-		type: ["messaging"],
-		fields: [
-			{
-				id: "bot_token",
-				name: "Bot Token",
-				type: "text",
-				tooltip: "Get this from BotFather",
-				required: true,
-				isEncrypted: true,
-			},
-		],
-		help: {
-			text: "How to create a Telegram bot?",
-			uri: "https://core.telegram.org/bots#how-do-i-create-a-bot",
-		},
-	},
-	{
-		id: "stripe",
-		name: "Stripe",
-		description: "Accept payments through Stripe",
-		logo: "/img/temp/stripe.png",
-		type: ["payment"],
-		fields: [
-			{
-				id: "mode",
-				name: "Environment",
-				type: "select",
-				options: [
-					{ key: "test", value: "Test Mode" },
-					{ key: "live", value: "Live Mode" },
-				],
-				required: true,
-				isEncrypted: false,
-			},
-			{
-				id: "secret_key",
-				name: "Secret Key",
-				type: "text",
-				tooltip: "Find this in your Stripe dashboard",
-				required: true,
-				isEncrypted: true,
-			},
-		],
-		help: {
-			text: "Where to find Stripe API keys?",
-			uri: "https://stripe.com/docs/keys",
-		},
-	},
-];
 let ManageIntegrationType = null; // new or edit
 let SelectedIntegrationType = null;
 let IsSavingIntegrationTab = false;
@@ -128,11 +45,8 @@ function createIntegrationCardElement(integration) {
         <div class="col-lg-4 col-md-6 col-12">
             <div class="business-card d-flex flex-column align-items-start justify-content-center" data-integration-id="${integration.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start">
-                    <img src="${integration.logo}" class="me-3">
-                    <div>
-                        <h4 class="mb-1">${integration.friendlyName}</h4>
-                        <p class="mb-0 text-muted">${integration.name}</p>
-                    </div>
+                    <img src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
+                    <h4 class="mb-1">${integration.friendlyName}</h4>
                 </div>
             </div>
         </div>
@@ -140,13 +54,13 @@ function createIntegrationCardElement(integration) {
 }
 
 function createAvailableIntegrationCardElement(integration) {
-	const typesBadges = integration.type.map((type) => `<span class="badge border me-1">${type}</span>`).join("");
+	const typesBadges = integration.type.map((type) => `<span class="badge border me-1 mb-1">${type}</span>`).join("");
 
 	return `
-        <div class="col-lg-4 col-md-6 col-12 mb-3">
+        <div class="col-lg-6 col-md-6 col-12 mb-3">
             <div class="card h-100 cursor-pointer available-integration-card" data-integration-id="${integration.id}">
                 <div class="card-body">
-                    <img class="px-2 mb-3" src="${integration.logo}">
+                    <img class="px-2 mb-3" src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
                     <div class="mt-2">
                         ${typesBadges}
                     </div>
@@ -178,15 +92,16 @@ function createIntegrationFieldElement(field) {
 		fieldHtml += `
             <select class="form-select" id="integration_${field.id}" 
                     ${field.required ? "required" : ""}>
-                <option value="">Select ${field.name}</option>
-                ${field.options.map((opt) => `<option value="${opt.key}">${opt.value}</option>`).join("")}
+                <option disabled>Select ${field.name}</option>
+                ${field.options.map((opt) => `<option value="${opt.key}" ${opt.isDefault ? "selected" : ""}>${opt.value}</option>`).join("")}
             </select>
         `;
 	} else {
 		fieldHtml += `
             <input type="${field.type}" class="form-control" 
                    id="integration_${field.id}" 
-                   placeholder="Enter ${field.name}"
+                   placeholder="${field.placeholder || `Enter ${field.name}`}"
+                   value="${field.defaultValue || ""}"
                    ${field.required ? "required" : ""}>
         `;
 	}
@@ -206,12 +121,20 @@ function resetOrClearIntegrationManager() {
 function fillIntegrationFields(integrationType) {
 	resetOrClearIntegrationManager();
 
-	const integration = AvailableIntegrationsData.find((i) => i.id === integrationType);
+	const integration = SpecificationIntegrationsListData.find((i) => i.id === integrationType);
 	if (!integration) return;
 
 	// Add fields
 	integration.fields.forEach((field) => {
 		integrationFieldsContainer.append(createIntegrationFieldElement(field));
+
+		// If editing, use the saved value, otherwise use default value
+		if (ManageIntegrationType === "edit" && CurrentIntegrationData) {
+			const savedValue = CurrentIntegrationData.fields[field.id];
+			if (savedValue) {
+				$(`#integration_${field.id}`).val(savedValue);
+			}
+		}
 	});
 
 	// Add help link if available
@@ -241,7 +164,7 @@ function FillIntegrationsList() {
 	}
 
 	BusinessFullData.businessApp.integrations.forEach((integration) => {
-		const integrationDetails = AvailableIntegrationsData.find((i) => i.id === integration.type);
+		const integrationDetails = SpecificationIntegrationsListData.find((i) => i.id === integration.type);
 		if (integrationDetails) {
 			integration.name = integrationDetails.name;
 			integration.logo = integrationDetails.logo;
@@ -295,7 +218,7 @@ function ValidateIntegrationTab(onlyRemove = true) {
 	}
 
 	// Get current integration type
-	const integration = AvailableIntegrationsData.find((i) => i.id === SelectedIntegrationType);
+	const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
 	if (!integration) return { validated: false, errors: ["Invalid integration type"] };
 
 	// Validate required fields
@@ -337,14 +260,22 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 	}
 
 	// Get field values
-	const integration = AvailableIntegrationsData.find((i) => i.id === SelectedIntegrationType);
+	const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
 	if (integration) {
 		integration.fields.forEach((field) => {
 			const value = $(`#integration_${field.id}`).val().trim();
 			changes.fields[field.id] = value;
 
-			if (ManageIntegrationType === "new" && value) {
-				hasChanges = true;
+			if (ManageIntegrationType === "new") {
+				// For new integration, compare with default value
+				if (field.type === "select") {
+					const defaultOption = field.options.find((opt) => opt.isDefault);
+					if (value !== (defaultOption?.key || "")) {
+						hasChanges = true;
+					}
+				} else if (value !== (field.defaultValue || "")) {
+					hasChanges = true;
+				}
 			} else if (CurrentIntegrationData && CurrentIntegrationData.fields[field.id] !== value) {
 				hasChanges = true;
 			}
@@ -372,7 +303,7 @@ function initializeTooltips() {
 function initIntegrationsTab() {
 	// Fill available integrations in modal
 	availableIntegrationsList.empty();
-	AvailableIntegrationsData.forEach((integration) => {
+	SpecificationIntegrationsListData.forEach((integration) => {
 		availableIntegrationsList.append($(createAvailableIntegrationCardElement(integration)));
 	});
 
@@ -496,9 +427,10 @@ function initIntegrationsTab() {
 		const formData = new FormData();
 		formData.append("changes", JSON.stringify(changes.changes));
 		formData.append("postType", ManageIntegrationType);
+		formData.append("currentIntegrationType", changes.changes.type);
 
 		if (ManageIntegrationType === "edit") {
-			formData.append("existingIntegrationId", CurrentIntegrationData.id);
+			formData.append("currentIntegrationId", CurrentIntegrationData.id);
 		}
 
 		SaveBusinessIntegration(

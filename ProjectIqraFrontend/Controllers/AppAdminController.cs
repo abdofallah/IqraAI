@@ -1103,37 +1103,64 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            formData.TryGetValue("existingIntegrationId", out StringValues existingIntegrationIdValue);
-            string? existingIntegrationId = existingIntegrationIdValue.ToString();
+            formData.TryGetValue("currentIntegrationId", out StringValues currentIntegrationIdValue);
+            string? currentIntegrationId = currentIntegrationIdValue.ToString();
 
-            if (postType == "edit" && string.IsNullOrWhiteSpace(existingIntegrationId))
+            if (postType == "edit")
             {
-                result.Code = "SaveIntegration:7";
-                result.Message = "Missing existing integration id";
-                return result;
+                if (string.IsNullOrWhiteSpace(currentIntegrationId))
+                {
+                    result.Code = "SaveIntegration:7";
+                    result.Message = "Missing existing integration id";
+                    return result;
+                }
+
+                bool integrationExists = await _integrationsManager.IntegrationExists(currentIntegrationId);
+                if (!integrationExists)
+                {
+                    result.Code = "SaveIntegration:8";
+                    result.Message = "Integration not found";
+                    return result;
+                }
+            }
+            else if (postType == "new")
+            {
+                bool integrationExists = await _integrationsManager.IntegrationExists(currentIntegrationId);
+                if (integrationExists)
+                {
+                    result.Code = "SaveIntegration:8";
+                    result.Message = "Integration already exists with id.";
+                    return result;
+                }
             }
 
             // Handle logo file if present
             IFormFile? integrationLogo = formData.Files.FirstOrDefault(x => x.Name == "logo");
-            if (integrationLogo != null)
+            if (integrationLogo == null && postType == "new")
+            {
+                result.Code = "SaveIntegration:8";
+                result.Message = "Missing logo file";
+                return result;
+            }
+            else if (integrationLogo != null)
             {
                 int logoValidateResult = ImageHelper.ValidateBusinessLogoFile(integrationLogo);
 
                 if (logoValidateResult == 0)
                 {
-                    result.Code = "SaveIntegration:8";
+                    result.Code = "SaveIntegration:9";
                     result.Message = "The integration logo file is too big. Maximum size is 5MB.";
                     return result;
                 }
                 else if (logoValidateResult == 1)
                 {
-                    result.Code = "SaveIntegration:9";
+                    result.Code = "SaveIntegration:10";
                     result.Message = "The integration logo file is not valid.";
                     return result;
                 }
                 else if (logoValidateResult != 200)
                 {
-                    result.Code = "SaveIntegration:10";
+                    result.Code = "SaveIntegration:11";
                     result.Message = "The integration logo file is not valid.";
                     return result;
                 }
@@ -1142,7 +1169,7 @@ namespace ProjectIqraFrontend.Controllers
             var saveResult = await _integrationsManager.AddOrUpdateIntegration(
                 changesJsonString.ToString(),
                 postType,
-                existingIntegrationId,
+                currentIntegrationId,
                 integrationLogo
             );
 
@@ -1158,6 +1185,5 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
-        
     }
 }
