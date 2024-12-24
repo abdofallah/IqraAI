@@ -17,6 +17,8 @@ const integrationFieldsContainer = addNewIntegrationModal.find("#integrationFiel
 const integrationHelpContainer = addNewIntegrationModal.find("#integrationHelpContainer");
 const backToIntegrationsListButton = addNewIntegrationModal.find("#backToIntegrationsListButton");
 const saveIntegrationButton = addNewIntegrationModal.find("#saveIntegrationButton");
+const addNewIntegrationModalLabel = addNewIntegrationModal.find("#addNewIntegrationModalLabel");
+const editIntegrationModalLabel = addNewIntegrationModal.find("#editIntegrationModalLabel");
 
 /** API Functions **/
 function SaveBusinessIntegration(formData, onSuccess, onError) {
@@ -74,7 +76,7 @@ function createIntegrationFieldElement(field) {
 	let fieldHtml = `
         <div class="mb-3">
             <label class="form-label d-flex align-items-center">
-                <span>${field.name}</span>
+                <span>${field.name} ${field.required ? "<span class='text-danger'>*</span>" : ""}</span>
     `;
 
 	if (field.tooltip) {
@@ -116,11 +118,18 @@ function resetOrClearIntegrationManager() {
 	integrationHelpContainer.empty();
 	saveIntegrationButton.prop("disabled", true);
 	integrationManagerContainer.find(".is-invalid").removeClass("is-invalid");
+	backToIntegrationsListButton.addClass("d-none");
+
+	if (ManageIntegrationType === "edit") {
+		addNewIntegrationModalLabel.addClass("d-none");
+		editIntegrationModalLabel.removeClass("d-none");
+	} else {
+		editIntegrationModalLabel.addClass("d-none");
+		addNewIntegrationModalLabel.removeClass("d-none");
+	}
 }
 
 function fillIntegrationFields(integrationType) {
-	resetOrClearIntegrationManager();
-
 	const integration = SpecificationIntegrationsListData.find((i) => i.id === integrationType);
 	if (!integration) return;
 
@@ -177,9 +186,9 @@ function ShowAvailableIntegrations() {
 	integrationManagerContainer.removeClass("show");
 	setTimeout(() => {
 		integrationManagerContainer.addClass("d-none");
-		backToIntegrationsListButton.addClass("d-none");
 		saveIntegrationButton.addClass("d-none");
 		availableIntegrationsContainer.removeClass("d-none");
+		backToIntegrationsListButton.addClass("d-none");
 
 		setTimeout(() => {
 			availableIntegrationsContainer.addClass("show");
@@ -192,7 +201,6 @@ function ShowIntegrationManager() {
 	setTimeout(() => {
 		availableIntegrationsContainer.addClass("d-none");
 		integrationManagerContainer.removeClass("d-none");
-		backToIntegrationsListButton.removeClass("d-none");
 		saveIntegrationButton.removeClass("d-none");
 
 		setTimeout(() => {
@@ -326,6 +334,7 @@ function initIntegrationsTab() {
 		CurrentIntegrationData = null;
 		SelectedIntegrationType = null;
 
+		resetOrClearIntegrationManager();
 		ShowAvailableIntegrations();
 		addNewIntegrationModal.modal("show");
 	});
@@ -336,7 +345,13 @@ function initIntegrationsTab() {
 		const card = $(event.currentTarget);
 		SelectedIntegrationType = card.data("integration-id");
 
+		resetOrClearIntegrationManager();
+
 		fillIntegrationFields(SelectedIntegrationType);
+
+		setTimeout(() => {
+			backToIntegrationsListButton.removeClass("d-none");
+		}, 300);
 		ShowIntegrationManager();
 	});
 
@@ -377,6 +392,8 @@ function initIntegrationsTab() {
 
 		SelectedIntegrationType = CurrentIntegrationData.type;
 
+		resetOrClearIntegrationManager();
+
 		// Fill the form
 		$("#integrationFriendlyNameInput").val(CurrentIntegrationData.friendlyName);
 		fillIntegrationFields(SelectedIntegrationType);
@@ -390,7 +407,10 @@ function initIntegrationsTab() {
 		});
 
 		ShowIntegrationManager();
-		addNewIntegrationModal.modal("show");
+
+		setTimeout(() => {
+			addNewIntegrationModal.modal("show");
+		}, 150);
 	});
 
 	// Handle form input changes
@@ -476,10 +496,10 @@ function initIntegrationsTab() {
 
 	// Add modal hidden event handler to reset state
 	addNewIntegrationModal.on("hidden.bs.modal", () => {
-		resetOrClearIntegrationManager();
-		ShowAvailableIntegrations();
 		ManageIntegrationType = null;
 		CurrentIntegrationData = null;
 		SelectedIntegrationType = null;
+
+		ShowAvailableIntegrations();
 	});
 }
