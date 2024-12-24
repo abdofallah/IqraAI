@@ -100,7 +100,7 @@ function createIntegrationFieldElement(field) {
         `;
 	} else {
 		fieldHtml += `
-            <input type="${field.type}" class="form-control" 
+            <input type="${field.isEncrypted ? "password" : field.type}" real-type="${field.type}" class="form-control" 
                    id="integration_${field.id}" 
                    placeholder="${field.placeholder || `Enter ${field.name}`}"
                    value="${field.defaultValue || ""}"
@@ -501,5 +501,17 @@ function initIntegrationsTab() {
 		SelectedIntegrationType = null;
 
 		ShowAvailableIntegrations();
+	});
+
+	// Handle Encrypted Fields
+	integrationManagerContainer.on("keydown", 'input[type="password"]', (event) => {
+		event.stopPropagation();
+
+		const currentElement = $(event.currentTarget);
+		const realTypeAttr = currentElement.attr("real-type");
+
+		currentElement.attr("type", realTypeAttr);
+
+		currentElement.val("");
 	});
 }

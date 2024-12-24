@@ -3027,8 +3027,7 @@ namespace IqraInfrastructure.Services.Business
                 var newIntegration = new BusinessAppIntegration
                 {
                     Id = postType == "new" ? Guid.NewGuid().ToString() : businessIntegrationData!.Id,
-                    Type = integrationTypeData.Id,
-                    Fields = new Dictionary<string, string>()
+                    Type = integrationTypeData.Id
                 };
 
                 // Friendly name validation
@@ -3085,9 +3084,14 @@ namespace IqraInfrastructure.Services.Business
                         if (field.IsEncrypted)
                         {
                             value = integrationsManager.EncryptField(value);
+                            newIntegration.Fields.Add(field.Id, "value_encrypted_after_saving");
+                            newIntegration.EncryptedFields.Add(field.Id, value);
                         }
-
-                        newIntegration.Fields[field.Id] = value ?? "";
+                        else
+                        {
+                            newIntegration.Fields.Add(field.Id, value);
+                        }
+                        
                     }
                     else if (field.Required)
                     {

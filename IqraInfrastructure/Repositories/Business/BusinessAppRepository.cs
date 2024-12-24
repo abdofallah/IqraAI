@@ -2,6 +2,7 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -353,9 +354,16 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> UpdateBusinessIntegration(long businessId, BusinessAppIntegration newIntegration)
         {
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
-            var update = Builders<BusinessApp>.Update.Set(b => b.Integrations.FirstMatchingElement(), newIntegration);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Integrations, g => g.Id == newIntegration.Id)
+            );
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Integrations.$",
+                new BsonDocument(newIntegration.ToBsonDocument())
+            );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
             return result.ModifiedCount > 0;
         }
     }
