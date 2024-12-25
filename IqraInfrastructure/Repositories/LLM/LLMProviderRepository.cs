@@ -28,13 +28,10 @@ namespace IqraInfrastructure.Repositories.LLM
             return await _llmProviderCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
-        public async Task<UpdateResult> UpdateProviderAsync(LLMProviderData providerData)
+        public async Task<ReplaceOneResult> UpdateProviderAsync(LLMProviderData providerData)
         {
             var filter = Builders<LLMProviderData>.Filter.Eq(x => x.Id, providerData.Id);
-            var update = Builders<LLMProviderData>.Update
-                .Set(x => x.DisabledAt, providerData.DisabledAt)
-                .Set(x => x.Models, providerData.Models);
-            return await _llmProviderCollection.UpdateOneAsync(filter, update);
+            return await _llmProviderCollection.ReplaceOneAsync(filter, providerData);
         }
 
         public async Task<UpdateResult> DisableProviderAsync(InterfaceLLMProviderEnum id)
@@ -114,6 +111,13 @@ namespace IqraInfrastructure.Repositories.LLM
                 .Skip(page * pageSize)
                 .Limit(pageSize)
                 .ToListAsync();
+        }
+
+        public async Task<LLMProviderData?> GetProviderDataByIntegration(string integrationType)
+        {
+            var filter = Builders<LLMProviderData>.Filter.Eq(x => x.IntegrationId, integrationType);
+
+            return await _llmProviderCollection.Find(filter).FirstOrDefaultAsync();
         }
     }
 }

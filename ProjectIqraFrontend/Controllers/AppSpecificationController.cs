@@ -1,11 +1,14 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.Languages;
+using IqraCore.Entities.LLM;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
+using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers
 {
@@ -14,12 +17,14 @@ namespace ProjectIqraFrontend.Controllers
         private readonly UserManager _userManager;
         private readonly LanguagesManager _languagesManager;
         private readonly IntegrationsManager _integrationsManager;
+        private readonly LLMProviderManager _llmProviderManager;
 
-        public AppSpecificationController(UserManager userManager, LanguagesManager languagesManager, IntegrationsManager integrationsManager)
+        public AppSpecificationController(UserManager userManager, LanguagesManager languagesManager, IntegrationsManager integrationsManager, LLMProviderManager llmProviderManager)
         {
             _userManager = userManager;
             _languagesManager = languagesManager;
             _integrationsManager = integrationsManager;
+            _llmProviderManager = llmProviderManager;
         }
 
         [HttpPost("/app/specification/languages")]
@@ -107,6 +112,64 @@ namespace ProjectIqraFrontend.Controllers
 
             result.Success = true;
             result.Data = getIntegrationsListResult.Data;
+            return result;
+        }
+
+        [HttpPost("/app/specification/llmproviders/getbyintegration")]
+        public async Task<FunctionReturnResult<LLMProviderData?>> GetLLMProviderByIntegrationType([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<LLMProviderData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetLLMProviderByIntegrationType:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetLLMProviderByIntegrationType:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetLLMProviderByIntegrationType:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!formData.TryGetValue("integrationtype", out StringValues integrationTypeValue))
+            {
+                result.Code = "GetLLMProviderByIntegrationType:4";
+                result.Message = "Integration type required";
+                return result;
+            }
+
+            string integrationType = integrationTypeValue.ToString();
+            if (string.IsNullOrEmpty(integrationType)) {
+                result.Code = "GetLLMProviderByIntegrationType:5";
+                result.Message = "Integration type missing";
+                return result;
+            }
+
+            var getLLMProviderByIntegrationResult = await _llmProviderManager.GetProviderDataByIntegration(integrationType);
+            if (!getLLMProviderByIntegrationResult.Success)
+            {
+                result.Code = "GetLLMProviderByIntegrationType:" + getLLMProviderByIntegrationResult.Code;
+                result.Message = getLLMProviderByIntegrationResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = getLLMProviderByIntegrationResult.Data;
             return result;
         }
     }

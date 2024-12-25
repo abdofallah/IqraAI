@@ -12,5 +12,8 @@ namespace IqraCore.Entities.LLM
         public DateTime? DisabledAt { get; set; } = null;
 
         public List<LLMProviderModelData> Models { get; set; } = new List<LLMProviderModelData>();
+
+        public string IntegrationId { get; set; } = "";
+        public List<LLMProviderUserIntegrationFieldData> UserIntegrationFields { get; set; } = new List<LLMProviderUserIntegrationFieldData>();
     }
 }

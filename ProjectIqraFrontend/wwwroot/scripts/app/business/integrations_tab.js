@@ -5,6 +5,7 @@ let SelectedIntegrationType = null;
 let IsSavingIntegrationTab = false;
 
 /** Elements Variables **/
+
 const integrationsTab = $("#integrations-tab");
 const integrationsListContainer = integrationsTab.find("#integrationsListContainer");
 const addNewIntegrationButton = integrationsTab.find("#addNewIntegrationButton");
@@ -157,7 +158,12 @@ function fillIntegrationFields(integrationType) {
 	}
 
 	// Initialize tooltips
-	initializeTooltips();
+	initializeIntegrationTooltips();
+}
+
+function initializeIntegrationTooltips() {
+	const tooltipTriggerList = [].slice.call(document.querySelectorAll('#integrations-tab [data-bs-toggle="tooltip"]'));
+	return [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
 function FillIntegrationsList() {
@@ -300,13 +306,6 @@ function CheckIntegrationTabHasChanges(enableDisableButton = true) {
 	};
 }
 
-function initializeTooltips() {
-	const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-	tooltipTriggerList.map(function (tooltipTriggerEl) {
-		return new bootstrap.Tooltip(tooltipTriggerEl);
-	});
-}
-
 /** Initialize Function **/
 function initIntegrationsTab() {
 	// Fill available integrations in modal
@@ -315,11 +314,9 @@ function initIntegrationsTab() {
 		availableIntegrationsList.append($(createAvailableIntegrationCardElement(integration)));
 	});
 
-	// Initialize tooltip
-	initializeTooltips();
-
 	// Fill existing integrations list
 	FillIntegrationsList();
+	initializeIntegrationTooltips();
 
 	/**
 	 *

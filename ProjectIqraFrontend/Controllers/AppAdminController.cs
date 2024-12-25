@@ -726,7 +726,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            var saveResult = await _llmProviderManager.UpdateProvider(provider, formData);
+            var saveResult = await _llmProviderManager.UpdateProvider(provider, formData, _integrationsManager);
             if (!saveResult.Success)
             {
                 result.Code = "SaveLLMProvider:" + saveResult.Code;

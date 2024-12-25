@@ -4,6 +4,7 @@ using IqraCore.Entities.LLM;
 using IqraCore.Interfaces.AI;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
@@ -477,11 +478,175 @@ namespace IqraInfrastructure.Services.LLM
             return result;
         }
 
-        public async Task<FunctionReturnResult<LLMProviderData?>> UpdateProvider(LLMProviderData provider, IFormCollection formData)
+        public async Task<FunctionReturnResult<LLMProviderData?>> UpdateProvider(LLMProviderData provider, IFormCollection formData, IntegrationsManager integrationsManager)
         {
             var result = new FunctionReturnResult<LLMProviderData?>();
 
-            // todo
+            try
+            {
+                if (!formData.TryGetValue("changes", out var changesJsonString))
+                {
+                    result.Code = "UpdateProvider:1";
+                    result.Message = "Changes data not found";
+                    return result;
+                }
+
+                var changesJsonElement = JsonSerializer.Deserialize<JsonDocument>(changesJsonString);
+                if (changesJsonElement == null)
+                {
+                    result.Code = "UpdateProvider:2";
+                    result.Message = "Unable to parse changes json string.";
+                    return result;
+                }
+
+                var newProviderData = new LLMProviderData
+                {
+                    Id = provider.Id,
+                    Models = provider.Models // Maintain existing models
+                };
+
+                // Handle disabled state
+                if (!changesJsonElement.RootElement.TryGetProperty("disabled", out var disabledElement))
+                {
+                    result.Code = "UpdateProvider:3";
+                    result.Message = "Provider disabled state not found";
+                    return result;
+                }
+
+                bool disabled = disabledElement.GetBoolean();
+                if (disabled)
+                {
+                    if (provider.DisabledAt != null)
+                    {
+                        newProviderData.DisabledAt = provider.DisabledAt;
+                    }
+                    else
+                    {
+                        newProviderData.DisabledAt = DateTime.UtcNow;
+                    }
+                }
+                else
+                {
+                    newProviderData.DisabledAt = null;
+                }
+
+                // Handle integration selection
+                if (!changesJsonElement.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+                {
+                    result.Code = "UpdateProvider:4";
+                    result.Message = "Integration ID not found";
+                    return result;
+                }
+
+                string? integrationId = integrationIdElement.GetString();
+                if (string.IsNullOrEmpty(integrationId))
+                {
+                    result.Code = "UpdateProvider:5";
+                    result.Message = "Integration ID is required";
+                    return result;
+                }
+
+                // Validate that integration exists
+                var integration = await integrationsManager.getIntegrationData(integrationId);
+                if (integration == null || !integration.Success)
+                {
+                    result.Code = "UpdateProvider:6";
+                    result.Message = "Selected integration not found";
+                    return result;
+                }
+
+                // Validate integration type includes LLM
+                if (!integration.Data.Type.Contains("LLM"))
+                {
+                    result.Code = "UpdateProvider:7";
+                    result.Message = "Selected integration is not an LLM integration";
+                    return result;
+                }
+
+                newProviderData.IntegrationId = integrationId;
+
+                // Handle integration fields
+                if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
+                {
+                    newProviderData.UserIntegrationFields = new List<LLMProviderUserIntegrationFieldData>();
+
+                    foreach (var fieldElement in fieldsElement.EnumerateArray())
+                    {
+                        var field = new LLMProviderUserIntegrationFieldData
+                        {
+                            Id = fieldElement.GetProperty("id").GetString() ?? "",
+                            Name = fieldElement.GetProperty("name").GetString() ?? "",
+                            Type = fieldElement.GetProperty("type").GetString() ?? "",
+                            Tooltip = fieldElement.GetProperty("tooltip").GetString() ?? "",
+                            Placeholder = fieldElement.GetProperty("placeholder").GetString() ?? "",
+                            DefaultValue = fieldElement.GetProperty("defaultValue").GetString() ?? "",
+                            Required = fieldElement.GetProperty("required").GetBoolean(),
+                            IsEncrypted = fieldElement.GetProperty("isEncrypted").GetBoolean()
+                        };
+
+                        // Handle options for select type
+                        if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
+                        {
+                            field.Options = new List<LLMProviderUserIntegrationFieldOption>();
+                            foreach (var optionElement in optionsElement.EnumerateArray())
+                            {
+                                field.Options.Add(new LLMProviderUserIntegrationFieldOption
+                                {
+                                    Key = optionElement.GetProperty("key").GetString() ?? "",
+                                    Value = optionElement.GetProperty("value").GetString() ?? "",
+                                    IsDefault = optionElement.GetProperty("isDefault").GetBoolean()
+                                });
+                            }
+                        }
+
+                        newProviderData.UserIntegrationFields.Add(field);
+                    }
+                }
+
+                // Save to database
+                var updateResult = await _llmProviderRepository.UpdateProviderAsync(newProviderData);
+                if (!updateResult.IsAcknowledged || updateResult.ModifiedCount == 0)
+                {
+                    result.Code = "UpdateProvider:8";
+                    result.Message = "Failed to update provider";
+                    return result;
+                }
+
+                result.Success = true;
+                result.Data = newProviderData;
+            }
+            catch (Exception ex)
+            {
+                result.Code = "UpdateProvider:9";
+                result.Message = "Error processing provider update: " + ex.Message;
+            }
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<LLMProviderData?>> GetProviderDataByIntegration(string integrationType)
+        {
+            var result = new FunctionReturnResult<LLMProviderData?>();
+
+            try
+            {
+                var providerData = await _llmProviderRepository.GetProviderDataByIntegration(integrationType);
+
+                if (providerData == null)
+                {          
+                    result.Code = "GetProviderDataByIntegration:1";
+                    result.Message = "Provider not find by integration type";
+                    return result;
+                }
+
+                result.Success = true;
+                result.Data = providerData;
+            }
+            catch (Exception ex)
+            {
+                result.Code = "GetProviderDataByIntegration:2";
+                result.Message = "Failed to get provider data: " + ex.Message;
+            }
 
             return result;
         }

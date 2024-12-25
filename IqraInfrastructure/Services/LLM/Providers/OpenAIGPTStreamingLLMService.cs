@@ -10,31 +10,32 @@ namespace IqraInfrastructure.Services.LLM.Providers
     {
         private readonly OpenAIService _client;
 
+        // Config
         private int _maxTokens;
         private string _model;
         private float _temperature;
+        private float _topP;
 
+        // Session Data
+        private string _systemPrompt;
         private List<ChatMessage> _initialMessages;
         private List<ChatMessage> _messagesMemory;
-
-        private string _systemPrompt;
-
         public event EventHandler<object> MessageStreamed;
 
-        public OpenAIGPTStreamingLLMService(string apiKey, int maxOutputToken, float temperature, string model)
+        public OpenAIGPTStreamingLLMService(string APIKey, int MaxOutputToken, float Temperature, float TopP, string Model)
         {
             _client = new OpenAIService(new OpenAiOptions()
             {
-                ApiKey = apiKey
+                ApiKey = APIKey
             });
 
-            _maxTokens = maxOutputToken;
-            _temperature = temperature;
-            _model = model;
+            _maxTokens = MaxOutputToken;
+            _temperature = Temperature;
+            _model = Model;
+            _topP = TopP;
 
             _initialMessages = new List<ChatMessage>();
             _messagesMemory = new List<ChatMessage>();
-
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
         }
 
@@ -54,7 +55,8 @@ namespace IqraInfrastructure.Services.LLM.Providers
                 MaxTokens = _maxTokens,
                 Temperature = _temperature,
                 Stream = true,
-                Model = _model
+                Model = _model,
+                TopP = _topP
             };
 
             try
@@ -130,6 +132,6 @@ namespace IqraInfrastructure.Services.LLM.Providers
         public static InterfaceLLMProviderEnum GetProviderType()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
-        }
+        }  
     }
 }

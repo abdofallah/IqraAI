@@ -1,5 +1,4 @@
 /** Dynamic Variables **/
-
 let CurrentManageAgentData = null;
 let ManageAgentType = null; // new or edit
 
@@ -7,6 +6,13 @@ let ManageAgentType = null; // new or edit
 let CurrentAgentIntegrationsSTT = [];
 let CurrentAgentIntegrationsLLM = [];
 let CurrentAgentIntegrationsTTS = [];
+
+// Integration Configuration State
+let CurrentAgentConfigurationIntegration = null;
+let CurrentAgentConfigurationIntegrationType = null;
+let CurrentAgentConfigurationFields = null;
+let CurrentAgentConfigurationValues = {};
+let CurrentAgentConfigurationType = null;
 
 // Cache related states
 let CurrentAgentCacheMessages = [];
@@ -28,7 +34,7 @@ const agentIconPicker = new EmojiPicker({
 });
 
 const agentstooltipTriggerList = document.querySelectorAll('#agents-tab [data-bs-toggle="tooltip"]');
-const agentstooltipList = [...agentstooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
+[...agentstooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
 // Agent Tab
 const agentTab = $("#agents-tab");
@@ -124,7 +130,354 @@ function showAgentListTab() {
 	}, 300);
 }
 
-// Integration Functions
+function CheckAgentTabHasChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Check General tab changes
+	const generalChanges = CheckAgentGeneralTabChanges(false);
+	if (generalChanges.hasChanges) {
+		changes.general = generalChanges.changes;
+		hasChanges = true;
+	}
+
+	// Check Context tab changes
+	const contextChanges = CheckAgentContextTabChanges(false);
+	if (contextChanges.hasChanges) {
+		changes.context = contextChanges.changes;
+		hasChanges = true;
+	}
+
+	// Check Personality tab changes
+	const personalityChanges = CheckAgentPersonalityTabChanges(false);
+	if (personalityChanges.hasChanges) {
+		changes.personality = personalityChanges.changes;
+		hasChanges = true;
+	}
+
+	// Check Utterances tab changes
+	const utterancesChanges = CheckAgentUtterancesTabChanges(false);
+	if (utterancesChanges.hasChanges) {
+		changes.utterances = utterancesChanges.changes;
+		hasChanges = true;
+	}
+
+	// Check Integrations tab changes
+	const integrationsChanges = {
+		STT: CurrentAgentIntegrationsSTT,
+		LLM: CurrentAgentIntegrationsLLM,
+		TTS: CurrentAgentIntegrationsTTS,
+	};
+	if (JSON.stringify(CurrentManageAgentData.integrations) !== JSON.stringify(integrationsChanges)) {
+		changes.integrations = integrationsChanges;
+		hasChanges = true;
+	}
+
+	// Check Cache tab changes
+	const cacheChanges = CheckAgentCacheTabChanges(false);
+	if (cacheChanges.hasChanges) {
+		changes.cache = cacheChanges.changes;
+		hasChanges = true;
+	}
+
+	// Check Settings tab changes
+	const settingsChanges = CheckAgentSettingsTabChanges(false);
+	if (settingsChanges.hasChanges) {
+		changes.settings = settingsChanges.changes;
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+async function canLeaveAgentTab(leaveMessage = "") {
+	if (IsSavingAgentTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Agent is currently being saved. Please wait for the save to finish.",
+			enableDismiss: false,
+		});
+		return false;
+	}
+
+	const changes = CheckAgentTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the agent.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function createDefaultAgentObject() {
+	const agent = {
+		general: {
+			emoji: "🤖",
+			name: {},
+			description: {},
+		},
+		context: {
+			useBranding: true,
+			useBranches: true,
+			useServices: true,
+			useProducts: true,
+		},
+		personality: {
+			name: {},
+			role: {},
+			capabilities: {},
+			ethics: {},
+			tone: {},
+		},
+		utterances: {
+			openingType: "AgentFirst",
+			greetingMessage: {},
+			phrasesBeforeReply: {},
+		},
+		scripts: [],
+		integrations: {
+			STT: [],
+			LLM: [],
+			TTS: [],
+		},
+		cache: {
+			messages: [],
+			audios: [],
+			autoCacheAudioSettings: {
+				autoCacheAudioResponses: false,
+				autoCacheAudioResponsesDefaultExpiryHours: 24,
+				autoCacheAudioResponseCacheGroupId: null,
+			},
+		},
+		settings: {
+			backgroundAudioUrl: null,
+			backgroundAudioVolume: 10,
+		},
+	};
+
+	// Initialize multi-language properties for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// General
+		agent.general.name[language] = "";
+		agent.general.description[language] = "";
+
+		// Personality
+		agent.personality.name[language] = "";
+		agent.personality.role[language] = "";
+		agent.personality.capabilities[language] = [];
+		agent.personality.ethics[language] = [];
+		agent.personality.tone[language] = [];
+
+		// Utterances
+		agent.utterances.greetingMessage[language] = "";
+		agent.utterances.phrasesBeforeReply[language] = [];
+	});
+
+	return agent;
+}
+
+// General Tab Functions
+function CheckAgentGeneralTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Emoji
+	changes.emoji = $("#editAgentIconButton").text();
+	if (CurrentManageAgentData.general.emoji !== changes.emoji) {
+		hasChanges = true;
+	}
+
+	// Name (multi-language)
+	changes.name = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentIdentifierInput").val().trim();
+		changes.name[language] = value;
+
+		if (CurrentManageAgentData.general.name[language] !== value) {
+			hasChanges = true;
+		}
+	});
+
+	// Description (multi-language)
+	changes.description = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentDescriptionInput").val().trim();
+		changes.description[language] = value;
+
+		if (CurrentManageAgentData.general.description[language] !== value) {
+			hasChanges = true;
+		}
+	});
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+// Context Tab Functions
+function CheckAgentContextTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Context checkboxes
+	changes.useBranding = $("#agentEditContextEnableBranding").prop("checked");
+	if (CurrentManageAgentData.context.useBranding !== changes.useBranding) {
+		hasChanges = true;
+	}
+
+	changes.useBranches = $("#agentEditContextEnableBranches").prop("checked");
+	if (CurrentManageAgentData.context.useBranches !== changes.useBranches) {
+		hasChanges = true;
+	}
+
+	changes.useServices = $("#agentEditContextEnableServices").prop("checked");
+	if (CurrentManageAgentData.context.useServices !== changes.useServices) {
+		hasChanges = true;
+	}
+
+	changes.useProducts = $("#agentEditContextEnableProducts").prop("checked");
+	if (CurrentManageAgentData.context.useProducts !== changes.useProducts) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+// Personality Tab Functions
+function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Name (multi-language)
+	changes.name = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentPersonalityNameInput").val().trim();
+		changes.name[language] = value;
+
+		if (CurrentManageAgentData.personality.name[language] !== value) {
+			hasChanges = true;
+		}
+	});
+
+	// Role (multi-language)
+	changes.role = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentPersonalityRoleInput").val().trim();
+		changes.role[language] = value;
+
+		if (CurrentManageAgentData.personality.role[language] !== value) {
+			hasChanges = true;
+		}
+	});
+
+	// Lists (Capabilities, Ethics, Tone)
+	["capabilities", "ethics", "tone"].forEach((listType) => {
+		changes[listType] = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			changes[listType][language] = [];
+
+			// Only collect values for the current language
+			if (language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs .input-group input`).each((_, input) => {
+					const value = $(input).val().trim();
+					if (value) {
+						changes[listType][language].push(value);
+					}
+				});
+			}
+
+			// Compare with current data
+			if (JSON.stringify(CurrentManageAgentData.personality[listType][language]) !== JSON.stringify(changes[listType][language])) {
+				hasChanges = true;
+			}
+		});
+	});
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+// Utterances Tab Functions
+function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Opening Type
+	changes.openingType = $("#editAgentGreetingStartTypeInput").val();
+	if (CurrentManageAgentData.utterances.openingType !== changes.openingType) {
+		hasChanges = true;
+	}
+
+	// Greeting Message (multi-language)
+	changes.greetingMessage = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentPersonalityGreetingInput").val().trim();
+		changes.greetingMessage[language] = value;
+
+		if (CurrentManageAgentData.utterances.greetingMessage[language] !== value) {
+			hasChanges = true;
+		}
+	});
+
+	// Phrases Before Reply (multi-language)
+	changes.phrasesBeforeReply = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const value = $("#editAgentPhrasesBeforeReply").val().trim();
+		// Split by commas and trim each phrase
+		changes.phrasesBeforeReply[language] = value ? value.split(",").map((p) => p.trim()) : [];
+
+		if (JSON.stringify(CurrentManageAgentData.utterances.phrasesBeforeReply[language]) !== JSON.stringify(changes.phrasesBeforeReply[language])) {
+			hasChanges = true;
+		}
+	});
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+// Integration Tab Functions
 function createIntegrationSelectElement(type, index) {
 	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
 		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
@@ -148,7 +501,7 @@ function createIntegrationSelectElement(type, index) {
                 <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration">
                     <i class="fa-regular fa-gear"></i>
                 </button>
-                <button class="btn btn-danger" button-type="remove-integration">
+                <button class="btn btn-danger" button-type="remove-integration" data-index="${index}" data-integration-id="">
                     <i class="fa-regular fa-trash"></i>
                 </button>
             </div>
@@ -172,7 +525,295 @@ function fillIntegrationsList(type) {
 	});
 }
 
-// Cache Functions
+function createAgentIntegrationConfigurationField(field) {
+	let fieldHtml = "";
+
+	switch (field.type) {
+		case "text":
+			fieldHtml = `
+                <div class="mb-3 config-field" data-field-id="${field.id}">
+                    <label class="form-label btn-ic-span-align">
+                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
+                        ${
+													field.tooltip
+														? `
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        `
+														: ""
+												}
+                    </label>
+                    <input type="${field.isEncrypted ? "password" : "text"}" 
+                           class="form-control config-field-input"
+                           placeholder="${field.placeholder || ""}"
+                           value="${CurrentAgentConfigurationValues[field.id] || field.defaultValue || ""}">
+                </div>
+            `;
+			break;
+
+		case "number":
+			fieldHtml = `
+                <div class="mb-3 config-field" data-field-id="${field.id}">
+                    <label class="form-label btn-ic-span-align">
+                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
+                        ${
+													field.tooltip
+														? `
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        `
+														: ""
+												}
+                    </label>
+                    <input type="number" 
+                           class="form-control config-field-input"
+                           placeholder="${field.placeholder || ""}"
+                           value="${CurrentAgentConfigurationValues[field.id] || field.defaultValue || ""}">
+                </div>
+            `;
+			break;
+
+		case "select": {
+			const options = field.options?.map((opt) => `<option value="${opt.key}" ${opt.isDefault ? "selected" : ""}>${opt.value}</option>`).join("") || "";
+
+			fieldHtml = `
+                <div class="mb-3 config-field" data-field-id="${field.id}">
+                    <label class="form-label btn-ic-span-align">
+                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
+                        ${
+													field.tooltip
+														? `
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        `
+														: ""
+												}
+                    </label>
+                    <select class="form-select config-field-input">
+                        <option value="" disabled>Select ${field.name}</option>
+                        ${options}
+                    </select>
+                </div>
+            `;
+			break;
+		}
+
+		case "models":
+			fieldHtml = `
+                <div class="mb-3 config-field" data-field-id="${field.id}">
+                    <label class="form-label btn-ic-span-align">
+                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
+                        ${
+													field.tooltip
+														? `
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        `
+														: ""
+												}
+                    </label>
+                    <select class="form-select config-field-input">
+                        <option value="" disabled>Select ${field.name}</option>
+                        <!-- Models will be populated dynamically -->
+                    </select>
+                </div>
+            `;
+			break;
+	}
+
+	return $(fieldHtml);
+}
+
+function fillAgentIntegrationConfigurationFields() {
+	integrationConfigurationFieldsContainer.empty();
+
+	CurrentAgentConfigurationFields.forEach((field) => {
+		const fieldElement = createAgentIntegrationConfigurationField(field);
+		integrationConfigurationFieldsContainer.append(fieldElement);
+
+		// For models field type, populate with available models
+		if (field.type === "models") {
+			populateAgentIntegrationModelsField(field);
+		}
+
+		// Initialize tooltips for new elements
+		const tooltips = fieldElement.find('[data-bs-toggle="tooltip"]');
+		tooltips.each((index, element) => {
+			new bootstrap.Tooltip(element);
+		});
+	});
+}
+
+function populateAgentIntegrationModelsField(field) {
+	const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType);
+
+	if (!provider || !provider.models) return;
+
+	const selectElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"] select`);
+
+	// Add enabled models only
+	const enabledModels = provider.models.filter((model) => model.disabledAt === null);
+
+	enabledModels.forEach((model) => {
+		selectElement.append(`
+            <option value="${model.id}" 
+                ${CurrentAgentConfigurationValues[field.id] === model.id ? "selected" : ""}>
+                ${model.name}
+            </option>
+        `);
+	});
+}
+
+function loadAgentIntegrationConfiguration(integrationId, integrationType) {
+	// Get provider configuration based on integration type
+	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((integration) => integration.id === integrationId);
+	const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
+
+	if (!provider) {
+		AlertManager.createAlert({
+			type: "error",
+			message: "Provider configuration not found",
+			timeout: 3000,
+		});
+		return;
+	}
+
+	CurrentAgentConfigurationIntegration = integrationId;
+	CurrentAgentConfigurationIntegrationType = businessIntegrationData.type;
+	CurrentAgentConfigurationType = integrationType;
+	CurrentAgentConfigurationFields = provider.userIntegrationFields;
+
+	// Get current values if they exist
+	CurrentAgentConfigurationValues = {}; // Reset values
+
+	// Find existing configuration values
+	const currentArray = integrationType === "STT" ? CurrentAgentIntegrationsSTT : integrationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+
+	const existingConfig = currentArray.find((i) => i && i.id === integrationId);
+	if (existingConfig?.fieldValues) {
+		CurrentAgentConfigurationValues = { ...existingConfig.fieldValues };
+	}
+
+	// Fill the modal with fields
+	fillAgentIntegrationConfigurationFields();
+}
+
+function validateAgentIntegrationConfiguration() {
+	const errors = [];
+	let isValid = true;
+
+	CurrentAgentConfigurationFields.forEach((field) => {
+		const fieldElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"]`);
+		const input = fieldElement.find(".config-field-input");
+		const value = input.val().trim();
+
+		// Remove existing invalid state
+		input.removeClass("is-invalid");
+
+		// Required field validation
+		if (field.required && !value) {
+			isValid = false;
+			errors.push(`${field.name} is required`);
+			input.addClass("is-invalid");
+		}
+
+		// Type-specific validation
+		if (value) {
+			switch (field.type) {
+				case "number":
+					if (isNaN(value)) {
+						isValid = false;
+						errors.push(`${field.name} must be a valid number`);
+						input.addClass("is-invalid");
+					}
+					break;
+
+				case "models":
+					const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegration);
+
+					if (provider) {
+						const model = provider.models.find((m) => m.id === value);
+						if (!model) {
+							isValid = false;
+							errors.push(`${field.name}: Selected model is invalid`);
+							input.addClass("is-invalid");
+						} else if (model.disabledAt !== null) {
+							isValid = false;
+							errors.push(`${field.name}: Selected model is disabled`);
+							input.addClass("is-invalid");
+						}
+					}
+					break;
+
+				case "select":
+					if (field.options && !field.options.some((opt) => opt.key === value)) {
+						isValid = false;
+						errors.push(`${field.name}: Invalid option selected`);
+						input.addClass("is-invalid");
+					}
+					break;
+			}
+		}
+	});
+
+	return {
+		isValid,
+		errors,
+	};
+}
+
+function getAgentIntegrationConfigurationChanges() {
+	const changes = {};
+	let hasChanges = false;
+
+	CurrentAgentConfigurationFields.forEach((field) => {
+		const fieldElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"]`);
+		const value = fieldElement.find(".config-field-input").val().trim();
+		const currentValue = CurrentAgentConfigurationValues[field.id] || "";
+
+		if (value !== currentValue) {
+			changes[field.id] = value;
+			hasChanges = true;
+		}
+	});
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+function saveAgentIntegrationConfigurationChanges(changes) {
+	// Update current agent integration configuration
+	const currentArray = CurrentAgentConfigurationType === "STT" ? CurrentAgentIntegrationsSTT : CurrentAgentConfigurationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+
+	const integrationIndex = currentArray.findIndex((i) => {
+		if (!i) return false;
+
+		return i.id === CurrentAgentConfigurationIntegration;
+	});
+	if (integrationIndex !== -1) {
+		// Update existing configuration
+		Object.keys(changes).forEach((fieldId) => {
+			currentArray[integrationIndex].fieldValues[fieldId] = changes[fieldId];
+		});
+	}
+
+	// Update local state
+	CurrentAgentConfigurationValues = {
+		...CurrentAgentConfigurationValues,
+		...changes,
+	};
+
+	// Close modal
+	integrationConfigurationModal.modal("hide");
+}
+
+// Cache Tab Functions
 function createCacheGroupSelectElement(type, index) {
 	const groups = type === "message" ? BusinessFullData.businessApp.cache.messageGroups : BusinessFullData.businessApp.cache.audioGroups;
 
@@ -210,6 +851,72 @@ function fillCacheGroupsList(type) {
 	});
 }
 
+function CheckAgentCacheTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Messages
+	changes.messages = CurrentAgentCacheMessages;
+	if (JSON.stringify(CurrentManageAgentData.cache.messages) !== JSON.stringify(changes.messages)) {
+		hasChanges = true;
+	}
+
+	// Audios
+	changes.audios = CurrentAgentCacheAudios;
+	if (JSON.stringify(CurrentManageAgentData.cache.audios) !== JSON.stringify(changes.audios)) {
+		hasChanges = true;
+	}
+
+	// Auto Cache Audio Settings
+	changes.autoCacheAudioSettings = {
+		autoCacheAudioResponses: false, // Add appropriate element ID
+		autoCacheAudioResponsesDefaultExpiryHours: 24, // Add appropriate element ID
+		autoCacheAudioResponseCacheGroupId: null, // Add appropriate element ID
+	};
+
+	if (JSON.stringify(CurrentManageAgentData.cache.autoCacheAudioSettings) !== JSON.stringify(changes.autoCacheAudioSettings)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
+// Settings Tab Functions
+function CheckAgentSettingsTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+
+	// Background Audio URL
+	const backgroundAudioType = $("#editAgentBackgroundAudioSelect").val();
+	changes.backgroundAudioUrl = backgroundAudioType === "none" ? null : backgroundAudioType;
+
+	if (CurrentManageAgentData.settings.backgroundAudioUrl !== changes.backgroundAudioUrl) {
+		hasChanges = true;
+	}
+
+	// Background Audio Volume
+	changes.backgroundAudioVolume = parseInt($("#editAgentBackgroundAudioVolume").val());
+	if (CurrentManageAgentData.settings.backgroundAudioVolume !== changes.backgroundAudioVolume) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
+}
+
 function initAgentTab() {
 	$(document).ready(() => {
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
@@ -219,7 +926,11 @@ function initAgentTab() {
 			event.preventDefault();
 
 			currentAgentName.text("New Agent");
+			CurrentManageAgentData = createDefaultAgentObject();
+
 			showAgentManagerTab();
+
+			ManageAgentType = "new";
 		});
 
 		switchBackToAgentsTab.on("click", (event) => {
@@ -506,20 +1217,6 @@ function initAgentTab() {
 			ttsIntegrationsList.append(createIntegrationSelectElement("TTS", newIndex));
 		});
 
-		// Handle integration removal
-		agentIntegrationsTab.on("click", '[button-type="remove-integration"]', function (event) {
-			event.preventDefault();
-			$(this).closest(".integration-item").remove();
-
-			// Refresh indices
-			$(".integration-item").each((idx, element) => {
-				$(element).attr("data-index", idx);
-				$(element)
-					.find(".input-group-text i")
-					.attr("class", `fa-regular fa-${idx + 1}`);
-			});
-		});
-
 		// Cache Event Handlers
 		addMessageCacheGroupButton.on("click", (event) => {
 			event.preventDefault();
@@ -539,19 +1236,25 @@ function initAgentTab() {
 			$(this).closest(".cache-group-item").remove();
 		});
 
-		// Handle integration selection changes
-		agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', function () {
-			const type = $(this).attr("select-type").split("-")[1].toUpperCase();
-			const index = $(this).closest(".integration-item").data("index");
-			const value = $(this).val();
+		// Handle integration removal
+		agentIntegrationsTab.on("click", '[button-type="remove-integration"]', (event) => {
+			event.preventDefault();
 
-			const currentArray = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+			const currentElement = $(event.currentTarget);
+			const dataIndex = currentElement.attr("data-index");
 
-			if (value) {
-				currentArray[index] = value;
-			} else {
-				currentArray.splice(index, 1);
-			}
+			currentElement.closest(".integration-item").remove();
+
+			// todo make sure to check whether its llm stt or tts
+			CurrentAgentIntegrationsLLM.splice(dataIndex, 1);
+
+			// Refresh indices
+			$(".integration-item").each((idx, element) => {
+				$(element).attr("data-index", idx);
+				$(element)
+					.find(".input-group-text i")
+					.attr("class", `fa-regular fa-${idx + 1}`);
+			});
 		});
 
 		// Handle cache group selection changes
@@ -564,6 +1267,37 @@ function initAgentTab() {
 
 			if (value) {
 				currentArray[index] = value;
+			} else {
+				currentArray.splice(index, 1);
+			}
+		});
+
+		// Handle integration selection changes
+		agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', (event) => {
+			const currentElement = $(event.currentTarget);
+			const type = currentElement.attr("select-type").split("-")[1].toUpperCase();
+			const index = currentElement.closest(".integration-item").data("index");
+			const value = currentElement.val();
+
+			const currentArray = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+
+			if (value) {
+				const alreadyExists = currentArray.some((i) => i.id === value);
+				if (alreadyExists) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "This integration is already added.",
+						timeout: 3000,
+					});
+
+					currentElement.val("");
+					return;
+				}
+
+				currentArray[index] = {
+					id: value,
+					fieldValues: {},
+				};
 			} else {
 				currentArray.splice(index, 1);
 			}
@@ -586,11 +1320,151 @@ function initAgentTab() {
 				return;
 			}
 
+			// Load configuration before showing modal
+			loadAgentIntegrationConfiguration(integrationId, integrationType);
+
 			// Show the modal
 			integrationConfigurationModal.modal("show");
-
-			// TODO: Load and display configuration fields based on integration type
-			// This will be implemented next when we work on the configuration fields
 		});
+
+		// Save configuration
+		saveIntegrationConfigButton.on("click", (event) => {
+			event.preventDefault();
+
+			const validation = validateAgentIntegrationConfiguration();
+			if (!validation.isValid) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation failed:<br>${validation.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const changes = getAgentIntegrationConfigurationChanges();
+			if (!changes.hasChanges) {
+				integrationConfigurationModal.modal("hide");
+				return;
+			}
+
+			saveAgentIntegrationConfigurationChanges(changes.changes);
+		});
+
+		integrationConfigurationModal.on("hide.bs.modal", (event) => {
+			CurrentAgentConfigurationIntegration = null;
+			CurrentAgentConfigurationIntegrationType = null;
+			CurrentAgentConfigurationFields = null;
+			CurrentAgentConfigurationValues = {};
+			CurrentAgentConfigurationType = null;
+		});
+
+		// Track changes in fields
+		integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
+			const changes = getAgentIntegrationConfigurationChanges();
+			saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
+		});
+
+		function initAgentTabChangeHandlers() {
+			// General Tab Changes
+			$("#editAgentIconButton, #editAgentIdentifierInput, #editAgentDescriptionInput").on("input change", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Context Tab Changes
+			$("#agentEditContextEnableBranding, #agentEditContextEnableBranches, #agentEditContextEnableServices, #agentEditContextEnableProducts").on("change", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Personality Tab Changes
+			$("#editAgentPersonalityNameInput, #editAgentPersonalityRoleInput").on("input change", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Track changes in personality value lists
+			const personalityLists = ["capabilities", "ethics", "tone"];
+			personalityLists.forEach((listType) => {
+				const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
+
+				// Handle changes in existing inputs
+				container.on("input change", "input", () => {
+					CheckAgentTabHasChanges();
+				});
+
+				// Handle when values are added or removed
+				container.on("click", '[button-type="editAgentPersonalityValueRemove"]', () => {
+					CheckAgentTabHasChanges();
+				});
+			});
+
+			// Utterances Tab Changes
+			$("#editAgentGreetingStartTypeInput, #editAgentPersonalityGreetingInput, #editAgentPhrasesBeforeReply").on("input change", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Cache Tab Changes
+			// Message Cache
+			messageCacheGroupsList.on("change", 'select[select-type^="cache-message-group"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			messageCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Audio Cache
+			audioCacheGroupsList.on("change", 'select[select-type^="cache-audio-group"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			audioCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Integration Tab Changes
+			agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			agentIntegrationsTab.on("click", '[button-type="remove-integration"]', () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Integration Configuration Changes
+			integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Settings Tab Changes
+			$("#editAgentBackgroundAudioSelect, #editAgentBackgroundAudioVolume").on("input change", () => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Handle language changes
+			manageAgentsLanguageDropdown.onLanguageChange(() => {
+				CheckAgentTabHasChanges();
+			});
+
+			// Handle items being added
+			addSTTIntegrationButton.on("click", () => {
+				setTimeout(() => CheckAgentTabHasChanges(), 100);
+			});
+
+			addLLMIntegrationButton.on("click", () => {
+				setTimeout(() => CheckAgentTabHasChanges(), 100);
+			});
+
+			addTTSIntegrationButton.on("click", () => {
+				setTimeout(() => CheckAgentTabHasChanges(), 100);
+			});
+
+			addMessageCacheGroupButton.on("click", () => {
+				setTimeout(() => CheckAgentTabHasChanges(), 100);
+			});
+
+			addAudioCacheGroupButton.on("click", () => {
+				setTimeout(() => CheckAgentTabHasChanges(), 100);
+			});
+		}
+		initAgentTabChangeHandlers();
 	});
 }
