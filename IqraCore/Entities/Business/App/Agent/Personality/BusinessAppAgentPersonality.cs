@@ -8,6 +8,9 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
+        public Dictionary<string, string> Role { get; set; } = new Dictionary<string, string>();
+
+        [MultiLanguageProperty]
         public Dictionary<string, List<string>> Capabilities { get; set; } = new Dictionary<string, List<string>>();
 
         [MultiLanguageProperty]

@@ -3,6 +3,17 @@
 let CurrentManageAgentData = null;
 let ManageAgentType = null; // new or edit
 
+// Integration related states
+let CurrentAgentIntegrationsSTT = [];
+let CurrentAgentIntegrationsLLM = [];
+let CurrentAgentIntegrationsTTS = [];
+
+// Cache related states
+let CurrentAgentCacheMessages = [];
+let CurrentAgentCacheAudios = [];
+
+let manageAgentsLanguageDropdown = null;
+
 /** Element Variables **/
 
 const agentIconPicker = new EmojiPicker({
@@ -57,51 +68,164 @@ const agentScriptConversationMessages = agentScriptsManagerTab.find(".agentScrip
 const noMessagesInConversationAlert = agentScriptsManagerTab.find(".no-messages-conversation");
 
 // SUB | Integrations Tab
-const editAgentIntegrationSTTProviderSelect = agentTab.find("#editAgentIntegrationSTTProviderSelect");
-const editAgentIntegrationSTTConfigurationList = agentTab.find("#editAgentIntegrationSTTConfigurationList");
+const agentIntegrationsTab = $("#agents-manager-integrations");
+const sttIntegrationsList = agentIntegrationsTab.find("#sttIntegrationsList");
+const llmIntegrationsList = agentIntegrationsTab.find("#llmIntegrationsList");
+const ttsIntegrationsList = agentIntegrationsTab.find("#ttsIntegrationsList");
+const addSTTIntegrationButton = agentIntegrationsTab.find("#addSTTIntegration");
+const addLLMIntegrationButton = agentIntegrationsTab.find("#addLLMIntegration");
+const addTTSIntegrationButton = agentIntegrationsTab.find("#addTTSIntegration");
 
-const editAgentIntegrationLLMProviderSelect = agentTab.find("#editAgentIntegrationLLMProviderSelect");
-const editAgentIntegrationLLMConfigurationList = agentTab.find("#editAgentIntegrationLLMConfigurationList");
+const integrationConfigurationModal = $("#integrationConfigurationModal");
+const integrationConfigurationFieldsContainer = integrationConfigurationModal.find("#integrationConfigurationFieldsContainer");
+const saveIntegrationConfigButton = integrationConfigurationModal.find("#saveIntegrationConfigButton");
 
-const ttsConfigAzureSilenceTypeSelect = agentTab.find("#ttsConfigAzureSilenceTypeSelect");
-const addTTSConfigAzureSilenceTypeButton = agentTab.find("#addTTSConfigAzureSilenceType");
-const ttsConfigAzureSilenceTypeList = agentTab.find("#ttsConfigAzureSilenceTypeList");
+// SUB | Cache Tab
+const agentCacheTab = $("#agents-manager-cache");
+const messageCacheGroupsList = agentCacheTab.find("#messageCacheGroupsList");
+const audioCacheGroupsList = agentCacheTab.find("#audioCacheGroupsList");
+const addMessageCacheGroupButton = agentCacheTab.find("#addMessageCacheGroup");
+const addAudioCacheGroupButton = agentCacheTab.find("#addAudioCacheGroup");
 
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
 
 /** Functions **/
 
+function showAgentManagerTab() {
+	agentsListTab.removeClass("show");
+	setTimeout(() => {
+		agentsListTab.addClass("d-none");
+
+		agentsManagerTab.removeClass("d-none");
+		agentsManagerHeader.removeClass("d-none");
+		setTimeout(() => {
+			agentsManagerTab.addClass("show");
+			agentsManagerHeader.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+function showAgentListTab() {
+	agentsManagerTab.removeClass("show");
+	agentsManagerHeader.removeClass("show");
+	setTimeout(() => {
+		agentsManagerTab.addClass("d-none");
+		agentsManagerHeader.addClass("d-none");
+
+		agentsListTab.removeClass("d-none");
+		setTimeout(() => {
+			agentsListTab.addClass("show");
+
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
+
+// Integration Functions
+function createIntegrationSelectElement(type, index) {
+	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
+		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
+		return integrationTypeData.type.includes(type);
+	});
+
+	let options = '<option value="">Select Integration</option>';
+	integrations.forEach((integration) => {
+		options += `<option value="${integration.id}">${integration.friendlyName}</option>`;
+	});
+
+	return `
+        <div class="mb-2 integration-item" data-index="${index}">
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fa-regular fa-${index + 1}"></i>
+                </span>
+                <select class="form-select" select-type="integration-${type.toLowerCase()}">
+                    ${options}
+                </select>
+                <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration">
+                    <i class="fa-regular fa-gear"></i>
+                </button>
+                <button class="btn btn-danger" button-type="remove-integration">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function fillIntegrationsList(type) {
+	const container = type === "STT" ? sttIntegrationsList : type === "LLM" ? llmIntegrationsList : ttsIntegrationsList;
+
+	const currentIntegrations = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+
+	// Clear existing items except alert
+	container.find(".integration-item").remove();
+
+	// Add current integrations
+	currentIntegrations.forEach((integrationId, index) => {
+		const element = $(createIntegrationSelectElement(type, index));
+		element.find("select").val(integrationId);
+		container.append(element);
+	});
+}
+
+// Cache Functions
+function createCacheGroupSelectElement(type, index) {
+	const groups = type === "message" ? BusinessFullData.businessApp.cache.messageGroups : BusinessFullData.businessApp.cache.audioGroups;
+
+	let options = '<option value="">Select Group</option>';
+	groups.forEach((group) => {
+		options += `<option value="${group.id}">${group.name}</option>`;
+	});
+
+	return `
+        <div class="mb-2 cache-group-item" data-index="${index}">
+            <div class="input-group">
+                <select class="form-select" select-type="cache-${type}-group">
+                    ${options}
+                </select>
+                <button class="btn btn-danger" button-type="remove-cache-group">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function fillCacheGroupsList(type) {
+	const container = type === "message" ? messageCacheGroupsList : audioCacheGroupsList;
+	const currentGroups = type === "message" ? CurrentAgentCacheMessages : CurrentAgentCacheAudios;
+
+	// Clear existing items except alert
+	container.find(".cache-group-item").remove();
+
+	// Add current groups
+	currentGroups.forEach((groupId, index) => {
+		const element = $(createCacheGroupSelectElement(type, index));
+		element.find("select").val(groupId);
+		container.append(element);
+	});
+}
+
 function initAgentTab() {
 	$(document).ready(() => {
+		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
+
+		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
 			event.preventDefault();
 
 			currentAgentName.text("New Agent");
-
-			agentsListTab.removeClass("show");
-			setTimeout(() => {
-				agentsListTab.addClass("d-none");
-
-				agentsManagerTab.removeClass("d-none");
-				setTimeout(() => {
-					agentsManagerTab.addClass("show");
-				}, 10);
-			}, 150);
+			showAgentManagerTab();
 		});
 
 		switchBackToAgentsTab.on("click", (event) => {
 			event.preventDefault();
 
-			agentsManagerTab.removeClass("show");
-			setTimeout(() => {
-				agentsManagerTab.addClass("d-none");
-
-				agentsListTab.removeClass("d-none");
-				setTimeout(() => {
-					agentsListTab.addClass("show");
-				}, 10);
-			}, 150);
+			showAgentListTab();
 		});
 
 		addNewAgentScriptButton.on("click", (event) => {
@@ -147,10 +271,9 @@ function initAgentTab() {
                          `);
 		});
 
-		$(document).on("click", '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
+		editAgentScriptConditionValueInputs.on("click", '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			event.stopImmediatePropagation();
 
 			$(event.currentTarget).parent().remove();
 		});
@@ -222,10 +345,9 @@ function initAgentTab() {
 			noMessagesInConversationAlert.addClass("d-none");
 		});
 
-		$(document).on("click", '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
+		agentScriptConversationMessages.on("click", '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			event.stopImmediatePropagation();
 
 			let actualParent = $(event.currentTarget).parent().parent().parent();
 
@@ -249,9 +371,8 @@ function initAgentTab() {
 			}
 		});
 
-		$(document).on("change", '[select-type="set-ai-response-type"]', (event) => {
+		agentScriptConversationMessages.on("change", '[select-type="set-ai-response-type"]', (event) => {
 			event.stopPropagation();
-			event.stopImmediatePropagation();
 
 			let target = $(event.currentTarget);
 			let selectedValue = target.val();
@@ -287,9 +408,8 @@ function initAgentTab() {
 			}
 		});
 
-		$(document).on("change", '[select-type="set-ai-response-tool"]', (event) => {
+		agentScriptConversationMessages.on("change", '[select-type="set-ai-response-tool"]', (event) => {
 			event.stopPropagation();
-			event.stopImmediatePropagation();
 
 			let target = $(event.currentTarget);
 			let selectedValue = target.val();
@@ -344,115 +464,6 @@ function initAgentTab() {
 			target.attr("previous-value", selectedValue);
 		});
 
-		editAgentIntegrationSTTProviderSelect.on("change", (event) => {
-			let selectedValue = editAgentIntegrationSTTProviderSelect.val();
-
-			let activeConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"].show');
-			let activeConfigElementFor = activeConfigElement.attr("config-for");
-
-			if (activeConfigElementFor === selectedValue) return;
-
-			let selectedConfigElement = editAgentIntegrationSTTConfigurationList.find('[div-type="sstconfigbox"][config-for="' + selectedValue + '"]');
-
-			activeConfigElement.removeClass("show");
-			setTimeout(() => {
-				activeConfigElement.addClass("d-none");
-
-				selectedConfigElement.removeClass("d-none");
-				setTimeout(() => {
-					selectedConfigElement.addClass("show");
-				}, 10);
-			}, 150);
-		});
-
-		editAgentIntegrationLLMProviderSelect.on("change", (event) => {
-			let selectedValue = editAgentIntegrationLLMProviderSelect.val();
-
-			let activeConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"].show');
-			let activeConfigElementFor = activeConfigElement.attr("config-for");
-
-			if (activeConfigElementFor === selectedValue) return;
-
-			let selectedConfigElement = editAgentIntegrationLLMConfigurationList.find('[div-type="llmconfigbox"][config-for="' + selectedValue + '"]');
-
-			activeConfigElement.removeClass("show");
-			setTimeout(() => {
-				activeConfigElement.addClass("d-none");
-
-				selectedConfigElement.removeClass("d-none");
-				setTimeout(() => {
-					selectedConfigElement.addClass("show");
-				}, 10);
-			}, 150);
-		});
-
-		ttsConfigAzureSilenceTypeSelect.on("change", (event) => {
-			let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
-			if (!selectedValue) return;
-
-			addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
-		});
-
-		addTTSConfigAzureSilenceTypeButton.on("click", (event) => {
-			let selectedValue = ttsConfigAzureSilenceTypeSelect.val();
-			if (!selectedValue) return;
-
-			let selectedOption = ttsConfigAzureSilenceTypeSelect.find('option[value="' + selectedValue + '"]');
-			let selectedOptionTextSplit = selectedOption.text().split(" - ");
-
-			let newElement = $(`
-                              <div class="mt-1">
-                                   <label class="form-label btn-ic-span-align d-block" for="ttsConfigAzureSilenceType${selectedValue}">
-                                        <span>${selectedOptionTextSplit[0]}</span>
-
-                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${selectedOptionTextSplit[1]}">
-                                             <i class="fa-regular fa-circle-question"></i>
-                                        </a>
-                                   </label>
-                                   <div class="input-group" silence-type="${selectedValue}">
-                                        <input type="number" class="form-control" id="ttsConfigAzureSilenceType${selectedValue}" value="750">
-                                        <button class="btn btn-danger" button-type="removeTTSConfigAzureSilenceType">
-                                             <i class='fa-regular fa-trash'></i>
-                                        </button>
-                                   </div>
-                              </div>
-                         `);
-
-			let toolTip = new bootstrap.Tooltip(newElement.find('[data-bs-toggle="tooltip"]')[0]);
-
-			ttsConfigAzureSilenceTypeList.append(newElement);
-
-			selectedOption.remove();
-
-			if (ttsConfigAzureSilenceTypeSelect.children().length === 1) {
-				ttsConfigAzureSilenceTypeSelect.val("none");
-				ttsConfigAzureSilenceTypeSelect.change();
-				addTTSConfigAzureSilenceTypeButton.prop("disabled", true);
-			}
-		});
-
-		$(document).on("click", '[button-type="removeTTSConfigAzureSilenceType"]', (event) => {
-			event.stopPropagation();
-			event.stopImmediatePropagation();
-
-			let target = $(event.currentTarget);
-			let parent = target.parent();
-			let parentToRemove = parent.parent();
-
-			let silenceType = parent.attr("silence-type");
-
-			let labelValue = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] span`).text();
-			let toolTipDescription = $(`label[for="ttsConfigAzureSilenceType${silenceType}"] a`).attr("data-bs-title");
-
-			ttsConfigAzureSilenceTypeSelect.append(`<option value="${silenceType}">${labelValue} - ${toolTipDescription}</option>`);
-
-			parentToRemove.remove();
-
-			if (ttsConfigAzureSilenceTypeSelect.children().length > 1) {
-				addTTSConfigAzureSilenceTypeButton.prop("disabled", false);
-			}
-		});
-
 		editAgentBackgroundAudioSelect.on("change", (event) => {
 			let selectedValue = editAgentBackgroundAudioSelect.val();
 
@@ -474,6 +485,112 @@ function initAgentTab() {
 			}
 
 			audioConfigBox.removeClass("d-none");
+		});
+
+		// Integration Event Handlers
+		addSTTIntegrationButton.on("click", (event) => {
+			event.preventDefault();
+			const newIndex = sttIntegrationsList.find(".integration-item").length;
+			sttIntegrationsList.append(createIntegrationSelectElement("STT", newIndex));
+		});
+
+		addLLMIntegrationButton.on("click", (event) => {
+			event.preventDefault();
+			const newIndex = llmIntegrationsList.find(".integration-item").length;
+			llmIntegrationsList.append(createIntegrationSelectElement("LLM", newIndex));
+		});
+
+		addTTSIntegrationButton.on("click", (event) => {
+			event.preventDefault();
+			const newIndex = ttsIntegrationsList.find(".integration-item").length;
+			ttsIntegrationsList.append(createIntegrationSelectElement("TTS", newIndex));
+		});
+
+		// Handle integration removal
+		agentIntegrationsTab.on("click", '[button-type="remove-integration"]', function (event) {
+			event.preventDefault();
+			$(this).closest(".integration-item").remove();
+
+			// Refresh indices
+			$(".integration-item").each((idx, element) => {
+				$(element).attr("data-index", idx);
+				$(element)
+					.find(".input-group-text i")
+					.attr("class", `fa-regular fa-${idx + 1}`);
+			});
+		});
+
+		// Cache Event Handlers
+		addMessageCacheGroupButton.on("click", (event) => {
+			event.preventDefault();
+			const newIndex = messageCacheGroupsList.find(".cache-group-item").length;
+			messageCacheGroupsList.append(createCacheGroupSelectElement("message", newIndex));
+		});
+
+		addAudioCacheGroupButton.on("click", (event) => {
+			event.preventDefault();
+			const newIndex = audioCacheGroupsList.find(".cache-group-item").length;
+			audioCacheGroupsList.append(createCacheGroupSelectElement("audio", newIndex));
+		});
+
+		// Handle cache group removal
+		agentCacheTab.on("click", '[button-type="remove-cache-group"]', function (event) {
+			event.preventDefault();
+			$(this).closest(".cache-group-item").remove();
+		});
+
+		// Handle integration selection changes
+		agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', function () {
+			const type = $(this).attr("select-type").split("-")[1].toUpperCase();
+			const index = $(this).closest(".integration-item").data("index");
+			const value = $(this).val();
+
+			const currentArray = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+
+			if (value) {
+				currentArray[index] = value;
+			} else {
+				currentArray.splice(index, 1);
+			}
+		});
+
+		// Handle cache group selection changes
+		agentCacheTab.on("change", 'select[select-type^="cache-"]', function () {
+			const type = $(this).attr("select-type").split("-")[1];
+			const index = $(this).closest(".cache-group-item").data("index");
+			const value = $(this).val();
+
+			const currentArray = type === "message" ? CurrentAgentCacheMessages : CurrentAgentCacheAudios;
+
+			if (value) {
+				currentArray[index] = value;
+			} else {
+				currentArray.splice(index, 1);
+			}
+		});
+
+		// Handle integration configuration
+		agentIntegrationsTab.on("click", '[button-type="configure-integration"]', function (event) {
+			event.preventDefault();
+
+			const integrationSelect = $(this).closest(".integration-item").find("select");
+			const integrationId = integrationSelect.val();
+			const integrationType = integrationSelect.attr("select-type").split("-")[1].toUpperCase();
+
+			if (!integrationId) {
+				AlertManager.createAlert({
+					type: "warning",
+					message: "Please select an integration first.",
+					timeout: 3000,
+				});
+				return;
+			}
+
+			// Show the modal
+			integrationConfigurationModal.modal("show");
+
+			// TODO: Load and display configuration fields based on integration type
+			// This will be implemented next when we work on the configuration fields
 		});
 	});
 }
