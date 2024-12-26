@@ -20,6 +20,16 @@ let CurrentAgentCacheAudios = [];
 
 let manageAgentsLanguageDropdown = null;
 
+// Multi Language
+let CurrentAgentGeneralNameMultiLangData = {};
+let CurrentAgentGeneralDescriptionMultiLangData = {};
+
+let CurrentAgentPersonalityNameMultiLangData = {};
+let CurrentAgentPersonalityRoleMultiLangData = {};
+let CurrentAgentPersonalityCapabilitiesMultiLangData = {};
+let CurrentAgentPersonalityEthicsMultiLangData = {};
+let CurrentAgentPersonalityToneMultiLangData = {};
+
 /** Element Variables **/
 
 const agentIconPicker = new EmojiPicker({
@@ -294,6 +304,54 @@ function createDefaultAgentObject() {
 	return agent;
 }
 
+function validateAgentMultiLanguageElements() {
+	if (ManageAgentType == null) return;
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentSelectedLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+
+		/** General Tab **/
+
+		// Identifier
+		const agentIdentifier = CurrentAgentGeneralNameMultiLangData[currentSelectedLanguage.id];
+		const agentIdentifierIsIncomplete = !agentIdentifier || agentIdentifier === "" || agentIdentifier.trim() === "";
+
+		// Description
+		const agentDescription = CurrentAgentGeneralDescriptionMultiLangData[currentSelectedLanguage.id];
+		const agentDescriptionIsIncomplete = !agentDescription || agentDescription === "" || agentDescription.trim() === "";
+
+		const isAnyIncompleteInGeneral = agentIdentifierIsIncomplete || agentDescriptionIsIncomplete;
+
+		/** Personality Tab **/
+
+		// Name
+		const agentName = CurrentAgentPersonalityNameMultiLangData[currentSelectedLanguage.id];
+		const nameIsIncomplete = !agentName || agentName === "" || agentName.trim() === "";
+
+		// Role
+		const agentRole = CurrentAgentPersonalityRoleMultiLangData[currentSelectedLanguage.id];
+		const roleIsIncomplete = !agentRole || agentRole === "" || agentRole.trim() === "";
+
+		// Lists
+		let listsIncomplete = false;
+		["capabilities", "ethics", "tone"].forEach((listType) => {
+			const currentData =
+				listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
+
+			const list = currentData[currentSelectedLanguage.id] || [];
+			if (!list || list.length === 0) {
+				listsIncomplete = true;
+			}
+		});
+
+		const isAnyIncompleteInPersonality = nameIsIncomplete || roleIsIncomplete || listsIncomplete;
+
+		/** Update language status **/
+		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality;
+		manageAgentsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyIncomplete ? "incomplete" : "complete");
+	});
+}
+
 // General Tab Functions
 function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	const changes = {};
@@ -308,10 +366,9 @@ function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	// Name (multi-language)
 	changes.name = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentIdentifierInput").val().trim();
-		changes.name[language] = value;
+		changes.name[language] = CurrentAgentGeneralNameMultiLangData[language];
 
-		if (CurrentManageAgentData.general.name[language] !== value) {
+		if (CurrentManageAgentData.general.name[language] !== changes.name[language]) {
 			hasChanges = true;
 		}
 	});
@@ -319,10 +376,9 @@ function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	// Description (multi-language)
 	changes.description = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentDescriptionInput").val().trim();
-		changes.description[language] = value;
+		changes.description[language] = CurrentAgentGeneralDescriptionMultiLangData[language];
 
-		if (CurrentManageAgentData.general.description[language] !== value) {
+		if (CurrentManageAgentData.general.description[language] !== changes.description[language]) {
 			hasChanges = true;
 		}
 	});
@@ -334,6 +390,59 @@ function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	return {
 		hasChanges,
 		changes,
+	};
+}
+
+function fillAgentGeneralTab() {
+	// Emoji
+	$("#editAgentIconButton").text(CurrentManageAgentData.general.emoji);
+
+	// Name
+	CurrentAgentGeneralNameMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentGeneralNameMultiLangData[language] = CurrentManageAgentData.general.name[language];
+	});
+	$("#editAgentIdentifierInput").val(CurrentAgentGeneralNameMultiLangData[BusinessDefaultLanguage]);
+
+	// Description
+	CurrentAgentGeneralDescriptionMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentGeneralDescriptionMultiLangData[language] = CurrentManageAgentData.general.description[language];
+	});
+	$("#editAgentDescriptionInput").val(CurrentAgentGeneralDescriptionMultiLangData[BusinessDefaultLanguage]);
+}
+
+function validateAgentGeneralTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// Validate name for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (!CurrentAgentGeneralNameMultiLangData[language] || CurrentAgentGeneralNameMultiLangData[language].trim().length === 0) {
+			isValid = false;
+			errors.push(`Agent name for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentIdentifierInput").addClass("is-invalid");
+			}
+		}
+	});
+
+	// Validate description for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (!CurrentAgentGeneralDescriptionMultiLangData[language] || CurrentAgentGeneralDescriptionMultiLangData[language].trim().length === 0) {
+			isValid = false;
+			errors.push(`Agent description for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentDescriptionInput").addClass("is-invalid");
+			}
+		}
+	});
+
+	return {
+		isValid,
+		errors,
 	};
 }
 
@@ -378,24 +487,20 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 	const changes = {};
 	let hasChanges = false;
 
-	// Name (multi-language)
+	// Name
 	changes.name = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentPersonalityNameInput").val().trim();
-		changes.name[language] = value;
-
-		if (CurrentManageAgentData.personality.name[language] !== value) {
+		changes.name[language] = CurrentAgentPersonalityNameMultiLangData[language];
+		if (CurrentManageAgentData.personality.name[language] !== changes.name[language]) {
 			hasChanges = true;
 		}
 	});
 
-	// Role (multi-language)
+	// Role
 	changes.role = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentPersonalityRoleInput").val().trim();
-		changes.role[language] = value;
-
-		if (CurrentManageAgentData.personality.role[language] !== value) {
+		changes.role[language] = CurrentAgentPersonalityRoleMultiLangData[language];
+		if (CurrentManageAgentData.personality.role[language] !== changes.role[language]) {
 			hasChanges = true;
 		}
 	});
@@ -403,21 +508,15 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 	// Lists (Capabilities, Ethics, Tone)
 	["capabilities", "ethics", "tone"].forEach((listType) => {
 		changes[listType] = {};
+		const currentData =
+			listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
+
 		BusinessFullData.businessData.languages.forEach((language) => {
-			changes[listType][language] = [];
+			changes[listType][language] = currentData[language] || [];
 
-			// Only collect values for the current language
-			if (language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
-				$(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs .input-group input`).each((_, input) => {
-					const value = $(input).val().trim();
-					if (value) {
-						changes[listType][language].push(value);
-					}
-				});
-			}
-
-			// Compare with current data
-			if (JSON.stringify(CurrentManageAgentData.personality[listType][language]) !== JSON.stringify(changes[listType][language])) {
+			// Compare arrays
+			const originalArray = CurrentManageAgentData.personality[listType][language] || [];
+			if (JSON.stringify(originalArray) !== JSON.stringify(changes[listType][language])) {
 				hasChanges = true;
 			}
 		});
@@ -430,6 +529,81 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 	return {
 		hasChanges,
 		changes,
+	};
+}
+
+function fillAgentPersonalityTab() {
+	// Name
+	CurrentAgentPersonalityNameMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentPersonalityNameMultiLangData[language] = CurrentManageAgentData.personality.name[language];
+	});
+	$("#editAgentPersonalityNameInput").val(CurrentAgentPersonalityNameMultiLangData[BusinessDefaultLanguage]);
+
+	// Role
+	CurrentAgentPersonalityRoleMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentPersonalityRoleMultiLangData[language] = CurrentManageAgentData.personality.role[language];
+	});
+	$("#editAgentPersonalityRoleInput").val(CurrentAgentPersonalityRoleMultiLangData[BusinessDefaultLanguage]);
+
+	// Lists
+	["capabilities", "ethics", "tone"].forEach((listType) => {
+		const currentData =
+			listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
+
+		currentData = {};
+		BusinessFullData.businessData.languages.forEach((language) => {
+			currentData[language] = CurrentManageAgentData.personality[listType][language] || [];
+		});
+
+		// Fill the list for default language
+		const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
+		container.empty();
+		currentData[BusinessDefaultLanguage].forEach((value) => {
+			container.append(`
+                <div class="input-group mb-1">
+                    <input type="text" class="form-control" value="${value}">
+                    <button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
+                        <i class='fa-regular fa-trash'></i>
+                    </button>
+                </div>
+            `);
+		});
+	});
+}
+
+function validateAgentPersonalityTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// Validate name for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (!CurrentAgentPersonalityNameMultiLangData[language] || CurrentAgentPersonalityNameMultiLangData[language].trim().length === 0) {
+			isValid = false;
+			errors.push(`Agent personality name for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentPersonalityNameInput").addClass("is-invalid");
+			}
+		}
+	});
+
+	// Validate role for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (!CurrentAgentPersonalityRoleMultiLangData[language] || CurrentAgentPersonalityRoleMultiLangData[language].trim().length === 0) {
+			isValid = false;
+			errors.push(`Agent personality role for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentPersonalityRoleInput").addClass("is-invalid");
+			}
+		}
+	});
+
+	return {
+		isValid,
+		errors,
 	};
 }
 
@@ -1366,35 +1540,154 @@ function initAgentTab() {
 
 		function initAgentTabChangeHandlers() {
 			// General Tab Changes
-			$("#editAgentIconButton, #editAgentIdentifierInput, #editAgentDescriptionInput").on("input change", () => {
-				CheckAgentTabHasChanges();
-			});
+			function initAgentGeneralTabHandlers() {
+				// Name input changes
+				$("#editAgentIdentifierInput").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					CurrentAgentGeneralNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+					validateAgentMultiLanguageElements();
+					CheckAgentTabHasChanges();
+				});
+
+				// Description input changes
+				$("#editAgentDescriptionInput").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					CurrentAgentGeneralDescriptionMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+					validateAgentMultiLanguageElements();
+					CheckAgentTabHasChanges();
+				});
+
+				// Language change handler
+				manageAgentsLanguageDropdown.onLanguageChange((language) => {
+					// Update name field
+					$("#editAgentIdentifierInput").val(CurrentAgentGeneralNameMultiLangData[language.id] || "");
+
+					// Update description field
+					$("#editAgentDescriptionInput").val(CurrentAgentGeneralDescriptionMultiLangData[language.id] || "");
+
+					validateAgentMultiLanguageElements();
+				});
+			}
+			initAgentGeneralTabHandlers();
 
 			// Context Tab Changes
 			$("#agentEditContextEnableBranding, #agentEditContextEnableBranches, #agentEditContextEnableServices, #agentEditContextEnableProducts").on("change", () => {
 				CheckAgentTabHasChanges();
 			});
 
-			// Personality Tab Changes
-			$("#editAgentPersonalityNameInput, #editAgentPersonalityRoleInput").on("input change", () => {
-				CheckAgentTabHasChanges();
-			});
-
-			// Track changes in personality value lists
-			const personalityLists = ["capabilities", "ethics", "tone"];
-			personalityLists.forEach((listType) => {
-				const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
-
-				// Handle changes in existing inputs
-				container.on("input change", "input", () => {
+			function initAgentPersonalityTabHandlers() {
+				// Name input changes
+				$("#editAgentPersonalityNameInput").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					CurrentAgentPersonalityNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+					validateAgentMultiLanguageElements();
 					CheckAgentTabHasChanges();
 				});
 
-				// Handle when values are added or removed
-				container.on("click", '[button-type="editAgentPersonalityValueRemove"]', () => {
+				// Role input changes
+				$("#editAgentPersonalityRoleInput").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					CurrentAgentPersonalityRoleMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+					validateAgentMultiLanguageElements();
 					CheckAgentTabHasChanges();
 				});
-			});
+
+				// List input changes
+				["capabilities", "ethics", "tone"].forEach((listType) => {
+					const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
+
+					// Add new value
+					$(`#addAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}Value`).on("click", () => {
+						const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+						const currentData =
+							listType === "capabilities"
+								? CurrentAgentPersonalityCapabilitiesMultiLangData
+								: listType === "ethics"
+									? CurrentAgentPersonalityEthicsMultiLangData
+									: CurrentAgentPersonalityToneMultiLangData;
+
+						container.append(`
+							<div class="input-group mb-1">
+								<input type="text" class="form-control" value="">
+								<button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
+									<i class='fa-regular fa-trash'></i>
+								</button>
+							</div>
+						`);
+
+						// Update data
+						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+						validateAgentMultiLanguageElements();
+						CheckAgentTabHasChanges();
+					});
+
+					// Remove value
+					container.on("click", '[button-type="editAgentPersonalityValueRemove"]', function () {
+						const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+						const currentData =
+							listType === "capabilities"
+								? CurrentAgentPersonalityCapabilitiesMultiLangData
+								: listType === "ethics"
+									? CurrentAgentPersonalityEthicsMultiLangData
+									: CurrentAgentPersonalityToneMultiLangData;
+
+						$(this).closest(".input-group").remove();
+
+						// Update data
+						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+						validateAgentMultiLanguageElements();
+						CheckAgentTabHasChanges();
+					});
+
+					// Value changes
+					container.on("input change", "input", () => {
+						const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+						const currentData =
+							listType === "capabilities"
+								? CurrentAgentPersonalityCapabilitiesMultiLangData
+								: listType === "ethics"
+									? CurrentAgentPersonalityEthicsMultiLangData
+									: CurrentAgentPersonalityToneMultiLangData;
+
+						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+						validateAgentMultiLanguageElements();
+						CheckAgentTabHasChanges();
+					});
+				});
+
+				// Language change handler
+				manageAgentsLanguageDropdown.onLanguageChange((language) => {
+					// Update name and role
+					$("#editAgentPersonalityNameInput").val(CurrentAgentPersonalityNameMultiLangData[language.id] || "");
+					$("#editAgentPersonalityRoleInput").val(CurrentAgentPersonalityRoleMultiLangData[language.id] || "");
+
+					// Update lists
+					["capabilities", "ethics", "tone"].forEach((listType) => {
+						const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
+						const currentData =
+							listType === "capabilities"
+								? CurrentAgentPersonalityCapabilitiesMultiLangData
+								: listType === "ethics"
+									? CurrentAgentPersonalityEthicsMultiLangData
+									: CurrentAgentPersonalityToneMultiLangData;
+
+						container.empty();
+						(currentData[language.id] || []).forEach((value) => {
+							container.append(`
+								<div class="input-group mb-1">
+									<input type="text" class="form-control" value="${value}">
+									<button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
+										<i class='fa-regular fa-trash'></i>
+									</button>
+								</div>
+							`);
+						});
+					});
+
+					validateAgentMultiLanguageElements();
+				});
+			}
+			initAgentPersonalityTabHandlers();
 
 			// Utterances Tab Changes
 			$("#editAgentGreetingStartTypeInput, #editAgentPersonalityGreetingInput, #editAgentPhrasesBeforeReply").on("input change", () => {

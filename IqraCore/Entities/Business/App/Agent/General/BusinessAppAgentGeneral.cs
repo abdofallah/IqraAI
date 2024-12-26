@@ -6,7 +6,6 @@ namespace IqraCore.Entities.Business
     {
         public string Emoji { get; set; } = "🤖";
 
-        [MultiLanguageProperty]
         public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
