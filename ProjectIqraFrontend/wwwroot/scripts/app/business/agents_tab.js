@@ -30,6 +30,9 @@ let CurrentAgentPersonalityCapabilitiesMultiLangData = {};
 let CurrentAgentPersonalityEthicsMultiLangData = {};
 let CurrentAgentPersonalityToneMultiLangData = {};
 
+let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
+let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
+
 /** Element Variables **/
 
 const agentIconPicker = new EmojiPicker({
@@ -311,7 +314,6 @@ function validateAgentMultiLanguageElements() {
 		const currentSelectedLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
 
 		/** General Tab **/
-
 		// Identifier
 		const agentIdentifier = CurrentAgentGeneralNameMultiLangData[currentSelectedLanguage.id];
 		const agentIdentifierIsIncomplete = !agentIdentifier || agentIdentifier === "" || agentIdentifier.trim() === "";
@@ -323,7 +325,6 @@ function validateAgentMultiLanguageElements() {
 		const isAnyIncompleteInGeneral = agentIdentifierIsIncomplete || agentDescriptionIsIncomplete;
 
 		/** Personality Tab **/
-
 		// Name
 		const agentName = CurrentAgentPersonalityNameMultiLangData[currentSelectedLanguage.id];
 		const nameIsIncomplete = !agentName || agentName === "" || agentName.trim() === "";
@@ -339,15 +340,31 @@ function validateAgentMultiLanguageElements() {
 				listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
 
 			const list = currentData[currentSelectedLanguage.id] || [];
-			if (!list || list.length === 0) {
-				listsIncomplete = true;
+			if (list || list.length !== 0) {
+				list.forEach((item) => {
+					if (!item || item === "" || item.trim() === "") {
+						listsIncomplete = true;
+					}
+				});
 			}
 		});
 
 		const isAnyIncompleteInPersonality = nameIsIncomplete || roleIsIncomplete || listsIncomplete;
 
+		/** Utterances Tab **/
+		// Greeting Message
+		const greetingMessage = CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id];
+		const greetingMessageIsIncomplete = !greetingMessage || greetingMessage === "" || greetingMessage.trim() === "";
+
+		// Phrases Before Reply
+		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id];
+		const phrasesIsIncomplete = !phrases || phrases.length === 0;
+
+		// Update language status
+		const isAnyIncompleteInUtterances = greetingMessageIsIncomplete || phrasesIsIncomplete;
+
 		/** Update language status **/
-		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality;
+		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality || isAnyIncompleteInUtterances;
 		manageAgentsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyIncomplete ? "incomplete" : "complete");
 	});
 }
@@ -621,10 +638,8 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	// Greeting Message (multi-language)
 	changes.greetingMessage = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentPersonalityGreetingInput").val().trim();
-		changes.greetingMessage[language] = value;
-
-		if (CurrentManageAgentData.utterances.greetingMessage[language] !== value) {
+		changes.greetingMessage[language] = CurrentAgentUtterancesGreetingMessageMultiLangData[language];
+		if (CurrentManageAgentData.utterances.greetingMessage[language] !== changes.greetingMessage[language]) {
 			hasChanges = true;
 		}
 	});
@@ -632,11 +647,11 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	// Phrases Before Reply (multi-language)
 	changes.phrasesBeforeReply = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const value = $("#editAgentPhrasesBeforeReply").val().trim();
-		// Split by commas and trim each phrase
-		changes.phrasesBeforeReply[language] = value ? value.split(",").map((p) => p.trim()) : [];
+		changes.phrasesBeforeReply[language] = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
 
-		if (JSON.stringify(CurrentManageAgentData.utterances.phrasesBeforeReply[language]) !== JSON.stringify(changes.phrasesBeforeReply[language])) {
+		// Compare arrays
+		const originalArray = CurrentManageAgentData.utterances.phrasesBeforeReply[language] || [];
+		if (JSON.stringify(originalArray) !== JSON.stringify(changes.phrasesBeforeReply[language])) {
 			hasChanges = true;
 		}
 	});
@@ -648,6 +663,70 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	return {
 		hasChanges,
 		changes,
+	};
+}
+
+function fillAgentUtterancesTab() {
+	// Opening Type
+	$("#editAgentGreetingStartTypeInput").val(CurrentManageAgentData.utterances.openingType);
+
+	// Greeting Message
+	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = CurrentManageAgentData.utterances.greetingMessage[language];
+	});
+	$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[BusinessDefaultLanguage]);
+
+	// Phrases Before Reply
+	CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = CurrentManageAgentData.utterances.phrasesBeforeReply[language] || [];
+	});
+	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[BusinessDefaultLanguage].join(", "));
+}
+
+function validateAgentUtterancesTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// Validate opening type
+	const openingType = $("#editAgentGreetingStartTypeInput").val();
+	if (!openingType) {
+		isValid = false;
+		errors.push("Opening type is required");
+		if (!onlyRemove) {
+			$("#editAgentGreetingStartTypeInput").addClass("is-invalid");
+		}
+	}
+
+	// Validate greeting message for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (!CurrentAgentUtterancesGreetingMessageMultiLangData[language] || CurrentAgentUtterancesGreetingMessageMultiLangData[language].trim().length === 0) {
+			isValid = false;
+			errors.push(`Greeting message for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentPersonalityGreetingInput").addClass("is-invalid");
+			}
+		}
+	});
+
+	// Validate phrases before reply for all languages
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
+		if (!phrases || phrases.length === 0) {
+			isValid = false;
+			errors.push(`At least one phrase before reply for language ${language} is required.`);
+
+			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+				$("#editAgentPhrasesBeforeReply").addClass("is-invalid");
+			}
+		}
+	});
+
+	return {
+		isValid,
+		errors,
 	};
 }
 
@@ -1575,6 +1654,7 @@ function initAgentTab() {
 				CheckAgentTabHasChanges();
 			});
 
+			// Personality Tab Changes
 			function initAgentPersonalityTabHandlers() {
 				// Name input changes
 				$("#editAgentPersonalityNameInput").on("input change", (event) => {
@@ -1690,9 +1770,47 @@ function initAgentTab() {
 			initAgentPersonalityTabHandlers();
 
 			// Utterances Tab Changes
-			$("#editAgentGreetingStartTypeInput, #editAgentPersonalityGreetingInput, #editAgentPhrasesBeforeReply").on("input change", () => {
-				CheckAgentTabHasChanges();
-			});
+			function initAgentUtterancesTabHandlers() {
+				// Opening Type changes
+				$("#editAgentGreetingStartTypeInput").on("change", () => {
+					CheckAgentTabHasChanges();
+				});
+
+				// Greeting Message changes
+				$("#editAgentPersonalityGreetingInput").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+					validateAgentMultiLanguageElements();
+					CheckAgentTabHasChanges();
+				});
+
+				// Phrases Before Reply changes
+				$("#editAgentPhrasesBeforeReply").on("input change", (event) => {
+					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+					const phrasesText = $(event.currentTarget).val();
+
+					// Split by comma and clean up each phrase
+					CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id] = phrasesText
+						.split(",")
+						.map((phrase) => phrase.trim())
+						.filter((phrase) => phrase.length > 0);
+
+					validateAgentMultiLanguageElements();
+					CheckAgentTabHasChanges();
+				});
+
+				// Language change handler
+				manageAgentsLanguageDropdown.onLanguageChange((language) => {
+					// Update greeting message
+					$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[language.id] || "");
+
+					// Update phrases before reply
+					$("#editAgentPhrasesBeforeReply").val((CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language.id] || []).join(", "));
+
+					validateAgentMultiLanguageElements();
+				});
+			}
+			initAgentUtterancesTabHandlers();
 
 			// Cache Tab Changes
 			// Message Cache
