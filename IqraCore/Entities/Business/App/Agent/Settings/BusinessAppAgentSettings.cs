@@ -3,6 +3,6 @@
     public class BusinessAppAgentSettings
     {
         public string? BackgroundAudioUrl { get; set; } = null;
-        public int? BackgroundAudioVolume { get; set; } = 10;
+        public int? BackgroundAudioVolume { get; set; } = null;
     }
 }

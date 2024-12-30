@@ -1147,6 +1147,7 @@ function FillToolsManageTab(toolData) {
 			toolAudioBeforeSpeakingSelect.val("custom").change();
 
 			ToolAudioBeforeSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.beforeSpeaking}`);
+			toolAudioBeforeSpeakingVolumeInput.val(toolData.audio.beforeSpeakingVolume);
 
 			toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
@@ -1156,6 +1157,7 @@ function FillToolsManageTab(toolData) {
 			toolAudioDuringSpeakingSelect.val("custom").change();
 
 			ToolAudioDuringSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringSpeaking}`);
+			toolAudioDuringSpeakingVolumeInput.val(toolData.audio.duringSpeakingVolume);
 
 			toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
@@ -1165,6 +1167,7 @@ function FillToolsManageTab(toolData) {
 			toolAudioAfterSpeakingSelect.val("custom").change();
 
 			ToolAudioAfterSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterSpeaking}`);
+			toolAudioAfterSpeakingVolumeInput.val(toolData.audio.afterSpeakingVolume);
 
 			toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");

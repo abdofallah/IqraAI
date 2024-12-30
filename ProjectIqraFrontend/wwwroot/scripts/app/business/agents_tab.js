@@ -2,6 +2,11 @@
 let CurrentManageAgentData = null;
 let ManageAgentType = null; // new or edit
 
+let manageAgentsLanguageDropdown = null;
+let agentsScriptManagerLanguageDropdown = null;
+
+let AgentBackgroundAudioWaveSurfer = null;
+
 // Integration related states
 let CurrentAgentIntegrationsSTT = [];
 let CurrentAgentIntegrationsLLM = [];
@@ -17,8 +22,6 @@ let CurrentAgentConfigurationType = null;
 // Cache related states
 let CurrentAgentCacheMessages = [];
 let CurrentAgentCacheAudios = [];
-
-let manageAgentsLanguageDropdown = null;
 
 // Multi Language
 let CurrentAgentGeneralNameMultiLangData = {};
@@ -59,6 +62,12 @@ const agentsListTab = agentTab.find("#agentsListTab");
 
 // Agent - Manager Tab
 const agentsManagerHeader = agentTab.find("#agents-manager-header");
+
+const agentsManagerBreadcrumb = agentsManagerHeader.find("#agents-manager-breadcrumb");
+const agentsScriptManagerBreadcrumb = agentsManagerHeader.find("#agents-script-manager-breadcrumb");
+
+const agentsManagerListTab = agentsManagerHeader.find("#agents-manager-tab");
+const agentsManagerScriptTab = agentsManagerHeader.find("#agents-manager-script-tab");
 
 const switchBackToAgentsTab = agentsManagerHeader.find("#switchBackToAgentsTab");
 const currentAgentName = agentsManagerHeader.find("#currentAgentName");
@@ -109,6 +118,14 @@ const addAudioCacheGroupButton = agentCacheTab.find("#addAudioCacheGroup");
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
 
+// SUB | Audio Tab
+const agentBackgroundAudioBox = agentTab.find("#agentBackgroundAudioBox");
+const agentBackgroundAudioSelect = editAgentBackgroundAudioSelect;
+const agentBackgroundAudioInputBox = agentBackgroundAudioBox.find("#agentBackgroundAudioInputBox");
+const agentBackgroundAudioUploadBtn = agentBackgroundAudioInputBox.find("#agent-background-audio-upload-btn");
+const agentBackgroundAudioUploadInput = agentBackgroundAudioInputBox.find("#agentBackgroundAudioUploadInput");
+const agentBackgroundAudioVolumeInput = agentBackgroundAudioBox.find("#agentBackgroundAudioVolumeInput");
+
 /** Functions **/
 
 function showAgentManagerTab() {
@@ -118,9 +135,13 @@ function showAgentManagerTab() {
 
 		agentsManagerTab.removeClass("d-none");
 		agentsManagerHeader.removeClass("d-none");
+		agentsManagerBreadcrumb.removeClass("d-none");
+		agentsManagerListTab.removeClass("d-none");
 		setTimeout(() => {
 			agentsManagerTab.addClass("show");
 			agentsManagerHeader.addClass("show");
+			agentsManagerBreadcrumb.addClass("show");
+			agentsManagerListTab.addClass("show");
 
 			setDynamicBodyHeight();
 		}, 10);
@@ -367,6 +388,63 @@ function validateAgentMultiLanguageElements() {
 		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality || isAnyIncompleteInUtterances;
 		manageAgentsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyIncomplete ? "incomplete" : "complete");
 	});
+}
+
+function ResetAndEmptyAgentsManageTab() {
+	// Audio
+	if (AgentBackgroundAudioWaveSurfer?.destroy) {
+		AgentBackgroundAudioWaveSurfer.destroy();
+	}
+	AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
+	agentBackgroundAudioVolumeInput.val("100");
+	agentBackgroundAudioInputBox.find(".no-audio-notice").removeClass("d-none");
+	agentBackgroundAudioInputBox.find(".recording-container-waveform").addClass("d-none");
+	agentBackgroundAudioInputBox.find(".audio-controller").addClass("d-none");
+	agentBackgroundAudioUploadInput.val("");
+	agentBackgroundAudioSelect.val("none").change();
+}
+
+function CreateAgentBackgroundAudioWavesurfer(containerId) {
+	const waveSurferConversation = WaveSurfer.create({
+		container: containerId,
+		waveColor: "#5f6833",
+		progressColor: "#CBE54E",
+		height: 35,
+		barWidth: 2,
+		barHeight: 0.7,
+		fillParent: true,
+		audioRate: 1,
+		plugins: [
+			WaveSurfer.Hover.create({
+				lineColor: "#fff",
+				lineWidth: 2,
+				labelBackground: "#555",
+				labelColor: "#fff",
+				labelSize: "11px",
+			}),
+		],
+	});
+
+	const audioPlayPauseButton = $(containerId).parent().parent().find('.audio-controller button[button-type="start-stop-audio"]');
+	audioPlayPauseButton.on("click", (event) => {
+		waveSurferConversation.playPause();
+
+		const currentMode = $(event.currentTarget).attr("mode");
+
+		if (currentMode === "play") {
+			$(event.currentTarget).attr("mode", "pause");
+			$(event.currentTarget).find("i").removeClass("fa-play").addClass("fa-pause");
+		} else {
+			$(event.currentTarget).attr("mode", "play");
+			$(event.currentTarget).find("i").removeClass("fa-pause").addClass("fa-play");
+		}
+	});
+
+	waveSurferConversation.on("ready", (duration) => {
+		audioPlayPauseButton.prop("disabled", false);
+	});
+
+	return waveSurferConversation;
 }
 
 // General Tab Functions
@@ -1070,7 +1148,7 @@ function saveAgentIntegrationConfigurationChanges(changes) {
 function createCacheGroupSelectElement(type, index) {
 	const groups = type === "message" ? BusinessFullData.businessApp.cache.messageGroups : BusinessFullData.businessApp.cache.audioGroups;
 
-	let options = '<option value="">Select Group</option>';
+	let options = '<option value="" disabled selected>Select Group</option>';
 	groups.forEach((group) => {
 		options += `<option value="${group.id}">${group.name}</option>`;
 	});
@@ -1141,6 +1219,91 @@ function CheckAgentCacheTabChanges(enableDisableButton = true) {
 	};
 }
 
+function validateAgentCacheTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// Validate Message Cache Groups
+	messageCacheGroupsList.find('select[select-type^="cache-message-group"]').each((index, select) => {
+		const value = $(select).val();
+		if (!value) {
+			isValid = false;
+			errors.push(`Message cache group at position ${index + 1} must be selected`);
+			if (!onlyRemove) {
+				$(select).addClass("is-invalid");
+			}
+		} else {
+			$(select).removeClass("is-invalid");
+		}
+	});
+
+	// Validate Audio Cache Groups
+	audioCacheGroupsList.find('select[select-type^="cache-audio-group"]').each((index, select) => {
+		const value = $(select).val();
+		if (!value) {
+			isValid = false;
+			errors.push(`Audio cache group at position ${index + 1} must be selected`);
+			if (!onlyRemove) {
+				$(select).addClass("is-invalid");
+			}
+		} else {
+			$(select).removeClass("is-invalid");
+		}
+	});
+
+	// Validate unique selections for message cache groups
+	const selectedMessageGroups = new Set();
+	messageCacheGroupsList.find('select[select-type^="cache-message-group"]').each((index, select) => {
+		const value = $(select).val();
+		if (value) {
+			if (selectedMessageGroups.has(value)) {
+				isValid = false;
+				errors.push(`Duplicate message cache group selection at position ${index + 1}`);
+				if (!onlyRemove) {
+					$(select).addClass("is-invalid");
+				}
+			}
+			selectedMessageGroups.add(value);
+		}
+	});
+
+	// Validate unique selections for audio cache groups
+	const selectedAudioGroups = new Set();
+	audioCacheGroupsList.find('select[select-type^="cache-audio-group"]').each((index, select) => {
+		const value = $(select).val();
+		if (value) {
+			if (selectedAudioGroups.has(value)) {
+				isValid = false;
+				errors.push(`Duplicate audio cache group selection at position ${index + 1}`);
+				if (!onlyRemove) {
+					$(select).addClass("is-invalid");
+				}
+			}
+			selectedAudioGroups.add(value);
+		}
+	});
+
+	/**
+	// Auto Cache Audio Settings validation (if needed)
+	const autoCacheAudioResponses = false; // Add appropriate element check
+	const autoCacheExpiryHours = 24; // Add appropriate element check
+	const autoCacheGroupId = null; // Add appropriate element check
+
+	if (autoCacheAudioResponses && !autoCacheGroupId) {
+		isValid = false;
+		errors.push("Auto cache audio group must be selected when auto cache is enabled");
+		if (!onlyRemove) {
+			// Add invalid class to appropriate element
+		}
+	}
+	**/
+
+	return {
+		isValid,
+		errors,
+	};
+}
+
 // Settings Tab Functions
 function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	const changes = {};
@@ -1170,9 +1333,86 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	};
 }
 
+function onAgentsBackgroundAudioUploadValidation(event) {
+	const selectedFile = event.currentTarget.files[0];
+
+	if (selectedFile == null) {
+		return false;
+	}
+
+	if (selectedFile.size > 25 * 1024 * 1024) {
+		AlertManager.createAlert({
+			type: "danger",
+			message: "Audio file size should not exceed 25MB.",
+			enableDismiss: false,
+		});
+
+		$(event.currentTarget).val("");
+		return false;
+	}
+
+	return true;
+}
+
+function fillAgentSettingsTab() {
+	if (CurrentManageAgentData.settings.backgroundAudioUrl) {
+		agentBackgroundAudioSelect.val("custom").change();
+
+		AgentBackgroundAudioWaveSurfer.load(`${BusinessAgentBackgroundAudioURL}/${CurrentManageAgentData.settings.backgroundAudioUrl}`);
+		agentBackgroundAudioVolumeInput.val(CurrentManageAgentData.settings.backgroundAudioVolume);
+
+		agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");
+		agentBackgroundAudioInputBox.find(".recording-container-waveform").removeClass("d-none");
+		agentBackgroundAudioInputBox.find(".audio-controller").removeClass("d-none");
+	}
+}
+
+// Scripts Tab Functions
+function showAgentScriptManagerTab() {
+	agentScriptsListTab.removeClass("show");
+	agentsManagerBreadcrumb.removeClass("show");
+	agentsManagerListTab.removeClass("show");
+	setTimeout(() => {
+		agentScriptsListTab.addClass("d-none");
+		agentsManagerBreadcrumb.addClass("d-none");
+		agentsManagerListTab.addClass("d-none");
+
+		agentScriptsManagerTab.removeClass("d-none");
+		agentsManagerScriptTab.removeClass("d-none");
+		agentsScriptManagerBreadcrumb.removeClass("d-none");
+		setTimeout(() => {
+			agentScriptsManagerTab.addClass("show");
+			agentsManagerScriptTab.addClass("show");
+			agentsScriptManagerBreadcrumb.addClass("show");
+		}, 10);
+	}, 300);
+}
+
+function showAgentScriptListTab() {
+	agentScriptsManagerTab.removeClass("show");
+	agentsManagerScriptTab.removeClass("show");
+	agentsScriptManagerBreadcrumb.removeClass("show");
+	setTimeout(() => {
+		agentScriptsManagerTab.addClass("d-none");
+		agentsManagerScriptTab.addClass("d-none");
+		agentsScriptManagerBreadcrumb.addClass("d-none");
+
+		agentScriptsListTab.removeClass("d-none");
+		agentsManagerBreadcrumb.removeClass("d-none");
+		agentsManagerListTab.removeClass("d-none");
+		setTimeout(() => {
+			agentScriptsListTab.addClass("show");
+			agentsManagerBreadcrumb.addClass("show");
+			agentsManagerListTab.addClass("show");
+		}, 10);
+	}, 300);
+}
+
+/** INIT **/
 function initAgentTab() {
 	$(document).ready(() => {
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
+		agentsScriptManagerLanguageDropdown = new MultiLanguageDropdown("agentsScriptManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
 		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
@@ -1181,6 +1421,7 @@ function initAgentTab() {
 			currentAgentName.text("New Agent");
 			CurrentManageAgentData = createDefaultAgentObject();
 
+			ResetAndEmptyAgentsManageTab();
 			showAgentManagerTab();
 
 			ManageAgentType = "new";
@@ -1196,30 +1437,13 @@ function initAgentTab() {
 			event.preventDefault();
 
 			currentAgentScriptName.text("New Script");
-
-			agentScriptsListTab.removeClass("show");
-			setTimeout(() => {
-				agentScriptsListTab.addClass("d-none");
-
-				agentScriptsManagerTab.removeClass("d-none");
-				setTimeout(() => {
-					agentScriptsManagerTab.addClass("show");
-				}, 10);
-			}, 150);
+			showAgentScriptManagerTab();
 		});
 
 		switchBackToAgentsScriptManagerTab.on("click", (event) => {
 			event.preventDefault();
 
-			agentScriptsManagerTab.removeClass("show");
-			setTimeout(() => {
-				agentScriptsManagerTab.addClass("d-none");
-
-				agentScriptsListTab.removeClass("d-none");
-				setTimeout(() => {
-					agentScriptsListTab.addClass("show");
-				}, 10);
-			}, 150);
+			showAgentScriptListTab();
 		});
 
 		addAgentScriptConditionValueButton.on("click", (event) => {
@@ -1429,26 +1653,60 @@ function initAgentTab() {
 		});
 
 		editAgentBackgroundAudioSelect.on("change", (event) => {
-			let selectedValue = editAgentBackgroundAudioSelect.val();
-
-			if (!selectedValue) return;
-
-			let audioConfigBox = $(".agent-background-audio-box");
+			const selectedValue = $(event.currentTarget).val();
 
 			if (selectedValue === "none") {
-				audioConfigBox.addClass("d-none");
-				return;
-			}
+				agentBackgroundAudioBox.addClass("d-none");
+				agentBackgroundAudioUploadInput.val("");
 
-			let customAudioBox = $(".agent-background-custom-audio-box");
+				agentBackgroundAudioInputBox.find(".no-audio-notice").removeClass("d-none");
+				agentBackgroundAudioInputBox.find(".recording-container-waveform").addClass("d-none");
+				agentBackgroundAudioInputBox.find(".audio-controller").addClass("d-none");
+			} else {
+				agentBackgroundAudioBox.removeClass("d-none");
+			}
 
 			if (selectedValue === "custom") {
-				customAudioBox.removeClass("d-none");
+				agentBackgroundAudioInputBox.removeClass("d-none");
 			} else {
-				customAudioBox.addClass("d-none");
+				agentBackgroundAudioInputBox.addClass("d-none");
 			}
+		});
 
-			audioConfigBox.removeClass("d-none");
+		agentBackgroundAudioUploadBtn.on("click", (event) => {
+			event.preventDefault();
+
+			agentBackgroundAudioUploadInput.click();
+		});
+
+		agentBackgroundAudioUploadInput.on("change", (event) => {
+			const resultValidate = onAgentsBackgroundAudioUploadValidation(event);
+
+			if (resultValidate) {
+				const file = agentBackgroundAudioUploadInput[0].files[0];
+
+				const reader = new FileReader();
+
+				reader.onload = (evt) => {
+					const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+					AgentBackgroundAudioWaveSurfer.loadBlob(blob);
+
+					agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");
+					agentBackgroundAudioInputBox.find(".recording-container-waveform").removeClass("d-none");
+					agentBackgroundAudioInputBox.find(".audio-controller").removeClass("d-none");
+				};
+
+				reader.onerror = (evt) => {
+					AlertManager.createAlert({
+						type: "error",
+						message: "Error reading audio file for agenst background audio upload.",
+						enableDismiss: false,
+					});
+				};
+
+				// Read File as an ArrayBuffer
+				reader.readAsArrayBuffer(file);
+			}
 		});
 
 		// Integration Event Handlers
@@ -1625,6 +1883,7 @@ function initAgentTab() {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					CurrentAgentGeneralNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 					validateAgentMultiLanguageElements();
+					validateAgentGeneralTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1633,6 +1892,7 @@ function initAgentTab() {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					CurrentAgentGeneralDescriptionMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 					validateAgentMultiLanguageElements();
+					validateAgentGeneralTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1645,6 +1905,7 @@ function initAgentTab() {
 					$("#editAgentDescriptionInput").val(CurrentAgentGeneralDescriptionMultiLangData[language.id] || "");
 
 					validateAgentMultiLanguageElements();
+					validateAgentGeneralTab(true);
 				});
 			}
 			initAgentGeneralTabHandlers();
@@ -1661,6 +1922,7 @@ function initAgentTab() {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					CurrentAgentPersonalityNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 					validateAgentMultiLanguageElements();
+					validateAgentPersonalityTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1669,6 +1931,7 @@ function initAgentTab() {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					CurrentAgentPersonalityRoleMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 					validateAgentMultiLanguageElements();
+					validateAgentPersonalityTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1698,6 +1961,7 @@ function initAgentTab() {
 						// Update data
 						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
 						validateAgentMultiLanguageElements();
+						validateAgentPersonalityTab(true);
 						CheckAgentTabHasChanges();
 					});
 
@@ -1716,6 +1980,7 @@ function initAgentTab() {
 						// Update data
 						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
 						validateAgentMultiLanguageElements();
+						validateAgentPersonalityTab(true);
 						CheckAgentTabHasChanges();
 					});
 
@@ -1731,6 +1996,7 @@ function initAgentTab() {
 
 						currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
 						validateAgentMultiLanguageElements();
+						validateAgentPersonalityTab(true);
 						CheckAgentTabHasChanges();
 					});
 				});
@@ -1765,6 +2031,7 @@ function initAgentTab() {
 					});
 
 					validateAgentMultiLanguageElements();
+					validateAgentPersonalityTab(true);
 				});
 			}
 			initAgentPersonalityTabHandlers();
@@ -1774,6 +2041,7 @@ function initAgentTab() {
 				// Opening Type changes
 				$("#editAgentGreetingStartTypeInput").on("change", () => {
 					CheckAgentTabHasChanges();
+					validateAgentUtterancesTab(true);
 				});
 
 				// Greeting Message changes
@@ -1781,6 +2049,7 @@ function initAgentTab() {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 					validateAgentMultiLanguageElements();
+					validateAgentUtterancesTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1796,6 +2065,7 @@ function initAgentTab() {
 						.filter((phrase) => phrase.length > 0);
 
 					validateAgentMultiLanguageElements();
+					validateAgentUtterancesTab(true);
 					CheckAgentTabHasChanges();
 				});
 
@@ -1808,28 +2078,60 @@ function initAgentTab() {
 					$("#editAgentPhrasesBeforeReply").val((CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language.id] || []).join(", "));
 
 					validateAgentMultiLanguageElements();
+					validateAgentUtterancesTab(true);
 				});
 			}
 			initAgentUtterancesTabHandlers();
 
 			// Cache Tab Changes
-			// Message Cache
-			messageCacheGroupsList.on("change", 'select[select-type^="cache-message-group"]', () => {
-				CheckAgentTabHasChanges();
-			});
+			function initAgentCacheTabHandlers() {
+				// Message Cache
+				messageCacheGroupsList.on("change", 'select[select-type^="cache-message-group"]', (event) => {
+					const currentElement = $(event.currentTarget);
+					const currentValue = currentElement.val();
 
-			messageCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
-				CheckAgentTabHasChanges();
-			});
+					// check if select has this value
+					if (messageCacheGroupsList.find(`option[value="${currentValue}"]`).length > 1) {
+						AlertManager.createAlert({
+							type: "warning",
+							message: "Message cache group has already been selected.",
+						});
+						currentElement.val("");
+					}
 
-			// Audio Cache
-			audioCacheGroupsList.on("change", 'select[select-type^="cache-audio-group"]', () => {
-				CheckAgentTabHasChanges();
-			});
+					validateAgentCacheTab(true);
+					CheckAgentTabHasChanges();
+				});
 
-			audioCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
-				CheckAgentTabHasChanges();
-			});
+				messageCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
+					validateAgentCacheTab(true);
+					CheckAgentTabHasChanges();
+				});
+
+				// Audio Cache
+				audioCacheGroupsList.on("change", 'select[select-type^="cache-audio-group"]', (event) => {
+					const currentElement = $(event.currentTarget);
+					const currentValue = currentElement.val();
+
+					// check if select has this value
+					if (audioCacheGroupsList.find(`option[value="${currentValue}"]`).length > 1) {
+						AlertManager.createAlert({
+							type: "warning",
+							message: "Audio cache group has already been selected.",
+						});
+						currentElement.val("");
+					}
+
+					validateAgentCacheTab(true);
+					CheckAgentTabHasChanges();
+				});
+
+				audioCacheGroupsList.on("click", '[button-type="remove-cache-group"]', () => {
+					validateAgentCacheTab(true);
+					CheckAgentTabHasChanges();
+				});
+			}
+			initAgentCacheTabHandlers();
 
 			// Integration Tab Changes
 			agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', () => {

@@ -793,8 +793,9 @@
         <div class="main-container fade show w-100" id="agents-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-headset'></i> <span>Agents</span></h3>
             <div class="inner-header-container w-100 mb-3 fade d-none" id="agents-manager-header"> 
-                <!-- Breadcrumb and Save -->
-                <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+
+                <!-- Agent Manager Breadcrumb and Save -->
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-breadcrumb">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
@@ -817,10 +818,33 @@
                         </button>
                     </div>
                 </div>
-                
-                <!-- Manager Inner Tabs -->
-                <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                    <ul class="nav" id="agents-manager-tab" role="tablist">
+
+                <!-- Agent Script Manager Breadcrumb -->
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-script-manager-breadcrumb">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <span>Agents</span>
+                            </li>
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
+                        </ol>
+                    </nav>
+                    <div>
+                        <div class="btn-group" id="publishAgentDropdown">
+                            <button class="btn btn-primary btn-sm btn-ic-span-align">
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent Manager Inner Tabs -->
+                <div class="d-flex flex-row align-items-center justify-content-between w-100 fade d-none" id="agents-manager-tab">        
+                    <ul class="nav" role="tablist">
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
                         </li>
@@ -846,10 +870,26 @@
                             <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
                         </li>
                     </ul>
-                    <div id="agentsManagerMultiLanguageContainer">
-                    
+
+                    <div class="ms-4" id="agentsManagerMultiLanguageContainer">
                     </div>
                 </div>
+
+                <!-- Agent Script Manager Inner Tabs -->
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-script-tab">        
+                    <ul class="nav" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
+                        </li>
+                    </ul>
+
+                    <div class="ms-4" id="agentsScriptManagerMultiLanguageContainer">
+                    </div>
+                </div>
+
             </div>
             <div class="inner-container">
                 <!-- Agents List Tab -->
@@ -1116,73 +1156,45 @@
                             </div>
                             <!-- Agent Scripts Manager Tab -->
                             <div class="fade d-none w-100" id="agentScriptsManagerTab">
-                                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                                    <nav aria-label="breadcrumb">
-                                        <ol class="breadcrumb mb-0">
-                                            <li class="breadcrumb-item">
-                                                <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
-                                            </li>
-                                            <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
-                                        </ol>
-                                    </nav>
-                                    <div>
-                                        <div class="btn-group" id="publishAgentDropdown">
-                                            <button class="btn btn-primary btn-sm btn-ic-span-align">
-                                                <i class='fa-regular fa-floppy-disk'></i>
-                                                <span> Save</span>
+                                <div class="tab-content w-100" id="agents-manager-tabContent">
+                                    <!-- General -->
+                                    <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="inputAgentScriptName">Name</label>
+                                            <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="inputAgentScriptDescription">Description</label>
+                                            <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label btn-ic-span-align d-block">
+                                                <span>Conditions</span>
+
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">
+                                                Add
+                                                Condition
                                             </button>
+                                            <div id="editAgentScriptConditionValueInputs">
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <ul class="nav mb-3" id="agents-manager-tab" role="tablist">
-                                        <li class="nav-item me-2" role="presentation">
-                                            <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
-                                        </li>
-                                        <li class="nav-item me-2" role="presentation">
-                                            <button class="nav-link" id="agents-manager-script-conversation-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-conversation" type="button" role="tab" aria-controls="agents-manager-script-conversation" aria-selected="true">Conversation</button>
-                                        </li>
-                                    </ul>
-                                    <div class="tab-content w-100" id="agents-manager-tabContent">
-                                        <!-- General -->
-                                        <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
-                                            <div class="mb-3">
-                                                <label class="form-label" for="inputAgentScriptName">Name</label>
-                                                <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
+                                    <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
+                                        <div class="mb-3" id="editAgentScriptConversationContainer">
+                                            <span class="no-messages-conversation">
+                                                No messages in
+                                                the conversation yet...
+                                            </span>
+                                            <div class="agentScriptConversationMessages">
                                             </div>
-                                            <div class="mb-3">
-                                                <label class="form-label" for="inputAgentScriptDescription">Description</label>
-                                                <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label btn-ic-span-align d-block">
-                                                    <span>Conditions</span>
-
-                                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
-                                                        <i class="fa-regular fa-circle-question"></i>
-                                                    </a>
-                                                </label>
-                                                <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">
-                                                    Add
-                                                    Condition
-                                                </button>
-                                                <div id="editAgentScriptConditionValueInputs">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
-                                            <div class="mb-3" id="editAgentScriptConversationContainer">
-                                                <span class="no-messages-conversation">
-                                                    No messages in
-                                                    the conversation yet...
-                                                </span>
-                                                <div class="agentScriptConversationMessages">
-                                                </div>
-                                                <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">
-                                                    Add New
-                                                    Message
-                                                </button>
-                                            </div>
+                                            <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">
+                                                Add New
+                                                Message
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1295,36 +1307,43 @@
                                 <select class="form-select" id="editAgentBackgroundAudioSelect">
                                     <option value="none">None</option>
                                     <option value="custom">Custom (Upload)</option>
-                                    <option value="office">Office (Keyboard)</option>
-                                    <option value="call_center">Call Center (People + Keyboard)</option>
-                                    <option value="coffee_shop">Coffee Shop (People + Music)</option>
-                                    <option value="restaurant">
-                                        Restaurant (People + Plates/Spoons + Music)
-                                    </option>
-                                    <option value="driving">Driving (Road + Engine)</option>
-                                    <option value="city">City (Traffic + People)</option>
-                                    <option value="forest">Forest (Birds + Water + Wind)</option>
                                 </select>
-                                <div class="w-100 agent-background-audio-box d-none">
-                                    <div class="">
-                                        <label class="form-label btn-ic-span-align" for="editAgentBackgroundAudioVolume">
-                                            <span>Audio Volume </span>
 
-                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                <i class="fa-regular fa-circle-question"></i>
-                                            </a>
-                                        </label>
-                                        <input type="number" class="form-control" id="editAgentBackgroundAudioVolume" value="10">
-                                    </div>
-                                    <div class="agent-background-custom-audio-box d-none mt-3">
-                                        <label class="form-label btn-ic-span-align" for="editAgentCustomBackgroundAudio">
-                                            <span>Upload Custom Audio </span>
-
-                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload custom background audio file (.mp3, .wav).<br>Make sure the audio fades out in the start and the end for smooth repeat.<br>Max 10mb file size.">
-                                                <i class="fa-regular fa-circle-question"></i>
-                                            </a>
-                                        </label>
-                                        <input type="file" class="form-control" id="editAgentCustomBackgroundAudio" accept="audio/mp3, audio/wav">
+                                <div class="toolAudioExtraOptionsBox d-none" id="agentBackgroundAudioBox">
+                                    <div id="agentBackgroundAudioInputBox">
+                                        <label class="form-label d-block">Audio</label>
+                                        <div class="mb-3 recording-container">   
+                                            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                                <div class="recording-container-waveform d-none" id="agent-background-audio-waveform">
+                                                </div>
+                                                <div class="no-audio-notice">
+                                                    <span>No audio uploaded yet...</span>
+                                                </div>
+                                                <button class="btn btn-sm btn-light mb-auto" id="agent-background-audio-upload-btn">Upload</button>
+                                                <input type="file" class="form-control d-none" id="agentBackgroundAudioUploadInput" accept="audio/mp3,audio/wav">
+                                            </div>
+                                            <div class="audio-controller d-none">
+                                                <div class="speed-controller me-5">
+                                                    <label for="slider-agent-background-audio-waveform">
+                                                        <i class="fa-regular fa-gauge"></i>
+                                                    </label>
+                                                    <input class="mx-1" type="slider" id="range-agent-background-audio-waveform" min="0.1" max="4" value="1" step="0.1">
+                                                </div>
+                                                <div class="volume-controller me-5">
+                                                    <label for="slider-agent-background-audio-waveform">
+                                                        <i class="fa-regular fa-volume"></i>
+                                                    </label>
+                                                    <input type="range" id="slider-agent-background-audio-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                                </div>
+                                                <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                                    <i class="fa-regular fa-play"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>   
+                                    <div>
+                                        <label class="form-label" for="agentBackgroundAudioVolumeInput">Volume</label>
+                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="agentBackgroundAudioVolumeInput">
                                     </div>
                                 </div>
                             </div>
@@ -4727,6 +4746,7 @@
     <script>
         const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
         const BusinessToolAudioURL = "@(TempData["BusinessToolAudioURL"])";
+        const BusinessAgentBackgroundAudioURL = "@(TempData["BusinessAgentBackgroundAudioURL"])";
         const IntegrationLogoURL = "@(TempData["IntegrationLogoURL"])";
     </script>
 
