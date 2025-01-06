@@ -1,13 +1,10 @@
 /** Dynamic Variables **/
-var CurrentManageLLMProviderType = null;
-var CurrentManageLLMProviderData = null;
+let CurrentManageLLMProviderType = null;
+let CurrentManageLLMProviderData = null;
 
-var CurrentManageLLMProviderModelType = null;
-var CurrentManageLLMProviderModelData = null;
-var CurrentManageLLMProviderModelPromptLanguageNewData = null;
-
-let CurrentLLMProviderIntegrationFields = [];
-let IsSavingLLMProviderIntegrationFields = false;
+let CurrentManageLLMProviderModelType = null;
+let CurrentManageLLMProviderModelData = null;
+let CurrentManageLLMProviderModelPromptLanguageNewData = null;
 
 let IsSavingLLMProviderTab = false;
 

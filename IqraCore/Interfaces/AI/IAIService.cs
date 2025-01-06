@@ -15,7 +15,7 @@ namespace IqraCore.Interfaces.AI
         event EventHandler<object> MessageStreamed;
 
         string GetProviderFullName();
-        static InterfaceLLMProviderEnum GetProviderType()
+        InterfaceLLMProviderEnum GetProviderType()
         {
             return InterfaceLLMProviderEnum.Unknown;
         }

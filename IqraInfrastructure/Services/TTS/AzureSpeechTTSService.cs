@@ -95,7 +95,7 @@ namespace IqraInfrastructure.Services.TTS
             }
         }
 
-        public string GetTTSProviderName()
+        public string GetProviderFullName()
         {
             return "MicrosoftAzureSpeech";
         }

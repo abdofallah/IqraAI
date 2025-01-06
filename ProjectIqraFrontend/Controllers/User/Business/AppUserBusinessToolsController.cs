@@ -6,7 +6,7 @@ using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessToolsController : Controller
     {
@@ -35,7 +35,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessTools:2";
                 result.Message = "Session validation failed";
@@ -68,7 +68,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if(!user.Businesses.Contains(businessId))
+            if (!user.Businesses.Contains(businessId))
             {
                 result.Code = "SaveBusinessTools:5";
                 result.Message = "User does not own this business.";
@@ -123,7 +123,7 @@ namespace ProjectIqraFrontend.Controllers
             if (
                 string.IsNullOrWhiteSpace(postType)
                 ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessTools:7";
@@ -143,7 +143,8 @@ namespace ProjectIqraFrontend.Controllers
                 }
 
                 bool toolExistsResult = await _businessManager.CheckBusinessToolExists(businessId, exisitingToolIdValue);
-                if (!toolExistsResult) {
+                if (!toolExistsResult)
+                {
                     result.Code = "SaveBusinessTools:9";
                     result.Message = "Exisiting tool not found.";
                     return result;

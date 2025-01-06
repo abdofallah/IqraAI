@@ -8,7 +8,7 @@ using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessIntegrationsController : Controller
     {
@@ -43,7 +43,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessIntegration:2";
                 result.Message = "Session validation failed";
@@ -132,7 +132,7 @@ namespace ProjectIqraFrontend.Controllers
 
             // Post type validation
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessIntegration:8";
                 result.Message = "Invalid post type";

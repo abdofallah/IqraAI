@@ -6,7 +6,7 @@ using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessContextController : Controller
     {
@@ -35,7 +35,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessContextBranding:2";
                 result.Message = "Session validation failed";
@@ -156,7 +156,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessContextBranch:2";
                 result.Message = "Session validation failed";
@@ -233,13 +233,13 @@ namespace ProjectIqraFrontend.Controllers
                 }
 
                 return result;
-            }         
+            }
 
             string? postType = formData["postType"].ToString();
             if (
                 string.IsNullOrWhiteSpace(postType)
                 ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessContextBranch:9";
@@ -327,7 +327,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessContextService:2";
                 result.Message = "Session validation failed";
@@ -409,7 +409,7 @@ namespace ProjectIqraFrontend.Controllers
             string? postType = formData["postType"].ToString();
             if (
                 string.IsNullOrWhiteSpace(postType) ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessContextService:8";
@@ -504,7 +504,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessContextProduct:2";
                 result.Message = "Session validation failed";
@@ -586,7 +586,7 @@ namespace ProjectIqraFrontend.Controllers
             string? postType = formData["postType"].ToString();
             if (
                 string.IsNullOrWhiteSpace(postType) ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessContextProduct:8";

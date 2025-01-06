@@ -12,7 +12,7 @@ using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User
 {
     public class AppUserController : Controller
     {
@@ -49,7 +49,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBussinessPermissions:2";
                 result.Message = "Session validation failed";
@@ -92,7 +92,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBusinesses:2";
                 result.Message = "Session validation failed";
@@ -111,7 +111,7 @@ namespace ProjectIqraFrontend.Controllers
             if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = "GetUserBusinesses:4";
-                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                result.Message = "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason);
                 return result;
             }
 
@@ -145,7 +145,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBusinessMeta:2";
                 result.Message = "Session validation failed";
@@ -164,7 +164,7 @@ namespace ProjectIqraFrontend.Controllers
             if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = "GetUserBusinessMeta:4";
-                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                result.Message = "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason);
                 return result;
             }
 
@@ -218,7 +218,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBusinessApp:2";
                 result.Message = "Session validation failed";
@@ -237,7 +237,7 @@ namespace ProjectIqraFrontend.Controllers
             if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = "GetUserBusinessApp:4";
-                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                result.Message = "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason);
                 return result;
             }
 
@@ -299,7 +299,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBusinessWhiteLabelDomains:2";
                 result.Message = "Session validation failed";
@@ -318,7 +318,7 @@ namespace ProjectIqraFrontend.Controllers
             if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = "GetUserBusinessWhiteLabelDomains:4";
-                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                result.Message = "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason);
                 return result;
             }
 
@@ -379,7 +379,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserBusiness:2";
                 result.Message = "Session validation failed";
@@ -398,7 +398,7 @@ namespace ProjectIqraFrontend.Controllers
             if (userPermission.Business.DisableBusinessesAt != null)
             {
                 result.Code = "GetUserBusiness:4";
-                result.Message = ("User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason));
+                result.Message = "User does not have permission to view businesses" + (string.IsNullOrEmpty(userPermission.Business.DisableBusinessesReason) ? "" : ": " + userPermission.Business.DisableBusinessesReason);
                 return result;
             }
 
@@ -473,7 +473,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "AddUserBusiness:2";
                 result.Message = "Session validation failed";
@@ -497,7 +497,7 @@ namespace ProjectIqraFrontend.Controllers
                 {
                     result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
                 }
-                
+
                 if (!string.IsNullOrEmpty(user.Permission.Business.AddBusinessDisableReason))
                 {
                     result.Message += ": " + user.Permission.Business.AddBusinessDisableReason;
@@ -548,7 +548,7 @@ namespace ProjectIqraFrontend.Controllers
                     result.Message = "Business logo too large. Allowed file size is 5MB.";
                     return result;
                 }
-                
+
                 if (imageResult == 1)
                 {
                     result.Code = "AddUserBusiness:10";
@@ -585,7 +585,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             await _userManager.AddBusinessIdToUser(userEmail, newBusinessResult.Data.Id);
-            
+
             result.Success = true;
             result.Data = newBusinessResult.Data;
             return result;
@@ -614,7 +614,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "GetUserNumbers:2";
                 result.Message = "Session validation failed";
@@ -649,6 +649,6 @@ namespace ProjectIqraFrontend.Controllers
 
             return result;
         }
-    
+
     }
 }

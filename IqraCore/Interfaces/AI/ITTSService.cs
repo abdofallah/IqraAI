@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using IqraCore.Entities.Interfaces;
+using System.Threading.Tasks;
 
 namespace IqraCore.Interfaces.AI
 {
@@ -8,6 +9,10 @@ namespace IqraCore.Interfaces.AI
 
         Task<byte[]> SynthesizeTextAsync(string text, CancellationToken cancellationToken);
 
-        string GetTTSProviderName();
+        string GetProviderFullName();
+        InterfaceTTSProviderEnum GetProviderType()
+        {
+            return InterfaceTTSProviderEnum.Unknown;
+        }
     }
 }

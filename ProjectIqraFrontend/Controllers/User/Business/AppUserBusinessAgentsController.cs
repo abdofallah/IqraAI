@@ -3,7 +3,7 @@ using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessAgentsController : Controller
     {

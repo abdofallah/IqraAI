@@ -7,7 +7,7 @@ using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessSettingsController : Controller
     {
@@ -38,7 +38,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessSettings:2";
                 result.Message = "Session validation failed";
@@ -132,7 +132,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessDomain:2";
                 result.Message = "Session validation failed";
@@ -180,7 +180,7 @@ namespace ProjectIqraFrontend.Controllers
             if (
                 string.IsNullOrWhiteSpace(postType)
                 ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessDomain:7";
@@ -254,7 +254,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessSubUser:2";
                 result.Message = "Session validation failed";
@@ -302,7 +302,7 @@ namespace ProjectIqraFrontend.Controllers
             if (
                 string.IsNullOrWhiteSpace(postType)
                 ||
-                (postType != "new" && postType != "edit")
+                postType != "new" && postType != "edit"
             )
             {
                 result.Code = "SaveBusinessSubUser:7";
@@ -341,7 +341,7 @@ namespace ProjectIqraFrontend.Controllers
                     result.Message = "The business does not own this subuser email.";
                     return result;
                 }
-            }     
+            }
 
             FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds, businessUserData);
             if (!addOrUpdateResult.Success)

@@ -2091,7 +2091,10 @@ function initAgentTab() {
 					const currentValue = currentElement.val();
 
 					// check if select has this value
-					if (messageCacheGroupsList.find(`option[value="${currentValue}"]`).length > 1) {
+					const allSelectElements = messageCacheGroupsList.find(`select[select-type="cache-message-group"]`);
+					const anyHasSelectedValue = allSelectElements.filter((index, select) => $(select).val() === currentValue).length > 1;
+
+					if (anyHasSelectedValue) {
 						AlertManager.createAlert({
 							type: "warning",
 							message: "Message cache group has already been selected.",
@@ -2114,7 +2117,10 @@ function initAgentTab() {
 					const currentValue = currentElement.val();
 
 					// check if select has this value
-					if (audioCacheGroupsList.find(`option[value="${currentValue}"]`).length > 1) {
+					const allSelectElements = audioCacheGroupsList.find(`select[select-type="cache-audio-group"]`);
+					const anyHasSelectedValue = allSelectElements.filter((index, select) => $(select).val() === currentValue).length > 1;
+
+					if (anyHasSelectedValue) {
 						AlertManager.createAlert({
 							type: "warning",
 							message: "Audio cache group has already been selected.",

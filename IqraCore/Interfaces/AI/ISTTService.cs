@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IqraCore.Entities.Interfaces;
+using System;
 
 namespace IqraCore.Interfaces
 {
@@ -10,5 +11,11 @@ namespace IqraCore.Interfaces
         void WriteTranscriptionAudioData(byte[] data);
         event EventHandler<string> TranscriptionResultReceived;
         event EventHandler<object> OnRecoginizingRecieved;
+
+        string GetProviderFullName();
+        InterfaceSTTProviderEnum GetProviderType()
+        {
+            return InterfaceSTTProviderEnum.Unknown;
+        }
     }
 }

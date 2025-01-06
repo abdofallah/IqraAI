@@ -1,10 +1,9 @@
-﻿using System;
-using System.IO;
+﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 
-namespace IqraInfrastructure.Services.STT
+namespace IqraInfrastructure.Services.STT.Providers
 {
     public class AzureSpeechSTTService : ISTTService
     {
@@ -99,6 +98,16 @@ namespace IqraInfrastructure.Services.STT
         private void OnSessionStopped(object? sender, SessionEventArgs e)
         {
             Console.WriteLine($"Session stopped. Session ID: {e.SessionId}");
-        } 
+        }
+
+        public string GetProviderFullName()
+        {
+            return "Azure AI Speech";
+        }
+
+        public InterfaceSTTProviderEnum GetProviderType()
+        {
+            return InterfaceSTTProviderEnum.AzureSpeechServices;
+        }
     }
 }

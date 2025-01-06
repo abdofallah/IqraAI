@@ -6,6 +6,7 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Number;
+using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
@@ -13,6 +14,7 @@ using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
+using IqraInfrastructure.Services.STT;
 using IqraInfrastructure.Services.User;
 using ProjectIqraFrontend.Middlewares;
 
@@ -135,6 +137,15 @@ namespace ProjectIqraFrontend
             LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository, languagesManager);
             builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
             await llmProviderManager.InitializeProvidersAsync();
+
+            // STT Provider
+            STTProviderRepository sTTProviderRepository = new STTProviderRepository(
+                appConfig["STTProviderDatabase:ConnectionString"],
+                appConfig["STTProviderDatabase:DatabaseName"]
+            );
+            STTProviderManager sttProviderManager = new STTProviderManager(sTTProviderRepository);
+            builder.Services.AddSingleton<STTProviderManager>(sttProviderManager);
+            await sttProviderManager.InitializeProvidersAsync();
 
             // Integrations
             IntegrationsRepository integrationsRepository = new IntegrationsRepository(

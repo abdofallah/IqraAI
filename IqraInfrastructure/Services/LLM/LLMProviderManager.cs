@@ -37,13 +37,16 @@ namespace IqraInfrastructure.Services.LLM
 
                 if (provider == null)
                 {
-                    await AddProvider(new LLMProviderData
+                    provider = new LLMProviderData
                     {
                         Id = providerEnum,
                         DisabledAt = DateTime.UtcNow
-                    });
+                    };
+
+                    await AddProvider(provider);
                 }
-                else if (provider.DisabledAt == null)
+                
+                if (provider.DisabledAt == null)
                 {
                     RegisterProviderService(providerEnum);
                 }

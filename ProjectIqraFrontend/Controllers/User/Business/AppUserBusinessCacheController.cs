@@ -6,7 +6,7 @@ using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-namespace ProjectIqraFrontend.Controllers
+namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class AppUserBusinessCacheController : Controller
     {
@@ -35,7 +35,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessMessageGroup:2";
                 result.Message = "Session validation failed";
@@ -128,7 +128,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessMessageGroup:11";
                 result.Message = "Invalid post type";
@@ -151,7 +151,7 @@ namespace ProjectIqraFrontend.Controllers
                     }
 
                     return result;
-                }          
+                }
 
                 if (string.IsNullOrWhiteSpace(existingGroupId))
                 {
@@ -213,7 +213,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessMessageGroupMessage:2";
                 result.Message = "Session validation failed";
@@ -339,7 +339,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessMessageGroupMessage:14";
                 result.Message = "Invalid post type";
@@ -361,7 +361,7 @@ namespace ProjectIqraFrontend.Controllers
                     }
 
                     return result;
-                }    
+                }
 
                 if (string.IsNullOrWhiteSpace(existingCacheId))
                 {
@@ -436,7 +436,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessAudioGroup:2";
                 result.Message = "Session validation failed";
@@ -529,7 +529,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessAudioGroup:11";
                 result.Message = "Invalid post type";
@@ -614,7 +614,7 @@ namespace ProjectIqraFrontend.Controllers
                 return result;
             }
 
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
                 result.Code = "SaveBusinessAudioGroupAudio:2";
                 result.Message = "Session validation failed";
@@ -740,7 +740,7 @@ namespace ProjectIqraFrontend.Controllers
             }
 
             string? postType = formData["postType"].ToString();
-            if (string.IsNullOrWhiteSpace(postType) || (postType != "new" && postType != "edit"))
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
             {
                 result.Code = "SaveBusinessAudioGroupAudio:14";
                 result.Message = "Invalid post type";
