@@ -64,7 +64,7 @@ namespace IqraInfrastructure.Services.LLM
 
             foreach (var type in matchingTypes)
             {
-                var getProviderTypeMethod = type.GetMethod("GetProviderType", BindingFlags.Public | BindingFlags.Static);
+                var getProviderTypeMethod = type.GetMethod("GetProviderType", BindingFlags.Static | BindingFlags.Public);
                 if (getProviderTypeMethod != null)
                 {
                     var returnedProviderEnum = (InterfaceLLMProviderEnum)getProviderTypeMethod.Invoke(null, null);

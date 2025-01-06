@@ -980,6 +980,91 @@ $(document).ready(() => {
 		);
 	});
 
+	// Save Model Button Handler
+	saveManageSTTProviderModelButton.on("click", (event) => {
+		event.preventDefault();
+		if (IsSavingSTTProviderTab) return;
+
+		const validationResult = ValidateSTTProviderModelManageTabFields(false);
+		if (!validationResult.validated) {
+			AlertManager.createAlert({
+				type: "danger",
+				message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+				timeout: 6000,
+			});
+			return;
+		}
+
+		const changes = CheckSTTProviderModelManageTabHasChanges(false);
+		if (!changes.hasChanges) return;
+
+		IsSavingSTTProviderTab = true;
+		saveManageSTTProviderModelButton.prop("disabled", true);
+
+		const formData = new FormData();
+		formData.append("providerId", CurrentSTTProviderData.id.value);
+		formData.append("modelId", changes.changes.id);
+		formData.append("postType", CurrentSTTProviderModelType);
+		formData.append("changes", JSON.stringify(changes.changes));
+
+		SaveSTTProviderModelData(
+			formData,
+			(saveResponse) => {
+				if (saveResponse.success) {
+					// Update the current model data
+					CurrentSTTProviderModelData = saveResponse.data;
+
+					// Update the models list in the provider data
+					const modelIndex = CurrentSTTProviderData.models.findIndex((m) => m.id === CurrentSTTProviderModelData.id);
+
+					if (modelIndex !== -1) {
+						CurrentSTTProviderData.models[modelIndex] = CurrentSTTProviderModelData;
+					} else {
+						CurrentSTTProviderData.models.push(CurrentSTTProviderModelData);
+					}
+
+					// Update the models table
+					const modelRow = sttProviderModelListTable.find(`tr button[model-id="${CurrentSTTProviderModelData.id}"]`).closest("tr");
+
+					if (modelRow.length) {
+						modelRow.replaceWith($(CreateSTTProviderModelListTableElement(CurrentSTTProviderModelData)));
+					} else {
+						sttProviderModelListTable.find("tbody tr[tr-type='none-notice']").remove();
+						sttProviderModelListTable.find("tbody").append($(CreateSTTProviderModelListTableElement(CurrentSTTProviderModelData)));
+					}
+
+					AlertManager.createAlert({
+						type: "success",
+						message: "STT provider model saved successfully.",
+						timeout: 6000,
+					});
+
+					ShowSTTProviderModelListTab();
+				} else {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving STT provider model.",
+						timeout: 6000,
+					});
+				}
+
+				saveManageSTTProviderModelButton.prop("disabled", false);
+				IsSavingSTTProviderTab = false;
+			},
+			(error, isUnsuccessful) => {
+				AlertManager.createAlert({
+					type: "danger",
+					message: "Error occurred while saving STT provider model.",
+					timeout: 6000,
+				});
+				console.error("Save error:", error);
+
+				saveManageSTTProviderModelButton.prop("disabled", false);
+				IsSavingSTTProviderTab = false;
+			},
+		);
+	});
+
 	// Initialize
 	FetchSTTProvidersFromAPI(
 		0,

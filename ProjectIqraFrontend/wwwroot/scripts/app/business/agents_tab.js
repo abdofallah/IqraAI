@@ -812,7 +812,7 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 function createIntegrationSelectElement(type, index) {
 	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
 		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
-		return integrationTypeData.type.includes(type);
+		return integrationTypeData.type.includes(type) || (type === "STT" && integrationTypeData.type.includes("SPEECH2TEXT"));
 	});
 
 	let options = '<option value="">Select Integration</option>';
@@ -980,7 +980,14 @@ function fillAgentIntegrationConfigurationFields() {
 }
 
 function populateAgentIntegrationModelsField(field) {
-	const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType);
+	const provider =
+		CurrentAgentConfigurationType === "LLM"
+			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+			: CurrentAgentConfigurationType === "STT"
+				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+				: CurrentAgentConfigurationType === "TTS"
+					? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+					: null;
 
 	if (!provider || !provider.models) return;
 
@@ -1002,7 +1009,14 @@ function populateAgentIntegrationModelsField(field) {
 function loadAgentIntegrationConfiguration(integrationId, integrationType) {
 	// Get provider configuration based on integration type
 	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((integration) => integration.id === integrationId);
-	const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
+	const provider =
+		integrationType === "LLM"
+			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+			: integrationType === "STT"
+				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+				: integrationType === "TTS"
+					? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+					: null;
 
 	if (!provider) {
 		AlertManager.createAlert({
@@ -1063,8 +1077,15 @@ function validateAgentIntegrationConfiguration() {
 					}
 					break;
 
-				case "models":
-					const provider = BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegration);
+				case "models": {
+					const provider =
+						CurrentAgentConfigurationType === "LLM"
+							? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+							: CurrentAgentConfigurationType === "STT"
+								? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+								: CurrentAgentConfigurationType === "TTS"
+									? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
+									: null;
 
 					if (provider) {
 						const model = provider.models.find((m) => m.id === value);
@@ -1079,6 +1100,7 @@ function validateAgentIntegrationConfiguration() {
 						}
 					}
 					break;
+				}
 
 				case "select":
 					if (field.options && !field.options.some((opt) => opt.key === value)) {

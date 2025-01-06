@@ -4833,6 +4833,8 @@
         var SpecificationLanguagesListData = null;
         var SpecificationIntegrationsListData = null;
         var BusinessLLMProvidersForIntegrations = null;
+        var BusinessSTTProvidersForIntegrations = null;
+        var BusinessTTSProvidersForIntegrations = null;
 
         var BusinessFullLanguagesData = null;
         var BusinessDefaultLanguage = null;    
@@ -4900,6 +4902,28 @@
         {
             $.ajax({
                 url: '/app/specification/llmproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback)
+        {
+            $.ajax({
+                url: '/app/specification/sttproviders/getbyintegration',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -5029,6 +5053,8 @@
                     BusinessFullData != null
                     &&
                     BusinessLLMProvidersForIntegrations != null
+                    &&
+                    BusinessSTTProvidersForIntegrations != null
                 ) {
                     clearInterval(PageLoaderInterval);
 
@@ -5080,87 +5106,128 @@
     
     <script>
         $(window).on('load', () => {
+
             FetchSpecificationLanguagesDataFromAPI(
                 (langaugesListData) => {
                     SpecificationLanguagesListData = langaugesListData;
-
+                    
                     FetchSpecificationIntegrationsDataFromAPI(
                         (integrationsListData) => {
                             SpecificationIntegrationsListData = integrationsListData;
 
-                            // Get Integrations for LLM Providers
                             const temporaryLLMProvidersForIntegrations = [];
+                            const temporarySTTProvidersForIntegrations = [];
+                            const temporaryTTSProvidersForIntegrations = [];
                             let LLMProviderFail = false;
+                            let STTProviderFail = false;
+                            let TTSProviderFail = false;
+
                             SpecificationIntegrationsListData.forEach((integration) => {
-                                if (!integration.type.includes("LLM")) return;
+                                if (integration.type.includes("LLM"))
+                                {
+                                    const formData = new FormData();
+                                    formData.append("integrationtype", integration.id);
+                                    FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
+                                        formData,
+                                        (LLMProviderResult) => {
+                                            temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
+                                        },
+                                        (LLMProviderError) => {
+                                            AlertManager.createAlert({
+                                                type: 'danger',
+                                                message: 'Error occured while fetching LLM Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                enableDismiss: false
+                                            });
 
-                                const formData = new FormData();
-                                formData.append("integrationtype", integration.id);
-                                FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
-                                    formData,
-                                    (LLMProviderResult) => {
-                                        temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
-                                    },
-                                    (LLMProviderError) => {
-                                        AlertManager.createAlert({
-                                            type: 'danger',
-                                            message: 'Error occured while fetching LLM Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
-                                            enableDismiss: false
-                                        });
+                                            console.log('Error occured while fetching LLM Provider data for integration with id ' + integration.id + ': ', LLMProviderError);
 
-                                        console.log('Error occured while fetching LLM Provider data for integration with id ' + integration.id + ': ', LLMProviderError);
+                                            LLMProviderFail = true;
+                                        }
+                                    );
+                                }
+                                else if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
+                                    const formData = new FormData();
+                                    formData.append("integrationtype", integration.id);
+                                    FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
+                                        formData,
+                                        (STTProviderResult) => {
+                                            temporarySTTProvidersForIntegrations.push(STTProviderResult);
+                                        },
+                                        (STTProviderError) => {
+                                            AlertManager.createAlert({
+                                                type: 'danger',
+                                                message: 'Error occured while fetching STT Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                enableDismiss: false
+                                            });
 
-                                        LLMProviderFail = true;
-                                    }
-                                );
-                            })
+                                            console.log('Error occured while fetching STT Provider data for integration with id ' + integration.id + ': ', STTProviderError);
+
+                                            STTProviderFail = true;
+                                        }
+                                    );
+                                }
+                                else if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
+                                    // todo
+                                }
+                            });
+                            
                             if (!LLMProviderFail) {
                                 BusinessLLMProvidersForIntegrations = temporaryLLMProvidersForIntegrations;
                             }
 
-                            FetchBusinessDataFromAPI(CurrentBusinessId,
-                                (businessData) => {
-                                    BusinessFullData = businessData;
+                            if (!STTProviderFail) {
+                                BusinessSTTProvidersForIntegrations = temporarySTTProvidersForIntegrations;
+                            }
 
-                                    BusinessFullLanguagesData = [];
-                                    BusinessFullData.businessData.languages.forEach((value, index) => {
-                                        const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
-                                            return data.id === value;
+                            if (!TTSProviderFail) {
+                                BusinessTTSProvidersForIntegrations = temporaryTTSProvidersForIntegrations;
+                            }
+
+                            if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail) {
+                                FetchBusinessDataFromAPI(CurrentBusinessId,
+                                    (businessData) => {
+                                        BusinessFullData = businessData;
+
+                                        BusinessFullLanguagesData = [];
+                                        BusinessFullData.businessData.languages.forEach((value, index) => {
+                                            const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
+                                                return data.id === value;
+                                            });
+
+                                            if (countryCodeLanguage) {
+                                                BusinessFullLanguagesData.push(countryCodeLanguage);
+                                            }
+                                        });
+                                        BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
+
+                                        initSettingsTab();
+                                        initToolsTab();
+                                        initContextTab();
+                                        initCacheTab();
+                                        initIntegrationsTab();
+                                        initAgentTab();
+
+                                        let businessTutorials = BusinessFullData.businessData.tutorials;
+                                        if (businessTutorials)
+                                        {
+                                            if (businessTutorials.newBusinessTutorial)
+                                            {
+                                                // todo enable again
+                                                //InitalizeNewBusinessTutorial();
+                                            }
+                                        }
+                                    },
+                                    (businessDataError) => {
+                                        AlertManager.createAlert({
+                                            type: 'danger',
+                                            message: 'Error occured while fetching business data. Check browser console for logs.',
+                                            enableDismiss: false
                                         });
 
-                                        if (countryCodeLanguage) {
-                                            BusinessFullLanguagesData.push(countryCodeLanguage);
-                                        }
-                                    });
-                                    BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
-
-                                    initSettingsTab();
-                                    initToolsTab();
-                                    initContextTab();
-                                    initCacheTab();
-                                    initIntegrationsTab();
-                                    initAgentTab();
-
-                                    let businessTutorials = BusinessFullData.businessData.tutorials;
-                                    if (businessTutorials)
-                                    {
-                                        if (businessTutorials.newBusinessTutorial)
-                                        {
-                                            // todo enable again
-                                            //InitalizeNewBusinessTutorial();
-                                        }
+                                        console.log('Error occured while fetching business data: ', businessDataError);
                                     }
-                                },
-                                (businessDataError) => {
-                                    AlertManager.createAlert({
-                                        type: 'danger',
-                                        message: 'Error occured while fetching business data. Check browser console for logs.',
-                                        enableDismiss: false
-                                    });
-
-                                    console.log('Error occured while fetching business data: ', businessDataError);
-                                }
-                            );
+                                );
+                            }
                         },
                         (integrationsListError) => {
                             AlertManager.createAlert({

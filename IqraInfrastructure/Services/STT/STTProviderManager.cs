@@ -1,7 +1,9 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.LLM;
 using IqraCore.Entities.STT;
 using IqraCore.Interfaces;
+using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Services.Integrations;
 using Microsoft.AspNetCore.Http;
@@ -58,7 +60,7 @@ namespace IqraInfrastructure.Services.STT
 
             foreach (var type in matchingTypes)
             {
-                var getProviderTypeMethod = type.GetMethod("GetProviderType", BindingFlags.Public | BindingFlags.Static);
+                var getProviderTypeMethod = type.GetMethod("GetProviderType", BindingFlags.Static | BindingFlags.Public);
                 if (getProviderTypeMethod != null)
                 {
                     var returnedProviderEnum = (InterfaceSTTProviderEnum)getProviderTypeMethod.Invoke(null, null);
@@ -416,6 +418,33 @@ namespace IqraInfrastructure.Services.STT
             {
                 result.Code = "UpdateProvider:9";
                 result.Message = "Error processing provider update: " + ex.Message;
+            }
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<STTProviderData?>> GetProviderDataByIntegration(string integrationType)
+        {
+            var result = new FunctionReturnResult<STTProviderData?>();
+
+            try
+            {
+                var providerData = await _sttProviderRepository.GetProviderDataByIntegration(integrationType);
+
+                if (providerData == null)
+                {
+                    result.Code = "GetProviderDataByIntegration:1";
+                    result.Message = "Provider not find by integration type";
+                    return result;
+                }
+
+                result.Success = true;
+                result.Data = providerData;
+            }
+            catch (Exception ex)
+            {
+                result.Code = "GetProviderDataByIntegration:2";
+                result.Message = "Failed to get provider data: " + ex.Message;
             }
 
             return result;
