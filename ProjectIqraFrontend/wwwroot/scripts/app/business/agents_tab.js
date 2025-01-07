@@ -812,7 +812,7 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 function createIntegrationSelectElement(type, index) {
 	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
 		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
-		return integrationTypeData.type.includes(type) || (type === "STT" && integrationTypeData.type.includes("SPEECH2TEXT"));
+		return integrationTypeData.type.includes(type) || (type === "STT" && integrationTypeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && integrationTypeData.type.includes("TEXT2SPEECH"));
 	});
 
 	let options = '<option value="">Select Integration</option>';
@@ -868,7 +868,7 @@ function createAgentIntegrationConfigurationField(field) {
                         ${
 													field.tooltip
 														? `
-                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
                                 <i class="fa-regular fa-circle-question"></i>
                             </a>
                         `
@@ -891,7 +891,7 @@ function createAgentIntegrationConfigurationField(field) {
                         ${
 													field.tooltip
 														? `
-                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
                                 <i class="fa-regular fa-circle-question"></i>
                             </a>
                         `
@@ -916,7 +916,7 @@ function createAgentIntegrationConfigurationField(field) {
                         ${
 													field.tooltip
 														? `
-                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
                                 <i class="fa-regular fa-circle-question"></i>
                             </a>
                         `
@@ -940,7 +940,7 @@ function createAgentIntegrationConfigurationField(field) {
                         ${
 													field.tooltip
 														? `
-                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
                                 <i class="fa-regular fa-circle-question"></i>
                             </a>
                         `

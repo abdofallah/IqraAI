@@ -1,7 +1,8 @@
-﻿using IqraCore.Interfaces.AI;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Interfaces.AI;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
-namespace IqraInfrastructure.Services.TTS
+namespace IqraInfrastructure.Services.TTS.Providers
 {
     public class AzureSpeechTTSService : ITTSService
     {
@@ -98,6 +99,11 @@ namespace IqraInfrastructure.Services.TTS
         public string GetProviderFullName()
         {
             return "MicrosoftAzureSpeech";
+        }
+
+        public static InterfaceTTSProviderEnum GetProviderType()
+        {
+            return InterfaceTTSProviderEnum.AzureSpeechServices;
         }
     }
 }

@@ -620,13 +620,31 @@ function createLLMProviderIntegrationFieldElement(fieldData = null) {
                         <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
                             <label class="form-label">Options</label>
                             <div class="field-options-list">
-                                ${fieldData?.options?.map((option) => createFieldOptionElement(option)).join("") || ""}
+                                ${fieldData?.options?.map((option) => createLLMIntegrationFieldOptionElement(option)).join("") || ""}
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
                                 <i class="fa-regular fa-plus"></i> Add Option
                             </button>
                         </div>
                     </div>
+                </div>
+            `;
+}
+
+function createLLMIntegrationFieldOptionElement(optionData = null) {
+	return `
+                <div class="input-group mb-2 field-option">
+                    <input type="text" class="form-control option-key-input" placeholder="Option Key"
+                        value="${optionData?.key || ""}">
+                    <input type="text" class="form-control option-value-input" placeholder="Option Value"
+                        value="${optionData?.value || ""}">
+                    <div class="input-group-text">
+                        <input class="form-check-input option-default-check mt-0" type="radio" name="defaultOption" ${optionData?.isDefault ? "checked" : ""}>
+                        <label class="ms-2">Default?</label>
+                    </div>
+                    <button class="btn btn-outline-danger remove-option-button" type="button">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
                 </div>
             `;
 }

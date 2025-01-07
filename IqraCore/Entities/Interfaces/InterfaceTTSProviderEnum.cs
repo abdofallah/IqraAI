@@ -2,6 +2,7 @@
 {
     public enum InterfaceTTSProviderEnum
     {
-        Unknown = 0
+        Unknown = 0,
+        AzureSpeechServices = 1
     }
 }

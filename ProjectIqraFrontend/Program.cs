@@ -7,6 +7,7 @@ using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Number;
 using IqraInfrastructure.Repositories.STT;
+using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
@@ -15,6 +16,7 @@ using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.STT;
+using IqraInfrastructure.Services.TTS;
 using IqraInfrastructure.Services.User;
 using ProjectIqraFrontend.Middlewares;
 
@@ -146,6 +148,15 @@ namespace ProjectIqraFrontend
             STTProviderManager sttProviderManager = new STTProviderManager(sTTProviderRepository);
             builder.Services.AddSingleton<STTProviderManager>(sttProviderManager);
             await sttProviderManager.InitializeProvidersAsync();
+
+            // TTS Provider
+            TTSProviderRepository tTSProviderRepository = new TTSProviderRepository(
+                appConfig["TTSProviderDatabase:ConnectionString"],
+                appConfig["TTSProviderDatabase:DatabaseName"]
+            );
+            TTSProviderManager ttsProviderManager = new TTSProviderManager(tTSProviderRepository);
+            builder.Services.AddSingleton<TTSProviderManager>(ttsProviderManager);
+            await ttsProviderManager.InitializeProvidersAsync();
 
             // Integrations
             IntegrationsRepository integrationsRepository = new IntegrationsRepository(

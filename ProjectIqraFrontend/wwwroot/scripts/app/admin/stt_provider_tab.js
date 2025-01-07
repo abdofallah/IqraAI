@@ -580,7 +580,7 @@ function createSTTProviderIntegrationFieldElement(fieldData = null) {
                 <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
                     <label class="form-label">Options</label>
                     <div class="field-options-list">
-                        ${fieldData?.options?.map((option) => createFieldOptionElement(option)).join("") || ""}
+                        ${fieldData?.options?.map((option) => createSTTIntegrationFieldOptionElement(option)).join("") || ""}
                     </div>
                     <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
                         <i class="fa-regular fa-plus"></i> Add Option
@@ -591,7 +591,7 @@ function createSTTProviderIntegrationFieldElement(fieldData = null) {
     `;
 }
 
-function createFieldOptionElement(optionData = null) {
+function createSTTIntegrationFieldOptionElement(optionData = null) {
 	return `
         <div class="field-option mb-2">
             <div class="row">
@@ -899,7 +899,7 @@ $(document).ready(() => {
 
 	// Handle option management
 	sttProviderIntegrationsTab.on("click", ".add-option-button", function () {
-		$(this).siblings(".field-options-list").append($(createFieldOptionElement()));
+		$(this).siblings(".field-options-list").append($(createSTTIntegrationFieldOptionElement()));
 		CheckSTTProviderManageTabHasChanges(true);
 	});
 

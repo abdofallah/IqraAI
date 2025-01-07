@@ -129,7 +129,7 @@ function createFieldElement(fieldData = null) {
                         <div class="field-options-container ${fieldData?.type === "select" ? "" : "d-none"} mt-3">
                             <label class="form-label">Options</label>
                             <div class="field-options-list">
-                                ${fieldData?.options?.map((option) => createFieldOptionElement(option)).join("") || ""}
+                                ${fieldData?.options?.map((option) => createIntegrationFieldOptionElement(option)).join("") || ""}
                             </div>
                             <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-option-button">
                                 <i class="fa-regular fa-plus"></i> Add Option
@@ -140,7 +140,7 @@ function createFieldElement(fieldData = null) {
             `;
 }
 
-function createFieldOptionElement(optionData = null) {
+function createIntegrationFieldOptionElement(optionData = null) {
 	return `
                 <div class="input-group mb-2 field-option">
                     <input type="text" class="form-control option-key-input" placeholder="Option Key"
@@ -628,7 +628,7 @@ function initIntegrationsTab() {
 
 	// Field options management
 	integrationFieldsList.on("click", ".add-option-button", function () {
-		$(this).siblings(".field-options-list").append($(createFieldOptionElement()));
+		$(this).siblings(".field-options-list").append($(createIntegrationFieldOptionElement()));
 		CheckIntegrationTabHasChanges();
 	});
 

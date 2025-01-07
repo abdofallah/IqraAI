@@ -4941,6 +4941,28 @@
                 }
             });
         }
+        
+        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback)
+        {
+            $.ajax({
+                url: '/app/specification/ttsproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
     </script>
 
     <!-- New Business Tutorial -->
@@ -5055,6 +5077,8 @@
                     BusinessLLMProvidersForIntegrations != null
                     &&
                     BusinessSTTProvidersForIntegrations != null
+                    &&
+                    BusinessTTSProvidersForIntegrations != null
                 ) {
                     clearInterval(PageLoaderInterval);
 
@@ -5145,7 +5169,8 @@
                                         }
                                     );
                                 }
-                                else if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
+                                
+                                if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
                                     const formData = new FormData();
                                     formData.append("integrationtype", integration.id);
                                     FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
@@ -5166,8 +5191,27 @@
                                         }
                                     );
                                 }
-                                else if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
-                                    // todo
+                                
+                                if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
+                                    const formData = new FormData();
+                                    formData.append("integrationtype", integration.id);
+                                    FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(
+                                        formData,
+                                        (TTSProviderResult) => {
+                                            temporaryTTSProvidersForIntegrations.push(TTSProviderResult);
+                                        },
+                                        (TTSProviderError) => {
+                                            AlertManager.createAlert({
+                                                type: 'danger',
+                                                message: 'Error occured while fetching TTS Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                enableDismiss: false
+                                            });
+
+                                            console.log('Error occured while fetching TTS Provider data for integration with id ' + integration.id + ': ', TTSProviderError);
+
+                                            TTSProviderFail = true;
+                                        }
+                                    );
                                 }
                             });
                             
