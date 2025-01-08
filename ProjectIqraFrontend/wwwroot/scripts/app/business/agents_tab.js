@@ -8,9 +8,9 @@ let agentsScriptManagerLanguageDropdown = null;
 let AgentBackgroundAudioWaveSurfer = null;
 
 // Integration related states
-let CurrentAgentIntegrationsSTT = [];
-let CurrentAgentIntegrationsLLM = [];
-let CurrentAgentIntegrationsTTS = [];
+let CurrentAgentIntegrationsSTT = {};
+let CurrentAgentIntegrationsLLM = {};
+let CurrentAgentIntegrationsTTS = {};
 
 // Integration Configuration State
 let CurrentAgentConfigurationIntegration = null;
@@ -202,6 +202,7 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 		LLM: CurrentAgentIntegrationsLLM,
 		TTS: CurrentAgentIntegrationsTTS,
 	};
+
 	if (JSON.stringify(CurrentManageAgentData.integrations) !== JSON.stringify(integrationsChanges)) {
 		changes.integrations = integrationsChanges;
 		hasChanges = true;
@@ -288,9 +289,9 @@ function createDefaultAgentObject() {
 		},
 		scripts: [],
 		integrations: {
-			STT: [],
-			LLM: [],
-			TTS: [],
+			STT: {},
+			LLM: {},
+			TTS: {},
 		},
 		cache: {
 			messages: [],
@@ -323,6 +324,11 @@ function createDefaultAgentObject() {
 		// Utterances
 		agent.utterances.greetingMessage[language] = "";
 		agent.utterances.phrasesBeforeReply[language] = [];
+
+		// Initialize integrations for each language
+		agent.integrations.STT[language] = [];
+		agent.integrations.LLM[language] = [];
+		agent.integrations.TTS[language] = [];
 	});
 
 	return agent;
@@ -372,6 +378,13 @@ function validateAgentMultiLanguageElements() {
 
 		const isAnyIncompleteInPersonality = nameIsIncomplete || roleIsIncomplete || listsIncomplete;
 
+		/** Integrations Tab **/
+		const sttIntegrationsIncomplete = !CurrentAgentIntegrationsSTT[language]?.length;
+		const llmIntegrationsIncomplete = !CurrentAgentIntegrationsLLM[language]?.length;
+		const ttsIntegrationsIncomplete = !CurrentAgentIntegrationsTTS[language]?.length;
+
+		const isAnyIncompleteInIntegrations = sttIntegrationsIncomplete || llmIntegrationsIncomplete || ttsIntegrationsIncomplete;
+
 		/** Utterances Tab **/
 		// Greeting Message
 		const greetingMessage = CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id];
@@ -385,7 +398,7 @@ function validateAgentMultiLanguageElements() {
 		const isAnyIncompleteInUtterances = greetingMessageIsIncomplete || phrasesIsIncomplete;
 
 		/** Update language status **/
-		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality || isAnyIncompleteInUtterances;
+		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality || isAnyIncompleteInUtterances || isAnyIncompleteInIntegrations;
 		manageAgentsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyIncomplete ? "incomplete" : "complete");
 	});
 }
@@ -402,6 +415,12 @@ function ResetAndEmptyAgentsManageTab() {
 	agentBackgroundAudioInputBox.find(".audio-controller").addClass("d-none");
 	agentBackgroundAudioUploadInput.val("");
 	agentBackgroundAudioSelect.val("none").change();
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentIntegrationsSTT[language] = [];
+		CurrentAgentIntegrationsLLM[language] = [];
+		CurrentAgentIntegrationsTTS[language] = [];
+	});
 }
 
 function CreateAgentBackgroundAudioWavesurfer(containerId) {
@@ -809,6 +828,21 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 }
 
 // Integration Tab Functions
+function fillIntegrationsFromAgentData(agentData) {
+	// Fill integrations for each language from agent data
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (agentData.integrations.STT[language]) {
+			CurrentAgentIntegrationsSTT[language] = agentData.integrations.STT[language];
+		}
+		if (agentData.integrations.LLM[language]) {
+			CurrentAgentIntegrationsLLM[language] = agentData.integrations.LLM[language];
+		}
+		if (agentData.integrations.TTS[language]) {
+			CurrentAgentIntegrationsTTS[language] = agentData.integrations.TTS[language];
+		}
+	});
+}
+
 function createIntegrationSelectElement(type, index) {
 	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
 		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
@@ -840,20 +874,24 @@ function createIntegrationSelectElement(type, index) {
     `;
 }
 
-function fillIntegrationsList(type) {
+function fillAgentIntegrationsList(type) {
 	const container = type === "STT" ? sttIntegrationsList : type === "LLM" ? llmIntegrationsList : ttsIntegrationsList;
 
-	const currentIntegrations = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+	const currentIntegrations =
+		type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage];
 
-	// Clear existing items except alert
+	// Clear existing items
 	container.find(".integration-item").remove();
 
-	// Add current integrations
-	currentIntegrations.forEach((integrationId, index) => {
-		const element = $(createIntegrationSelectElement(type, index));
-		element.find("select").val(integrationId);
-		container.append(element);
-	});
+	// Add current integrations for selected language
+	if (currentIntegrations && currentIntegrations.length > 0) {
+		currentIntegrations.forEach((integration, index) => {
+			const element = $(createIntegrationSelectElement(type, index));
+			element.find("select").val(integration.id);
+			container.append(element);
+		});
+	}
 }
 
 function createAgentIntegrationConfigurationField(field) {
@@ -1038,7 +1076,11 @@ function loadAgentIntegrationConfiguration(integrationId, integrationType) {
 	// Find existing configuration values
 	const currentArray = integrationType === "STT" ? CurrentAgentIntegrationsSTT : integrationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
 
-	const existingConfig = currentArray.find((i) => i && i.id === integrationId);
+	if (!currentArray) return;
+
+	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id];
+
+	const existingConfig = currentLanguageArray.find((i) => i && i.id === integrationId);
 	if (existingConfig?.fieldValues) {
 		CurrentAgentConfigurationValues = { ...existingConfig.fieldValues };
 	}
@@ -1047,6 +1089,7 @@ function loadAgentIntegrationConfiguration(integrationId, integrationType) {
 	fillAgentIntegrationConfigurationFields();
 }
 
+// TODO CHECK THESE VALIDATION FUNCTIONS
 function validateAgentIntegrationConfiguration() {
 	const errors = [];
 	let isValid = true;
@@ -1119,6 +1162,103 @@ function validateAgentIntegrationConfiguration() {
 	};
 }
 
+function validateAgentIntegrationsTab() {
+	const errors = [];
+	let isValid = true;
+
+	// Validate each language has required integrations
+	BusinessFullData.businessData.languages.forEach((languageId) => {
+		const language = SpecificationLanguagesListData.find((l) => l.id === languageId);
+		const languageName = language ? language.name : languageId;
+
+		// Validate STT integrations
+		if (!CurrentAgentIntegrationsSTT[languageId] || CurrentAgentIntegrationsSTT[languageId].length === 0) {
+			isValid = false;
+			errors.push(`${languageName}: At least one Speech-to-Text integration is required`);
+		}
+
+		// Validate LLM integrations
+		if (!CurrentAgentIntegrationsLLM[languageId] || CurrentAgentIntegrationsLLM[languageId].length === 0) {
+			isValid = false;
+			errors.push(`${languageName}: At least one Language Model integration is required`);
+		}
+
+		// Validate TTS integrations
+		if (!CurrentAgentIntegrationsTTS[languageId] || CurrentAgentIntegrationsTTS[languageId].length === 0) {
+			isValid = false;
+			errors.push(`${languageName}: At least one Text-to-Speech integration is required`);
+		}
+
+		// Validate integration configurations
+		if (CurrentAgentIntegrationsSTT[languageId]) {
+			CurrentAgentIntegrationsSTT[languageId].forEach((integration, index) => {
+				if (!validateAgentIntegrationConfigurationFields(integration, "STT", index, languageName)) {
+					isValid = false;
+				}
+			});
+		}
+
+		if (CurrentAgentIntegrationsLLM[languageId]) {
+			CurrentAgentIntegrationsLLM[languageId].forEach((integration, index) => {
+				if (!validateAgentIntegrationConfigurationFields(integration, "LLM", index, languageName)) {
+					isValid = false;
+				}
+			});
+		}
+
+		if (CurrentAgentIntegrationsTTS[languageId]) {
+			CurrentAgentIntegrationsTTS[languageId].forEach((integration, index) => {
+				if (!validateAgentIntegrationConfigurationFields(integration, "TTS", index, languageName)) {
+					isValid = false;
+				}
+			});
+		}
+	});
+
+	return {
+		isValid,
+		errors,
+	};
+}
+
+function validateAgentIntegrationConfigurationFields(integration, type, index, languageName) {
+	const errors = [];
+	let isValid = true;
+
+	// Get provider configuration based on integration type
+	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === integration.id);
+	if (!businessIntegrationData) {
+		errors.push(`${languageName}: ${type} Integration #${index + 1} - Invalid integration selected`);
+		return false;
+	}
+
+	const provider =
+		type === "LLM"
+			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+			: type === "STT"
+				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+				: BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
+
+	if (!provider) {
+		errors.push(`${languageName}: ${type} Integration #${index + 1} - Provider configuration not found`);
+		return false;
+	}
+
+	// Validate required fields
+	provider.userIntegrationFields.forEach((field) => {
+		if (field.required) {
+			const value = integration.fieldValues[field.id];
+			if (!value || value.trim() === "") {
+				isValid = false;
+				errors.push(`${languageName}: ${type} Integration #${index + 1} - ${field.name} is required`);
+			}
+		}
+	});
+
+	return isValid;
+}
+// TODO END
+
 function getAgentIntegrationConfigurationChanges() {
 	const changes = {};
 	let hasChanges = false;
@@ -1144,7 +1284,11 @@ function saveAgentIntegrationConfigurationChanges(changes) {
 	// Update current agent integration configuration
 	const currentArray = CurrentAgentConfigurationType === "STT" ? CurrentAgentIntegrationsSTT : CurrentAgentConfigurationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
 
-	const integrationIndex = currentArray.findIndex((i) => {
+	if (!currentArray) return;
+
+	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id];
+
+	const integrationIndex = currentLanguageArray.findIndex((i) => {
 		if (!i) return false;
 
 		return i.id === CurrentAgentConfigurationIntegration;
@@ -1152,7 +1296,7 @@ function saveAgentIntegrationConfigurationChanges(changes) {
 	if (integrationIndex !== -1) {
 		// Update existing configuration
 		Object.keys(changes).forEach((fieldId) => {
-			currentArray[integrationIndex].fieldValues[fieldId] = changes[fieldId];
+			currentLanguageArray[integrationIndex].fieldValues[fieldId] = changes[fieldId];
 		});
 	}
 
@@ -1164,6 +1308,17 @@ function saveAgentIntegrationConfigurationChanges(changes) {
 
 	// Close modal
 	integrationConfigurationModal.modal("hide");
+}
+
+function refreshIntegrationIndices(type) {
+	const container = type === "STT" ? sttIntegrationsList : type === "LLM" ? llmIntegrationsList : ttsIntegrationsList;
+
+	container.find(".integration-item").each((idx, element) => {
+		$(element).attr("data-index", idx);
+		$(element)
+			.find(".input-group-text i")
+			.attr("class", `fa-regular fa-${idx + 1}`);
+	});
 }
 
 // Cache Tab Functions
@@ -1731,25 +1886,6 @@ function initAgentTab() {
 			}
 		});
 
-		// Integration Event Handlers
-		addSTTIntegrationButton.on("click", (event) => {
-			event.preventDefault();
-			const newIndex = sttIntegrationsList.find(".integration-item").length;
-			sttIntegrationsList.append(createIntegrationSelectElement("STT", newIndex));
-		});
-
-		addLLMIntegrationButton.on("click", (event) => {
-			event.preventDefault();
-			const newIndex = llmIntegrationsList.find(".integration-item").length;
-			llmIntegrationsList.append(createIntegrationSelectElement("LLM", newIndex));
-		});
-
-		addTTSIntegrationButton.on("click", (event) => {
-			event.preventDefault();
-			const newIndex = ttsIntegrationsList.find(".integration-item").length;
-			ttsIntegrationsList.append(createIntegrationSelectElement("TTS", newIndex));
-		});
-
 		// Cache Event Handlers
 		addMessageCacheGroupButton.on("click", (event) => {
 			event.preventDefault();
@@ -1769,27 +1905,6 @@ function initAgentTab() {
 			$(this).closest(".cache-group-item").remove();
 		});
 
-		// Handle integration removal
-		agentIntegrationsTab.on("click", '[button-type="remove-integration"]', (event) => {
-			event.preventDefault();
-
-			const currentElement = $(event.currentTarget);
-			const dataIndex = currentElement.attr("data-index");
-
-			currentElement.closest(".integration-item").remove();
-
-			// todo make sure to check whether its llm stt or tts
-			CurrentAgentIntegrationsLLM.splice(dataIndex, 1);
-
-			// Refresh indices
-			$(".integration-item").each((idx, element) => {
-				$(element).attr("data-index", idx);
-				$(element)
-					.find(".input-group-text i")
-					.attr("class", `fa-regular fa-${idx + 1}`);
-			});
-		});
-
 		// Handle cache group selection changes
 		agentCacheTab.on("change", 'select[select-type^="cache-"]', function () {
 			const type = $(this).attr("select-type").split("-")[1];
@@ -1803,98 +1918,6 @@ function initAgentTab() {
 			} else {
 				currentArray.splice(index, 1);
 			}
-		});
-
-		// Handle integration selection changes
-		agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', (event) => {
-			const currentElement = $(event.currentTarget);
-			const type = currentElement.attr("select-type").split("-")[1].toUpperCase();
-			const index = currentElement.closest(".integration-item").data("index");
-			const value = currentElement.val();
-
-			const currentArray = type === "STT" ? CurrentAgentIntegrationsSTT : type === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
-
-			if (value) {
-				const alreadyExists = currentArray.some((i) => i.id === value);
-				if (alreadyExists) {
-					AlertManager.createAlert({
-						type: "warning",
-						message: "This integration is already added.",
-						timeout: 3000,
-					});
-
-					currentElement.val("");
-					return;
-				}
-
-				currentArray[index] = {
-					id: value,
-					fieldValues: {},
-				};
-			} else {
-				currentArray.splice(index, 1);
-			}
-		});
-
-		// Handle integration configuration
-		agentIntegrationsTab.on("click", '[button-type="configure-integration"]', function (event) {
-			event.preventDefault();
-
-			const integrationSelect = $(this).closest(".integration-item").find("select");
-			const integrationId = integrationSelect.val();
-			const integrationType = integrationSelect.attr("select-type").split("-")[1].toUpperCase();
-
-			if (!integrationId) {
-				AlertManager.createAlert({
-					type: "warning",
-					message: "Please select an integration first.",
-					timeout: 3000,
-				});
-				return;
-			}
-
-			// Load configuration before showing modal
-			loadAgentIntegrationConfiguration(integrationId, integrationType);
-
-			// Show the modal
-			integrationConfigurationModal.modal("show");
-		});
-
-		// Save configuration
-		saveIntegrationConfigButton.on("click", (event) => {
-			event.preventDefault();
-
-			const validation = validateAgentIntegrationConfiguration();
-			if (!validation.isValid) {
-				AlertManager.createAlert({
-					type: "danger",
-					message: `Validation failed:<br>${validation.errors.join("<br>")}`,
-					timeout: 6000,
-				});
-				return;
-			}
-
-			const changes = getAgentIntegrationConfigurationChanges();
-			if (!changes.hasChanges) {
-				integrationConfigurationModal.modal("hide");
-				return;
-			}
-
-			saveAgentIntegrationConfigurationChanges(changes.changes);
-		});
-
-		integrationConfigurationModal.on("hide.bs.modal", (event) => {
-			CurrentAgentConfigurationIntegration = null;
-			CurrentAgentConfigurationIntegrationType = null;
-			CurrentAgentConfigurationFields = null;
-			CurrentAgentConfigurationValues = {};
-			CurrentAgentConfigurationType = null;
-		});
-
-		// Track changes in fields
-		integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
-			const changes = getAgentIntegrationConfigurationChanges();
-			saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
 		});
 
 		function initAgentTabChangeHandlers() {
@@ -2162,18 +2185,159 @@ function initAgentTab() {
 			initAgentCacheTabHandlers();
 
 			// Integration Tab Changes
-			agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', () => {
-				CheckAgentTabHasChanges();
-			});
+			function initAgentIntegrationsTabHandlers() {
+				manageAgentsLanguageDropdown.onLanguageChange((language) => {
+					fillAgentIntegrationsList("STT");
+					fillAgentIntegrationsList("LLM");
+					fillAgentIntegrationsList("TTS");
+				});
 
-			agentIntegrationsTab.on("click", '[button-type="remove-integration"]', () => {
-				CheckAgentTabHasChanges();
-			});
+				// Integration Event Handlers
+				addSTTIntegrationButton.on("click", (event) => {
+					event.preventDefault();
+					const newIndex = sttIntegrationsList.find(".integration-item").length;
+					sttIntegrationsList.append(createIntegrationSelectElement("STT", newIndex));
 
-			// Integration Configuration Changes
-			integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
-				CheckAgentTabHasChanges();
-			});
+					CheckAgentTabHasChanges();
+				});
+
+				addLLMIntegrationButton.on("click", (event) => {
+					event.preventDefault();
+					const newIndex = llmIntegrationsList.find(".integration-item").length;
+					llmIntegrationsList.append(createIntegrationSelectElement("LLM", newIndex));
+
+					CheckAgentTabHasChanges();
+				});
+
+				addTTSIntegrationButton.on("click", (event) => {
+					event.preventDefault();
+					const newIndex = ttsIntegrationsList.find(".integration-item").length;
+					ttsIntegrationsList.append(createIntegrationSelectElement("TTS", newIndex));
+
+					CheckAgentTabHasChanges();
+				});
+
+				// Handle integration removal
+				agentIntegrationsTab.on("click", '[button-type="remove-integration"]', (event) => {
+					event.preventDefault();
+
+					const currentElement = $(event.currentTarget);
+					const dataIndex = parseInt(currentElement.attr("data-index"));
+					const type = currentElement.parent().find('[select-type^="integration-"]').attr("select-type").split("-")[1].toUpperCase();
+					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+					// Remove the integration
+					if (type === "STT") CurrentAgentIntegrationsSTT[currentLanguage].splice(dataIndex, 1);
+					else if (type === "LLM") CurrentAgentIntegrationsLLM[currentLanguage].splice(dataIndex, 1);
+					else if (type === "TTS") CurrentAgentIntegrationsTTS[currentLanguage].splice(dataIndex, 1);
+
+					currentElement.closest(".integration-item").remove();
+
+					// Refresh indices
+					refreshIntegrationIndices(type);
+					CheckAgentTabHasChanges();
+					validateAgentMultiLanguageElements();
+				});
+
+				// Handle integration configuration
+				agentIntegrationsTab.on("click", '[button-type="configure-integration"]', function (event) {
+					event.preventDefault();
+
+					const integrationSelect = $(this).closest(".integration-item").find("select");
+					const integrationId = integrationSelect.val();
+					const integrationType = integrationSelect.attr("select-type").split("-")[1].toUpperCase();
+
+					if (!integrationId) {
+						AlertManager.createAlert({
+							type: "warning",
+							message: "Please select an integration first.",
+							timeout: 3000,
+						});
+						return;
+					}
+
+					// Load configuration before showing modal
+					loadAgentIntegrationConfiguration(integrationId, integrationType);
+
+					// Show the modal
+					integrationConfigurationModal.modal("show");
+				});
+
+				// Handle integration selection changes
+				agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', (event) => {
+					const currentElement = $(event.currentTarget);
+					const type = currentElement.attr("select-type").split("-")[1].toUpperCase();
+					const index = currentElement.closest(".integration-item").data("index");
+					const value = currentElement.val();
+					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+					const currentArray =
+						type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage];
+
+					if (value) {
+						const alreadyExists = currentArray.some((i) => i.id === value);
+						if (alreadyExists) {
+							AlertManager.createAlert({
+								type: "warning",
+								message: "This integration is already added.",
+								timeout: 3000,
+							});
+
+							currentElement.val("");
+							return;
+						}
+
+						currentArray[index] = {
+							id: value,
+							fieldValues: {},
+						};
+					} else {
+						currentArray.splice(index, 1);
+					}
+
+					CheckAgentTabHasChanges();
+				});
+
+				// Save configuration
+				saveIntegrationConfigButton.on("click", (event) => {
+					event.preventDefault();
+
+					const validation = validateAgentIntegrationConfiguration();
+					if (!validation.isValid) {
+						AlertManager.createAlert({
+							type: "danger",
+							message: `Validation failed:<br>${validation.errors.join("<br>")}`,
+							timeout: 6000,
+						});
+						return;
+					}
+
+					const changes = getAgentIntegrationConfigurationChanges();
+					if (!changes.hasChanges) {
+						integrationConfigurationModal.modal("hide");
+						return;
+					}
+
+					saveAgentIntegrationConfigurationChanges(changes.changes);
+				});
+
+				integrationConfigurationModal.on("hide.bs.modal", (event) => {
+					CurrentAgentConfigurationIntegration = null;
+					CurrentAgentConfigurationIntegrationType = null;
+					CurrentAgentConfigurationFields = null;
+					CurrentAgentConfigurationValues = {};
+					CurrentAgentConfigurationType = null;
+				});
+
+				// Track changes in fields
+				integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
+					const changes = getAgentIntegrationConfigurationChanges();
+					saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
+
+					CheckAgentTabHasChanges();
+				});
+			}
+			initAgentIntegrationsTabHandlers();
 
 			// Settings Tab Changes
 			$("#editAgentBackgroundAudioSelect, #editAgentBackgroundAudioVolume").on("input change", () => {
@@ -2183,19 +2347,6 @@ function initAgentTab() {
 			// Handle language changes
 			manageAgentsLanguageDropdown.onLanguageChange(() => {
 				CheckAgentTabHasChanges();
-			});
-
-			// Handle items being added
-			addSTTIntegrationButton.on("click", () => {
-				setTimeout(() => CheckAgentTabHasChanges(), 100);
-			});
-
-			addLLMIntegrationButton.on("click", () => {
-				setTimeout(() => CheckAgentTabHasChanges(), 100);
-			});
-
-			addTTSIntegrationButton.on("click", () => {
-				setTimeout(() => CheckAgentTabHasChanges(), 100);
 			});
 
 			addMessageCacheGroupButton.on("click", () => {

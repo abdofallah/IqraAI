@@ -1,9 +1,16 @@
-﻿namespace IqraCore.Entities.Business
+﻿using IqraCore.Attributes;
+
+namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgentIntegrations
     {
-        public List<BusinessAppAgentIntegrationData> STT { get; set; } = new List<BusinessAppAgentIntegrationData>();
-        public List<BusinessAppAgentIntegrationData> TTS { get; set; } = new List<BusinessAppAgentIntegrationData>();
-        public List<BusinessAppAgentIntegrationData> LLM { get; set; } = new List<BusinessAppAgentIntegrationData>();
+        [MultiLanguageProperty]
+        public Dictionary<string, BusinessAppAgentIntegrationData> STT { get; set; } = new Dictionary<string, BusinessAppAgentIntegrationData>();
+
+        [MultiLanguageProperty]
+        public Dictionary<string, BusinessAppAgentIntegrationData> TTS { get; set; } = new Dictionary<string, BusinessAppAgentIntegrationData>();
+
+        [MultiLanguageProperty]
+        public Dictionary<string, BusinessAppAgentIntegrationData> LLM { get; set; } = new Dictionary<string, BusinessAppAgentIntegrationData>();
     }
 }
