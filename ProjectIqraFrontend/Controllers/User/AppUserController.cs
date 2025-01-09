@@ -350,7 +350,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
+            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
             if (!businessWhiteLabelDomainResult.Success)
             {
                 result.Code = "GetUserBusinessWhiteLabelDomains:" + businessWhiteLabelDomainResult.Code;
@@ -438,7 +438,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
+            FunctionReturnResult<List<BusinessWhiteLabelDomain>?> businessWhiteLabelDomainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomainByIds(businessResult.Data.WhiteLabelDomainIds, businessId, user.Email);
             if (!businessWhiteLabelDomainResult.Success)
             {
                 result.Code = "GetUserBusiness:" + businessWhiteLabelDomainResult.Code;

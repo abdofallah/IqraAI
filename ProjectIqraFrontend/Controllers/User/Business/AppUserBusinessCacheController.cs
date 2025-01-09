@@ -160,7 +160,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool groupExists = await _businessManager.CheckBusinessCacheMessageGroupExists(businessId, existingGroupId);
+                bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheMessageGroupExists(businessId, existingGroupId);
                 if (!groupExists)
                 {
                     result.Code = "SaveBusinessMessageGroup:14";
@@ -184,7 +184,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            var updateResult = await _businessManager.AddOrUpdateMessageGroup(businessId, formData, postType, existingGroupId);
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateMessageGroup(businessId, formData, postType, existingGroupId);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessMessageGroup:" + updateResult.Code;
@@ -315,7 +315,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            bool groupExists = await _businessManager.CheckBusinessCacheMessageGroupExists(businessId, groupId);
+            bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheMessageGroupExists(businessId, groupId);
             if (!groupExists)
             {
                 result.Code = "SaveBusinessMessageGroupMessage:11";
@@ -370,7 +370,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool messageExists = await _businessManager.CheckBusinessCacheMessageGroupMessageExists(
+                bool messageExists = await _businessManager.GetCacheManager().CheckBusinessCacheMessageGroupMessageExists(
                     businessId,
                     groupId,
                     language,
@@ -400,7 +400,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            var updateResult = await _businessManager.AddOrUpdateMessageGroupMessage(
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateMessageGroupMessage(
                 businessId,
                 groupId,
                 formData,
@@ -561,7 +561,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool groupExists = await _businessManager.CheckBusinessCacheAudioGroupExists(businessId, existingGroupId);
+                bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheAudioGroupExists(businessId, existingGroupId);
                 if (!groupExists)
                 {
                     result.Code = "SaveBusinessAudioGroup:14";
@@ -585,7 +585,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            var updateResult = await _businessManager.AddOrUpdateAudioGroup(businessId, formData, postType, existingGroupId);
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateAudioGroup(businessId, formData, postType, existingGroupId);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessAudioGroup:" + updateResult.Code;
@@ -716,7 +716,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            bool groupExists = await _businessManager.CheckBusinessCacheAudioGroupExists(businessId, groupId);
+            bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheAudioGroupExists(businessId, groupId);
             if (!groupExists)
             {
                 result.Code = "SaveBusinessAudioGroupAudio:11";
@@ -771,7 +771,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool audioExists = await _businessManager.CheckBusinessCacheAudioGroupAudioExists(
+                bool audioExists = await _businessManager.GetCacheManager().CheckBusinessCacheAudioGroupAudioExists(
                     businessId,
                     groupId,
                     language,
@@ -801,7 +801,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            var updateResult = await _businessManager.AddOrUpdateAudioGroupAudio(
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateAudioGroupAudio(
                 businessId,
                 groupId,
                 formData,

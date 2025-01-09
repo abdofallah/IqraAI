@@ -142,7 +142,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool toolExistsResult = await _businessManager.CheckBusinessToolExists(businessId, exisitingToolIdValue);
+                bool toolExistsResult = await _businessManager.GetToolsManager().CheckBusinessToolExists(businessId, exisitingToolIdValue);
                 if (!toolExistsResult)
                 {
                     result.Code = "SaveBusinessTools:9";
@@ -151,7 +151,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.AddOrUpdateUserBusinessTools(businessId, formData, postType, exisitingToolIdValue);
+            FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateUserBusinessTools(businessId, formData, postType, exisitingToolIdValue);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessTools:" + updateResult.Code;

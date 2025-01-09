@@ -127,7 +127,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            FunctionReturnResult<BusinessAppContextBranding?> updateResult = await _businessManager.UpdateUserBusinessContextBranding(businessId, formData);
+            FunctionReturnResult<BusinessAppContextBranding?> updateResult = await _businessManager.GetContextManager().UpdateUserBusinessContextBranding(businessId, formData);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessContextBranding:" + updateResult.Code;
@@ -289,7 +289,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool branchExistsResult = await _businessManager.CheckBusinessBranchExists(businessId, exisitingBranchIdValue);
+                bool branchExistsResult = await _businessManager.GetContextManager().CheckBusinessBranchExists(businessId, exisitingBranchIdValue);
                 if (!branchExistsResult)
                 {
                     result.Code = "SaveBusinessContextBranch:9";
@@ -298,7 +298,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessAppContextBranch?> updateResult = await _businessManager.AddOrUpdateUserBusinessContextBranch(businessId, formData, postType, exisitingBranchIdValue);
+            FunctionReturnResult<BusinessAppContextBranch?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextBranch(businessId, formData, postType, exisitingBranchIdValue);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessContextBranch:" + updateResult.Code;
@@ -460,7 +460,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool serviceExistsResult = await _businessManager.CheckBusinessServiceExists(businessId, exisitingServiceId);
+                bool serviceExistsResult = await _businessManager.GetContextManager().CheckBusinessServiceExists(businessId, exisitingServiceId);
                 if (!serviceExistsResult)
                 {
                     result.Code = "SaveBusinessContextService:12";
@@ -469,7 +469,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessAppContextService?> updateResult = await _businessManager.AddOrUpdateUserBusinessContextService(
+            FunctionReturnResult<BusinessAppContextService?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextService(
                 businessId,
                 formData,
                 postType,
@@ -637,7 +637,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool productExistsResult = await _businessManager.CheckBusinessProductExists(businessId, exisitingProductId);
+                bool productExistsResult = await _businessManager.GetContextManager().CheckBusinessProductExists(businessId, exisitingProductId);
                 if (!productExistsResult)
                 {
                     result.Code = "SaveBusinessContextProduct:12";
@@ -646,7 +646,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessAppContextProduct?> updateResult = await _businessManager.AddOrUpdateUserBusinessContextProduct(
+            FunctionReturnResult<BusinessAppContextProduct?> updateResult = await _businessManager.GetContextManager().AddOrUpdateUserBusinessContextProduct(
                 businessId,
                 formData,
                 postType,

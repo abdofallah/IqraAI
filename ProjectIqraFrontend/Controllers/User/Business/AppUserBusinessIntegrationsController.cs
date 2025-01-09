@@ -190,7 +190,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                var businessIntegrationResult = await _businessManager.getBusinessIntegrationById(businessId, currentIntegrationId);
+                var businessIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, currentIntegrationId);
                 if (!businessIntegrationResult.Success)
                 {
                     result.Code = "SaveBusinessIntegration:" + businessIntegrationResult.Code;
@@ -217,7 +217,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
 
             // Process the integration
-            var saveResult = await _businessManager.AddOrUpdateBusinessIntegration(
+            var saveResult = await _businessManager.GetIntegrationsManager().AddOrUpdateBusinessIntegration(
                 businessId,
                 formData,
                 postType,

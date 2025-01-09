@@ -104,7 +104,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            FunctionReturnResult<bool?> updateResult = await _businessManager.UpdateUserBusinessSettings(businessId, formData);
+            FunctionReturnResult<bool?> updateResult = await _businessManager.GetSettingsManager().UpdateUserBusinessSettings(businessId, formData);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessSettings:" + updateResult.Code;
@@ -213,7 +213,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                var domainResult = await _businessManager.GetUserBusinessWhiteLabelDomain(domainId, businessId, userEmail);
+                var domainResult = await _businessManager.GetSettingsManager().GetUserBusinessWhiteLabelDomain(domainId, businessId, userEmail);
                 if (!domainResult.Success)
                 {
                     result.Code = "SaveBusinessDomain:" + domainResult.Code;
@@ -224,7 +224,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 businessWhiteLabelDomainData = domainResult.Data;
             }
 
-            FunctionReturnResult<BusinessWhiteLabelDomain?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessDomain(businessId, formData, postType, businessWhiteLabelDomainData);
+            FunctionReturnResult<BusinessWhiteLabelDomain?> addOrUpdateResult = await _businessManager.GetSettingsManager().AddOrUpdateUserBusinessDomain(businessId, formData, postType, businessWhiteLabelDomainData);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessDomain:" + addOrUpdateResult.Code;
@@ -343,7 +343,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds, businessUserData);
+            FunctionReturnResult<BusinessUser?> addOrUpdateResult = await _businessManager.GetSettingsManager().AddOrUpdateUserBusinessSubUser(businessId, formData, postType, businessResult.Data.WhiteLabelDomainIds, businessUserData);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessSubUser:" + addOrUpdateResult.Code;
