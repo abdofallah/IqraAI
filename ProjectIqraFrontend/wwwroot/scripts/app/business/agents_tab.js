@@ -1,3 +1,27 @@
+// Graph Constants
+const AGENT_SCRIPT_GRAPH_GRID_SIZE = 10;
+const AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR = "#f8f9fa";
+const AGENT_SCRIPT_GRAPH_DOT_COLOR = "#e9ecef";
+const AGENT_SCRIPT_GRAPH_DOT_SIZE = 1;
+const AGENT_SCRIPT_GRAPH_PLUGINS = {
+	Minimap: X6PluginMinimap.MiniMap,
+	Keyboard: X6PluginKeyboard.Keyboard,
+	Clipboard: X6PluginClipboard.Clipboard,
+	History: X6PluginHistory.History,
+};
+
+// Constants for node system
+const AGENT_SCRIPT_NODE_TYPES = {
+	START: "agent-script-start-node",
+	USER_MESSAGE: "agent-script-user-message-node",
+	AI_RESPONSE: "agent-script-ai-response-node",
+	SYSTEM_TOOL: "agent-script-system-tool-node",
+	CUSTOM_TOOL: "agent-script-custom-tool-node",
+};
+
+const AGENT_SCRIPT_NODE_WIDTH = 320;
+const AGENT_SCRIPT_NODE_MIN_HEIGHT = 100;
+
 /** Dynamic Variables **/
 let CurrentManageAgentData = null;
 let ManageAgentType = null; // new or edit
@@ -35,6 +59,9 @@ let CurrentAgentPersonalityToneMultiLangData = {};
 
 let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
+
+// Script
+let CurrentAgentScriptGraph = null;
 
 /** Element Variables **/
 
@@ -85,15 +112,6 @@ const switchBackToAgentsScriptManagerTab = agentTab.find("#switchBackToAgentsScr
 const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
 
 const agentScriptsManagerTab = agentTab.find("#agentScriptsManagerTab");
-
-const addAgentScriptConditionValueButton = agentScriptsManagerTab.find("#addAgentScriptConditionValue");
-const editAgentScriptConditionValueInputs = agentScriptsManagerTab.find("#editAgentScriptConditionValueInputs");
-
-const addAgentScriptConversationMessageButton = agentScriptsManagerTab.find("#addAgentScriptConversationMessage");
-
-const agentScriptConversationMessages = agentScriptsManagerTab.find(".agentScriptConversationMessages");
-
-const noMessagesInConversationAlert = agentScriptsManagerTab.find(".no-messages-conversation");
 
 // SUB | Integrations Tab
 const agentIntegrationsTab = $("#agents-manager-integrations");
@@ -1585,6 +1603,357 @@ function showAgentScriptListTab() {
 	}, 300);
 }
 
+function ResetAndEmptyAgentsScriptManageTab() {
+	if (CurrentAgentScriptGraph) {
+		CurrentAgentScriptGraph.dispose();
+		CurrentAgentScriptGraph = null;
+	}
+}
+
+async function canLeaveAgentScriptManagerTab() {
+	// todo
+
+	return true;
+}
+
+function initializeAgentScriptGraph(container) {
+	resizeAgentScriptGraphCSS();
+
+	// Create the graph instance
+	const graph = new X6.Graph({
+		container: container,
+		width: "100%",
+		height: "100%",
+		// Grid settings
+		grid: {
+			visible: true,
+			type: "doubleMesh",
+			args: [
+				{
+					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
+					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
+				},
+				{
+					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
+					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
+					factor: 4,
+				},
+			],
+		},
+		// Background settings
+		background: {
+			color: AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR,
+		},
+		// Interaction settings
+		mousewheel: {
+			enabled: true,
+			modifiers: ["ctrl", "meta"],
+			factor: 1.1,
+			maxScale: 2,
+			minScale: 0.5,
+		},
+		panning: {
+			enabled: true,
+			modifiers: ["shift", "ctrl"],
+		},
+		connecting: {
+			anchor: "center",
+			connectionPoint: "anchor",
+			allowBlank: false,
+			allowLoop: false,
+			allowNode: false,
+			allowEdge: false,
+			allowMulti: false,
+			highlight: true,
+		},
+		// Prevent node text selection
+		preventDefaultContextMenu: true,
+		preventDefaultBlankAction: true,
+	});
+
+	// Add minimap plugin
+	const minimapContainer = document.getElementById("agent-script-graph-minimap");
+	if (minimapContainer) {
+		graph.use(
+			new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
+				container: minimapContainer,
+				width: 200,
+				height: 150,
+				padding: 10,
+			}),
+		);
+	}
+
+	// Add keyboard shortcuts plugin
+	if (AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard) {
+		graph.use(
+			new AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard({
+				enabled: true,
+				global: true,
+			}),
+		);
+	}
+
+	// Add clipboard plugin
+	if (AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard) {
+		graph.use(
+			new AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard({
+				enabled: true,
+			}),
+		);
+	}
+
+	// Add history plugin (undo/redo)
+	if (AGENT_SCRIPT_GRAPH_PLUGINS.History) {
+		graph.use(
+			new AGENT_SCRIPT_GRAPH_PLUGINS.History({
+				enabled: true,
+				beforeAddCommand: (event, args) => {
+					// Validate before adding to history
+					return true;
+				},
+			}),
+		);
+	}
+
+	// Initialize node system
+	initializeAgentScriptNodeSystem(graph);
+
+	// Add start node
+	const startNode = graph.addNode({
+		shape: AGENT_SCRIPT_NODE_TYPES.START,
+		data: { type: AGENT_SCRIPT_NODE_TYPES.START },
+		x: 100,
+		y: 50,
+		ports: {
+			items: [{ group: "output" }],
+		},
+	});
+
+	return graph;
+}
+
+function initializeAgentScriptGraphControls(graph) {
+	// Zoom controls
+	$("#agent-script-graph-zoom-in").on("click", () => {
+		const zoom = graph.zoom();
+		if (zoom < 2) {
+			graph.zoom(0.1);
+		}
+	});
+
+	$("#agent-script-graph-zoom-out").on("click", () => {
+		const zoom = graph.zoom();
+		if (zoom > 0.5) {
+			graph.zoom(-0.1);
+		}
+	});
+
+	$("#agent-script-graph-zoom-fit").on("click", () => {
+		graph.zoomToFit({ padding: 20, maxScale: 1 });
+	});
+
+	$("#agent-script-graph-zoom-reset").on("click", () => {
+		graph.scale(1);
+		graph.centerContent();
+	});
+
+	// Undo/Redo controls
+	$("#agent-script-graph-undo").on("click", () => {
+		if (graph.canUndo()) {
+			graph.undo();
+		}
+	});
+
+	$("#agent-script-graph-redo").on("click", () => {
+		if (graph.canRedo()) {
+			graph.redo();
+		}
+	});
+
+	// Update button states based on graph state
+	graph.on("scale", ({ sx, sy }) => {
+		const scale = sx; // or sy, they're the same
+		$("#agent-script-graph-zoom-in").prop("disabled", scale >= 2);
+		$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.5);
+	});
+
+	graph.on("history:change", () => {
+		$("#agent-script-graph-undo").prop("disabled", !graph.canUndo());
+		$("#agent-script-graph-redo").prop("disabled", !graph.canRedo());
+	});
+}
+
+function registerAgentScriptNodes() {
+	// Register Start Node
+	X6.Shape.HTML.register({
+		shape: AGENT_SCRIPT_NODE_TYPES.START,
+		width: 100, // Smaller width for pill shape
+		height: 40, // Fixed height for pill shape
+		effect: ["data"],
+		ports: {
+			groups: {
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 6,
+							magnet: true,
+							stroke: "#198754",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.START}`;
+
+			div.innerHTML = `
+                <div class="agent-script-node-content">
+                    Start
+                </div>
+            `;
+
+			return div;
+		},
+	});
+
+	// Register User Message Node
+	X6.Shape.HTML.register({
+		shape: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
+		width: AGENT_SCRIPT_NODE_WIDTH,
+		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
+		effect: ["data"],
+		ports: {
+			groups: {
+				input: {
+					position: "top",
+					attrs: {
+						circle: {
+							r: 6,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 6,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE}`;
+
+			const data = cell.getData() || {};
+			const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+			div.innerHTML = `
+                <div class="agent-script-node-header">
+                    <button class="agent-script-node-delete-btn" data-action="delete-node">
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
+                </div>
+                <div class="agent-script-node-content">
+                    <div class="agent-script-node-input-group">
+                        <label>User Message</label>
+                        <textarea 
+                            class="form-control" 
+                            placeholder="Type the user message..."
+                            data-input="user-message"
+                        >${data.userMessage?.[currentLanguage] || ""}</textarea>
+                    </div>
+                    <div class="agent-script-node-response-type">
+                        <select class="form-select" data-input="response-type">
+                            <option value="ai_response" ${data.responseType === "ai_response" ? "selected" : ""}>AI Response</option>
+                            <option value="system_tool" ${data.responseType === "system_tool" ? "selected" : ""}>System Tool</option>
+                            <option value="custom_tool" ${data.responseType === "custom_tool" ? "selected" : ""}>Custom Tool</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+
+			// Add event listeners
+			const textarea = div.querySelector('[data-input="user-message"]');
+			textarea.addEventListener("input", (e) => {
+				const messages = data.userMessage || {};
+				messages[currentLanguage] = e.target.value;
+				cell.setData({
+					...data,
+					userMessage: messages,
+				});
+			});
+
+			const select = div.querySelector('[data-input="response-type"]');
+			select.addEventListener("change", (e) => {
+				cell.setData({
+					...data,
+					responseType: e.target.value,
+				});
+			});
+
+			return div;
+		},
+	});
+}
+
+function initializeAgentScriptNodeSystem(graph) {
+	registerAgentScriptNodes();
+
+	// Handle node deletion
+	graph.on("cell:click", ({ cell, e }) => {
+		const target = e.target;
+		if (target.closest('[data-action="delete-node"]')) {
+			const nodeType = cell.getData()?.type;
+			if (nodeType !== AGENT_SCRIPT_NODE_TYPES.START) {
+				cell.remove();
+			}
+		}
+	});
+}
+
+function resizeAgentScriptGraphCSS() {
+	const currentInnerContentHeight = agentTab.find(".inner-container")[0].clientHeight - 64; // 64 = 32+32 padding
+	const currentInnerContentWidth = agentTab.find(".inner-container")[0].clientWidth - 64; // 64 = 32+32 padding
+
+	$("#agentGraphDyanmicStyle").html(`
+		#agent-script-graph {
+			width: ${currentInnerContentWidth}px;
+			height: ${currentInnerContentHeight}px;
+		}
+	`);
+}
+
+function addAgentScriptUserMessageNode(graph, x = 100, y = 200) {
+	return graph.addNode({
+		shape: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
+		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
+			userMessage: {},
+			responseType: "ai_response",
+		},
+		x,
+		y,
+		ports: {
+			items: [{ group: "input" }, { group: "output" }],
+		},
+	});
+}
+
 /** INIT **/
 function initAgentTab() {
 	$(document).ready(() => {
@@ -2132,220 +2501,25 @@ function initAgentTab() {
 				addNewAgentScriptButton.on("click", (event) => {
 					event.preventDefault();
 
+					ResetAndEmptyAgentsScriptManageTab();
+					CurrentAgentScriptGraph = initializeAgentScriptGraph(document.getElementById("agent-script-graph"));
+					initializeAgentScriptGraphControls(CurrentAgentScriptGraph);
+
 					currentAgentScriptName.text("New Script");
 					showAgentScriptManagerTab();
 				});
 
-				switchBackToAgentsScriptManagerTab.on("click", (event) => {
+				switchBackToAgentsScriptManagerTab.on("click", async (event) => {
 					event.preventDefault();
+
+					const canLeave = await canLeaveAgentScriptManagerTab();
+					if (!canLeave) return;
 
 					showAgentScriptListTab();
 				});
 
-				addAgentScriptConditionValueButton.on("click", (event) => {
-					event.preventDefault();
-
-					editAgentScriptConditionValueInputs.append(`
-                              <div class="input-group mb-1">
-                                   <input type="text" class="form-control" placeholder="Script Condition" aria-label="Condition Value" value="">
-                                   <button class="btn btn-danger" button-type="editAgentScriptConditionValueRemove">
-                                        <i class='fa-regular fa-trash'></i>
-                                   </button>
-                              </div>
-                         `);
-				});
-
-				editAgentScriptConditionValueInputs.on("click", '[button-type="editAgentScriptConditionValueRemove"]', (event) => {
-					event.preventDefault();
-					event.stopPropagation();
-
-					$(event.currentTarget).parent().remove();
-				});
-
-				addAgentScriptConversationMessageButton.on("click", (event) => {
-					// todo try to make the options of functions static
-
-					agentScriptConversationMessages.append(`
-                              <div class="conversationMessage">
-                                   <div class="user-message singleMessage">
-                                        <div class="input-group">
-                                             <button class="btn btn-danger btn-sm" button-type="editAgentScriptConversationMessageRemove">
-                                                  <i class='fa-regular fa-trash'></i>
-                                             </button>
-                                             <textarea class="form-control" placeholder="Type the user message..." rows="1"></textarea>
-                                        </div>
-                                        <div class="message-icon">
-                                             <i class='fa-regular fa-user'></i>
-                                        </div>
-                                   </div>
-                                   <div class="ai-message">
-                                        <div class="singleMessage">
-                                             <div class="message-icon">
-                                                  <i class='fa-regular fa-user'></i>
-                                             </div>
-                                             <div class="input-group">
-                                                  <select class="form-select" style="max-width: 180px" select-type="set-ai-response-type">
-                                                       <option value="response_to_user" selected>User Reply</option>
-                                                       <option value="response_to_system">Execute Tool</option>
-                                                  </select>
-                                                  <textarea textarea-type="set-ai-response-text-area" class="form-control" placeholder="Type the abstract AI message..." rows="1"></textarea>
-                                                  <select class="form-select d-none" select-type="set-ai-response-tool" previous-value="none">
-                                                       <option value="none" can-continue="true" is-custom-tool="false" selected>Select Tool Function</option>
-                                                       <option value="make_appointment" can-continue="true" is-custom-tool="true">Make Appointment</option>
-                                                       <option value="get_dtmf_keypad_input" can-continue="true" is-custom-tool="false">Get DTMF Keypad Input</option>
-                                                       <option value="change_language" can-continue="true" is-custom-tool="false">Change Language</option>
-                                                       <option value="transfer_to_agent" can-continue="false" is-custom-tool="false">Transfer to Agent</option>
-                                                       <option value="transfer_to_human" can-continue="false" is-custom-tool="false">Transfer to Human</option>
-                                                       <option value="end_call" can-continue="false" is-custom-tool="false">End Call</option>
-                                                       ${
-																													// todo
-																													""
-																												}
-                                                  </select>
-                                             </div>
-                                        </div>
-                                        <div class="d-none mt-2" data-type="transfer-to-agent-type">
-                                             <label class="form-label mb-1">Transfer to Agent</label>
-                                             <select class="form-select" select-type="transfer-to-agent-type-select">
-                                                  <option value="-1">Select Agent</option>
-                                                  <option value="21412">Sales Agent</option>
-                                                  <option value="412512">Technical Agent</option>
-                                             </select>
-                                        </div>
-                                        <div class="d-none mt-2" data-type="tool-status-conditional-conversation">
-                                             <label class="form-label mb-1">Tool Status Conditional Conversation</label>
-                                              <select class="form-select" select-type="set-ai-tool-status-type">
-                                                  <option value="-1">All Status</option>
-                                                  <option value="200">200</option>
-                                                  <option value="500">500</option>
-                                             </select>
-                                        </div>
-                                   </div>
-                              </div>
-                         `);
-
-					agentScriptConversationMessages.stop().animate({ scrollTop: agentScriptConversationMessages[0].scrollHeight }, 500, "linear", () => {});
-
-					noMessagesInConversationAlert.addClass("d-none");
-				});
-
-				agentScriptConversationMessages.on("click", '[button-type="editAgentScriptConversationMessageRemove"]', (event) => {
-					event.preventDefault();
-					event.stopPropagation();
-
-					let actualParent = $(event.currentTarget).parent().parent().parent();
-
-					let toolType = actualParent.find('[select-type="set-ai-response-type"]').val();
-
-					if (toolType === "response_to_system") {
-						let selectedToolValue = actualParent.find('[select-type="set-ai-response-tool"]').val();
-						let selectedToolOption = actualParent.find('[select-type="set-ai-response-tool"] option[value="' + selectedToolValue + '"]');
-
-						let isToolThatCanContinue = selectedToolOption.attr("can-continue");
-
-						if (typeof isToolThatCanContinue !== "undefined" && (isToolThatCanContinue == "false" || isToolThatCanContinue == "false")) {
-							addAgentScriptConversationMessageButton.prop("disabled", false);
-						}
-					}
-
-					actualParent.remove();
-
-					if (agentScriptConversationMessages.children().length === 0) {
-						noMessagesInConversationAlert.removeClass("d-none");
-					}
-				});
-
-				agentScriptConversationMessages.on("change", '[select-type="set-ai-response-type"]', (event) => {
-					event.stopPropagation();
-
-					let target = $(event.currentTarget);
-					let selectedValue = target.val();
-
-					let parent = target.parent();
-					let textAreaForUserResponse = parent.find('[textarea-type="set-ai-response-text-area"]');
-					let toolForUserResponse = parent.find('[select-type="set-ai-response-tool"]');
-
-					let toolStatusElement = parent.parent().parent().find('[data-type="tool-status-conditional-conversation"]');
-
-					let transferToAgentElement = parent.parent().parent().find('[data-type="transfer-to-agent-type"]');
-					let transferToAgentElementSelect = transferToAgentElement.find('[select-type="transfer-to-agent-type-select"]');
-
-					if (selectedValue === "response_to_user") {
-						textAreaForUserResponse.removeClass("d-none");
-						toolForUserResponse.addClass("d-none");
-
-						toolStatusElement.addClass("d-none");
-						transferToAgentElement.addClass("d-none");
-
-						addAgentScriptConversationMessageButton.prop("disabled", false);
-
-						toolForUserResponse.val("none");
-						toolForUserResponse.change();
-
-						transferToAgentElementSelect.val("-1");
-						transferToAgentElementSelect.change();
-					} else if (selectedValue === "response_to_system") {
-						textAreaForUserResponse.addClass("d-none");
-						toolForUserResponse.removeClass("d-none");
-
-						toolForUserResponse.change();
-					}
-				});
-
-				agentScriptConversationMessages.on("change", '[select-type="set-ai-response-tool"]', (event) => {
-					event.stopPropagation();
-
-					let target = $(event.currentTarget);
-					let selectedValue = target.val();
-
-					let selectedOption = target.find('option[value="' + selectedValue + '"]');
-
-					let canContinueAfterTool = selectedOption.attr("can-continue");
-					let isCustomTool = selectedOption.attr("is-custom-tool");
-
-					let messagesListLength = agentScriptConversationMessages.children().length;
-					let messagePositionInConversationList = target.parent().parent().parent().parent().index();
-
-					let customToolStatusConditionalConversationElement = target.parent().parent().parent().find('[data-type="tool-status-conditional-conversation"]');
-					let transferToAgentElement = target.parent().parent().parent().find('[data-type="transfer-to-agent-type"]');
-
-					if (typeof canContinueAfterTool !== "undefined" && (canContinueAfterTool == "false" || canContinueAfterTool == false)) {
-						if (messagesListLength > messagePositionInConversationList + 1) {
-							if (!confirm("Using this tool will ignore the rest of the conversation. Are you sure you want to continue?\n\n Confirming will delete every other message after this message.")) {
-								event.preventDefault();
-								target.val(target.attr("previous-value"));
-								return false;
-							} else {
-								agentScriptConversationMessages.children().each((index, data) => {
-									if (index > messagePositionInConversationList) data.remove();
-								});
-							}
-						}
-
-						messagesListLength = agentScriptConversationMessages.children().length;
-
-						if (messagesListLength === messagePositionInConversationList + 1) {
-							addAgentScriptConversationMessageButton.prop("disabled", true);
-						}
-					} else {
-						if (messagesListLength === messagePositionInConversationList + 1) {
-							addAgentScriptConversationMessageButton.prop("disabled", false);
-						}
-					}
-
-					if (typeof isCustomTool !== "undefined" && (isCustomTool == "true" || isCustomTool == true)) {
-						customToolStatusConditionalConversationElement.removeClass("d-none");
-					} else {
-						customToolStatusConditionalConversationElement.addClass("d-none");
-					}
-
-					if (selectedValue === "transfer_to_agent") {
-						transferToAgentElement.removeClass("d-none");
-					} else {
-						transferToAgentElement.addClass("d-none");
-					}
-
-					target.attr("previous-value", selectedValue);
+				$("#agent-script-add-user-message").on("click", () => {
+					addAgentScriptUserMessageNode(CurrentAgentScriptGraph);
 				});
 			}
 			initAgentScriptsTabHandlers();
@@ -2353,6 +2527,14 @@ function initAgentTab() {
 			// Handle language changes
 			manageAgentsLanguageDropdown.onLanguageChange(() => {
 				CheckAgentTabHasChanges();
+			});
+
+			$(window).on("resize", () => {
+				if (ManageAgentType == null) return;
+
+				setTimeout(() => {
+					resizeAgentScriptGraphCSS();
+				}, 500);
 			});
 		}
 		initAgentTabChangeHandlers();

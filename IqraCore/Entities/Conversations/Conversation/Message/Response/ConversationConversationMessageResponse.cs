@@ -4,6 +4,6 @@ namespace IqraCore.Entities.Conversation
 {
     public class ConversationConversationMessageResponse
     {
-        public AgentReplyTypeENUM Type { get; set; }
+        public BusinessAppAgentScriptNodeTypeENUM Type { get; set; } = BusinessAppAgentScriptNodeTypeENUM.Unknown;
     }
 }

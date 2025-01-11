@@ -2,7 +2,7 @@
 {
     public class ConversationConversationMessage
     {
-        public string UserMessage { get; set; }
+        public string UserQuery { get; set; }
         public ConversationConversationMessageResponse Response { get; set; }
     }
 }

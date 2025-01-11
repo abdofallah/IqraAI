@@ -15,7 +15,7 @@
 
     <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
 
-    <style>
+    <style id="agentGraphDyanmicStyle">
     </style>
 </head>
 
@@ -56,11 +56,11 @@
                     </a>
                     <a class="nav_link" for="integrations-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-cube nav_icon'></i>
-                        <span class="nav_name">Integrations</span> 
+                        <span class="nav_name">Integrations</span>
                     </a>
                     <a class="nav_link" for="cache-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-recycle nav_icon'></i>
-                        <span class="nav_name">Cache</span> 
+                        <span class="nav_name">Cache</span>
                     </a>
                     <a class="nav_link" for="context-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-book nav_icon'></i>
@@ -792,7 +792,7 @@
         <!-- Agents Container -->
         <div class="main-container fade show w-100" id="agents-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-headset'></i> <span>Agents</span></h3>
-            <div class="inner-header-container w-100 mb-3 fade d-none" id="agents-manager-header"> 
+            <div class="inner-header-container w-100 mb-3 fade d-none" id="agents-manager-header">
 
                 <!-- Agent Manager Breadcrumb and Save -->
                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-breadcrumb">
@@ -843,7 +843,7 @@
                 </div>
 
                 <!-- Agent Manager Inner Tabs -->
-                <div class="d-flex flex-row align-items-center justify-content-between w-100 fade d-none" id="agents-manager-tab">        
+                <div class="d-flex flex-row align-items-center justify-content-between w-100 fade d-none" id="agents-manager-tab">
                     <ul class="nav" role="tablist">
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="agents-manager-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-general" type="button" role="tab" aria-controls="agents-manager-general" aria-selected="true">General</button>
@@ -876,7 +876,7 @@
                 </div>
 
                 <!-- Agent Script Manager Inner Tabs -->
-                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-script-tab">        
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="agents-manager-script-tab">
                     <ul class="nav" role="tablist">
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="agents-manager-script-general-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-script-general" type="button" role="tab" aria-controls="agents-manager-script-general" aria-selected="true">General</button>
@@ -1183,18 +1183,44 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Conversation -->
                                     <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
-                                        <div class="mb-3" id="editAgentScriptConversationContainer">
-                                            <span class="no-messages-conversation">
-                                                No messages in
-                                                the conversation yet...
-                                            </span>
-                                            <div class="agentScriptConversationMessages">
+                                        <!-- Graph Container -->
+                                        <div class="agent-script-graph-container">
+                                            <!-- Toolbar -->
+                                            <div class="agent-script-graph-toolbar">
+                                                <div class="btn-group">
+                                                    <button id="agent-script-graph-zoom-in" class="btn btn-light btn-sm" title="Zoom In">
+                                                        <i class="fa-regular fa-magnifying-glass-plus"></i>
+                                                    </button>
+                                                    <button id="agent-script-graph-zoom-out" class="btn btn-light btn-sm" title="Zoom Out">
+                                                        <i class="fa-regular fa-magnifying-glass-minus"></i>
+                                                    </button>
+                                                    <button id="agent-script-graph-zoom-fit" class="btn btn-light btn-sm" title="Fit Content">
+                                                        <i class="fa-regular fa-maximize"></i>
+                                                    </button>
+                                                    <button id="agent-script-graph-zoom-reset" class="btn btn-light btn-sm" title="Reset View">
+                                                        <i class="fa-regular fa-compress"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="btn-group ms-2">
+                                                    <button id="agent-script-graph-undo" class="btn btn-light btn-sm" title="Undo" disabled>
+                                                        <i class="fa-regular fa-rotate-left"></i>
+                                                    </button>
+                                                    <button id="agent-script-graph-redo" class="btn btn-light btn-sm" title="Redo" disabled>
+                                                        <i class="fa-regular fa-rotate-right"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="btn-group ms-2">
+                                                    <button id="agent-script-add-user-message" class="btn btn-light btn-sm" title="Add User Message">
+                                                        <i class="fa-regular fa-message"></i>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <button class="btn btn-light d-block m-auto text-center mt-3" id="addAgentScriptConversationMessage">
-                                                Add New
-                                                Message
-                                            </button>
+                                            <!-- Graph -->
+                                            <div id="agent-script-graph"></div>
+                                            <!-- Minimap -->
+                                            <div id="agent-script-graph-minimap" class="agent-script-graph-minimap"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1204,31 +1230,25 @@
                         <div class="tab-pane fade w-100" id="agents-manager-integrations" role="tabpanel" aria-labelledby="agents-manager-integrations-tab" tabindex="0">
                             <ul class="nav mb-3" id="agents-manager-integrations-inner-tab" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" 
-                                            data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" 
-                                            aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">
-                                                <span>Speech-To-Text </span>
-                                                <i class="fa-regular fa-language"></i>
-                                            </button>
+                                    <button class="nav-link me-2 active" id="agents-manager-integrations-inner-stt-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-stt" type="button" role="tab" aria-controls="agents-manager-integrations-inner-stt" aria-selected="true">
+                                        <span>Speech-To-Text </span>
+                                        <i class="fa-regular fa-language"></i>
+                                    </button>
                                 </li>
                                 <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="agents-manager-integrations-inner-llm-tab" data-bs-toggle="pill" 
-                                            data-bs-target="#agents-manager-integrations-inner-llm" type="button" role="tab" 
-                                            aria-controls="agents-manager-integrations-inner-llm" aria-selected="false">
-                                                <span>Large Language Model </span>
-                                                <i class="fa-regular fa-language"></i>
-                                            </button>
+                                    <button class="nav-link" id="agents-manager-integrations-inner-llm-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-llm" type="button" role="tab" aria-controls="agents-manager-integrations-inner-llm" aria-selected="false">
+                                        <span>Large Language Model </span>
+                                        <i class="fa-regular fa-language"></i>
+                                    </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="agents-manager-integrations-inner-tts-tab" data-bs-toggle="pill" 
-                                            data-bs-target="#agents-manager-integrations-inner-tts" type="button" role="tab" 
-                                            aria-controls="agents-manager-integrations-inner-tts" aria-selected="false">
-                                                <span>Text-To-Speech </span>
-                                                <i class="fa-regular fa-language"></i>
-                                            </button>
+                                    <button class="nav-link" id="agents-manager-integrations-inner-tts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations-inner-tts" type="button" role="tab" aria-controls="agents-manager-integrations-inner-tts" aria-selected="false">
+                                        <span>Text-To-Speech </span>
+                                        <i class="fa-regular fa-language"></i>
+                                    </button>
                                 </li>
                             </ul>
-                            
+
                             <div class="tab-content w-100" id="agents-manager-integrations-inner-tabContent">
                                 <!-- STT Integrations -->
                                 <div class="tab-pane fade show active w-100" id="agents-manager-integrations-inner-stt" role="tabpanel" tabindex="0">
@@ -1268,14 +1288,10 @@
                         <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
                             <ul class="nav mb-3" id="agents-manager-cache-inner-tab" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link me-2 active" id="agents-manager-cache-inner-messages-tab" data-bs-toggle="pill" 
-                                            data-bs-target="#agents-manager-cache-inner-messages" type="button" role="tab" 
-                                            aria-controls="agents-manager-cache-inner-messages" aria-selected="true">Messages</button>
+                                    <button class="nav-link me-2 active" id="agents-manager-cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-messages" type="button" role="tab" aria-controls="agents-manager-cache-inner-messages" aria-selected="true">Messages</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="agents-manager-cache-inner-audio-tab" data-bs-toggle="pill" 
-                                            data-bs-target="#agents-manager-cache-inner-audio" type="button" role="tab" 
-                                            aria-controls="agents-manager-cache-inner-audio" aria-selected="false">Audio</button>
+                                    <button class="nav-link" id="agents-manager-cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-audio" type="button" role="tab" aria-controls="agents-manager-cache-inner-audio" aria-selected="false">Audio</button>
                                 </li>
                             </ul>
 
@@ -1321,7 +1337,7 @@
                                 <div class="toolAudioExtraOptionsBox d-none" id="agentBackgroundAudioBox">
                                     <div id="agentBackgroundAudioInputBox">
                                         <label class="form-label d-block">Audio</label>
-                                        <div class="mb-3 recording-container">   
+                                        <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
                                                 <div class="recording-container-waveform d-none" id="agent-background-audio-waveform">
                                                 </div>
@@ -1349,7 +1365,7 @@
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>   
+                                    </div>
                                     <div>
                                         <label class="form-label" for="agentBackgroundAudioVolumeInput">Volume</label>
                                         <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="agentBackgroundAudioVolumeInput">
@@ -1370,14 +1386,12 @@
                 <!-- Add Integration and Search Section -->
                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                     <div style="min-width: 300px" class="me-4">
-                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                id="addNewIntegrationButton">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewIntegrationButton">
                             <span>+ Add New Integration</span>
                         </button>
                     </div>
                     <div class="input-group w-100">
-                        <input type="text" class="form-control" placeholder="Search Integration" 
-                            aria-label="Search Integration">
+                        <input type="text" class="form-control" placeholder="Search Integration" aria-label="Search Integration">
                         <button class="input-group-button btn btn-primary">
                             <i class='fa-regular fa-magnifying-glass'></i>
                         </button>
@@ -1394,20 +1408,16 @@
         <!-- Cache Container -->
         <div class="main-container fade d-none w-100" id="cache-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-recycle'></i> <span>Cache</span></h3>
-            
+
             <!-- Main Navigation Header -->
             <div class="inner-header-container w-100 mb-3" id="cache-header">
                 <!-- Main Tabs Navigation -->
                 <ul class="nav w-100 fade show" id="cache-inner-tab" role="tablist">
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" 
-                                data-bs-target="#cache-inner-messages" type="button" role="tab" 
-                                aria-controls="cache-inner-messages" aria-selected="true">Messages Group</button>
+                        <button class="nav-link active" id="cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-messages" type="button" role="tab" aria-controls="cache-inner-messages" aria-selected="true">Messages Group</button>
                     </li>
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" 
-                                data-bs-target="#cache-inner-audio" type="button" role="tab" 
-                                aria-controls="cache-inner-audio" aria-selected="false">Audios Group</button>
+                        <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="false">Audios Group</button>
                     </li>
                 </ul>
 
@@ -1433,25 +1443,20 @@
                         <!-- Group Manager Tabs -->
                         <ul class="nav w-100" id="messageGroupManagerInnerTab" role="tablist">
                             <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="messageGroupManagerGeneralTab" 
-                                        data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" 
-                                        type="button" role="tab">General</button>
+                                <button class="nav-link active" id="messageGroupManagerGeneralTab" data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" type="button" role="tab">General</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="messageGroupManagerListTab" 
-                                        data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" 
-                                        type="button" role="tab">List</button>
+                                <button class="nav-link" id="messageGroupManagerListTab" data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" type="button" role="tab">List</button>
                             </li>
                         </ul>
                         <div id="messageCacheGroupManagerMultilanguageContainer">
-                        
+
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Message Cache Breadcrumb -->
-                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
-                    id="messageCacheBreadcrumb">
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="messageCacheBreadcrumb">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
@@ -1495,25 +1500,20 @@
                         <!-- Group Manager Tabs -->
                         <ul class="nav w-100" id="audioGroupManagerInnerTab" role="tablist">
                             <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="audioGroupManagerGeneralTab" 
-                                        data-bs-toggle="pill" data-bs-target="#audioGroupManagerGeneral" 
-                                        type="button" role="tab">General</button>
+                                <button class="nav-link active" id="audioGroupManagerGeneralTab" data-bs-toggle="pill" data-bs-target="#audioGroupManagerGeneral" type="button" role="tab">General</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="audioGroupManagerListTab" 
-                                        data-bs-toggle="pill" data-bs-target="#audioGroupManagerList" 
-                                        type="button" role="tab">List</button>
+                                <button class="nav-link" id="audioGroupManagerListTab" data-bs-toggle="pill" data-bs-target="#audioGroupManagerList" type="button" role="tab">List</button>
                             </li>
                         </ul>
                         <div id="audioCacheGroupManagerMultilanguageContainer">
-                        
+
                         </div>
                     </div>
                 </div>
 
                 <!-- Audio Cache Breadcrumb -->
-                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" 
-                    id="audioCacheBreadcrumb">
+                <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="audioCacheBreadcrumb">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
@@ -1544,14 +1544,12 @@
                         <div class="fade show w-100" id="messageGroupsListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                            id="addNewMessageGroupButton">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageGroupButton">
                                         <span>+ Add New Message Group</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Message Group" 
-                                        aria-label="Message Group">
+                                    <input type="text" class="form-control" placeholder="Message Group" aria-label="Message Group">
                                     <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -1575,41 +1573,32 @@
                             <!-- Group Manager Inner Tabs -->
                             <ul class="nav mb-3 d-none fade" id="messageGroupManagerInnerTab" role="tablist">
                                 <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="messageGroupManagerGeneralTab" 
-                                            data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" 
-                                            type="button" role="tab">General</button>
+                                    <button class="nav-link active" id="messageGroupManagerGeneralTab" data-bs-toggle="pill" data-bs-target="#messageGroupManagerGeneral" type="button" role="tab">General</button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="messageGroupManagerListTab" 
-                                            data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" 
-                                            type="button" role="tab">List</button>
+                                    <button class="nav-link" id="messageGroupManagerListTab" data-bs-toggle="pill" data-bs-target="#messageGroupManagerList" type="button" role="tab">List</button>
                                 </li>
                             </ul>
 
                             <div class="tab-content" id="messageGroupManagerTabContent">
                                 <!-- General Tab -->
-                                <div class="tab-pane fade show active" id="messageGroupManagerGeneral" 
-                                    role="tabpanel" tabindex="0">
+                                <div class="tab-pane fade show active" id="messageGroupManagerGeneral" role="tabpanel" tabindex="0">
                                     <div class="mb-3">
                                         <label class="form-label" for="messageGroupNameInput">Name</label>
-                                        <input type="text" class="form-control" id="messageGroupNameInput" 
-                                            placeholder="Group Name">
+                                        <input type="text" class="form-control" id="messageGroupNameInput" placeholder="Group Name">
                                     </div>
                                 </div>
 
                                 <!-- List Tab -->
-                                <div class="tab-pane fade" id="messageGroupManagerList" 
-                                    role="tabpanel" tabindex="0">
+                                <div class="tab-pane fade" id="messageGroupManagerList" role="tabpanel" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 300px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                    id="addNewMessageCacheButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageCacheButton">
                                                 <span>+ Add New Message</span>
                                             </button>
                                         </div>
                                         <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Message Query" 
-                                                aria-label="Message Query">
+                                            <input type="text" class="form-control" placeholder="Message Query" aria-label="Message Query">
                                             <button class="input-group-button btn btn-primary">
                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                             </button>
@@ -1634,14 +1623,12 @@
                         <div class="fade d-none w-100" id="messageCacheListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                            id="addNewMessageCacheButton">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewMessageCacheButton">
                                         <span>+ Add New Message</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Message Query" 
-                                        aria-label="Message Query">
+                                    <input type="text" class="form-control" placeholder="Message Query" aria-label="Message Query">
                                     <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -1664,17 +1651,14 @@
                         <div class="fade d-none w-100" id="messageCacheManagerTab">
                             <div class="mb-3">
                                 <label class="form-label" for="messageCacheQueryInput">Query</label>
-                                <input type="text" class="form-control" id="messageCacheQueryInput" 
-                                    placeholder="Message Query">
+                                <input type="text" class="form-control" id="messageCacheQueryInput" placeholder="Message Query">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="messageCacheResponseInput">Response</label>
-                                <input type="text" class="form-control" id="messageCacheResponseInput" 
-                                    placeholder="Message Response">
+                                <input type="text" class="form-control" id="messageCacheResponseInput" placeholder="Message Response">
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" 
-                                    id="messageCacheCaseSensitiveCheck">
+                                <input class="form-check-input" type="checkbox" role="switch" id="messageCacheCaseSensitiveCheck">
                                 <label class="form-check-label" for="messageCacheCaseSensitiveCheck">
                                     Is query case sensitive?
                                 </label>
@@ -1688,14 +1672,12 @@
                         <div class="fade show w-100" id="audioGroupsListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                            id="addNewAudioGroupButton">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioGroupButton">
                                         <span>+ Add New Audio Group</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Audio Group" 
-                                        aria-label="Audio Group">
+                                    <input type="text" class="form-control" placeholder="Audio Group" aria-label="Audio Group">
                                     <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -1709,7 +1691,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Groups will be populated here --> 
+                                    <!-- Groups will be populated here -->
                                 </tbody>
                             </table>
                         </div>
@@ -1718,28 +1700,23 @@
                         <div class="fade d-none w-100" id="audioGroupManagerTab">
                             <div class="tab-content" id="audioGroupManagerTabContent">
                                 <!-- General Tab -->
-                                <div class="tab-pane fade show active" id="audioGroupManagerGeneral" 
-                                    role="tabpanel" tabindex="0">
+                                <div class="tab-pane fade show active" id="audioGroupManagerGeneral" role="tabpanel" tabindex="0">
                                     <div>
                                         <label class="form-label" for="audioGroupNameInput">Name</label>
-                                        <input type="text" class="form-control" id="audioGroupNameInput" 
-                                            placeholder="Group Name">
+                                        <input type="text" class="form-control" id="audioGroupNameInput" placeholder="Group Name">
                                     </div>
                                 </div>
 
                                 <!-- List Tab -->
-                                <div class="tab-pane fade" id="audioGroupManagerList" 
-                                    role="tabpanel" tabindex="0">
+                                <div class="tab-pane fade" id="audioGroupManagerList" role="tabpanel" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 300px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                    id="addNewAudioCacheButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheButton">
                                                 <span>+ Add New Audio</span>
                                             </button>
                                         </div>
                                         <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Audio Query" 
-                                                aria-label="Audio Query">
+                                            <input type="text" class="form-control" placeholder="Audio Query" aria-label="Audio Query">
                                             <button class="input-group-button btn btn-primary">
                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                             </button>
@@ -1764,14 +1741,12 @@
                         <div class="fade d-none w-100" id="audioCacheListTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 300px" class="me-4">
-                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                            id="addNewAudioCacheButton">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewAudioCacheButton">
                                         <span>+ Add New Audio</span>
                                     </button>
                                 </div>
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="Audio Query" 
-                                        aria-label="Audio Query">
+                                    <input type="text" class="form-control" placeholder="Audio Query" aria-label="Audio Query">
                                     <button class="input-group-button btn btn-primary">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -1794,20 +1769,16 @@
                         <div class="fade d-none w-100" id="audioCacheManagerTab">
                             <div class="mb-3">
                                 <label class="form-label" for="audioCacheQueryInput">Query</label>
-                                <input type="text" class="form-control" id="audioCacheQueryInput" 
-                                    placeholder="Audio Query">
+                                <input type="text" class="form-control" id="audioCacheQueryInput" placeholder="Audio Query">
                             </div>
                             <div class="">
                                 <label class="form-label btn-ic-span-align" for="audioCacheExpiryInput">
                                     <span>Unused Expiry (hours)</span>
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" 
-                                    data-bs-placement="right" data-bs-html="true" 
-                                    data-bs-title="The number of hours before this audio cache expires if not used. Leave empty to use group default.">
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The number of hours before this audio cache expires if not used. Leave empty to use group default.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="audioCacheExpiryInput" 
-                                    placeholder="Use group default">
+                                <input type="number" class="form-control" id="audioCacheExpiryInput" placeholder="Use group default">
                             </div>
                         </div>
                     </div>
@@ -1849,7 +1820,7 @@
                                     <li class="breadcrumb-item"><a href="#" id="switchBackToBranchesTab">Branches</a></li>
                                     <li class="breadcrumb-item active" aria-current="page"><span id="currentBranchName">Branch</span></li>
                                 </ol>
-                            </nav>                
+                            </nav>
                         </div>
 
                         <!-- Services Manage Tab Header -->
@@ -1860,7 +1831,7 @@
                                     <li class="breadcrumb-item"><a href="#" id="switchBackToContextServicesTab">Services</a></li>
                                     <li class="breadcrumb-item active" aria-current="page"><span id="currentContextServiceName">Service</span></li>
                                 </ol>
-                            </nav>             
+                            </nav>
                         </div>
 
                         <!-- Products Manage Tab Header -->
@@ -1887,7 +1858,7 @@
                                     <button class="nav-link" id="branding-branch-manager-team-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-team" type="button" role="tab" aria-controls="branding-branch-manager-team" aria-selected="true">Team</button>
                                 </li>
                             </ul>
-                        </div>     
+                        </div>
                     </div>
 
                     <!-- Right Side of Header with Save and Language -->
@@ -1916,7 +1887,7 @@
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </button>
-                            
+
                             <button class="btn btn-primary btn-ic-span-align w-100 fade d-none mb-4" id="saveContextBranchesButton" disabled>
                                 <i class='fa-regular fa-floppy-disk'></i>
                                 <span> Save</span>
@@ -1924,8 +1895,8 @@
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </button>
-                        </div>            
-                        
+                        </div>
+
                         <div id="contentTabMultiLanguageSelectContainer" style="max-width: 300px">
                             <!-- Dynamically Generated -->
                         </div>
@@ -2127,7 +2098,7 @@
                             </div>
                         </div>
                         <!-- Services Manager Tab -->
-                        <div class="fade d-none w-100" id="contextServicesManagerTab">                           
+                        <div class="fade d-none w-100" id="contextServicesManagerTab">
                             <div>
                                 <div class="mb-3">
                                     <label class="form-label" for="inputContextServiceName">Name</label>
@@ -2332,7 +2303,7 @@
         <!-- Tools Container -->
         <div class="main-container fade d-none w-100" id="tools-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-wrench'></i> <span>Tools</span></h3>
-            <div class="inner-header-container d-none fade w-100 mb-3" id="tool-manager-header"> 
+            <div class="inner-header-container d-none fade w-100 mb-3" id="tool-manager-header">
                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
@@ -2547,7 +2518,7 @@
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioBeforeSpeakingBox">
                                     <div id="toolAudioBeforeSpeakingInputBox">
                                         <label class="form-label d-block">Audio</label>
-                                        <div class="mb-3 recording-container">   
+                                        <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
                                                 <div class="recording-container-waveform d-none" id="tool-audio-before-waveform">
                                                 </div>
@@ -2597,7 +2568,7 @@
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringSpeakingBox">
                                     <div id="toolAudioDuringSpeakingInputBox">
                                         <label class="form-label d-block">Audio</label>
-                                        <div class="mb-3 recording-container">   
+                                        <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
                                                 <div class="recording-container-waveform d-none" id="tool-audio-during-waveform">
                                                 </div>
@@ -2647,7 +2618,7 @@
                                 <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterSpeakingBox">
                                     <div id="toolAudioAfterSpeakingInputBox">
                                         <label class="form-label d-block">Audio</label>
-                                        <div class="mb-3 recording-container">   
+                                        <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
                                                 <div class="recording-container-waveform d-none" id="tool-audio-after-waveform">
                                                 </div>
@@ -2675,7 +2646,7 @@
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>   
+                                    </div>
                                     <div>
                                         <label class="form-label" for="toolAudioAfterSpeakingVolumeInput">Volume</label>
                                         <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioAfterSpeakingVolumeInput">
@@ -3303,7 +3274,7 @@
             <div class="inner-container">
                 <!-- Conversations List Tab -->
                 <div class="show fade w-100" id="conversationListTab">
-                    
+
 
                     <div class="tab-content w-100" id="conversations-tabContent">
                         <!-- Inbound Tab -->
@@ -4118,7 +4089,7 @@
                             </div>
                         </button>
                     </div>
-                </div> 
+                </div>
                 <!-- Manage Domain Tab -->
                 <div class="fade d-none w-100" id="settings-manage-domains-breadcrumb">
                     <div class="d-flex flex-row align-items-center justify-content-between">
@@ -4138,7 +4109,7 @@
                     </div>
                 </div>
             </div>
-            <div class="inner-container" has-header="true">      
+            <div class="inner-container" has-header="true">
                 <!-- Tabs Content -->
                 <div class="tab-content w-100" id="settings-inner-tabContent">
                     <!-- General -->
@@ -4413,7 +4384,7 @@
                                                 <input class="form-check-input" type="checkbox" id="business-subuser-context-tab-enabled">
                                                 <label class="form-check-label" for="business-subuser-context-tab-enabled">Context Tab Enabled</label>
                                             </div>
-                                            
+
                                             <h6 class="mt-3">Branding</h6>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" id="business-subuser-context-branding-tab-enabled" disabled>
@@ -4621,12 +4592,12 @@
                                                 <label for="business-subuser-white-label-platform-name" class="form-label">Platform Name</label>
                                                 <input type="text" class="form-control" id="business-subuser-white-label-platform-name" placeholder="Enter platform name">
                                             </div>
-                                            
+
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-platform-title" class="form-label">Platform Title</label>
                                                 <input type="text" class="form-control" id="business-subuser-white-label-platform-title" placeholder="Enter platform title">
                                             </div>
-                                            
+
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-platform-description" class="form-label">Platform Description</label>
                                                 <textarea class="form-control" id="business-subuser-white-label-platform-description" rows="3" placeholder="Enter platform description"></textarea>
@@ -4647,18 +4618,18 @@
                                                 <img src="~/img/logo/logo-colored-light.png" class="img-fluid rounded-3" alt="Logo" id="business-subuser-white-label-logo-preview" allow="image/png, image/jpeg, image/webp, image/gif">
                                                 <input type="file" class="form-control d-none" id="business-subuser-white-label-logo" accept="image/png, image/jpeg, image/webp, image/gif">
                                             </div>
-                                            
+
                                             <div class="mb-3">
                                                 <label class="form-label d-block" for="business-subuser-white-label-favicon">Favicon</label>
                                                 <img src="~/img/logo/logo-colored-light.png" class="img-fluid rounded-3" alt="Favicon" id="business-subuser-white-label-favicon-preview" allow="image/x-icon,image/png">
                                                 <input type="file" class="form-control d-none" id="business-subuser-white-label-favicon" accept="image/x-icon,image/png">
                                             </div>
-                                            
+
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-custom-css" class="form-label">Custom CSS</label>
                                                 <textarea class="form-control" id="business-subuser-white-label-custom-css" rows="5" placeholder="Enter custom CSS"></textarea>
                                             </div>
-                                            
+
                                             <div class="mb-3">
                                                 <label for="business-subuser-white-label-custom-js" class="form-label">Custom JavaScript</label>
                                                 <textarea class="form-control" id="business-subuser-white-label-custom-js" rows="5" placeholder="Enter custom JavaScript"></textarea>
@@ -4687,7 +4658,7 @@
                         <h5 class="modal-title d-none" id="editIntegrationModalLabel">Edit Integration</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    
+
                     <!-- Available Integrations List -->
                     <div class="modal-body fade show" id="availableIntegrationsContainer">
                         <div class="row" id="availableIntegrationsList">
@@ -4699,8 +4670,7 @@
                     <div class="modal-body fade d-none" id="integrationManagerContainer">
                         <div class="mb-3">
                             <label for="integrationFriendlyNameInput" class="form-label">Friendly Name</label>
-                            <input type="text" class="form-control" id="integrationFriendlyNameInput" 
-                                placeholder="Enter a name for this integration">
+                            <input type="text" class="form-control" id="integrationFriendlyNameInput" placeholder="Enter a name for this integration">
                         </div>
                         <div id="integrationFieldsContainer">
                             <!-- Dynamic fields will be added here based on selected integration -->
@@ -4772,12 +4742,18 @@
     <script src="~/libs/wavesurfer.js-7.8.10/dist/wavesurfer.min.js"></script>
     <script src="~/libs/wavesurfer.js-7.8.10/dist/plugins/hover.min.js"></script>
 
+    <script src="~/libs/x6/packages/x6/dist/index.js"></script>
+    <script src="~/libs/x6/packages/x6-plugin-history/dist/index.js"></script>
+    <script src="~/libs/x6/packages/x6-plugin-clipboard/dist/index.js"></script>
+    <script src="~/libs/x6/packages/x6-plugin-minimap/dist/index.js"></script>
+    <script src="~/libs/x6/packages/x6-plugin-snapline/dist/index.js"></script>
+    <script src="~/libs/x6/packages/x6-plugin-keyboard/dist/index.js"></script>
+
     <script src="~/libs/monaco-editor-0.48.0/package/min/vs/loader.js"></script>
 
     <!-- Scripts -->
     <script>
-        function GetIdFromURLPath()
-        {
+        function GetIdFromURLPath() {
             let urlPath = window.location.pathname;
 
             if (urlPath.endsWith("/")) {
@@ -4785,7 +4761,7 @@
             }
 
             return urlPath.split("/").pop();
-        } 
+        }
 
         function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
             if (disabledAt) {
@@ -4799,8 +4775,7 @@
             }
         }
 
-        function EnableFullPermissionHelper(enableFullElement, subEnableElementsArray)
-        {
+        function EnableFullPermissionHelper(enableFullElement, subEnableElementsArray) {
             enableFullElement.on("change", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -4814,8 +4789,7 @@
                     })
                     enableFullElement.parent().parent().find("input[type=text]").removeClass("d-none");
                 }
-                else
-                {
+                else {
                     subEnableElementsArray.forEach((element) => {
                         element.prop("checked", false).prop("disabled", true).change();
                     });
@@ -4824,7 +4798,7 @@
             });
         }
     </script>
-    
+
     <script src="~/js/multilanguage_dropdown.js"></script>
     <script src="~/js/countries_list.js"></script>
     <script src="~/js/alert_manager.js"></script>
@@ -4846,12 +4820,11 @@
         var BusinessTTSProvidersForIntegrations = null;
 
         var BusinessFullLanguagesData = null;
-        var BusinessDefaultLanguage = null;    
+        var BusinessDefaultLanguage = null;
 
         // API Related Functions
 
-        function FetchBusinessDataFromAPI(businessId, successCallback, errorCallback)
-        {
+        function FetchBusinessDataFromAPI(businessId, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/user/business/' + businessId,
                 type: 'POST',
@@ -4869,8 +4842,7 @@
             });
         }
 
-        function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback)
-        {
+        function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/languages/',
                 type: 'POST',
@@ -4888,8 +4860,7 @@
             });
         }
 
-        function FetchSpecificationIntegrationsDataFromAPI(successCallback, errorCallback)
-        {
+        function FetchSpecificationIntegrationsDataFromAPI(successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/integrations/',
                 type: 'POST',
@@ -4907,8 +4878,7 @@
             });
         }
 
-        function FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback)
-        {
+        function FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/llmproviders/getbyintegration',
                 type: 'POST',
@@ -4929,8 +4899,7 @@
             });
         }
 
-        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback)
-        {
+        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/sttproviders/getbyintegration',
                 type: 'POST',
@@ -4950,9 +4919,8 @@
                 }
             });
         }
-        
-        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback)
-        {
+
+        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/specification/ttsproviders/getbyintegration',
                 type: 'POST',
@@ -4984,7 +4952,7 @@
             async function onUserMessageBusinessTutorial(message) {
                 hasUserAsked = true;
                 currentMessage = message;
-                
+
                 // Handle user question
                 await handleUserQuestion(message);
             }
@@ -4993,7 +4961,7 @@
                 // Here you would implement logic to answer the user's question
                 // For now, we'll just echo the question back
                 await chatPopup.SendResponseMessage(`You asked: "${question}". [Your answer here]`, 1000);
-                
+
                 // After answering, remind the user to continue with the tutorial
                 if (chatPopup.continueButtonVisible) {
                     await chatPopup.SendResponseMessage("Don't forget to select a language and click 'Continue' when you're ready to move on.", 1000);
@@ -5020,12 +4988,12 @@
                     title: 'Getting Started Tutorial',
                     message: 'Would you like Iqra AI to help you get started and get familar with the Iqra platform?<br><br>Iqra will guide you using through a chat-interface to set-up the necessary before you can create the agents for calls.',
                     confirmText: 'Yes please!',
-                    cancelText: 'No, I got this!', 
+                    cancelText: 'No, I got this!',
                     confirmButtonClass: 'btn-success',
                     modalClass: '',
                 }
             );
-            
+
             var tutorialConfirmDialogResult = await tutorialConfirmDialog.show();
             if (!tutorialConfirmDialogResult) {
                 return;
@@ -5036,8 +5004,8 @@
                 sendButtonText: 'Ask',
                 placeholderText: 'Ask IqraAI for more explanation.',
                 onUserMessage: onUserMessageBusinessTutorial
-            }); 
-            
+            });
+
             startSettingsTutorial();
 
             await sendTutorialMessage('Hey 👋!', 1000, 100);
@@ -5058,10 +5026,10 @@
             }
 
             await sendTutorialMessageWithContinue(
-                'Add your very first language which would be your default, and add multiple languages if you have more than one. If you have any questions, feel free to ask!', 
-                2000, 
-                7000, 
-                'Continue', 
+                'Add your very first language which would be your default, and add multiple languages if you have more than one. If you have any questions, feel free to ask!',
+                2000,
+                7000,
+                'Continue',
                 validateLanguageSelection
             );
 
@@ -5078,7 +5046,7 @@
             () => {
                 if (
                     SpecificationIntegrationsListData != null
-                    && 
+                    &&
                     SpecificationLanguagesListData != null
                     &&
                     BusinessFullData != null
@@ -5098,9 +5066,8 @@
                 }
             }
             , 100);
-    
-        function RunActionAfterBusinessDataLoad(action)
-        {
+
+        function RunActionAfterBusinessDataLoad(action) {
             var businessDataCheckInterval = setInterval(
                 () => {
                     if (BusinessFullData != null) {
@@ -5108,11 +5075,10 @@
                         action();
                     }
                 }
-            , 100);
+                , 100);
         }
 
-        function RunActionAfterLanguagesSpecificationLoad(action)
-        {
+        function RunActionAfterLanguagesSpecificationLoad(action) {
             var specificationLanguagesCheckInterval = setInterval(
                 () => {
                     if (SpecificationLanguagesListData != null) {
@@ -5120,7 +5086,7 @@
                         action();
                     }
                 }
-            , 100);
+                , 100);
         }
     </script>
 
@@ -5133,17 +5099,17 @@
 
     <script src="~/scripts/app/business/agents_tab.js"></script>
     <script src="~/scripts/app/business/overview_tab.js"></script>
-    <script src="~/scripts/app/business/routing_tab.js"></script> 
+    <script src="~/scripts/app/business/routing_tab.js"></script>
     <script src="~/scripts/app/business/make_calls_tab.js"></script>
     <script src="~/scripts/app/business/conversations_tab.js"></script>
-    
+
     <script>
         $(window).on('load', () => {
 
             FetchSpecificationLanguagesDataFromAPI(
                 (langaugesListData) => {
                     SpecificationLanguagesListData = langaugesListData;
-                    
+
                     FetchSpecificationIntegrationsDataFromAPI(
                         (integrationsListData) => {
                             SpecificationIntegrationsListData = integrationsListData;
@@ -5156,8 +5122,7 @@
                             let TTSProviderFail = false;
 
                             SpecificationIntegrationsListData.forEach((integration) => {
-                                if (integration.type.includes("LLM"))
-                                {
+                                if (integration.type.includes("LLM")) {
                                     const formData = new FormData();
                                     formData.append("integrationtype", integration.id);
                                     FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
@@ -5178,7 +5143,7 @@
                                         }
                                     );
                                 }
-                                
+
                                 if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
                                     const formData = new FormData();
                                     formData.append("integrationtype", integration.id);
@@ -5200,7 +5165,7 @@
                                         }
                                     );
                                 }
-                                
+
                                 if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
                                     const formData = new FormData();
                                     formData.append("integrationtype", integration.id);
@@ -5223,7 +5188,7 @@
                                     );
                                 }
                             });
-                            
+
                             if (!LLMProviderFail) {
                                 BusinessLLMProvidersForIntegrations = temporaryLLMProvidersForIntegrations;
                             }
@@ -5261,10 +5226,8 @@
                                         initAgentTab();
 
                                         let businessTutorials = BusinessFullData.businessData.tutorials;
-                                        if (businessTutorials)
-                                        {
-                                            if (businessTutorials.newBusinessTutorial)
-                                            {
+                                        if (businessTutorials) {
+                                            if (businessTutorials.newBusinessTutorial) {
                                                 // todo enable again
                                                 //InitalizeNewBusinessTutorial();
                                             }
