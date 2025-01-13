@@ -1,8 +1,8 @@
 // Graph Constants
-const AGENT_SCRIPT_GRAPH_GRID_SIZE = 10;
+const AGENT_SCRIPT_GRAPH_GRID_SIZE = 16;
 const AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR = "#f8f9fa";
 const AGENT_SCRIPT_GRAPH_DOT_COLOR = "#e9ecef";
-const AGENT_SCRIPT_GRAPH_DOT_SIZE = 1;
+const AGENT_SCRIPT_GRAPH_DOT_SIZE = 2.3;
 const AGENT_SCRIPT_GRAPH_PLUGINS = {
 	Minimap: X6PluginMinimap.MiniMap,
 	Keyboard: X6PluginKeyboard.Keyboard,
@@ -36,8 +36,6 @@ const AGENT_SCRIPT_SYSTEM_TOOLS = {
 
 const AGENT_SCRIPT_NODE_WIDTH = 520; // todo make dynamic
 const AGENT_SCRIPT_NODE_MIN_HEIGHT = 300;
-
-const SystemToolConfigModal = new bootstrap.Modal("#agentScriptSystemToolConfigModal");
 
 /** Dynamic Variables **/
 let CurrentManageAgentData = null;
@@ -79,6 +77,9 @@ let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 
 // Script
 let CurrentAgentScriptGraph = null;
+let CurrentAgentScriptGraphStartNode = null;
+let CurrentSystemToolConfigCell = null;
+let SystemToolConfigModal = null;
 
 /** Element Variables **/
 
@@ -1633,174 +1634,6 @@ async function canLeaveAgentScriptManagerTab() {
 	return true;
 }
 
-function initializeAgentScriptGraph(container) {
-	resizeAgentScriptGraphCSS();
-
-	// Create the graph instance
-	const graph = new X6.Graph({
-		container: container,
-		width: "100%",
-		height: "100%",
-		// Grid settings
-		grid: {
-			visible: true,
-			type: "doubleMesh",
-			args: [
-				{
-					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
-					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
-				},
-				{
-					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
-					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
-					factor: 4,
-				},
-			],
-		},
-		// Background settings
-		background: {
-			color: AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR,
-		},
-		// Interaction settings
-		mousewheel: {
-			enabled: true,
-			modifiers: ["ctrl", "meta"],
-			factor: 1.1,
-			maxScale: 2,
-			minScale: 0.5,
-		},
-		panning: {
-			enabled: true,
-			modifiers: ["shift", "ctrl"],
-		},
-		connecting: {
-			anchor: "center",
-			connectionPoint: "anchor",
-			allowBlank: false,
-			allowLoop: false,
-			allowNode: false,
-			allowEdge: false,
-			allowMulti: false,
-			highlight: true,
-		},
-		// Prevent node text selection
-		preventDefaultContextMenu: true,
-		preventDefaultBlankAction: true,
-	});
-
-	// Add minimap plugin
-	const minimapContainer = document.getElementById("agent-script-graph-minimap");
-	if (minimapContainer) {
-		graph.use(
-			new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
-				container: minimapContainer,
-				width: 200,
-				height: 150,
-				padding: 10,
-			}),
-		);
-	}
-
-	// Add keyboard shortcuts plugin
-	if (AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard) {
-		graph.use(
-			new AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard({
-				enabled: true,
-				global: true,
-			}),
-		);
-	}
-
-	// Add clipboard plugin
-	if (AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard) {
-		graph.use(
-			new AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard({
-				enabled: true,
-			}),
-		);
-	}
-
-	// Add history plugin (undo/redo)
-	if (AGENT_SCRIPT_GRAPH_PLUGINS.History) {
-		graph.use(
-			new AGENT_SCRIPT_GRAPH_PLUGINS.History({
-				enabled: true,
-				beforeAddCommand: (event, args) => {
-					// Validate before adding to history
-					return true;
-				},
-			}),
-		);
-	}
-
-	// Initialize node system
-	initializeAgentScriptNodeSystem(graph);
-
-	// Add start node
-	const startNode = graph.addNode({
-		shape: AGENT_SCRIPT_NODE_TYPES.START,
-		data: { type: AGENT_SCRIPT_NODE_TYPES.START },
-		x: 100,
-		y: 50,
-		ports: {
-			items: [{ group: "output" }],
-		},
-	});
-
-	return graph;
-}
-
-function initializeAgentScriptGraphControls(graph) {
-	// Zoom controls
-	$("#agent-script-graph-zoom-in").on("click", () => {
-		const zoom = graph.zoom();
-		if (zoom < 2) {
-			graph.zoom(0.1);
-		}
-	});
-
-	$("#agent-script-graph-zoom-out").on("click", () => {
-		const zoom = graph.zoom();
-		if (zoom > 0.5) {
-			graph.zoom(-0.1);
-		}
-	});
-
-	$("#agent-script-graph-zoom-fit").on("click", () => {
-		graph.zoomToFit({ padding: 20, maxScale: 1 });
-	});
-
-	$("#agent-script-graph-zoom-reset").on("click", () => {
-		graph.scale(1);
-		graph.centerContent();
-	});
-
-	// Undo/Redo controls
-	$("#agent-script-graph-undo").on("click", () => {
-		if (graph.canUndo()) {
-			graph.undo();
-		}
-	});
-
-	$("#agent-script-graph-redo").on("click", () => {
-		if (graph.canRedo()) {
-			graph.redo();
-		}
-	});
-
-	// Update button states based on graph state
-	graph.on("scale", ({ sx, sy }) => {
-		const scale = sx; // or sy, they're the same
-		$("#agent-script-graph-zoom-in").prop("disabled", scale >= 2);
-		$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.5);
-	});
-
-	graph.on("history:change", () => {
-		$("#agent-script-graph-undo").prop("disabled", !graph.canUndo());
-		$("#agent-script-graph-redo").prop("disabled", !graph.canRedo());
-	});
-}
-
 function registerAgentScriptNodes() {
 	// Register Start Node
 	X6.Shape.HTML.register({
@@ -1814,7 +1647,7 @@ function registerAgentScriptNodes() {
 					position: "bottom",
 					attrs: {
 						circle: {
-							r: 6,
+							r: 10,
 							magnet: true,
 							stroke: "#198754",
 							strokeWidth: 2,
@@ -1850,7 +1683,7 @@ function registerAgentScriptNodes() {
 					position: "top",
 					attrs: {
 						circle: {
-							r: 6,
+							r: 10,
 							magnet: true,
 							stroke: "#8f8f8f",
 							strokeWidth: 2,
@@ -1862,7 +1695,7 @@ function registerAgentScriptNodes() {
 					position: "bottom",
 					attrs: {
 						circle: {
-							r: 6,
+							r: 10,
 							magnet: true,
 							stroke: "#8f8f8f",
 							strokeWidth: 2,
@@ -1913,12 +1746,13 @@ function registerAgentScriptNodes() {
                         </select>
                     </div>
                     <div class="agent-script-node-response">
-                        ${getAgentScriptResponseInterface(data.responseType, data, currentLanguage)}
+                        ${getAgentScriptResponseInterface(data.responseType, currentLanguage, data)}
                     </div>
                 </div>
             `;
 
 			// Function to update node size
+			// TODO Create this a global function that accepts cell
 			const updateNodeSize = () => {
 				const contentHeight = div.offsetHeight;
 				if (contentHeight !== cell.getSize().height) {
@@ -1935,8 +1769,6 @@ function registerAgentScriptNodes() {
 					...data,
 					userMessage: messages,
 				});
-
-				setTimeout(updateNodeSize, 0);
 			});
 
 			// Response type change handler
@@ -1955,7 +1787,7 @@ function registerAgentScriptNodes() {
 				};
 
 				// Update response interface
-				responseContainer.innerHTML = getAgentScriptResponseInterface(newResponseType, newData, currentLanguage);
+				responseContainer.innerHTML = getAgentScriptResponseInterface(newResponseType, currentLanguage, newData);
 
 				// Update cell data
 				cell.setData(newData);
@@ -1963,27 +1795,208 @@ function registerAgentScriptNodes() {
 				// Setup new event listeners based on type
 				setupResponseTypeListeners(div, cell, newResponseType);
 
-				// Update ports based on response type
-				updateNodePorts(cell, newResponseType);
+				updateNodeSize();
 
-				setTimeout(updateNodeSize, 0);
+				// Update ports based on response type
+				UpdateAgentScriptGraphNodePorts(cell, newResponseType);
 			});
 
 			// Setup initial response type listeners
 			if (data.responseType) {
 				setupResponseTypeListeners(div, cell, data.responseType);
 				if (data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL && data.systemTool?.type) {
-					updateNodePorts(cell, data.systemTool.type, data.systemTool.config);
+					UpdateAgentScriptGraphNodePorts(cell, data.responseType, data.systemTool.type, data.systemTool.config);
 				}
 			}
 
-			setTimeout(updateNodeSize, 0);
+			setTimeout(() => {
+				updateNodeSize();
+			}, 100);
 
 			return div;
 		},
 	});
 }
 
+function initializeAgentScriptGraph(container) {
+	return resizeAgentScriptGraphCSS((graphSize) => {
+		// Create the graph instance
+		const graph = new X6.Graph({
+			container: container,
+			width: "100%",
+			height: "100%",
+			// Grid settings
+			grid: {
+				visible: true,
+				type: "fixedDot",
+				args: {
+					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
+					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
+				},
+			},
+			// Background settings
+			background: {
+				color: AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR,
+			},
+			// Interaction settings
+			mousewheel: {
+				enabled: true,
+				modifiers: ["ctrl", "meta"],
+				factor: 1.1,
+				maxScale: 2,
+				minScale: 0.5,
+			},
+			panning: {
+				enabled: true,
+				modifiers: ["shift", "ctrl"],
+			},
+			connecting: {
+				anchor: "center",
+				connector: "rounded",
+				connectionPoint: "boundary",
+				allowBlank: false,
+				allowLoop: false,
+				allowNode: false,
+				allowEdge: false,
+				allowMulti: false,
+				highlight: true,
+				router: {
+					name: "manhattan",
+					args: {
+						padding: 10,
+					},
+				},
+				validateMagnet({ magnet, cell, view }) {
+					const portGroup = magnet.attributes["port-group"].value;
+					return portGroup === "output";
+				},
+				validateConnection({ sourceView, targetView, sourceMagnet, targetMagnet }) {
+					if (!sourceView || !targetView) {
+						return false;
+					}
+
+					if (!sourceMagnet || !targetMagnet) {
+						return false;
+					}
+
+					// Check if connecting output to input
+					const sourcePort = sourceMagnet.attributes["port-group"].value;
+					const targetPort = targetMagnet.attributes["port-group"].value;
+
+					return sourcePort === "output" && targetPort === "input";
+				},
+			},
+			// Prevent node text selection
+			preventDefaultContextMenu: true,
+			preventDefaultBlankAction: true,
+		});
+
+		// Add minimap plugin
+		const minimapContainer = document.getElementById("agent-script-graph-minimap");
+		if (minimapContainer) {
+			graph.use(
+				new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
+					container: minimapContainer,
+					width: 200,
+					height: 150,
+					padding: 10,
+				}),
+			);
+		}
+
+		// Add keyboard shortcuts plugin
+		if (AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard) {
+			graph.use(
+				new AGENT_SCRIPT_GRAPH_PLUGINS.Keyboard({
+					enabled: true,
+					global: true,
+				}),
+			);
+		}
+
+		// Add clipboard plugin
+		if (AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard) {
+			graph.use(
+				new AGENT_SCRIPT_GRAPH_PLUGINS.Clipboard({
+					enabled: true,
+				}),
+			);
+		}
+
+		// Add history plugin (undo/redo)
+		if (AGENT_SCRIPT_GRAPH_PLUGINS.History) {
+			graph.use(
+				new AGENT_SCRIPT_GRAPH_PLUGINS.History({
+					enabled: true,
+					beforeAddCommand: (event, args) => {
+						// Validate before adding to history
+						return true;
+					},
+				}),
+			);
+		}
+
+		// Add start node
+		CurrentAgentScriptGraphStartNode = graph.addNode({
+			shape: AGENT_SCRIPT_NODE_TYPES.START,
+			data: { type: AGENT_SCRIPT_NODE_TYPES.START },
+			x: graphSize.width / 2,
+			y: graphSize.height / 5,
+			ports: {
+				items: [{ group: "output" }],
+			},
+		});
+
+		// Event Listeners
+		graph.on("scale", ({ sx, sy }) => {
+			const scale = sx;
+			$("#agent-script-graph-zoom-in").prop("disabled", scale >= 2);
+			$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.5);
+		});
+
+		graph.on("history:change", () => {
+			$("#agent-script-graph-undo").prop("disabled", !graph.canUndo());
+			$("#agent-script-graph-redo").prop("disabled", !graph.canRedo());
+		});
+
+		graph.on("cell:click", ({ cell, e }) => {
+			const target = e.target;
+			if (target.closest('[data-action="delete-node"]')) {
+				const nodeType = cell.getData()?.type;
+				if (nodeType !== AGENT_SCRIPT_NODE_TYPES.START) {
+					cell.remove();
+				}
+			}
+		});
+
+		graph.on("edge:connected", (event) => {
+			const parentInputCell = Object.keys(CurrentAgentScriptGraph.getCellById(event.currentCell.id)._model.outgoings)[0];
+
+			const allConnectionForInputCell = CurrentAgentScriptGraph.getCellById(parentInputCell)._model.outgoings[parentInputCell];
+			while (allConnectionForInputCell.length > 1) {
+				CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
+			}
+		});
+
+		graph.on("edge:removed", (event) => {
+			if (event.options.ui) {
+				const parentInputCell = event.cell.store.data.source.cell;
+
+				const allConnectionForInputCell = CurrentAgentScriptGraph.getCellById(parentInputCell)._model.outgoings[parentInputCell];
+
+				if (!allConnectionForInputCell) return;
+
+				while (allConnectionForInputCell.length > 0) {
+					CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
+				}
+			}
+		});
+
+		CurrentAgentScriptGraph = graph;
+	});
+}
+
+// TODO Get these listeners out of here
 function setupResponseTypeListeners(div, cell, responseType) {
 	const data = cell.getData();
 	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
@@ -2024,20 +2037,20 @@ function setupResponseTypeListeners(div, cell, responseType) {
 
 					// Refresh the interface to show/hide config button
 					const responseContainer = div.querySelector(".agent-script-node-response");
-					responseContainer.innerHTML = getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, newData, currentLanguage);
+					responseContainer.innerHTML = getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, currentLanguage, newData);
 
 					// Setup config button listener
 					setupSystemToolConfigButton(div, cell);
 
 					// Update ports based on tool type
-					updateNodePorts(cell, toolType);
+					UpdateAgentScriptGraphNodePorts(cell, responseType, toolType);
 				});
 			}
 
 			// Setup config button if tool is selected
 			if (data.systemTool?.type) {
 				setupSystemToolConfigButton(div, cell);
-				updateNodePorts(cell, data.systemTool.type, data.systemTool.config);
+				UpdateAgentScriptGraphNodePorts(cell, responseType, data.systemTool.type, data.systemTool.config);
 			}
 			break;
 		}
@@ -2061,39 +2074,32 @@ function setupResponseTypeListeners(div, cell, responseType) {
 	}
 }
 
+// TODO Get this listener out of here
 function setupSystemToolConfigButton(div, cell) {
 	const configButton = div.querySelector('[data-action="configure-system-tool"]');
 	if (configButton) {
 		configButton.addEventListener("click", () => {
-			openSystemToolConfig(cell);
+			const data = cell.getData();
+			const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+			// Store current cell for save handler
+			CurrentSystemToolConfigCell = cell;
+
+			// Get config container and populate it
+			const configContainer = document.getElementById("agentScriptSystemToolConfigContainer");
+			configContainer.innerHTML = getAgentScriptSystemToolConfig(data.systemTool.type, currentLanguage, data);
+
+			// Show modal
+			SystemToolConfigModal.show();
 		});
 	}
 }
 
-function openSystemToolConfig(cell) {
-	const data = cell.getData();
-	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-	// Store current cell for save handler
-	CurrentSystemToolConfigCell = cell;
-
-	// Get config container and populate it
-	const configContainer = document.getElementById("agentScriptSystemToolConfigContainer");
-	configContainer.innerHTML = getAgentScriptSystemToolConfig(data.systemTool.type, data, currentLanguage);
-
-	// Setup config listeners
-	setupSystemToolConfigListeners(configContainer, cell, data.systemTool.type);
-
-	// Show modal
-	SystemToolConfigModal.show();
-}
-
-function getAgentScriptSystemToolConfig(toolType, data = {}, currentLanguage) {
+function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 	const config = data.systemTool?.config || {};
 
-	switch (toolType) {
-		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
-			return `
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
+		return `
                 <div class="tool-config-group">
                     <label class="form-label">End Call Configuration</label>
                     <div class="mb-2">
@@ -2118,9 +2124,10 @@ function getAgentScriptSystemToolConfig(toolType, data = {}, currentLanguage) {
 										}
                 </div>
             `;
+	}
 
-		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT:
-			return `
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+		return `
                 <div class="tool-config-group">
                     <label class="form-label">DTMF Input Configuration</label>
                     <div class="mb-2">
@@ -2227,17 +2234,18 @@ function getAgentScriptSystemToolConfig(toolType, data = {}, currentLanguage) {
                     </div>
                 </div>
             `;
+	}
 
-		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
-			const agents = BusinessFullData.businessApp.agents || [];
-			const agentOptions = agents
-				.map((agent) => {
-					const agentName = agent.general.name[currentLanguage] || agent.general.name["en-us"] || "Unnamed Agent";
-					return `<option value="${agent.id}" ${config.agentId === agent.id ? "selected" : ""}>${agentName}</option>`;
-				})
-				.join("");
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
+		const agents = BusinessFullData.businessApp.agents || [];
+		const agentOptions = agents
+			.map((agent) => {
+				const agentName = agent.general.name[currentLanguage] || agent.general.name["en-us"] || "Unnamed Agent";
+				return `<option value="${agent.id}" ${config.agentId === agent.id ? "selected" : ""}>${agentName}</option>`;
+			})
+			.join("");
 
-			return `
+		return `
                 <div class="tool-config-group">
                     <label class="form-label">Transfer Configuration</label>
                     <div class="mb-2">
@@ -2276,357 +2284,14 @@ function getAgentScriptSystemToolConfig(toolType, data = {}, currentLanguage) {
 										}
                 </div>
             `;
-
-		default:
-			return "";
 	}
+
+	return "";
 }
 
-function setupSystemToolConfigListeners(div, cell, toolType) {
-	const data = cell.getData();
-	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-	const config = data.systemTool?.config || {};
-
-	switch (toolType) {
-		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL: {
-			const endCallSelect = div.querySelector('[data-input="end-call-type"]');
-			if (endCallSelect) {
-				endCallSelect.addEventListener("change", (e) => {
-					const newConfig = {
-						...config,
-						type: e.target.value,
-					};
-
-					// Update config container
-					const configContainer = div.querySelector('[data-container="system-tool-config"]');
-					configContainer.innerHTML = getAgentScriptSystemToolConfig(
-						toolType,
-						{
-							systemTool: { config: newConfig },
-						},
-						currentLanguage,
-					);
-
-					// Update cell data
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: newConfig,
-						},
-					});
-
-					setupSystemToolConfigListeners(div, cell, toolType);
-				});
-			}
-
-			const endCallMessage = div.querySelector('[data-input="end-call-message"]');
-			if (endCallMessage) {
-				endCallMessage.addEventListener("input", (e) => {
-					const messages = config.messages || {};
-					messages[currentLanguage] = e.target.value;
-
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								messages,
-							},
-						},
-					});
-				});
-			}
-			break;
-		}
-
-		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT: {
-			// Timeout input
-			const timeoutInput = div.querySelector('[data-input="dtmf-timeout"]');
-			if (timeoutInput) {
-				timeoutInput.addEventListener("input", (e) => {
-					const value = parseInt(e.target.value);
-					if (value >= 1000 && value <= 30000) {
-						cell.setData({
-							...data,
-							systemTool: {
-								...data.systemTool,
-								config: {
-									...config,
-									timeout: value,
-								},
-							},
-						});
-					}
-				});
-			}
-
-			// Start asterisk checkbox
-			const requireStartCheck = div.querySelector('[data-input="dtmf-require-start"]');
-			if (requireStartCheck) {
-				requireStartCheck.addEventListener("change", (e) => {
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								requireStartAsterisk: e.target.checked,
-							},
-						},
-					});
-				});
-			}
-
-			// End hash checkbox
-			const requireEndCheck = div.querySelector('[data-input="dtmf-require-end"]');
-			if (requireEndCheck) {
-				requireEndCheck.addEventListener("change", (e) => {
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								requireEndHash: e.target.checked,
-							},
-						},
-					});
-				});
-			}
-
-			// Max length input
-			const maxLengthInput = div.querySelector('[data-input="dtmf-max-length"]');
-			if (maxLengthInput) {
-				maxLengthInput.addEventListener("input", (e) => {
-					const value = parseInt(e.target.value);
-					if (value >= 1 && value <= 20) {
-						cell.setData({
-							...data,
-							systemTool: {
-								...data.systemTool,
-								config: {
-									...config,
-									maxLength: value,
-								},
-							},
-						});
-					}
-				});
-			}
-
-			// Encrypt input checkbox
-			const encryptCheck = div.querySelector('[data-input="dtmf-encrypt"]');
-			if (encryptCheck) {
-				encryptCheck.addEventListener("change", (e) => {
-					const newConfig = {
-						...config,
-						encryptInput: e.target.checked,
-					};
-
-					// Update config container to show/hide variable name input
-					const configContainer = div.querySelector('[data-container="system-tool-config"]');
-					configContainer.innerHTML = getAgentScriptSystemToolConfig(
-						toolType,
-						{
-							systemTool: { config: newConfig },
-						},
-						currentLanguage,
-					);
-
-					// Update cell data
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: newConfig,
-						},
-					});
-
-					// Reattach event listeners
-					setupSystemToolConfigListeners(div, cell, toolType);
-				});
-			}
-
-			// Variable name input
-			const variableInput = div.querySelector('[data-input="dtmf-variable"]');
-			if (variableInput) {
-				variableInput.addEventListener("input", (e) => {
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								variableName: e.target.value,
-							},
-						},
-					});
-				});
-			}
-
-			// DTMF Outcomes
-			const addOutcomeBtn = div.querySelector('[data-action="add-outcome"]');
-			if (addOutcomeBtn) {
-				addOutcomeBtn.addEventListener("click", () => {
-					const outcomes = config.outcomes || [];
-					outcomes.push({ value: "", nextNodeId: null });
-
-					const newConfig = {
-						...config,
-						outcomes,
-					};
-
-					// Update config container
-					const configContainer = div.querySelector('[data-container="system-tool-config"]');
-					configContainer.innerHTML = getAgentScriptSystemToolConfig(
-						toolType,
-						{
-							systemTool: { config: newConfig },
-						},
-						currentLanguage,
-					);
-
-					// Update cell data
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: newConfig,
-						},
-					});
-
-					// Reattach event listeners
-					setupSystemToolConfigListeners(div, cell, toolType);
-				});
-			}
-
-			// Handle outcome value changes and removal
-			const outcomesContainer = div.querySelector('[data-container="dtmf-outcomes"]');
-			if (outcomesContainer) {
-				outcomesContainer.addEventListener("click", (e) => {
-					const removeBtn = e.target.closest('[data-action="remove-outcome"]');
-					if (removeBtn) {
-						const outcomeIndex = parseInt(removeBtn.closest("[data-outcome-index]").dataset.outcomeIndex);
-						const outcomes = [...(config.outcomes || [])];
-						outcomes.splice(outcomeIndex, 1);
-
-						cell.setData({
-							...data,
-							systemTool: {
-								...data.systemTool,
-								config: {
-									...config,
-									outcomes,
-								},
-							},
-						});
-					}
-				});
-
-				outcomesContainer.addEventListener("input", (e) => {
-					const valueInput = e.target.closest('[data-input="outcome-value"]');
-					if (valueInput) {
-						const outcomeIndex = parseInt(valueInput.closest("[data-outcome-index]").dataset.outcomeIndex);
-						const outcomes = [...(config.outcomes || [])];
-						outcomes[outcomeIndex] = {
-							...outcomes[outcomeIndex],
-							value: valueInput.value,
-						};
-
-						cell.setData({
-							...data,
-							systemTool: {
-								...data.systemTool,
-								config: {
-									...config,
-									outcomes,
-								},
-							},
-						});
-					}
-				});
-			}
-			break;
-		}
-
-		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT: {
-			// Agent selection
-			const agentSelect = div.querySelector('[data-input="transfer-agent"]');
-			if (agentSelect) {
-				agentSelect.addEventListener("change", (e) => {
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								agentId: e.target.value,
-							},
-						},
-					});
-				});
-			}
-
-			// Transfer context checkbox
-			const transferContextCheck = div.querySelector('[data-input="transfer-context"]');
-			if (transferContextCheck) {
-				transferContextCheck.addEventListener("change", (e) => {
-					const newConfig = {
-						...config,
-						transferContext: e.target.checked,
-					};
-
-					// Update config container to show/hide summarize context option
-					const configContainer = div.querySelector('[data-container="system-tool-config"]');
-					configContainer.innerHTML = getAgentScriptSystemToolConfig(
-						toolType,
-						{
-							systemTool: { config: newConfig },
-						},
-						currentLanguage,
-					);
-
-					// Update cell data
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: newConfig,
-						},
-					});
-
-					// Reattach event listeners
-					setupSystemToolConfigListeners(div, cell, toolType);
-				});
-			}
-
-			// Summarize context checkbox
-			const summarizeContextCheck = div.querySelector('[data-input="summarize-context"]');
-			if (summarizeContextCheck) {
-				summarizeContextCheck.addEventListener("change", (e) => {
-					cell.setData({
-						...data,
-						systemTool: {
-							...data.systemTool,
-							config: {
-								...config,
-								summarizeContext: e.target.checked,
-							},
-						},
-					});
-				});
-			}
-			break;
-		}
-	}
-}
-
-function getAgentScriptResponseInterface(responseType, data = {}, currentLanguage) {
-	switch (responseType) {
-		case AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE:
-			return `
+function getAgentScriptResponseInterface(responseType, currentLanguage, data = {}) {
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE) {
+		return `
                 <div class="agent-script-node-input-group">
                     <label>AI Response</label>
                     <textarea 
@@ -2637,9 +2302,10 @@ function getAgentScriptResponseInterface(responseType, data = {}, currentLanguag
                     >${data.aiResponse?.[currentLanguage] || ""}</textarea>
                 </div>
             `;
+	}
 
-		case AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL:
-			return `
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL) {
+		return `
 				<div class="agent-script-node-input-group">
 					<label>System Tool</label>
 					<div class="d-flex gap-2">
@@ -2664,20 +2330,21 @@ function getAgentScriptResponseInterface(responseType, data = {}, currentLanguag
 					</div>
 				</div>
 			`;
+	}
 
-		case AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL: {
-			const tools = BusinessFullData.businessApp.tools;
-			const toolOptions = tools
-				.map(
-					(tool) => `
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL) {
+		const tools = BusinessFullData.businessApp.tools;
+		const toolOptions = tools
+			.map(
+				(tool) => `
                 <option value="${tool.id}" ${data.customTool?.id === tool.id ? "selected" : ""}>
                     ${tool.general.name[currentLanguage] || tool.general.name["en-us"] || "Unnamed Tool"}
                 </option>
             `,
-				)
-				.join("");
+			)
+			.join("");
 
-			return `
+		return `
                 <div class="agent-script-node-input-group">
                     <label>Custom Tool</label>
                     <select class="form-select" data-input="custom-tool-select">
@@ -2686,87 +2353,103 @@ function getAgentScriptResponseInterface(responseType, data = {}, currentLanguag
                     </select>
                 </div>
             `;
-		}
-
-		default:
-			return "";
 	}
+
+	return "";
 }
 
-function updateNodePorts(cell, toolType, config = {}) {
+function UpdateAgentScriptGraphNodePorts(cell, responseType, toolType = null, config = {}) {
 	// Remove all existing output ports
 	const currentPorts = cell.getPorts();
 	const outputPorts = currentPorts.filter((port) => port.group === "output");
 	outputPorts.forEach((port) => cell.removePort(port.id));
 
-	// Add appropriate ports based on tool type
-	switch (toolType) {
-		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
-		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
-		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN:
-			// These are end nodes, no output ports needed
-			break;
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE) {
+		cell.addPort({
+			group: "output",
+		});
 
-		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT:
-			// Add port for timeout
-			cell.addPort({
-				group: "output",
-				id: "timeout",
-				attrs: {
-					circle: {
-						fill: "#ffc107",
-					},
-				},
-			});
+		return;
+	}
 
-			// Add ports for each outcome
-			(config.outcomes || []).forEach((outcome, index) => {
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL) {
+		switch (toolType) {
+			case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
+			case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
+			case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN:
+				// These are end nodes, no output ports needed
+				break;
+
+			case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT:
+				// Add port for timeout
 				cell.addPort({
 					group: "output",
-					id: `outcome_${index}`,
+					id: "timeout",
 					attrs: {
 						circle: {
-							fill: "#28a745",
+							fill: "#ffc107",
 						},
 					},
 				});
-			});
-			break;
 
-		default:
-			// All other tools have a single output
-			cell.addPort({
-				group: "output",
-			});
-			break;
-	}
-}
+				// Add ports for each outcome
+				(config.outcomes || []).forEach((outcome, index) => {
+					cell.addPort({
+						group: "output",
+						id: `outcome_${index}`,
+						attrs: {
+							circle: {
+								fill: "#28a745",
+							},
+						},
+					});
+				});
+				break;
 
-function initializeAgentScriptNodeSystem(graph) {
-	registerAgentScriptNodes();
+			default:
+				// All other tools have a single output
+				cell.addPort({
+					group: "output",
+				});
 
-	// Handle node deletion
-	graph.on("cell:click", ({ cell, e }) => {
-		const target = e.target;
-		if (target.closest('[data-action="delete-node"]')) {
-			const nodeType = cell.getData()?.type;
-			if (nodeType !== AGENT_SCRIPT_NODE_TYPES.START) {
-				cell.remove();
-			}
+				break;
 		}
-	});
+
+		return;
+	}
+
+	return;
 }
 
-function resizeAgentScriptGraphCSS() {
-	const currentInnerContentHeight = agentTab.find(".inner-container")[0].clientHeight - 64; // 64 = 32+32 padding
-	const currentInnerContentWidth = agentTab.find(".inner-container")[0].clientWidth - 64; // 64 = 32+32 padding
-
+function resizeAgentScriptGraphCSS(callback, isFullscreen = false) {
 	$("#agentGraphDyanmicStyle").html(`
 		#agent-script-graph {
-			width: ${currentInnerContentWidth}px;
-			height: ${currentInnerContentHeight}px;
+			width: 100%;
+			height: 100%;
 		}
 	`);
+
+	setTimeout(() => {
+		let currentInnerContentHeight;
+		let currentInnerContentWidth;
+
+		if (isFullscreen) {
+			currentInnerContentHeight = window.innerHeight;
+			currentInnerContentWidth = window.innerWidth;
+		} else {
+			currentInnerContentHeight = agentTab.find(".inner-container")[0].clientHeight - 64; // 64 = 32+32 padding
+			currentInnerContentWidth = agentTab.find(".inner-container")[0].clientWidth - 64; // 64 = 32+32 padding
+		}
+
+		$("#agentGraphDyanmicStyle").html(`
+			#agent-script-graph {
+				width: ${currentInnerContentWidth}px;
+				height: ${currentInnerContentHeight}px;
+			}
+		`);
+
+		callback({ width: currentInnerContentWidth, height: currentInnerContentHeight });
+	}, 100);
 }
 
 function addAgentScriptUserMessageNode(graph, x = 100, y = 200) {
@@ -2785,9 +2468,22 @@ function addAgentScriptUserMessageNode(graph, x = 100, y = 200) {
 	});
 }
 
+function updateAgentGraphCellData(newConfig) {
+	const data = CurrentSystemToolConfigCell.getData();
+	CurrentSystemToolConfigCell.setData({
+		...data,
+		systemTool: {
+			...data.systemTool,
+			config: newConfig,
+		},
+	});
+}
+
 /** INIT **/
 function initAgentTab() {
 	$(document).ready(() => {
+		registerAgentScriptNodes();
+		SystemToolConfigModal = new bootstrap.Modal("#agentScriptSystemToolConfigModal");
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 		agentsScriptManagerLanguageDropdown = new MultiLanguageDropdown("agentsScriptManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
@@ -3333,8 +3029,7 @@ function initAgentTab() {
 					event.preventDefault();
 
 					ResetAndEmptyAgentsScriptManageTab();
-					CurrentAgentScriptGraph = initializeAgentScriptGraph(document.getElementById("agent-script-graph"));
-					initializeAgentScriptGraphControls(CurrentAgentScriptGraph);
+					initializeAgentScriptGraph(document.getElementById("agent-script-graph"));
 
 					currentAgentScriptName.text("New Script");
 					showAgentScriptManagerTab();
@@ -3349,27 +3044,295 @@ function initAgentTab() {
 					showAgentScriptListTab();
 				});
 
-				$("#agent-script-add-user-message").on("click", () => {
-					addAgentScriptUserMessageNode(CurrentAgentScriptGraph);
-				});
-
+				// System Tool Config Modal Listeners
 				$("#agentScriptSystemToolConfigSave").on("click", () => {
 					if (CurrentSystemToolConfigCell) {
 						// The cell data is already updated by the config listeners
 						// Just update the ports in case of DTMF outcomes changes
 						const data = CurrentSystemToolConfigCell.getData();
 						if (data.systemTool?.type === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
-							updateNodePorts(CurrentSystemToolConfigCell, data.systemTool.type, data.systemTool.config);
+							UpdateAgentScriptGraphNodePorts(CurrentSystemToolConfigCell, AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, data.systemTool.type, data.systemTool.config);
 						}
 					}
 
 					SystemToolConfigModal.hide();
 				});
 
-				// Cleanup on modal hide
 				$("#agentScriptSystemToolConfigModal").on("hidden.bs.modal", () => {
 					CurrentSystemToolConfigCell = null;
 					document.getElementById("agentScriptSystemToolConfigContainer").innerHTML = "";
+				});
+
+				// Graph Buttons Event Listeners
+				$("#agent-script-graph-zoom-in").on("click", () => {
+					const zoom = CurrentAgentScriptGraph.zoom();
+					if (zoom < 2) {
+						CurrentAgentScriptGraph.zoom(0.1);
+					}
+				});
+
+				$("#agent-script-graph-zoom-out").on("click", () => {
+					const zoom = CurrentAgentScriptGraph.zoom();
+					if (zoom > 0.5) {
+						CurrentAgentScriptGraph.zoom(-0.1);
+					}
+				});
+
+				$("#agent-script-graph-zoom-fit").on("click", () => {
+					CurrentAgentScriptGraph.zoomToFit({ padding: 20, maxScale: 1 });
+				});
+
+				$("#agent-script-graph-zoom-reset").on("click", () => {
+					CurrentAgentScriptGraph.scale(1);
+					CurrentAgentScriptGraph.centerContent();
+				});
+
+				$("#agent-script-graph-undo").on("click", () => {
+					if (CurrentAgentScriptGraph.canUndo()) {
+						CurrentAgentScriptGraph.undo();
+					}
+				});
+
+				$("#agent-script-graph-redo").on("click", () => {
+					if (CurrentAgentScriptGraph.canRedo()) {
+						CurrentAgentScriptGraph.redo();
+					}
+				});
+
+				$("#agent-script-add-user-message").on("click", () => {
+					addAgentScriptUserMessageNode(CurrentAgentScriptGraph);
+				});
+
+				$("#agent-script-graph-fullscreen").on("click", () => {
+					const container = $(".agent-script-graph-container");
+					container.toggleClass("fullscreen");
+
+					if (container.hasClass("fullscreen")) {
+						$("body").css("overflow", "hidden");
+					} else {
+						$("body").css("overflow", "");
+					}
+
+					// Trigger resize to update graph dimensions
+					setTimeout(() => {
+						resizeAgentScriptGraphCSS(null, true);
+					}, 10);
+				});
+
+				$(document).on("keydown", (e) => {
+					if (e.key === "Escape" && $(".agent-script-graph-container").hasClass("fullscreen")) {
+						$("#agent-script-graph-fullscreen").click();
+
+						setTimeout(() => {
+							resizeAgentScriptGraphCSS();
+						}, 10);
+					}
+				});
+
+				// SYSTEM TOOL CONFIG LISTENERS
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="end-call-type"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+					const newConfig = {
+						...config,
+						type: e.target.value,
+					};
+
+					// Show/hide message textarea based on type
+					const messageContainer = `
+						<div class="mb-2">
+							<textarea 
+								class="form-control" 
+								data-input="end-call-message"
+								placeholder="Enter end call message..."
+								rows="2"
+							>${config.messages?.[currentLanguage] || ""}</textarea>
+						</div>
+					`;
+
+					if (e.target.value === "with_message") {
+						$(e.target).closest(".tool-config-group").append(messageContainer);
+					} else {
+						$(e.target).closest(".tool-config-group").find('[data-input="end-call-message"]').parent().remove();
+					}
+
+					updateAgentGraphCellData(newConfig);
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="end-call-message"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+					const messages = config.messages || {};
+					messages[currentLanguage] = e.target.value;
+
+					updateAgentGraphCellData({ ...config, messages });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-timeout"]', (e) => {
+					const value = parseInt(e.target.value);
+					if (value >= 1000 && value <= 30000) {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateAgentGraphCellData({ ...config, timeout: value });
+					}
+				});
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-start"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					updateAgentGraphCellData({ ...config, requireStartAsterisk: e.target.checked });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-end"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					updateAgentGraphCellData({ ...config, requireEndHash: e.target.checked });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-max-length"]', (e) => {
+					const value = parseInt(e.target.value);
+					if (value >= 1 && value <= 20) {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateAgentGraphCellData({ ...config, maxLength: value });
+					}
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-encrypt"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+
+					const newConfig = {
+						...config,
+						encryptInput: e.target.checked,
+					};
+
+					// Show/hide variable name input based on encrypt checkbox
+					const variableNameInput = `
+						<div class="mb-2">
+							<label class="form-label small">Variable Name</label>
+							<input 
+								type="text" 
+								class="form-control" 
+								data-input="dtmf-variable"
+								value="${config.variableName || ""}"
+								placeholder="Enter variable name"
+							>
+						</div>
+					`;
+
+					if (e.target.checked) {
+						$(e.target).closest(".tool-config-group").append(variableNameInput);
+					} else {
+						$(e.target).closest(".tool-config-group").find('[data-input="dtmf-variable"]').parent().remove();
+					}
+
+					updateAgentGraphCellData(newConfig);
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-variable"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					updateAgentGraphCellData({ ...config, variableName: e.target.value });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="add-outcome"]', () => {
+					const outcomeTemplate = `
+						<div class="input-group mb-2" data-outcome-index="${nextOutcomeIndex}">
+							<input 
+								type="text" 
+								class="form-control" 
+								placeholder="DTMF Value"
+								value=""
+								data-input="outcome-value"
+							>
+							<button class="btn btn-danger" data-action="remove-outcome">
+								<i class="fa-regular fa-trash"></i>
+							</button>
+						</div>
+					`;
+
+					$('[data-container="dtmf-outcomes"]').append(outcomeTemplate);
+
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					const outcomes = [...(config.outcomes || []), { value: "", nextNodeId: null }];
+
+					updateAgentGraphCellData({ ...config, outcomes });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="outcome-value"]', (e) => {
+					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					const outcomes = [...(config.outcomes || [])];
+
+					outcomes[outcomeIndex] = {
+						...outcomes[outcomeIndex],
+						value: e.target.value,
+					};
+
+					updateAgentGraphCellData({ ...config, outcomes });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="remove-outcome"]', (e) => {
+					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					const outcomes = [...(config.outcomes || [])];
+
+					outcomes.splice(outcomeIndex, 1);
+					$(e.target).closest("[data-outcome-index]").remove();
+
+					updateAgentGraphCellData({ ...config, outcomes });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-agent"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					updateAgentGraphCellData({ ...config, agentId: e.target.value });
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-context"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+
+					const newConfig = {
+						...config,
+						transferContext: e.target.checked,
+					};
+
+					// Show/hide summarize context option
+					const summarizeContextOption = `
+						<div class="form-check mb-2">
+							<input 
+								class="form-check-input" 
+								type="checkbox" 
+								data-input="summarize-context"
+								${config.summarizeContext ? "checked" : ""}
+							>
+							<label class="form-check-label">
+								Summarize Context
+							</label>
+						</div>
+					`;
+
+					if (e.target.checked) {
+						$(e.target).closest(".form-check").after(summarizeContextOption);
+					} else {
+						$(e.target).closest(".tool-config-group").find('[data-input="summarize-context"]').parent().remove();
+					}
+
+					updateAgentGraphCellData(newConfig);
+				});
+
+				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="summarize-context"]', (e) => {
+					const data = CurrentSystemToolConfigCell.getData();
+					const config = data.systemTool?.config || {};
+					updateAgentGraphCellData({ ...config, summarizeContext: e.target.checked });
 				});
 			}
 			initAgentScriptsTabHandlers();
