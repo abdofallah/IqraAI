@@ -19,8 +19,25 @@ const AGENT_SCRIPT_NODE_TYPES = {
 	CUSTOM_TOOL: "agent-script-custom-tool-node",
 };
 
-const AGENT_SCRIPT_NODE_WIDTH = 320;
-const AGENT_SCRIPT_NODE_MIN_HEIGHT = 100;
+const AGENT_SCRIPT_RESPONSE_TYPES = {
+	AI_RESPONSE: "ai_response",
+	SYSTEM_TOOL: "system_tool",
+	CUSTOM_TOOL: "custom_tool",
+};
+
+const AGENT_SCRIPT_SYSTEM_TOOLS = {
+	END_CALL: "end_call",
+	CHANGE_LANGUAGE: "change_language",
+	GET_DTMF_INPUT: "get_dtmf_keypad_input",
+	PRESS_DTMF: "press_dtmf_keypad",
+	TRANSFER_TO_AGENT: "transfer_to_agent",
+	TRANSFER_TO_HUMAN: "transfer_to_human",
+};
+
+const AGENT_SCRIPT_NODE_WIDTH = 520; // todo make dynamic
+const AGENT_SCRIPT_NODE_MIN_HEIGHT = 300;
+
+const SystemToolConfigModal = new bootstrap.Modal("#agentScriptSystemToolConfigModal");
 
 /** Dynamic Variables **/
 let CurrentManageAgentData = null;
@@ -1875,19 +1892,41 @@ function registerAgentScriptNodes() {
                             class="form-control" 
                             placeholder="Type the user message..."
                             data-input="user-message"
+                            rows="3"
                         >${data.userMessage?.[currentLanguage] || ""}</textarea>
                     </div>
                     <div class="agent-script-node-response-type">
+                        <label>Response Type</label>
                         <select class="form-select" data-input="response-type">
-                            <option value="ai_response" ${data.responseType === "ai_response" ? "selected" : ""}>AI Response</option>
-                            <option value="system_tool" ${data.responseType === "system_tool" ? "selected" : ""}>System Tool</option>
-                            <option value="custom_tool" ${data.responseType === "custom_tool" ? "selected" : ""}>Custom Tool</option>
+                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE}" 
+                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE ? "selected" : ""}>
+                                AI Response
+                            </option>
+                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL}" 
+                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL ? "selected" : ""}>
+                                System Tool
+                            </option>
+                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL}" 
+                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL ? "selected" : ""}>
+                                Custom Tool
+                            </option>
                         </select>
+                    </div>
+                    <div class="agent-script-node-response">
+                        ${getAgentScriptResponseInterface(data.responseType, data, currentLanguage)}
                     </div>
                 </div>
             `;
 
-			// Add event listeners
+			// Function to update node size
+			const updateNodeSize = () => {
+				const contentHeight = div.offsetHeight;
+				if (contentHeight !== cell.getSize().height) {
+					cell.resize(AGENT_SCRIPT_NODE_WIDTH, contentHeight);
+				}
+			};
+
+			// Add event listeners for user message
 			const textarea = div.querySelector('[data-input="user-message"]');
 			textarea.addEventListener("input", (e) => {
 				const messages = data.userMessage || {};
@@ -1896,19 +1935,811 @@ function registerAgentScriptNodes() {
 					...data,
 					userMessage: messages,
 				});
+
+				setTimeout(updateNodeSize, 0);
 			});
 
+			// Response type change handler
 			const select = div.querySelector('[data-input="response-type"]');
 			select.addEventListener("change", (e) => {
-				cell.setData({
+				const newResponseType = e.target.value;
+				const responseContainer = div.querySelector(".agent-script-node-response");
+
+				// Clear previous response data
+				const newData = {
 					...data,
-					responseType: e.target.value,
-				});
+					responseType: newResponseType,
+					aiResponse: undefined,
+					systemTool: undefined,
+					customTool: undefined,
+				};
+
+				// Update response interface
+				responseContainer.innerHTML = getAgentScriptResponseInterface(newResponseType, newData, currentLanguage);
+
+				// Update cell data
+				cell.setData(newData);
+
+				// Setup new event listeners based on type
+				setupResponseTypeListeners(div, cell, newResponseType);
+
+				// Update ports based on response type
+				updateNodePorts(cell, newResponseType);
+
+				setTimeout(updateNodeSize, 0);
 			});
+
+			// Setup initial response type listeners
+			if (data.responseType) {
+				setupResponseTypeListeners(div, cell, data.responseType);
+				if (data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL && data.systemTool?.type) {
+					updateNodePorts(cell, data.systemTool.type, data.systemTool.config);
+				}
+			}
+
+			setTimeout(updateNodeSize, 0);
 
 			return div;
 		},
 	});
+}
+
+function setupResponseTypeListeners(div, cell, responseType) {
+	const data = cell.getData();
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+	switch (responseType) {
+		case AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE: {
+			const aiTextarea = div.querySelector('[data-input="ai-response"]');
+			if (aiTextarea) {
+				aiTextarea.addEventListener("input", (e) => {
+					const responses = data.aiResponse || {};
+					responses[currentLanguage] = e.target.value;
+					cell.setData({
+						...data,
+						aiResponse: responses,
+					});
+				});
+			}
+			break;
+		}
+
+		case AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL: {
+			const systemToolSelect = div.querySelector('[data-input="system-tool-type"]');
+			if (systemToolSelect) {
+				systemToolSelect.addEventListener("change", (e) => {
+					const toolType = e.target.value;
+
+					// Update cell data
+					const newData = {
+						...data,
+						systemTool: {
+							type: toolType,
+							config: {},
+						},
+					};
+
+					// Update cell data
+					cell.setData(newData);
+
+					// Refresh the interface to show/hide config button
+					const responseContainer = div.querySelector(".agent-script-node-response");
+					responseContainer.innerHTML = getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, newData, currentLanguage);
+
+					// Setup config button listener
+					setupSystemToolConfigButton(div, cell);
+
+					// Update ports based on tool type
+					updateNodePorts(cell, toolType);
+				});
+			}
+
+			// Setup config button if tool is selected
+			if (data.systemTool?.type) {
+				setupSystemToolConfigButton(div, cell);
+				updateNodePorts(cell, data.systemTool.type, data.systemTool.config);
+			}
+			break;
+		}
+
+		case AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL: {
+			const customToolSelect = div.querySelector('[data-input="custom-tool-select"]');
+			if (customToolSelect) {
+				customToolSelect.addEventListener("change", (e) => {
+					const toolId = e.target.value;
+					cell.setData({
+						...data,
+						customTool: {
+							id: toolId,
+							config: {},
+						},
+					});
+				});
+			}
+			break;
+		}
+	}
+}
+
+function setupSystemToolConfigButton(div, cell) {
+	const configButton = div.querySelector('[data-action="configure-system-tool"]');
+	if (configButton) {
+		configButton.addEventListener("click", () => {
+			openSystemToolConfig(cell);
+		});
+	}
+}
+
+function openSystemToolConfig(cell) {
+	const data = cell.getData();
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+	// Store current cell for save handler
+	CurrentSystemToolConfigCell = cell;
+
+	// Get config container and populate it
+	const configContainer = document.getElementById("agentScriptSystemToolConfigContainer");
+	configContainer.innerHTML = getAgentScriptSystemToolConfig(data.systemTool.type, data, currentLanguage);
+
+	// Setup config listeners
+	setupSystemToolConfigListeners(configContainer, cell, data.systemTool.type);
+
+	// Show modal
+	SystemToolConfigModal.show();
+}
+
+function getAgentScriptSystemToolConfig(toolType, data = {}, currentLanguage) {
+	const config = data.systemTool?.config || {};
+
+	switch (toolType) {
+		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
+			return `
+                <div class="tool-config-group">
+                    <label class="form-label">End Call Configuration</label>
+                    <div class="mb-2">
+                        <select class="form-select" data-input="end-call-type">
+                            <option value="immediate" ${config.type === "immediate" ? "selected" : ""}>End Immediately</option>
+                            <option value="with_message" ${config.type === "with_message" ? "selected" : ""}>End with Message</option>
+                        </select>
+                    </div>
+                    ${
+											config.type === "with_message"
+												? `
+                        <div class="mb-2">
+                            <textarea 
+                                class="form-control" 
+                                data-input="end-call-message"
+                                placeholder="Enter end call message..."
+                                rows="2"
+                            >${config.messages?.[currentLanguage] || ""}</textarea>
+                        </div>
+                    `
+												: ""
+										}
+                </div>
+            `;
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT:
+			return `
+                <div class="tool-config-group">
+                    <label class="form-label">DTMF Input Configuration</label>
+                    <div class="mb-2">
+                        <label class="form-label small">Timeout (milliseconds)</label>
+                        <input 
+                            type="number" 
+                            class="form-control" 
+                            data-input="dtmf-timeout"
+                            value="${config.timeout || 5000}"
+                            min="1000"
+                            max="30000"
+                            step="1000"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-check mb-2">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                data-input="dtmf-require-start"
+                                ${config.requireStartAsterisk ? "checked" : ""}
+                            >
+                            <label class="form-check-label">
+                                Require * at start
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                data-input="dtmf-require-end"
+                                ${config.requireEndHash ? "checked" : ""}
+                            >
+                            <label class="form-check-label">
+                                Require # at end
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Max Length</label>
+                        <input 
+                            type="number" 
+                            class="form-control" 
+                            data-input="dtmf-max-length"
+                            value="${config.maxLength || 1}"
+                            min="1"
+                            max="20"
+                        >
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-check mb-2">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                data-input="dtmf-encrypt"
+                                ${config.encryptInput ? "checked" : ""}
+                            >
+                            <label class="form-check-label">
+                                Encrypt Input
+                            </label>
+                        </div>
+                    </div>
+                    ${
+											config.encryptInput
+												? `
+                        <div class="mb-2">
+                            <label class="form-label small">Variable Name</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                data-input="dtmf-variable"
+                                value="${config.variableName || ""}"
+                                placeholder="Enter variable name"
+                            >
+                        </div>
+                    `
+												: ""
+										}
+                    <div class="mb-2">
+                        <label class="form-label small">DTMF Outcomes</label>
+                        <div data-container="dtmf-outcomes">
+                            ${(config.outcomes || [])
+															.map(
+																(outcome, index) => `
+                                <div class="input-group mb-2" data-outcome-index="${index}">
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        placeholder="DTMF Value"
+                                        value="${outcome.value}"
+                                        data-input="outcome-value"
+                                    >
+                                    <button class="btn btn-danger" data-action="remove-outcome">
+                                        <i class="fa-regular fa-trash"></i>
+                                    </button>
+                                </div>
+                            `,
+															)
+															.join("")}
+                        </div>
+                        <button class="btn btn-light btn-sm" data-action="add-outcome">
+                            Add Outcome
+                        </button>
+                    </div>
+                </div>
+            `;
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
+			const agents = BusinessFullData.businessApp.agents || [];
+			const agentOptions = agents
+				.map((agent) => {
+					const agentName = agent.general.name[currentLanguage] || agent.general.name["en-us"] || "Unnamed Agent";
+					return `<option value="${agent.id}" ${config.agentId === agent.id ? "selected" : ""}>${agentName}</option>`;
+				})
+				.join("");
+
+			return `
+                <div class="tool-config-group">
+                    <label class="form-label">Transfer Configuration</label>
+                    <div class="mb-2">
+                        <select class="form-select" data-input="transfer-agent">
+                            <option value="">Select Agent</option>
+                            ${agentOptions}
+                        </select>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input 
+                            class="form-check-input" 
+                            type="checkbox" 
+                            data-input="transfer-context"
+                            ${config.transferContext ? "checked" : ""}
+                        >
+                        <label class="form-check-label">
+                            Transfer Context
+                        </label>
+                    </div>
+                    ${
+											config.transferContext
+												? `
+                        <div class="form-check mb-2">
+                            <input 
+                                class="form-check-input" 
+                                type="checkbox" 
+                                data-input="summarize-context"
+                                ${config.summarizeContext ? "checked" : ""}
+                            >
+                            <label class="form-check-label">
+                                Summarize Context
+                            </label>
+                        </div>
+                    `
+												: ""
+										}
+                </div>
+            `;
+
+		default:
+			return "";
+	}
+}
+
+function setupSystemToolConfigListeners(div, cell, toolType) {
+	const data = cell.getData();
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+	const config = data.systemTool?.config || {};
+
+	switch (toolType) {
+		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL: {
+			const endCallSelect = div.querySelector('[data-input="end-call-type"]');
+			if (endCallSelect) {
+				endCallSelect.addEventListener("change", (e) => {
+					const newConfig = {
+						...config,
+						type: e.target.value,
+					};
+
+					// Update config container
+					const configContainer = div.querySelector('[data-container="system-tool-config"]');
+					configContainer.innerHTML = getAgentScriptSystemToolConfig(
+						toolType,
+						{
+							systemTool: { config: newConfig },
+						},
+						currentLanguage,
+					);
+
+					// Update cell data
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: newConfig,
+						},
+					});
+
+					setupSystemToolConfigListeners(div, cell, toolType);
+				});
+			}
+
+			const endCallMessage = div.querySelector('[data-input="end-call-message"]');
+			if (endCallMessage) {
+				endCallMessage.addEventListener("input", (e) => {
+					const messages = config.messages || {};
+					messages[currentLanguage] = e.target.value;
+
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								messages,
+							},
+						},
+					});
+				});
+			}
+			break;
+		}
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT: {
+			// Timeout input
+			const timeoutInput = div.querySelector('[data-input="dtmf-timeout"]');
+			if (timeoutInput) {
+				timeoutInput.addEventListener("input", (e) => {
+					const value = parseInt(e.target.value);
+					if (value >= 1000 && value <= 30000) {
+						cell.setData({
+							...data,
+							systemTool: {
+								...data.systemTool,
+								config: {
+									...config,
+									timeout: value,
+								},
+							},
+						});
+					}
+				});
+			}
+
+			// Start asterisk checkbox
+			const requireStartCheck = div.querySelector('[data-input="dtmf-require-start"]');
+			if (requireStartCheck) {
+				requireStartCheck.addEventListener("change", (e) => {
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								requireStartAsterisk: e.target.checked,
+							},
+						},
+					});
+				});
+			}
+
+			// End hash checkbox
+			const requireEndCheck = div.querySelector('[data-input="dtmf-require-end"]');
+			if (requireEndCheck) {
+				requireEndCheck.addEventListener("change", (e) => {
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								requireEndHash: e.target.checked,
+							},
+						},
+					});
+				});
+			}
+
+			// Max length input
+			const maxLengthInput = div.querySelector('[data-input="dtmf-max-length"]');
+			if (maxLengthInput) {
+				maxLengthInput.addEventListener("input", (e) => {
+					const value = parseInt(e.target.value);
+					if (value >= 1 && value <= 20) {
+						cell.setData({
+							...data,
+							systemTool: {
+								...data.systemTool,
+								config: {
+									...config,
+									maxLength: value,
+								},
+							},
+						});
+					}
+				});
+			}
+
+			// Encrypt input checkbox
+			const encryptCheck = div.querySelector('[data-input="dtmf-encrypt"]');
+			if (encryptCheck) {
+				encryptCheck.addEventListener("change", (e) => {
+					const newConfig = {
+						...config,
+						encryptInput: e.target.checked,
+					};
+
+					// Update config container to show/hide variable name input
+					const configContainer = div.querySelector('[data-container="system-tool-config"]');
+					configContainer.innerHTML = getAgentScriptSystemToolConfig(
+						toolType,
+						{
+							systemTool: { config: newConfig },
+						},
+						currentLanguage,
+					);
+
+					// Update cell data
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: newConfig,
+						},
+					});
+
+					// Reattach event listeners
+					setupSystemToolConfigListeners(div, cell, toolType);
+				});
+			}
+
+			// Variable name input
+			const variableInput = div.querySelector('[data-input="dtmf-variable"]');
+			if (variableInput) {
+				variableInput.addEventListener("input", (e) => {
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								variableName: e.target.value,
+							},
+						},
+					});
+				});
+			}
+
+			// DTMF Outcomes
+			const addOutcomeBtn = div.querySelector('[data-action="add-outcome"]');
+			if (addOutcomeBtn) {
+				addOutcomeBtn.addEventListener("click", () => {
+					const outcomes = config.outcomes || [];
+					outcomes.push({ value: "", nextNodeId: null });
+
+					const newConfig = {
+						...config,
+						outcomes,
+					};
+
+					// Update config container
+					const configContainer = div.querySelector('[data-container="system-tool-config"]');
+					configContainer.innerHTML = getAgentScriptSystemToolConfig(
+						toolType,
+						{
+							systemTool: { config: newConfig },
+						},
+						currentLanguage,
+					);
+
+					// Update cell data
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: newConfig,
+						},
+					});
+
+					// Reattach event listeners
+					setupSystemToolConfigListeners(div, cell, toolType);
+				});
+			}
+
+			// Handle outcome value changes and removal
+			const outcomesContainer = div.querySelector('[data-container="dtmf-outcomes"]');
+			if (outcomesContainer) {
+				outcomesContainer.addEventListener("click", (e) => {
+					const removeBtn = e.target.closest('[data-action="remove-outcome"]');
+					if (removeBtn) {
+						const outcomeIndex = parseInt(removeBtn.closest("[data-outcome-index]").dataset.outcomeIndex);
+						const outcomes = [...(config.outcomes || [])];
+						outcomes.splice(outcomeIndex, 1);
+
+						cell.setData({
+							...data,
+							systemTool: {
+								...data.systemTool,
+								config: {
+									...config,
+									outcomes,
+								},
+							},
+						});
+					}
+				});
+
+				outcomesContainer.addEventListener("input", (e) => {
+					const valueInput = e.target.closest('[data-input="outcome-value"]');
+					if (valueInput) {
+						const outcomeIndex = parseInt(valueInput.closest("[data-outcome-index]").dataset.outcomeIndex);
+						const outcomes = [...(config.outcomes || [])];
+						outcomes[outcomeIndex] = {
+							...outcomes[outcomeIndex],
+							value: valueInput.value,
+						};
+
+						cell.setData({
+							...data,
+							systemTool: {
+								...data.systemTool,
+								config: {
+									...config,
+									outcomes,
+								},
+							},
+						});
+					}
+				});
+			}
+			break;
+		}
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT: {
+			// Agent selection
+			const agentSelect = div.querySelector('[data-input="transfer-agent"]');
+			if (agentSelect) {
+				agentSelect.addEventListener("change", (e) => {
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								agentId: e.target.value,
+							},
+						},
+					});
+				});
+			}
+
+			// Transfer context checkbox
+			const transferContextCheck = div.querySelector('[data-input="transfer-context"]');
+			if (transferContextCheck) {
+				transferContextCheck.addEventListener("change", (e) => {
+					const newConfig = {
+						...config,
+						transferContext: e.target.checked,
+					};
+
+					// Update config container to show/hide summarize context option
+					const configContainer = div.querySelector('[data-container="system-tool-config"]');
+					configContainer.innerHTML = getAgentScriptSystemToolConfig(
+						toolType,
+						{
+							systemTool: { config: newConfig },
+						},
+						currentLanguage,
+					);
+
+					// Update cell data
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: newConfig,
+						},
+					});
+
+					// Reattach event listeners
+					setupSystemToolConfigListeners(div, cell, toolType);
+				});
+			}
+
+			// Summarize context checkbox
+			const summarizeContextCheck = div.querySelector('[data-input="summarize-context"]');
+			if (summarizeContextCheck) {
+				summarizeContextCheck.addEventListener("change", (e) => {
+					cell.setData({
+						...data,
+						systemTool: {
+							...data.systemTool,
+							config: {
+								...config,
+								summarizeContext: e.target.checked,
+							},
+						},
+					});
+				});
+			}
+			break;
+		}
+	}
+}
+
+function getAgentScriptResponseInterface(responseType, data = {}, currentLanguage) {
+	switch (responseType) {
+		case AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE:
+			return `
+                <div class="agent-script-node-input-group">
+                    <label>AI Response</label>
+                    <textarea 
+                        class="form-control" 
+                        placeholder="Type the AI response..."
+                        data-input="ai-response"
+                        rows="3"
+                    >${data.aiResponse?.[currentLanguage] || ""}</textarea>
+                </div>
+            `;
+
+		case AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL:
+			return `
+				<div class="agent-script-node-input-group">
+					<label>System Tool</label>
+					<div class="d-flex gap-2">
+						<select class="form-select" data-input="system-tool-type">
+							<option value="">Select Tool</option>
+							<option value="end_call" ${data.systemTool?.type === "end_call" ? "selected" : ""}>End Call</option>
+							<option value="change_language" ${data.systemTool?.type === "change_language" ? "selected" : ""}>Change Language</option>
+							<option value="get_dtmf_keypad_input" ${data.systemTool?.type === "get_dtmf_keypad_input" ? "selected" : ""}>Get DTMF Keypad Input</option>
+							<option value="press_dtmf_keypad" ${data.systemTool?.type === "press_dtmf_keypad" ? "selected" : ""}>Press DTMF Keypad</option>
+							<option value="transfer_to_agent" ${data.systemTool?.type === "transfer_to_agent" ? "selected" : ""}>Transfer to Agent</option>
+							<option value="transfer_to_human" ${data.systemTool?.type === "transfer_to_human" ? "selected" : ""} disabled>Transfer to Human</option>
+						</select>
+						${
+							data.systemTool?.type
+								? `
+							<button class="btn btn-light" data-action="configure-system-tool">
+								<i class="fa-regular fa-gear"></i>
+							</button>
+						`
+								: ""
+						}
+					</div>
+				</div>
+			`;
+
+		case AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL: {
+			const tools = BusinessFullData.businessApp.tools;
+			const toolOptions = tools
+				.map(
+					(tool) => `
+                <option value="${tool.id}" ${data.customTool?.id === tool.id ? "selected" : ""}>
+                    ${tool.general.name[currentLanguage] || tool.general.name["en-us"] || "Unnamed Tool"}
+                </option>
+            `,
+				)
+				.join("");
+
+			return `
+                <div class="agent-script-node-input-group">
+                    <label>Custom Tool</label>
+                    <select class="form-select" data-input="custom-tool-select">
+                        <option value="">Select Tool</option>
+                        ${toolOptions}
+                    </select>
+                </div>
+            `;
+		}
+
+		default:
+			return "";
+	}
+}
+
+function updateNodePorts(cell, toolType, config = {}) {
+	// Remove all existing output ports
+	const currentPorts = cell.getPorts();
+	const outputPorts = currentPorts.filter((port) => port.group === "output");
+	outputPorts.forEach((port) => cell.removePort(port.id));
+
+	// Add appropriate ports based on tool type
+	switch (toolType) {
+		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
+		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
+		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN:
+			// These are end nodes, no output ports needed
+			break;
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT:
+			// Add port for timeout
+			cell.addPort({
+				group: "output",
+				id: "timeout",
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+				},
+			});
+
+			// Add ports for each outcome
+			(config.outcomes || []).forEach((outcome, index) => {
+				cell.addPort({
+					group: "output",
+					id: `outcome_${index}`,
+					attrs: {
+						circle: {
+							fill: "#28a745",
+						},
+					},
+				});
+			});
+			break;
+
+		default:
+			// All other tools have a single output
+			cell.addPort({
+				group: "output",
+			});
+			break;
+	}
 }
 
 function initializeAgentScriptNodeSystem(graph) {
@@ -2520,6 +3351,25 @@ function initAgentTab() {
 
 				$("#agent-script-add-user-message").on("click", () => {
 					addAgentScriptUserMessageNode(CurrentAgentScriptGraph);
+				});
+
+				$("#agentScriptSystemToolConfigSave").on("click", () => {
+					if (CurrentSystemToolConfigCell) {
+						// The cell data is already updated by the config listeners
+						// Just update the ports in case of DTMF outcomes changes
+						const data = CurrentSystemToolConfigCell.getData();
+						if (data.systemTool?.type === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+							updateNodePorts(CurrentSystemToolConfigCell, data.systemTool.type, data.systemTool.config);
+						}
+					}
+
+					SystemToolConfigModal.hide();
+				});
+
+				// Cleanup on modal hide
+				$("#agentScriptSystemToolConfigModal").on("hidden.bs.modal", () => {
+					CurrentSystemToolConfigCell = null;
+					document.getElementById("agentScriptSystemToolConfigContainer").innerHTML = "";
 				});
 			}
 			initAgentScriptsTabHandlers();

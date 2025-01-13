@@ -1475,7 +1475,7 @@ table.table > thead > * > * {
 	position: relative;
 	transition: all 0.2s ease;
 	width: 100%;
-	height: 100%;
+	height: auto;
 }
 
 .agent-script-node:hover {
@@ -1538,14 +1538,11 @@ table.table > thead > * > * {
 }
 
 /* User Message Node Specific */
-.agent-script-user-message-node {
-	min-height: 150px;
-}
-
 .agent-script-user-message-node .agent-script-node-content {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+	padding: 12px;
 }
 
 .agent-script-node-input-group {
@@ -1567,4 +1564,40 @@ table.table > thead > * > * {
 
 .agent-script-node-response-type {
 	margin-top: 8px;
+}
+
+.agent-script-node-input-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.agent-script-node-input-group label {
+	font-size: 12px;
+	color: #6c757d;
+	font-weight: 500;
+}
+
+.agent-script-node-response-type {
+	margin-bottom: 12px;
+}
+
+.agent-script-node-response {
+	border-top: 1px solid #e9ecef;
+	padding-top: 12px;
+}
+
+.tool-config-group {
+}
+
+.tool-config-group .form-label {
+}
+
+.tool-config-group .form-label.small {
+}
+
+.tool-config-group .form-check {
+}
+
+.tool-config-group .input-group {
 }
