@@ -8,6 +8,7 @@
         GetDTMFKeypadInput = 3,
         PressDTMFKeypad = 4,
         TransferToAgent = 5,
-        TransferToHuman = 6
+        TransferToHuman = 6,
+        AddScriptToContext = 7,
     }
 }

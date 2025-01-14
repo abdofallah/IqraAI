@@ -2,9 +2,12 @@
 {
     public class BusinessAppAgentScript
     {
-        public long Id { get; set; }
-        public BusinessAppAgentScriptGeneral General { get; set; }
-        public List<BusinessAppAgentScriptNode> Nodes { get; set; }
-        public List<BusinessAppAgentScriptEdge> Edges { get; set; }
+        public string Id { get; set; } = "";
+        public bool IsDefault { get; set; } = false;
+        public bool IsInContext { get; set; } = false;
+
+        public BusinessAppAgentScriptGeneral General { get; set; } = new BusinessAppAgentScriptGeneral();
+        public List<BusinessAppAgentScriptNode> Nodes { get; set; } = new List<BusinessAppAgentScriptNode>();
+        public List<BusinessAppAgentScriptEdge> Edges { get; set; } = new List<BusinessAppAgentScriptEdge>();
     }  
 }

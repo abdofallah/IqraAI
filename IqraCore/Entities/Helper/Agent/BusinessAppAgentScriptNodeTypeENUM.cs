@@ -3,8 +3,9 @@
     public enum BusinessAppAgentScriptNodeTypeENUM
     {
         Unknown = 0,
-        UserReply = 1,
-        ExecuteSystemTool = 2,
-        ExecuteCustomTool = 3
+        Start = 1,
+        MessageReply = 2,
+        ExecuteSystemTool = 3,
+        ExecuteCustomTool = 4
     }
 }

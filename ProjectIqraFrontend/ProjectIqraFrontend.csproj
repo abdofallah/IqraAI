@@ -12,10 +12,4 @@
     <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\img\" />
-    <Folder Include="wwwroot\scripts\app\business\tutorials\" />
-    <Folder Include="wwwroot\scripts\app\index\" />
-  </ItemGroup>
-
 </Project>

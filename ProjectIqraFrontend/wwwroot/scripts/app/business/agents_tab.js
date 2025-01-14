@@ -32,6 +32,7 @@ const AGENT_SCRIPT_SYSTEM_TOOLS = {
 	PRESS_DTMF: "press_dtmf_keypad",
 	TRANSFER_TO_AGENT: "transfer_to_agent",
 	TRANSFER_TO_HUMAN: "transfer_to_human",
+	ADD_SCRIPT_TO_CONTEXT: "add_script_to_context",
 };
 
 const AGENT_SCRIPT_NODE_WIDTH = 520; // todo make dynamic
@@ -80,6 +81,7 @@ let CurrentAgentScriptGraph = null;
 let CurrentAgentScriptGraphStartNode = null;
 let CurrentSystemToolConfigCell = null;
 let SystemToolConfigModal = null;
+let agentScriptDMTFNextOutcomeIndex = 0;
 
 /** Element Variables **/
 
@@ -1634,6 +1636,21 @@ async function canLeaveAgentScriptManagerTab() {
 	return true;
 }
 
+function createDefaultAgentScriptObject() {
+	return {
+		id: "",
+		isDefault: false,
+		isInContext: false,
+		general: {
+			name: {},
+			description: {},
+			conditions: {},
+		},
+		nodes: [],
+		edges: [],
+	};
+}
+
 function registerAgentScriptNodes() {
 	// Register Start Node
 	X6.Shape.HTML.register({
@@ -1647,7 +1664,7 @@ function registerAgentScriptNodes() {
 					position: "bottom",
 					attrs: {
 						circle: {
-							r: 10,
+							r: 8,
 							magnet: true,
 							stroke: "#198754",
 							strokeWidth: 2,
@@ -1695,7 +1712,7 @@ function registerAgentScriptNodes() {
 					position: "bottom",
 					attrs: {
 						circle: {
-							r: 10,
+							r: 8,
 							magnet: true,
 							stroke: "#8f8f8f",
 							strokeWidth: 2,
@@ -1893,7 +1910,8 @@ function initializeAgentScriptGraph(container) {
 
 		// Add minimap plugin
 		const minimapContainer = document.getElementById("agent-script-graph-minimap");
-		if (minimapContainer) {
+		const enableMinimap = false;
+		if (minimapContainer && enableMinimap) {
 			graph.use(
 				new AGENT_SCRIPT_GRAPH_PLUGINS.Minimap({
 					container: minimapContainer,
@@ -1970,11 +1988,14 @@ function initializeAgentScriptGraph(container) {
 		});
 
 		graph.on("edge:connected", (event) => {
-			const parentInputCell = Object.keys(CurrentAgentScriptGraph.getCellById(event.currentCell.id)._model.outgoings)[0];
+			const allCurrentConnections = Object.keys(CurrentAgentScriptGraph.getCellById(event.currentCell.id)._model.outgoings);
+			for (let i = 0; i < allCurrentConnections.length; i++) {
+				const parentInputCell = allCurrentConnections[i];
 
-			const allConnectionForInputCell = CurrentAgentScriptGraph.getCellById(parentInputCell)._model.outgoings[parentInputCell];
-			while (allConnectionForInputCell.length > 1) {
-				CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
+				const allConnectionForInputCell = CurrentAgentScriptGraph.getCellById(parentInputCell)._model.outgoings[parentInputCell];
+				while (allConnectionForInputCell.length > 1) {
+					CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
+				}
 			}
 		});
 
@@ -2212,7 +2233,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                             ${(config.outcomes || [])
 															.map(
 																(outcome, index) => `
-                                <div class="input-group mb-2" data-outcome-index="${index}">
+                                <div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
                                     <input 
                                         type="text" 
                                         class="form-control" 
@@ -2247,7 +2268,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 
 		return `
                 <div class="tool-config-group">
-                    <label class="form-label">Transfer Configuration</label>
+                    <label class="form-label">Transfer Agent Configuration</label>
                     <div class="mb-2">
                         <select class="form-select" data-input="transfer-agent">
                             <option value="">Select Agent</option>
@@ -2286,6 +2307,29 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
             `;
 	}
 
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
+		const scripts = CurrentManageAgentData.scripts || [];
+
+		const scriptOptions = scripts
+			.map((script) => {
+				const scriptName = script.general.name[currentLanguage] || script.general.name["en-us"] || "Unnamed Script";
+				return `<option value="${script.id}" ${config.scriptId === script.id ? "selected" : ""}>${scriptName}</option>`;
+			})
+			.join("");
+
+		return `
+				<div class="tool-config-group">
+					<label class="form-label">Add Script Configuration</label>
+					<div class="mb-2">
+						<select class="form-select" data-input="add-script">
+							<option value="">Select Script</option>
+							${scriptOptions}
+						</select>
+					</div>
+				</div>
+			`;
+	}
+
 	return "";
 }
 
@@ -2310,13 +2354,14 @@ function getAgentScriptResponseInterface(responseType, currentLanguage, data = {
 					<label>System Tool</label>
 					<div class="d-flex gap-2">
 						<select class="form-select" data-input="system-tool-type">
-							<option value="">Select Tool</option>
+							<option value="" disabled ${!data.systemTool?.type ? "selected" : ""}>Select Tool</option>
 							<option value="end_call" ${data.systemTool?.type === "end_call" ? "selected" : ""}>End Call</option>
 							<option value="change_language" ${data.systemTool?.type === "change_language" ? "selected" : ""}>Change Language</option>
 							<option value="get_dtmf_keypad_input" ${data.systemTool?.type === "get_dtmf_keypad_input" ? "selected" : ""}>Get DTMF Keypad Input</option>
 							<option value="press_dtmf_keypad" ${data.systemTool?.type === "press_dtmf_keypad" ? "selected" : ""}>Press DTMF Keypad</option>
 							<option value="transfer_to_agent" ${data.systemTool?.type === "transfer_to_agent" ? "selected" : ""}>Transfer to Agent</option>
 							<option value="transfer_to_human" ${data.systemTool?.type === "transfer_to_human" ? "selected" : ""} disabled>Transfer to Human</option>
+							<option value="add_script_to_context" ${data.systemTool?.type === "add_script_to_context" ? "selected" : ""}>Add Script to Context</option>
 						</select>
 						${
 							data.systemTool?.type
@@ -2348,7 +2393,7 @@ function getAgentScriptResponseInterface(responseType, currentLanguage, data = {
                 <div class="agent-script-node-input-group">
                     <label>Custom Tool</label>
                     <select class="form-select" data-input="custom-tool-select">
-                        <option value="">Select Tool</option>
+                        <option value="" disabled ${!data.customTool?.id ? "selected" : ""}>Select Tool</option>
                         ${toolOptions}
                     </select>
                 </div>
@@ -2374,6 +2419,9 @@ function UpdateAgentScriptGraphNodePorts(cell, responseType, toolType = null, co
 
 	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL) {
 		switch (toolType) {
+			case "":
+			case null:
+			case undefined:
 			case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
 			case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
 			case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN:
@@ -3115,7 +3163,7 @@ function initAgentTab() {
 
 					// Trigger resize to update graph dimensions
 					setTimeout(() => {
-						resizeAgentScriptGraphCSS(null, true);
+						resizeAgentScriptGraphCSS(() => {}, true);
 					}, 10);
 				});
 
@@ -3241,7 +3289,7 @@ function initAgentTab() {
 
 				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="add-outcome"]', () => {
 					const outcomeTemplate = `
-						<div class="input-group mb-2" data-outcome-index="${nextOutcomeIndex}">
+						<div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
 							<input 
 								type="text" 
 								class="form-control" 
