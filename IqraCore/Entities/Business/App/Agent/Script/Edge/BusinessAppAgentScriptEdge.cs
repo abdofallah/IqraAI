@@ -4,7 +4,7 @@
     {
         public string Id { get; set; } = "";
         public string SourceNodeId { get; set; } = "";
-        public string? SourceNodeToolResponseType { get; set; } = null;
+        public string? SourceNodeToolOutcomeType { get; set; } = null;
         public string TargetNodeId { get; set; } = "";
         public string Label { get; set; } = "";
     }

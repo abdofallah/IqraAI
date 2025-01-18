@@ -1651,13 +1651,20 @@ function createDefaultAgentScriptObject() {
 	};
 }
 
+function updateAgentScriptGraphNodeSize(cell, div) {
+	const contentHeight = div.offsetHeight;
+	if (contentHeight !== cell.getSize().height) {
+		cell.resize(AGENT_SCRIPT_NODE_WIDTH, contentHeight);
+	}
+}
+
 function registerAgentScriptNodes() {
 	// Register Start Node
 	X6.Shape.HTML.register({
 		shape: AGENT_SCRIPT_NODE_TYPES.START,
-		width: 100, // Smaller width for pill shape
-		height: 40, // Fixed height for pill shape
-		effect: ["data"],
+		width: 250, // Smaller width for pill shape
+		height: 70, // Fixed height for pill shape
+		effect: [],
 		ports: {
 			groups: {
 				output: {
@@ -1680,7 +1687,8 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-content">
-                    Start
+                    <h5>Start</h5>
+					<span>Speaks the agent's greeting message</span>
                 </div>
             `;
 
@@ -1693,7 +1701,7 @@ function registerAgentScriptNodes() {
 		shape: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
 		width: AGENT_SCRIPT_NODE_WIDTH,
 		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
-		effect: ["data"],
+		effect: [],
 		ports: {
 			groups: {
 				input: {
@@ -1768,67 +1776,9 @@ function registerAgentScriptNodes() {
                 </div>
             `;
 
-			// Function to update node size
-			// TODO Create this a global function that accepts cell
-			const updateNodeSize = () => {
-				const contentHeight = div.offsetHeight;
-				if (contentHeight !== cell.getSize().height) {
-					cell.resize(AGENT_SCRIPT_NODE_WIDTH, contentHeight);
-				}
-			};
-
-			// Add event listeners for user message
-			const textarea = div.querySelector('[data-input="user-message"]');
-			textarea.addEventListener("input", (e) => {
-				const messages = data.userMessage || {};
-				messages[currentLanguage] = e.target.value;
-				cell.setData({
-					...data,
-					userMessage: messages,
-				});
-			});
-
-			// Response type change handler
-			const select = div.querySelector('[data-input="response-type"]');
-			select.addEventListener("change", (e) => {
-				const newResponseType = e.target.value;
-				const responseContainer = div.querySelector(".agent-script-node-response");
-
-				// Clear previous response data
-				const newData = {
-					...data,
-					responseType: newResponseType,
-					aiResponse: undefined,
-					systemTool: undefined,
-					customTool: undefined,
-				};
-
-				// Update response interface
-				responseContainer.innerHTML = getAgentScriptResponseInterface(newResponseType, currentLanguage, newData);
-
-				// Update cell data
-				cell.setData(newData);
-
-				// Setup new event listeners based on type
-				setupResponseTypeListeners(div, cell, newResponseType);
-
-				updateNodeSize();
-
-				// Update ports based on response type
-				UpdateAgentScriptGraphNodePorts(cell, newResponseType);
-			});
-
-			// Setup initial response type listeners
-			if (data.responseType) {
-				setupResponseTypeListeners(div, cell, data.responseType);
-				if (data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL && data.systemTool?.type) {
-					UpdateAgentScriptGraphNodePorts(cell, data.responseType, data.systemTool.type, data.systemTool.config);
-				}
-			}
-
 			setTimeout(() => {
-				updateNodeSize();
-			}, 100);
+				updateAgentScriptGraphNodeSize(cell, div);
+			}, 10);
 
 			return div;
 		},
@@ -1988,6 +1938,7 @@ function initializeAgentScriptGraph(container) {
 		});
 
 		graph.on("edge:connected", (event) => {
+			/**
 			const allCurrentConnections = Object.keys(CurrentAgentScriptGraph.getCellById(event.currentCell.id)._model.outgoings);
 			for (let i = 0; i < allCurrentConnections.length; i++) {
 				const parentInputCell = allCurrentConnections[i];
@@ -1997,6 +1948,7 @@ function initializeAgentScriptGraph(container) {
 					CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
 				}
 			}
+			**/
 		});
 
 		graph.on("edge:removed", (event) => {
@@ -2015,105 +1967,6 @@ function initializeAgentScriptGraph(container) {
 
 		CurrentAgentScriptGraph = graph;
 	});
-}
-
-// TODO Get these listeners out of here
-function setupResponseTypeListeners(div, cell, responseType) {
-	const data = cell.getData();
-	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-	switch (responseType) {
-		case AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE: {
-			const aiTextarea = div.querySelector('[data-input="ai-response"]');
-			if (aiTextarea) {
-				aiTextarea.addEventListener("input", (e) => {
-					const responses = data.aiResponse || {};
-					responses[currentLanguage] = e.target.value;
-					cell.setData({
-						...data,
-						aiResponse: responses,
-					});
-				});
-			}
-			break;
-		}
-
-		case AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL: {
-			const systemToolSelect = div.querySelector('[data-input="system-tool-type"]');
-			if (systemToolSelect) {
-				systemToolSelect.addEventListener("change", (e) => {
-					const toolType = e.target.value;
-
-					// Update cell data
-					const newData = {
-						...data,
-						systemTool: {
-							type: toolType,
-							config: {},
-						},
-					};
-
-					// Update cell data
-					cell.setData(newData);
-
-					// Refresh the interface to show/hide config button
-					const responseContainer = div.querySelector(".agent-script-node-response");
-					responseContainer.innerHTML = getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, currentLanguage, newData);
-
-					// Setup config button listener
-					setupSystemToolConfigButton(div, cell);
-
-					// Update ports based on tool type
-					UpdateAgentScriptGraphNodePorts(cell, responseType, toolType);
-				});
-			}
-
-			// Setup config button if tool is selected
-			if (data.systemTool?.type) {
-				setupSystemToolConfigButton(div, cell);
-				UpdateAgentScriptGraphNodePorts(cell, responseType, data.systemTool.type, data.systemTool.config);
-			}
-			break;
-		}
-
-		case AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL: {
-			const customToolSelect = div.querySelector('[data-input="custom-tool-select"]');
-			if (customToolSelect) {
-				customToolSelect.addEventListener("change", (e) => {
-					const toolId = e.target.value;
-					cell.setData({
-						...data,
-						customTool: {
-							id: toolId,
-							config: {},
-						},
-					});
-				});
-			}
-			break;
-		}
-	}
-}
-
-// TODO Get this listener out of here
-function setupSystemToolConfigButton(div, cell) {
-	const configButton = div.querySelector('[data-action="configure-system-tool"]');
-	if (configButton) {
-		configButton.addEventListener("click", () => {
-			const data = cell.getData();
-			const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-			// Store current cell for save handler
-			CurrentSystemToolConfigCell = cell;
-
-			// Get config container and populate it
-			const configContainer = document.getElementById("agentScriptSystemToolConfigContainer");
-			configContainer.innerHTML = getAgentScriptSystemToolConfig(data.systemTool.type, currentLanguage, data);
-
-			// Show modal
-			SystemToolConfigModal.show();
-		});
-	}
 }
 
 function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
@@ -2360,7 +2213,7 @@ function getAgentScriptResponseInterface(responseType, currentLanguage, data = {
 							<option value="get_dtmf_keypad_input" ${data.systemTool?.type === "get_dtmf_keypad_input" ? "selected" : ""}>Get DTMF Keypad Input</option>
 							<option value="press_dtmf_keypad" ${data.systemTool?.type === "press_dtmf_keypad" ? "selected" : ""}>Press DTMF Keypad</option>
 							<option value="transfer_to_agent" ${data.systemTool?.type === "transfer_to_agent" ? "selected" : ""}>Transfer to Agent</option>
-							<option value="transfer_to_human" ${data.systemTool?.type === "transfer_to_human" ? "selected" : ""} disabled>Transfer to Human</option>
+							<option value="transfer_to_human" ${data.systemTool?.type === "transfer_to_human" ? "selected" : ""}>Transfer to Human</option>
 							<option value="add_script_to_context" ${data.systemTool?.type === "add_script_to_context" ? "selected" : ""}>Add Script to Context</option>
 						</select>
 						${
@@ -2464,6 +2317,31 @@ function UpdateAgentScriptGraphNodePorts(cell, responseType, toolType = null, co
 		}
 
 		return;
+	}
+
+	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL) {
+		cell.addPort({
+			group: "output",
+			id: "timeout",
+			attrs: {
+				circle: {
+					fill: "#ffc107",
+				},
+			},
+		});
+
+		// Add ports for each outcome
+		(config.outcomes || []).forEach((outcome, index) => {
+			cell.addPort({
+				group: "output",
+				id: `outcome_${index}`,
+				attrs: {
+					circle: {
+						fill: "#28a745",
+					},
+				},
+			});
+		});
 	}
 
 	return;
@@ -3092,6 +2970,151 @@ function initAgentTab() {
 					showAgentScriptListTab();
 				});
 
+				// Response type change handler
+				$("#agent-script-graph").on("change", '[data-input="response-type"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const newResponseType = currentElement.val();
+					const responseContainer = closestScriptUserMessageNode.find(".agent-script-node-response");
+
+					// Clear previous response data
+					const newData = {
+						...data,
+						responseType: newResponseType,
+						aiResponse: undefined,
+						systemTool: undefined,
+						customTool: undefined,
+					};
+
+					// Update response interface
+					responseContainer.html($(getAgentScriptResponseInterface(newResponseType, currentLanguage, newData)));
+					cell.setData(newData);
+
+					UpdateAgentScriptGraphNodePorts(cell, newResponseType);
+				});
+
+				// Message Reply Node Text Input
+				$("#agent-script-graph").on("input", '[data-input="user-message"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const messages = data.userMessage || {};
+					messages[currentLanguage] = currentElement.val();
+					cell.setData({
+						...data,
+						userMessage: messages,
+					});
+				});
+
+				// AI Response Type Text Input
+				$("#agent-script-graph").on("input", '[data-input="ai-response"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const responses = data.aiResponse || {};
+					responses[currentLanguage] = currentElement.val();
+					cell.setData({
+						...data,
+						aiResponse: responses,
+					});
+				});
+
+				// System tool type change
+				$("#agent-script-graph").on("change", '[data-input="system-tool-type"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+
+					const toolType = currentElement.val();
+					const responseType = data.responseType;
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					// Update cell data
+					const newData = {
+						...data,
+						systemTool: {
+							type: toolType,
+							config: {},
+						},
+					};
+
+					// Update cell data
+					cell.setData(newData);
+
+					// Refresh the interface to show/hide config button
+					const responseContainer = closestScriptUserMessageNode.find(".agent-script-node-response");
+					responseContainer.html($(getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, currentLanguage, newData)));
+
+					// Update ports based on tool type
+					UpdateAgentScriptGraphNodePorts(cell, responseType, toolType);
+				});
+
+				// Custom tool select change
+				$("#agent-script-graph").on("change", '[data-input="custom-tool-select"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+
+					const responseType = data.responseType;
+					const toolId = currentElement.val();
+
+					cell.setData({
+						...data,
+						customTool: {
+							id: toolId,
+							config: {},
+						},
+					});
+
+					// todo add config box for custom tools
+					UpdateAgentScriptGraphNodePorts(cell, responseType, null, {});
+				});
+
+				// System tool config button
+				$("#agent-script-graph").on("click", '[data-action="configure-system-tool"]', (e) => {
+					const currentElement = $(e.currentTarget);
+					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
+					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+
+					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
+					const data = cell.getData() || [];
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					// Store current cell for save handler
+					CurrentSystemToolConfigCell = cell;
+
+					// Get config container and populate it
+					$("#agentScriptSystemToolConfigContainer").html($(getAgentScriptSystemToolConfig(data.systemTool.type, currentLanguage, data)));
+
+					// Show modal
+					SystemToolConfigModal.show();
+				});
+
 				// System Tool Config Modal Listeners
 				$("#agentScriptSystemToolConfigSave").on("click", () => {
 					if (CurrentSystemToolConfigCell) {
@@ -3111,7 +3134,17 @@ function initAgentTab() {
 					document.getElementById("agentScriptSystemToolConfigContainer").innerHTML = "";
 				});
 
-				// Graph Buttons Event Listeners
+				// Graph Add Node Buttons
+				$("#agent-script-add-user-message").on("click", () => {
+					const currentGraphArea = CurrentAgentScriptGraph.getGraphArea();
+
+					const x = currentGraphArea.x + currentGraphArea.width / 2 - AGENT_SCRIPT_NODE_WIDTH / 2;
+					const y = currentGraphArea.y + currentGraphArea.height / 2 - AGENT_SCRIPT_NODE_MIN_HEIGHT / 2;
+
+					addAgentScriptUserMessageNode(CurrentAgentScriptGraph, x, y);
+				});
+
+				// Graph Toolbar Bottom
 				$("#agent-script-graph-zoom-in").on("click", () => {
 					const zoom = CurrentAgentScriptGraph.zoom();
 					if (zoom < 2) {
@@ -3126,15 +3159,6 @@ function initAgentTab() {
 					}
 				});
 
-				$("#agent-script-graph-zoom-fit").on("click", () => {
-					CurrentAgentScriptGraph.zoomToFit({ padding: 20, maxScale: 1 });
-				});
-
-				$("#agent-script-graph-zoom-reset").on("click", () => {
-					CurrentAgentScriptGraph.scale(1);
-					CurrentAgentScriptGraph.centerContent();
-				});
-
 				$("#agent-script-graph-undo").on("click", () => {
 					if (CurrentAgentScriptGraph.canUndo()) {
 						CurrentAgentScriptGraph.undo();
@@ -3145,10 +3169,6 @@ function initAgentTab() {
 					if (CurrentAgentScriptGraph.canRedo()) {
 						CurrentAgentScriptGraph.redo();
 					}
-				});
-
-				$("#agent-script-add-user-message").on("click", () => {
-					addAgentScriptUserMessageNode(CurrentAgentScriptGraph);
 				});
 
 				$("#agent-script-graph-fullscreen").on("click", () => {
@@ -3228,6 +3248,7 @@ function initAgentTab() {
 						updateAgentGraphCellData({ ...config, timeout: value });
 					}
 				});
+
 				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-start"]', (e) => {
 					const data = CurrentSystemToolConfigCell.getData();
 					const config = data.systemTool?.config || {};
@@ -3394,8 +3415,9 @@ function initAgentTab() {
 				if (ManageAgentType == null) return;
 
 				setTimeout(() => {
-					resizeAgentScriptGraphCSS();
-				}, 500);
+					const isFullscreen = $(".agent-script-graph-container").hasClass("fullscreen");
+					resizeAgentScriptGraphCSS(() => {}, isFullscreen);
+				}, 200);
 			});
 		}
 		initAgentTabChangeHandlers();
