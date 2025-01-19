@@ -1190,8 +1190,20 @@
                                             <!-- Top Toolbar -->
                                             <div class="agent-script-graph-top-toolbar">
                                                 <div class="btn-group">
-                                                    <button id="agent-script-add-user-message" class="btn btn-light btn-sm" title="Add Message">
+                                                    <button id="agent-script-add-user-query" class="btn btn-light btn-sm me-2" title="Add User Query">
                                                         <i class="fa-regular fa-message"></i>
+                                                    </button>
+
+                                                    <button id="agent-script-add-ai-response" class="btn btn-light btn-sm me-2" title="Add AI Response">
+                                                        <i class="fa-regular fa-robot"></i>
+                                                    </button>
+
+                                                    <button id="agent-script-add-system-tool" class="btn btn-light btn-sm me-2" title="Add System Tool">
+                                                        <i class="fa-regular fa-toolbox"></i>
+                                                    </button>
+
+                                                    <button id="agent-script-add-custom-tool" class="btn btn-light btn-sm" title="Add Custom Tool">
+                                                        <i class="fa-regular fa-wrench"></i>
                                                     </button>
                                                 </div>
                                             </div>
@@ -4732,15 +4744,94 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Tool Configuration</h5>
+                        <h5 class="modal-title">System Tool Configuration</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div id="agentScriptSystemToolConfigContainer"></div>
+                        <div id="systemToolConfigContainer">
+                            <!-- Configuration content will be dynamically added here -->
+                        </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="agentScriptSystemToolConfigSave">Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveSystemToolConfigButton">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Script User Query Configuration Model -->
+        <div class="modal fade" id="agentScriptUserQueryConfigModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">User Query Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Query Examples</label>
+                            <div id="queryExamplesContainer">
+                                <!-- Examples will be dynamically added here -->
+                            </div>
+                            <button class="btn btn-light btn-sm mt-2" id="addQueryExampleButton">
+                                <i class="fa-regular fa-plus me-2"></i>
+                                Add Example
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveUserQueryConfigButton">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Script AI Response Configuration Model -->
+        <div class="modal fade" id="agentScriptAiResponseConfigModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">AI Response Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Response Examples</label>
+                            <div id="responseExamplesContainer">
+                                <!-- Examples will be dynamically added here -->
+                            </div>
+                            <button class="btn btn-light btn-sm mt-2" id="addResponseExampleButton">
+                                <i class="fa-regular fa-plus me-2"></i>
+                                Add Example
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveAIResponseConfigButton">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Script Custom Tool Configuration Model -->
+        <div class="modal fade" id="agentScriptCustomToolConfigModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Custom Tool Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="customToolConfigContainer">
+                            <!-- Configuration content will be dynamically added here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveCustomToolConfigButton">Save</button>
                     </div>
                 </div>
             </div>

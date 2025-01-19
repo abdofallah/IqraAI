@@ -1604,3 +1604,107 @@ table.table > thead > * > * {
 .agent-script-node-response-type {
 	margin-top: 12px;
 }
+
+.agent-script-user-query-node {
+	background: #fff;
+	border: 1px solid #e9ecef;
+	border-radius: 6px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.agent-script-user-query-node .agent-script-node-header {
+	background: #f8f9fa;
+	padding: 8px 12px;
+	border-bottom: 1px solid #e9ecef;
+	border-radius: 6px 6px 0 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.agent-script-user-query-node .agent-script-node-content {
+	padding: 12px;
+}
+
+.agent-script-user-query-node .node-actions {
+	display: flex;
+	gap: 5px;
+}
+
+.agent-script-ai-response-node {
+	background: #fff;
+	border: 1px solid #e9ecef;
+	border-radius: 6px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.agent-script-ai-response-node .agent-script-node-header {
+	background: #f0f7ff; /* Slightly different color to distinguish from user query */
+	padding: 8px 12px;
+	border-bottom: 1px solid #e9ecef;
+	border-radius: 6px 6px 0 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.agent-script-ai-response-node .agent-script-node-content {
+	padding: 12px;
+}
+
+.agent-script-ai-response-node .node-actions {
+	display: flex;
+	gap: 5px;
+}
+
+.agent-script-system-tool-node {
+	background: #fff;
+	border: 1px solid #e9ecef;
+	border-radius: 6px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.agent-script-system-tool-node .agent-script-node-header {
+	background: #fff3e6; /* Different color to distinguish from other nodes */
+	padding: 8px 12px;
+	border-bottom: 1px solid #e9ecef;
+	border-radius: 6px 6px 0 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.agent-script-system-tool-node .agent-script-node-content {
+	padding: 12px;
+}
+
+.agent-script-system-tool-node .node-actions {
+	display: flex;
+	gap: 5px;
+}
+
+.agent-script-custom-tool-node {
+	background: #fff;
+	border: 1px solid #e9ecef;
+	border-radius: 6px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.agent-script-custom-tool-node .agent-script-node-header {
+	background: #e6f3ff; /* Different color to distinguish from other nodes */
+	padding: 8px 12px;
+	border-bottom: 1px solid #e9ecef;
+	border-radius: 6px 6px 0 0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.agent-script-custom-tool-node .agent-script-node-content {
+	padding: 12px;
+}
+
+.agent-script-custom-tool-node .node-actions {
+	display: flex;
+	gap: 5px;
+}

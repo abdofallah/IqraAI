@@ -13,7 +13,7 @@ const AGENT_SCRIPT_GRAPH_PLUGINS = {
 // Constants for node system
 const AGENT_SCRIPT_NODE_TYPES = {
 	START: "agent-script-start-node",
-	USER_MESSAGE: "agent-script-user-message-node",
+	USER_QUERY: "agent-script-user-query-node",
 	AI_RESPONSE: "agent-script-ai-response-node",
 	SYSTEM_TOOL: "agent-script-system-tool-node",
 	CUSTOM_TOOL: "agent-script-custom-tool-node",
@@ -82,6 +82,12 @@ let CurrentAgentScriptGraphStartNode = null;
 let CurrentSystemToolConfigCell = null;
 let SystemToolConfigModal = null;
 let agentScriptDMTFNextOutcomeIndex = 0;
+let CurrentUserQueryConfigCell = null;
+let UserQueryConfigModal = null;
+let CurrentAIResponseConfigCell = null;
+let AIResponseConfigModal = null;
+let CurrentCustomToolConfigCell = null;
+let CustomToolConfigModal = null;
 
 /** Element Variables **/
 
@@ -1696,9 +1702,9 @@ function registerAgentScriptNodes() {
 		},
 	});
 
-	// Register User Message Node
+	// User Query/Message Node
 	X6.Shape.HTML.register({
-		shape: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
+		shape: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
 		width: AGENT_SCRIPT_NODE_WIDTH,
 		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
 		effect: [],
@@ -1732,46 +1738,278 @@ function registerAgentScriptNodes() {
 		},
 		html(cell) {
 			const div = document.createElement("div");
-			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE}`;
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.USER_QUERY}`;
 
 			const data = cell.getData() || {};
-			const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+			const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <button class="agent-script-node-delete-btn" data-action="delete-node">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
+                    <div class="d-flex align-items-center">
+                        <i class="fa-regular fa-message me-2"></i>
+                        <span>User Query</span>
+                    </div>
+                    <div class="node-actions">
+                        <button class="btn btn-light btn-sm me-2" data-action="configure-user-node">
+                            <i class="fa-regular fa-gear"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-node">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="agent-script-node-content">
                     <div class="agent-script-node-input-group">
-                        <label>User Message</label>
                         <textarea 
                             class="form-control" 
-                            placeholder="Type the user message..."
-                            data-input="user-message"
+                            placeholder="Type the user query..."
+                            data-input="user-query"
                             rows="3"
-                        >${data.userMessage?.[currentLanguage] || ""}</textarea>
+                        >${data.query?.[currentLanguage] || ""}</textarea>
                     </div>
-                    <div class="agent-script-node-response-type">
-                        <label>Response Type</label>
-                        <select class="form-select" data-input="response-type">
-                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE}" 
-                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE ? "selected" : ""}>
-                                AI Response
-                            </option>
-                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL}" 
-                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL ? "selected" : ""}>
-                                System Tool
-                            </option>
-                            <option value="${AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL}" 
-                                ${data.responseType === AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL ? "selected" : ""}>
-                                Custom Tool
-                            </option>
+                </div>
+            `;
+
+			setTimeout(() => {
+				updateAgentScriptGraphNodeSize(cell, div);
+			}, 10);
+
+			return div;
+		},
+	});
+
+	// AI Response Node
+	X6.Shape.HTML.register({
+		shape: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
+		width: AGENT_SCRIPT_NODE_WIDTH,
+		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
+		effect: [],
+		ports: {
+			groups: {
+				input: {
+					position: "top",
+					attrs: {
+						circle: {
+							r: 10,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 8,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE}`;
+
+			const data = cell.getData() || {};
+			const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+			div.innerHTML = `
+                <div class="agent-script-node-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-regular fa-robot me-2"></i>
+                        <span>AI Response</span>
+                    </div>
+                    <div class="node-actions">
+                        <button class="btn btn-light btn-sm me-2" data-action="configure-ai-node">
+                            <i class="fa-regular fa-gear"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-node">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="agent-script-node-content">
+                    <div class="agent-script-node-input-group">
+                        <textarea 
+                            class="form-control" 
+                            placeholder="Type the AI response..."
+                            data-input="ai-response"
+                            rows="3"
+                        >${data.response?.[currentLanguage] || ""}</textarea>
+                    </div>
+                </div>
+            `;
+
+			setTimeout(() => {
+				updateAgentScriptGraphNodeSize(cell, div);
+			}, 10);
+
+			return div;
+		},
+	});
+
+	// System Tool Node
+	X6.Shape.HTML.register({
+		shape: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		width: AGENT_SCRIPT_NODE_WIDTH,
+		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
+		effect: [],
+		ports: {
+			groups: {
+				input: {
+					position: "top",
+					attrs: {
+						circle: {
+							r: 10,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 8,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL}`;
+
+			const data = cell.getData() || {};
+			const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+			div.innerHTML = `
+                <div class="agent-script-node-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-regular fa-gear me-2"></i>
+                        <span>System Tool</span>
+                    </div>
+                    <div class="node-actions">
+						<button class="btn btn-light btn-sm me-2" data-action="configure-system-tool" disabled>
+							<i class="fa-regular fa-gear"></i>
+						</button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-node">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="agent-script-node-content">
+                    <div class="agent-script-node-input-group">
+                        <div class="d-flex gap-2">
+                            <select class="form-select" data-input="system-tool-type">
+                                <option value="" disabled ${!data.toolType ? "selected" : ""}>Select Tool</option>
+                                <option value="end_call" ${data.toolType === "end_call" ? "selected" : ""}>End Call</option>
+                                <option value="change_language" ${data.toolType === "change_language" ? "selected" : ""}>Change Language</option>
+                                <option value="get_dtmf_keypad_input" ${data.toolType === "get_dtmf_keypad_input" ? "selected" : ""}>Get DTMF Keypad Input</option>
+                                <option value="press_dtmf_keypad" ${data.toolType === "press_dtmf_keypad" ? "selected" : ""}>Press DTMF Keypad</option>
+                                <option value="transfer_to_agent" ${data.toolType === "transfer_to_agent" ? "selected" : ""}>Transfer to Agent</option>
+                                <option value="transfer_to_human" ${data.toolType === "transfer_to_human" ? "selected" : ""}>Transfer to Human</option>
+                                <option value="add_script_to_context" ${data.toolType === "add_script_to_context" ? "selected" : ""}>Add Script to Context</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+			setTimeout(() => {
+				updateAgentScriptGraphNodeSize(cell, div);
+			}, 10);
+
+			return div;
+		},
+	});
+
+	// Custom Tool Node
+	X6.Shape.HTML.register({
+		shape: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
+		width: AGENT_SCRIPT_NODE_WIDTH,
+		height: AGENT_SCRIPT_NODE_MIN_HEIGHT,
+		effect: [],
+		ports: {
+			groups: {
+				input: {
+					position: "top",
+					attrs: {
+						circle: {
+							r: 10,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+				output: {
+					position: "bottom",
+					attrs: {
+						circle: {
+							r: 8,
+							magnet: true,
+							stroke: "#8f8f8f",
+							strokeWidth: 2,
+							fill: "#fff",
+						},
+					},
+				},
+			},
+		},
+		html(cell) {
+			const div = document.createElement("div");
+			div.className = `agent-script-node ${AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL}`;
+
+			const data = cell.getData() || {};
+			const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+			// Get available custom tools
+			const tools = BusinessFullData.businessApp.tools || [];
+			const toolOptions = tools
+				.map(
+					(tool) => `
+                    <option value="${tool.id}" ${data.toolId === tool.id ? "selected" : ""}>
+                        ${tool.general.name[currentLanguage] || tool.general.name["en-us"] || "Unnamed Tool"}
+                    </option>
+                `,
+				)
+				.join("");
+
+			div.innerHTML = `
+                <div class="agent-script-node-header">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-regular fa-wrench me-2"></i>
+                        <span>Custom Tool</span>
+                    </div>
+                    <div class="node-actions">
+                        <button class="btn btn-light btn-sm" data-action="configure-custom-tool" disabled>
+							<i class="fa-regular fa-gear"></i>
+						</button>
+                        <button class="btn btn-danger btn-sm" data-action="delete-node">
+                            <i class="fa-regular fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="agent-script-node-content">
+                    <div class="agent-script-node-input-group">
+                        <select class="form-select" data-input="custom-tool-select">
+                            <option value="" disabled ${!data.toolId ? "selected" : ""}>Select Tool</option>
+                            ${toolOptions}
                         </select>
-                    </div>
-                    <div class="agent-script-node-response">
-                        ${getAgentScriptResponseInterface(data.responseType, currentLanguage, data)}
                     </div>
                 </div>
             `;
@@ -2186,76 +2424,6 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 	return "";
 }
 
-function getAgentScriptResponseInterface(responseType, currentLanguage, data = {}) {
-	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.AI_RESPONSE) {
-		return `
-                <div class="agent-script-node-input-group">
-                    <label>AI Response</label>
-                    <textarea 
-                        class="form-control" 
-                        placeholder="Type the AI response..."
-                        data-input="ai-response"
-                        rows="3"
-                    >${data.aiResponse?.[currentLanguage] || ""}</textarea>
-                </div>
-            `;
-	}
-
-	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL) {
-		return `
-				<div class="agent-script-node-input-group">
-					<label>System Tool</label>
-					<div class="d-flex gap-2">
-						<select class="form-select" data-input="system-tool-type">
-							<option value="" disabled ${!data.systemTool?.type ? "selected" : ""}>Select Tool</option>
-							<option value="end_call" ${data.systemTool?.type === "end_call" ? "selected" : ""}>End Call</option>
-							<option value="change_language" ${data.systemTool?.type === "change_language" ? "selected" : ""}>Change Language</option>
-							<option value="get_dtmf_keypad_input" ${data.systemTool?.type === "get_dtmf_keypad_input" ? "selected" : ""}>Get DTMF Keypad Input</option>
-							<option value="press_dtmf_keypad" ${data.systemTool?.type === "press_dtmf_keypad" ? "selected" : ""}>Press DTMF Keypad</option>
-							<option value="transfer_to_agent" ${data.systemTool?.type === "transfer_to_agent" ? "selected" : ""}>Transfer to Agent</option>
-							<option value="transfer_to_human" ${data.systemTool?.type === "transfer_to_human" ? "selected" : ""}>Transfer to Human</option>
-							<option value="add_script_to_context" ${data.systemTool?.type === "add_script_to_context" ? "selected" : ""}>Add Script to Context</option>
-						</select>
-						${
-							data.systemTool?.type
-								? `
-							<button class="btn btn-light" data-action="configure-system-tool">
-								<i class="fa-regular fa-gear"></i>
-							</button>
-						`
-								: ""
-						}
-					</div>
-				</div>
-			`;
-	}
-
-	if (responseType === AGENT_SCRIPT_RESPONSE_TYPES.CUSTOM_TOOL) {
-		const tools = BusinessFullData.businessApp.tools;
-		const toolOptions = tools
-			.map(
-				(tool) => `
-                <option value="${tool.id}" ${data.customTool?.id === tool.id ? "selected" : ""}>
-                    ${tool.general.name[currentLanguage] || tool.general.name["en-us"] || "Unnamed Tool"}
-                </option>
-            `,
-			)
-			.join("");
-
-		return `
-                <div class="agent-script-node-input-group">
-                    <label>Custom Tool</label>
-                    <select class="form-select" data-input="custom-tool-select">
-                        <option value="" disabled ${!data.customTool?.id ? "selected" : ""}>Select Tool</option>
-                        ${toolOptions}
-                    </select>
-                </div>
-            `;
-	}
-
-	return "";
-}
-
 function UpdateAgentScriptGraphNodePorts(cell, responseType, toolType = null, config = {}) {
 	// Remove all existing output ports
 	const currentPorts = cell.getPorts();
@@ -2378,13 +2546,13 @@ function resizeAgentScriptGraphCSS(callback, isFullscreen = false) {
 	}, 100);
 }
 
-function addAgentScriptUserMessageNode(graph, x = 100, y = 200) {
+function addUserQueryNode(graph, x = 100, y = 200) {
 	return graph.addNode({
-		shape: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
+		shape: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
 		data: {
-			type: AGENT_SCRIPT_NODE_TYPES.USER_MESSAGE,
-			userMessage: {},
-			responseType: "ai_response",
+			type: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
+			query: {},
+			examples: {},
 		},
 		x,
 		y,
@@ -2394,13 +2562,265 @@ function addAgentScriptUserMessageNode(graph, x = 100, y = 200) {
 	});
 }
 
-function updateAgentGraphCellData(newConfig) {
-	const data = CurrentSystemToolConfigCell.getData();
-	CurrentSystemToolConfigCell.setData({
-		...data,
-		systemTool: {
-			...data.systemTool,
+function showUserQueryConfig(cell) {
+	CurrentUserQueryConfigCell = cell;
+	const data = cell.getData() || {};
+	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+	// Clear and populate examples
+	$("#queryExamplesContainer").empty();
+	(data.examples?.[currentLanguage] || []).forEach((example) => {
+		$("#queryExamplesContainer").append(`
+            <div class="input-group mb-2">
+                <input type="text" class="form-control" 
+                       value="${example}"
+                       data-input="query-example">
+                <button class="btn btn-danger" data-action="remove-example">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        `);
+	});
+
+	UserQueryConfigModal.show();
+}
+
+function addAIResponseNode(graph, x = 100, y = 200) {
+	return graph.addNode({
+		shape: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
+		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
+			response: {},
+			examples: {},
+		},
+		x,
+		y,
+		ports: {
+			items: [{ group: "input" }, { group: "output" }],
+		},
+	});
+}
+
+function showAIResponseConfig(cell) {
+	CurrentAIResponseConfigCell = cell;
+	const data = cell.getData() || {};
+	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+	// Clear and populate examples
+	$("#responseExamplesContainer").empty();
+	(data.examples?.[currentLanguage] || []).forEach((example) => {
+		$("#responseExamplesContainer").append(`
+            <div class="input-group mb-2">
+                <input type="text" class="form-control" 
+                       value="${example}"
+                       data-input="response-example">
+                <button class="btn btn-danger" data-action="remove-example">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </div>
+        `);
+	});
+
+	AIResponseConfigModal.show();
+}
+
+function UpdateSystemToolNodePorts(cell, toolType) {
+	// Remove all existing output ports
+	const currentPorts = cell.getPorts();
+	const outputPorts = currentPorts.filter((port) => port.group === "output");
+	outputPorts.forEach((port) => cell.removePort(port.id));
+
+	// Add appropriate ports based on tool type
+	switch (toolType) {
+		case "end_call":
+		case "transfer_to_agent":
+		case "transfer_to_human":
+			// These are end nodes, no output ports needed
+			break;
+
+		case "get_dtmf_keypad_input":
+			// Add port for timeout
+			cell.addPort({
+				group: "output",
+				id: "timeout",
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+				},
+			});
+
+			// Add ports for outcomes (will be updated when configured)
+			break;
+
+		default:
+			// All other tools have a single output
+			cell.addPort({
+				group: "output",
+			});
+			break;
+	}
+}
+
+function updateSystemToolConfig(newConfig) {
+	if (CurrentSystemToolConfigCell) {
+		const data = CurrentSystemToolConfigCell.getData();
+		CurrentSystemToolConfigCell.setData({
+			...data,
 			config: newConfig,
+		});
+
+		// Update ports if needed (e.g., for DTMF tool)
+		if (data.toolType === "get_dtmf_keypad_input") {
+			UpdateSystemToolNodePorts(CurrentSystemToolConfigCell, data.toolType, newConfig);
+		}
+	}
+}
+
+function addSystemToolNode(graph, x = 100, y = 200) {
+	return graph.addNode({
+		shape: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
+			toolType: null,
+			config: {},
+		},
+		x,
+		y,
+		ports: {
+			items: [
+				{ group: "input" },
+				// Output ports will be added based on tool type
+			],
+		},
+	});
+}
+
+function showSystemToolConfig(cell) {
+	CurrentSystemToolConfigCell = cell;
+	const data = cell.getData() || {};
+	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+	// Get config container and populate it with the appropriate tool configuration
+	$("#systemToolConfigContainer").html(
+		getAgentScriptSystemToolConfig(data.toolType, currentLanguage, {
+			systemTool: {
+				type: data.toolType,
+				config: data.config || {},
+			},
+		}),
+	);
+
+	// Show the modal
+	SystemToolConfigModal.show();
+}
+
+function showCustomToolConfig(cell) {
+	CurrentCustomToolConfigCell = cell;
+	const data = cell.getData() || {};
+	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+	// Get the selected tool's configuration fields
+	const selectedTool = BusinessFullData.businessApp.tools.find((t) => t.id === data.toolId);
+	if (!selectedTool) return;
+
+	// Generate configuration form
+	const configHtml = generateCustomToolConfigForm(selectedTool, data.config || {});
+	$("#customToolConfigContainer").html(configHtml);
+
+	CustomToolConfigModal.show();
+}
+
+function generateCustomToolConfigForm(tool, currentConfig) {
+	// This function will generate the configuration form based on the tool's required fields
+	// You'll need to implement this based on your tool configuration structure
+	return `
+        <div class="mb-3">
+            <h6>Tool Parameters</h6>
+            ${(tool.parameters || [])
+							.map(
+								(param) => `
+                <div class="mb-2">
+                    <label class="form-label">${param.name}</label>
+                    <input type="text" 
+                           class="form-control" 
+                           data-param="${param.id}"
+                           value="${currentConfig[param.id] || ""}"
+                           placeholder="${param.description || ""}">
+                </div>
+            `,
+							)
+							.join("")}
+        </div>
+    `;
+}
+
+function getCustomToolConfigValues() {
+	// Collect all parameter values
+	const config = {};
+	$("#customToolConfigContainer [data-param]").each((i, el) => {
+		config[$(el).data("param")] = $(el).val();
+	});
+	return config;
+}
+
+function updateCustomToolConfig(config) {
+	if (CurrentCustomToolConfigCell) {
+		const data = CurrentCustomToolConfigCell.getData();
+		CurrentCustomToolConfigCell.setData({
+			...data,
+			config: config,
+		});
+	}
+}
+
+function UpdateCustomToolNodePorts(cell, toolId) {
+	// Remove all existing output ports
+	const currentPorts = cell.getPorts();
+	const outputPorts = currentPorts.filter((port) => port.group === "output");
+	outputPorts.forEach((port) => cell.removePort(port.id));
+
+	// Get the tool definition
+	const tool = BusinessFullData.businessApp.tools.find((t) => t.id === toolId);
+	if (!tool) return;
+
+	// Add output ports based on tool outcomes
+	if (tool.outcomes && tool.outcomes.length > 0) {
+		// Add port for each outcome
+		tool.outcomes.forEach((outcome, index) => {
+			cell.addPort({
+				group: "output",
+				id: `outcome_${index}`,
+				attrs: {
+					circle: {
+						fill: "#28a745",
+					},
+				},
+			});
+		});
+	} else {
+		// Add single output port if no specific outcomes
+		cell.addPort({
+			group: "output",
+		});
+	}
+}
+
+function addCustomToolNode(graph, x = 100, y = 200) {
+	return graph.addNode({
+		shape: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
+		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
+			toolId: null,
+			config: {},
+		},
+		x,
+		y,
+		ports: {
+			items: [
+				{ group: "input" },
+				// Output ports will be added based on tool configuration
+			],
 		},
 	});
 }
@@ -2410,6 +2830,9 @@ function initAgentTab() {
 	$(document).ready(() => {
 		registerAgentScriptNodes();
 		SystemToolConfigModal = new bootstrap.Modal("#agentScriptSystemToolConfigModal");
+		AIResponseConfigModal = new bootstrap.Modal("#agentScriptAiResponseConfigModal");
+		UserQueryConfigModal = new bootstrap.Modal("#agentScriptUserQueryConfigModal");
+		CustomToolConfigModal = new bootstrap.Modal("#agentScriptCustomToolConfigModal");
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 		agentsScriptManagerLanguageDropdown = new MultiLanguageDropdown("agentsScriptManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
@@ -2970,178 +3393,524 @@ function initAgentTab() {
 					showAgentScriptListTab();
 				});
 
-				// Response type change handler
-				$("#agent-script-graph").on("change", '[data-input="response-type"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
-
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
-					const newResponseType = currentElement.val();
-					const responseContainer = closestScriptUserMessageNode.find(".agent-script-node-response");
-
-					// Clear previous response data
-					const newData = {
-						...data,
-						responseType: newResponseType,
-						aiResponse: undefined,
-						systemTool: undefined,
-						customTool: undefined,
-					};
-
-					// Update response interface
-					responseContainer.html($(getAgentScriptResponseInterface(newResponseType, currentLanguage, newData)));
-					cell.setData(newData);
-
-					UpdateAgentScriptGraphNodePorts(cell, newResponseType);
-				});
-
-				// Message Reply Node Text Input
-				$("#agent-script-graph").on("input", '[data-input="user-message"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
-
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
-					const messages = data.userMessage || {};
-					messages[currentLanguage] = currentElement.val();
-					cell.setData({
-						...data,
-						userMessage: messages,
-					});
-				});
-
-				// AI Response Type Text Input
-				$("#agent-script-graph").on("input", '[data-input="ai-response"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
-
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
-					const responses = data.aiResponse || {};
-					responses[currentLanguage] = currentElement.val();
-					cell.setData({
-						...data,
-						aiResponse: responses,
-					});
-				});
-
-				// System tool type change
-				$("#agent-script-graph").on("change", '[data-input="system-tool-type"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
-
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-
-					const toolType = currentElement.val();
-					const responseType = data.responseType;
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
-					// Update cell data
-					const newData = {
-						...data,
-						systemTool: {
-							type: toolType,
-							config: {},
-						},
-					};
-
-					// Update cell data
-					cell.setData(newData);
-
-					// Refresh the interface to show/hide config button
-					const responseContainer = closestScriptUserMessageNode.find(".agent-script-node-response");
-					responseContainer.html($(getAgentScriptResponseInterface(AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, currentLanguage, newData)));
-
-					// Update ports based on tool type
-					UpdateAgentScriptGraphNodePorts(cell, responseType, toolType);
-				});
-
-				// Custom tool select change
-				$("#agent-script-graph").on("change", '[data-input="custom-tool-select"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
-
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-
-					const responseType = data.responseType;
-					const toolId = currentElement.val();
-
-					cell.setData({
-						...data,
-						customTool: {
-							id: toolId,
-							config: {},
-						},
+				// User Query Node
+				function initializeUserQueryHandlers() {
+					// Add Example Button Handler
+					$("#addQueryExampleButton").on("click", () => {
+						$("#queryExamplesContainer").append(`
+							<div class="input-group mb-2">
+								<input type="text" class="form-control" 
+									placeholder="Enter example query"
+									data-input="query-example">
+								<button class="btn btn-danger" data-action="remove-example">
+									<i class="fa-regular fa-trash"></i>
+								</button>
+							</div>
+						`);
 					});
 
-					// todo add config box for custom tools
-					UpdateAgentScriptGraphNodePorts(cell, responseType, null, {});
-				});
+					// Remove Example Button Handler
+					$("#queryExamplesContainer").on("click", '[data-action="remove-example"]', function () {
+						$(this).closest(".input-group").remove();
+					});
 
-				// System tool config button
-				$("#agent-script-graph").on("click", '[data-action="configure-system-tool"]', (e) => {
-					const currentElement = $(e.currentTarget);
-					const closestScriptUserMessageNode = currentElement.closest(".x6-node[data-shape='agent-script-user-message-node']");
-					const dataCellId = closestScriptUserMessageNode.attr("data-cell-id");
+					// Save Configuration Button Handler
+					$("#saveUserQueryConfigButton").on("click", () => {
+						if (CurrentUserQueryConfigCell) {
+							const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+							const examples = Array.from($("#queryExamplesContainer input")).map((input) => $(input).val().trim());
 
-					const cell = CurrentAgentScriptGraph.getCellById(dataCellId);
-					const data = cell.getData() || [];
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+							const data = CurrentUserQueryConfigCell.getData() || {};
+							const queryExamples = data.examples || {};
+							queryExamples[currentLanguage] = examples;
 
-					// Store current cell for save handler
-					CurrentSystemToolConfigCell = cell;
-
-					// Get config container and populate it
-					$("#agentScriptSystemToolConfigContainer").html($(getAgentScriptSystemToolConfig(data.systemTool.type, currentLanguage, data)));
-
-					// Show modal
-					SystemToolConfigModal.show();
-				});
-
-				// System Tool Config Modal Listeners
-				$("#agentScriptSystemToolConfigSave").on("click", () => {
-					if (CurrentSystemToolConfigCell) {
-						// The cell data is already updated by the config listeners
-						// Just update the ports in case of DTMF outcomes changes
-						const data = CurrentSystemToolConfigCell.getData();
-						if (data.systemTool?.type === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
-							UpdateAgentScriptGraphNodePorts(CurrentSystemToolConfigCell, AGENT_SCRIPT_RESPONSE_TYPES.SYSTEM_TOOL, data.systemTool.type, data.systemTool.config);
+							CurrentUserQueryConfigCell.setData({
+								...data,
+								examples: queryExamples,
+							});
 						}
-					}
 
-					SystemToolConfigModal.hide();
-				});
+						UserQueryConfigModal.hide();
+					});
 
-				$("#agentScriptSystemToolConfigModal").on("hidden.bs.modal", () => {
-					CurrentSystemToolConfigCell = null;
-					document.getElementById("agentScriptSystemToolConfigContainer").innerHTML = "";
-				});
+					// Modal Hidden Event
+					$("#userQueryConfigModal").on("hidden.bs.modal", () => {
+						CurrentUserQueryConfigCell = null;
+						$("#queryExamplesContainer").empty();
+					});
+
+					// Configure node button handler
+					$("#agent-script-graph").on("click", '[data-action="configure-user-node"]', (e) => {
+						const closestNode = $(e.currentTarget).closest(".x6-node");
+						const nodeType = closestNode.attr("data-shape");
+						const cellId = closestNode.attr("data-cell-id");
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+
+						if (nodeType === AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+							showUserQueryConfig(cell);
+						}
+					});
+
+					// Query text change handler
+					$("#agent-script-graph").on("input", '[data-input="user-query"]', (e) => {
+						const currentElement = $(e.currentTarget);
+						const closestNode = currentElement.closest(".x6-node");
+						const cellId = closestNode.attr("data-cell-id");
+
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+						const data = cell.getData() || {};
+						const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+						const queries = data.query || {};
+						queries[currentLanguage] = currentElement.val();
+
+						cell.setData({
+							...data,
+							query: queries,
+						});
+					});
+				}
+				initializeUserQueryHandlers();
+
+				// AI Response Node
+				function initializeAIResponseHandlers() {
+					// Add Example Button Handler
+					$("#addResponseExampleButton").on("click", () => {
+						$("#responseExamplesContainer").append(`
+							<div class="input-group mb-2">
+								<input type="text" class="form-control" 
+									placeholder="Enter example response"
+									data-input="response-example">
+								<button class="btn btn-danger" data-action="remove-example">
+									<i class="fa-regular fa-trash"></i>
+								</button>
+							</div>
+						`);
+					});
+
+					// Remove Example Button Handler
+					$("#responseExamplesContainer").on("click", '[data-action="remove-example"]', function () {
+						$(this).closest(".input-group").remove();
+					});
+
+					// Save Configuration Button Handler
+					$("#saveAIResponseConfigButton").on("click", () => {
+						if (CurrentAIResponseConfigCell) {
+							const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+							const examples = Array.from($("#responseExamplesContainer input")).map((input) => $(input).val().trim());
+
+							const data = CurrentAIResponseConfigCell.getData() || {};
+							const responseExamples = data.examples || {};
+							responseExamples[currentLanguage] = examples;
+
+							CurrentAIResponseConfigCell.setData({
+								...data,
+								examples: responseExamples,
+							});
+						}
+
+						AIResponseConfigModal.hide();
+					});
+
+					// Modal Hidden Event
+					$("#aiResponseConfigModal").on("hidden.bs.modal", () => {
+						CurrentAIResponseConfigCell = null;
+						$("#responseExamplesContainer").empty();
+					});
+
+					// Response text change handler
+					$("#agent-script-graph").on("input", '[data-input="ai-response"]', (e) => {
+						const currentElement = $(e.currentTarget);
+						const closestNode = currentElement.closest(".x6-node");
+						const cellId = closestNode.attr("data-cell-id");
+
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+						const data = cell.getData() || {};
+						const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+						const responses = data.response || {};
+						responses[currentLanguage] = currentElement.val();
+
+						cell.setData({
+							...data,
+							response: responses,
+						});
+					});
+
+					// Configure node button handler (add to existing handler)
+					$("#agent-script-graph").on("click", '[data-action="configure-ai-node"]', (e) => {
+						const closestNode = $(e.currentTarget).closest(".x6-node");
+						const nodeType = closestNode.attr("data-shape");
+						const cellId = closestNode.attr("data-cell-id");
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+
+						if (nodeType === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+							showAIResponseConfig(cell);
+						}
+					});
+				}
+				initializeAIResponseHandlers();
+
+				// System Tool Node
+				function initSystemToolNodeHandlers() {
+					// Tool type change handler
+					$("#agent-script-graph").on("change", '[data-input="system-tool-type"]', (e) => {
+						const currentElement = $(e.currentTarget);
+						const closestNode = currentElement.closest(".x6-node");
+						const cellId = closestNode.attr("data-cell-id");
+
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+						const data = cell.getData() || {};
+
+						const toolType = currentElement.val();
+
+						// Update cell data
+						const newData = {
+							...data,
+							toolType: toolType,
+							config: {},
+						};
+
+						// Update cell data
+						cell.setData(newData);
+
+						const requiresConfig =
+							newData.toolType &&
+							(newData.toolType === "end_call" || newData.toolType === "get_dtmf_keypad_input" || newData.toolType === "transfer_to_agent" || newData.toolType === "add_script_to_context");
+
+						closestNode.find('[data-action="configure-system-tool"]').prop("disabled", !requiresConfig);
+
+						// Update ports based on tool type
+						UpdateSystemToolNodePorts(cell, toolType);
+					});
+
+					// Configure tool button handler
+					$("#agent-script-graph").on("click", '[data-action="configure-system-tool"]', (e) => {
+						const closestNode = $(e.currentTarget).closest(".x6-node");
+						const cellId = closestNode.attr("data-cell-id");
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+
+						showSystemToolConfig(cell);
+					});
+
+					// Save Configuration Button Handler
+					$("#saveSystemToolConfigButton").on("click", () => {
+						if (CurrentSystemToolConfigCell) {
+							const data = CurrentSystemToolConfigCell.getData();
+
+							// Update ports in case of DTMF outcomes changes
+							if (data.toolType === "get_dtmf_keypad_input") {
+								UpdateSystemToolNodePorts(CurrentSystemToolConfigCell, data.toolType, data.config);
+							}
+						}
+
+						SystemToolConfigModal.hide();
+					});
+
+					// Modal Hidden Event
+					$("#systemToolConfigModal").on("hidden.bs.modal", () => {
+						CurrentSystemToolConfigCell = null;
+						$("#systemToolConfigContainer").empty();
+					});
+				}
+				initSystemToolNodeHandlers();
+				function initSystemToolConfigHandlers() {
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="end-call-type"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+						const newConfig = {
+							...config,
+							type: e.target.value,
+						};
+
+						// Show/hide message textarea based on type
+						const messageContainer = `
+						<div class="mb-2">
+							<textarea 
+								class="form-control" 
+								data-input="end-call-message"
+								placeholder="Enter end call message..."
+								rows="2"
+							>${config.messages?.[currentLanguage] || ""}</textarea>
+						</div>
+					`;
+
+						if (e.target.value === "with_message") {
+							$(e.target).closest(".tool-config-group").append(messageContainer);
+						} else {
+							$(e.target).closest(".tool-config-group").find('[data-input="end-call-message"]').parent().remove();
+						}
+
+						updateSystemToolConfig(newConfig);
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("input", '[data-input="end-call-message"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+						const messages = config.messages || {};
+						messages[currentLanguage] = e.target.value;
+
+						updateSystemToolConfig({ ...config, messages });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-timeout"]', (e) => {
+						const value = parseInt(e.target.value);
+						if (value >= 1000 && value <= 30000) {
+							const data = CurrentSystemToolConfigCell.getData();
+							const config = data.systemTool?.config || {};
+							updateSystemToolConfig({ ...config, timeout: value });
+						}
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-start"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateSystemToolConfig({ ...config, requireStartAsterisk: e.target.checked });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-end"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateSystemToolConfig({ ...config, requireEndHash: e.target.checked });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-max-length"]', (e) => {
+						const value = parseInt(e.target.value);
+						if (value >= 1 && value <= 20) {
+							const data = CurrentSystemToolConfigCell.getData();
+							const config = data.systemTool?.config || {};
+							updateSystemToolConfig({ ...config, maxLength: value });
+						}
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-encrypt"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+
+						const newConfig = {
+							...config,
+							encryptInput: e.target.checked,
+						};
+
+						// Show/hide variable name input based on encrypt checkbox
+						const variableNameInput = `
+						<div class="mb-2">
+							<label class="form-label small">Variable Name</label>
+							<input 
+								type="text" 
+								class="form-control" 
+								data-input="dtmf-variable"
+								value="${config.variableName || ""}"
+								placeholder="Enter variable name"
+							>
+						</div>
+					`;
+
+						if (e.target.checked) {
+							$(e.target).closest(".tool-config-group").append(variableNameInput);
+						} else {
+							$(e.target).closest(".tool-config-group").find('[data-input="dtmf-variable"]').parent().remove();
+						}
+
+						updateSystemToolConfig(newConfig);
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-variable"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateSystemToolConfig({ ...config, variableName: e.target.value });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("click", '[data-action="add-outcome"]', () => {
+						const outcomeTemplate = `
+						<div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
+							<input 
+								type="text" 
+								class="form-control" 
+								placeholder="DTMF Value"
+								value=""
+								data-input="outcome-value"
+							>
+							<button class="btn btn-danger" data-action="remove-outcome">
+								<i class="fa-regular fa-trash"></i>
+							</button>
+						</div>
+					`;
+
+						$('[data-container="dtmf-outcomes"]').append(outcomeTemplate);
+
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						const outcomes = [...(config.outcomes || []), { value: "", nextNodeId: null }];
+
+						updateSystemToolConfig({ ...config, outcomes });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("input", '[data-input="outcome-value"]', (e) => {
+						const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						const outcomes = [...(config.outcomes || [])];
+
+						outcomes[outcomeIndex] = {
+							...outcomes[outcomeIndex],
+							value: e.target.value,
+						};
+
+						updateSystemToolConfig({ ...config, outcomes });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("click", '[data-action="remove-outcome"]', (e) => {
+						const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						const outcomes = [...(config.outcomes || [])];
+
+						outcomes.splice(outcomeIndex, 1);
+						$(e.target).closest("[data-outcome-index]").remove();
+
+						updateSystemToolConfig({ ...config, outcomes });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-agent"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateSystemToolConfig({ ...config, agentId: e.target.value });
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-context"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+
+						const newConfig = {
+							...config,
+							transferContext: e.target.checked,
+						};
+
+						// Show/hide summarize context option
+						const summarizeContextOption = `
+						<div class="form-check mb-2">
+							<input 
+								class="form-check-input" 
+								type="checkbox" 
+								data-input="summarize-context"
+								${config.summarizeContext ? "checked" : ""}
+							>
+							<label class="form-check-label">
+								Summarize Context
+							</label>
+						</div>
+					`;
+
+						if (e.target.checked) {
+							$(e.target).closest(".form-check").after(summarizeContextOption);
+						} else {
+							$(e.target).closest(".tool-config-group").find('[data-input="summarize-context"]').parent().remove();
+						}
+
+						updateSystemToolConfig(newConfig);
+					});
+
+					$("#agentScriptSystemToolConfigModal").on("change", '[data-input="summarize-context"]', (e) => {
+						const data = CurrentSystemToolConfigCell.getData();
+						const config = data.systemTool?.config || {};
+						updateSystemToolConfig({ ...config, summarizeContext: e.target.checked });
+					});
+				}
+				initSystemToolConfigHandlers();
+
+				// Custom Tool Node
+				function initializeCustomToolHandlers() {
+					// Save Configuration Button Handler
+					$("#saveCustomToolConfigButton").on("click", () => {
+						if (CurrentCustomToolConfigCell) {
+							const config = getCustomToolConfigValues();
+							updateCustomToolConfig(config);
+						}
+
+						CustomToolConfigModal.hide();
+					});
+
+					// Modal Hidden Event
+					$("#customToolConfigModal").on("hidden.bs.modal", () => {
+						CurrentCustomToolConfigCell = null;
+						$("#customToolConfigContainer").empty();
+					});
+
+					$("#agent-script-graph").on("change", '[data-input="custom-tool-select"]', (e) => {
+						const currentElement = $(e.currentTarget);
+						const closestNode = currentElement.closest(".x6-node");
+						const cellId = closestNode.attr("data-cell-id");
+
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+						const toolId = currentElement.val();
+
+						// Update cell data
+						cell.setData({
+							...cell.getData(),
+							toolId: toolId,
+							config: {},
+						});
+
+						$('[data-action="configure-custom-tool"]').attr("disabled", toolId === "");
+
+						// Update ports based on tool
+						UpdateCustomToolNodePorts(cell, toolId);
+					});
+
+					// Configure node button handler (add to existing handler)
+					$("#agent-script-graph").on("click", '[data-action="configure-custom-tool"]', (e) => {
+						const closestNode = $(e.currentTarget).closest(".x6-node");
+						const nodeType = closestNode.attr("data-shape");
+						const cellId = closestNode.attr("data-cell-id");
+						const cell = CurrentAgentScriptGraph.getCellById(cellId);
+
+						if (nodeType === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+							showCustomToolConfig(cell);
+						}
+					});
+				}
+				initializeCustomToolHandlers();
 
 				// Graph Add Node Buttons
-				$("#agent-script-add-user-message").on("click", () => {
+				$("#agent-script-add-user-query").on("click", () => {
 					const currentGraphArea = CurrentAgentScriptGraph.getGraphArea();
 
 					const x = currentGraphArea.x + currentGraphArea.width / 2 - AGENT_SCRIPT_NODE_WIDTH / 2;
 					const y = currentGraphArea.y + currentGraphArea.height / 2 - AGENT_SCRIPT_NODE_MIN_HEIGHT / 2;
 
-					addAgentScriptUserMessageNode(CurrentAgentScriptGraph, x, y);
+					addUserQueryNode(CurrentAgentScriptGraph, x, y);
+				});
+
+				$("#agent-script-add-ai-response").on("click", () => {
+					const currentGraphArea = CurrentAgentScriptGraph.getGraphArea();
+
+					const x = currentGraphArea.x + currentGraphArea.width / 2 - AGENT_SCRIPT_NODE_WIDTH / 2;
+					const y = currentGraphArea.y + currentGraphArea.height / 2 - AGENT_SCRIPT_NODE_MIN_HEIGHT / 2;
+
+					addAIResponseNode(CurrentAgentScriptGraph, x, y);
+				});
+
+				$("#agent-script-add-system-tool").on("click", () => {
+					const currentGraphArea = CurrentAgentScriptGraph.getGraphArea();
+
+					const x = currentGraphArea.x + currentGraphArea.width / 2 - AGENT_SCRIPT_NODE_WIDTH / 2;
+					const y = currentGraphArea.y + currentGraphArea.height / 2 - AGENT_SCRIPT_NODE_MIN_HEIGHT / 2;
+
+					addSystemToolNode(CurrentAgentScriptGraph, x, y);
+				});
+
+				$("#agent-script-add-custom-tool").on("click", () => {
+					const currentGraphArea = CurrentAgentScriptGraph.getGraphArea();
+
+					const x = currentGraphArea.x + currentGraphArea.width / 2 - AGENT_SCRIPT_NODE_WIDTH / 2;
+					const y = currentGraphArea.y + currentGraphArea.height / 2 - AGENT_SCRIPT_NODE_MIN_HEIGHT / 2;
+
+					addCustomToolNode(CurrentAgentScriptGraph, x, y);
 				});
 
 				// Graph Toolbar Bottom
@@ -3195,213 +3964,6 @@ function initAgentTab() {
 							resizeAgentScriptGraphCSS();
 						}, 10);
 					}
-				});
-
-				// SYSTEM TOOL CONFIG LISTENERS
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="end-call-type"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-					const newConfig = {
-						...config,
-						type: e.target.value,
-					};
-
-					// Show/hide message textarea based on type
-					const messageContainer = `
-						<div class="mb-2">
-							<textarea 
-								class="form-control" 
-								data-input="end-call-message"
-								placeholder="Enter end call message..."
-								rows="2"
-							>${config.messages?.[currentLanguage] || ""}</textarea>
-						</div>
-					`;
-
-					if (e.target.value === "with_message") {
-						$(e.target).closest(".tool-config-group").append(messageContainer);
-					} else {
-						$(e.target).closest(".tool-config-group").find('[data-input="end-call-message"]').parent().remove();
-					}
-
-					updateAgentGraphCellData(newConfig);
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="end-call-message"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-					const messages = config.messages || {};
-					messages[currentLanguage] = e.target.value;
-
-					updateAgentGraphCellData({ ...config, messages });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-timeout"]', (e) => {
-					const value = parseInt(e.target.value);
-					if (value >= 1000 && value <= 30000) {
-						const data = CurrentSystemToolConfigCell.getData();
-						const config = data.systemTool?.config || {};
-						updateAgentGraphCellData({ ...config, timeout: value });
-					}
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-start"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					updateAgentGraphCellData({ ...config, requireStartAsterisk: e.target.checked });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-end"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					updateAgentGraphCellData({ ...config, requireEndHash: e.target.checked });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-max-length"]', (e) => {
-					const value = parseInt(e.target.value);
-					if (value >= 1 && value <= 20) {
-						const data = CurrentSystemToolConfigCell.getData();
-						const config = data.systemTool?.config || {};
-						updateAgentGraphCellData({ ...config, maxLength: value });
-					}
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-encrypt"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-
-					const newConfig = {
-						...config,
-						encryptInput: e.target.checked,
-					};
-
-					// Show/hide variable name input based on encrypt checkbox
-					const variableNameInput = `
-						<div class="mb-2">
-							<label class="form-label small">Variable Name</label>
-							<input 
-								type="text" 
-								class="form-control" 
-								data-input="dtmf-variable"
-								value="${config.variableName || ""}"
-								placeholder="Enter variable name"
-							>
-						</div>
-					`;
-
-					if (e.target.checked) {
-						$(e.target).closest(".tool-config-group").append(variableNameInput);
-					} else {
-						$(e.target).closest(".tool-config-group").find('[data-input="dtmf-variable"]').parent().remove();
-					}
-
-					updateAgentGraphCellData(newConfig);
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-variable"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					updateAgentGraphCellData({ ...config, variableName: e.target.value });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="add-outcome"]', () => {
-					const outcomeTemplate = `
-						<div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
-							<input 
-								type="text" 
-								class="form-control" 
-								placeholder="DTMF Value"
-								value=""
-								data-input="outcome-value"
-							>
-							<button class="btn btn-danger" data-action="remove-outcome">
-								<i class="fa-regular fa-trash"></i>
-							</button>
-						</div>
-					`;
-
-					$('[data-container="dtmf-outcomes"]').append(outcomeTemplate);
-
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const outcomes = [...(config.outcomes || []), { value: "", nextNodeId: null }];
-
-					updateAgentGraphCellData({ ...config, outcomes });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="outcome-value"]', (e) => {
-					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const outcomes = [...(config.outcomes || [])];
-
-					outcomes[outcomeIndex] = {
-						...outcomes[outcomeIndex],
-						value: e.target.value,
-					};
-
-					updateAgentGraphCellData({ ...config, outcomes });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="remove-outcome"]', (e) => {
-					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const outcomes = [...(config.outcomes || [])];
-
-					outcomes.splice(outcomeIndex, 1);
-					$(e.target).closest("[data-outcome-index]").remove();
-
-					updateAgentGraphCellData({ ...config, outcomes });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-agent"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					updateAgentGraphCellData({ ...config, agentId: e.target.value });
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-context"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-
-					const newConfig = {
-						...config,
-						transferContext: e.target.checked,
-					};
-
-					// Show/hide summarize context option
-					const summarizeContextOption = `
-						<div class="form-check mb-2">
-							<input 
-								class="form-check-input" 
-								type="checkbox" 
-								data-input="summarize-context"
-								${config.summarizeContext ? "checked" : ""}
-							>
-							<label class="form-check-label">
-								Summarize Context
-							</label>
-						</div>
-					`;
-
-					if (e.target.checked) {
-						$(e.target).closest(".form-check").after(summarizeContextOption);
-					} else {
-						$(e.target).closest(".tool-config-group").find('[data-input="summarize-context"]').parent().remove();
-					}
-
-					updateAgentGraphCellData(newConfig);
-				});
-
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="summarize-context"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					updateAgentGraphCellData({ ...config, summarizeContext: e.target.checked });
 				});
 			}
 			initAgentScriptsTabHandlers();
