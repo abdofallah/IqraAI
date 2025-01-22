@@ -1,38 +1,73 @@
 let CurrentTabHasHeader = false;
 
+let lastRecordedWidth = $(window).width();
+let lastRecordedHeight = $(window).height();
+
+let resizeTimeout;
+
 function setDynamicBodyHeight(containerId = null) {
-	$("body").css("overflow", "hidden");
+	// Cache DOM lookups and jQuery objects
+	const $body = $("body");
+	const $window = $(window);
+	const $header = $("#header");
+	const $mainWrapper = $(".main-container-wrapper");
 
-	setTimeout(() => {
-		if (containerId == null) {
-			containerId = $(".l-navbar .nav_link.active").attr("for");
-		}
+	// Set initial state
+	$body.css("overflow", "hidden");
 
-		const activeTabContainer = $(`#${containerId}`).find(".inner-container");
-		const activeTabHeaderContainer = $(`#${containerId}`).find(".inner-header-container");
+	// If no containerId provided, get from active nav
+	containerId = containerId || $(".l-navbar .nav_link.active").attr("for");
 
-		const windowHeight = $(window)[0].innerHeight;
-		const headerHeight = $("#header")[0].clientHeight;
-		const mainContainerWrapperPaddingHeight = parseInt($(".main-container-wrapper").css("padding-top")) + parseInt($(".main-container-wrapper").css("padding-bottom"));
+	// Cache container elements
+	const $container = $(`#${containerId}`);
+	const $innerContainer = $container.find(".inner-container");
+	const $headerContainer = $container.find(".inner-header-container");
 
-		let headerTextHeight = 60; // get this dynamically but 50 should always be good
-		if (activeTabHeaderContainer.length > 0 && activeTabHeaderContainer.hasClass("d-none") === false) {
-			headerTextHeight += activeTabHeaderContainer[0].clientHeight;
-		}
+	// Calculate static measurements
+	const windowHeight = $window[0].innerHeight;
+	const headerHeight = $header[0].clientHeight;
+	const wrapperPadding = parseInt($mainWrapper.css("padding-top")) + parseInt($mainWrapper.css("padding-bottom"));
 
-		const bodyCalculatedHeight = windowHeight - (headerHeight + headerTextHeight + mainContainerWrapperPaddingHeight + 15); // 15 to make sure no random scroll - find out why this is even needed
+	// Calculate header text height
+	const baseHeaderHeight = 60;
+	const additionalHeaderHeight = !$headerContainer.length || $headerContainer.hasClass("d-none") ? 0 : $headerContainer[0].clientHeight;
+	const headerTextHeight = baseHeaderHeight + additionalHeaderHeight;
 
-		activeTabContainer.animate(
-			{
-				"min-height": `${bodyCalculatedHeight}px`,
+	// Calculate final height
+	const bodyCalculatedHeight = windowHeight - (headerHeight + headerTextHeight + wrapperPadding + 15);
+
+	// Create a custom event
+	const resizeEvent = new CustomEvent("containerResize", {
+		detail: { containerId, targetHeight: bodyCalculatedHeight },
+	});
+
+	// Perform animation with progress callback
+	$innerContainer.animate(
+		{ "min-height": bodyCalculatedHeight },
+		{
+			duration: 300,
+			progress: (animation, progress) => {
+				const currentHeight = $container.find(".inner-container")[0].clientHeight;
+				// Dispatch event with current height
+				document.dispatchEvent(
+					new CustomEvent("containerResizeProgress", {
+						detail: {
+							containerId,
+							currentHeight,
+							progress,
+							targetHeight: bodyCalculatedHeight,
+						},
+					}),
+				);
 			},
-			300,
-		);
-
-		setTimeout(() => {
-			$("body").css("overflow", "initial");
-		}, 310);
-	}, 10);
+			complete: () => {
+				// Reset body overflow after slight delay to prevent flickering
+				setTimeout(() => $body.css("overflow", "initial"), 10);
+				// Dispatch completion event
+				document.dispatchEvent(resizeEvent);
+			},
+		},
+	);
 }
 
 function setDynamicSidebarHeight() {
@@ -156,11 +191,28 @@ $(document).ready(() => {
 		}, 150);
 	});
 
-	$(window).on("resize", (event) => {
-		setTimeout(() => {
-			const currentActiveTabId = $(".l-navbar .nav_link.active").attr("for");
-			setDynamicBodyHeight(currentActiveTabId);
-		}, 100);
+	$(window).on("resize", () => {
+		// Clear the existing timeout if there is one
+		if (resizeTimeout) {
+			clearTimeout(resizeTimeout);
+		}
+
+		// Set a new timeout - this will only execute if no resize occurs for 250ms
+		resizeTimeout = setTimeout(() => {
+			const currentWidth = $(window).width();
+			const currentHeight = $(window).height();
+
+			// Only update if dimensions actually changed
+			if (lastRecordedWidth !== currentWidth || lastRecordedHeight !== currentHeight) {
+				lastRecordedWidth = currentWidth;
+				lastRecordedHeight = currentHeight;
+
+				const currentActiveTabId = $(".l-navbar .nav_link.active").attr("for");
+				setDynamicBodyHeight(currentActiveTabId);
+
+				console.log("Resize complete");
+			}
+		}, 250); // Wait for 250ms of no resize events before executing
 	});
 
 	// Init

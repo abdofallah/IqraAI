@@ -14,9 +14,6 @@
     <link href="~/css/style.css" rel="stylesheet">
 
     <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
-
-    <style id="agentGraphDyanmicStyle">
-    </style>
 </head>
 
 <body id="body-pd" class="body-pd">
@@ -101,6 +98,7 @@
         </nav>
     </div>
 
+    <!-- Main Container -->
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Overview Container -->
         <div class="main-container fade w-100 d-none" id="overview-tab">
@@ -1187,28 +1185,32 @@
                                     <div class="tab-pane fade w-100" id="agents-manager-script-conversation" role="tabpanel" aria-labelledby="agents-manager-script-conversation-tab" tabindex="0">
                                         <!-- Graph Container -->
                                         <div class="agent-script-graph-container">
-                                            <!-- Top Toolbar -->
-                                            <div class="agent-script-graph-top-toolbar">
-                                                <div class="btn-group">
-                                                    <button id="agent-script-add-user-query" class="btn btn-light btn-sm me-2" title="Add User Query">
+                                            <!-- Left Sidebar -->
+                                            <div class="agent-script-graph-sidebar-left bg-dark border-dark text-bg-dark">
+                                                <div class=" sidebar-header">
+                                                    <h6>Add Nodes</h6>
+                                                </div>
+                                                <div class="sidebar-content">
+                                                    <button class="sidebar-node-button" data-node-type="user-query">
                                                         <i class="fa-regular fa-message"></i>
+                                                        <span>User Query</span>
                                                     </button>
-
-                                                    <button id="agent-script-add-ai-response" class="btn btn-light btn-sm me-2" title="Add AI Response">
+                                                    <button class="sidebar-node-button" data-node-type="ai-response">
                                                         <i class="fa-regular fa-robot"></i>
+                                                        <span>AI Response</span>
                                                     </button>
-
-                                                    <button id="agent-script-add-system-tool" class="btn btn-light btn-sm me-2" title="Add System Tool">
+                                                    <button class="sidebar-node-button" data-node-type="system-tool">
                                                         <i class="fa-regular fa-toolbox"></i>
+                                                        <span>System Tool</span>
                                                     </button>
-
-                                                    <button id="agent-script-add-custom-tool" class="btn btn-light btn-sm" title="Add Custom Tool">
+                                                    <button class="sidebar-node-button" data-node-type="custom-tool">
                                                         <i class="fa-regular fa-wrench"></i>
+                                                        <span>Custom Tool</span>
                                                     </button>
                                                 </div>
                                             </div>
 
-                                            <!-- Graph -->
+                                            <!-- Graph Area -->
                                             <div id="agent-script-graph"></div>
 
                                             <!-- Right Side Controls -->
@@ -1217,7 +1219,7 @@
                                                 <div id="agent-script-graph-minimap" class="agent-script-graph-minimap"></div>
 
                                                 <!-- Controls -->
-                                                <div class="agent-script-graph-controls mt-3">
+                                                <div class="agent-script-graph-controls">
                                                     <div class="btn-group d-flex mb-2">
                                                         <button id="agent-script-graph-fullscreen" class="btn btn-light btn-sm flex-fill" title="Toggle Fullscreen">
                                                             <i class="fa-regular fa-expand"></i>
@@ -1239,6 +1241,17 @@
                                                             <i class="fa-regular fa-rotate-right"></i>
                                                         </button>
                                                     </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Configuration Offcanvas -->
+                                            <div class="offcanvas offcanvas-end text-bg-dark" data-bs-backdrop=" false" id="nodeConfigOffcanvas" tabindex="-1">
+                                                <div class="offcanvas-header">
+                                                    <h5 class="offcanvas-title" id="nodeConfigTitle">Node Configuration</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                                                </div>
+                                                <div class="offcanvas-body" id="nodeConfigContent">
+                                                    <!-- Configuration content will be loaded here -->
                                                 </div>
                                             </div>
                                         </div>
@@ -4738,105 +4751,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Agent Script System Tool Configuration Model -->
-        <div class="modal fade" id="agentScriptSystemToolConfigModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">System Tool Configuration</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="systemToolConfigContainer">
-                            <!-- Configuration content will be dynamically added here -->
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="saveSystemToolConfigButton">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Agent Script User Query Configuration Model -->
-        <div class="modal fade" id="agentScriptUserQueryConfigModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">User Query Configuration</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Query Examples</label>
-                            <div id="queryExamplesContainer">
-                                <!-- Examples will be dynamically added here -->
-                            </div>
-                            <button class="btn btn-light btn-sm mt-2" id="addQueryExampleButton">
-                                <i class="fa-regular fa-plus me-2"></i>
-                                Add Example
-                            </button>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="saveUserQueryConfigButton">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Agent Script AI Response Configuration Model -->
-        <div class="modal fade" id="agentScriptAiResponseConfigModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">AI Response Configuration</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Response Examples</label>
-                            <div id="responseExamplesContainer">
-                                <!-- Examples will be dynamically added here -->
-                            </div>
-                            <button class="btn btn-light btn-sm mt-2" id="addResponseExampleButton">
-                                <i class="fa-regular fa-plus me-2"></i>
-                                Add Example
-                            </button>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="saveAIResponseConfigButton">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Agent Script Custom Tool Configuration Model -->
-        <div class="modal fade" id="agentScriptCustomToolConfigModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Custom Tool Configuration</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="customToolConfigContainer">
-                            <!-- Configuration content will be dynamically added here -->
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="saveCustomToolConfigButton">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <!-- ASP -->
