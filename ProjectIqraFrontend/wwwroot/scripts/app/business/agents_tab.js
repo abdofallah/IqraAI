@@ -1,13 +1,11 @@
 // Graph Constants
-const AGENT_SCRIPT_GRAPH_GRID_SIZE = 16;
-const AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR = "#0f0f0f";
-const AGENT_SCRIPT_GRAPH_DOT_COLOR = "#2a2a2a";
-const AGENT_SCRIPT_GRAPH_DOT_SIZE = 2.3;
 const AGENT_SCRIPT_GRAPH_PLUGINS = {
 	Minimap: X6PluginMinimap.MiniMap,
 	Keyboard: X6PluginKeyboard.Keyboard,
 	Clipboard: X6PluginClipboard.Clipboard,
 	History: X6PluginHistory.History,
+	Snapline: X6PluginSnapline.Snapline,
+	Selection: X6PluginSelection.Selection,
 };
 
 // Constants for node system
@@ -82,11 +80,7 @@ let CurrentAgentScriptGraphStartNode = null;
 
 let agentScriptDMTFNextOutcomeIndex = 0;
 
-let CurrentSystemToolConfigCell = null;
-let CurrentUserQueryConfigCell = null;
-let CurrentAIResponseConfigCell = null;
-let CurrentCustomToolConfigCell = null;
-
+let CurrentCanvasConfigCell = null;
 let nodeConfigOffcanvas = null;
 
 /** Element Variables **/
@@ -1739,7 +1733,7 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center btn-ic-span-align">
                         <i class="fa-regular fa-message me-2"></i>
                         <span>User Query</span>
                     </div>
@@ -1815,7 +1809,7 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center btn-ic-span-align">
                         <i class="fa-regular fa-robot me-2"></i>
                         <span>AI Response</span>
                     </div>
@@ -1891,8 +1885,8 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center">
-                        <i class="fa-regular fa-gear me-2"></i>
+                    <div class="d-flex align-items-center btn-ic-span-align">
+                        <i class="fa-regular fa-toolbox me-2"></i>
                         <span>System Tool</span>
                     </div>
                     <div class="node-actions">
@@ -1985,7 +1979,7 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center btn-ic-span-align">
                         <i class="fa-regular fa-wrench me-2"></i>
                         <span>Custom Tool</span>
                     </div>
@@ -2032,26 +2026,27 @@ function initializeAgentScriptGraph(container) {
 			grid: {
 				visible: true,
 				type: "fixedDot",
+				size: 30,
 				args: {
-					color: AGENT_SCRIPT_GRAPH_DOT_COLOR,
-					thickness: AGENT_SCRIPT_GRAPH_DOT_SIZE,
+					color: "#2a2a2a",
+					thickness: 3,
 				},
 			},
 			// Background settings
 			background: {
-				color: AGENT_SCRIPT_GRAPH_BACKGROUND_COLOR,
+				color: "#0f0f0f",
 			},
 			// Interaction settings
 			mousewheel: {
 				enabled: true,
-				modifiers: ["ctrl", "meta"],
+				modifiers: [],
 				factor: 1.1,
 				maxScale: 2,
 				minScale: 0.5,
 			},
 			panning: {
 				enabled: true,
-				modifiers: ["shift", "ctrl"],
+				modifiers: [],
 			},
 			connecting: {
 				anchor: "center",
@@ -2143,6 +2138,21 @@ function initializeAgentScriptGraph(container) {
 			);
 		}
 
+		// Add selection plugin
+		if (AGENT_SCRIPT_GRAPH_PLUGINS.Selection) {
+			graph.use(
+				new AGENT_SCRIPT_GRAPH_PLUGINS.Selection({
+					enabled: true,
+					modifiers: ["ctrl"],
+					rubberband: true,
+					multiple: true,
+					movable: true,
+					showNodeSelectionBox: true,
+					eventTypes: "leftMouseDown",
+				}),
+			);
+		}
+
 		// Add start node
 		CurrentAgentScriptGraphStartNode = graph.addNode({
 			shape: AGENT_SCRIPT_NODE_TYPES.START,
@@ -2170,27 +2180,21 @@ function initializeAgentScriptGraph(container) {
 			const target = e.target;
 			if (target.closest('[data-action="delete-node"]')) {
 				const nodeType = cell.getData()?.type;
-				if (nodeType !== AGENT_SCRIPT_NODE_TYPES.START) {
-					cell.remove();
+				if (nodeType === AGENT_SCRIPT_NODE_TYPES.START) {
+					return;
 				}
+
+				if (CurrentCanvasConfigCell !== null && cell.id === CurrentCanvasConfigCell.id) {
+					nodeConfigOffcanvas.hide();
+				}
+
+				cell.remove();
 			}
 		});
 
 		graph.on("edge:connected", (event) => {
 			// Remove the circle from line
 			event.edge.setAttrs({ line: { targetMarker: "" } });
-
-			/**
-			const allCurrentConnections = Object.keys(CurrentAgentScriptGraph.getCellById(event.currentCell.id)._model.outgoings);
-			for (let i = 0; i < allCurrentConnections.length; i++) {
-				const parentInputCell = allCurrentConnections[i];
-
-				const allConnectionForInputCell = CurrentAgentScriptGraph.getCellById(parentInputCell)._model.outgoings[parentInputCell];
-				while (allConnectionForInputCell.length > 1) {
-					CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
-				}
-			}
-			**/
 		});
 
 		graph.on("edge:mouseenter", (event) => {
@@ -2213,6 +2217,10 @@ function initializeAgentScriptGraph(container) {
 					CurrentAgentScriptGraph.removeCell(allConnectionForInputCell[0]);
 				}
 			}
+		});
+
+		graph.on("cell:click", (event) => {
+			graph.cleanSelection();
 		});
 
 		CurrentAgentScriptGraph = graph;
@@ -2243,7 +2251,7 @@ function resizeAgentScriptGraphCSS(callback, isFullscreen = false) {
 	callback({ width: currentInnerContentWidth, height: currentInnerContentHeight });
 }
 
-function adjustSidebarsForFullscreen(isFullscreen) {
+function adjustAgentScriptGraphMultilanguageDropdownForFullscreen(isFullscreen) {
 	const container = $(".agent-script-graph-controls");
 	let languageDropdown;
 
@@ -2254,152 +2262,6 @@ function adjustSidebarsForFullscreen(isFullscreen) {
 		languageDropdown = $(".agent-script-graph-controls .multilanguage-dropdown");
 		languageDropdown.appendTo("#agentsScriptManagerMultiLanguageContainer");
 	}
-}
-
-// Nodes
-function showNodeConfig(cell, type) {
-	const configContent = $("#nodeConfigContent");
-	$("#nodeConfigTitle").text(`${type} Configuration`);
-
-	switch (type) {
-		case "User Query":
-			configContent.html(generateUserQueryConfig(cell));
-			break;
-		case "AI Response":
-			configContent.html(generateAIResponseConfig(cell));
-			break;
-		case "System Tool":
-			configContent.html(generateSystemToolConfig(cell));
-			break;
-		case "Custom Tool":
-			configContent.html(generateCustomToolConfig(cell));
-			break;
-	}
-
-	nodeConfigOffcanvas.show();
-}
-
-function saveCurrentNodeConfig(cell) {
-	if (!cell) return;
-
-	const data = cell.getData() || {};
-	const nodeType = data.type;
-	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
-	if (nodeType === AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
-		const queryExamples = Array.from($("#queryExamplesContainer input"))
-			.map((input) => $(input).val().trim())
-			.filter((value) => value !== ""); // Remove empty values
-
-		const examples = data.examples || {};
-		examples[currentLanguage] = queryExamples;
-
-		cell.setData({
-			...data,
-			examples,
-		});
-	} else if (nodeType === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
-		const responseExamples = Array.from($("#responseExamplesContainer input"))
-			.map((input) => $(input).val().trim())
-			.filter((value) => value !== ""); // Remove empty values
-
-		const examples = data.examples || {};
-		examples[currentLanguage] = responseExamples;
-
-		cell.setData({
-			...data,
-			examples,
-		});
-	} else if (nodeType === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
-		const toolType = data.toolType;
-
-		if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
-			const type = $("#nodeConfigContent [data-input='end-call-type']").val();
-			const messages = data.config?.messages || {};
-
-			if (type === "with_message") {
-				messages[currentLanguage] = $("#nodeConfigContent [data-input='end-call-message']").val().trim();
-			}
-
-			cell.setData({
-				...data,
-				config: {
-					...data.config,
-					type,
-					messages,
-				},
-			});
-		} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
-			const timeout = parseInt($("#nodeConfigContent [data-input='dtmf-timeout']").val());
-			const requireStartAsterisk = $("#nodeConfigContent [data-input='dtmf-require-start']").is(":checked");
-			const requireEndHash = $("#nodeConfigContent [data-input='dtmf-require-end']").is(":checked");
-			const maxLength = parseInt($("#nodeConfigContent [data-input='dtmf-max-length']").val());
-			const encryptInput = $("#nodeConfigContent [data-input='dtmf-encrypt']").is(":checked");
-			const variableName = encryptInput ? $("#nodeConfigContent [data-input='dtmf-variable']").val().trim() : null;
-
-			const outcomes = Array.from($("#nodeConfigContent [data-outcome-index]"))
-				.map((outcomeEl) => ({
-					value: $(outcomeEl).find("[data-input='outcome-value']").val().trim(),
-					nextNodeId: null, // This will be set when connecting nodes
-				}))
-				.filter((outcome) => outcome.value !== "");
-
-			cell.setData({
-				...data,
-				config: {
-					...data.config,
-					timeout,
-					requireStartAsterisk,
-					requireEndHash,
-					maxLength,
-					encryptInput,
-					variableName,
-					outcomes,
-				},
-			});
-		} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
-			const agentId = $("#nodeConfigContent [data-input='transfer-agent']").val();
-			const transferContext = $("#nodeConfigContent [data-input='transfer-context']").is(":checked");
-			const summarizeContext = transferContext ? $("#nodeConfigContent [data-input='summarize-context']").is(":checked") : false;
-
-			cell.setData({
-				...data,
-				config: {
-					...data.config,
-					agentId,
-					transferContext,
-					summarizeContext,
-				},
-			});
-		} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
-			const scriptId = $("#nodeConfigContent [data-input='add-script']").val();
-
-			cell.setData({
-				...data,
-				config: {
-					...data.config,
-					scriptId,
-				},
-			});
-		}
-	} else if (nodeType === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
-		const config = {};
-		$("#nodeConfigContent [data-param]").each((i, el) => {
-			const param = $(el).data("param");
-			const value = $(el).val().trim();
-			if (value !== "") {
-				config[param] = value;
-			}
-		});
-
-		cell.setData({
-			...data,
-			config,
-		});
-	}
-
-	// Refresh the node to update any visual changes
-	cell.refresh();
 }
 
 // Script User Query Node
@@ -2426,7 +2288,7 @@ function generateUserQueryConfig(cell) {
 	return `
         <div class="node-config-section">
             <label class="form-label">Query Examples <i class="fa-regular fa-language"></i></label>
-            <div id="queryExamplesContainer">
+            <div id="userQueryExamplesContainer">
                 ${(data.examples?.[currentLanguage] || [])
 									.map(
 										(example) => `
@@ -2442,7 +2304,7 @@ function generateUserQueryConfig(cell) {
 									)
 									.join("")}
             </div>
-            <button class="btn btn-light btn-sm mt-2" data-action="add-query-example">
+            <button class="btn btn-light btn-sm mt-2" data-action="addUserQueryExampleButton">
                 <i class="fa-regular fa-plus me-2"></i>
                 Add Example
             </button>
@@ -2474,7 +2336,7 @@ function generateAIResponseConfig(cell) {
 	return `
         <div class="node-config-section">
             <label class="form-label">Response Examples <i class="fa-regular fa-language"></i></label>
-            <div id="responseExamplesContainer">
+            <div id="aiResponseExamplesContainer">
                 ${(data.examples?.[currentLanguage] || [])
 									.map(
 										(example) => `
@@ -2490,7 +2352,7 @@ function generateAIResponseConfig(cell) {
 									)
 									.join("")}
             </div>
-            <button class="btn btn-light btn-sm mt-2" data-action="add-response-example">
+            <button class="btn btn-light btn-sm mt-2" data-action="addAIResponseExampleButton">
                 <i class="fa-regular fa-plus me-2"></i>
                 Add Example
             </button>
@@ -2774,6 +2636,7 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 			});
 
 			// Add ports for outcomes (will be updated when configured)
+			// TODO
 			break;
 
 		default:
@@ -2783,19 +2646,21 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 			});
 			break;
 	}
+
+	cell.updatePortData();
 }
 
 function updateSystemToolConfig(newConfig) {
-	if (CurrentSystemToolConfigCell) {
-		const data = CurrentSystemToolConfigCell.getData();
-		CurrentSystemToolConfigCell.setData({
+	if (CurrentCanvasConfigCell) {
+		const data = CurrentCanvasConfigCell.getData();
+		CurrentCanvasConfigCell.setData({
 			...data,
 			config: newConfig,
 		});
 
 		// Update ports if needed (e.g., for DTMF tool)
 		if (data.toolType === "get_dtmf_keypad_input") {
-			UpdateSystemToolNodePorts(CurrentSystemToolConfigCell, data.toolType, newConfig);
+			UpdateSystemToolNodePorts(CurrentCanvasConfigCell, data.toolType, newConfig);
 		}
 	}
 }
@@ -2858,9 +2723,9 @@ function getCustomToolConfigValues() {
 }
 
 function updateCustomToolConfig(config) {
-	if (CurrentCustomToolConfigCell) {
-		const data = CurrentCustomToolConfigCell.getData();
-		CurrentCustomToolConfigCell.setData({
+	if (CurrentCanvasConfigCell) {
+		const data = CurrentCanvasConfigCell.getData();
+		CurrentCanvasConfigCell.setData({
 			...data,
 			config: config,
 		});
@@ -3482,39 +3347,37 @@ function initAgentTab() {
 				const cellId = closestNode.attr("data-cell-id");
 				const cell = CurrentAgentScriptGraph.getCellById(cellId);
 
+				CurrentCanvasConfigCell = cell;
+
 				const configType = toPascalCase($(e.target).closest("[data-action]").attr("data-action").replace("configure-", "").replace("-", " "));
-				showNodeConfig(cell, configType);
+
+				const configContent = $("#nodeConfigContent");
+				$("#nodeConfigTitle").text(`${configType} Configuration`);
+
+				switch (configType) {
+					case "User Query":
+						configContent.html(generateUserQueryConfig(cell));
+						break;
+					case "AI Response":
+						configContent.html(generateAIResponseConfig(cell));
+						break;
+					case "System Tool":
+						configContent.html(generateSystemToolConfig(cell));
+						break;
+					case "Custom Tool":
+						configContent.html(generateCustomToolConfig(cell));
+						break;
+				}
+
+				nodeConfigOffcanvas.show();
 			});
 
 			$("#nodeConfigOffcanvas").on("hidden.bs.offcanvas", () => {
-				// Save current configuration before hiding
-				const currentCell = CurrentAgentScriptGraph.getSelectedCells()[0];
-				if (currentCell) {
-					saveCurrentNodeConfig(currentCell);
-				}
+				CurrentCanvasConfigCell = null;
 			});
 
 			// User Query Node
 			function initializeUserQueryHandlers() {
-				// Add Example Button Handler
-				$("#addQueryExampleButton").on("click", () => {
-					$("#queryExamplesContainer").append(`
-						<div class="input-group mb-2">
-							<input type="text" class="form-control" 
-								placeholder="Enter example query"
-								data-input="query-example">
-							<button class="btn btn-danger" data-action="remove-example">
-								<i class="fa-regular fa-trash"></i>
-							</button>
-						</div>
-					`);
-				});
-
-				// Remove Example Button Handler
-				$("#queryExamplesContainer").on("click", '[data-action="remove-example"]', function () {
-					$(this).closest(".input-group").remove();
-				});
-
 				// Query text change handler
 				$("#agent-script-graph").on("input", '[data-input="user-query"]', (e) => {
 					const currentElement = $(e.currentTarget);
@@ -3535,16 +3398,16 @@ function initAgentTab() {
 				});
 			}
 			initializeUserQueryHandlers();
-
-			// AI Response Node
-			function initializeAIResponseHandlers() {
+			function initUserQueryConfigHandlers() {
 				// Add Example Button Handler
-				$("#addResponseExampleButton").on("click", () => {
-					$("#responseExamplesContainer").append(`
+				$("#nodeConfigOffcanvas").on("click", '[data-action="addUserQueryExampleButton"]', (e) => {
+					e.stopPropagation();
+
+					$("#userQueryExamplesContainer").append(`
 						<div class="input-group mb-2">
 							<input type="text" class="form-control" 
-								placeholder="Enter example response"
-								data-input="response-example">
+								placeholder="Enter example query"
+								data-input="query-example">
 							<button class="btn btn-danger" data-action="remove-example">
 								<i class="fa-regular fa-trash"></i>
 							</button>
@@ -3553,10 +3416,48 @@ function initAgentTab() {
 				});
 
 				// Remove Example Button Handler
-				$("#responseExamplesContainer").on("click", '[data-action="remove-example"]', function () {
-					$(this).closest(".input-group").remove();
+				$("#nodeConfigOffcanvas").on("click", '#userQueryExamplesContainer [data-action="remove-example"]', (e) => {
+					e.stopPropagation();
+
+					$(e.currentTarget).closest(".input-group").remove();
+
+					const queryExamples = Array.from($("#userQueryExamplesContainer input"))
+						.map((input) => $(input).val().trim())
+						.filter((value) => value !== ""); // Remove empty values
+
+					const examples = data.examples || {};
+					examples[currentLanguage] = queryExamples;
+
+					CurrentCanvasConfigCell.setData({
+						...data,
+						examples,
+					});
 				});
 
+				// On Type Query Example
+				$("#nodeConfigOffcanvas").on("input", '#userQueryExamplesContainer [data-input="query-example"]', (e) => {
+					e.stopPropagation();
+
+					const data = CurrentCanvasConfigCell.getData();
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const queryExamples = Array.from($("#userQueryExamplesContainer input"))
+						.map((input) => $(input).val().trim())
+						.filter((value) => value !== ""); // Remove empty values
+
+					const examples = data.examples || {};
+					examples[currentLanguage] = queryExamples;
+
+					CurrentCanvasConfigCell.setData({
+						...data,
+						examples,
+					});
+				});
+			}
+			initUserQueryConfigHandlers();
+
+			// AI Response Node
+			function initializeAIResponseHandlers() {
 				// Response text change handler
 				$("#agent-script-graph").on("input", '[data-input="ai-response"]', (e) => {
 					const currentElement = $(e.currentTarget);
@@ -3577,6 +3478,63 @@ function initAgentTab() {
 				});
 			}
 			initializeAIResponseHandlers();
+			function initAIResponseConfigHandlers() {
+				// Add Example Button Handler
+				$("#nodeConfigOffcanvas").on("click", '[data-action="addAIResponseExampleButton"]', (e) => {
+					e.stopPropagation();
+
+					$("#aiResponseExamplesContainer").append(`
+						<div class="input-group mb-2">
+							<input type="text" class="form-control" 
+								placeholder="Enter example response"
+								data-input="response-example">
+							<button class="btn btn-danger" data-action="remove-example">
+								<i class="fa-regular fa-trash"></i>
+							</button>
+						</div>
+					`);
+				});
+
+				// Remove Example Button Handler
+				$("#nodeConfigOffcanvas").on("click", '#aiResponseExamplesContainer [data-action="remove-example"]', (e) => {
+					e.stopPropagation();
+
+					$(e.currentTarget).closest(".input-group").remove();
+
+					const responseExamples = Array.from($("#aiResponseExamplesContainer input"))
+						.map((input) => $(input).val().trim())
+						.filter((value) => value !== ""); // Remove empty values
+
+					const examples = data.examples || {};
+					examples[currentLanguage] = responseExamples;
+
+					CurrentCanvasConfigCell.setData({
+						...data,
+						examples,
+					});
+				});
+
+				// On Type Response Example
+				$("#nodeConfigOffcanvas").on("input", '#aiResponseExamplesContainer [data-input="response-example"]', (e) => {
+					e.stopPropagation();
+
+					const data = CurrentCanvasConfigCell.getData();
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const responseExamples = Array.from($("#aiResponseExamplesContainer input"))
+						.map((input) => $(input).val().trim())
+						.filter((value) => value !== ""); // Remove empty values
+
+					const examples = data.examples || {};
+					examples[currentLanguage] = responseExamples;
+
+					CurrentCanvasConfigCell.setData({
+						...data,
+						examples,
+					});
+				});
+			}
+			initAIResponseConfigHandlers();
 
 			// System Tool Node
 			function initSystemToolNodeHandlers() {
@@ -3609,26 +3567,16 @@ function initAgentTab() {
 
 					// Update ports based on tool type
 					UpdateSystemToolNodePorts(cell, toolType);
-				});
 
-				// Save Configuration Button Handler
-				$("#saveSystemToolConfigButton").on("click", () => {
-					if (CurrentSystemToolConfigCell) {
-						const data = CurrentSystemToolConfigCell.getData();
-
-						// Update ports in case of DTMF outcomes changes
-						if (data.toolType === "get_dtmf_keypad_input") {
-							UpdateSystemToolNodePorts(CurrentSystemToolConfigCell, data.toolType, data.config);
-						}
+					if (CurrentCanvasConfigCell !== null && cell.id === CurrentCanvasConfigCell.id) {
+						nodeConfigOffcanvas.hide();
 					}
-
-					SystemToolConfigModal.hide();
 				});
 			}
 			initSystemToolNodeHandlers();
 			function initSystemToolConfigHandlers() {
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="end-call-type"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="end-call-type"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
 
@@ -3658,8 +3606,8 @@ function initAgentTab() {
 					updateSystemToolConfig(newConfig);
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="end-call-message"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("input", '[data-input="end-call-message"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
 
@@ -3669,38 +3617,38 @@ function initAgentTab() {
 					updateSystemToolConfig({ ...config, messages });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-timeout"]', (e) => {
+				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-timeout"]', (e) => {
 					const value = parseInt(e.target.value);
 					if (value >= 1000 && value <= 30000) {
-						const data = CurrentSystemToolConfigCell.getData();
+						const data = CurrentCanvasConfigCell.getData();
 						const config = data.systemTool?.config || {};
 						updateSystemToolConfig({ ...config, timeout: value });
 					}
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-start"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-start"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, requireStartAsterisk: e.target.checked });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-require-end"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-end"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, requireEndHash: e.target.checked });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-max-length"]', (e) => {
+				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-max-length"]', (e) => {
 					const value = parseInt(e.target.value);
 					if (value >= 1 && value <= 20) {
-						const data = CurrentSystemToolConfigCell.getData();
+						const data = CurrentCanvasConfigCell.getData();
 						const config = data.systemTool?.config || {};
 						updateSystemToolConfig({ ...config, maxLength: value });
 					}
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="dtmf-encrypt"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-encrypt"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 
 					const newConfig = {
@@ -3731,13 +3679,13 @@ function initAgentTab() {
 					updateSystemToolConfig(newConfig);
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="dtmf-variable"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-variable"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, variableName: e.target.value });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="add-outcome"]', () => {
+				$("#nodeConfigOffcanvas").on("click", '[data-action="add-outcome"]', () => {
 					const outcomeTemplate = `
 					<div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
 						<input 
@@ -3755,16 +3703,16 @@ function initAgentTab() {
 
 					$('[data-container="dtmf-outcomes"]').append(outcomeTemplate);
 
-					const data = CurrentSystemToolConfigCell.getData();
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					const outcomes = [...(config.outcomes || []), { value: "", nextNodeId: null }];
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("input", '[data-input="outcome-value"]', (e) => {
+				$("#nodeConfigOffcanvas").on("input", '[data-input="outcome-value"]', (e) => {
 					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
-					const data = CurrentSystemToolConfigCell.getData();
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					const outcomes = [...(config.outcomes || [])];
 
@@ -3776,9 +3724,9 @@ function initAgentTab() {
 					updateSystemToolConfig({ ...config, outcomes });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("click", '[data-action="remove-outcome"]', (e) => {
+				$("#nodeConfigOffcanvas").on("click", '[data-action="remove-outcome"]', (e) => {
 					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
-					const data = CurrentSystemToolConfigCell.getData();
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					const outcomes = [...(config.outcomes || [])];
 
@@ -3788,14 +3736,14 @@ function initAgentTab() {
 					updateSystemToolConfig({ ...config, outcomes });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-agent"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-agent"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, agentId: e.target.value });
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="transfer-context"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-context"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 
 					const newConfig = {
@@ -3827,8 +3775,8 @@ function initAgentTab() {
 					updateSystemToolConfig(newConfig);
 				});
 
-				$("#agentScriptSystemToolConfigModal").on("change", '[data-input="summarize-context"]', (e) => {
-					const data = CurrentSystemToolConfigCell.getData();
+				$("#nodeConfigOffcanvas").on("change", '[data-input="summarize-context"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, summarizeContext: e.target.checked });
 				});
@@ -3856,6 +3804,10 @@ function initAgentTab() {
 
 					// Update ports based on tool
 					UpdateCustomToolNodePorts(cell, toolId);
+
+					if (CurrentCanvasConfigCell !== null && cell.id === CurrentCanvasConfigCell.id) {
+						nodeConfigOffcanvas.hide();
+					}
 				});
 			}
 			initializeCustomToolHandlers();
@@ -3917,11 +3869,11 @@ function initAgentTab() {
 
 				if (container.hasClass("fullscreen")) {
 					$("body").css("overflow", "hidden");
-					adjustSidebarsForFullscreen(true);
+					adjustAgentScriptGraphMultilanguageDropdownForFullscreen(true);
 					resizeAgentScriptGraphCSS(() => {}, container.hasClass("fullscreen"));
 				} else {
 					$("body").css("overflow", "");
-					adjustSidebarsForFullscreen(false);
+					adjustAgentScriptGraphMultilanguageDropdownForFullscreen(false);
 					setDynamicBodyHeight("agents-tab");
 				}
 			});

@@ -1609,7 +1609,7 @@ table.table > thead > * > * {
 .agent-script-node-header {
 	background: #fff;
 	padding: 8px;
-	border-bottom: 1px solid #e9ecef;
+	border-bottom: 1px solid #848586;
 	display: flex;
 	justify-content: flex-end;
 }
@@ -1630,6 +1630,11 @@ table.table > thead > * > * {
 
 .agent-script-node-content {
 	padding: 12px;
+}
+
+.agent-script-node-input-group textarea {
+	resize: none;
+	min-height: 60px;
 }
 
 /* Start Node Specific */
@@ -1674,31 +1679,6 @@ table.table > thead > * > * {
 }
 
 /* User Message Node Specific */
-
-.agent-script-node-input-group textarea {
-	resize: none;
-	min-height: 60px;
-}
-
-.agent-script-node-input-group label,
-.agent-script-node-response-type label {
-	margin-bottom: 4px;
-	font-size: 15px;
-	color: #1a1a1a;
-	font-weight: 500;
-	letter-spacing: 0.4px;
-}
-
-.agent-script-node-response {
-	margin-top: 16px;
-	border-top: 1px solid #e9ecef;
-	padding-top: 12px;
-}
-
-.agent-script-node-response-type {
-	margin-top: 12px;
-}
-
 .agent-script-user-query-node {
 	border: 1px solid #e9ecef;
 	border-radius: 6px;
@@ -1707,7 +1687,6 @@ table.table > thead > * > * {
 
 .agent-script-user-query-node .agent-script-node-header {
 	padding: 8px 12px;
-	border-bottom: 1px solid #e9ecef;
 	border-radius: 6px 6px 0 0;
 	display: flex;
 	justify-content: space-between;
@@ -1723,6 +1702,7 @@ table.table > thead > * > * {
 	gap: 5px;
 }
 
+/* AI Response Node Specific */
 .agent-script-ai-response-node {
 	border: 1px solid #e9ecef;
 	border-radius: 6px;
@@ -1731,7 +1711,6 @@ table.table > thead > * > * {
 
 .agent-script-ai-response-node .agent-script-node-header {
 	padding: 8px 12px;
-	border-bottom: 1px solid #e9ecef;
 	border-radius: 6px 6px 0 0;
 	display: flex;
 	justify-content: space-between;
@@ -1747,6 +1726,7 @@ table.table > thead > * > * {
 	gap: 5px;
 }
 
+/* System Tool Node Specific */
 .agent-script-system-tool-node {
 	border: 1px solid #e9ecef;
 	border-radius: 6px;
@@ -1755,7 +1735,6 @@ table.table > thead > * > * {
 
 .agent-script-system-tool-node .agent-script-node-header {
 	padding: 8px 12px;
-	border-bottom: 1px solid #e9ecef;
 	border-radius: 6px 6px 0 0;
 	display: flex;
 	justify-content: space-between;
@@ -1771,6 +1750,7 @@ table.table > thead > * > * {
 	gap: 5px;
 }
 
+/* Custom Tool Node Specific */
 .agent-script-custom-tool-node {
 	border: 1px solid #e9ecef;
 	border-radius: 6px;
@@ -1779,7 +1759,6 @@ table.table > thead > * > * {
 
 .agent-script-custom-tool-node .agent-script-node-header {
 	padding: 8px 12px;
-	border-bottom: 1px solid #e9ecef;
 	border-radius: 6px 6px 0 0;
 	display: flex;
 	justify-content: space-between;
