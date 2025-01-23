@@ -1737,7 +1737,7 @@ function registerAgentScriptNodes() {
                         <i class="fa-regular fa-message me-2"></i>
                         <span>User Query</span>
                     </div>
-                    <div class="node-actions">
+                    <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm me-2" data-action="configure-user-query">
                             <i class="fa-regular fa-gear"></i>
                         </button>
@@ -1747,7 +1747,7 @@ function registerAgentScriptNodes() {
                     </div>
                 </div>
                 <div class="agent-script-node-content">
-                    <div class="agent-script-node-input-group">
+                    <div class="agent-script-node-input-group html-shape-immovable">
                         <textarea 
                             class="form-control" 
                             placeholder="Type the user query..."
@@ -1813,7 +1813,7 @@ function registerAgentScriptNodes() {
                         <i class="fa-regular fa-robot me-2"></i>
                         <span>AI Response</span>
                     </div>
-                    <div class="node-actions">
+                    <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm me-2" data-action="configure-ai-response">
                             <i class="fa-regular fa-gear"></i>
                         </button>
@@ -1823,7 +1823,7 @@ function registerAgentScriptNodes() {
                     </div>
                 </div>
                 <div class="agent-script-node-content">
-                    <div class="agent-script-node-input-group">
+                    <div class="agent-script-node-input-group html-shape-immovable">
                         <textarea 
                             class="form-control" 
                             placeholder="Type the AI response..."
@@ -1889,7 +1889,7 @@ function registerAgentScriptNodes() {
                         <i class="fa-regular fa-toolbox me-2"></i>
                         <span>System Tool</span>
                     </div>
-                    <div class="node-actions">
+                    <div class="node-actions html-shape-immovable">
 						<button class="btn btn-light btn-sm me-2" data-action="configure-system-tool" disabled>
 							<i class="fa-regular fa-gear"></i>
 						</button>
@@ -1899,7 +1899,7 @@ function registerAgentScriptNodes() {
                     </div>
                 </div>
                 <div class="agent-script-node-content">
-                    <div class="agent-script-node-input-group">
+                    <div class="agent-script-node-input-group html-shape-immovable">
                         <div class="d-flex gap-2">
                             <select class="form-select" data-input="system-tool-type">
                                 <option value="" disabled ${!data.toolType ? "selected" : ""}>Select Tool</option>
@@ -1983,7 +1983,7 @@ function registerAgentScriptNodes() {
                         <i class="fa-regular fa-wrench me-2"></i>
                         <span>Custom Tool</span>
                     </div>
-                    <div class="node-actions">
+                    <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm" data-action="configure-custom-tool" disabled>
 							<i class="fa-regular fa-gear"></i>
 						</button>
@@ -1993,7 +1993,7 @@ function registerAgentScriptNodes() {
                     </div>
                 </div>
                 <div class="agent-script-node-content">
-                    <div class="agent-script-node-input-group">
+                    <div class="agent-script-node-input-group html-shape-immovable">
                         <select class="form-select" data-input="custom-tool-select">
                             <option value="" disabled ${!data.toolId ? "selected" : ""}>Select Tool</option>
                             ${toolOptions}
@@ -2087,6 +2087,7 @@ function initializeAgentScriptGraph(container) {
 					return sourcePort === "output" && targetPort === "input";
 				},
 			},
+			interacting: true,
 			// Prevent node text selection
 			preventDefaultContextMenu: true,
 			preventDefaultBlankAction: true,
@@ -3349,7 +3350,11 @@ function initAgentTab() {
 
 				CurrentCanvasConfigCell = cell;
 
-				const configType = toPascalCase($(e.target).closest("[data-action]").attr("data-action").replace("configure-", "").replace("-", " "));
+				let configType = toPascalCase($(e.target).closest("[data-action]").attr("data-action").replace("configure-", "").replace("-", " "));
+
+				if (configType === "Ai Response") {
+					configType = "AI Response";
+				}
 
 				const configContent = $("#nodeConfigContent");
 				$("#nodeConfigTitle").text(`${configType} Configuration`);
@@ -3395,6 +3400,31 @@ function initAgentTab() {
 						...data,
 						query: queries,
 					});
+				});
+
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
+
+					CurrentAgentScriptGraph.getCells().forEach((cell) => {
+						const nodeData = cell.getData() || {};
+
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+							return;
+						}
+
+						const currentLangQueryData = nodeData.query[currentLanguage] || "";
+						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.USER_QUERY} [data-input="user-query"]`).val(currentLangQueryData);
+					});
+
+					if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
+						const nodeData = CurrentCanvasConfigCell.getData() || {};
+
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+							return;
+						}
+
+						$(`[data-cell-id="${CurrentCanvasConfigCell.id}"] .${AGENT_SCRIPT_NODE_TYPES.USER_QUERY} [data-action="configure-user-query"]`).click();
+					}
 				});
 			}
 			initializeUserQueryHandlers();
@@ -3475,6 +3505,31 @@ function initAgentTab() {
 						...data,
 						response: responses,
 					});
+				});
+
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
+
+					CurrentAgentScriptGraph.getCells().forEach((cell) => {
+						const nodeData = cell.getData() || {};
+
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+							return;
+						}
+
+						const currentLangQueryData = nodeData.query[currentLanguage] || "";
+						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-input="ai-response"]`).val(currentLangQueryData);
+					});
+
+					if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
+						const nodeData = CurrentCanvasConfigCell.getData() || {};
+
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+							return;
+						}
+
+						$(`[data-cell-id="${CurrentCanvasConfigCell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-action="configure-ai-response"]`).click();
+					}
 				});
 			}
 			initializeAIResponseHandlers();

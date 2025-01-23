@@ -1579,13 +1579,8 @@ table.table > thead > * > * {
 	content: "\f066"; /* fa-compress icon */
 }
 
-/* X6 Customizations */
-.x6-graph-scroller {
-	cursor: grab;
-}
-
-.x6-graph-scroller:active {
-	cursor: grabbing;
+.multilanguage-dropdown .dropdown-menu {
+	z-index: 2000;
 }
 
 /* Node */
