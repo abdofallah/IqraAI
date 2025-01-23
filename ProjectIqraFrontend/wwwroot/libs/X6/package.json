@@ -19,8 +19,7 @@
     "clean:modules": "pnpm -r --parallel exec rimraf node_modules && rimraf node_modules",
     "clean": "run-s clean:build clean:turbo clean:modules",
     "update:deps": "pnpm update --interactive --latest --recursive",
-    "setup:husky": "husky install .husky",
-    "prepare": "is-ci || run-p setup:husky build:dev",
+    "prepare": "is-ci || run-p build:dev",
     "start:demo": "cd ./examples/x6-example-features && pnpm start",
     "start:site": "cd ./sites/x6-sites && pnpm start",
     "release": "pnpm publish --no-git-checks -r --filter @antv/x6"
