@@ -2130,6 +2130,7 @@ function initializeAgentScriptGraph(container) {
 						return false;
 					}
 
+					// validate if source already has connected nodes
 					let validateNoDiffOuputTypes = false;
 					CurrentAgentScriptGraph.getEdges().forEach((edge) => {
 						const letEdgeSource = edge.getSource();
@@ -2156,7 +2157,6 @@ function initializeAgentScriptGraph(container) {
 							}
 						}
 					});
-
 					if (validateNoDiffOuputTypes) return false;
 
 					return true;
