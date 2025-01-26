@@ -1872,6 +1872,12 @@ function registerAgentScriptNodes() {
 							strokeWidth: 2,
 							fill: "#fff",
 						},
+						text: {
+							fill: "#fff",
+						},
+					},
+					label: {
+						position: "bottom",
 					},
 				},
 			},
@@ -2224,6 +2230,10 @@ function initializeAgentScriptGraph(container) {
 			graph.cleanSelection();
 		});
 
+		graph.on("blank:click", () => {
+			nodeConfigOffcanvas.hide();
+		});
+
 		CurrentAgentScriptGraph = graph;
 	});
 }
@@ -2510,7 +2520,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                             ${(config.outcomes || [])
 															.map(
 																(outcome, index) => `
-                                <div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
+                                <div class="input-group mb-2" data-outcome-index="${outcome.outcomeIndex}">
                                     <input 
                                         type="text" 
                                         class="form-control" 
@@ -2624,7 +2634,7 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 			// These are end nodes, no output ports needed
 			break;
 
-		case "get_dtmf_keypad_input":
+		case "get_dtmf_keypad_input": {
 			// Add port for timeout
 			cell.addPort({
 				group: "output",
@@ -2633,12 +2643,16 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 					circle: {
 						fill: "#ffc107",
 					},
+					text: {
+						text: "Timeout",
+					},
+					label: {
+						position: "bottom",
+					},
 				},
 			});
-
-			// Add ports for outcomes (will be updated when configured)
-			// TODO
 			break;
+		}
 
 		default:
 			// All other tools have a single output
@@ -2658,11 +2672,6 @@ function updateSystemToolConfig(newConfig) {
 			...data,
 			config: newConfig,
 		});
-
-		// Update ports if needed (e.g., for DTMF tool)
-		if (data.toolType === "get_dtmf_keypad_input") {
-			UpdateSystemToolNodePorts(CurrentCanvasConfigCell, data.toolType, newConfig);
-		}
 	}
 }
 
@@ -3741,40 +3750,74 @@ function initAgentTab() {
 				});
 
 				$("#nodeConfigOffcanvas").on("click", '[data-action="add-outcome"]', () => {
+					let anyInputValidationFail = false;
+					$('[data-container="dtmf-outcomes"]')
+						.find('input[data-input="outcome-value"]')
+						.each((index, input) => {
+							const val = input.value.trim();
+
+							if (val === "") {
+								input.focus();
+
+								anyInputValidationFail = true;
+								return;
+							}
+						});
+
+					if (anyInputValidationFail) {
+						return;
+					}
+
+					agentScriptDMTFNextOutcomeIndex = agentScriptDMTFNextOutcomeIndex + 1;
+
 					const outcomeTemplate = `
-					<div class="input-group mb-2" data-outcome-index="${++agentScriptDMTFNextOutcomeIndex}">
-						<input 
-							type="text" 
-							class="form-control" 
-							placeholder="DTMF Value"
-							value=""
-							data-input="outcome-value"
-						>
-						<button class="btn btn-danger" data-action="remove-outcome">
-							<i class="fa-regular fa-trash"></i>
-						</button>
-					</div>
-				`;
+						<div class="input-group mb-2" data-outcome-index="${agentScriptDMTFNextOutcomeIndex}">
+							<input 
+								type="text" 
+								class="form-control" 
+								placeholder="DTMF Value"
+								value=""
+								data-input="outcome-value"
+							>
+							<button class="btn btn-danger" data-action="remove-outcome">
+								<i class="fa-regular fa-trash"></i>
+							</button>
+						</div>
+					`;
 
 					$('[data-container="dtmf-outcomes"]').append(outcomeTemplate);
 
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const outcomes = [...(config.outcomes || []), { value: "", nextNodeId: null }];
+					const config = data.config || {};
+					const outcomes = [...(config.outcomes || []), { value: "", outcomeIndex: agentScriptDMTFNextOutcomeIndex }];
 
 					updateSystemToolConfig({ ...config, outcomes });
+
+					CurrentCanvasConfigCell.addPort({
+						group: "output",
+						id: `outcome-${agentScriptDMTFNextOutcomeIndex}`,
+						attrs: {
+							text: {
+								text: "",
+							},
+						},
+						label: {
+							position: "bottom",
+						},
+					});
 				});
 
 				$("#nodeConfigOffcanvas").on("input", '[data-input="outcome-value"]', (e) => {
+					const val = e.target.value.trim();
+
 					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					const outcomes = [...(config.outcomes || [])];
 
-					outcomes[outcomeIndex] = {
-						...outcomes[outcomeIndex],
-						value: e.target.value,
-					};
+					outcomes.find((d) => d.outcomeIndex === outcomeIndex).value = val;
+
+					CurrentCanvasConfigCell.portProp(`outcome-${outcomeIndex}`, "attrs/text/text", val);
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
@@ -3782,11 +3825,15 @@ function initAgentTab() {
 				$("#nodeConfigOffcanvas").on("click", '[data-action="remove-outcome"]', (e) => {
 					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					const outcomes = [...(config.outcomes || [])];
 
-					outcomes.splice(outcomeIndex, 1);
+					const outcomeDataIndex = outcomes.findIndex((d) => d.outcomeIndex === outcomeIndex);
+
+					outcomes.splice(outcomeDataIndex, 1);
 					$(e.target).closest("[data-outcome-index]").remove();
+
+					CurrentCanvasConfigCell.removePort(`outcome-${outcomeIndex}`);
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
