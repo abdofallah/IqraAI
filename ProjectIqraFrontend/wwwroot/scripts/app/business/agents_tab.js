@@ -1962,6 +1962,12 @@ function registerAgentScriptNodes() {
 							strokeWidth: 2,
 							fill: "#fff",
 						},
+						text: {
+							fill: "#fff",
+						},
+					},
+					label: {
+						position: "bottom",
 					},
 				},
 			},
@@ -2076,8 +2082,7 @@ function initializeAgentScriptGraph(container) {
 					},
 				},
 				validateMagnet({ magnet, cell, view }) {
-					const portGroup = magnet.attributes["port-group"].value;
-					return portGroup === "output";
+					return true;
 				},
 				validateConnection({ sourceView, targetView, sourceMagnet, targetMagnet }) {
 					if (!sourceView || !targetView) {
@@ -2088,11 +2093,73 @@ function initializeAgentScriptGraph(container) {
 						return false;
 					}
 
-					// Check if connecting output to input
 					const sourcePort = sourceMagnet.attributes["port-group"].value;
 					const targetPort = targetMagnet.attributes["port-group"].value;
 
-					return sourcePort === "output" && targetPort === "input";
+					if ((sourcePort === "output" && targetPort === "output") || (sourcePort === "input" && targetPort === "input")) {
+						return false;
+					}
+
+					let inputCell;
+					let outputCell;
+
+					let inputPort;
+					let outputPort;
+
+					if (sourcePort === "input") {
+						inputCell = sourceView.cell;
+						outputCell = targetView.cell;
+
+						inputPort = sourceMagnet.attributes.port.value;
+						outputPort = targetMagnet.attributes.port.value;
+					} else {
+						inputCell = targetView.cell;
+						outputCell = sourceView.cell;
+
+						inputPort = targetMagnet.attributes.port.value;
+						outputPort = sourceMagnet.attributes.port.value;
+					}
+
+					// start node can not connect to ai response node
+					if (outputCell.shape === AGENT_SCRIPT_NODE_TYPES.START && inputCell.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+						return false;
+					}
+
+					// ai response node can only connect to user query node
+					if (outputCell.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE && inputCell.shape !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+						return false;
+					}
+
+					let validateNoDiffOuputTypes = false;
+					CurrentAgentScriptGraph.getEdges().forEach((edge) => {
+						const letEdgeSource = edge.getSource();
+
+						if (letEdgeSource.cell === outputCell.id && letEdgeSource.port === outputPort) {
+							const letEdgeTarget = edge.getTarget();
+
+							if (letEdgeTarget.cell) {
+								letEdgeTargetCell = CurrentAgentScriptGraph.getCellById(letEdgeTarget.cell);
+
+								// if atleast one user query is connected, then no other node type can be connected
+								if (letEdgeTargetCell.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY && inputCell.shape !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+									validateNoDiffOuputTypes = true;
+								}
+
+								// if one custom tool/system tool/ai response is connected, then no other type and no more nodes can be connected
+								if (
+									letEdgeTargetCell.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL ||
+									letEdgeTargetCell.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL ||
+									letEdgeTargetCell.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE
+								) {
+									validateNoDiffOuputTypes = true;
+								}
+							}
+						}
+					});
+
+					if (validateNoDiffOuputTypes) return false;
+
+					return true;
 				},
 			},
 			interacting: true,
@@ -2204,6 +2271,8 @@ function initializeAgentScriptGraph(container) {
 		graph.on("edge:connected", (event) => {
 			// Remove the circle from line
 			event.edge.setAttrs({ line: { targetMarker: "" } });
+
+			console.log(event);
 		});
 
 		graph.on("edge:mouseenter", (event) => {
@@ -2215,6 +2284,7 @@ function initializeAgentScriptGraph(container) {
 		});
 
 		graph.on("edge:removed", (event) => {
+			return;
 			if (event.options.ui) {
 				const parentInputCell = event.cell.store.data.source.cell;
 
@@ -2754,26 +2824,33 @@ function UpdateCustomToolNodePorts(cell, toolId) {
 	const tool = BusinessFullData.businessApp.tools.find((t) => t.id === toolId);
 	if (!tool) return;
 
-	// Add output ports based on tool outcomes
-	if (tool.outcomes && tool.outcomes.length > 0) {
-		// Add port for each outcome
-		tool.outcomes.forEach((outcome, index) => {
-			cell.addPort({
-				group: "output",
-				id: `outcome_${index}`,
-				attrs: {
-					circle: {
-						fill: "#28a745",
-					},
-				},
-			});
-		});
-	} else {
-		// Add single output port if no specific outcomes
+	cell.addPort({
+		group: "output",
+		id: "outcome-default",
+		attrs: {
+			circle: {
+				fill: "#ffc107",
+			},
+			text: {
+				text: "Default",
+			},
+		},
+	});
+
+	Object.keys(tool.response).forEach((responseCode) => {
 		cell.addPort({
 			group: "output",
+			id: `outcome-${responseCode}`,
+			attrs: {
+				circle: {
+					fill: "#fff",
+				},
+				text: {
+					text: `Response ${responseCode}`,
+				},
+			},
 		});
-	}
+	});
 }
 
 //Helpers
