@@ -23,7 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectIqraBackend", "Proje
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenAI", "Dependencies\openai-master\OpenAI.SDK\OpenAI.csproj", "{292EF79C-6666-4770-AB19-273FCD33FFAF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IqraStatic", "IqraStatic\IqraStatic.csproj", "{AF7DE417-CFDC-4EE9-8FD4-0674000F740B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IqraStatic", "IqraStatic\IqraStatic.csproj", "{AF7DE417-CFDC-4EE9-8FD4-0674000F740B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

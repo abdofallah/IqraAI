@@ -1681,8 +1681,10 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-content">
-                    <h5>Start</h5>
-					<span>Speaks the agent's greeting message</span>
+                    <div class="btn-ic-span-align">
+						<i class="fa-regular fa-flag"></i>
+						<span>Start</span>
+					</div>
                 </div>
             `;
 
@@ -3526,8 +3528,8 @@ function initAgentTab() {
 							return;
 						}
 
-						const currentLangQueryData = nodeData.query[currentLanguage] || "";
-						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-input="ai-response"]`).val(currentLangQueryData);
+						const currentLangResponseData = nodeData.response[currentLanguage] || "";
+						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-input="ai-response"]`).val(currentLangResponseData);
 					});
 
 					if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
