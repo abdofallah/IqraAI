@@ -75,6 +75,8 @@ let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 
 // Script
+let ManageCurrentAgentScriptType = null; // new or edit
+
 let CurrentAgentScriptGraph = null;
 let CurrentAgentScriptGraphStartNode = null;
 
@@ -2272,7 +2274,11 @@ function initializeAgentScriptGraph(container) {
 			// Remove the circle from line
 			event.edge.setAttrs({ line: { targetMarker: "" } });
 
-			console.log(event);
+			// Add Remove Button Tool
+			event.edge.addTools({
+				name: "button-remove",
+				args: { distance: "50%" },
+			});
 		});
 
 		graph.on("edge:mouseenter", (event) => {
@@ -2482,26 +2488,21 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 		return `
                 <div class="tool-config-group">
                     <label class="form-label">End Call Configuration</label>
-                    <div class="mb-2">
+                    <div class="mb-3">
                         <select class="form-select" data-input="end-call-type">
                             <option value="immediate" ${config.type === "immediate" ? "selected" : ""}>End Immediately</option>
                             <option value="with_message" ${config.type === "with_message" ? "selected" : ""}>End with Message</option>
                         </select>
                     </div>
-                    ${
-											config.type === "with_message"
-												? `
-                        <div class="mb-2">
-                            <textarea 
-                                class="form-control" 
-                                data-input="end-call-message"
-                                placeholder="Enter end call message..."
-                                rows="2"
-                            >${config.messages?.[currentLanguage] || ""}</textarea>
-                        </div>
-                    `
-												: ""
-										}
+                    <div class="d-none" id="end-call-message-container">
+						<label class="form-label btn-ic-span-align"><span>End Call Message</span> <i class="fa-regular fa-language"></i></label>
+						<textarea 
+							class="form-control" 
+							data-input="end-call-message"
+							placeholder="Enter end call message..."
+							rows="2"
+						>${config.messages?.[currentLanguage] || ""}</textarea>
+					</div>
                 </div>
             `;
 	}
@@ -2516,7 +2517,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                             type="number" 
                             class="form-control" 
                             data-input="dtmf-timeout"
-                            value="${config.timeout || 5000}"
+                            value="${config.silencetimeout || 5000}"
                             min="1000"
                             max="30000"
                             step="1000"
@@ -2587,7 +2588,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 												: ""
 										}
                     <div class="mb-2">
-                        <label class="form-label small">DTMF Outcomes</label>
+                        <label class="form-label small btn-ic-span-align"><span>DTMF Outcomes</span> <i class="fa-regular fa-language"></i></label>
                         <div data-container="dtmf-outcomes">
                             ${(config.outcomes || [])
 															.map(
@@ -2597,7 +2598,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                                         type="text" 
                                         class="form-control" 
                                         placeholder="DTMF Value"
-                                        value="${outcome.value}"
+                                        value="${outcome.value[currentLanguage] || ""}"
                                         data-input="outcome-value"
                                     >
                                     <button class="btn btn-danger" data-action="remove-outcome">
@@ -3418,6 +3419,8 @@ function initAgentTab() {
 
 				currentAgentScriptName.text("New Script");
 				showAgentScriptManagerTab();
+
+				ManageCurrentAgentScriptType = "new";
 			});
 
 			switchBackToAgentsScriptManagerTab.on("click", async (event) => {
@@ -3718,48 +3721,63 @@ function initAgentTab() {
 			}
 			initSystemToolNodeHandlers();
 			function initSystemToolConfigHandlers() {
+				// End Call Node
 				$("#nodeConfigOffcanvas").on("change", '[data-input="end-call-type"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
-					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
 					const newConfig = {
 						...config,
 						type: e.target.value,
 					};
 
-					// Show/hide message textarea based on type
-					const messageContainer = `
-					<div class="mb-2">
-						<textarea 
-							class="form-control" 
-							data-input="end-call-message"
-							placeholder="Enter end call message..."
-							rows="2"
-						>${config.messages?.[currentLanguage] || ""}</textarea>
-					</div>
-				`;
+					const messageContainer = $(e.target).closest(".tool-config-group").find("#end-call-message-container");
+					messageContainer.find("textarea").val(newConfig.messages?.[currentLanguage] || "");
 
 					if (e.target.value === "with_message") {
-						$(e.target).closest(".tool-config-group").append(messageContainer);
+						messageContainer.removeClass("d-none");
 					} else {
-						$(e.target).closest(".tool-config-group").find('[data-input="end-call-message"]').parent().remove();
+						messageContainer.addClass("d-none");
 					}
 
 					updateSystemToolConfig(newConfig);
 				});
-
 				$("#nodeConfigOffcanvas").on("input", '[data-input="end-call-message"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
-					const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
 					const messages = config.messages || {};
 					messages[currentLanguage] = e.target.value;
 
 					updateSystemToolConfig({ ...config, messages });
 				});
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
 
+					if (!CurrentCanvasConfigCell || !nodeConfigOffcanvas._element.classList.contains("show")) {
+						return;
+					}
+
+					const nodeData = CurrentCanvasConfigCell.getData() || {};
+
+					if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
+						return;
+					}
+
+					const config = nodeData.config || {};
+
+					if (config.type !== "with_message") {
+						return;
+					}
+
+					const messages = config.messages || {};
+
+					$(`#nodeConfigOffcanvas [data-input="end-call-message"]`).val(messages[currentLanguage] || "");
+				});
+
+				// Get DTMF Keypad Input Node
 				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-timeout"]', (e) => {
 					const value = parseInt(e.target.value);
 					if (value >= 1000 && value <= 30000) {
@@ -3768,19 +3786,16 @@ function initAgentTab() {
 						updateSystemToolConfig({ ...config, timeout: value });
 					}
 				});
-
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-start"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, requireStartAsterisk: e.target.checked });
 				});
-
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-end"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, requireEndHash: e.target.checked });
 				});
-
 				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-max-length"]', (e) => {
 					const value = parseInt(e.target.value);
 					if (value >= 1 && value <= 20) {
@@ -3789,7 +3804,6 @@ function initAgentTab() {
 						updateSystemToolConfig({ ...config, maxLength: value });
 					}
 				});
-
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-encrypt"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
@@ -3821,14 +3835,14 @@ function initAgentTab() {
 
 					updateSystemToolConfig(newConfig);
 				});
-
 				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-variable"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, variableName: e.target.value });
 				});
-
 				$("#nodeConfigOffcanvas").on("click", '[data-action="add-outcome"]', () => {
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
 					let anyInputValidationFail = false;
 					$('[data-container="dtmf-outcomes"]')
 						.find('input[data-input="outcome-value"]')
@@ -3868,7 +3882,7 @@ function initAgentTab() {
 
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
-					const outcomes = [...(config.outcomes || []), { value: "", outcomeIndex: agentScriptDMTFNextOutcomeIndex }];
+					const outcomes = [...(config.outcomes || []), { value: { currentLanguage: "" }, outcomeIndex: agentScriptDMTFNextOutcomeIndex }];
 
 					updateSystemToolConfig({ ...config, outcomes });
 
@@ -3885,27 +3899,27 @@ function initAgentTab() {
 						},
 					});
 				});
-
 				$("#nodeConfigOffcanvas").on("input", '[data-input="outcome-value"]', (e) => {
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
 					const val = e.target.value.trim();
 
 					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
-					const outcomes = [...(config.outcomes || [])];
+					const outcomes = config.outcomes || [];
 
-					outcomes.find((d) => d.outcomeIndex === outcomeIndex).value = val;
+					outcomes.find((d) => d.outcomeIndex === outcomeIndex).value[currentLanguage] = val;
 
 					CurrentCanvasConfigCell.portProp(`outcome-${outcomeIndex}`, "attrs/text/text", val);
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
-
 				$("#nodeConfigOffcanvas").on("click", '[data-action="remove-outcome"]', (e) => {
 					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
-					const outcomes = [...(config.outcomes || [])];
+					const outcomes = config.outcomes || [];
 
 					const outcomeDataIndex = outcomes.findIndex((d) => d.outcomeIndex === outcomeIndex);
 
@@ -3916,13 +3930,43 @@ function initAgentTab() {
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
 
+					CurrentAgentScriptGraph.getCells().forEach((cell) => {
+						const nodeData = cell.getData() || {};
+
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+							return;
+						}
+
+						const config = nodeData.config || {};
+						const outcomes = config.outcomes || [];
+
+						outcomes.forEach((outcome) => {
+							cell.portProp(`outcome-${outcome.outcomeIndex}`, "attrs/text/text", outcome.value[currentLanguage] || "");
+						});
+
+						if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
+							$('#nodeConfigOffcanvas [data-container="dtmf-outcomes"]')
+								.find(".input-group")
+								.each((index, container) => {
+									const dataOutcomeIndex = parseInt($(container).attr("data-outcome-index"));
+
+									$(container)
+										.find('input[data-input="outcome-value"]')
+										.val(outcomes.find((d) => d.outcomeIndex === dataOutcomeIndex).value[currentLanguage] || "");
+								});
+						}
+					});
+				});
+
+				// Transfer Agent Node
 				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-agent"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
 					updateSystemToolConfig({ ...config, agentId: e.target.value });
 				});
-
 				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-context"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
@@ -3955,7 +3999,6 @@ function initAgentTab() {
 
 					updateSystemToolConfig(newConfig);
 				});
-
 				$("#nodeConfigOffcanvas").on("change", '[data-input="summarize-context"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.systemTool?.config || {};
