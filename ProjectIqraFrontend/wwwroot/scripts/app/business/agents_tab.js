@@ -45,6 +45,8 @@ let agentsScriptManagerLanguageDropdown = null;
 
 let AgentBackgroundAudioWaveSurfer = null;
 
+let IsSavingAgentTab = false;
+
 // Integration related states
 let CurrentAgentIntegrationsSTT = {};
 let CurrentAgentIntegrationsLLM = {};
@@ -75,6 +77,8 @@ let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 
 // Script
+let ManageCurrentScriptData = null;
+
 let ManageCurrentAgentScriptType = null; // new or edit
 
 let CurrentAgentScriptGraph = null;
@@ -84,6 +88,13 @@ let agentScriptDMTFNextOutcomeIndex = 0;
 
 let CurrentCanvasConfigCell = null;
 let nodeConfigOffcanvas = null;
+
+let CurrentAgentScriptNameMultiLangData = {};
+let CurrentAgentScriptDescriptionMultiLangData = {};
+
+let CheckAgentScriptMultiLangInterval = null;
+
+let isSavingAgentScript = false;
 
 /** Element Variables **/
 
@@ -134,6 +145,11 @@ const switchBackToAgentsScriptManagerTab = agentTab.find("#switchBackToAgentsScr
 const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
 
 const agentScriptsManagerTab = agentTab.find("#agentScriptsManagerTab");
+
+const saveAgentScriptButton = agentsManagerHeader.find("#saveAgentScriptButton");
+
+const inputAgentScriptName = agentScriptsManagerTab.find("#inputAgentScriptName");
+const inputAgentScriptDescription = agentScriptsManagerTab.find("#inputAgentScriptDescription");
 
 // SUB | Integrations Tab
 const agentIntegrationsTab = $("#agents-manager-integrations");
@@ -1639,18 +1655,113 @@ async function canLeaveAgentScriptManagerTab() {
 }
 
 function createDefaultAgentScriptObject() {
-	return {
+	const data = {
 		id: "",
 		isDefault: false,
 		isInContext: false,
 		general: {
 			name: {},
 			description: {},
-			conditions: {},
 		},
 		nodes: [],
 		edges: [],
 	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		data.general.name[language.id] = "";
+		data.general.description[language.id] = "";
+	});
+
+	return data;
+}
+
+function validateAgentScriptMultilanguageElements() {
+	if (ManageCurrentAgentScriptType === null) return;
+
+	// General Tab
+	const areLanguagesIncompleteInGeneralTab = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		// General Tab
+		const scriptName = CurrentAgentScriptNameMultiLangData[language];
+		const scriptNameIsIncomplete = !scriptName || scriptName === "" || scriptName.trim() === "";
+
+		const scriptDescription = CurrentAgentScriptDescriptionMultiLangData[language];
+		const scriptDescriptionIsIncomplete = !scriptDescription || scriptDescription === "" || scriptDescription.trim() === "";
+
+		areLanguagesIncompleteInGeneralTab[language] = scriptNameIsIncomplete || scriptDescriptionIsIncomplete;
+	});
+
+	// Conversation Tab
+	const areLanguagesIncompleteInConversationTab = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		areLanguagesIncompleteInConversationTab[language] = false;
+	});
+
+	const currentNodesArray = CurrentAgentScriptGraph.toJSON();
+	for (let i = 0; i < currentNodesArray.cells.length; i++) {
+		const node = currentNodesArray.cells[i];
+
+		if (node.shape === "edge" || node.shape === AGENT_SCRIPT_NODE_TYPES.START) continue;
+
+		// Check User Query Node
+		if (node.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+			const userQueryData = node.data.query;
+
+			BusinessFullData.businessData.languages.forEach((language) => {
+				const currentLanguageQuery = userQueryData[language];
+
+				if (!currentLanguageQuery || currentLanguageQuery === "" || currentLanguageQuery.trim() === "") {
+					areLanguagesIncompleteInConversationTab[language] = true;
+				}
+			});
+
+			continue;
+		}
+
+		// Check AI Respone Node
+		if (node.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+			const aiResponseData = node.data.response;
+
+			BusinessFullData.businessData.languages.forEach((language) => {
+				const currentLanguageResponse = aiResponseData[language];
+
+				if (!currentLanguageResponse || currentLanguageResponse === "" || currentLanguageResponse.trim() === "") {
+					areLanguagesIncompleteInConversationTab[language] = true;
+				}
+			});
+
+			continue;
+		}
+
+		// Check System Tool Nodes
+		if (node.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+			const systemToolType = node.data.toolType;
+
+			// Check End Call Node
+			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
+				// todo
+
+				continue;
+			}
+
+			// Check Get DTMF Input Node
+			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+				// todo
+
+				continue;
+			}
+		}
+	}
+
+	let isAnyIncompleteInAgentScript = false;
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const anyIncompleteForLanguage = areLanguagesIncompleteInGeneralTab[language] || areLanguagesIncompleteInConversationTab[language];
+		if (anyIncompleteForLanguage) isAnyIncompleteInAgentScript = true;
+
+		agentsScriptManagerLanguageDropdown.setLanguageStatus(language, anyIncompleteForLanguage ? "incomplete" : "complete");
+	});
+
+	return isAnyIncompleteInAgentScript;
 }
 
 // Script Graph
@@ -3417,10 +3528,11 @@ function initAgentTab() {
 				ResetAndEmptyAgentsScriptManageTab();
 				initializeAgentScriptGraph(document.getElementById("agent-script-graph"));
 
+				ManageCurrentAgentScriptType = "new";
+				ManageCurrentScriptData = createDefaultAgentScriptObject();
+
 				currentAgentScriptName.text("New Script");
 				showAgentScriptManagerTab();
-
-				ManageCurrentAgentScriptType = "new";
 			});
 
 			switchBackToAgentsScriptManagerTab.on("click", async (event) => {
@@ -3429,8 +3541,46 @@ function initAgentTab() {
 				const canLeave = await canLeaveAgentScriptManagerTab();
 				if (!canLeave) return;
 
+				setTimeout(() => {
+					$("#agents-manager-script-general-tab").click();
+				}, 100);
+
 				showAgentScriptListTab();
+
+				ManageCurrentAgentScriptType = null;
 			});
+
+			CheckAgentScriptMultiLangInterval = setInterval(() => {
+				if (ManageCurrentAgentScriptType === null) return;
+				if (isSavingAgentScript) return;
+
+				validateAgentScriptMultilanguageElements();
+			}, 500);
+
+			// General Tab
+			function initAgentScriptGeneralTabHandlers() {
+				// Name
+				inputAgentScriptName.on("input", (event) => {
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					CurrentAgentScriptNameMultiLangData[currentLanguage] = $(event.currentTarget).val();
+				});
+
+				// Description
+				inputAgentScriptDescription.on("input", (event) => {
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					CurrentAgentScriptDescriptionMultiLangData[currentLanguage] = $(event.currentTarget).val();
+				});
+
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
+
+					inputAgentScriptName.val(CurrentAgentScriptNameMultiLangData[currentLanguage]);
+					inputAgentScriptDescription.val(CurrentAgentScriptDescriptionMultiLangData[currentLanguage]);
+				});
+			}
+			initAgentScriptGeneralTabHandlers();
 
 			// Nodes
 			// click handlers for configuration buttons
@@ -4108,6 +4258,11 @@ function initAgentTab() {
 
 					setDynamicBodyHeight("agents-tab");
 				}
+			});
+
+			// Other Functionality
+			saveAgentScriptButton.on("click", () => {
+				// todo
 			});
 		}
 		initAgentScriptsTabHandlers();

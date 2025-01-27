@@ -831,8 +831,8 @@
                         </ol>
                     </nav>
                     <div>
-                        <div class="btn-group" id="publishAgentDropdown">
-                            <button class="btn btn-primary btn-sm btn-ic-span-align">
+                        <div class="btn-group" id="saveAgentScriptDropdown">
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAgentScriptButton">
                                 <i class='fa-regular fa-floppy-disk'></i>
                                 <span> Save</span>
                             </button>
@@ -1158,27 +1158,12 @@
                                     <!-- General -->
                                     <div class="tab-pane fade show active w-100" id="agents-manager-script-general" role="tabpanel" aria-labelledby="agents-manager-script-general-tab" tabindex="0">
                                         <div class="mb-3">
-                                            <label class="form-label" for="inputAgentScriptName">Name</label>
+                                            <label class="form-label btn-ic-span-align" for="inputAgentScriptName"><span>Name</span> <i class="fa-regular fa-language"></i></label>
                                             <input type="text" class="form-control" id="inputAgentScriptName" placeholder="Script Name">
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label" for="inputAgentScriptDescription">Description</label>
+                                        <div>
+                                            <label class="form-label btn-ic-span-align" for="inputAgentScriptDescription"><span>Description</span> <i class="fa-regular fa-language"></i></label>
                                             <textarea class="form-control" id="inputAgentScriptDescription" rows="1" placeholder="Script Description"></textarea>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label btn-ic-span-align d-block">
-                                                <span>Conditions</span>
-
-                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="A list of conditions for AI to know when to follow it. (not required as detailed description might be enough)">
-                                                    <i class="fa-regular fa-circle-question"></i>
-                                                </a>
-                                            </label>
-                                            <button class="btn btn-light btn-sm mb-2" id="addAgentScriptConditionValue">
-                                                Add
-                                                Condition
-                                            </button>
-                                            <div id="editAgentScriptConditionValueInputs">
-                                            </div>
                                         </div>
                                     </div>
                                     <!-- Conversation -->

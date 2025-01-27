@@ -9,8 +9,5 @@ namespace IqraCore.Entities.Business
 
         [MultiLanguageProperty]
         public Dictionary<string, string> Description { get; set; } = new Dictionary<string, string>();
-
-        [MultiLanguageProperty]
-        public Dictionary<string, List<string>> Conditions { get; set; } = new Dictionary<string, List<string>>();
     }
 }
