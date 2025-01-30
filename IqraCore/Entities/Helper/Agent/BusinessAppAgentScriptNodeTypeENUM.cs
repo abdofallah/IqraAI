@@ -4,8 +4,9 @@
     {
         Unknown = 0,
         Start = 1,
-        MessageReply = 2,
-        ExecuteSystemTool = 3,
-        ExecuteCustomTool = 4
+        UserQuery = 2,
+        AIResponse = 3,
+        ExecuteSystemTool = 4,
+        ExecuteCustomTool = 5
     }
 }

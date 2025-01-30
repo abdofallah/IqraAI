@@ -1646,6 +1646,8 @@ function ResetAndEmptyAgentsScriptManageTab() {
 		CurrentAgentScriptGraph.dispose();
 		CurrentAgentScriptGraph = null;
 	}
+
+	saveAgentScriptButton.prop("disabled", true);
 }
 
 async function canLeaveAgentScriptManagerTab() {
@@ -1764,6 +1766,239 @@ function validateAgentScriptMultilanguageElements() {
 	});
 
 	return isAnyIncompleteInAgentScript;
+}
+
+function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConversationChanges = false) {
+	const changes = {};
+	let hasChanges = false;
+
+	// General Tab
+	changes.general = {
+		name: CurrentAgentScriptNameMultiLangData,
+		description: CurrentAgentScriptDescriptionMultiLangData,
+	};
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		if (ManageCurrentScriptData.general.name[language] !== CurrentAgentScriptNameMultiLangData[language]) hasChanges = true;
+		if (ManageCurrentScriptData.general.description[language] !== CurrentAgentScriptDescriptionMultiLangData[language]) hasChanges = true;
+	});
+
+	// Conversation/Graph Tab
+	const currentGraphJsonData = CurrentAgentScriptGraph.toJSON();
+	const currentNodes = currentGraphJsonData.cells;
+	const edgeNodes = currentNodes.filter((node) => node.shape === "edge");
+	const scriptNodes = currentNodes.filter((node) => node.shape !== "edge");
+
+	if (ManageCurrentScriptData.nodes.length !== scriptNodes.length || ManageCurrentScriptData.edges.length !== edgeNodes.length) {
+		hasChanges = true;
+	}
+
+	// Nodes
+	changes.nodes = [];
+	if (!hasChanges || (hasChanges && compileConversationChanges)) {
+		for (let i = 0; i < scriptNodes.length; i++) {
+			const newNode = scriptNodes[i];
+			const pushNewNode = {
+				id: newNode.id,
+				type: newNode.shape,
+				position: {
+					x: newNode.position.x,
+					y: newNode.position.y,
+				},
+			};
+
+			let oldNode = {};
+			const oldNodeIndex = ManageCurrentScriptData.nodes.findIndex((node) => node.id === newNode.id);
+			if (oldNodeIndex === -1) {
+				hasChanges = true;
+				if (!compileConversationChanges) break;
+			} else {
+				oldNode = ManageCurrentScriptData.nodes[oldNodeIndex];
+			}
+
+			const newScriptNodeData = newNode.data;
+
+			// Check node position compared to old
+			if (oldNodeIndex !== -1) {
+				if (oldNode.position?.x !== newNode.position.x || oldNode.position?.y !== newNode.position.y) {
+					hasChanges = true;
+					if (!compileConversationChanges) break;
+				}
+			}
+
+			// User Query Node
+			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
+				pushNewNode.query = newScriptNodeData.query;
+				pushNewNode.examples = newScriptNodeData.examples;
+
+				if (oldNodeIndex !== -1) {
+					if (JSON.stringify(oldNode.query) !== JSON.stringify(newScriptNodeData.query) || JSON.stringify(oldNode.examples) !== JSON.stringify(newScriptNodeData.examples)) {
+						hasChanges = true;
+						if (!compileConversationChanges) break;
+					}
+				}
+			}
+
+			// AI Response Node
+			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+				pushNewNode.response = newScriptNodeData.response;
+				pushNewNode.examples = newScriptNodeData.examples;
+
+				if (oldNodeIndex !== -1) {
+					if (JSON.stringify(oldNode.response) !== JSON.stringify(newScriptNodeData.response) || JSON.stringify(oldNode.examples) !== JSON.stringify(newScriptNodeData.examples)) {
+						hasChanges = true;
+						if (!compileConversationChanges) break;
+					}
+				}
+			}
+
+			// System Tool Node
+			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+				pushNewNode.toolType = toPascalCase(newScriptNodeData.toolType).replace(" ", "");
+
+				if (oldNodeIndex !== -1) {
+					if (oldNode.toolType.name !== pushNewNode.toolType) {
+						hasChanges = true;
+						if (!compileConversationChanges) break;
+					}
+				}
+
+				// End Call Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
+					pushNewNode.type = newScriptNodeData.config.type;
+					pushNewNode.messages = newScriptNodeData.config.messages;
+
+					if (oldNodeIndex !== -1) {
+						if (oldNode.type !== pushNewNode.type || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.messages)) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
+				}
+
+				// DTMF Input Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+					pushNewNode.timeout = newScriptNodeData.config.timeout;
+					pushNewNode.requireStartAsterisk = newScriptNodeData.config.requireStartAsterisk;
+					pushNewNode.requireEndHash = newScriptNodeData.config.requireEndHash;
+					pushNewNode.maxLength = newScriptNodeData.config.maxLength;
+					pushNewNode.encryptInput = newScriptNodeData.config.encryptInput;
+					pushNewNode.variableName = newScriptNodeData.config.variableName;
+					pushNewNode.outcomes = newScriptNodeData.config.outcomes;
+
+					if (oldNodeIndex !== -1) {
+						if (
+							oldNode.timeout !== pushNewNode.timeout ||
+							oldNode.requireStartAsterisk !== pushNewNode.requireStartAsterisk ||
+							oldNode.requireEndHash !== pushNewNode.requireEndHash ||
+							oldNode.maxLength !== pushNewNode.maxLength ||
+							oldNode.encryptInput !== pushNewNode.encryptInput ||
+							oldNode.variableName !== pushNewNode.variableName ||
+							JSON.stringify(oldNode.outcomes) !== JSON.stringify(pushNewNode.outcomes)
+						) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
+				}
+
+				// Transfer To Agent Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
+					pushNewNode.agentId = newScriptNodeData.config.agentId;
+					pushNewNode.transferContext = newScriptNodeData.config.transferContext;
+					pushNewNode.summarizeContext = newScriptNodeData.config.summarizeContext;
+
+					if (oldNodeIndex !== -1) {
+						if (oldNode.agentId !== pushNewNode.agentId || oldNode.transferContext !== pushNewNode.transferContext || oldNode.summarizeContext !== pushNewNode.summarizeContext) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
+				}
+
+				// Add Script To Context Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
+					pushNewNode.scriptId = newScriptNodeData.config.scriptId;
+
+					if (oldNodeIndex !== -1) {
+						if (oldNode.scriptId !== pushNewNode.scriptId) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
+				}
+			}
+
+			// Custom Tool Node
+			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+				pushNewNode.toolId = newScriptNodeData.toolId;
+				pushNewNode.config = newScriptNodeData.config;
+
+				if (oldNodeIndex !== -1) {
+					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config) !== JSON.stringify(newScriptNodeData.config)) {
+						hasChanges = true;
+						if (!compileConversationChanges) break;
+					}
+				}
+			}
+
+			if (compileConversationChanges) {
+				changes.nodes.push(pushNewNode);
+			}
+		}
+	}
+
+	// Edges
+	changes.edges = [];
+	if (!hasChanges || (hasChanges && compileConversationChanges)) {
+		for (let i = 0; i < edgeNodes.length; i++) {
+			const pushNewEdgeNode = {
+				id: edgeNodes[i].id,
+				sourceNodeId: edgeNodes[i].source.cell.id,
+				sourceNodePortId: edgeNodes[i].source.port,
+				targetNodeId: edgeNodes[i].target.cell.id,
+				targetNodePortId: edgeNodes[i].target.port,
+			};
+
+			if (compileConversationChanges) {
+				changes.edges.push(pushNewEdgeNode);
+			}
+
+			if (hasChanges) continue;
+
+			const oldNodeIndex = ManageCurrentScriptData.edges.findIndex((node) => node.id === pushNewEdgeNode.id);
+			if (oldNodeIndex === -1) {
+				hasChanges = true;
+				if (!compileConversationChanges) break;
+				continue;
+			}
+
+			const oldNode = ManageCurrentScriptData.edges[oldNodeIndex];
+
+			// Check Source Data
+			if (pushNewEdgeNode.sourceNodeId !== oldNode.sourceNodeId || pushNewEdgeNode.sourceNodePortId !== oldNode.sourceNodePortId) {
+				hasChanges = true;
+				if (!compileConversationChanges) break;
+				continue;
+			}
+
+			// Check Target Data
+			if (pushNewEdgeNode.targetNodeId !== oldNode.targetNodeId || pushNewEdgeNode.targetNodePortId !== oldNode.targetNodePortId) {
+				hasChanges = true;
+				if (!compileConversationChanges) break;
+				continue;
+			}
+		}
+	}
+
+	if (enableDisableButton) {
+		saveAgentScriptButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges,
+		changes,
+	};
 }
 
 // Script Graph
@@ -2346,6 +2581,7 @@ function initializeAgentScriptGraph(container) {
 
 		// Add start node
 		CurrentAgentScriptGraphStartNode = graph.addNode({
+			id: "start_node",
 			shape: AGENT_SCRIPT_NODE_TYPES.START,
 			data: { type: AGENT_SCRIPT_NODE_TYPES.START },
 			x: graphSize.width / 2,
@@ -2353,6 +2589,11 @@ function initializeAgentScriptGraph(container) {
 			ports: {
 				items: [{ group: "output" }],
 			},
+		});
+		ManageCurrentScriptData.nodes.push({
+			id: CurrentAgentScriptGraphStartNode.id,
+			type: AGENT_SCRIPT_NODE_TYPES.START,
+			position: CurrentAgentScriptGraphStartNode.getPosition(),
 		});
 
 		// Event Listeners
@@ -2468,12 +2709,19 @@ function adjustAgentScriptGraphMultilanguageDropdownForFullscreen(isFullscreen) 
 
 // Script User Query Node
 function addUserQueryNode(graph, x = 100, y = 200) {
+	const queryData = {};
+	const examplesData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		queryData[language] = "";
+		examplesData[language] = [];
+	});
+
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
 		data: {
 			type: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
-			query: {},
-			examples: {},
+			query: queryData,
+			examples: examplesData,
 		},
 		x,
 		y,
@@ -2516,12 +2764,19 @@ function generateUserQueryConfig(cell) {
 
 // Script AI Response Node
 function addAIResponseNode(graph, x = 100, y = 200) {
+	const responseData = {};
+	const examplesData = {};
+	BusinessFullData.businessData.languages.forEach((language) => {
+		responseData[language] = "";
+		examplesData[language] = [];
+	});
+
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
 		data: {
 			type: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
-			response: {},
-			examples: {},
+			response: responseData,
+			examples: examplesData,
 		},
 		x,
 		y,
@@ -3518,11 +3773,12 @@ function initAgentTab() {
 			addNewAgentScriptButton.on("click", (event) => {
 				event.preventDefault();
 
+				ManageCurrentScriptData = createDefaultAgentScriptObject();
+
 				ResetAndEmptyAgentsScriptManageTab();
 				initializeAgentScriptGraph(document.getElementById("agent-script-graph"));
 
 				ManageCurrentAgentScriptType = "new";
-				ManageCurrentScriptData = createDefaultAgentScriptObject();
 
 				currentAgentScriptName.text("New Script");
 				showAgentScriptManagerTab();
@@ -3548,6 +3804,7 @@ function initAgentTab() {
 				if (isSavingAgentScript) return;
 
 				validateAgentScriptMultilanguageElements();
+				checkAgentScriptTabHasChanges(true, false); // todo remove out of here later
 			}, 500);
 
 			// General Tab
