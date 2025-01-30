@@ -57,12 +57,12 @@ namespace IqraInfrastructure.Services.Business
             _audioProcessor = new AudioFileProcessor();
 
             // Sub Managers
-            _businessSettingsManager = new BusinessSettingsManager(businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
-            _businessToolsManager = new BusinessToolsManager(businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
-            _businessContextManager = new BusinessContextManager(businessAppRepository, businessRepository);
-            _businessCacheManager = new BusinessCacheManager(businessAppRepository, businessRepository);
-            _businessIntegrationsManager = new BusinessIntegrationsManager(businessAppRepository);
-            _businessAgentsManager = new BusinessAgentsManager(businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
+            _businessSettingsManager = new BusinessSettingsManager(this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
+            _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
+            _businessContextManager = new BusinessContextManager(this, businessAppRepository, businessRepository);
+            _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
+            _businessIntegrationsManager = new BusinessIntegrationsManager(this, businessAppRepository);
+            _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
         }
 
         /**

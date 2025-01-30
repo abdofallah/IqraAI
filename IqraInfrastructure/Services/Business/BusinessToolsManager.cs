@@ -16,14 +16,18 @@ namespace IqraInfrastructure.Services.Business
 {
     public class BusinessToolsManager
     {
+        private readonly BusinessManager _parentBusinessManager;
+
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessToolAudioRepository _businessToolAudioRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
 
-        public BusinessToolsManager(BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessToolAudioRepository businessToolAudioRepository, AudioFileProcessor audioProcessor)
+        public BusinessToolsManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessToolAudioRepository businessToolAudioRepository, AudioFileProcessor audioProcessor)
         {
+            _parentBusinessManager = businessManager;
+
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
             _businessToolAudioRepository = businessToolAudioRepository;

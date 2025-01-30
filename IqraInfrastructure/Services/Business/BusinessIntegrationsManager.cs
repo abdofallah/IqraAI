@@ -15,10 +15,14 @@ namespace IqraInfrastructure.Services.Business
 {
     public class BusinessIntegrationsManager
     {
+        private readonly BusinessManager _parentBusinessManager;
+
         private readonly BusinessAppRepository _businessAppRepository;
 
-        public BusinessIntegrationsManager(BusinessAppRepository businessAppRepository)
+        public BusinessIntegrationsManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository)
         {
+            _parentBusinessManager = businessManager;
+
             _businessAppRepository = businessAppRepository;
         }
 

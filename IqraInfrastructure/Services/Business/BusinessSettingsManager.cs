@@ -19,14 +19,18 @@ namespace IqraInfrastructure.Services.Business
 {
     public class BusinessSettingsManager
     {
+        private readonly BusinessManager _parentBusinessManager;
+
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
 
-        public BusinessSettingsManager(BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessLogoRepository businessLogoRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
+        public BusinessSettingsManager(BusinessManager businessManager, BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessLogoRepository businessLogoRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
         {
+            _parentBusinessManager = businessManager;
+
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;

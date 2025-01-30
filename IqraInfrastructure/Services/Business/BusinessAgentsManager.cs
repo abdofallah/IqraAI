@@ -5,20 +5,27 @@ using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
+using Minio.DataModel;
+using MongoDB.Driver;
+using NAudio.CoreAudioApi;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Services.Business
 {
     public class BusinessAgentsManager
     {
+        private readonly BusinessManager _parentBusinessManager;
+
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
 
-        public BusinessAgentsManager(BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessAgentAudioRepository businessAgentAudioRepository, AudioFileProcessor audioProcessor)
+        public BusinessAgentsManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, BusinessAgentAudioRepository businessAgentAudioRepository, AudioFileProcessor audioProcessor)
         {
+            _parentBusinessManager = businessManager;
+
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
             _businessAgentAudioRepository = businessAgentAudioRepository;
@@ -215,10 +222,28 @@ namespace IqraInfrastructure.Services.Business
             }
             else
             {
-                if (utterancesTabElement.TryGetProperty("openingType", out var openingTypeElement))
+                if (!utterancesTabElement.TryGetProperty("openingType", out var openingTypeElement))
                 {
-                    agent.Utterances.OpeningType = openingTypeElement.GetString();
+                    result.Code = "AddOrUpdateAgent:8";
+                    result.Message = "Missing opening type value.";
+                    return result;
                 }
+
+                if (!int.TryParse(openingTypeElement.GetString(), out var openingTypeInt))
+                {
+                    result.Code = "AddOrUpdateAgent:9";
+                    result.Message = "Invalid opening type value.";
+                    return result;
+                }
+
+                if (!Enum.IsDefined(typeof(BusinessAppAgentOpeningType), openingTypeInt))
+                {
+                    result.Code = "AddOrUpdateAgent:10";
+                    result.Message = "Opening type not found.";
+                    return result;
+                }
+
+                agent.Utterances.OpeningType = (BusinessAppAgentOpeningType)openingTypeInt;
 
                 var greetingMessageValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                     businessLanguages,
@@ -250,7 +275,7 @@ namespace IqraInfrastructure.Services.Business
             // Integrations Section
             if (!changesRootElement.TryGetProperty("integrations", out var integrationsTabElement))
             {
-                result.Code = "AddOrUpdateAgent:8";
+                result.Code = "AddOrUpdateAgent:11";
                 result.Message = "Integrations section not found.";
                 return result;
             }
@@ -264,7 +289,7 @@ namespace IqraInfrastructure.Services.Business
                     }
                     catch (Exception ex)
                     {
-                        result.Code = "AddOrUpdateAgent:9";
+                        result.Code = "AddOrUpdateAgent:12";
                         result.Message = "Invalid STT integration data: " + ex.Message;
                         return result;
                     }
@@ -278,7 +303,7 @@ namespace IqraInfrastructure.Services.Business
                     }
                     catch (Exception ex)
                     {
-                        result.Code = "AddOrUpdateAgent:10";
+                        result.Code = "AddOrUpdateAgent:13";
                         result.Message = "Invalid LLM integration data: " + ex.Message;
                         return result;
                     }
@@ -292,7 +317,7 @@ namespace IqraInfrastructure.Services.Business
                     }
                     catch (Exception ex)
                     {
-                        result.Code = "AddOrUpdateAgent:11";
+                        result.Code = "AddOrUpdateAgent:14";
                         result.Message = "Invalid TTS integration data: " + ex.Message;
                         return result;
                     }
@@ -302,52 +327,91 @@ namespace IqraInfrastructure.Services.Business
             // Cache Section
             if (!changesRootElement.TryGetProperty("cache", out var cacheTabElement))
             {
-                result.Code = "AddOrUpdateAgent:12";
+                result.Code = "AddOrUpdateAgent:15";
                 result.Message = "Cache section not found.";
                 return result;
             }
             else
             {
-                if (cacheTabElement.TryGetProperty("messages", out var messagesElement))
+                if (!cacheTabElement.TryGetProperty("messages", out var messagesElement))
                 {
-                    try
+                    result.Code = "AddOrUpdateAgent:16";
+                    result.Message = "Cache message groups section not found.";
+                    return result;
+                }
+                else
+                {
+                    foreach (var messageCacheIdElement in messagesElement.EnumerateArray())
                     {
-                        agent.Cache.Messages = JsonSerializer.Deserialize<List<BusinessAppAgentCacheMessage>>(messagesElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:13";
-                        result.Message = "Invalid cache messages data: " + ex.Message;
-                        return result;
+                        if (messageCacheIdElement.ValueKind != JsonValueKind.String)
+                        {
+                            result.Code = "AddOrUpdateAgent:17";
+                            result.Message = $"Invalid array item type for cache message groups. Found: {messageCacheIdElement.ValueKind}";
+                            return result;
+                        }
+
+                        var messagesCacheGroupId = messageCacheIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(messagesCacheGroupId))
+                        {
+                            result.Code = "AddOrUpdateAgent:18";
+                            result.Message = "Empty array item type for cache message groups.";
+                            return result;
+                        }
+
+                        var checkMessageCacheGroupExistsResult = await _parentBusinessManager.GetCacheManager().CheckBusinessCacheMessageGroupExists(businessId, messagesCacheGroupId);
+                        if (!checkMessageCacheGroupExistsResult)
+                        {
+                            result.Code = "AddOrUpdateAgent:19";
+                            result.Message = $"Cache message group does not exist with id: {messagesCacheGroupId}";
+                            return result;
+                        }
+
+                        agent.Cache.Messages.Add(messagesCacheGroupId);
                     }
                 }
+                
 
-                if (cacheTabElement.TryGetProperty("audios", out var audiosElement))
+                if (!cacheTabElement.TryGetProperty("audios", out var audiosElement))
                 {
-                    try
+                    result.Code = "AddOrUpdateAgent:20";
+                    result.Message = "Cache audios section not found.";
+                    return result;
+                }
+                else
+                {
+                    foreach (var aduioCacheIdElement in audiosElement.EnumerateArray())
                     {
-                        agent.Cache.Audios = JsonSerializer.Deserialize<List<BusinessAppAgentCacheAudio>>(audiosElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:14";
-                        result.Message = "Invalid cache audios data: " + ex.Message;
-                        return result;
+                        if (aduioCacheIdElement.ValueKind != JsonValueKind.String)
+                        {
+                            result.Code = "AddOrUpdateAgent:21";
+                            result.Message = $"Invalid array item type for cache audio groups. Found: {aduioCacheIdElement.ValueKind}";
+                            return result;
+                        }
+
+                        var audiosCacheGroupId = aduioCacheIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(audiosCacheGroupId))
+                        {
+                            result.Code = "AddOrUpdateAgent:22";
+                            result.Message = "Empty array item type for cache audio groups.";
+                            return result;
+                        }
+
+                        var checkAudioCacheGroupExistsResult = await _parentBusinessManager.GetCacheManager().CheckBusinessCacheAudioGroupExists(businessId, audiosCacheGroupId);
+                        if (!checkAudioCacheGroupExistsResult)
+                        {
+                            result.Code = "AddOrUpdateAgent:23";
+                            result.Message = $"Cache audio group does not exist with id: {audiosCacheGroupId}";
+                            return result;
+                        }
+
+                        agent.Cache.Audios.Add(audiosCacheGroupId);
                     }
                 }
 
                 if (cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement))
                 {
-                    try
-                    {
-                        agent.Cache.AutoCacheAudioSettings = JsonSerializer.Deserialize<BusinessAppAgentCacheAutoSettings>(autoCacheSettingsElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:15";
-                        result.Message = "Invalid auto cache settings data: " + ex.Message;
-                        return result;
-                    }
+                    // TODO agent.Cache.AutoCacheAudioSettings
+                    agent.Cache.AutoCacheAudioSettings = null;
                 }
             }
 
@@ -360,7 +424,7 @@ namespace IqraInfrastructure.Services.Business
                     var validationResult = await _audioProcessor.ValidateAudioFile(backgroundAudio);
                     if (!validationResult.IsValid)
                     {
-                        result.Code = "AddOrUpdateAgent:18";
+                        result.Code = "AddOrUpdateAgent:19";
                         result.Message = $"Background audio validation failed: {validationResult.ErrorMessage}.";
                         return result;
                     }
@@ -369,9 +433,9 @@ namespace IqraInfrastructure.Services.Business
                     if (!fileExists)
                     {
                         var metadata = new Dictionary<string, string>
-                {
-                    { "fileContentType", validationResult.ContentType }
-                };
+                        {
+                            { "fileContentType", validationResult.ContentType }
+                        };
 
                         await _businessAgentAudioRepository.PutFileAsByteData(
                             validationResult.Hash,
@@ -391,7 +455,7 @@ namespace IqraInfrastructure.Services.Business
                 var addAgentResult = await _businessAppRepository.AddAgent(businessId, agent);
                 if (!addAgentResult)
                 {
-                    result.Code = "AddOrUpdateAgent:19";
+                    result.Code = "AddOrUpdateAgent:20";
                     result.Message = "Failed to add business agent.";
                     return result;
                 }
@@ -403,7 +467,7 @@ namespace IqraInfrastructure.Services.Business
                 var updateAgentResult = await _businessAppRepository.UpdateAgent(businessId, agent);
                 if (!updateAgentResult)
                 {
-                    result.Code = "AddOrUpdateAgent:20";
+                    result.Code = "AddOrUpdateAgent:21";
                     result.Message = "Failed to update business agent.";
                     return result;
                 }
