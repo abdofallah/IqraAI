@@ -24,6 +24,7 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
         private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
         private readonly BusinessToolAudioRepository _businessToolAudioRepository;
+        private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
 
@@ -33,6 +34,7 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessContextManager _businessContextManager;
         private readonly BusinessCacheManager _businessCacheManager;
         private readonly BusinessIntegrationsManager _businessIntegrationsManager;
+        private readonly BusinessAgentsManager _businessAgentsManager;
 
         public BusinessManager(
             BusinessRepository businessRepository,
@@ -40,7 +42,8 @@ namespace IqraInfrastructure.Services.Business
             BusinessLogoRepository businessLogoRepository,
             BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
             BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository,
-            BusinessToolAudioRepository businessToolAudioRepository
+            BusinessToolAudioRepository businessToolAudioRepository,
+            BusinessAgentAudioRepository businessAgentAudioRepository
         )
         {
             _businessRepository = businessRepository;
@@ -49,6 +52,7 @@ namespace IqraInfrastructure.Services.Business
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
             _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
             _businessToolAudioRepository = businessToolAudioRepository;
+            _businessAgentAudioRepository = businessAgentAudioRepository;
 
             _audioProcessor = new AudioFileProcessor();
 
@@ -58,6 +62,7 @@ namespace IqraInfrastructure.Services.Business
             _businessContextManager = new BusinessContextManager(businessAppRepository, businessRepository);
             _businessCacheManager = new BusinessCacheManager(businessAppRepository, businessRepository);
             _businessIntegrationsManager = new BusinessIntegrationsManager(businessAppRepository);
+            _businessAgentsManager = new BusinessAgentsManager(businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
         }
 
         /**
@@ -295,6 +300,11 @@ namespace IqraInfrastructure.Services.Business
         public BusinessIntegrationsManager GetIntegrationsManager()
         {
             return _businessIntegrationsManager;
+        }
+
+        public BusinessAgentsManager GetAgentsManager()
+        {
+            return _businessAgentsManager;
         }
     }
 }

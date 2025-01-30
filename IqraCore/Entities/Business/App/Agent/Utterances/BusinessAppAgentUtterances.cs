@@ -10,6 +10,6 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> GreetingMessage { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
-        public Dictionary<string, List<string>> PhrasesBeforeReply { get; set; } = new Dictionary<string, List<string>>();
+        public Dictionary<string, string> PhrasesBeforeReply { get; set; } = new Dictionary<string, string>();
     }
 }

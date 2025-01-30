@@ -120,6 +120,8 @@ const addNewAgentButton = agentTab.find("#addNewAgentButton");
 // Agent - List Tab
 const agentsListTab = agentTab.find("#agentsListTab");
 
+const agentsListTable = agentsListTab.find("#agentsListTable");
+
 // Agent - Manager Tab
 const agentsManagerHeader = agentTab.find("#agents-manager-header");
 
@@ -131,6 +133,9 @@ const agentsManagerScriptTab = agentsManagerHeader.find("#agents-manager-script-
 
 const switchBackToAgentsTab = agentsManagerHeader.find("#switchBackToAgentsTab");
 const currentAgentName = agentsManagerHeader.find("#currentAgentName");
+
+const confirmPublishAgentButton = agentsManagerHeader.find("#confirmPublishAgentButton");
+const confirmPublishAgentButtonSpinner = agentsManagerHeader.find(".save-button-spinner");
 
 const agentsManagerTab = agentTab.find("#agentsManagerTab");
 
@@ -181,6 +186,28 @@ const agentBackgroundAudioInputBox = agentBackgroundAudioBox.find("#agentBackgro
 const agentBackgroundAudioUploadBtn = agentBackgroundAudioInputBox.find("#agent-background-audio-upload-btn");
 const agentBackgroundAudioUploadInput = agentBackgroundAudioInputBox.find("#agentBackgroundAudioUploadInput");
 const agentBackgroundAudioVolumeInput = agentBackgroundAudioBox.find("#agentBackgroundAudioVolumeInput");
+
+/** API FUNCTIONS **/
+
+function SaveBusinessAgent(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/agents/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
 
 /** Functions **/
 
@@ -279,7 +306,7 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 	}
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -522,6 +549,83 @@ function CreateAgentBackgroundAudioWavesurfer(containerId) {
 	return waveSurferConversation;
 }
 
+function ValidateAgentTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	const isGeneralTabValid = validateAgentGeneralTab(onlyRemove);
+	if (!isGeneralTabValid.isValid) {
+		isValid = false;
+		errors.push(isGeneralTabValid.errors);
+	}
+
+	const isPersontalityTabValid = validateAgentPersonalityTab(onlyRemove);
+	if (!isPersontalityTabValid.isValid) {
+		isValid = false;
+		errors.push(isPersontalityTabValid.errors);
+	}
+
+	const isUtterancesTabValid = validateAgentUtterancesTab(onlyRemove);
+	if (!isUtterancesTabValid.isValid) {
+		isValid = false;
+		errors.push(isUtterancesTabValid.errors);
+	}
+
+	const isIntegrationsTabValid = validateAgentIntegrationsTab(onlyRemove);
+	if (!isIntegrationsTabValid.isValid) {
+		isValid = false;
+		errors.push(isIntegrationsTabValid.errors);
+	}
+
+	const isCacheTabValid = validateAgentCacheTab(onlyRemove);
+	if (!isCacheTabValid.isValid) {
+		isValid = false;
+		errors.push(isCacheTabValid.errors);
+	}
+
+	const isSettingsTabValid = validateAgentSettingsTab(onlyRemove);
+	if (!isSettingsTabValid.isValid) {
+		isValid = false;
+		errors.push(isSettingsTabValid.errors);
+	}
+
+	return { isValid, errors };
+}
+
+function CreateAgentsTableElement(agentData) {
+	const element = `
+		<div class="col-lg-4 col-md-6 col-12">
+			<div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="${agentData.id}">
+				<div class="d-flex flex-row align-items-center justify-content-start mb-4">
+					<span class="agent-icon">${agentData.general.emoji}</span>
+					<h4>${agentData.general.name[BusinessDefaultLanguage]}</h4>
+				</div>
+				<div>
+					<h5 class="h5-info agent-description">
+						<span>${agentData.general.description[BusinessDefaultLanguage]}</span>
+					</h5>
+				</div>
+			</div>
+		</div>
+	`;
+
+	return element;
+}
+
+function FillAgentsTab() {
+	const agents = BusinessFullData.businessApp.agents;
+
+	if (agents.length === 0) {
+		agentsListTable.append('<div class="col-12 none-agents-list-notice"><h6 class="text-center mt-5">No agents added yet...</h6></div>');
+		return;
+	}
+
+	agents.forEach((agent) => {
+		const element = CreateAgentsTableElement(agent);
+		agentsListTable.append(element);
+	});
+}
+
 // General Tab Functions
 function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	const changes = {};
@@ -554,7 +658,7 @@ function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 	});
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -643,7 +747,7 @@ function CheckAgentContextTabChanges(enableDisableButton = true) {
 	}
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -693,7 +797,7 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 	});
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -810,7 +914,7 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	});
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -1443,7 +1547,7 @@ function CheckAgentCacheTabChanges(enableDisableButton = true) {
 	}
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
@@ -1557,12 +1661,33 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	}
 
 	if (enableDisableButton) {
-		$("#confirmPublishAgentButton").prop("disabled", !hasChanges);
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
 
 	return {
 		hasChanges,
 		changes,
+	};
+}
+
+function validateAgentSettingsTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	if (agentBackgroundAudioSelect.val() === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0 && CurrentManageAgentData.settings.backgroundAudioUrl == null) {
+		isValid = false;
+		errors.push("Audio file for background audio is required.");
+
+		if (!onlyRemove) {
+			agentBackgroundAudioSelect.addClass("is-invalid");
+		}
+	} else {
+		agentBackgroundAudioSelect.removeClass("is-invalid");
+	}
+
+	return {
+		isValid,
+		errors,
 	};
 }
 
@@ -3225,6 +3350,7 @@ function toPascalCase(str) {
 function initAgentTab() {
 	$(document).ready(() => {
 		// Init
+		FillAgentsTab();
 		registerAgentScriptNodes();
 		nodeConfigOffcanvas = new bootstrap.Offcanvas("#nodeConfigOffcanvas");
 
@@ -3772,6 +3898,14 @@ function initAgentTab() {
 		function initAgentScriptsTabHandlers() {
 			addNewAgentScriptButton.on("click", (event) => {
 				event.preventDefault();
+
+				if (ManageAgentType === "new") {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "Please save your agent before adding a new script.",
+					});
+					return;
+				}
 
 				ManageCurrentScriptData = createDefaultAgentScriptObject();
 
@@ -4543,9 +4677,7 @@ function initAgentTab() {
 			});
 
 			// Other Functionality
-			saveAgentScriptButton.on("click", () => {
-				// todo
-			});
+			saveAgentScriptButton.on("click", () => {});
 		}
 		initAgentScriptsTabHandlers();
 
@@ -4585,6 +4717,88 @@ function initAgentTab() {
 			} else {
 				$graph.css("height", `${currentHeight}px`);
 			}
+		});
+
+		// Saving
+		confirmPublishAgentButton.on("click", (event) => {
+			event.preventDefault();
+
+			const validationResult = ValidateAgentTab(false);
+			if (!validationResult.isValid) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			const changes = CheckAgentTabHasChanges(false);
+			if (!changes.hasChanges) {
+				return;
+			}
+
+			IsSavingAgentTab = true;
+			confirmPublishAgentButton.prop("disabled", true);
+
+			const formData = new FormData();
+			formData.append("postType", CurrentManageAgentType);
+			if (CurrentManageAgentType === "edit") {
+				formData.append("agentId", CurrentManageAgentData.id);
+			}
+			formData.append("changes", JSON.stringify(changes.changes));
+
+			SaveBusinessAgent(
+				formData,
+				(saveResponse) => {
+					CurrentManageAgentData = saveResponse.data;
+
+					currentAgentName.text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+
+					if (ManageAgentType === "edit") {
+						const exisitingDataIndex = BusinessFullData.businessApp.agents.findIndex((agent) => agent.id === CurrentManageAgentData.id);
+						BusinessFullData.businessApp.agents[exisitingDataIndex] = CurrentManageAgentData;
+
+						agentsListTable.find(`[agent-id="${CurrentManageAgentData.id}"]`).find(".agent-name").text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+					} else if (ManageAgentType === "new") {
+						BusinessFullData.businessApp.agents.push(CurrentManageAgentData);
+
+						const noneAgentNotice = agentsListTable.find(".none-agents-list-notice");
+						if (noneAgentNotice.length > 0) {
+							noneAgentNotice.remove();
+						}
+
+						agentsListTable.prepend($(CreateAgentsTableElement(CurrentManageAgentData)));
+					}
+
+					confirmPublishAgentButton.prop("disabled", true);
+					confirmPublishAgentButtonSpinner.addClass("d-none");
+
+					IsSavingAgentTab = false;
+
+					AlertManager.createAlert({
+						type: "success",
+						message: "Business agent added successfully.",
+						timeout: 6000,
+					});
+
+					ManageAgentType = "edit";
+				},
+				(saveError, isUnsuccessful) => {
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occured while saving business agent data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occured while saving business agent data: ", saveError);
+
+					confirmPublishAgentButton.prop("disabled", false);
+					confirmPublishAgentButtonSpinner.addClass("d-none");
+
+					IsSavingAgentTab = false;
+				},
+			);
 		});
 	});
 }

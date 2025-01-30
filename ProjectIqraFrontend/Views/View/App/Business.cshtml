@@ -807,7 +807,7 @@
                             <i class="fa-regular fa-wrench text-dark"></i>
                             <span> Debug</span>
                         </button>
-                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmPublishAgentButton" disabled="">
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmPublishAgentButton" disabled>
                             <i class="fa-regular fa-floppy-disk"></i>
                             <span>Save</span>
                             <div class="spinner-border save-button-spinner d-none" role="status">
@@ -905,20 +905,8 @@
                             </button>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-lg-4 col-md-6 col-12">
-                            <div class="agent-card d-flex flex-column align-items-start justify-content-center" data-agent-id="51221">
-                                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                                    <span class="agent-icon">🤖</span>
-                                    <h4>Opening Agent</h4>
-                                </div>
-                                <div>
-                                    <h5 class="h5-info agent-description">
-                                        <span>Checks kind of agent to transfer call to</span>
-                                    </h5>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="row" id="agentsListTable">
+                        <!-- Agents will be added here dynamically -->
                     </div>
                 </div>
                 <!-- Agents Manager Tab -->

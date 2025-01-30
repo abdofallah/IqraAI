@@ -117,8 +117,16 @@ namespace ProjectIqraFrontend
                 appConfig["BusinessToolAudioRepository:BucketName"],
                 bool.Parse(appConfig["BusinessToolAudioRepository:IsSecure"])
             );
+            BusinessAgentAudioRepository businessAgentAudioRepository = new BusinessAgentAudioRepository(
+                appConfig["BusinessAgentAudioRepository:Endpoint"],
+                int.Parse(appConfig["BusinessAgentAudioRepository:Port"]),
+                appConfig["BusinessAgentAudioRepository:AccessKey"],
+                appConfig["BusinessAgentAudioRepository:SecretKey"],
+                appConfig["BusinessAgentAudioRepository:BucketName"],
+                bool.Parse(appConfig["BusinessAgentAudioRepository:IsSecure"])
+            );
 
-            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository, businessToolAudioRepository);
+            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository, businessToolAudioRepository, businessAgentAudioRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
 
             // Number

@@ -366,5 +366,32 @@ namespace IqraInfrastructure.Repositories.Business
 
             return result.ModifiedCount > 0;
         }
+
+        /**
+         * 
+         * Agents Tab
+         * 
+        **/
+
+        public async Task<bool> CheckAgentExists(long businessId, string existingAgentId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == existingAgentId)
+            );
+
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        internal async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal async Task<bool> UpdateAgent(long businessId, BusinessAppAgent agent)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
