@@ -1736,10 +1736,12 @@ function validateAgentScriptMultilanguageElements() {
 		// Check System Tool Nodes
 		if (node.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
 			const systemToolType = node.data.toolType;
+			const config = node.data.config;
 
 			// Check End Call Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
-				// todo
+				if (config.type === "with_message") {
+				}
 
 				continue;
 			}
@@ -2584,16 +2586,11 @@ function generateSystemToolConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
-	return getAgentScriptSystemToolConfig(data.toolType, currentLanguage, {
-		systemTool: {
-			type: data.toolType,
-			config: data.config || {},
-		},
-	});
+	return getAgentScriptSystemToolConfig(data.toolType, currentLanguage, data);
 }
 
 function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
-	const config = data.systemTool?.config || {};
+	const config = data.config || {};
 
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
 		return `
@@ -2605,7 +2602,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                             <option value="with_message" ${config.type === "with_message" ? "selected" : ""}>End with Message</option>
                         </select>
                     </div>
-                    <div class="d-none" id="end-call-message-container">
+                    <div class="${config.type === "immediate" ? "d-none" : ""}" id="end-call-message-container">
 						<label class="form-label btn-ic-span-align"><span>End Call Message</span> <i class="fa-regular fa-language"></i></label>
 						<textarea 
 							class="form-control" 
@@ -2852,10 +2849,8 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 function updateSystemToolConfig(newConfig) {
 	if (CurrentCanvasConfigCell) {
 		const data = CurrentCanvasConfigCell.getData();
-		CurrentCanvasConfigCell.setData({
-			...data,
-			config: newConfig,
-		});
+		data.config = newConfig;
+		CurrentCanvasConfigCell.replaceData(data);
 	}
 }
 
@@ -2919,10 +2914,8 @@ function getCustomToolConfigValues() {
 function updateCustomToolConfig(config) {
 	if (CurrentCanvasConfigCell) {
 		const data = CurrentCanvasConfigCell.getData();
-		CurrentCanvasConfigCell.setData({
-			...data,
-			config: config,
-		});
+		data.config = config;
+		CurrentCanvasConfigCell.replaceData(data);
 	}
 }
 
@@ -3637,7 +3630,7 @@ function initAgentTab() {
 					const queries = data.query || {};
 					queries[currentLanguage] = currentElement.val();
 
-					cell.setData({
+					cell.replaceData({
 						...data,
 						query: queries,
 					});
@@ -3699,7 +3692,7 @@ function initAgentTab() {
 					const examples = data.examples || {};
 					examples[currentLanguage] = queryExamples;
 
-					CurrentCanvasConfigCell.setData({
+					CurrentCanvasConfigCell.replaceData({
 						...data,
 						examples,
 					});
@@ -3719,7 +3712,7 @@ function initAgentTab() {
 					const examples = data.examples || {};
 					examples[currentLanguage] = queryExamples;
 
-					CurrentCanvasConfigCell.setData({
+					CurrentCanvasConfigCell.replaceData({
 						...data,
 						examples,
 					});
@@ -3742,7 +3735,7 @@ function initAgentTab() {
 					const responses = data.response || {};
 					responses[currentLanguage] = currentElement.val();
 
-					cell.setData({
+					cell.replaceData({
 						...data,
 						response: responses,
 					});
@@ -3804,7 +3797,7 @@ function initAgentTab() {
 					const examples = data.examples || {};
 					examples[currentLanguage] = responseExamples;
 
-					CurrentCanvasConfigCell.setData({
+					CurrentCanvasConfigCell.replaceData({
 						...data,
 						examples,
 					});
@@ -3824,7 +3817,7 @@ function initAgentTab() {
 					const examples = data.examples || {};
 					examples[currentLanguage] = responseExamples;
 
-					CurrentCanvasConfigCell.setData({
+					CurrentCanvasConfigCell.replaceData({
 						...data,
 						examples,
 					});
@@ -3841,19 +3834,43 @@ function initAgentTab() {
 					const cellId = closestNode.attr("data-cell-id");
 
 					const cell = CurrentAgentScriptGraph.getCellById(cellId);
-					const data = cell.getData() || {};
 
 					const toolType = currentElement.val();
 
 					// Update cell data
 					const newData = {
-						...data,
 						toolType: toolType,
 						config: {},
 					};
 
+					// TODO SET DEFAULT TOOL CONFIG
+					if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
+						newData.config = {
+							type: "immediate",
+						};
+					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+						newData.config = {
+							timeout: 5000,
+							requireStartAsterisk: false,
+							requireEndHash: false,
+							maxLength: 1,
+							encryptInput: false,
+							outcomes: [],
+						};
+					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
+						newData.config = {
+							agentId: null,
+							transferContext: false,
+							summarizeContext: false,
+						};
+					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
+						newData.config = {
+							scriptId: null,
+						};
+					}
+
 					// Update cell data
-					cell.setData(newData);
+					cell.replaceData(newData);
 
 					const requiresConfig =
 						newData.toolType &&
@@ -3873,19 +3890,20 @@ function initAgentTab() {
 			function initSystemToolConfigHandlers() {
 				// End Call Node
 				$("#nodeConfigOffcanvas").on("change", '[data-input="end-call-type"]', (e) => {
-					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
-					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
-
 					const newConfig = {
-						...config,
 						type: e.target.value,
 					};
 
 					const messageContainer = $(e.target).closest(".tool-config-group").find("#end-call-message-container");
-					messageContainer.find("textarea").val(newConfig.messages?.[currentLanguage] || "");
 
 					if (e.target.value === "with_message") {
+						newConfig.messages = {};
+
+						BusinessFullData.businessData.languages.forEach((language) => {
+							newConfig.messages[language] = "";
+						});
+
+						messageContainer.find("textarea").val("");
 						messageContainer.removeClass("d-none");
 					} else {
 						messageContainer.addClass("d-none");
@@ -3895,10 +3913,10 @@ function initAgentTab() {
 				});
 				$("#nodeConfigOffcanvas").on("input", '[data-input="end-call-message"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config;
 					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
-					const messages = config.messages || {};
+					const messages = config.messages;
 					messages[currentLanguage] = e.target.value;
 
 					updateSystemToolConfig({ ...config, messages });
@@ -3916,15 +3934,15 @@ function initAgentTab() {
 						return;
 					}
 
-					const config = nodeData.config || {};
+					const config = nodeData.config;
 
 					if (config.type !== "with_message") {
 						return;
 					}
 
-					const messages = config.messages || {};
+					const messages = config.messages;
 
-					$(`#nodeConfigOffcanvas [data-input="end-call-message"]`).val(messages[currentLanguage] || "");
+					$(`#nodeConfigOffcanvas [data-input="end-call-message"]`).val(messages[currentLanguage]);
 				});
 
 				// Get DTMF Keypad Input Node
@@ -3932,31 +3950,31 @@ function initAgentTab() {
 					const value = parseInt(e.target.value);
 					if (value >= 1000 && value <= 30000) {
 						const data = CurrentCanvasConfigCell.getData();
-						const config = data.systemTool?.config || {};
+						const config = data.config || {};
 						updateSystemToolConfig({ ...config, timeout: value });
 					}
 				});
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-start"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					updateSystemToolConfig({ ...config, requireStartAsterisk: e.target.checked });
 				});
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-require-end"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					updateSystemToolConfig({ ...config, requireEndHash: e.target.checked });
 				});
 				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-max-length"]', (e) => {
 					const value = parseInt(e.target.value);
 					if (value >= 1 && value <= 20) {
 						const data = CurrentCanvasConfigCell.getData();
-						const config = data.systemTool?.config || {};
+						const config = data.config || {};
 						updateSystemToolConfig({ ...config, maxLength: value });
 					}
 				});
 				$("#nodeConfigOffcanvas").on("change", '[data-input="dtmf-encrypt"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 
 					const newConfig = {
 						...config,
@@ -3987,7 +4005,7 @@ function initAgentTab() {
 				});
 				$("#nodeConfigOffcanvas").on("input", '[data-input="dtmf-variable"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					updateSystemToolConfig({ ...config, variableName: e.target.value });
 				});
 				$("#nodeConfigOffcanvas").on("click", '[data-action="add-outcome"]', () => {
@@ -4114,12 +4132,12 @@ function initAgentTab() {
 				// Transfer Agent Node
 				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-agent"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					updateSystemToolConfig({ ...config, agentId: e.target.value });
 				});
 				$("#nodeConfigOffcanvas").on("change", '[data-input="transfer-context"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 
 					const newConfig = {
 						...config,
@@ -4151,8 +4169,15 @@ function initAgentTab() {
 				});
 				$("#nodeConfigOffcanvas").on("change", '[data-input="summarize-context"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
-					const config = data.systemTool?.config || {};
+					const config = data.config || {};
 					updateSystemToolConfig({ ...config, summarizeContext: e.target.checked });
+				});
+
+				// Add Script Node
+				$("#nodeConfigOffcanvas").on("change", '[data-input="add-script"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
+					const config = data.config || {};
+					updateSystemToolConfig({ ...config, scriptId: e.target.value });
 				});
 			}
 			initSystemToolConfigHandlers();
@@ -4168,7 +4193,7 @@ function initAgentTab() {
 					const toolId = currentElement.val();
 
 					// Update cell data
-					cell.setData({
+					cell.replaceData({
 						...cell.getData(),
 						toolId: toolId,
 						config: {},
