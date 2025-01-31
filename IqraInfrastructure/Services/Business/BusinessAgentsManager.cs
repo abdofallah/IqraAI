@@ -1,19 +1,18 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.LLM;
 using IqraCore.Entities.ProviderBase;
+using IqraCore.Entities.STT;
+using IqraCore.Entities.TTS;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
-using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.LLM;
 using IqraInfrastructure.Services.STT;
 using IqraInfrastructure.Services.TTS;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
-using Minio.DataModel;
 using MongoDB.Driver;
-using NAudio.CoreAudioApi;
-using Pipelines.Sockets.Unofficial.Arenas;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Services.Business
@@ -235,7 +234,7 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                if (!int.TryParse(openingTypeElement.GetString(), out var openingTypeInt))
+                if (!openingTypeElement.TryGetInt32(out var openingTypeInt))
                 {
                     result.Code = "AddOrUpdateAgent:9";
                     result.Message = "Invalid opening type value.";
@@ -268,7 +267,8 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     utterancesTabElement,
                     "phrasesBeforeReply",
-                    newAgentData.Utterances.PhrasesBeforeReply
+                    newAgentData.Utterances.PhrasesBeforeReply,
+                    true
                 );
                 if (!phrasesBeforeReplyValidationResult.Success)
                 {
@@ -547,8 +547,7 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    var backgroundAudioVolume = backgroundAudioVolumeElement.GetString();
-                    if (string.IsNullOrWhiteSpace(backgroundAudioVolume) || !int.TryParse(backgroundAudioVolumeElement.GetString(), out var backgroundAudioVolumeInt))
+                    if (!backgroundAudioVolumeElement.TryGetInt32(out var backgroundAudioVolumeInt))
                     {
                         result.Code = "AddOrUpdateAgent:29";
                         result.Message = "Invalid background audio volume value.";
@@ -661,18 +660,44 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                // Get base type properties
-                var providerDataBase = providerData.Data as ProviderDataBase<ProviderModelBase>;
-                if (providerDataBase == null)
+                IEnumerable<ProviderFieldBase> userIntegrationFields;
+                IEnumerable<ProviderModelBase> models;
+
+                if (integrationType == "STT")
                 {
-                    result.Code = "ValidateIntegrationData:4";
-                    result.Message = $"Invalid provider data type for {integrationType}.";
+                    var sttData = providerData.Data as STTProviderData;
+                    userIntegrationFields = sttData.UserIntegrationFields;
+                    models = sttData.Models;
+                }
+                else if (integrationType == "TTS")
+                {
+                    var ttsData = providerData.Data as TTSProviderData;
+                    userIntegrationFields = ttsData.UserIntegrationFields;
+                    models = ttsData.Models.Cast<TTSProviderSpeakerData>();
+                }
+                else if (integrationType == "LLM")
+                {
+                    var llmData = providerData.Data as LLMProviderData;
+                    userIntegrationFields = llmData.UserIntegrationFields;
+                    models = llmData.Models;
+                }
+                else
+                {
+                    result.Code = "ValidateIntegrationData:5";
+                    result.Message = $"Unknown integration type: {integrationType}.";
                     return result;
                 }
 
-                foreach (var integrationField in providerDataBase.UserIntegrationFields)
+                if (userIntegrationFields == null || models == null)
                 {
-                    bool fieldValueExists = fieldValuesElement.TryGetProperty(integrationField.Name, out var fieldValueElement);
+                    result.Code = "ValidateIntegrationData:6";
+                    result.Message = $"Invalid provider data structure for {integrationType}.";
+                    return result;
+                }
+
+                foreach (var integrationField in userIntegrationFields)
+                {
+                    bool fieldValueExists = fieldValuesElement.TryGetProperty(integrationField.Id, out var fieldValueElement);
                     if (integrationField.Required && !fieldValueExists)
                     {
                         result.Code = "ValidateIntegrationData:5";
@@ -724,7 +749,7 @@ namespace IqraInfrastructure.Services.Business
 
                                 if (integrationField.Type == "models")
                                 {
-                                    var fieldValueModelData = providerDataBase.Models.Find(x => x.Id == fieldValueOptionKey);
+                                    var fieldValueModelData = models.ToList().Find(x => x.Id == fieldValueOptionKey);
                                     if (fieldValueModelData == null)
                                     {
                                         result.Code = "ValidateIntegrationData:10";
@@ -738,13 +763,39 @@ namespace IqraInfrastructure.Services.Business
                                         result.Message = $"{integrationType} model is disabled in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                         return result;
                                     }
+
+                                    if (integrationType == "TTS")
+                                    {
+                                        var ttsSpeaker = fieldValueModelData as TTSProviderSpeakerData;
+                                        if (ttsSpeaker == null)
+                                        {
+                                            result.Code = "ValidateIntegrationData:12";
+                                            result.Message = $"Invalid TTS speaker data structure in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                            return result;
+                                        }
+
+                                        if (!ttsSpeaker.IsMultilingual && !ttsSpeaker.SupportedLanguages.Contains(businessLanguage))
+                                        {
+                                            result.Code = "ValidateIntegrationData:13";
+                                            result.Message = $"TTS speaker '{ttsSpeaker.Name}' does not support language '{businessLanguage}' in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                            return result;
+                                        }
+                                    }
                                 }
 
                                 newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueOptionKey);
                                 break;
 
                             case "number":
-                                bool fieldValueNumberValid = fieldValueElement.TryGetDouble(out var fieldValueNumber);
+                                var fieldValueNumberString = fieldValueElement.GetString();
+                                if (string.IsNullOrWhiteSpace(fieldValueNumberString))
+                                {
+                                    result.Code = "ValidateIntegrationData:11";
+                                    result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
+                                bool fieldValueNumberValid = double.TryParse(fieldValueNumberString, out var fieldValueNumber);
                                 if (!fieldValueNumberValid)
                                 {
                                     result.Code = "ValidateIntegrationData:12";

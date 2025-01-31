@@ -364,7 +364,7 @@ function createTTSProviderIntegrationFieldElement(fieldData = null) {
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Type</label>
                         <select class="form-select field-type-select">
-                            <option value="text" ${fieldData?.type === "text" ? "selected" : ""}>Text</option>
+                            <option value="string" ${fieldData?.type === "string" ? "selected" : ""}>String</option>
                             <option value="number" ${fieldData?.type === "number" ? "selected" : ""}>Number</option>
                             <option value="select" ${fieldData?.type === "select" ? "selected" : ""}>Select</option>
                             <option value="models" ${fieldData?.type === "models" ? "selected" : ""}>Models</option>

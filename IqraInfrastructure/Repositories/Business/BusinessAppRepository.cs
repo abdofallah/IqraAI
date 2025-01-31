@@ -386,12 +386,24 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
         {
-            throw new NotImplementedException();
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Agents, agent);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
         }
 
         public async Task<bool> UpdateAgent(long businessId, BusinessAppAgent agent)
         {
-            throw new NotImplementedException();
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, g => g.Id == agent.Id)
+            );
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Agents.$",
+                new BsonDocument(agent.ToBsonDocument())
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
         }
 
         public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)

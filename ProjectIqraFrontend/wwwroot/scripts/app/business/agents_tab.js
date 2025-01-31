@@ -4826,6 +4826,10 @@ function initAgentTab() {
 			}
 			formData.append("changes", JSON.stringify(changes.changes));
 
+			if (changes.changes.settings.backgroundAudioUrl === "custom") {
+				formData.append("backgroundAudio", agentBackgroundAudioUploadInput[0].files[0]);
+			}
+
 			SaveBusinessAgent(
 				formData,
 				(saveResponse) => {
