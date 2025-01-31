@@ -142,6 +142,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             formData.TryGetValue("agentId", out StringValues existingAgentIdValue);
             string? existingAgentId = existingAgentIdValue.ToString();
+            BusinessAppAgent? existingAgentData = null;
 
             if (postType == "new")
             {
@@ -180,8 +181,8 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool agentExists = await _businessManager.GetAgentsManager().CheckAgentExists(businessId, existingAgentId);
-                if (!agentExists)
+                existingAgentData = await _businessManager.GetAgentsManager().GetAgentById(businessId, existingAgentId);
+                if (existingAgentData == null)
                 {
                     result.Code = "SaveBusinessAgent:14";
                     result.Message = "Agent does not exist";
@@ -189,7 +190,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
             
-            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, existingAgentId, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
+            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, existingAgentData, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessAgent:" + addOrUpdateResult.Code;

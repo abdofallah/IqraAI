@@ -39,7 +39,7 @@ namespace IqraInfrastructure.Services.Business
             _audioProcessor = audioProcessor;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, string? existingAgentId, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
+        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, BusinessAppAgent? existingAgentData, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
@@ -573,7 +573,8 @@ namespace IqraInfrastructure.Services.Business
             }
             else if (postType == "edit")
             {
-                newAgentData.Id = existingAgentId;
+                newAgentData.Id = existingAgentData.Id;
+                newAgentData.Scripts = existingAgentData.Scripts;
 
                 var updateAgentResult = await _businessAppRepository.UpdateAgent(businessId, newAgentData);
                 if (!updateAgentResult)

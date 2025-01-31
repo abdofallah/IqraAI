@@ -253,55 +253,53 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 
 	// Check General tab changes
 	const generalChanges = CheckAgentGeneralTabChanges(false);
+	changes.general = generalChanges.changes;
 	if (generalChanges.hasChanges) {
-		changes.general = generalChanges.changes;
 		hasChanges = true;
 	}
 
 	// Check Context tab changes
 	const contextChanges = CheckAgentContextTabChanges(false);
+	changes.context = contextChanges.changes;
 	if (contextChanges.hasChanges) {
-		changes.context = contextChanges.changes;
 		hasChanges = true;
 	}
 
 	// Check Personality tab changes
 	const personalityChanges = CheckAgentPersonalityTabChanges(false);
+	changes.personality = personalityChanges.changes;
 	if (personalityChanges.hasChanges) {
-		changes.personality = personalityChanges.changes;
 		hasChanges = true;
 	}
 
 	// Check Utterances tab changes
 	const utterancesChanges = CheckAgentUtterancesTabChanges(false);
+	changes.utterances = utterancesChanges.changes;
 	if (utterancesChanges.hasChanges) {
-		changes.utterances = utterancesChanges.changes;
 		hasChanges = true;
 	}
 
 	// Check Integrations tab changes
-	const integrationsChanges = {
+	changes.integrations = {
 		STT: CurrentAgentIntegrationsSTT,
 		LLM: CurrentAgentIntegrationsLLM,
 		TTS: CurrentAgentIntegrationsTTS,
 	};
-
-	if (JSON.stringify(CurrentManageAgentData.integrations) !== JSON.stringify(integrationsChanges)) {
-		changes.integrations = integrationsChanges;
+	if (JSON.stringify(CurrentManageAgentData.integrations) !== JSON.stringify(changes.integrations)) {
 		hasChanges = true;
 	}
 
 	// Check Cache tab changes
 	const cacheChanges = CheckAgentCacheTabChanges(false);
+	changes.cache = cacheChanges.changes;
 	if (cacheChanges.hasChanges) {
-		changes.cache = cacheChanges.changes;
 		hasChanges = true;
 	}
 
 	// Check Settings tab changes
 	const settingsChanges = CheckAgentSettingsTabChanges(false);
+	changes.settings = settingsChanges.changes;
 	if (settingsChanges.hasChanges) {
-		changes.settings = settingsChanges.changes;
 		hasChanges = true;
 	}
 
@@ -4822,8 +4820,8 @@ function initAgentTab() {
 			confirmPublishAgentButton.prop("disabled", true);
 
 			const formData = new FormData();
-			formData.append("postType", CurrentManageAgentType);
-			if (CurrentManageAgentType === "edit") {
+			formData.append("postType", ManageAgentType);
+			if (ManageAgentType === "edit") {
 				formData.append("agentId", CurrentManageAgentData.id);
 			}
 			formData.append("changes", JSON.stringify(changes.changes));
