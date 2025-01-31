@@ -1,10 +1,10 @@
-﻿namespace IqraCore.Entities.STT
+﻿using IqraCore.Entities.ProviderBase;
+
+namespace IqraCore.Entities.STT
 {
-    public class STTProviderModelData
+    public class STTProviderModelData : ProviderModelBase
     {
-        public string Id { get; set; } = "";
         public string Name { get; set; } = "";
-        public DateTime? DisabledAt { get; set; } = null;
 
         public decimal PricePerUnit { get; set; } = 0;
         public string PriceUnit { get; set; } = "";

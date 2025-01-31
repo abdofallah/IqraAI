@@ -189,7 +189,8 @@ namespace ProjectIqraFrontend
             {
                 BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"],
                 BusinessToolAudioURL = appConfig["BusinessToolAudioRepository:PublicURL"] + "/" + appConfig["BusinessToolAudioRepository:BucketName"],
-                IntegrationLogoURL = appConfig["IntegrationsLogoRepository:PublicURL"] + "/" + appConfig["IntegrationsLogoRepository:BucketName"]
+                IntegrationLogoURL = appConfig["IntegrationsLogoRepository:PublicURL"] + "/" + appConfig["IntegrationsLogoRepository:BucketName"],
+                BusinessAgentBackgroundAudioURL = appConfig["BusinessAgentAudioRepository:PublicURL"] + "/" + appConfig["BusinessAgentAudioRepository:BucketName"]
             };
             builder.Services.AddSingleton<ViewLinkConfiguration>(viewLinkConfiguration);
 

@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -132,7 +133,7 @@ namespace IqraInfrastructure.Repositories.STT
 
         public async Task<UpdateResult> UpdateProviderIntegrationFieldsAsync(
             InterfaceSTTProviderEnum providerId,
-            List<STTProviderUserIntegrationFieldData> integrationFields)
+            List<ProviderFieldBase> integrationFields)
         {
             var filter = Builders<STTProviderData>.Filter.Eq(x => x.Id, providerId);
             var update = Builders<STTProviderData>.Update

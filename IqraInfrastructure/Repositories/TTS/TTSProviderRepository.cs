@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.TTS;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -65,7 +66,7 @@ namespace IqraInfrastructure.Repositories.TTS
         public async Task<UpdateResult> AddSpeakerAsync(InterfaceTTSProviderEnum providerId, TTSProviderSpeakerData speakerData)
         {
             var filter = Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId);
-            var update = Builders<TTSProviderData>.Update.Push(x => x.Speakers, speakerData);
+            var update = Builders<TTSProviderData>.Update.Push(x => x.Models, speakerData);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -73,10 +74,10 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Speakers, s => s.Id == speakerData.Id)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerData.Id)
             );
 
-            var update = Builders<TTSProviderData>.Update.Set(x => x.Speakers.FirstMatchingElement(), speakerData);
+            var update = Builders<TTSProviderData>.Update.Set(x => x.Models.FirstMatchingElement(), speakerData);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -84,11 +85,11 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Speakers, s => s.Id == speakerId)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
             );
 
             var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Speakers.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
+                .Set(x => x.Models.FirstMatchingElement().DisabledAt, DateTime.UtcNow);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -96,11 +97,11 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Speakers, s => s.Id == speakerId)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
             );
 
             var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Speakers.FirstMatchingElement().DisabledAt, null);
+                .Set(x => x.Models.FirstMatchingElement().DisabledAt, null);
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
@@ -110,7 +111,7 @@ namespace IqraInfrastructure.Repositories.TTS
                 .Find(x => x.Id == providerId)
                 .FirstOrDefaultAsync();
 
-            return provider?.Speakers.FirstOrDefault(s => s.Id == speakerId);
+            return provider?.Models.FirstOrDefault(s => s.Id == speakerId);
         }
 
         public async Task<UpdateResult> UpdateSpeakerLanguagesAsync(
@@ -121,12 +122,12 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Speakers, s => s.Id == speakerId)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
             );
 
             var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Speakers.FirstMatchingElement().SupportedLanguages, supportedLanguages)
-                .Set(x => x.Speakers.FirstMatchingElement().IsMultilingual, isMultilingual);
+                .Set(x => x.Models.FirstMatchingElement().SupportedLanguages, supportedLanguages)
+                .Set(x => x.Models.FirstMatchingElement().IsMultilingual, isMultilingual);
 
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
@@ -138,11 +139,11 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.And(
                 Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId),
-                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Speakers, s => s.Id == speakerId)
+                Builders<TTSProviderData>.Filter.ElemMatch(x => x.Models, s => s.Id == speakerId)
             );
 
             var update = Builders<TTSProviderData>.Update
-                .Set(x => x.Speakers.FirstMatchingElement().SpeakingStyles, speakingStyles);
+                .Set(x => x.Models.FirstMatchingElement().SpeakingStyles, speakingStyles);
 
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
@@ -151,14 +152,14 @@ namespace IqraInfrastructure.Repositories.TTS
         {
             var filter = Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId);
             var update = Builders<TTSProviderData>.Update
-                .PullFilter(x => x.Speakers, s => s.Id == speakerId);
+                .PullFilter(x => x.Models, s => s.Id == speakerId);
 
             return await _ttsProviderCollection.UpdateOneAsync(filter, update);
         }
 
         public async Task<UpdateResult> UpdateProviderIntegrationFieldsAsync(
             InterfaceTTSProviderEnum providerId,
-            List<TTSProviderUserIntegrationFieldData> integrationFields)
+            List<ProviderFieldBase> integrationFields)
         {
             var filter = Builders<TTSProviderData>.Filter.Eq(x => x.Id, providerId);
             var update = Builders<TTSProviderData>.Update

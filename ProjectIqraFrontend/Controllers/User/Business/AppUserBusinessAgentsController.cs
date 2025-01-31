@@ -3,6 +3,9 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Integrations;
+using IqraInfrastructure.Services.LLM;
+using IqraInfrastructure.Services.STT;
+using IqraInfrastructure.Services.TTS;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -14,15 +17,24 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
+        private readonly LLMProviderManager _llmProviderManager;
+        private readonly STTProviderManager _sttProviderManager;
+        private readonly TTSProviderManager _ttsProviderManager;
 
         public AppUserBusinessAgentsController(
             UserManager userManager,
             BusinessManager businessManager,
-            IntegrationsManager integrationsManager)
+            IntegrationsManager integrationsManager,
+            LLMProviderManager llmProviderManager,
+            STTProviderManager sttProviderManager,
+            TTSProviderManager ttsProviderManager
+        )
         {
             _userManager = userManager;
             _businessManager = businessManager;
-            _integrationsManager = integrationsManager;
+            _llmProviderManager = llmProviderManager;
+            _sttProviderManager = sttProviderManager;
+            _ttsProviderManager = ttsProviderManager;
         }
 
         [HttpPost("/app/user/business/{businessId}/agents/save")]
@@ -177,7 +189,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
             
-            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, existingAgentId);
+            var addOrUpdateResult = await _businessManager.GetAgentsManager().AddOrUpdateAgent(businessId, postType, formData, existingAgentId, _llmProviderManager, _sttProviderManager, _ttsProviderManager);
             if (!addOrUpdateResult.Success)
             {
                 result.Code = "SaveBusinessAgent:" + addOrUpdateResult.Code;

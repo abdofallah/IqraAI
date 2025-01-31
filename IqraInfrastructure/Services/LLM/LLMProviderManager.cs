@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Interfaces.AI;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.LLM;
@@ -571,11 +572,11 @@ namespace IqraInfrastructure.Services.LLM
                 // Handle integration fields
                 if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<LLMProviderUserIntegrationFieldData>();
+                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
 
                     foreach (var fieldElement in fieldsElement.EnumerateArray())
                     {
-                        var field = new LLMProviderUserIntegrationFieldData
+                        var field = new ProviderFieldBase
                         {
                             Id = fieldElement.GetProperty("id").GetString() ?? "",
                             Name = fieldElement.GetProperty("name").GetString() ?? "",
@@ -590,10 +591,10 @@ namespace IqraInfrastructure.Services.LLM
                         // Handle options for select type
                         if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
                         {
-                            field.Options = new List<LLMProviderUserIntegrationFieldOption>();
+                            field.Options = new List<ProviderFieldOption>();
                             foreach (var optionElement in optionsElement.EnumerateArray())
                             {
-                                field.Options.Add(new LLMProviderUserIntegrationFieldOption
+                                field.Options.Add(new ProviderFieldOption
                                 {
                                     Key = optionElement.GetProperty("key").GetString() ?? "",
                                     Value = optionElement.GetProperty("value").GetString() ?? "",

@@ -1,13 +1,19 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Services.Integrations;
+using IqraInfrastructure.Services.LLM;
+using IqraInfrastructure.Services.STT;
+using IqraInfrastructure.Services.TTS;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Minio.DataModel;
 using MongoDB.Driver;
 using NAudio.CoreAudioApi;
+using Pipelines.Sockets.Unofficial.Arenas;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Services.Business
@@ -33,7 +39,7 @@ namespace IqraInfrastructure.Services.Business
             _audioProcessor = audioProcessor;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, string existingAgentId)
+        public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, string? existingAgentId, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
 
@@ -62,7 +68,7 @@ namespace IqraInfrastructure.Services.Business
             }
 
             // Create new agent instance
-            var agent = new BusinessAppAgent();
+            var newAgentData = new BusinessAppAgent();
 
             // General Section
             if (!changesRootElement.TryGetProperty("general", out var generalTabElement))
@@ -75,14 +81,14 @@ namespace IqraInfrastructure.Services.Business
             {
                 if (generalTabElement.TryGetProperty("emoji", out var emojiElement))
                 {
-                    agent.General.Emoji = emojiElement.GetString();
+                    newAgentData.General.Emoji = emojiElement.GetString();
                 }
 
                 var nameValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                     businessLanguages,
                     generalTabElement,
                     "name",
-                    agent.General.Name
+                    newAgentData.General.Name
                 );
                 if (!nameValidationResult.Success)
                 {
@@ -95,7 +101,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     generalTabElement,
                     "description",
-                    agent.General.Description
+                    newAgentData.General.Description
                 );
                 if (!descriptionValidationResult.Success)
                 {
@@ -116,22 +122,22 @@ namespace IqraInfrastructure.Services.Business
             {
                 if (contextTabElement.TryGetProperty("useBranding", out var useBrandingElement))
                 {
-                    agent.Context.UseBranding = useBrandingElement.GetBoolean();
+                    newAgentData.Context.UseBranding = useBrandingElement.GetBoolean();
                 }
 
                 if (contextTabElement.TryGetProperty("useBranches", out var useBranchesElement))
                 {
-                    agent.Context.UseBranches = useBranchesElement.GetBoolean();
+                    newAgentData.Context.UseBranches = useBranchesElement.GetBoolean();
                 }
 
                 if (contextTabElement.TryGetProperty("useServices", out var useServicesElement))
                 {
-                    agent.Context.UseServices = useServicesElement.GetBoolean();
+                    newAgentData.Context.UseServices = useServicesElement.GetBoolean();
                 }
 
                 if (contextTabElement.TryGetProperty("useProducts", out var useProductsElement))
                 {
-                    agent.Context.UseProducts = useProductsElement.GetBoolean();
+                    newAgentData.Context.UseProducts = useProductsElement.GetBoolean();
                 }
             }
 
@@ -148,7 +154,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     personalityTabElement,
                     "name",
-                    agent.Personality.Name
+                    newAgentData.Personality.Name
                 );
                 if (!nameValidationResult.Success)
                 {
@@ -161,7 +167,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     personalityTabElement,
                     "role",
-                    agent.Personality.Role
+                    newAgentData.Personality.Role
                 );
                 if (!roleValidationResult.Success)
                 {
@@ -174,7 +180,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     personalityTabElement,
                     "capabilities",
-                    agent.Personality.Capabilities,
+                    newAgentData.Personality.Capabilities,
                     true
                 );
                 if (!capabilitiesValidationResult.Success)
@@ -188,7 +194,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     personalityTabElement,
                     "ethics",
-                    agent.Personality.Ethics,
+                    newAgentData.Personality.Ethics,
                     true
                 );
                 if (!ethicsValidationResult.Success)
@@ -202,7 +208,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     personalityTabElement,
                     "tone",
-                    agent.Personality.Tone,
+                    newAgentData.Personality.Tone,
                     true
                 );
                 if (!toneValidationResult.Success)
@@ -243,13 +249,13 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                agent.Utterances.OpeningType = (BusinessAppAgentOpeningType)openingTypeInt;
+                newAgentData.Utterances.OpeningType = (BusinessAppAgentOpeningType)openingTypeInt;
 
                 var greetingMessageValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                     businessLanguages,
                     utterancesTabElement,
                     "greetingMessage",
-                    agent.Utterances.GreetingMessage
+                    newAgentData.Utterances.GreetingMessage
                 );
                 if (!greetingMessageValidationResult.Success)
                 {
@@ -262,7 +268,7 @@ namespace IqraInfrastructure.Services.Business
                     businessLanguages,
                     utterancesTabElement,
                     "phrasesBeforeReply",
-                    agent.Utterances.PhrasesBeforeReply
+                    newAgentData.Utterances.PhrasesBeforeReply
                 );
                 if (!phrasesBeforeReplyValidationResult.Success)
                 {
@@ -281,45 +287,105 @@ namespace IqraInfrastructure.Services.Business
             }
             else
             {
+                // STT Integration
                 if (integrationsTabElement.TryGetProperty("STT", out var sttElement))
                 {
-                    try
+                    foreach (var businessLanguage in businessLanguages)
                     {
-                        agent.Integrations.STT = JsonSerializer.Deserialize<BusinessAppAgentIntegrationSTT>(sttElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:12";
-                        result.Message = "Invalid STT integration data: " + ex.Message;
-                        return result;
+                        newAgentData.Integrations.STT.Add(businessLanguage, new List<BusinessAppAgentIntegrationData>());
+
+                        if (!sttElement.TryGetProperty(businessLanguage, out var sttLanguageElement))
+                        {
+                            result.Code = "AddOrUpdateAgent:12";
+                            result.Message = "STT section for language " + businessLanguage + " not found. At least one integration is required.";
+                            return result;
+                        }
+
+                        var validationResult = await ValidateIntegrationData(
+                            businessId,
+                            sttLanguageElement,
+                            "STT",
+                            businessLanguage,
+                            _parentBusinessManager.GetIntegrationsManager(),
+                            sttProviderManager
+                        );
+
+                        if (!validationResult.Success)
+                        {
+                            result.Code = "AddOrUpdateAgent:" + validationResult.Code;
+                            result.Message = validationResult.Message;
+                            return result;
+                        }
+
+                        newAgentData.Integrations.STT[businessLanguage] = validationResult.Data;
                     }
                 }
 
+                // LLM Integration
                 if (integrationsTabElement.TryGetProperty("LLM", out var llmElement))
                 {
-                    try
+                    foreach (var businessLanguage in businessLanguages)
                     {
-                        agent.Integrations.LLM = JsonSerializer.Deserialize<BusinessAppAgentIntegrationLLM>(llmElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:13";
-                        result.Message = "Invalid LLM integration data: " + ex.Message;
-                        return result;
+                        newAgentData.Integrations.LLM.Add(businessLanguage, new List<BusinessAppAgentIntegrationData>());
+
+                        if (!llmElement.TryGetProperty(businessLanguage, out var llmLanguageElement))
+                        {
+                            result.Code = "AddOrUpdateAgent:13";
+                            result.Message = "LLM section for language " + businessLanguage + " not found. At least one integration is required.";
+                            return result;
+                        }
+
+                        var validationResult = await ValidateIntegrationData(
+                            businessId,
+                            llmLanguageElement,
+                            "LLM",
+                            businessLanguage,
+                            _parentBusinessManager.GetIntegrationsManager(),
+                            llmProviderManager
+                        );
+
+                        if (!validationResult.Success)
+                        {
+                            result.Code = "AddOrUpdateAgent:" + validationResult.Code;
+                            result.Message = validationResult.Message;
+                            return result;
+                        }
+
+                        newAgentData.Integrations.LLM[businessLanguage] = validationResult.Data;
                     }
                 }
 
+                // TTS Integration
                 if (integrationsTabElement.TryGetProperty("TTS", out var ttsElement))
                 {
-                    try
+                    foreach (var businessLanguage in businessLanguages)
                     {
-                        agent.Integrations.TTS = JsonSerializer.Deserialize<BusinessAppAgentIntegrationTTS>(ttsElement.GetRawText());
-                    }
-                    catch (Exception ex)
-                    {
-                        result.Code = "AddOrUpdateAgent:14";
-                        result.Message = "Invalid TTS integration data: " + ex.Message;
-                        return result;
+                        newAgentData.Integrations.TTS.Add(businessLanguage, new List<BusinessAppAgentIntegrationData>());
+
+                        if (!ttsElement.TryGetProperty(businessLanguage, out var ttsLanguageElement))
+                        {
+                            result.Code = "AddOrUpdateAgent:14";
+                            result.Message = "TTS section for language " + businessLanguage + " not found. At least one integration is required.";
+                            return result;
+                        }
+
+                        var validationResult = await ValidateIntegrationData(
+                            businessId,
+                            ttsLanguageElement,
+                            "TTS",
+                            businessLanguage,
+                            _parentBusinessManager.GetIntegrationsManager(),
+                            ttsProviderManager
+                        );
+
+                        if (!validationResult.Success)
+                        {
+                            result.Code = "AddOrUpdateAgent:" + validationResult.Code;
+                            result.Message = validationResult.Message;
+                            return result;
+                        }
+
+                        newAgentData.Integrations.TTS[businessLanguage] = validationResult.Data;
                     }
                 }
             }
@@ -366,7 +432,7 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
 
-                        agent.Cache.Messages.Add(messagesCacheGroupId);
+                        newAgentData.Cache.Messages.Add(messagesCacheGroupId);
                     }
                 }
                 
@@ -404,55 +470,100 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
 
-                        agent.Cache.Audios.Add(audiosCacheGroupId);
+                        newAgentData.Cache.Audios.Add(audiosCacheGroupId);
                     }
                 }
 
                 if (cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement))
                 {
                     // TODO agent.Cache.AutoCacheAudioSettings
-                    agent.Cache.AutoCacheAudioSettings = null;
+                    //newAgentData.Cache.AutoCacheAudioSettings = null;
                 }
             }
 
-            // Handle Background Audio File
-            if (formData.Files.Count > 0)
+            // Settings
+            if (!changesRootElement.TryGetProperty("settings", out var settingsTabElement))
             {
-                var backgroundAudio = formData.Files.GetFile("backgroundAudio");
-                if (backgroundAudio != null)
+                result.Code = "AddOrUpdateAgent:24";
+                result.Message = "Cache section not found.";
+                return result;
+            }
+            else
+            {
+                if (!settingsTabElement.TryGetProperty("backgroundAudioUrl", out var backgroundAudioUrlElement))
                 {
-                    var validationResult = await _audioProcessor.ValidateAudioFile(backgroundAudio);
-                    if (!validationResult.IsValid)
+                    result.Code = "AddOrUpdateAgent:25";
+                    result.Message = "Background audio url not found.";
+                    return result;
+                }
+
+                var backgroundAudioUrl = backgroundAudioUrlElement.GetString();
+                if (!string.IsNullOrWhiteSpace(backgroundAudioUrl))
+                {
+                    if (backgroundAudioUrl == "custom")
                     {
-                        result.Code = "AddOrUpdateAgent:19";
-                        result.Message = $"Background audio validation failed: {validationResult.ErrorMessage}.";
+                        var backgroundAudio = formData.Files.GetFile("backgroundAudio");
+                        if (backgroundAudio == null)
+                        {
+                            result.Code = "AddOrUpdateAgent:26";
+                            result.Message = "Background audio file not found.";
+                            return result;
+                        }
+
+                        var validationResult = await _audioProcessor.ValidateAudioFile(backgroundAudio);
+                        if (!validationResult.IsValid)
+                        {
+                            result.Code = "AddOrUpdateAgent:27";
+                            result.Message = $"Background audio validation failed: {validationResult.ErrorMessage}.";
+                            return result;
+                        }
+
+                        bool fileExists = await _businessAgentAudioRepository.FileExists(validationResult.Hash);
+                        if (!fileExists)
+                        {
+                            var metadata = new Dictionary<string, string>
+                                {
+                                    { "fileContentType", validationResult.ContentType }
+                                };
+
+                            await _businessAgentAudioRepository.PutFileAsByteData(
+                                validationResult.Hash,
+                                validationResult.FileBytes,
+                                metadata
+                            );
+                        }
+
+                        newAgentData.Settings.BackgroundAudioUrl = validationResult.Hash;
+                    }
+                    else
+                    {
+                        newAgentData.Settings.BackgroundAudioUrl = backgroundAudioUrl;
+                    }
+
+                    if (!settingsTabElement.TryGetProperty("backgroundAudioVolume", out var backgroundAudioVolumeElement))
+                    {
+                        result.Code = "AddOrUpdateAgent:28";
+                        result.Message = "Background audio volume not found.";
                         return result;
                     }
 
-                    bool fileExists = await _businessAgentAudioRepository.FileExists(validationResult.Hash);
-                    if (!fileExists)
+                    var backgroundAudioVolume = backgroundAudioVolumeElement.GetString();
+                    if (string.IsNullOrWhiteSpace(backgroundAudioVolume) || !int.TryParse(backgroundAudioVolumeElement.GetString(), out var backgroundAudioVolumeInt))
                     {
-                        var metadata = new Dictionary<string, string>
-                        {
-                            { "fileContentType", validationResult.ContentType }
-                        };
-
-                        await _businessAgentAudioRepository.PutFileAsByteData(
-                            validationResult.Hash,
-                            validationResult.FileBytes,
-                            metadata
-                        );
+                        result.Code = "AddOrUpdateAgent:29";
+                        result.Message = "Invalid background audio volume value.";
+                        return result;
                     }
 
-                    agent.Settings.BackgroundAudioUrl = validationResult.Hash;
+                    newAgentData.Settings.BackgroundAudioVolume = backgroundAudioVolumeInt;
                 }
             }
 
             if (postType == "new")
             {
-                agent.Id = Guid.NewGuid().ToString();
+                newAgentData.Id = Guid.NewGuid().ToString();
 
-                var addAgentResult = await _businessAppRepository.AddAgent(businessId, agent);
+                var addAgentResult = await _businessAppRepository.AddAgent(businessId, newAgentData);
                 if (!addAgentResult)
                 {
                     result.Code = "AddOrUpdateAgent:20";
@@ -462,9 +573,9 @@ namespace IqraInfrastructure.Services.Business
             }
             else if (postType == "edit")
             {
-                agent.Id = existingAgentId;
+                newAgentData.Id = existingAgentId;
 
-                var updateAgentResult = await _businessAppRepository.UpdateAgent(businessId, agent);
+                var updateAgentResult = await _businessAppRepository.UpdateAgent(businessId, newAgentData);
                 if (!updateAgentResult)
                 {
                     result.Code = "AddOrUpdateAgent:21";
@@ -474,13 +585,200 @@ namespace IqraInfrastructure.Services.Business
             }
 
             result.Success = true;
-            result.Data = agent;
+            result.Data = newAgentData;
             return result;
         }
 
-        public async Task<bool> CheckAgentExists(long businessId, string existingAgentId)
+        public async Task<bool> CheckAgentExists(long businessId, string agentId)
         {
-            var result = await _businessAppRepository.CheckAgentExists(businessId, existingAgentId);
+            var result = await _businessAppRepository.CheckAgentExists(businessId, agentId);
+            return result;
+        }
+
+        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
+        {
+            var result = await _businessAppRepository.GetAgentById(businessId, agentId);
+            return result;
+        }
+
+        private async Task<FunctionReturnResult<List<BusinessAppAgentIntegrationData>>> ValidateIntegrationData(
+            long businessId,
+            JsonElement integrationElement,
+            string integrationType,
+            string businessLanguage,
+            BusinessIntegrationsManager integrationsManager,
+            dynamic providerManager)
+        {
+            var result = new FunctionReturnResult<List<BusinessAppAgentIntegrationData>>();
+            var integrationList = new List<BusinessAppAgentIntegrationData>();
+
+            var integrationElementArray = integrationElement.EnumerateArray();
+            for (int i = 0; i < integrationElementArray.Count(); i++)
+            {
+                var currentIntegrationElement = integrationElementArray.ElementAt(i);
+
+                if (!currentIntegrationElement.TryGetProperty("id", out var integrationIdElement))
+                {
+                    result.Code = "ValidateIntegrationData:1";
+                    result.Message = $"{integrationType} integration id not found at index {i}.";
+                    return result;
+                }
+
+                var integrationId = integrationIdElement.GetString();
+                if (string.IsNullOrWhiteSpace(integrationId))
+                {
+                    result.Code = "ValidateIntegrationData:2";
+                    result.Message = $"{integrationType} integration id is empty at index {i}.";
+                    return result;
+                }
+
+                var currentIntegrationResult = await integrationsManager.getBusinessIntegrationById(businessId, integrationId);
+                if (!currentIntegrationResult.Success)
+                {
+                    result.Code = "ValidateIntegrationData:" + currentIntegrationResult.Code;
+                    result.Message = currentIntegrationResult.Message;
+                    return result;
+                }
+
+                var providerData = await providerManager.GetProviderDataByIntegration(currentIntegrationResult.Data.Type);
+                if (!providerData.Success)
+                {
+                    result.Code = "ValidateIntegrationData:" + providerData.Code;
+                    result.Message = providerData.Message;
+                    return result;
+                }
+
+                var newIntegrationData = new BusinessAppAgentIntegrationData()
+                {
+                    Id = integrationId,
+                };
+
+                if (!currentIntegrationElement.TryGetProperty("fieldValues", out var fieldValuesElement))
+                {
+                    result.Code = "ValidateIntegrationData:3";
+                    result.Message = $"{integrationType} field values not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                    return result;
+                }
+
+                // Get base type properties
+                var providerDataBase = providerData.Data as ProviderDataBase<ProviderModelBase>;
+                if (providerDataBase == null)
+                {
+                    result.Code = "ValidateIntegrationData:4";
+                    result.Message = $"Invalid provider data type for {integrationType}.";
+                    return result;
+                }
+
+                foreach (var integrationField in providerDataBase.UserIntegrationFields)
+                {
+                    bool fieldValueExists = fieldValuesElement.TryGetProperty(integrationField.Name, out var fieldValueElement);
+                    if (integrationField.Required && !fieldValueExists)
+                    {
+                        result.Code = "ValidateIntegrationData:5";
+                        result.Message = $"{integrationType} field value for field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                        return result;
+                    }
+
+                    if (integrationField.IsEncrypted)
+                    {
+                        result.Code = "ValidateIntegrationData:6";
+                        result.Message = $"Encrypted {integrationType} field value for field {integrationField.Name} is not supported in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                        return result;
+                    }
+
+                    if (fieldValueExists)
+                    {
+                        switch (integrationField.Type)
+                        {
+                            case "string":
+                                var fieldValueString = fieldValueElement.GetString();
+                                if (string.IsNullOrWhiteSpace(fieldValueString))
+                                {
+                                    result.Code = "ValidateIntegrationData:7";
+                                    result.Message = $"{integrationType} string value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueString);
+                                break;
+
+                            case "select":
+                            case "models":
+                                var fieldValueOptionKey = fieldValueElement.GetString();
+                                if (string.IsNullOrWhiteSpace(fieldValueOptionKey))
+                                {
+                                    result.Code = "ValidateIntegrationData:8";
+                                    result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
+                                if (integrationField.Type == "select")
+                                {
+                                    if (integrationField.Options == null || integrationField.Options.Find(d => d.Key == fieldValueOptionKey) == null)
+                                    {
+                                        result.Code = "ValidateIntegrationData:9";
+                                        result.Message = $"{integrationType} option value for select field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+                                }
+
+                                if (integrationField.Type == "models")
+                                {
+                                    var fieldValueModelData = providerDataBase.Models.Find(x => x.Id == fieldValueOptionKey);
+                                    if (fieldValueModelData == null)
+                                    {
+                                        result.Code = "ValidateIntegrationData:10";
+                                        result.Message = $"{integrationType} model is not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+
+                                    if (fieldValueModelData.DisabledAt != null)
+                                    {
+                                        result.Code = "ValidateIntegrationData:11";
+                                        result.Message = $"{integrationType} model is disabled in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+                                }
+
+                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueOptionKey);
+                                break;
+
+                            case "number":
+                                bool fieldValueNumberValid = fieldValueElement.TryGetDouble(out var fieldValueNumber);
+                                if (!fieldValueNumberValid)
+                                {
+                                    result.Code = "ValidateIntegrationData:12";
+                                    result.Message = $"{integrationType} field value for field {integrationField.Name} is invalid in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
+                                if (fieldValueNumber % 1 != 0)
+                                {
+                                    newIntegrationData.FieldValues.Add(integrationField.Name, Convert.ToInt32(fieldValueNumber));
+                                }
+                                else
+                                {
+                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueNumber);
+                                }
+                                break;
+
+                            case "boolean":
+                                bool fieldValueBooleanValid = fieldValueElement.GetBoolean();
+                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueBooleanValid);
+                                break;
+
+                            default:
+                                result.Code = "ValidateIntegrationData:13";
+                                result.Message = $"Invalid {integrationType} field type for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                        }
+                    }
+                }
+
+                integrationList.Add(newIntegrationData);
+            }
+
+            result.Success = true;
+            result.Data = integrationList;
             return result;
         }
     }

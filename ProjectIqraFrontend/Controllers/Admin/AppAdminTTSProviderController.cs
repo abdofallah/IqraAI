@@ -229,7 +229,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            var oldSpeakerData = provider.Speakers.Find(s => s.Id == speakerId);
+            var oldSpeakerData = provider.Models.Find(s => s.Id == speakerId);
             if (postType == "edit" && oldSpeakerData == null)
             {
                 result.Code = "SaveTTSProviderSpeaker:10";

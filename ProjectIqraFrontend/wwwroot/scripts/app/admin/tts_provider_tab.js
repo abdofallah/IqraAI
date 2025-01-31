@@ -82,7 +82,7 @@ function CreateTTSProviderListTableElement(ttsProviderData) {
             <td>${ttsProviderData.id.value}</td>
             <td>${ttsProviderData.id.name}</td>
             <td>${disabledData}</td>
-            <td>${ttsProviderData.speakers.length}</td>
+            <td>${ttsProviderData.models.length}</td>
             <td>
                 <button class="btn btn-info btn-sm" provider-id="${ttsProviderData.id.value}" button-type="edit-tts-provider">
                     <i class="fa-regular fa-eye"></i>
@@ -139,8 +139,8 @@ function FillTTSProviderManageTab(providerData) {
 	fillTTSProviderIntegrationSelect();
 
 	// Fill speakers table
-	if (providerData.speakers.length != 0) {
-		providerData.speakers.forEach((speakerData) => {
+	if (providerData.models.length != 0) {
+		providerData.models.forEach((speakerData) => {
 			ttsProviderSpeakerListTable.find("tbody").append(CreateTTSProviderSpeakerListTableElement(speakerData));
 		});
 	} else {
@@ -1142,7 +1142,7 @@ $(document).ready(() => {
 		event.preventDefault();
 
 		let speakerId = $(event.currentTarget).attr("speaker-id");
-		CurrentTTSProviderSpeakerData = CurrentTTSProviderData.speakers.find((speaker) => speaker.id === speakerId);
+		CurrentTTSProviderSpeakerData = CurrentTTSProviderData.models.find((speaker) => speaker.id === speakerId);
 
 		currentManageSpeakerTTSProviderName.text(CurrentTTSProviderData.id.name);
 		currentManageTTSProviderSpeakerName.text(CurrentTTSProviderSpeakerData.name);
@@ -1270,12 +1270,12 @@ $(document).ready(() => {
 					CurrentTTSProviderSpeakerData = saveResponse.data;
 
 					// Update the speakers list in the provider data
-					const speakerIndex = CurrentTTSProviderData.speakers.findIndex((s) => s.id === CurrentTTSProviderSpeakerData.id);
+					const speakerIndex = CurrentTTSProviderData.models.findIndex((s) => s.id === CurrentTTSProviderSpeakerData.id);
 
 					if (speakerIndex !== -1) {
-						CurrentTTSProviderData.speakers[speakerIndex] = CurrentTTSProviderSpeakerData;
+						CurrentTTSProviderData.models[speakerIndex] = CurrentTTSProviderSpeakerData;
 					} else {
-						CurrentTTSProviderData.speakers.push(CurrentTTSProviderSpeakerData);
+						CurrentTTSProviderData.models.push(CurrentTTSProviderSpeakerData);
 					}
 
 					// Update the speakers table

@@ -366,7 +366,9 @@ function createDefaultAgentObject() {
 			tone: {},
 		},
 		utterances: {
-			openingType: "AgentFirst",
+			openingType: {
+				value: 0,
+			},
 			greetingMessage: {},
 			phrasesBeforeReply: {},
 		},
@@ -387,7 +389,7 @@ function createDefaultAgentObject() {
 		},
 		settings: {
 			backgroundAudioUrl: null,
-			backgroundAudioVolume: 10,
+			backgroundAudioVolume: 100,
 		},
 	};
 
@@ -406,7 +408,7 @@ function createDefaultAgentObject() {
 
 		// Utterances
 		agent.utterances.greetingMessage[language] = "";
-		agent.utterances.phrasesBeforeReply[language] = [];
+		agent.utterances.phrasesBeforeReply[language] = "";
 
 		// Initialize integrations for each language
 		agent.integrations.STT[language] = [];
@@ -499,7 +501,47 @@ function ResetAndEmptyAgentsManageTab() {
 	agentBackgroundAudioUploadInput.val("");
 	agentBackgroundAudioSelect.val("none").change();
 
+	// General Tab
+	CurrentAgentGeneralNameMultiLangData = {};
+	CurrentAgentGeneralDescriptionMultiLangData = {};
+
+	// Personality Tab
+	CurrentAgentPersonalityNameMultiLangData = {};
+	CurrentAgentPersonalityRoleMultiLangData = {};
+	CurrentAgentPersonalityCapabilitiesMultiLangData = {};
+	CurrentAgentPersonalityEthicsMultiLangData = {};
+	CurrentAgentPersonalityToneMultiLangData = {};
+
+	// Utterances Tab
+	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
+	CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
+
+	// Integration Tab
+	CurrentAgentIntegrationsSTT = {};
+	CurrentAgentIntegrationsLLM = {};
+	CurrentAgentIntegrationsTTS = {};
+
+	// Cache
+	CurrentAgentCacheMessages = [];
+	CurrentAgentCacheAudios = [];
+
 	BusinessFullData.businessData.languages.forEach((language) => {
+		// General Tab
+		CurrentAgentGeneralNameMultiLangData[language] = "";
+		CurrentAgentGeneralDescriptionMultiLangData[language] = "";
+
+		// Personality Tab
+		CurrentAgentPersonalityNameMultiLangData[language] = "";
+		CurrentAgentPersonalityRoleMultiLangData[language] = "";
+		CurrentAgentPersonalityCapabilitiesMultiLangData[language] = [];
+		CurrentAgentPersonalityEthicsMultiLangData[language] = [];
+		CurrentAgentPersonalityToneMultiLangData[language] = [];
+
+		// Utterances Tab
+		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = "";
+		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = "";
+
+		// Integration Tab
 		CurrentAgentIntegrationsSTT[language] = [];
 		CurrentAgentIntegrationsLLM[language] = [];
 		CurrentAgentIntegrationsTTS[language] = [];
@@ -556,37 +598,37 @@ function ValidateAgentTab(onlyRemove = true) {
 	const isGeneralTabValid = validateAgentGeneralTab(onlyRemove);
 	if (!isGeneralTabValid.isValid) {
 		isValid = false;
-		errors.push(isGeneralTabValid.errors);
+		errors.push(...isGeneralTabValid.errors);
 	}
 
 	const isPersontalityTabValid = validateAgentPersonalityTab(onlyRemove);
 	if (!isPersontalityTabValid.isValid) {
 		isValid = false;
-		errors.push(isPersontalityTabValid.errors);
+		errors.push(...isPersontalityTabValid.errors);
 	}
 
 	const isUtterancesTabValid = validateAgentUtterancesTab(onlyRemove);
 	if (!isUtterancesTabValid.isValid) {
 		isValid = false;
-		errors.push(isUtterancesTabValid.errors);
+		errors.push(...isUtterancesTabValid.errors);
 	}
 
 	const isIntegrationsTabValid = validateAgentIntegrationsTab(onlyRemove);
 	if (!isIntegrationsTabValid.isValid) {
 		isValid = false;
-		errors.push(isIntegrationsTabValid.errors);
+		errors.push(...isIntegrationsTabValid.errors);
 	}
 
 	const isCacheTabValid = validateAgentCacheTab(onlyRemove);
 	if (!isCacheTabValid.isValid) {
 		isValid = false;
-		errors.push(isCacheTabValid.errors);
+		errors.push(...isCacheTabValid.errors);
 	}
 
 	const isSettingsTabValid = validateAgentSettingsTab(onlyRemove);
 	if (!isSettingsTabValid.isValid) {
 		isValid = false;
-		errors.push(isSettingsTabValid.errors);
+		errors.push(...isSettingsTabValid.errors);
 	}
 
 	return { isValid, errors };
@@ -690,15 +732,17 @@ function validateAgentGeneralTab(onlyRemove = true) {
 	const errors = [];
 	let isValid = true;
 
-	// Validate name for all languages
+	// Validate identifier for all languages
 	BusinessFullData.businessData.languages.forEach((language) => {
 		if (!CurrentAgentGeneralNameMultiLangData[language] || CurrentAgentGeneralNameMultiLangData[language].trim().length === 0) {
 			isValid = false;
-			errors.push(`Agent name for language ${language} is required.`);
+			errors.push(`Agent identifier for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentIdentifierInput").addClass("is-invalid");
 			}
+		} else {
+			$("#editAgentIdentifierInput").removeClass("is-invalid");
 		}
 	});
 
@@ -708,9 +752,11 @@ function validateAgentGeneralTab(onlyRemove = true) {
 			isValid = false;
 			errors.push(`Agent description for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentDescriptionInput").addClass("is-invalid");
 			}
+		} else {
+			$("#editAgentDescriptionInput").removeClass("is-invalid");
 		}
 	});
 
@@ -857,9 +903,11 @@ function validateAgentPersonalityTab(onlyRemove = true) {
 			isValid = false;
 			errors.push(`Agent personality name for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentPersonalityNameInput").addClass("is-invalid");
 			}
+		} else {
+			$("#editAgentPersonalityNameInput").removeClass("is-invalid");
 		}
 	});
 
@@ -869,9 +917,11 @@ function validateAgentPersonalityTab(onlyRemove = true) {
 			isValid = false;
 			errors.push(`Agent personality role for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentPersonalityRoleInput").addClass("is-invalid");
 			}
+		} else {
+			$("#editAgentPersonalityRoleInput").removeClass("is-invalid");
 		}
 	});
 
@@ -887,8 +937,8 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	let hasChanges = false;
 
 	// Opening Type
-	changes.openingType = $("#editAgentGreetingStartTypeInput").val();
-	if (CurrentManageAgentData.utterances.openingType !== changes.openingType) {
+	changes.openingType = parseInt($("#editAgentGreetingStartTypeInput").val());
+	if (CurrentManageAgentData.utterances.openingType.value !== changes.openingType) {
 		hasChanges = true;
 	}
 
@@ -906,9 +956,8 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 	BusinessFullData.businessData.languages.forEach((language) => {
 		changes.phrasesBeforeReply[language] = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
 
-		// Compare arrays
-		const originalArray = CurrentManageAgentData.utterances.phrasesBeforeReply[language] || [];
-		if (JSON.stringify(originalArray) !== JSON.stringify(changes.phrasesBeforeReply[language])) {
+		const originalValue = CurrentManageAgentData.utterances.phrasesBeforeReply[language];
+		if (originalValue !== changes.phrasesBeforeReply[language]) {
 			hasChanges = true;
 		}
 	});
@@ -962,24 +1011,28 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 			isValid = false;
 			errors.push(`Greeting message for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentPersonalityGreetingInput").addClass("is-invalid");
 			}
+		} else {
+			$("#editAgentPersonalityGreetingInput").removeClass("is-invalid");
 		}
 	});
 
 	// Validate phrases before reply for all languages
+	/**
 	BusinessFullData.businessData.languages.forEach((language) => {
 		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
 		if (!phrases || phrases.length === 0) {
 			isValid = false;
 			errors.push(`At least one phrase before reply for language ${language} is required.`);
 
-			if (!onlyRemove && language === manageAgentsLanguageDropdown.getSelectedLanguage().id) {
+			if (!onlyRemove) {
 				$("#editAgentPhrasesBeforeReply").addClass("is-invalid");
 			}
 		}
 	});
+	**/
 
 	return {
 		isValid,
@@ -1122,7 +1175,7 @@ function createAgentIntegrationConfigurationField(field) {
 												}
                     </label>
                     <select class="form-select config-field-input">
-                        <option value="" disabled>Select ${field.name}</option>
+                        <option value="" disabled ${field.defaultValue === "" ? "selected" : ""}>Select ${field.name}</option>
                         ${options}
                     </select>
                 </div>
@@ -1146,7 +1199,7 @@ function createAgentIntegrationConfigurationField(field) {
 												}
                     </label>
                     <select class="form-select config-field-input">
-                        <option value="" disabled>Select ${field.name}</option>
+                        <option value="" disabled ${field.defaultValue === "" ? "selected" : ""}>Select ${field.name}</option>
                         <!-- Models will be populated dynamically -->
                     </select>
                 </div>
@@ -1257,7 +1310,7 @@ function validateAgentIntegrationConfiguration() {
 	CurrentAgentConfigurationFields.forEach((field) => {
 		const fieldElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"]`);
 		const input = fieldElement.find(".config-field-input");
-		const value = input.val().trim();
+		const value = input.val();
 
 		// Remove existing invalid state
 		input.removeClass("is-invalid");
@@ -1647,17 +1700,28 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	let hasChanges = false;
 
 	// Background Audio URL
-	const backgroundAudioType = $("#editAgentBackgroundAudioSelect").val();
-	changes.backgroundAudioUrl = backgroundAudioType === "none" ? null : backgroundAudioType;
-
-	if (CurrentManageAgentData.settings.backgroundAudioUrl !== changes.backgroundAudioUrl) {
+	const backgroundAudioType = agentBackgroundAudioSelect.val();
+	if (
+		(CurrentManageAgentData.settings.backgroundAudioUrl === null && backgroundAudioType === "custom") ||
+		(CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "custom" && agentBackgroundAudioUploadInput[0].files.length === 1)
+	) {
+		changes.backgroundAudioUrl = "custom";
 		hasChanges = true;
+	}
+	if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "none") {
+		changes.backgroundAudioUrl = null;
+		hasChanges = true;
+	}
+	if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0) {
+		changes.backgroundAudioUrl = CurrentManageAgentData.settings.backgroundAudioUrl;
 	}
 
 	// Background Audio Volume
-	changes.backgroundAudioVolume = parseInt($("#editAgentBackgroundAudioVolume").val());
-	if (CurrentManageAgentData.settings.backgroundAudioVolume !== changes.backgroundAudioVolume) {
-		hasChanges = true;
+	if (backgroundAudioType !== "none") {
+		changes.backgroundAudioVolume = parseInt(agentBackgroundAudioVolumeInput.val());
+		if (CurrentManageAgentData.settings.backgroundAudioVolume !== changes.backgroundAudioVolume) {
+			hasChanges = true;
+		}
 	}
 
 	if (enableDisableButton) {
@@ -3379,7 +3443,7 @@ function initAgentTab() {
 		// General Tab Changes
 		function initAgentGeneralTabHandlers() {
 			// Name input changes
-			$("#editAgentIdentifierInput").on("input change", (event) => {
+			$("#editAgentIdentifierInput").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				CurrentAgentGeneralNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 				validateAgentMultiLanguageElements();
@@ -3388,7 +3452,7 @@ function initAgentTab() {
 			});
 
 			// Description input changes
-			$("#editAgentDescriptionInput").on("input change", (event) => {
+			$("#editAgentDescriptionInput").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				CurrentAgentGeneralDescriptionMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 				validateAgentMultiLanguageElements();
@@ -3418,7 +3482,7 @@ function initAgentTab() {
 		// Personality Tab Changes
 		function initAgentPersonalityTabHandlers() {
 			// Name input changes
-			$("#editAgentPersonalityNameInput").on("input change", (event) => {
+			$("#editAgentPersonalityNameInput").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				CurrentAgentPersonalityNameMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 				validateAgentMultiLanguageElements();
@@ -3427,7 +3491,7 @@ function initAgentTab() {
 			});
 
 			// Role input changes
-			$("#editAgentPersonalityRoleInput").on("input change", (event) => {
+			$("#editAgentPersonalityRoleInput").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				CurrentAgentPersonalityRoleMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 				validateAgentMultiLanguageElements();
@@ -3485,7 +3549,7 @@ function initAgentTab() {
 				});
 
 				// Value changes
-				container.on("input change", "input", () => {
+				container.on("input", "input", () => {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					const currentData =
 						listType === "capabilities"
@@ -3545,7 +3609,7 @@ function initAgentTab() {
 			});
 
 			// Greeting Message changes
-			$("#editAgentPersonalityGreetingInput").on("input change", (event) => {
+			$("#editAgentPersonalityGreetingInput").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
 				validateAgentMultiLanguageElements();
@@ -3554,7 +3618,7 @@ function initAgentTab() {
 			});
 
 			// Phrases Before Reply changes
-			$("#editAgentPhrasesBeforeReply").on("input change", (event) => {
+			$("#editAgentPhrasesBeforeReply").on("input", (event) => {
 				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 				const phrasesText = $(event.currentTarget).val();
 
@@ -3674,7 +3738,6 @@ function initAgentTab() {
 		initAgentCacheTabHandlers();
 
 		// Integration Tab Changes
-
 		function initAgentIntegrationsTabHandlers() {
 			manageAgentsLanguageDropdown.onLanguageChange((language) => {
 				fillAgentIntegrationsList("STT");
@@ -3777,9 +3840,24 @@ function initAgentTab() {
 						return;
 					}
 
+					const currentIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === value);
+					const providerData =
+						type === "LLM"
+							? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
+							: type === "STT"
+								? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
+								: type === "TTS"
+									? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
+									: null;
+
+					const fieldValuesDefaultData = {};
+					providerData.userIntegrationFields.forEach((fieldData) => {
+						fieldValuesDefaultData[fieldData.id] = fieldData.defaultValue;
+					});
+
 					currentArray[index] = {
 						id: value,
-						fieldValues: {},
+						fieldValues: fieldValuesDefaultData,
 					};
 				} else {
 					currentArray.splice(index, 1);
@@ -3820,7 +3898,7 @@ function initAgentTab() {
 			});
 
 			// Track changes in fields
-			integrationConfigurationFieldsContainer.on("input change", ".config-field-input", () => {
+			integrationConfigurationFieldsContainer.on("input", ".config-field-input", () => {
 				const changes = getAgentIntegrationConfigurationChanges();
 				saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
 
@@ -3831,7 +3909,7 @@ function initAgentTab() {
 
 		// Settings Tab Changes
 		function initAgentSettingsTabHandlers() {
-			$("#editAgentBackgroundAudioSelect, #editAgentBackgroundAudioVolume").on("input change", () => {
+			$("#editAgentBackgroundAudioSelect, #editAgentBackgroundAudioVolume").on("input", () => {
 				CheckAgentTabHasChanges();
 			});
 
@@ -3854,6 +3932,8 @@ function initAgentTab() {
 				} else {
 					agentBackgroundAudioInputBox.addClass("d-none");
 				}
+
+				validateAgentSettingsTab(true);
 			});
 
 			agentBackgroundAudioUploadBtn.on("click", (event) => {

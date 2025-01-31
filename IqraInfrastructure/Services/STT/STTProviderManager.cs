@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
 using IqraCore.Interfaces;
 using IqraInfrastructure.Repositories.LLM;
@@ -368,11 +369,11 @@ namespace IqraInfrastructure.Services.STT
                 // Handle integration fields
                 if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<STTProviderUserIntegrationFieldData>();
+                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
 
                     foreach (var fieldElement in fieldsElement.EnumerateArray())
                     {
-                        var field = new STTProviderUserIntegrationFieldData
+                        var field = new ProviderFieldBase
                         {
                             Id = fieldElement.GetProperty("id").GetString() ?? "",
                             Name = fieldElement.GetProperty("name").GetString() ?? "",
@@ -386,10 +387,10 @@ namespace IqraInfrastructure.Services.STT
 
                         if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
                         {
-                            field.Options = new List<STTProviderUserIntegrationFieldOption>();
+                            field.Options = new List<ProviderFieldOption>();
                             foreach (var optionElement in optionsElement.EnumerateArray())
                             {
-                                field.Options.Add(new STTProviderUserIntegrationFieldOption
+                                field.Options.Add(new ProviderFieldOption
                                 {
                                     Key = optionElement.GetProperty("key").GetString() ?? "",
                                     Value = optionElement.GetProperty("value").GetString() ?? "",

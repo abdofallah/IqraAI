@@ -1,10 +1,10 @@
-﻿namespace IqraCore.Entities.TTS
+﻿using IqraCore.Entities.ProviderBase;
+
+namespace IqraCore.Entities.TTS
 {
-    public class TTSProviderSpeakerData
+    public class TTSProviderSpeakerData : ProviderModelBase
     {
-        public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
-        public DateTime? DisabledAt { get; set; } = null;
         public decimal PricePerUnit { get; set; } = 0;
         public string PriceUnit { get; set; } = string.Empty;
 

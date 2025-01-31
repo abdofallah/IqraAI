@@ -384,14 +384,24 @@ namespace IqraInfrastructure.Repositories.Business
             return result != null;
         }
 
-        internal async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
+        public async Task<bool> AddAgent(long businessId, BusinessAppAgent agent)
         {
             throw new NotImplementedException();
         }
 
-        internal async Task<bool> UpdateAgent(long businessId, BusinessAppAgent agent)
+        public async Task<bool> UpdateAgent(long businessId, BusinessAppAgent agent)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<BusinessAppAgent?> GetAgentById(long businessId, string agentId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == agentId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result?.Agents.FirstOrDefault(t => t.Id == agentId);
         }
     }
 }

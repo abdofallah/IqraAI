@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
@@ -37,8 +38,8 @@ namespace IqraInfrastructure.Services.TTS
                     {
                         Id = providerEnum,
                         DisabledAt = DateTime.UtcNow,
-                        Speakers = new List<TTSProviderSpeakerData>(),
-                        UserIntegrationFields = new List<TTSProviderUserIntegrationFieldData>()
+                        Models = new List<TTSProviderSpeakerData>(),
+                        UserIntegrationFields = new List<ProviderFieldBase>()
                     });
                 }
                 else if (provider.DisabledAt == null)
@@ -327,7 +328,7 @@ namespace IqraInfrastructure.Services.TTS
                 var newProviderData = new TTSProviderData
                 {
                     Id = provider.Id,
-                    Speakers = provider.Speakers
+                    Models = provider.Models
                 };
 
                 // Handle disabled state
@@ -380,11 +381,11 @@ namespace IqraInfrastructure.Services.TTS
                 // Handle integration fields
                 if (changesJsonElement.RootElement.TryGetProperty("userIntegrationFields", out var fieldsElement))
                 {
-                    newProviderData.UserIntegrationFields = new List<TTSProviderUserIntegrationFieldData>();
+                    newProviderData.UserIntegrationFields = new List<ProviderFieldBase>();
 
                     foreach (var fieldElement in fieldsElement.EnumerateArray())
                     {
-                        var field = new TTSProviderUserIntegrationFieldData
+                        var field = new ProviderFieldBase
                         {
                             Id = fieldElement.GetProperty("id").GetString() ?? "",
                             Name = fieldElement.GetProperty("name").GetString() ?? "",
@@ -398,10 +399,10 @@ namespace IqraInfrastructure.Services.TTS
 
                         if (field.Type == "select" && fieldElement.TryGetProperty("options", out var optionsElement))
                         {
-                            field.Options = new List<TTSProviderUserIntegrationFieldOption>();
+                            field.Options = new List<ProviderFieldOption>();
                             foreach (var optionElement in optionsElement.EnumerateArray())
                             {
-                                field.Options.Add(new TTSProviderUserIntegrationFieldOption
+                                field.Options.Add(new ProviderFieldOption
                                 {
                                     Key = optionElement.GetProperty("key").GetString() ?? "",
                                     Value = optionElement.GetProperty("value").GetString() ?? "",

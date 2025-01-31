@@ -1,13 +1,11 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.ProviderBase;
 
 namespace IqraCore.Entities.LLM
 {
-    public class LLMProviderModelData
+    public class LLMProviderModelData : ProviderModelBase
     {
-        public string Id { get; set; } = "";
         public string Name { get; set; } = "";
-
-        public DateTime? DisabledAt { get; set; }
 
         public decimal InputPrice { get; set; } = 0;
         public int InputPriceTokenUnit { get; set; } = 0;
