@@ -787,39 +787,69 @@ namespace IqraInfrastructure.Services.Business
                                 break;
 
                             case "number":
-                                var fieldValueNumberString = fieldValueElement.GetString();
-                                if (string.IsNullOrWhiteSpace(fieldValueNumberString))
+                                if (fieldValueElement.ValueKind == JsonValueKind.String)
                                 {
-                                    result.Code = "ValidateIntegrationData:11";
-                                    result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                    return result;
-                                }
+                                    var fieldValueNumberString = fieldValueElement.GetString();
+                                    if (string.IsNullOrWhiteSpace(fieldValueNumberString) || !int.TryParse(fieldValueNumberString, out var fieldValueNumber))
+                                    {
+                                        result.Code = "ValidateIntegrationData:14";
+                                        result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
 
-                                bool fieldValueNumberValid = double.TryParse(fieldValueNumberString, out var fieldValueNumber);
-                                if (!fieldValueNumberValid)
-                                {
-                                    result.Code = "ValidateIntegrationData:12";
-                                    result.Message = $"{integrationType} field value for field {integrationField.Name} is invalid in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                    return result;
+                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueNumber);
                                 }
-
-                                if (fieldValueNumber % 1 != 0)
+                                else if (fieldValueElement.ValueKind == JsonValueKind.Number)
                                 {
-                                    newIntegrationData.FieldValues.Add(integrationField.Name, Convert.ToInt32(fieldValueNumber));
+                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueElement.GetInt32());
                                 }
                                 else
                                 {
+                                    result.Code = "ValidateIntegrationData:15";
+                                    result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+                                break;
+
+                            case "double_number":
+                                if (fieldValueElement.ValueKind == JsonValueKind.String)
+                                {
+                                    var fieldValueNumberString = fieldValueElement.GetString();
+                                    if (string.IsNullOrWhiteSpace(fieldValueNumberString) || !double.TryParse(fieldValueNumberString, out var fieldValueNumber))
+                                    {
+                                        result.Code = "ValidateIntegrationData:16";
+                                        result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+
                                     newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueNumber);
+                                }
+                                else if (fieldValueElement.ValueKind == JsonValueKind.Number)
+                                {
+                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueElement.GetDouble());
+                                }
+                                else
+                                {
+                                    result.Code = "ValidateIntegrationData:17";
+                                    result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
                                 }
                                 break;
 
                             case "boolean":
+                                if (fieldValueElement.ValueKind != JsonValueKind.True && fieldValueElement.ValueKind != JsonValueKind.False)
+                                {
+                                    result.Code = "ValidateIntegrationData:18";
+                                    result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
                                 bool fieldValueBooleanValid = fieldValueElement.GetBoolean();
                                 newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueBooleanValid);
                                 break;
 
                             default:
-                                result.Code = "ValidateIntegrationData:13";
+                                result.Code = "ValidateIntegrationData:19";
                                 result.Message = $"Invalid {integrationType} field type for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                 return result;
                         }
