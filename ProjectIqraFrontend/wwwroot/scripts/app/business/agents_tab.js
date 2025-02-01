@@ -145,6 +145,8 @@ const addNewAgentScriptButton = agentTab.find("#addNewAgentScriptButton");
 // SUB | Script - List Tab
 const agentScriptsListTab = agentTab.find("#agentScriptsListTab");
 
+const agentScriptsTable = agentScriptsListTab.find("#agentScriptsTable");
+
 // SUB | Script - Manager Tab
 const switchBackToAgentsScriptManagerTab = agentTab.find("#switchBackToAgentsScriptManagerTab");
 const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
@@ -152,6 +154,7 @@ const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
 const agentScriptsManagerTab = agentTab.find("#agentScriptsManagerTab");
 
 const saveAgentScriptButton = agentsManagerHeader.find("#saveAgentScriptButton");
+const saveAgentScriptButtonSpinner = agentsManagerHeader.find(".save-button-spinner");
 
 const inputAgentScriptName = agentScriptsManagerTab.find("#inputAgentScriptName");
 const inputAgentScriptDescription = agentScriptsManagerTab.find("#inputAgentScriptDescription");
@@ -192,6 +195,26 @@ const agentBackgroundAudioVolumeInput = agentBackgroundAudioBox.find("#agentBack
 function SaveBusinessAgent(formData, onSuccess, onError) {
 	$.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/agents/save`,
+		method: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				onSuccess(response);
+			} else {
+				onError(response, true);
+			}
+		},
+		error: (error) => {
+			onError(error, false);
+		},
+	});
+}
+
+function SaveBusinessAgentScript(formData, onSuccess, onError) {
+	$.ajax({
+		url: `/app/user/business/${CurrentBusinessId}/agents/script/save`,
 		method: "POST",
 		data: formData,
 		processData: false,
@@ -328,7 +351,7 @@ async function canLeaveAgentTab(leaveMessage = "") {
 		AlertManager.createAlert({
 			type: "warning",
 			message: "Agent is currently being saved. Please wait for the save to finish.",
-			enableDismiss: false,
+			timeout: 6000,
 		});
 		return false;
 	}
@@ -687,7 +710,7 @@ function FillAgentsManagerTab() {
 	FillAgentContextTab();
 	fillAgentPersonalityTab();
 	fillAgentUtterancesTab();
-	fillAgentScriptsTab();
+	fillAgentScriptsListTab();
 	fillIntegrationsFromAgentData();
 	fillCacheGroupsList("message");
 	fillCacheGroupsList("audio");
@@ -1807,7 +1830,7 @@ function onAgentsBackgroundAudioUploadValidation(event) {
 		AlertManager.createAlert({
 			type: "danger",
 			message: "Audio file size should not exceed 25MB.",
-			enableDismiss: false,
+			timeout: 6000,
 		});
 
 		$(event.currentTarget).val("");
@@ -2231,8 +2254,43 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 	};
 }
 
-function fillAgentScriptsTab() {
-	// todo
+function createAgentScriptTableElement(scriptData) {
+	return `
+		<tr script-id="${scriptData.id}">
+			<td class="agent-script-name">${scriptData.general.name[BusinessDefaultLanguage]}</td>
+			<td>
+				<input type="radio" name="isDefaultAgentScript" value="${scriptData.id}" ${scriptData.isDefault ? "checked" : ""}>
+			</td>
+			<td>
+				<input type="checkbox" input-type="isInContext" ${scriptData.isInContext ? "checked" : ""}>
+			</td>
+			<td>
+				<button class="btn btn-info btn-sm" button-type="edit-agent-script" script-id="${scriptData.id}">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" button-type="remove-agent-script" script-id="${scriptData.id}">
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+			</td>
+		</tr>
+	`;
+}
+
+function fillAgentScriptsListTab() {
+	if (CurrentManageAgentData.scripts.length === 0) {
+		agentScriptsListTab.find("tbody").append(
+			$(`
+			<tr class="none-agent-script-notice">
+				<td colspan="4">No scripts added yet...</td>
+			</tr>
+		`),
+		);
+	} else {
+		CurrentManageAgentData.scripts.forEach((script) => {
+			const element = createAgentScriptTableElement(script);
+			agentScriptsListTab.find("tbody").append($(element));
+		});
+	}
 }
 
 // Script Graph
@@ -3758,6 +3816,7 @@ function initAgentTab() {
 					AlertManager.createAlert({
 						type: "warning",
 						message: "Message cache group has already been selected.",
+						timeout: 6000,
 					});
 					currentElement.val("");
 				}
@@ -3801,6 +3860,7 @@ function initAgentTab() {
 					AlertManager.createAlert({
 						type: "warning",
 						message: "Audio cache group has already been selected.",
+						timeout: 6000,
 					});
 					currentElement.val("");
 				}
@@ -4067,7 +4127,7 @@ function initAgentTab() {
 						AlertManager.createAlert({
 							type: "error",
 							message: "Error reading audio file for agenst background audio upload.",
-							enableDismiss: false,
+							timeout: 6000,
 						});
 					};
 
@@ -4087,6 +4147,7 @@ function initAgentTab() {
 					AlertManager.createAlert({
 						type: "warning",
 						message: "Please wait for your agent to save before adding a new script.",
+						timeout: 6000,
 					});
 					return;
 				}
@@ -4095,6 +4156,7 @@ function initAgentTab() {
 					AlertManager.createAlert({
 						type: "warning",
 						message: "Please save your agent before adding a new script.",
+						timeout: 6000,
 					});
 					return;
 				}
@@ -4869,7 +4931,76 @@ function initAgentTab() {
 			});
 
 			// Other Functionality
-			saveAgentScriptButton.on("click", () => {});
+			saveAgentScriptButton.on("click", (event) => {
+				event.preventDefault();
+
+				const changes = checkAgentScriptTabHasChanges(false, true);
+				if (!changes.hasChanges) {
+					return;
+				}
+
+				isSavingAgentScript = true;
+				saveAgentScriptButton.prop("disabled", true);
+				saveAgentScriptButtonSpinner.removeClass("d-none");
+
+				const formData = new FormData();
+				formData.append("postType", ManageCurrentAgentScriptType);
+				formData.append("changes", JSON.stringify(changes.changes));
+				formData.append("agentId", CurrentManageAgentData.id);
+				if (ManageCurrentAgentScriptType === "edit") {
+					formData.append("scriptId", ManageCurrentScriptData.id);
+				}
+
+				SaveBusinessAgentScript(
+					formData,
+					(saveResponse) => {
+						ManageCurrentScriptData = saveResponse.data;
+
+						currentAgentScriptName.text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
+
+						const exisitingAgentDataIndex = BusinessFullData.businessApp.agents.find((agent) => agent.id === CurrentManageAgentData.id);
+						if (ManageCurrentAgentScriptType === "edit") {
+							const exisitingAgentScriptDataIndex = BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts.findIndex((script) => script.id === ManageCurrentScriptData.id);
+							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts[exisitingAgentScriptDataIndex] = ManageCurrentScriptData;
+							agentScriptsTable.find(`[script-id="${CurrentManageAgentData.id}"]`).find(".agent-script-name").text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
+						} else if (ManageCurrentAgentScriptType === "new") {
+							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts.push(ManageCurrentScriptData);
+							const noneAgentScriptNotice = agentScriptsTable.find(".none-agent-script-notice");
+							if (noneAgentScriptNotice.length > 0) {
+								noneAgentScriptNotice.remove();
+							}
+							agentScriptsTable.prepend($(createAgentScriptTableElement(ManageCurrentScriptData)));
+						}
+
+						saveAgentScriptButton.prop("disabled", true);
+						saveAgentScriptButtonSpinner.addClass("d-none");
+
+						IsSavingAgentTab = false;
+
+						AlertManager.createAlert({
+							type: "success",
+							message: `Business agent script ${ManageCurrentAgentScriptType === "new" ? "added" : "updated"} successfully.`,
+							timeout: 6000,
+						});
+
+						isSavingAgentScript = "edit";
+					},
+					(saveError, isUnsuccessful) => {
+						AlertManager.createAlert({
+							type: "danger",
+							message: "Error occured while saving business agent script data. Check browser console for logs.",
+							timeout: 6000,
+						});
+
+						console.log("Error occured while saving business agent script data: ", saveError);
+
+						saveAgentScriptButton.prop("disabled", false);
+						saveAgentScriptButtonSpinner.addClass("d-none");
+
+						isSavingAgentScript = false;
+					},
+				);
+			});
 		}
 		initAgentScriptsTabHandlers();
 
@@ -4932,6 +5063,7 @@ function initAgentTab() {
 
 			IsSavingAgentTab = true;
 			confirmPublishAgentButton.prop("disabled", true);
+			confirmPublishAgentButtonSpinner.removeClass("d-none");
 
 			const formData = new FormData();
 			formData.append("postType", ManageAgentType);
