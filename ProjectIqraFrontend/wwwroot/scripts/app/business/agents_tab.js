@@ -1912,8 +1912,6 @@ async function canLeaveAgentScriptManagerTab() {
 function createDefaultAgentScriptObject() {
 	const data = {
 		id: "",
-		isDefault: false,
-		isInContext: false,
 		general: {
 			name: {},
 			description: {},
@@ -2259,12 +2257,6 @@ function createAgentScriptTableElement(scriptData) {
 		<tr script-id="${scriptData.id}">
 			<td class="agent-script-name">${scriptData.general.name[BusinessDefaultLanguage]}</td>
 			<td>
-				<input type="radio" name="isDefaultAgentScript" value="${scriptData.id}" ${scriptData.isDefault ? "checked" : ""}>
-			</td>
-			<td>
-				<input type="checkbox" input-type="isInContext" ${scriptData.isInContext ? "checked" : ""}>
-			</td>
-			<td>
 				<button class="btn btn-info btn-sm" button-type="edit-agent-script" script-id="${scriptData.id}">
                     <i class="fa-regular fa-pen-to-square"></i>
                 </button>
@@ -2280,10 +2272,10 @@ function fillAgentScriptsListTab() {
 	if (CurrentManageAgentData.scripts.length === 0) {
 		agentScriptsListTab.find("tbody").append(
 			$(`
-			<tr class="none-agent-script-notice">
-				<td colspan="4">No scripts added yet...</td>
-			</tr>
-		`),
+				<tr class="none-agent-script-notice">
+					<td colspan="2">No scripts added yet...</td>
+				</tr>
+			`),
 		);
 	} else {
 		CurrentManageAgentData.scripts.forEach((script) => {
