@@ -1504,9 +1504,11 @@ function initToolsTab() {
 			switchBackToToolsTab.on("click", async (event) => {
 				event.preventDefault();
 
-				const canLeaveResult = await canLeaveToolsTab(" Are you sure you want to discard these changes and leave the tool manage tab?");
-				if (!canLeaveResult) {
-					return false;
+				if (ManageToolType !== null) {
+					const canLeaveResult = await canLeaveToolsTab(" Are you sure you want to discard these changes and leave the tool manage tab?");
+					if (!canLeaveResult) {
+						return false;
+					}
 				}
 
 				ManageToolType = null;
@@ -1910,8 +1912,8 @@ function initToolsTab() {
 
 				if (canLeaveResult) {
 					if (ManageToolType != null) {
-						switchBackToToolsTab.click();
 						ManageToolType = null;
+						switchBackToToolsTab.click();
 					}
 				} else {
 					event.preventDefault();

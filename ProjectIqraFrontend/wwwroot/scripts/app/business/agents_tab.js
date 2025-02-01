@@ -475,7 +475,7 @@ function validateAgentMultiLanguageElements() {
 
 		// Phrases Before Reply
 		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id];
-		const phrasesIsIncomplete = !phrases || phrases.length === 0;
+		const phrasesIsIncomplete = !phrases || phrases === "" || phrases.trim() === "";
 
 		// Update language status
 		const isAnyIncompleteInUtterances = greetingMessageIsIncomplete || phrasesIsIncomplete;
@@ -652,7 +652,7 @@ function CreateAgentsTableElement(agentData) {
 	return element;
 }
 
-function FillAgentsTab() {
+function FillAgentsListTab() {
 	const agents = BusinessFullData.businessApp.agents;
 
 	if (agents.length === 0) {
@@ -664,6 +664,18 @@ function FillAgentsTab() {
 		const element = CreateAgentsTableElement(agent);
 		agentsListTable.append(element);
 	});
+}
+
+function FillAgentsManagerTab() {
+	fillAgentGeneralTab();
+	FillAgentContextTab();
+	fillAgentPersonalityTab();
+	fillAgentUtterancesTab();
+	fillAgentScriptsTab();
+	fillIntegrationsFromAgentData();
+	fillCacheGroupsList("message");
+	fillCacheGroupsList("audio");
+	fillAgentSettingsTab();
 }
 
 // General Tab Functions
@@ -712,14 +724,12 @@ function fillAgentGeneralTab() {
 	$("#editAgentIconButton").text(CurrentManageAgentData.general.emoji);
 
 	// Name
-	CurrentAgentGeneralNameMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentGeneralNameMultiLangData[language] = CurrentManageAgentData.general.name[language];
 	});
 	$("#editAgentIdentifierInput").val(CurrentAgentGeneralNameMultiLangData[BusinessDefaultLanguage]);
 
 	// Description
-	CurrentAgentGeneralDescriptionMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentGeneralDescriptionMultiLangData[language] = CurrentManageAgentData.general.description[language];
 	});
@@ -800,6 +810,13 @@ function CheckAgentContextTabChanges(enableDisableButton = true) {
 	};
 }
 
+function FillAgentContextTab() {
+	$("#agentEditContextEnableBranding").prop("checked", CurrentManageAgentData.context.useBranding);
+	$("#agentEditContextEnableBranches").prop("checked", CurrentManageAgentData.context.useBranches);
+	$("#agentEditContextEnableServices").prop("checked", CurrentManageAgentData.context.useServices);
+	$("#agentEditContextEnableProducts").prop("checked", CurrentManageAgentData.context.useProducts);
+}
+
 // Personality Tab Functions
 function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 	const changes = {};
@@ -852,14 +869,12 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 
 function fillAgentPersonalityTab() {
 	// Name
-	CurrentAgentPersonalityNameMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentPersonalityNameMultiLangData[language] = CurrentManageAgentData.personality.name[language];
 	});
 	$("#editAgentPersonalityNameInput").val(CurrentAgentPersonalityNameMultiLangData[BusinessDefaultLanguage]);
 
 	// Role
-	CurrentAgentPersonalityRoleMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentPersonalityRoleMultiLangData[language] = CurrentManageAgentData.personality.role[language];
 	});
@@ -870,7 +885,6 @@ function fillAgentPersonalityTab() {
 		const currentData =
 			listType === "capabilities" ? CurrentAgentPersonalityCapabilitiesMultiLangData : listType === "ethics" ? CurrentAgentPersonalityEthicsMultiLangData : CurrentAgentPersonalityToneMultiLangData;
 
-		currentData = {};
 		BusinessFullData.businessData.languages.forEach((language) => {
 			currentData[language] = CurrentManageAgentData.personality[listType][language] || [];
 		});
@@ -972,21 +986,19 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 
 function fillAgentUtterancesTab() {
 	// Opening Type
-	$("#editAgentGreetingStartTypeInput").val(CurrentManageAgentData.utterances.openingType);
+	$("#editAgentGreetingStartTypeInput").val(CurrentManageAgentData.utterances.openingType.value).change();
 
 	// Greeting Message
-	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = CurrentManageAgentData.utterances.greetingMessage[language];
 	});
 	$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[BusinessDefaultLanguage]);
 
 	// Phrases Before Reply
-	CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = CurrentManageAgentData.utterances.phrasesBeforeReply[language] || [];
+		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = CurrentManageAgentData.utterances.phrasesBeforeReply[language];
 	});
-	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[BusinessDefaultLanguage].join(", "));
+	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[BusinessDefaultLanguage]);
 }
 
 function validateAgentUtterancesTab(onlyRemove = true) {
@@ -1039,18 +1051,17 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 }
 
 // Integration Tab Functions
-function fillIntegrationsFromAgentData(agentData) {
+function fillIntegrationsFromAgentData() {
 	// Fill integrations for each language from agent data
 	BusinessFullData.businessData.languages.forEach((language) => {
-		if (agentData.integrations.STT[language]) {
-			CurrentAgentIntegrationsSTT[language] = agentData.integrations.STT[language];
-		}
-		if (agentData.integrations.LLM[language]) {
-			CurrentAgentIntegrationsLLM[language] = agentData.integrations.LLM[language];
-		}
-		if (agentData.integrations.TTS[language]) {
-			CurrentAgentIntegrationsTTS[language] = agentData.integrations.TTS[language];
-		}
+		CurrentAgentIntegrationsSTT[language] = CurrentManageAgentData.integrations.stt[language];
+		fillAgentIntegrationsList("STT");
+
+		CurrentAgentIntegrationsLLM[language] = CurrentManageAgentData.integrations.llm[language];
+		fillAgentIntegrationsList("LLM");
+
+		CurrentAgentIntegrationsTTS[language] = CurrentManageAgentData.integrations.tts[language];
+		fillAgentIntegrationsList("TTS");
 	});
 }
 
@@ -1109,7 +1120,7 @@ function createAgentIntegrationConfigurationField(field) {
 	let fieldHtml = "";
 
 	switch (field.type) {
-		case "text":
+		case "string":
 			fieldHtml = `
                 <div class="mb-3 config-field" data-field-id="${field.id}">
                     <label class="form-label btn-ic-span-align">
@@ -1117,10 +1128,10 @@ function createAgentIntegrationConfigurationField(field) {
                         ${
 													field.tooltip
 														? `
-                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-                                <i class="fa-regular fa-circle-question"></i>
-                            </a>
-                        `
+								<a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+									<i class="fa-regular fa-circle-question"></i>
+								</a>
+							`
 														: ""
 												}
                     </label>
@@ -1133,6 +1144,7 @@ function createAgentIntegrationConfigurationField(field) {
 			break;
 
 		case "number":
+		case "double_number":
 			fieldHtml = `
                 <div class="mb-3 config-field" data-field-id="${field.id}">
                     <label class="form-label btn-ic-span-align">
@@ -1181,7 +1193,16 @@ function createAgentIntegrationConfigurationField(field) {
 			break;
 		}
 
-		case "models":
+		case "models": {
+			const currentModelDataValue = CurrentAgentConfigurationValues[field.id];
+
+			let isDefaultSelected = false;
+			if (currentModelDataValue !== undefined && currentModelDataValue === "") {
+				isDefaultSelected = true;
+			} else if (field.defaultValue === "") {
+				isDefaultSelected = true;
+			}
+
 			fieldHtml = `
                 <div class="mb-3 config-field" data-field-id="${field.id}">
                     <label class="form-label btn-ic-span-align">
@@ -1197,12 +1218,13 @@ function createAgentIntegrationConfigurationField(field) {
 												}
                     </label>
                     <select class="form-select config-field-input">
-                        <option value="" disabled ${field.defaultValue === "" ? "selected" : ""}>Select ${field.name}</option>
+                        <option value="" disabled ${isDefaultSelected ? "selected" : ""}>Select ${field.name}</option>
                         <!-- Models will be populated dynamically -->
                     </select>
                 </div>
             `;
 			break;
+		}
 	}
 
 	return $(fieldHtml);
@@ -1556,6 +1578,12 @@ function createCacheGroupSelectElement(type, index) {
 }
 
 function fillCacheGroupsList(type) {
+	if (type === "message") {
+		CurrentAgentCacheMessages = CurrentManageAgentData.cache.messages;
+	} else if (type === "audio") {
+		CurrentAgentCacheAudios = CurrentManageAgentData.cache.audios;
+	}
+
 	const container = type === "message" ? messageCacheGroupsList : audioCacheGroupsList;
 	const currentGroups = type === "message" ? CurrentAgentCacheMessages : CurrentAgentCacheAudios;
 
@@ -2186,6 +2214,10 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 		hasChanges,
 		changes,
 	};
+}
+
+function fillAgentScriptsTab() {
+	// todo
 }
 
 // Script Graph
@@ -3412,7 +3444,7 @@ function toPascalCase(str) {
 function initAgentTab() {
 	$(document).ready(() => {
 		// Init
-		FillAgentsTab();
+		FillAgentsListTab();
 		registerAgentScriptNodes();
 		nodeConfigOffcanvas = new bootstrap.Offcanvas("#nodeConfigOffcanvas");
 
@@ -3432,10 +3464,54 @@ function initAgentTab() {
 			ManageAgentType = "new";
 		});
 
-		switchBackToAgentsTab.on("click", (event) => {
+		switchBackToAgentsTab.on("click", async (event) => {
 			event.preventDefault();
 
+			if (ManageAgentType !== null) {
+				const canLeaveResult = await canLeaveAgentTab(" Are you sure you want to discard these changes and leave the agents manage tab?");
+				if (!canLeaveResult) {
+					return false;
+				}
+			}
+
+			ManageAgentType = null;
+
 			showAgentListTab();
+		});
+
+		agentsListTable.on("click", ".agent-card", (event) => {
+			event.stopPropagation();
+			event.preventDefault();
+
+			const agentId = $(event.currentTarget).attr("data-agent-id");
+			CurrentManageAgentData = BusinessFullData.businessApp.agents.find((a) => a.id === agentId);
+
+			currentAgentName.text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
+
+			ResetAndEmptyAgentsManageTab();
+			FillAgentsManagerTab();
+
+			showAgentManagerTab();
+
+			ManageAgentType = "edit";
+		});
+
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "agents-tab") return;
+
+			if (ManageAgentType == null) return;
+
+			const canLeaveResult = await canLeaveAgentTab(" Are you sure you want to discard these changes and leave the agents tab?");
+
+			if (canLeaveResult) {
+				if (ManageAgentType != null) {
+					ManageAgentType = null;
+					switchBackToAgentsTab.click();
+				}
+			} else {
+				event.preventDefault();
+			}
 		});
 
 		// General Tab Changes
@@ -3621,10 +3697,7 @@ function initAgentTab() {
 				const phrasesText = $(event.currentTarget).val();
 
 				// Split by comma and clean up each phrase
-				CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id] = phrasesText
-					.split(",")
-					.map((phrase) => phrase.trim())
-					.filter((phrase) => phrase.length > 0);
+				CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id] = phrasesText;
 
 				validateAgentMultiLanguageElements();
 				validateAgentUtterancesTab(true);
@@ -3637,7 +3710,7 @@ function initAgentTab() {
 				$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[language.id] || "");
 
 				// Update phrases before reply
-				$("#editAgentPhrasesBeforeReply").val((CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language.id] || []).join(", "));
+				$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language.id]);
 
 				validateAgentMultiLanguageElements();
 				validateAgentUtterancesTab(true);

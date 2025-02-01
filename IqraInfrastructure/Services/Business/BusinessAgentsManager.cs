@@ -724,7 +724,7 @@ namespace IqraInfrastructure.Services.Business
                                     result.Message = $"{integrationType} string value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                     return result;
                                 }
-                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueString);
+                                newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueString);
                                 break;
 
                             case "select":
@@ -783,7 +783,7 @@ namespace IqraInfrastructure.Services.Business
                                     }
                                 }
 
-                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueOptionKey);
+                                newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueOptionKey);
                                 break;
 
                             case "number":
@@ -797,11 +797,11 @@ namespace IqraInfrastructure.Services.Business
                                         return result;
                                     }
 
-                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueNumber);
+                                    newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueNumber);
                                 }
                                 else if (fieldValueElement.ValueKind == JsonValueKind.Number)
                                 {
-                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueElement.GetInt32());
+                                    newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueElement.GetInt32());
                                 }
                                 else
                                 {
@@ -822,11 +822,11 @@ namespace IqraInfrastructure.Services.Business
                                         return result;
                                     }
 
-                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueNumber);
+                                    newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueNumber);
                                 }
                                 else if (fieldValueElement.ValueKind == JsonValueKind.Number)
                                 {
-                                    newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueElement.GetDouble());
+                                    newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueElement.GetDouble());
                                 }
                                 else
                                 {
@@ -845,7 +845,7 @@ namespace IqraInfrastructure.Services.Business
                                 }
 
                                 bool fieldValueBooleanValid = fieldValueElement.GetBoolean();
-                                newIntegrationData.FieldValues.Add(integrationField.Name, fieldValueBooleanValid);
+                                newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueBooleanValid);
                                 break;
 
                             default:
