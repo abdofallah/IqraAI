@@ -251,6 +251,10 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 	const changes = {};
 	let hasChanges = false;
 
+	if (ManageAgentType === null) {
+		return { changes, hasChanges };
+	}
+
 	// Check General tab changes
 	const generalChanges = CheckAgentGeneralTabChanges(false);
 	changes.general = generalChanges.changes;
@@ -281,11 +285,17 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 
 	// Check Integrations tab changes
 	changes.integrations = {
-		STT: CurrentAgentIntegrationsSTT,
-		LLM: CurrentAgentIntegrationsLLM,
-		TTS: CurrentAgentIntegrationsTTS,
+		stt: CurrentAgentIntegrationsSTT,
+		llm: CurrentAgentIntegrationsLLM,
+		tts: CurrentAgentIntegrationsTTS,
 	};
-	if (JSON.stringify(CurrentManageAgentData.integrations) !== JSON.stringify(changes.integrations)) {
+	if (JSON.stringify(CurrentManageAgentData.integrations.stt) !== JSON.stringify(changes.integrations.stt)) {
+		hasChanges = true;
+	}
+	if (JSON.stringify(CurrentManageAgentData.integrations.tts) !== JSON.stringify(changes.integrations.tts)) {
+		hasChanges = true;
+	}
+	if (JSON.stringify(CurrentManageAgentData.integrations.llm) !== JSON.stringify(changes.integrations.llm)) {
 		hasChanges = true;
 	}
 
@@ -420,8 +430,10 @@ function createDefaultAgentObject() {
 function validateAgentMultiLanguageElements() {
 	if (ManageAgentType == null) return;
 
+	const anyLanguagesIncomplete = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
 		const currentSelectedLanguage = SpecificationLanguagesListData.find((d) => d.id === language);
+		anyLanguagesIncomplete[language] = false;
 
 		/** General Tab **/
 		// Identifier
@@ -473,17 +485,17 @@ function validateAgentMultiLanguageElements() {
 		const greetingMessage = CurrentAgentUtterancesGreetingMessageMultiLangData[currentSelectedLanguage.id];
 		const greetingMessageIsIncomplete = !greetingMessage || greetingMessage === "" || greetingMessage.trim() === "";
 
-		// Phrases Before Reply
-		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id];
-		const phrasesIsIncomplete = !phrases || phrases === "" || phrases.trim() === "";
-
 		// Update language status
-		const isAnyIncompleteInUtterances = greetingMessageIsIncomplete || phrasesIsIncomplete;
+		const isAnyIncompleteInUtterances = greetingMessageIsIncomplete;
 
 		/** Update language status **/
 		const isAnyIncomplete = isAnyIncompleteInGeneral || isAnyIncompleteInPersonality || isAnyIncompleteInUtterances || isAnyIncompleteInIntegrations;
+
+		anyLanguagesIncomplete[language] = isAnyIncomplete;
 		manageAgentsLanguageDropdown.setLanguageStatus(currentSelectedLanguage.id, isAnyIncomplete ? "incomplete" : "complete");
 	});
+
+	return anyLanguagesIncomplete;
 }
 
 function ResetAndEmptyAgentsManageTab() {
@@ -543,7 +555,11 @@ function ResetAndEmptyAgentsManageTab() {
 		CurrentAgentIntegrationsSTT[language] = [];
 		CurrentAgentIntegrationsLLM[language] = [];
 		CurrentAgentIntegrationsTTS[language] = [];
+
+		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
+
+	confirmPublishAgentButton.prop("disabled", true);
 }
 
 function CreateAgentBackgroundAudioWavesurfer(containerId) {
@@ -3493,6 +3509,8 @@ function initAgentTab() {
 			showAgentManagerTab();
 
 			ManageAgentType = "edit";
+
+			validateAgentMultiLanguageElements();
 		});
 
 		$("#nav-bar").on("tabChange", async (event) => {
@@ -4065,7 +4083,15 @@ function initAgentTab() {
 			addNewAgentScriptButton.on("click", (event) => {
 				event.preventDefault();
 
-				if (ManageAgentType === "new") {
+				if (IsSavingAgentTab) {
+					AlertManager.createAlert({
+						type: "warning",
+						message: "Please wait for your agent to save before adding a new script.",
+					});
+					return;
+				}
+
+				if (ManageAgentType === "new" || CheckAgentTabHasChanges(false).hasChanges) {
 					AlertManager.createAlert({
 						type: "warning",
 						message: "Please save your agent before adding a new script.",
