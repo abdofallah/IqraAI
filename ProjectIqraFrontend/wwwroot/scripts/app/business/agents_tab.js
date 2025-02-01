@@ -1322,56 +1322,88 @@ function loadAgentIntegrationConfiguration(integrationId, integrationType) {
 	fillAgentIntegrationConfigurationFields();
 }
 
-// TODO CHECK THESE VALIDATION FUNCTIONS
-function validateAgentIntegrationConfiguration() {
+function validateAgentIntegrationConfiguration(integration, type, languageName, onlyRemove = true) {
 	const errors = [];
 	let isValid = true;
 
-	CurrentAgentConfigurationFields.forEach((field) => {
-		const fieldElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"]`);
-		const input = fieldElement.find(".config-field-input");
-		const value = input.val();
+	// Get provider configuration based on integration type
+	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === integration);
+	if (!businessIntegrationData) {
+		errors.push(`${languageName}: ${type} Integration #${integration} - Invalid integration selected`);
+		return {
+			isValid: false,
+			errors,
+		};
+	}
 
-		// Remove existing invalid state
+	const provider =
+		type === "LLM"
+			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+			: type === "STT"
+				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
+				: BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
+
+	if (!provider) {
+		errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - Provider configuration not found`);
+		return {
+			isValid: false,
+			errors,
+		};
+	}
+
+	const integrationTypeConfiguration =
+		type === "LLM"
+			? CurrentAgentIntegrationsLLM[languageName].find((i) => i && i.id === integration)
+			: type === "STT"
+				? CurrentAgentIntegrationsSTT[languageName].find((i) => i && i.id === integration)
+				: CurrentAgentIntegrationsTTS[languageName].find((i) => i && i.id === integration);
+
+	provider.userIntegrationFields.forEach((field) => {
+		const lowerCaseFieldId = String(field.id[0]).toLowerCase() + String(field.id).slice(1);
+
+		const value = integrationTypeConfiguration.fieldValues[field.id] || integrationTypeConfiguration.fieldValues[lowerCaseFieldId];
+		const fieldElement = integrationConfigurationModal.find(`[data-field-id="${field.id}"]`);
+		const input = fieldElement.find(".config-field-input");
+
+		// Always remove existing invalid state if exists
 		input.removeClass("is-invalid");
 
 		// Required field validation
-		if (field.required && !value) {
+		if (field.required && (!value || String(value).trim() === "")) {
 			isValid = false;
-			errors.push(`${field.name} is required`);
-			input.addClass("is-invalid");
+			errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name} is required`);
+			if (!onlyRemove) {
+				input.addClass("is-invalid");
+			}
+			return;
 		}
 
 		// Type-specific validation
 		if (value) {
 			switch (field.type) {
 				case "number":
+				case "double_number":
 					if (isNaN(value)) {
 						isValid = false;
-						errors.push(`${field.name} must be a valid number`);
-						input.addClass("is-invalid");
+						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name} must be a valid number`);
+						if (!onlyRemove) {
+							input.addClass("is-invalid");
+						}
 					}
 					break;
 
 				case "models": {
-					const provider =
-						CurrentAgentConfigurationType === "LLM"
-							? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-							: CurrentAgentConfigurationType === "STT"
-								? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-								: CurrentAgentConfigurationType === "TTS"
-									? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-									: null;
-
-					if (provider) {
-						const model = provider.models.find((m) => m.id === value);
-						if (!model) {
-							isValid = false;
-							errors.push(`${field.name}: Selected model is invalid`);
+					const model = provider.models.find((m) => m.id === value);
+					if (!model) {
+						isValid = false;
+						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Selected model is invalid`);
+						if (!onlyRemove) {
 							input.addClass("is-invalid");
-						} else if (model.disabledAt !== null) {
-							isValid = false;
-							errors.push(`${field.name}: Selected model is disabled`);
+						}
+					} else if (model.disabledAt !== null) {
+						isValid = false;
+						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Selected model is disabled`);
+						if (!onlyRemove) {
 							input.addClass("is-invalid");
 						}
 					}
@@ -1381,8 +1413,10 @@ function validateAgentIntegrationConfiguration() {
 				case "select":
 					if (field.options && !field.options.some((opt) => opt.key === value)) {
 						isValid = false;
-						errors.push(`${field.name}: Invalid option selected`);
-						input.addClass("is-invalid");
+						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Invalid option selected`);
+						if (!onlyRemove) {
+							input.addClass("is-invalid");
+						}
 					}
 					break;
 			}
@@ -1401,48 +1435,51 @@ function validateAgentIntegrationsTab() {
 
 	// Validate each language has required integrations
 	BusinessFullData.businessData.languages.forEach((languageId) => {
-		const language = SpecificationLanguagesListData.find((l) => l.id === languageId);
-		const languageName = language ? language.name : languageId;
-
 		// Validate STT integrations
 		if (!CurrentAgentIntegrationsSTT[languageId] || CurrentAgentIntegrationsSTT[languageId].length === 0) {
 			isValid = false;
-			errors.push(`${languageName}: At least one Speech-to-Text integration is required`);
+			errors.push(`${languageId}: At least one Speech-to-Text integration is required`);
 		}
 
 		// Validate LLM integrations
 		if (!CurrentAgentIntegrationsLLM[languageId] || CurrentAgentIntegrationsLLM[languageId].length === 0) {
 			isValid = false;
-			errors.push(`${languageName}: At least one Language Model integration is required`);
+			errors.push(`${languageId}: At least one Language Model integration is required`);
 		}
 
 		// Validate TTS integrations
 		if (!CurrentAgentIntegrationsTTS[languageId] || CurrentAgentIntegrationsTTS[languageId].length === 0) {
 			isValid = false;
-			errors.push(`${languageName}: At least one Text-to-Speech integration is required`);
+			errors.push(`${languageId}: At least one Text-to-Speech integration is required`);
 		}
 
 		// Validate integration configurations
 		if (CurrentAgentIntegrationsSTT[languageId]) {
 			CurrentAgentIntegrationsSTT[languageId].forEach((integration, index) => {
-				if (!validateAgentIntegrationConfigurationFields(integration, "STT", index, languageName)) {
+				const validateResult = validateAgentIntegrationConfiguration(integration.id, "STT", languageId);
+				if (!validateResult.isValid) {
 					isValid = false;
+					errors.push(`${languageId}: Speech-to-Text integration configuration is invalid`);
 				}
 			});
 		}
 
 		if (CurrentAgentIntegrationsLLM[languageId]) {
 			CurrentAgentIntegrationsLLM[languageId].forEach((integration, index) => {
-				if (!validateAgentIntegrationConfigurationFields(integration, "LLM", index, languageName)) {
+				const validationResult = validateAgentIntegrationConfiguration(integration.id, "LLM", languageId);
+				if (!validationResult.isValid) {
 					isValid = false;
+					errors.push(`${languageId}: Language Model integration configuration is invalid`);
 				}
 			});
 		}
 
 		if (CurrentAgentIntegrationsTTS[languageId]) {
 			CurrentAgentIntegrationsTTS[languageId].forEach((integration, index) => {
-				if (!validateAgentIntegrationConfigurationFields(integration, "TTS", index, languageName)) {
+				const validateResult = validateAgentIntegrationConfiguration(integration.id, "TTS", languageId);
+				if (!validateResult.isValid) {
 					isValid = false;
+					errors.push(`${languageId}: Text-to-Speech integration configuration is invalid`);
 				}
 			});
 		}
@@ -1454,44 +1491,6 @@ function validateAgentIntegrationsTab() {
 	};
 }
 
-function validateAgentIntegrationConfigurationFields(integration, type, index, languageName) {
-	const errors = [];
-	let isValid = true;
-
-	// Get provider configuration based on integration type
-	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === integration.id);
-	if (!businessIntegrationData) {
-		errors.push(`${languageName}: ${type} Integration #${index + 1} - Invalid integration selected`);
-		return false;
-	}
-
-	const provider =
-		type === "LLM"
-			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-			: type === "STT"
-				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-				: BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
-
-	if (!provider) {
-		errors.push(`${languageName}: ${type} Integration #${index + 1} - Provider configuration not found`);
-		return false;
-	}
-
-	// Validate required fields
-	provider.userIntegrationFields.forEach((field) => {
-		if (field.required) {
-			const value = integration.fieldValues[field.id];
-			if (!value || value.trim() === "") {
-				isValid = false;
-				errors.push(`${languageName}: ${type} Integration #${index + 1} - ${field.name} is required`);
-			}
-		}
-	});
-
-	return isValid;
-}
-// TODO END
-
 function getAgentIntegrationConfigurationChanges() {
 	const changes = {};
 	let hasChanges = false;
@@ -1501,8 +1500,8 @@ function getAgentIntegrationConfigurationChanges() {
 		const value = fieldElement.find(".config-field-input").val().trim();
 		const currentValue = CurrentAgentConfigurationValues[field.id] || "";
 
+		changes[field.id] = value;
 		if (value !== currentValue) {
-			changes[field.id] = value;
 			hasChanges = true;
 		}
 	});
@@ -3941,7 +3940,9 @@ function initAgentTab() {
 			saveIntegrationConfigButton.on("click", (event) => {
 				event.preventDefault();
 
-				const validation = validateAgentIntegrationConfiguration();
+				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+				const validation = validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, false);
 				if (!validation.isValid) {
 					AlertManager.createAlert({
 						type: "danger",
@@ -3969,9 +3970,23 @@ function initAgentTab() {
 			});
 
 			// Track changes in fields
-			integrationConfigurationFieldsContainer.on("input", ".config-field-input", () => {
+			integrationConfigurationFieldsContainer.on("input, change", ".config-field-input", () => {
 				const changes = getAgentIntegrationConfigurationChanges();
 				saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
+
+				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+				const currentIntegrationConfiguration =
+					CurrentAgentConfigurationType === "STT"
+						? CurrentAgentIntegrationsSTT[currentLanguage]
+						: CurrentAgentConfigurationType === "LLM"
+							? CurrentAgentIntegrationsLLM[currentLanguage]
+							: CurrentAgentIntegrationsTTS[currentLanguage];
+				currentIntegrationConfiguration.find((i) => i.id === CurrentAgentConfigurationIntegration).fieldValues = changes.changes;
+
+				validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, true);
+
+				CurrentAgentConfigurationValues = changes.changes;
 
 				CheckAgentTabHasChanges();
 			});
@@ -4933,7 +4948,7 @@ function initAgentTab() {
 
 					AlertManager.createAlert({
 						type: "success",
-						message: "Business agent added successfully.",
+						message: `Business agent ${ManageAgentType === "new" ? "added" : "updated"} successfully.`,
 						timeout: 6000,
 					});
 

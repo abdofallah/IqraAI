@@ -203,11 +203,12 @@ namespace ProjectIqraFrontend.Middlewares
             foreach (var property in properties)
             {
                 var propertyValue = property.GetValue(value);
-                var propertyName = options.PropertyNamingPolicy?.ConvertName(property.Name) ?? property.Name;
+
+                string? propertyName = options.PropertyNamingPolicy?.ConvertName(property.Name) ?? property.Name;
 
                 writer.WritePropertyName(propertyName);
 
-                if (!WriteNoDepthProperties(writer, propertyValue, property.PropertyType, options))
+                if (!WriteNoDepthProperties(writer, propertyValue, property.PropertyType, options, property))
                 {
                     JsonSerializer.Serialize(writer, propertyValue, options);
                 }
@@ -216,7 +217,7 @@ namespace ProjectIqraFrontend.Middlewares
             writer.WriteEndObject();
         }
 
-        private bool WriteNoDepthProperties(Utf8JsonWriter writer, object? value, Type valueType, JsonSerializerOptions options)
+        private bool WriteNoDepthProperties(Utf8JsonWriter writer, object? value, Type valueType, JsonSerializerOptions options, PropertyInfo? property = null)
         {
             if (value == null)
             {
@@ -343,16 +344,27 @@ namespace ProjectIqraFrontend.Middlewares
             if (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
             {
                 writer.WriteStartObject();
+
+                var keepOriginalCase = false;
+                if (property != null)
+                {
+                    keepOriginalCase = property?.GetCustomAttribute<KeepOriginalDictionaryKeyCaseAttribute>() != null;
+                }
+
                 foreach (var entry in (IDictionary)value)
                 {
                     var kvp = (DictionaryEntry)entry;
 
                     var propertyName = kvp.Key.ToString() ?? string.Empty;
-                    propertyName = options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName;
+                    if (!keepOriginalCase)
+                    {
+                        propertyName = options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName;
+                    }
 
                     writer.WritePropertyName(propertyName);
                     JsonSerializer.Serialize(writer, kvp.Value, options);
                 }
+
                 writer.WriteEndObject();
                 return true;
             }
