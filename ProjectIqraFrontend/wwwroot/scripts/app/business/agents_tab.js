@@ -1994,6 +1994,12 @@ function validateAgentScriptMultilanguageElements() {
 			// Check End Call Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
 				if (config.type === "with_message") {
+					BusinessFullData.businessData.languages.forEach((language) => {
+						const currentLanguageMessage = config.messages[language];
+						if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
+							areLanguagesIncompleteInConversationTab[language] = true;
+						}
+					});
 				}
 
 				continue;
@@ -2002,6 +2008,7 @@ function validateAgentScriptMultilanguageElements() {
 			// Check Get DTMF Input Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 				// todo
+				alert("todo 63345643");
 
 				continue;
 			}
@@ -2016,7 +2023,11 @@ function validateAgentScriptMultilanguageElements() {
 		agentsScriptManagerLanguageDropdown.setLanguageStatus(language, anyIncompleteForLanguage ? "incomplete" : "complete");
 	});
 
-	return isAnyIncompleteInAgentScript;
+	return {
+		isValid: !isAnyIncompleteInAgentScript,
+		areLanguagesIncompleteInGeneralTab,
+		areLanguagesIncompleteInConversationTab,
+	};
 }
 
 function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConversationChanges = false) {
@@ -2114,13 +2125,20 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 					}
 				}
 
+				if (oldNode.toolType !== pushNewNode.toolType) {
+					hasChanges = true;
+					if (!compileConversationChanges) break;
+				}
+
+				pushNewNode.config = {};
+
 				// End Call Tool
 				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
-					pushNewNode.type = newScriptNodeData.config.type;
-					pushNewNode.messages = newScriptNodeData.config.messages;
+					pushNewNode.config.type = newScriptNodeData.config.type;
+					pushNewNode.config.messages = newScriptNodeData.config.messages;
 
 					if (oldNodeIndex !== -1) {
-						if (oldNode.type !== pushNewNode.type || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.messages)) {
+						if (oldNode.type !== pushNewNode.config.type || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.config.messages)) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
 						}
@@ -2129,23 +2147,23 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 				// DTMF Input Tool
 				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
-					pushNewNode.timeout = newScriptNodeData.config.timeout;
-					pushNewNode.requireStartAsterisk = newScriptNodeData.config.requireStartAsterisk;
-					pushNewNode.requireEndHash = newScriptNodeData.config.requireEndHash;
-					pushNewNode.maxLength = newScriptNodeData.config.maxLength;
-					pushNewNode.encryptInput = newScriptNodeData.config.encryptInput;
-					pushNewNode.variableName = newScriptNodeData.config.variableName;
-					pushNewNode.outcomes = newScriptNodeData.config.outcomes;
+					pushNewNode.config.timeout = newScriptNodeData.config.timeout;
+					pushNewNode.config.requireStartAsterisk = newScriptNodeData.config.requireStartAsterisk;
+					pushNewNode.config.requireEndHash = newScriptNodeData.config.requireEndHash;
+					pushNewNode.config.maxLength = newScriptNodeData.config.maxLength;
+					pushNewNode.config.encryptInput = newScriptNodeData.config.encryptInput;
+					pushNewNode.config.variableName = newScriptNodeData.config.variableName;
+					pushNewNode.config.outcomes = newScriptNodeData.config.outcomes;
 
 					if (oldNodeIndex !== -1) {
 						if (
-							oldNode.timeout !== pushNewNode.timeout ||
-							oldNode.requireStartAsterisk !== pushNewNode.requireStartAsterisk ||
-							oldNode.requireEndHash !== pushNewNode.requireEndHash ||
-							oldNode.maxLength !== pushNewNode.maxLength ||
-							oldNode.encryptInput !== pushNewNode.encryptInput ||
+							oldNode.timeout !== pushNewNode.config.timeout ||
+							oldNode.requireStartAsterisk !== pushNewNode.config.requireStartAsterisk ||
+							oldNode.requireEndHash !== pushNewNode.config.requireEndHash ||
+							oldNode.maxLength !== pushNewNode.config.maxLength ||
+							oldNode.encryptInput !== pushNewNode.config.encryptInput ||
 							oldNode.variableName !== pushNewNode.variableName ||
-							JSON.stringify(oldNode.outcomes) !== JSON.stringify(pushNewNode.outcomes)
+							JSON.stringify(oldNode.outcomes) !== JSON.stringify(pushNewNode.config.outcomes)
 						) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
@@ -2155,12 +2173,12 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 				// Transfer To Agent Tool
 				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT) {
-					pushNewNode.agentId = newScriptNodeData.config.agentId;
-					pushNewNode.transferContext = newScriptNodeData.config.transferContext;
-					pushNewNode.summarizeContext = newScriptNodeData.config.summarizeContext;
+					pushNewNode.config.agentId = newScriptNodeData.config.agentId;
+					pushNewNode.config.transferContext = newScriptNodeData.config.transferContext;
+					pushNewNode.config.summarizeContext = newScriptNodeData.config.summarizeContext;
 
 					if (oldNodeIndex !== -1) {
-						if (oldNode.agentId !== pushNewNode.agentId || oldNode.transferContext !== pushNewNode.transferContext || oldNode.summarizeContext !== pushNewNode.summarizeContext) {
+						if (oldNode.agentId !== pushNewNode.config.agentId || oldNode.transferContext !== pushNewNode.config.transferContext || oldNode.summarizeContext !== pushNewNode.config.summarizeContext) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
 						}
@@ -2169,10 +2187,10 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 				// Add Script To Context Tool
 				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
-					pushNewNode.scriptId = newScriptNodeData.config.scriptId;
+					pushNewNode.config.scriptId = newScriptNodeData.config.scriptId;
 
 					if (oldNodeIndex !== -1) {
-						if (oldNode.scriptId !== pushNewNode.scriptId) {
+						if (oldNode.scriptId !== pushNewNode.config.scriptId) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
 						}
@@ -2182,8 +2200,8 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 			// Custom Tool Node
 			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
-				pushNewNode.toolId = newScriptNodeData.toolId;
-				pushNewNode.config = newScriptNodeData.config;
+				pushNewNode.config.toolId = newScriptNodeData.toolId;
+				pushNewNode.config.config = newScriptNodeData.config;
 
 				if (oldNodeIndex !== -1) {
 					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config) !== JSON.stringify(newScriptNodeData.config)) {
@@ -2205,9 +2223,9 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 		for (let i = 0; i < edgeNodes.length; i++) {
 			const pushNewEdgeNode = {
 				id: edgeNodes[i].id,
-				sourceNodeId: edgeNodes[i].source.cell.id,
+				sourceNodeId: edgeNodes[i].source.cell,
 				sourceNodePortId: edgeNodes[i].source.port,
-				targetNodeId: edgeNodes[i].target.cell.id,
+				targetNodeId: edgeNodes[i].target.cell,
 				targetNodePortId: edgeNodes[i].target.port,
 			};
 
@@ -2979,15 +2997,12 @@ function resizeAgentScriptGraphCSS(callback, isFullscreen = false) {
 }
 
 function adjustAgentScriptGraphMultilanguageDropdownForFullscreen(isFullscreen) {
-	const container = $(".agent-script-graph-controls");
-	let languageDropdown;
+	const languageDropdown = $("#agentsScriptManagerMultiLanguageContainer");
 
 	if (isFullscreen) {
-		languageDropdown = $("#agentsScriptManagerMultiLanguageContainer .multilanguage-dropdown");
-		languageDropdown.prependTo(container);
+		languageDropdown.appendTo("#agentsScriptManagerMultiLanguageParentContainer");
 	} else {
-		languageDropdown = $(".agent-script-graph-controls .multilanguage-dropdown");
-		languageDropdown.appendTo("#agentsScriptManagerMultiLanguageContainer");
+		languageDropdown.prependTo(".agent-script-graph-controls");
 	}
 }
 
@@ -4815,6 +4830,8 @@ function initAgentTab() {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
 					updateSystemToolConfig({ ...config, scriptId: e.target.value });
+					// todo
+					alert("todo 841284812");
 				});
 			}
 			initSystemToolConfigHandlers();
@@ -4925,6 +4942,29 @@ function initAgentTab() {
 			// Other Functionality
 			saveAgentScriptButton.on("click", (event) => {
 				event.preventDefault();
+
+				const isMultiLanguageValidated = validateAgentScriptMultilanguageElements();
+				if (!isMultiLanguageValidated.isValid) {
+					const errors = [];
+					Object.keys(isMultiLanguageValidated.areLanguagesIncompleteInGeneralTab).forEach((lang) => {
+						if (isMultiLanguageValidated.areLanguagesIncompleteInGeneralTab[lang]) {
+							errors.push(`Please fill all multi-language fields for language ${lang} in general tab.`);
+						}
+					});
+					Object.keys(isMultiLanguageValidated.areLanguagesIncompleteInConversationTab).forEach((lang) => {
+						if (isMultiLanguageValidated.areLanguagesIncompleteInConversationTab[lang]) {
+							errors.push(`Please fill all multi-language fields for language ${lang} in conversation tab.`);
+						}
+					});
+
+					AlertManager.createAlert({
+						type: "danger",
+						message: `Please fill in all required multilangauge fields:<br>${errors.join("<br>")}`,
+						timeout: 6000,
+					});
+
+					return;
+				}
 
 				const changes = checkAgentScriptTabHasChanges(false, true);
 				if (!changes.hasChanges) {

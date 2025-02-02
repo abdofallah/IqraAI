@@ -415,5 +415,50 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
             return result?.Agents.FirstOrDefault(t => t.Id == agentId);
         }
+
+        public async Task<bool> AddAgentScript(long businessId, string agentId, BusinessAppAgentScript newScriptData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Push(
+                "Agents.$.Scripts",
+                newScriptData
+            );
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents.FirstMatchingElement().Scripts, s => s.Id == updatedScriptData.Id)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Agents.$[agent].Scripts.$[script]",
+                updatedScriptData
+            );
+
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("agent.Id", agentId)
+                ),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                    new BsonDocument("script.Id", updatedScriptData.Id)
+                )
+            };
+
+            var updateOptions = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, updateOptions);
+            return result.ModifiedCount > 0;
+        }
     }
 }

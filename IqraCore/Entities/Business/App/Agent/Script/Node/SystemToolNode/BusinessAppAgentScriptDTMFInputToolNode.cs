@@ -18,6 +18,5 @@ namespace IqraCore.Entities.Business
     public class BusinessAppAgentScriptDTMFOutcome
     {
         public string Value { get; set; } = "";
-        public string NextNodeId { get; set; } = "";
     }
 }

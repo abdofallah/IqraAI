@@ -11,6 +11,6 @@ namespace IqraCore.Entities.Business
         public Dictionary<string, string> Query { get; set; } = new Dictionary<string, string>();
 
         [MultiLanguageProperty]
-        public Dictionary<string, string> Examples { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, List<string>> Examples { get; set; } = new Dictionary<string, List<string>>();
     }
 }

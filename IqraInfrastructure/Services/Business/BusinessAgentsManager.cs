@@ -1,4 +1,6 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.App.Agent.Script.Node.StartNode;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.ProviderBase;
@@ -38,6 +40,7 @@ namespace IqraInfrastructure.Services.Business
             _audioProcessor = audioProcessor;
         }
 
+        // SAVING/ADDING AGENT
         public async Task<FunctionReturnResult<BusinessAppAgent?>> AddOrUpdateAgent(long businessId, string postType, IFormCollection formData, BusinessAppAgent? existingAgentData, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             var result = new FunctionReturnResult<BusinessAppAgent?>();
@@ -861,6 +864,853 @@ namespace IqraInfrastructure.Services.Business
 
             result.Success = true;
             result.Data = integrationList;
+            return result;
+        }
+
+        // SAVING/ADDING SCRIPT
+        public async Task<FunctionReturnResult<BusinessAppAgentScript?>> AddOrUpdateAgentScript(
+            long businessId,
+            string agentId,
+            string postType,
+            IFormCollection formData,
+            BusinessAppAgentScript? existingScriptData
+        )
+        {
+            var result = new FunctionReturnResult<BusinessAppAgentScript?>();
+
+            // Get business languages
+            var businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+
+            // Parse changes data
+            formData.TryGetValue("changes", out StringValues changesJsonString);
+            if (string.IsNullOrWhiteSpace(changesJsonString))
+            {
+                result.Code = "AddOrUpdateAgentScript:1";
+                result.Message = "Changes data is required.";
+                return result;
+            }
+
+            JsonElement changesRootElement;
+            try
+            {
+                changesRootElement = JsonSerializer.Deserialize<JsonElement>(changesJsonString.ToString());
+            }
+            catch (Exception ex)
+            {
+                result.Code = "AddOrUpdateAgentScript:2";
+                result.Message = "Invalid changes data format: " + ex.Message;
+                return result;
+            }
+
+            // Create new script instance
+            var newScriptData = new BusinessAppAgentScript();
+
+            // General Section
+            if (!changesRootElement.TryGetProperty("general", out var generalTabElement))
+            {
+                result.Code = "AddOrUpdateAgentScript:3";
+                result.Message = "General section not found.";
+                return result;
+            }
+            else
+            {
+                var nameValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                    businessLanguages,
+                    generalTabElement,
+                    "name",
+                    newScriptData.General.Name
+                );
+                if (!nameValidationResult.Success)
+                {
+                    result.Code = "AddOrUpdateAgentScript:" + nameValidationResult.Code;
+                    result.Message = nameValidationResult.Message;
+                    return result;
+                }
+
+                var descriptionValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                    businessLanguages,
+                    generalTabElement,
+                    "description",
+                    newScriptData.General.Description
+                );
+                if (!descriptionValidationResult.Success)
+                {
+                    result.Code = "AddOrUpdateAgentScript:" + descriptionValidationResult.Code;
+                    result.Message = descriptionValidationResult.Message;
+                    return result;
+                }
+            }
+
+            // Nodes Section
+            if (!changesRootElement.TryGetProperty("nodes", out var nodesElement))
+            {
+                result.Code = "AddOrUpdateAgentScript:4";
+                result.Message = "Nodes section not found.";
+                return result;
+            }
+
+            var validateNodesResult = await ValidateAndCreateNodes(businessId, nodesElement, businessLanguages);
+            if (!validateNodesResult.Success)
+            {
+                result.Code = "AddOrUpdateAgentScript:" + validateNodesResult.Code;
+                result.Message = validateNodesResult.Message;
+                return result;
+            }
+
+            newScriptData.Nodes = validateNodesResult.Data;
+
+            // Edges Section
+            if (!changesRootElement.TryGetProperty("edges", out var edgesElement))
+            {
+                result.Code = "AddOrUpdateAgentScript:5";
+                result.Message = "Edges section not found.";
+                return result;
+            }
+
+            var validateEdgesResult = ValidateAndCreateEdges(edgesElement, newScriptData.Nodes);
+            if (!validateEdgesResult.Success)
+            {
+                result.Code = "AddOrUpdateAgentScript:" + validateEdgesResult.Code;
+                result.Message = validateEdgesResult.Message;
+                return result;
+            }
+
+            newScriptData.Edges = validateEdgesResult.Data;
+
+            // Additional Validations
+            if (newScriptData.Nodes.Count == 0)
+            {
+                result.Code = "AddOrUpdateAgentScript:6";
+                result.Message = "Script must contain at least one node.";
+                return result;
+            }
+
+            if (newScriptData.Edges.Count == 0)
+            {
+                result.Code = "AddOrUpdateAgentScript:7";
+                result.Message = "Script must contain at least one connection.";
+                return result;
+            }
+
+            try
+            {
+                if (postType == "new")
+                {
+                    newScriptData.Id = Guid.NewGuid().ToString();
+
+                    var updateResult = await _businessAppRepository.AddAgentScript(businessId, agentId, newScriptData);
+                    if (!updateResult)
+                    {
+                        result.Code = "AddOrUpdateAgentScript:8";
+                        result.Message = "Failed to add new script to agent.";
+                        return result;
+                    }
+                }
+                else
+                {
+                    newScriptData.Id = existingScriptData.Id;
+
+                    var updateResult = await _businessAppRepository.UpdateAgentScript(businessId, agentId, newScriptData);
+                    if (!updateResult)
+                    {
+                        result.Code = "AddOrUpdateAgentScript:9";
+                        result.Message = "Failed to update existing script.";
+                        return result;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Code = "AddOrUpdateAgentScript:10";
+                result.Message = "Error occurred while saving script: " + ex.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = newScriptData;
+            return result;
+        }
+
+        private async Task<FunctionReturnResult<List<BusinessAppAgentScriptNode>>> ValidateAndCreateNodes(
+            long businessId,
+            JsonElement nodesElement,
+            IEnumerable<string> businessLanguages
+        )
+        {
+            var result = new FunctionReturnResult<List<BusinessAppAgentScriptNode>>();
+            var nodes = new List<BusinessAppAgentScriptNode>();
+
+            bool hasStartNode = false;
+            bool hasEndNode = false;
+
+            foreach (JsonElement nodeElement in nodesElement.EnumerateArray())
+            {
+                // Validate required properties
+                if (!nodeElement.TryGetProperty("id", out var nodeIdElement))
+                {
+                    result.Code = "ValidateAndCreateNodes:1";
+                    result.Message = "Node id not found.";
+                    return result;
+                }
+
+                if (!nodeElement.TryGetProperty("type", out var nodeTypeElement))
+                {
+                    result.Code = "ValidateAndCreateNodes:2";
+                    result.Message = "Node type not found.";
+                    return result;
+                }
+
+                if (!nodeElement.TryGetProperty("position", out var positionElement))
+                {
+                    result.Code = "ValidateAndCreateNodes:3";
+                    result.Message = "Node position not found.";
+                    return result;
+                }
+
+                if (!positionElement.TryGetProperty("x", out var positionXElement) ||
+                    !positionElement.TryGetProperty("y", out var positionYElement))
+                {
+                    result.Code = "ValidateAndCreateNodes:4";
+                    result.Message = "Invalid node position data.";
+                    return result;
+                }
+
+                var nodeId = nodeIdElement.GetString();
+                var nodeType = nodeTypeElement.GetString();
+                var position = new BusinessAppAgentScriptNodePosition
+                {
+                    X = positionXElement.GetDouble(),
+                    Y = positionYElement.GetDouble()
+                };
+
+                // Handle different node types
+                if (nodeType == "agent-script-start-node")
+                {
+                    if (hasStartNode)
+                    {
+                        result.Code = "ValidateAndCreateNodes:5";
+                        result.Message = "Multiple start nodes found.";
+                        return result;
+                    }
+
+                    hasStartNode = true;
+                    nodes.Add(new BusinessAppAgentScriptStartNode
+                    {
+                        Id = nodeId,
+                        Position = position
+                    });
+                }
+                else if (nodeType == "agent-script-user-query-node")
+                {
+                    if (!nodeElement.TryGetProperty("query", out var queryElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:6";
+                        result.Message = "User query data not found.";
+                        return result;
+                    }
+
+                    var userQueryNode = new BusinessAppAgentScriptUserQueryNode
+                    {
+                        Id = nodeId,
+                        Position = position
+                    };
+
+                    var queryValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                        businessLanguages,
+                        nodeElement,
+                        "query",
+                        userQueryNode.Query
+                    );
+                    if (!queryValidationResult.Success)
+                    {
+                        result.Code = "ValidateAndCreateNodes:" + queryValidationResult.Code;
+                        result.Message = queryValidationResult.Message;
+                        return result;
+                    }
+
+                    var examplesValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageListProperty(
+                        businessLanguages,
+                        nodeElement,
+                        "examples",
+                        userQueryNode.Examples,
+                        true
+                    );
+                    if (!examplesValidationResult.Success)
+                    {
+                        result.Code = "ValidateAndCreateNodes:" + examplesValidationResult.Code;
+                        result.Message = examplesValidationResult.Message;
+                        return result;
+                    }
+
+                    nodes.Add(userQueryNode);
+                }
+                else if (nodeType == "agent-script-ai-response-node")
+                {
+                    if (!nodeElement.TryGetProperty("response", out var responseElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:7";
+                        result.Message = "AI response data not found.";
+                        return result;
+                    }
+
+                    var aiResponseNode = new BusinessAppAgentScriptAIResponseNode
+                    {
+                        Id = nodeId,
+                        Position = position
+                    };
+
+                    var responseValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                        businessLanguages,
+                        nodeElement,
+                        "response",
+                        aiResponseNode.Response
+                    );
+                    if (!responseValidationResult.Success)
+                    {
+                        result.Code = "ValidateAndCreateNodes:" + responseValidationResult.Code;
+                        result.Message = responseValidationResult.Message;
+                        return result;
+                    }
+
+                    var examplesValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageListProperty(
+                        businessLanguages,
+                        nodeElement,
+                        "examples",
+                        aiResponseNode.Examples,
+                        true
+                    );
+                    if (!examplesValidationResult.Success)
+                    {
+                        result.Code = "ValidateAndCreateNodes:" + examplesValidationResult.Code;
+                        result.Message = examplesValidationResult.Message;
+                        return result;
+                    }
+
+                    nodes.Add(aiResponseNode);
+                }
+                else if (nodeType == "agent-script-system-tool-node")
+                {
+                    if (!nodeElement.TryGetProperty("toolType", out var toolTypeElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:10";
+                        result.Message = "System tool type not found.";
+                        return result;
+                    }
+
+                    var toolType = toolTypeElement.GetString();
+                    if (string.IsNullOrWhiteSpace(toolType))
+                    {
+                        result.Code = "ValidateAndCreateNodes:11";
+                        result.Message = "Invalid system tool type.";
+                        return result;
+                    }
+
+                    if (!nodeElement.TryGetProperty("config", out var toolConfigElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:12";
+                        result.Message = "System tool config not found.";
+                        return result;
+                    }
+
+                    // End Call Tool
+                    if (toolType == "EndCall")
+                    {
+                        var endCallNode = new BusinessAppAgentScriptEndCallToolNode
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("type", out var endCallTypeElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:12";
+                            result.Message = "End call type not found.";
+                            return result;
+                        }
+
+                        var endCallType = endCallTypeElement.GetString();
+                        if (endCallType == "immediate")
+                        {
+                            endCallNode.Type = BusinessAppAgentScriptEndCallTypeENUM.Immediate;
+                        }
+                        else if (endCallType == "with_message")
+                        {
+                            endCallNode.Type = BusinessAppAgentScriptEndCallTypeENUM.WithMessage;
+
+                            var messagesValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                                businessLanguages,
+                                toolConfigElement,
+                                "messages",
+                                endCallNode.Messages ?? new Dictionary<string, string>()
+                            );
+                            if (!messagesValidationResult.Success)
+                            {
+                                result.Code = "ValidateAndCreateNodes:" + messagesValidationResult.Code;
+                                result.Message = messagesValidationResult.Message;
+                                return result;
+                            }
+                        }
+                        else
+                        {
+                            result.Code = "ValidateAndCreateNodes:14";
+                            result.Message = "Invalid end call type.";
+                            return result;
+                        }
+
+                        hasEndNode = true;
+                        nodes.Add(endCallNode);
+                    }
+                    // DTMF Input Tool
+                    else if (toolType == "GetDTMFKeypadInput")
+                    {
+                        var dtmfNode = new BusinessAppAgentScriptDTMFInputToolNode
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("timeout", out var timeoutElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:15";
+                            result.Message = "DTMF timeout not found.";
+                            return result;
+                        }
+                        dtmfNode.Timeout = timeoutElement.GetInt32();
+
+                        if (!toolConfigElement.TryGetProperty("requireStartAsterisk", out var requireStartElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:16";
+                            result.Message = "DTMF require start asterisk not found.";
+                            return result;
+                        }
+                        dtmfNode.RequireStartAsterisk = requireStartElement.GetBoolean();
+
+                        if (!toolConfigElement.TryGetProperty("requireEndHash", out var requireEndElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:17";
+                            result.Message = "DTMF require end hash not found.";
+                            return result;
+                        }
+                        dtmfNode.RequireEndHash = requireEndElement.GetBoolean();
+
+                        if (!toolConfigElement.TryGetProperty("maxLength", out var maxLengthElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:18";
+                            result.Message = "DTMF max length not found.";
+                            return result;
+                        }
+                        dtmfNode.MaxLength = maxLengthElement.GetInt32();
+
+                        if (!toolConfigElement.TryGetProperty("encryptInput", out var encryptElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:19";
+                            result.Message = "DTMF encrypt input not found.";
+                            return result;
+                        }
+                        dtmfNode.EncryptInput = encryptElement.GetBoolean();
+
+                        if (dtmfNode.EncryptInput)
+                        {
+                            if (!toolConfigElement.TryGetProperty("variableName", out var variableNameElement))
+                            {
+                                result.Code = "ValidateAndCreateNodes:20";
+                                result.Message = "DTMF variable name not found.";
+                                return result;
+                            }
+                            dtmfNode.VariableName = variableNameElement.GetString();
+                        }
+
+                        if (!toolConfigElement.TryGetProperty("outcomes", out var outcomesElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:21";
+                            result.Message = "DTMF outcomes not found.";
+                            return result;
+                        }
+
+                        foreach (var outcomeElement in outcomesElement.EnumerateArray())
+                        {
+                            if (!outcomeElement.TryGetProperty("value", out var valueElement) ||
+                                !outcomeElement.TryGetProperty("nextNodeId", out var nextNodeElement))
+                            {
+                                result.Code = "ValidateAndCreateNodes:22";
+                                result.Message = "Invalid DTMF outcome data.";
+                                return result;
+                            }
+
+                            dtmfNode.Outcomes.Add(new BusinessAppAgentScriptDTMFOutcome
+                            {
+                                Value = valueElement.GetString() ?? ""
+                            });
+                        }
+
+                        nodes.Add(dtmfNode);
+                    }
+                    // Transfer To Agent Tool
+                    else if (toolType == "TransferToAgent")
+                    {
+                        var transferNode = new BusinessAppAgentScriptTransferToAgentToolNode
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("agentId", out var agentIdElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:23";
+                            result.Message = "Transfer agent ID not found.";
+                            return result;
+                        }
+                        var transferAgentId = agentIdElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(transferAgentId))
+                        {
+                            var transferAgent = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessId, transferAgentId);
+                            if (transferAgent == null)
+                            {
+                                result.Code = "ValidateAndCreateNodes:24";
+                                result.Message = "Transfer agent not found.";
+                                return result;
+                            }
+                            transferNode.AgentId = transferAgentId;
+                        }
+
+                        if (!toolConfigElement.TryGetProperty("transferContext", out var transferContextElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:25";
+                            result.Message = "Transfer context flag not found.";
+                            return result;
+                        }
+                        transferNode.TransferConversation = transferContextElement.GetBoolean();
+
+                        if (!toolConfigElement.TryGetProperty("summarizeContext", out var summarizeContextElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:26";
+                            result.Message = "Summarize context flag not found.";
+                            return result;
+                        }
+                        transferNode.SummarizeConversation = summarizeContextElement.GetBoolean();
+
+                        hasEndNode = true;
+                        nodes.Add(transferNode);
+                    }
+                    // Add Script To Context Tool
+                    else if (toolType == "AddScriptToContext")
+                    {
+                        var addScriptNode = new BusinessAppAgentScriptAddScriptToContextToolNode
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("scriptId", out var scriptIdElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:27";
+                            result.Message = "Script ID not found.";
+                            return result;
+                        }
+
+                        var scriptId = scriptIdElement.GetString();
+                        if (!string.IsNullOrWhiteSpace(scriptId))
+                        {
+                            // TODO: Validate script exists
+                            addScriptNode.ScriptId = scriptId;
+                        }
+
+                        nodes.Add(addScriptNode);
+                    }
+                    else 
+                    {
+                        result.Code = "ValidateAndCreateNodes:28";
+                        result.Message = $"Unknown system tool type: {toolType}";
+                        return result;
+                    }
+                }
+                else if (nodeType == "agent-script-custom-tool-node")
+                {
+                    if (!nodeElement.TryGetProperty("toolId", out var toolIdElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:29";
+                        result.Message = "Custom tool ID not found.";
+                        return result;
+                    }
+
+                    var toolId = toolIdElement.GetString();
+                    if (string.IsNullOrWhiteSpace(toolId))
+                    {
+                        result.Code = "ValidateAndCreateNodes:30";
+                        result.Message = "Invalid custom tool ID.";
+                        return result;
+                    }
+
+                    // Validate tool exists
+                    var tool = await _parentBusinessManager.GetToolsManager().CheckBusinessToolExists(businessId, toolId);
+                    if (!tool)
+                    {
+                        result.Code = "ValidateAndCreateNodes:31";
+                        result.Message = "Custom tool not found.";
+                        return result;
+                    }
+
+                    var customToolNode = new BusinessAppAgentScriptCustomToolNode
+                    {
+                        Id = nodeId,
+                        Position = position,
+                        ToolIdentifier = toolId
+                    };
+
+                    // Validate and assign tool configuration
+                    if (!nodeElement.TryGetProperty("config", out var configElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:32";
+                        result.Message = "Custom tool configuration not found.";
+                        return result;
+                    }
+
+                    foreach (var configProperty in configElement.EnumerateObject())
+                    {
+                        customToolNode.ToolConfiguration[configProperty.Name] = configProperty.Value.GetString() ?? "";
+                    }
+
+                    // Validate and assign tool outcomes
+                    if (!nodeElement.TryGetProperty("outcomes", out var outcomesElement))
+                    {
+                        result.Code = "ValidateAndCreateNodes:33";
+                        result.Message = "Custom tool outcomes not found.";
+                        return result;
+                    }
+
+                    foreach (var outcomeElement in outcomesElement.EnumerateArray())
+                    {
+                        if (!outcomeElement.TryGetProperty("responseType", out var responseTypeElement) ||
+                            !outcomeElement.TryGetProperty("nextNodeId", out var nextNodeElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:34";
+                            result.Message = "Invalid custom tool outcome data.";
+                            return result;
+                        }
+
+                        customToolNode.ToolOutcomes.Add(new BusinessAppAgentScriptNodeToolOutcome
+                        {
+                            ResponseType = responseTypeElement.GetString() ?? ""
+                        });
+                    }
+
+                    nodes.Add(customToolNode);
+                }
+                else
+                {
+                    result.Code = "ValidateAndCreateNodes:35";
+                    result.Message = $"Unknown node type: {nodeType}";
+                    return result;
+                }
+            }
+
+            // Final validations
+            if (!hasStartNode)
+            {
+                result.Code = "ValidateAndCreateNodes:8";
+                result.Message = "Start node is required.";
+                return result;
+            }
+
+            if (!hasEndNode)
+            {
+                result.Code = "ValidateAndCreateNodes:9";
+                result.Message = "At least one end node (end call, transfer to agent, or transfer to human) is required.";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = nodes;
+            return result;
+        }
+
+        private FunctionReturnResult<List<BusinessAppAgentScriptEdge>> ValidateAndCreateEdges(
+            JsonElement edgesElement,
+            List<BusinessAppAgentScriptNode> nodes)
+        {
+            var result = new FunctionReturnResult<List<BusinessAppAgentScriptEdge>>();
+            var edges = new List<BusinessAppAgentScriptEdge>();
+
+            foreach (JsonElement edgeElement in edgesElement.EnumerateArray())
+            {
+                // Validate required properties
+                if (!edgeElement.TryGetProperty("id", out var edgeIdElement))
+                {
+                    result.Code = "ValidateAndCreateEdges:1";
+                    result.Message = "Edge ID not found.";
+                    return result;
+                }
+
+                if (!edgeElement.TryGetProperty("sourceNodeId", out var sourceNodeIdElement))
+                {
+                    result.Code = "ValidateAndCreateEdges:2";
+                    result.Message = "Source node ID not found.";
+                    return result;
+                }
+
+                if (!edgeElement.TryGetProperty("sourceNodePortId", out var sourcePortIdElement))
+                {
+                    result.Code = "ValidateAndCreateEdges:3";
+                    result.Message = "Source port ID not found.";
+                    return result;
+                }
+
+                if (!edgeElement.TryGetProperty("targetNodeId", out var targetNodeIdElement))
+                {
+                    result.Code = "ValidateAndCreateEdges:4";
+                    result.Message = "Target node ID not found.";
+                    return result;
+                }
+
+                if (!edgeElement.TryGetProperty("targetNodePortId", out var targetPortIdElement))
+                {
+                    result.Code = "ValidateAndCreateEdges:5";
+                    result.Message = "Target port ID not found.";
+                    return result;
+                }
+
+                var edgeId = edgeIdElement.GetString();
+                var sourceNodeId = sourceNodeIdElement.GetString();
+                var sourcePortId = sourcePortIdElement.GetString();
+                var targetNodeId = targetNodeIdElement.GetString();
+                var targetPortId = targetPortIdElement.GetString();
+
+                // Validate source node exists
+                var sourceNode = nodes.FirstOrDefault(n => n.Id == sourceNodeId);
+                if (sourceNode == null)
+                {
+                    result.Code = "ValidateAndCreateEdges:6";
+                    result.Message = $"Source node not found: {sourceNodeId}";
+                    return result;
+                }
+
+                // Validate target node exists
+                var targetNode = nodes.FirstOrDefault(n => n.Id == targetNodeId);
+                if (targetNode == null)
+                {
+                    result.Code = "ValidateAndCreateEdges:7";
+                    result.Message = $"Target node not found: {targetNodeId}";
+                    return result;
+                }
+
+                // Validate connection rules
+                var connectionValidation = ValidateNodeConnection(sourceNode, targetNode, sourcePortId, targetPortId);
+                if (!connectionValidation.Success)
+                {
+                    result.Code = "ValidateAndCreateEdges:" + connectionValidation.Code;
+                    result.Message = connectionValidation.Message;
+                    return result;
+                }
+
+                // Create edge
+                var edge = new BusinessAppAgentScriptEdge
+                {
+                    Id = edgeId,
+                    SourceNodeId = sourceNodeId,
+                    SourceNodePortId = sourcePortId,
+                    TargetNodeId = targetNodeId,
+                    TargetNodePortId = targetPortId
+                };
+
+                edges.Add(edge);
+            }
+
+            // Validate start node is connected
+            var startNode = nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);
+            if (startNode != null && !edges.Any(e => e.SourceNodeId == startNode.Id))
+            {
+                result.Code = "ValidateAndCreateEdges:8";
+                result.Message = "Start node must be connected to at least one node.";
+                return result;
+            }
+
+            // Validate no hanging nodes (except end nodes)
+            foreach (var node in nodes)
+            {
+                // Skip start node (already validated) and end nodes
+                if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start ||
+                    (node is BusinessAppAgentScriptSystemToolNode systemNode &&
+                     (systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall ||
+                      systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent ||
+                      systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToHuman)))
+                {
+                    continue;
+                }
+
+                // Check if node has incoming edges
+                if (!edges.Any(e => e.TargetNodeId == node.Id))
+                {
+                    result.Code = "ValidateAndCreateEdges:9";
+                    result.Message = $"Node {node.Id} is not connected to any incoming node.";
+                    return result;
+                }
+
+                // Check if non-end node has outgoing edges
+                if (!edges.Any(e => e.SourceNodeId == node.Id))
+                {
+                    result.Code = "ValidateAndCreateEdges:10";
+                    result.Message = $"Node {node.Id} is not connected to any outgoing node.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = edges;
+            return result;
+        }
+
+        private FunctionReturnResult<bool> ValidateNodeConnection(
+            BusinessAppAgentScriptNode sourceNode,
+            BusinessAppAgentScriptNode targetNode,
+            string sourcePortId,
+            string targetPortId)
+        {
+            var result = new FunctionReturnResult<bool>();
+
+            // Start node cannot connect to AI response node
+            if (sourceNode.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start &&
+                targetNode.NodeType == BusinessAppAgentScriptNodeTypeENUM.AIResponse)
+            {
+                result.Code = "1";
+                result.Message = "Start node cannot connect to AI Response node.";
+                return result;
+            }
+
+            // AI response node can only connect to user query node
+            if (sourceNode.NodeType == BusinessAppAgentScriptNodeTypeENUM.AIResponse &&
+                targetNode.NodeType != BusinessAppAgentScriptNodeTypeENUM.UserQuery)
+            {
+                result.Code = "2";
+                result.Message = "AI Response node can only connect to User Query node.";
+                return result;
+            }
+
+            // Validate DTMF outcome ports
+            if (sourceNode is BusinessAppAgentScriptDTMFInputToolNode dtmfNode)
+            {
+                var outcome = dtmfNode.Outcomes.FirstOrDefault(o => $"outcome-{o.Value}" == sourcePortId);
+                if (outcome == null)
+                {
+                    result.Code = "3";
+                    result.Message = $"Invalid DTMF outcome port: {sourcePortId}";
+                    return result;
+                }
+            }
+
+            // Validate Custom Tool outcome ports
+            if (sourceNode is BusinessAppAgentScriptCustomToolNode customNode)
+            {
+                var outcome = customNode.ToolOutcomes.FirstOrDefault(o => $"outcome-{o.ResponseType}" == sourcePortId);
+                if (outcome == null)
+                {
+                    result.Code = "4";
+                    result.Message = $"Invalid Custom Tool outcome port: {sourcePortId}";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = true;
             return result;
         }
     }
