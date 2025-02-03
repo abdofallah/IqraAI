@@ -949,7 +949,7 @@ namespace IqraInfrastructure.Services.Business
                 return result;
             }
 
-            var validateNodesResult = await ValidateAndCreateNodes(businessId, nodesElement, businessLanguages);
+            var validateNodesResult = await ValidateAndCreateNodes(businessId, agentId, existingScriptData?.Id, nodesElement, businessLanguages);
             if (!validateNodesResult.Success)
             {
                 result.Code = "AddOrUpdateAgentScript:" + validateNodesResult.Code;
@@ -1033,6 +1033,8 @@ namespace IqraInfrastructure.Services.Business
 
         private async Task<FunctionReturnResult<List<BusinessAppAgentScriptNode>>> ValidateAndCreateNodes(
             long businessId,
+            string agentId,
+            string? existingScriptId,
             JsonElement nodesElement,
             IEnumerable<string> businessLanguages
         )
@@ -1445,11 +1447,29 @@ namespace IqraInfrastructure.Services.Business
                         }
 
                         var scriptId = scriptIdElement.GetString();
-                        if (!string.IsNullOrWhiteSpace(scriptId))
+                        if (string.IsNullOrWhiteSpace(scriptId))
                         {
-                            // TODO: Validate script exists
-                            addScriptNode.ScriptId = scriptId;
+                            result.Code = "ValidateAndCreateNodes:28";
+                            result.Message = "Script ID invalid for add script to context node.";
+                            return result;
                         }
+
+                        if (existingScriptId != null && !string.IsNullOrWhiteSpace(existingScriptId) && scriptId == existingScriptId)
+                        {
+                            result.Code = "ValidateAndCreateNodes:29";
+                            result.Message = "Script ID can not point to current script for add script to context node.";
+                            return result;
+                        }
+
+                        bool scriptExists = await _businessAppRepository.CheckAgentScriptExists(businessId, agentId, scriptId);
+                        if (!scriptExists)
+                        {
+                            result.Code = "ValidateAndCreateNodes:29";
+                            result.Message = "Script not found for add script to context node.";
+                            return result;
+                        }
+
+                        addScriptNode.ScriptId = scriptId;
 
                         nodes.Add(addScriptNode);
                     }

@@ -459,5 +459,16 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.UpdateOneAsync(filter, update, updateOptions);
             return result.ModifiedCount > 0;
         }
+
+        public async Task<bool> CheckAgentScriptExists(long businessId, string agentId, string scriptId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, t => t.Id == agentId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents.FirstMatchingElement().Scripts, t => t.Id == scriptId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
     }
 }
