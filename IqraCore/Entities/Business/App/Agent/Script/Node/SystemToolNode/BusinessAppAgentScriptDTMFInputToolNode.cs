@@ -17,6 +17,7 @@ namespace IqraCore.Entities.Business
 
     public class BusinessAppAgentScriptDTMFOutcome
     {
-        public string Value { get; set; } = "";
+        public Dictionary<string, string> Value { get; set; } = new Dictionary<string, string>();
+        public string? PortId { get; set; } = string.Empty;
     }
 }

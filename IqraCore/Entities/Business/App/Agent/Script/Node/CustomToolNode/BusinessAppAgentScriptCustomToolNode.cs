@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Agent;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Agent;
 
 namespace IqraCore.Entities.Business
 {
@@ -6,14 +7,9 @@ namespace IqraCore.Entities.Business
     {
         public override BusinessAppAgentScriptNodeTypeENUM NodeType { get; set; } = BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool;
 
-        public string ToolIdentifier { get; set; } = "";
+        public string ToolId { get; set; } = "";
 
-        public List<BusinessAppAgentScriptNodeToolOutcome> ToolOutcomes { get; set; } = new List<BusinessAppAgentScriptNodeToolOutcome>();
+        [KeepOriginalDictionaryKeyCase]
         public Dictionary<string, string> ToolConfiguration { get; set; } = new Dictionary<string, string>();
-    }
-
-    public class BusinessAppAgentScriptNodeToolOutcome
-    {
-        public string ResponseType { get; set; } = "";
     }
 }

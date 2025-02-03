@@ -82,7 +82,7 @@ let ManageCurrentAgentScriptType = null; // new or edit
 
 let CurrentAgentScriptGraph = null;
 
-let agentScriptDMTFNextOutcomeIndex = 0;
+let agentScriptDMTFNextOutcomeId = null;
 
 let CurrentCanvasConfigCell = null;
 let nodeConfigOffcanvas = null;
@@ -2143,11 +2143,6 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 					}
 				}
 
-				if (oldNode.toolType.value !== pushNewNode.toolType) {
-					hasChanges = true;
-					if (!compileConversationChanges) break;
-				}
-
 				pushNewNode.config = {};
 
 				// End Call Tool
@@ -2218,8 +2213,8 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 			// Custom Tool Node
 			if (newNode.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
-				pushNewNode.config.toolId = newScriptNodeData.toolId;
-				pushNewNode.config.config = newScriptNodeData.config;
+				pushNewNode.toolId = newScriptNodeData.toolId;
+				pushNewNode.config = newScriptNodeData.config;
 
 				if (oldNodeIndex !== -1) {
 					if (oldNode.toolId !== newScriptNodeData.toolId || JSON.stringify(oldNode.config) !== JSON.stringify(newScriptNodeData.config)) {
@@ -2506,6 +2501,7 @@ function fillAgentSriptManagerTab() {
 		// Custom Tool Data
 		else if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
 			nodeBase.data.config = {};
+			nodeBase.data.toolId = node.toolId;
 		}
 
 		const currentNodeCell = CurrentAgentScriptGraph.addNode(nodeBase);
@@ -2533,11 +2529,169 @@ function fillAgentSriptManagerTab() {
 				return;
 			}
 
-			currentNodeCell.addPort({
+			const baseNodePort = {
 				group: "output",
 				id: sourceNodePortId,
-			});
+			};
+
+			const sourceNodeCell = CurrentAgentScriptGraph.getCellById(edgeData.sourceNodeId);
+			if (sourceNodeCell.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+				if (sourceNodePortId === "outcome-default") {
+					baseNodePort.attrs = {
+						circle: {
+							fill: "#ffc107",
+						},
+						text: {
+							text: "Default",
+						},
+					};
+				} else {
+					const responseCode = sourceNodePortId.replace("outcome-", "");
+
+					baseNodePort.attrs = {
+						circle: {
+							fill: "#fff",
+						},
+						text: {
+							text: `Response ${responseCode}`,
+						},
+					};
+				}
+			}
+
+			if (sourceNodeCell.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+				const systemToolType = sourceNodeCell.data.toolType;
+				if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+					if (sourceNodePortId === "timeout") {
+						baseNodePort.attrs = {
+							circle: {
+								fill: "#ffc107",
+							},
+							text: {
+								text: "Timeout",
+							},
+						};
+					} else {
+						const cellData = currentNodeCell.getData();
+						const currentOutcomeValue = cellData.config.outcomes.find((outcome) => outcome.portId === sourceNodePortId).value[currentSelectedLanguage];
+
+						baseNodePort.attrs = {
+							circle: {
+								fill: "#fff",
+							},
+							text: {
+								text: currentOutcomeValue,
+							},
+						};
+					}
+				}
+			}
+
+			currentNodeCell.addPort(baseNodePort);
 		});
+
+		// Add Missing Ports if needed
+		const currentPorts = currentNodeCell.getPorts();
+		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY || nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
+			const hasInputPort = currentPorts.some((port) => port.group === "input");
+			if (!hasInputPort) {
+				currentNodeCell.addPort({ group: "input" });
+			}
+
+			const hasOutputPort = currentPorts.some((port) => port.group === "output");
+			if (!hasOutputPort) {
+				currentNodeCell.addPort({ group: "output" });
+			}
+		}
+		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL || nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+			const hasInputPort = currentPorts.some((port) => port.group === "input");
+			if (!hasInputPort) {
+				currentNodeCell.addPort({ group: "input" });
+			}
+		}
+		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+			const nodeData = currentNodeCell.getData();
+
+			const toolType = nodeData.toolType;
+
+			if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+				const hasTimeoutPort = currentPorts.some((port) => port.id === "timeout");
+				if (!hasTimeoutPort) {
+					currentNodeCell.addPort({
+						id: "timeout",
+						group: "output",
+						attrs: {
+							circle: {
+								fill: "#ffc107",
+							},
+							text: {
+								text: "Timeout",
+							},
+						},
+					});
+				}
+
+				const toolOutcomes = nodeData.config.outcomes;
+				toolOutcomes.forEach((outcome) => {
+					const hasOutcomePort = currentPorts.some((port) => port.id === outcome.portId);
+					if (!hasOutcomePort) {
+						currentNodeCell.addPort({
+							id: outcome.portId,
+							group: "output",
+							attrs: {
+								circle: {
+									fill: "#fff",
+								},
+								text: {
+									text: outcome.value[currentSelectedLanguage],
+								},
+							},
+						});
+					}
+				});
+			} else if (toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN) {
+				const hasOutputPort = currentPorts.some((port) => port.group === "output");
+				if (!hasOutputPort) {
+					currentNodeCell.addPort({ group: "output" });
+				}
+			}
+		}
+		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL) {
+			const hasDefaultPort = currentPorts.some((port) => port.id === "outcome-default");
+			if (!hasDefaultPort) {
+				currentNodeCell.addPort({
+					id: "outcome-default",
+					group: "output",
+					attrs: {
+						circle: {
+							fill: "#ffc107",
+						},
+						text: {
+							text: "Default",
+						},
+					},
+				});
+			}
+
+			const toolResponses = BusinessFullData.businessApp.tools.find((t) => t.id === node.toolId).response;
+			Object.keys(toolResponses).forEach((responseCode) => {
+				const hasResponsePort = currentPorts.some((port) => port.id === `outcome-${responseCode}`);
+				if (!hasResponsePort) {
+					currentNodeCell.addPort({
+						id: `outcome-${responseCode}`,
+						group: "output",
+						attrs: {
+							circle: {
+								fill: "#fff",
+							},
+							text: {
+								text: `Response ${responseCode}`,
+							},
+						},
+					});
+				}
+			});
+		}
 	});
 
 	backendEdges.forEach((edge) => {
@@ -2885,8 +3039,7 @@ function registerAgentScriptNodes() {
 			const div = document.createElement("div");
 			div.className = "agent-script-node agent-script-custom-tool-node";
 
-			const data = cell.getData() || {};
-			const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+			const data = cell.getData();
 
 			// Get available custom tools
 			const tools = BusinessFullData.businessApp.tools || [];
@@ -2894,7 +3047,7 @@ function registerAgentScriptNodes() {
 				.map(
 					(tool) => `
                     <option value="${tool.id}" ${data.toolId === tool.id ? "selected" : ""}>
-                        ${tool.general.name[currentLanguage] || tool.general.name["en-us"] || "Unnamed Tool"}
+                        ${tool.general.name[BusinessDefaultLanguage]}
                     </option>
                 `,
 				)
@@ -3508,7 +3661,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                             ${(config.outcomes || [])
 															.map(
 																(outcome, index) => `
-                                <div class="input-group mb-2" data-outcome-index="${outcome.outcomeIndex}">
+                                <div class="input-group mb-2" data-outcome-port-id="${outcome.portId}">
                                     <input 
                                         type="text" 
                                         class="form-control" 
@@ -3781,6 +3934,16 @@ function toPascalCase(str) {
 		.match(/[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g)
 		.map((x) => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase())
 		.join(" ");
+}
+
+function UniqueIdGenerator(compareId) {
+	const generatedCode = Date.now() + Math.random().toString(36);
+
+	if (compareId === generatedCode) {
+		return uniqueNumber(compareId);
+	}
+
+	return generatedCode;
 }
 
 /** INIT **/
@@ -4800,6 +4963,7 @@ function initAgentTab() {
 
 					// Update cell data
 					const newData = {
+						type: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 						toolType: toolType,
 						config: {},
 					};
@@ -4990,10 +5154,11 @@ function initAgentTab() {
 						return;
 					}
 
-					agentScriptDMTFNextOutcomeIndex = agentScriptDMTFNextOutcomeIndex + 1;
+					const currentPortId = UniqueIdGenerator(agentScriptDMTFNextOutcomeId);
+					agentScriptDMTFNextOutcomeId = currentPortId;
 
 					const outcomeTemplate = `
-						<div class="input-group mb-2" data-outcome-index="${agentScriptDMTFNextOutcomeIndex}">
+						<div class="input-group mb-2" data-outcome-port-id="outcome-${currentPortId}">
 							<input 
 								type="text" 
 								class="form-control" 
@@ -5011,13 +5176,17 @@ function initAgentTab() {
 
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
-					const outcomes = [...(config.outcomes || []), { value: { currentLanguage: "" }, outcomeIndex: agentScriptDMTFNextOutcomeIndex }];
+					const outcomes = [...(config.outcomes || []), { value: {}, portId: `outcome-${currentPortId}` }];
+
+					BusinessFullData.businessData.languages.forEach((language) => {
+						outcomes.find((d) => d.portId === `outcome-${currentPortId}`).value[language] = "";
+					});
 
 					updateSystemToolConfig({ ...config, outcomes });
 
-					CurrentCanvasConfigCell.addPort({
+					const newPort = CurrentCanvasConfigCell.addPort({
 						group: "output",
-						id: `outcome-${agentScriptDMTFNextOutcomeIndex}`,
+						id: `outcome-${currentPortId}`,
 						attrs: {
 							text: {
 								text: "",
@@ -5033,29 +5202,29 @@ function initAgentTab() {
 
 					const val = e.target.value.trim();
 
-					const outcomeIndex = parseInt($(e.target).closest("[data-outcome-index]").data("outcome-index"));
+					const outcomePortId = $(e.target).closest("[data-outcome-port-id]").data("outcome-port-id");
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
 					const outcomes = config.outcomes || [];
 
-					outcomes.find((d) => d.outcomeIndex === outcomeIndex).value[currentLanguage] = val;
+					outcomes.find((d) => d.portId === outcomePortId).value[currentLanguage] = val;
 
-					CurrentCanvasConfigCell.portProp(`outcome-${outcomeIndex}`, "attrs/text/text", val);
+					CurrentCanvasConfigCell.portProp(outcomePortId, "attrs/text/text", val);
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
 				$("#nodeConfigOffcanvas").on("click", '[data-action="remove-outcome"]', (e) => {
-					const outcomeIndex = $(e.target).closest("[data-outcome-index]").data("outcome-index");
+					const outcomePortId = $(e.target).closest("[data-outcome-port-id]").data("outcome-port-id");
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config || {};
 					const outcomes = config.outcomes || [];
 
-					const outcomeDataIndex = outcomes.findIndex((d) => d.outcomeIndex === outcomeIndex);
+					const outcomeDataIndex = outcomes.findIndex((d) => d.portId === outcomePortId);
 
 					outcomes.splice(outcomeDataIndex, 1);
-					$(e.target).closest("[data-outcome-index]").remove();
+					$(e.target).closest("[data-outcome-port-id]").remove();
 
-					CurrentCanvasConfigCell.removePort(`outcome-${outcomeIndex}`);
+					CurrentCanvasConfigCell.removePort(outcomePortId);
 
 					updateSystemToolConfig({ ...config, outcomes });
 				});
@@ -5067,7 +5236,11 @@ function initAgentTab() {
 
 						const nodeData = cell.getData();
 
-						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+							return;
+						}
+
+						if (nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 							return;
 						}
 
@@ -5075,18 +5248,18 @@ function initAgentTab() {
 						const outcomes = config.outcomes;
 
 						outcomes.forEach((outcome) => {
-							cell.portProp(`outcome-${outcome.outcomeIndex}`, "attrs/text/text", outcome.value[currentLanguage] || "");
+							cell.portProp(outcome.portId, "attrs/text/text", outcome.value[currentLanguage] || "");
 						});
 
 						if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
 							$('#nodeConfigOffcanvas [data-container="dtmf-outcomes"]')
 								.find(".input-group")
 								.each((index, container) => {
-									const dataOutcomeIndex = parseInt($(container).attr("data-outcome-index"));
+									const dataOutcomePortId = $(container).attr("data-outcome-port-id");
 
 									$(container)
 										.find('input[data-input="outcome-value"]')
-										.val(outcomes.find((d) => d.outcomeIndex === dataOutcomeIndex).value[currentLanguage] || "");
+										.val(outcomes.find((d) => d.portId === dataOutcomePortId).value[currentLanguage] || "");
 								});
 						}
 					});
@@ -5159,7 +5332,7 @@ function initAgentTab() {
 
 					// Update cell data
 					cell.replaceData({
-						...cell.getData(),
+						type: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
 						toolId: toolId,
 						config: {},
 					});

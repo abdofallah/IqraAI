@@ -6,5 +6,6 @@
         Physical = 1,
         Twilio = 2,
         Vonage = 3,
+        Telnyx = 4
     }
 }

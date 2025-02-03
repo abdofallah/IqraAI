@@ -1281,12 +1281,6 @@ namespace IqraInfrastructure.Services.Business
                                 return result;
                             }
                         }
-                        else
-                        {
-                            result.Code = "ValidateAndCreateNodes:14";
-                            result.Message = "Invalid end call type.";
-                            return result;
-                        }
 
                         nodes.Add(endCallNode);
                     }
@@ -1359,18 +1353,31 @@ namespace IqraInfrastructure.Services.Business
 
                         foreach (var outcomeElement in outcomesElement.EnumerateArray())
                         {
-                            if (!outcomeElement.TryGetProperty("value", out var valueElement) ||
-                                !outcomeElement.TryGetProperty("nextNodeId", out var nextNodeElement))
+                            var newOutcomeData = new BusinessAppAgentScriptDTMFOutcome();
+
+                            var valueValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                                businessLanguages,
+                                outcomeElement,
+                                "value",
+                                newOutcomeData.Value
+                            );
+                            if (!valueValidationResult.Success)
                             {
-                                result.Code = "ValidateAndCreateNodes:22";
-                                result.Message = "Invalid DTMF outcome data.";
+                                result.Code = "ValidateAndCreateNodes:" + valueValidationResult.Code;
+                                result.Message = valueValidationResult.Message;
                                 return result;
                             }
 
-                            dtmfNode.Outcomes.Add(new BusinessAppAgentScriptDTMFOutcome
+                            if (!outcomeElement.TryGetProperty("portId", out var portIdElement))
                             {
-                                Value = valueElement.GetString() ?? ""
-                            });
+                                result.Code = "ValidateAndCreateNodes:22";
+                                result.Message = "DTMF port ID not found.";
+                                return result;
+                            }
+
+                            newOutcomeData.PortId = portIdElement.GetString();
+
+                            dtmfNode.Outcomes.Add(newOutcomeData);
                         }
 
                         nodes.Add(dtmfNode);
@@ -1508,7 +1515,7 @@ namespace IqraInfrastructure.Services.Business
                     {
                         Id = nodeId,
                         Position = position,
-                        ToolIdentifier = toolId
+                        ToolId = toolId
                     };
 
                     // Validate and assign tool configuration
@@ -1522,30 +1529,6 @@ namespace IqraInfrastructure.Services.Business
                     foreach (var configProperty in configElement.EnumerateObject())
                     {
                         customToolNode.ToolConfiguration[configProperty.Name] = configProperty.Value.GetString() ?? "";
-                    }
-
-                    // Validate and assign tool outcomes
-                    if (!nodeElement.TryGetProperty("outcomes", out var outcomesElement))
-                    {
-                        result.Code = "ValidateAndCreateNodes:33";
-                        result.Message = "Custom tool outcomes not found.";
-                        return result;
-                    }
-
-                    foreach (var outcomeElement in outcomesElement.EnumerateArray())
-                    {
-                        if (!outcomeElement.TryGetProperty("responseType", out var responseTypeElement) ||
-                            !outcomeElement.TryGetProperty("nextNodeId", out var nextNodeElement))
-                        {
-                            result.Code = "ValidateAndCreateNodes:34";
-                            result.Message = "Invalid custom tool outcome data.";
-                            return result;
-                        }
-
-                        customToolNode.ToolOutcomes.Add(new BusinessAppAgentScriptNodeToolOutcome
-                        {
-                            ResponseType = responseTypeElement.GetString() ?? ""
-                        });
                     }
 
                     nodes.Add(customToolNode);
@@ -1710,30 +1693,6 @@ namespace IqraInfrastructure.Services.Business
                 result.Code = "2";
                 result.Message = "AI Response node can only connect to User Query node.";
                 return result;
-            }
-
-            // Validate DTMF outcome ports
-            if (sourceNode is BusinessAppAgentScriptDTMFInputToolNode dtmfNode)
-            {
-                var outcome = dtmfNode.Outcomes.FirstOrDefault(o => $"outcome-{o.Value}" == sourcePortId);
-                if (outcome == null)
-                {
-                    result.Code = "3";
-                    result.Message = $"Invalid DTMF outcome port: {sourcePortId}";
-                    return result;
-                }
-            }
-
-            // Validate Custom Tool outcome ports
-            if (sourceNode is BusinessAppAgentScriptCustomToolNode customNode)
-            {
-                var outcome = customNode.ToolOutcomes.FirstOrDefault(o => $"outcome-{o.ResponseType}" == sourcePortId);
-                if (outcome == null)
-                {
-                    result.Code = "4";
-                    result.Message = $"Invalid Custom Tool outcome port: {sourcePortId}";
-                    return result;
-                }
             }
 
             result.Success = true;
