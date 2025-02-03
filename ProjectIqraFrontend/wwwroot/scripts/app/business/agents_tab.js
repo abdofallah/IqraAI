@@ -757,6 +757,8 @@ function CheckAgentGeneralTabChanges(enableDisableButton = true) {
 }
 
 function fillAgentGeneralTab() {
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
 	// Emoji
 	$("#editAgentIconButton").text(CurrentManageAgentData.general.emoji);
 
@@ -764,13 +766,13 @@ function fillAgentGeneralTab() {
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentGeneralNameMultiLangData[language] = CurrentManageAgentData.general.name[language];
 	});
-	$("#editAgentIdentifierInput").val(CurrentAgentGeneralNameMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentIdentifierInput").val(CurrentAgentGeneralNameMultiLangData[currentLanguage]);
 
 	// Description
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentGeneralDescriptionMultiLangData[language] = CurrentManageAgentData.general.description[language];
 	});
-	$("#editAgentDescriptionInput").val(CurrentAgentGeneralDescriptionMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentDescriptionInput").val(CurrentAgentGeneralDescriptionMultiLangData[currentLanguage]);
 }
 
 function validateAgentGeneralTab(onlyRemove = true) {
@@ -905,17 +907,19 @@ function CheckAgentPersonalityTabChanges(enableDisableButton = true) {
 }
 
 function fillAgentPersonalityTab() {
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
 	// Name
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentPersonalityNameMultiLangData[language] = CurrentManageAgentData.personality.name[language];
 	});
-	$("#editAgentPersonalityNameInput").val(CurrentAgentPersonalityNameMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentPersonalityNameInput").val(CurrentAgentPersonalityNameMultiLangData[currentLanguage]);
 
 	// Role
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentPersonalityRoleMultiLangData[language] = CurrentManageAgentData.personality.role[language];
 	});
-	$("#editAgentPersonalityRoleInput").val(CurrentAgentPersonalityRoleMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentPersonalityRoleInput").val(CurrentAgentPersonalityRoleMultiLangData[currentLanguage]);
 
 	// Lists
 	["capabilities", "ethics", "tone"].forEach((listType) => {
@@ -929,7 +933,7 @@ function fillAgentPersonalityTab() {
 		// Fill the list for default language
 		const container = $(`#editAgentPersonality${listType.charAt(0).toUpperCase() + listType.slice(1)}ValueInputs`);
 		container.empty();
-		currentData[BusinessDefaultLanguage].forEach((value) => {
+		currentData[currentLanguage].forEach((value) => {
 			container.append(`
                 <div class="input-group mb-1">
                     <input type="text" class="form-control" value="${value}">
@@ -1022,6 +1026,8 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 }
 
 function fillAgentUtterancesTab() {
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
 	// Opening Type
 	$("#editAgentGreetingStartTypeInput").val(CurrentManageAgentData.utterances.openingType.value).change();
 
@@ -1029,13 +1035,13 @@ function fillAgentUtterancesTab() {
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = CurrentManageAgentData.utterances.greetingMessage[language];
 	});
-	$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[currentLanguage]);
 
 	// Phrases Before Reply
 	BusinessFullData.businessData.languages.forEach((language) => {
 		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = CurrentManageAgentData.utterances.phrasesBeforeReply[language];
 	});
-	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[BusinessDefaultLanguage]);
+	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentLanguage]);
 }
 
 function validateAgentUtterancesTab(onlyRemove = true) {
@@ -2149,7 +2155,7 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 					pushNewNode.config.type = newScriptNodeData.config.type;
 					pushNewNode.config.messages = newScriptNodeData.config.messages;
 
-					if (oldNodeIndex !== -1) {
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
 						if (oldNode.type.value !== pushNewNode.config.type || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.config.messages)) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
@@ -2167,7 +2173,7 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 					pushNewNode.config.variableName = newScriptNodeData.config.variableName;
 					pushNewNode.config.outcomes = newScriptNodeData.config.outcomes;
 
-					if (oldNodeIndex !== -1) {
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
 						if (
 							oldNode.timeout !== pushNewNode.config.timeout ||
 							oldNode.requireStartAsterisk !== pushNewNode.config.requireStartAsterisk ||
@@ -2189,7 +2195,7 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 					pushNewNode.config.transferContext = newScriptNodeData.config.transferContext;
 					pushNewNode.config.summarizeContext = newScriptNodeData.config.summarizeContext;
 
-					if (oldNodeIndex !== -1) {
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
 						if (oldNode.agentId !== pushNewNode.config.agentId || oldNode.transferContext !== pushNewNode.config.transferContext || oldNode.summarizeContext !== pushNewNode.config.summarizeContext) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
@@ -2201,7 +2207,7 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
 					pushNewNode.config.scriptId = newScriptNodeData.config.scriptId;
 
-					if (oldNodeIndex !== -1) {
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
 						if (oldNode.scriptId !== pushNewNode.config.scriptId) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
@@ -2414,10 +2420,14 @@ function fillAgentSriptManagerTab() {
 	const currentSelectedLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
 	// Fill General Tab
-	CurrentAgentScriptNameMultiLangData = { ...ManageCurrentScriptData.general.name };
-	CurrentAgentScriptDescriptionMultiLangData = { ...ManageCurrentScriptData.general.description };
-
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentScriptNameMultiLangData[language] = ManageCurrentScriptData.general.name[language];
+	});
 	inputAgentScriptName.val(CurrentAgentScriptNameMultiLangData[currentSelectedLanguage]);
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentScriptDescriptionMultiLangData[language] = ManageCurrentScriptData.general.description[language];
+	});
 	inputAgentScriptDescription.val(CurrentAgentScriptDescriptionMultiLangData[currentSelectedLanguage]);
 
 	// Fill Conversations Tab
@@ -3261,6 +3271,7 @@ function addUserQueryNode(graph, x = 100, y = 200) {
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
 		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.USER_QUERY,
 			query: queryData,
 			examples: examplesData,
 		},
@@ -3315,6 +3326,7 @@ function addAIResponseNode(graph, x = 100, y = 200) {
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
 		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE,
 			response: responseData,
 			examples: examplesData,
 		},
@@ -3362,6 +3374,7 @@ function addSystemToolNode(graph, x = 100, y = 200) {
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL,
 			toolType: null,
 			config: {},
 		},
@@ -3663,6 +3676,7 @@ function addCustomToolNode(graph, x = 100, y = 200) {
 	return graph.addNode({
 		shape: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
 		data: {
+			type: AGENT_SCRIPT_NODE_TYPES.CUSTOM_TOOL,
 			toolId: null,
 			config: {},
 		},
@@ -4583,24 +4597,26 @@ function initAgentTab() {
 					const currentLanguage = language.id;
 
 					CurrentAgentScriptGraph.getCells().forEach((cell) => {
-						const nodeData = cell.getData() || {};
+						if (cell.shape === "edge") return;
+
+						const nodeData = cell.getData();
 
 						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
 							return;
 						}
 
-						const currentLangQueryData = nodeData.query[currentLanguage] || "";
-						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.USER_QUERY} [data-input="user-query"]`).val(currentLangQueryData);
+						const currentLangQueryData = nodeData.query[currentLanguage];
+						$(`g[data-cell-id="${cell.id}"] textarea[data-input="user-query"]`).val(currentLangQueryData);
 					});
 
 					if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
-						const nodeData = CurrentCanvasConfigCell.getData() || {};
+						const nodeData = CurrentCanvasConfigCell.getData();
 
 						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
 							return;
 						}
 
-						$(`[data-cell-id="${CurrentCanvasConfigCell.id}"] .${AGENT_SCRIPT_NODE_TYPES.USER_QUERY} [data-action="configure-user-query"]`).click();
+						$(`g[data-cell-id="${CurrentCanvasConfigCell.id}"] button[data-action="configure-user-query"]`).click();
 					}
 				});
 			}
@@ -4688,24 +4704,26 @@ function initAgentTab() {
 					const currentLanguage = language.id;
 
 					CurrentAgentScriptGraph.getCells().forEach((cell) => {
-						const nodeData = cell.getData() || {};
+						if (cell.shape === "edge") return;
+
+						const nodeData = cell.getData();
 
 						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
 							return;
 						}
 
-						const currentLangResponseData = nodeData.response[currentLanguage] || "";
-						$(`[data-cell-id="${cell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-input="ai-response"]`).val(currentLangResponseData);
+						const currentLangResponseData = nodeData.response[currentLanguage];
+						$(`g[data-cell-id="${cell.id}"] textarea[data-input="ai-response"]`).val(currentLangResponseData);
 					});
 
 					if (CurrentCanvasConfigCell && nodeConfigOffcanvas._element.classList.contains("show")) {
-						const nodeData = CurrentCanvasConfigCell.getData() || {};
+						const nodeData = CurrentCanvasConfigCell.getData();
 
 						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
 							return;
 						}
 
-						$(`[data-cell-id="${CurrentCanvasConfigCell.id}"] .${AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE} [data-action="configure-ai-response"]`).click();
+						$(`g[data-cell-id="${CurrentCanvasConfigCell.id}"] button[data-action="configure-ai-response"]`).click();
 					}
 				});
 			}
@@ -5045,14 +5063,16 @@ function initAgentTab() {
 					const currentLanguage = language.id;
 
 					CurrentAgentScriptGraph.getCells().forEach((cell) => {
-						const nodeData = cell.getData() || {};
+						if (cell.shape === "edge") return;
+
+						const nodeData = cell.getData();
 
 						if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 							return;
 						}
 
-						const config = nodeData.config || {};
-						const outcomes = config.outcomes || [];
+						const config = nodeData.config;
+						const outcomes = config.outcomes;
 
 						outcomes.forEach((outcome) => {
 							cell.portProp(`outcome-${outcome.outcomeIndex}`, "attrs/text/text", outcome.value[currentLanguage] || "");
