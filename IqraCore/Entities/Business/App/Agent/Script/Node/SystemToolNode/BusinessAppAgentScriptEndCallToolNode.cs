@@ -7,7 +7,7 @@ namespace IqraCore.Entities.Business
     {
         public override BusinessAppAgentScriptNodeSystemToolTypeENUM ToolType { get; set; } = BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall;
 
-        public BusinessAppAgentScriptEndCallTypeENUM Type { get; set; } = BusinessAppAgentScriptEndCallTypeENUM.Unknown;
+        public BusinessAppAgentScriptEndCallTypeENUM Type { get; set; } = BusinessAppAgentScriptEndCallTypeENUM.Immediate;
 
         [MultiLanguageProperty]
         public Dictionary<string, string>? Messages { get; set; } = null;

@@ -1041,7 +1041,6 @@ namespace IqraInfrastructure.Services.Business
             var nodes = new List<BusinessAppAgentScriptNode>();
 
             bool hasStartNode = false;
-            bool hasEndNode = false;
 
             foreach (JsonElement nodeElement in nodesElement.EnumerateArray())
             {
@@ -1060,9 +1059,23 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                if (!nodeElement.TryGetProperty("position", out var positionElement))
+                if (!nodeTypeElement.TryGetInt32(out var nodeTypeInt))
                 {
                     result.Code = "ValidateAndCreateNodes:3";
+                    result.Message = "Invalid node type.";
+                    return result;
+                }
+
+                if (!Enum.IsDefined(typeof(BusinessAppAgentScriptNodeTypeENUM), nodeTypeInt))
+                {
+                    result.Code = "ValidateAndCreateNodes:4";
+                    result.Message = "Invalid node type.";
+                    return result;
+                }
+
+                if (!nodeElement.TryGetProperty("position", out var positionElement))
+                {
+                    result.Code = "ValidateAndCreateNodes:5";
                     result.Message = "Node position not found.";
                     return result;
                 }
@@ -1070,13 +1083,13 @@ namespace IqraInfrastructure.Services.Business
                 if (!positionElement.TryGetProperty("x", out var positionXElement) ||
                     !positionElement.TryGetProperty("y", out var positionYElement))
                 {
-                    result.Code = "ValidateAndCreateNodes:4";
+                    result.Code = "ValidateAndCreateNodes:5";
                     result.Message = "Invalid node position data.";
                     return result;
                 }
 
                 var nodeId = nodeIdElement.GetString();
-                var nodeType = nodeTypeElement.GetString();
+                BusinessAppAgentScriptNodeTypeENUM nodeType = (BusinessAppAgentScriptNodeTypeENUM)nodeTypeInt;
                 var position = new BusinessAppAgentScriptNodePosition
                 {
                     X = positionXElement.GetDouble(),
@@ -1084,7 +1097,7 @@ namespace IqraInfrastructure.Services.Business
                 };
 
                 // Handle different node types
-                if (nodeType == "agent-script-start-node")
+                if (nodeType == BusinessAppAgentScriptNodeTypeENUM.Start)
                 {
                     if (hasStartNode)
                     {
@@ -1100,7 +1113,7 @@ namespace IqraInfrastructure.Services.Business
                         Position = position
                     });
                 }
-                else if (nodeType == "agent-script-user-query-node")
+                else if (nodeType == BusinessAppAgentScriptNodeTypeENUM.UserQuery)
                 {
                     if (!nodeElement.TryGetProperty("query", out var queryElement))
                     {
@@ -1144,7 +1157,7 @@ namespace IqraInfrastructure.Services.Business
 
                     nodes.Add(userQueryNode);
                 }
-                else if (nodeType == "agent-script-ai-response-node")
+                else if (nodeType == BusinessAppAgentScriptNodeTypeENUM.AIResponse)
                 {
                     if (!nodeElement.TryGetProperty("response", out var responseElement))
                     {
@@ -1188,7 +1201,7 @@ namespace IqraInfrastructure.Services.Business
 
                     nodes.Add(aiResponseNode);
                 }
-                else if (nodeType == "agent-script-system-tool-node")
+                else if (nodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
                 {
                     if (!nodeElement.TryGetProperty("toolType", out var toolTypeElement))
                     {
@@ -1197,13 +1210,21 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
 
-                    var toolType = toolTypeElement.GetString();
-                    if (string.IsNullOrWhiteSpace(toolType))
+                    if (!toolTypeElement.TryGetInt32(out var toolTypeInt))
                     {
                         result.Code = "ValidateAndCreateNodes:11";
                         result.Message = "Invalid system tool type.";
                         return result;
                     }
+
+                    if (!Enum.IsDefined(typeof(BusinessAppAgentScriptNodeSystemToolTypeENUM), toolTypeInt))
+                    {
+                        result.Code = "ValidateAndCreateNodes:12";
+                        result.Message = "Invalid system tool type.";
+                        return result;
+                    }
+
+                    BusinessAppAgentScriptNodeSystemToolTypeENUM toolType = (BusinessAppAgentScriptNodeSystemToolTypeENUM)toolTypeInt;
 
                     if (!nodeElement.TryGetProperty("config", out var toolConfigElement))
                     {
@@ -1213,7 +1234,7 @@ namespace IqraInfrastructure.Services.Business
                     }
 
                     // End Call Tool
-                    if (toolType == "EndCall")
+                    if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall)
                     {
                         var endCallNode = new BusinessAppAgentScriptEndCallToolNode
                         {
@@ -1228,20 +1249,30 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
 
-                        var endCallType = endCallTypeElement.GetString();
-                        if (endCallType == "immediate")
+                        if (!endCallTypeElement.TryGetInt32(out var endCallTypeInt))
                         {
-                            endCallNode.Type = BusinessAppAgentScriptEndCallTypeENUM.Immediate;
+                            result.Code = "ValidateAndCreateNodes:13";
+                            result.Message = "Invalid end call type.";
+                            return result;
                         }
-                        else if (endCallType == "with_message")
+
+                        if (!Enum.IsDefined(typeof(BusinessAppAgentScriptEndCallTypeENUM), endCallTypeInt))
                         {
-                            endCallNode.Type = BusinessAppAgentScriptEndCallTypeENUM.WithMessage;
+                            result.Code = "ValidateAndCreateNodes:14";
+                            result.Message = "Invalid end call type.";
+                            return result;
+                        }
+
+                        endCallNode.Type = (BusinessAppAgentScriptEndCallTypeENUM)endCallTypeInt;
+                        if (endCallNode.Type == BusinessAppAgentScriptEndCallTypeENUM.WithMessage)
+                        {
+                            endCallNode.Messages = new Dictionary<string, string>();
 
                             var messagesValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                                 businessLanguages,
                                 toolConfigElement,
                                 "messages",
-                                endCallNode.Messages ?? new Dictionary<string, string>()
+                                endCallNode.Messages
                             );
                             if (!messagesValidationResult.Success)
                             {
@@ -1257,11 +1288,10 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
 
-                        hasEndNode = true;
                         nodes.Add(endCallNode);
                     }
                     // DTMF Input Tool
-                    else if (toolType == "GetDTMFKeypadInput")
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
                     {
                         var dtmfNode = new BusinessAppAgentScriptDTMFInputToolNode
                         {
@@ -1346,7 +1376,7 @@ namespace IqraInfrastructure.Services.Business
                         nodes.Add(dtmfNode);
                     }
                     // Transfer To Agent Tool
-                    else if (toolType == "TransferToAgent")
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent)
                     {
                         var transferNode = new BusinessAppAgentScriptTransferToAgentToolNode
                         {
@@ -1389,11 +1419,10 @@ namespace IqraInfrastructure.Services.Business
                         }
                         transferNode.SummarizeConversation = summarizeContextElement.GetBoolean();
 
-                        hasEndNode = true;
                         nodes.Add(transferNode);
                     }
                     // Add Script To Context Tool
-                    else if (toolType == "AddScriptToContext")
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext)
                     {
                         var addScriptNode = new BusinessAppAgentScriptAddScriptToContextToolNode
                         {
@@ -1417,6 +1446,31 @@ namespace IqraInfrastructure.Services.Business
 
                         nodes.Add(addScriptNode);
                     }
+                    // Change Language Tool
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage)
+                    {
+                        var changeLanguageNode = new BusinessAppAgentScriptSystemToolNode()
+                        {
+                            Id = nodeId,
+                            Position = position,
+                            ToolType = BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage,
+                        };
+
+                        nodes.Add(changeLanguageNode);
+                    }
+                    // Press DTMF Keypad Tool
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad)
+                    {
+                        var pressDtmfKeypadNode = new BusinessAppAgentScriptSystemToolNode()
+                        {
+                            Id = nodeId,
+                            Position = position,
+                            ToolType = BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad,
+                        };
+                        
+                        nodes.Add(pressDtmfKeypadNode);
+                    }
+                    // Unknown System Tool
                     else 
                     {
                         result.Code = "ValidateAndCreateNodes:28";
@@ -1424,7 +1478,7 @@ namespace IqraInfrastructure.Services.Business
                         return result;
                     }
                 }
-                else if (nodeType == "agent-script-custom-tool-node")
+                else if (nodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool)
                 {
                     if (!nodeElement.TryGetProperty("toolId", out var toolIdElement))
                     {
@@ -1512,13 +1566,6 @@ namespace IqraInfrastructure.Services.Business
                 return result;
             }
 
-            if (!hasEndNode)
-            {
-                result.Code = "ValidateAndCreateNodes:9";
-                result.Message = "At least one end node (end call, transfer to agent, or transfer to human) is required.";
-                return result;
-            }
-
             result.Success = true;
             result.Data = nodes;
             return result;
@@ -1569,38 +1616,48 @@ namespace IqraInfrastructure.Services.Business
                     return result;
                 }
 
-                var edgeId = edgeIdElement.GetString();
-                var sourceNodeId = sourceNodeIdElement.GetString();
-                var sourcePortId = sourcePortIdElement.GetString();
-                var targetNodeId = targetNodeIdElement.GetString();
-                var targetPortId = targetPortIdElement.GetString();
+                string? edgeId = edgeIdElement.GetString();
+                string? sourceNodeId = sourceNodeIdElement.GetString();
+                string? sourcePortId = sourcePortIdElement.GetString();
+                string? targetNodeId = targetNodeIdElement.GetString();
+                string? targetPortId = targetPortIdElement.GetString();
+
+                if (string.IsNullOrWhiteSpace(edgeId) || string.IsNullOrWhiteSpace(sourceNodeId) || string.IsNullOrWhiteSpace(sourcePortId))
+                {
+                    result.Code = "ValidateAndCreateEdges:6";
+                    result.Message = "Invalid edge data.";
+                    return result;
+                }
 
                 // Validate source node exists
                 var sourceNode = nodes.FirstOrDefault(n => n.Id == sourceNodeId);
                 if (sourceNode == null)
                 {
-                    result.Code = "ValidateAndCreateEdges:6";
+                    result.Code = "ValidateAndCreateEdges:7";
                     result.Message = $"Source node not found: {sourceNodeId}";
                     return result;
                 }
 
-                // Validate target node exists
-                var targetNode = nodes.FirstOrDefault(n => n.Id == targetNodeId);
-                if (targetNode == null)
+                if (!string.IsNullOrEmpty(targetNodeId))
                 {
-                    result.Code = "ValidateAndCreateEdges:7";
-                    result.Message = $"Target node not found: {targetNodeId}";
-                    return result;
-                }
+                    // Validate target node exists
+                    var targetNode = nodes.FirstOrDefault(n => n.Id == targetNodeId);
+                    if (targetNode == null)
+                    {
+                        result.Code = "ValidateAndCreateEdges:8";
+                        result.Message = $"Target node not found: {targetNodeId}";
+                        return result;
+                    }
 
-                // Validate connection rules
-                var connectionValidation = ValidateNodeConnection(sourceNode, targetNode, sourcePortId, targetPortId);
-                if (!connectionValidation.Success)
-                {
-                    result.Code = "ValidateAndCreateEdges:" + connectionValidation.Code;
-                    result.Message = connectionValidation.Message;
-                    return result;
-                }
+                    // Validate connection rules
+                    var connectionValidation = ValidateNodeConnection(sourceNode, targetNode, sourcePortId, targetPortId);
+                    if (!connectionValidation.Success)
+                    {
+                        result.Code = "ValidateAndCreateEdges:" + connectionValidation.Code;
+                        result.Message = connectionValidation.Message;
+                        return result;
+                    }
+                }              
 
                 // Create edge
                 var edge = new BusinessAppAgentScriptEdge
@@ -1608,8 +1665,8 @@ namespace IqraInfrastructure.Services.Business
                     Id = edgeId,
                     SourceNodeId = sourceNodeId,
                     SourceNodePortId = sourcePortId,
-                    TargetNodeId = targetNodeId,
-                    TargetNodePortId = targetPortId
+                    TargetNodeId = targetNodeId ?? "",
+                    TargetNodePortId = targetPortId ?? ""
                 };
 
                 edges.Add(edge);
@@ -1624,36 +1681,6 @@ namespace IqraInfrastructure.Services.Business
                 return result;
             }
 
-            // Validate no hanging nodes (except end nodes)
-            foreach (var node in nodes)
-            {
-                // Skip start node (already validated) and end nodes
-                if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start ||
-                    (node is BusinessAppAgentScriptSystemToolNode systemNode &&
-                     (systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall ||
-                      systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent ||
-                      systemNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToHuman)))
-                {
-                    continue;
-                }
-
-                // Check if node has incoming edges
-                if (!edges.Any(e => e.TargetNodeId == node.Id))
-                {
-                    result.Code = "ValidateAndCreateEdges:9";
-                    result.Message = $"Node {node.Id} is not connected to any incoming node.";
-                    return result;
-                }
-
-                // Check if non-end node has outgoing edges
-                if (!edges.Any(e => e.SourceNodeId == node.Id))
-                {
-                    result.Code = "ValidateAndCreateEdges:10";
-                    result.Message = $"Node {node.Id} is not connected to any outgoing node.";
-                    return result;
-                }
-            }
-
             result.Success = true;
             result.Data = edges;
             return result;
@@ -1662,8 +1689,8 @@ namespace IqraInfrastructure.Services.Business
         private FunctionReturnResult<bool> ValidateNodeConnection(
             BusinessAppAgentScriptNode sourceNode,
             BusinessAppAgentScriptNode targetNode,
-            string sourcePortId,
-            string targetPortId)
+            string? sourcePortId,
+            string? targetPortId)
         {
             var result = new FunctionReturnResult<bool>();
 

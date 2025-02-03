@@ -434,24 +434,23 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> UpdateAgentScript(long businessId, string agentId, BusinessAppAgentScript updatedScriptData)
         {
-            var filter = Builders<BusinessApp>.Filter.And(
-                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents, a => a.Id == agentId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Agents.FirstMatchingElement().Scripts, s => s.Id == updatedScriptData.Id)
-            );
+            // Simpler filter - we just need to match the business ID
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
 
+            // Update with proper positional operator syntax
             var update = Builders<BusinessApp>.Update.Set(
-                $"Agents.$[agent].Scripts.$[script]",
+                "Agents.$[agentElem].Scripts.$[scriptElem]",
                 updatedScriptData
             );
 
+            // Array filters with correct syntax
             var arrayFilters = new List<ArrayFilterDefinition>
             {
                 new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("agent.Id", agentId)
+                    new BsonDocument("agentElem._id", agentId)
                 ),
                 new BsonDocumentArrayFilterDefinition<BsonDocument>(
-                    new BsonDocument("script.Id", updatedScriptData.Id)
+                    new BsonDocument("scriptElem._id", updatedScriptData.Id)
                 )
             };
 
