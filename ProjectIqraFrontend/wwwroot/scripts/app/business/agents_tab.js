@@ -3736,10 +3736,11 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 	}
 
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
-		const scripts = CurrentManageAgentData.scripts || [];
+		const scripts = CurrentManageAgentData.scripts;
 
 		const scriptOptions = scripts
 			.map((script) => {
+				if (ManageCurrentScriptData?.id && ManageCurrentScriptData.id === script.id) return;
 				const scriptName = script.general.name[currentLanguage] || script.general.name["en-us"] || "Unnamed Script";
 				return `<option value="${script.id}" ${config.scriptId === script.id ? "selected" : ""}>${scriptName}</option>`;
 			})
@@ -3750,7 +3751,7 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 					<label class="form-label">Add Script Configuration</label>
 					<div class="mb-2">
 						<select class="form-select" data-input="add-script">
-							<option value="">Select Script</option>
+							<option value="" disabled ${config.scriptId ? "" : "selected"}>Select Script</option>
 							${scriptOptions}
 						</select>
 					</div>
