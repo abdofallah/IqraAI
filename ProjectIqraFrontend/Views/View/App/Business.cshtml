@@ -42,12 +42,12 @@
                         <span class="nav_name">Overview</span>
                     </a>
                     <span class="mt-4 nav-category-label">Routing</span>
-                    <a class="nav_link" for="routing-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link active" for="routing-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-code-fork nav_icon'></i>
                         <span class="nav_name">Routing</span>
                     </a>
                     <span class="mt-4 nav-category-label">Setup</span>
-                    <a class="nav_link active" for="agents-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="agents-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
@@ -180,8 +180,64 @@
 
              -->
         <!-- Routing Container -->
-        <div class="main-container fade d-none w-100" id="routing-tab">
+        <div class="main-container fade show w-100" id="routing-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-code-fork'></i> <span>Routing</span></h3>
+            <div class="inner-header-container w-100 mb-3 fade d-none" id="routing-header">
+                <div class="d-flex flex-row align-items-center justify-content-between" id="routing-manager-header-inner">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToRoutingTab">Routing</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page"><span id="currentRouteName">Route</span></li>
+                            </ol>
+                        </nav>
+                        <div>
+                            <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="routeDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
+                                <i class='fa-regular fa-wrench text-dark'></i>
+                                <span> Debug</span>
+                            </button>
+                            <div class="btn-group" id="publishRoutingDropdown">
+                                <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class='fa-regular fa-wrench'></i>
+                                    <span> Publish</span>
+                                </button>
+                                <div class="dropdown-menu p-3">
+                                    <div class="mb-2">
+                                        <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
+                                        <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
+                                            Published
+                                            20 minutes ago
+                                        </p>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm w-100" id="confirmPublishRoutingButton">
+                                        <span>Update</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ul class="nav mb-3" id="routing-manager-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="routing-manager-general-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-general" type="button" role="tab" aria-controls="routing-manager-general" aria-selected="true">General</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="routing-manager-language-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-language" type="button" role="tab" aria-controls="routing-manager-language" aria-selected="true">Language</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="routing-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-configuration" type="button" role="tab" aria-controls="routing-manager-configuration" aria-selected="true">Configuration</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="routing-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-agent" type="button" role="tab" aria-controls="routing-manager-agent" aria-selected="true">Agent</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="routing-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-actions" type="button" role="tab" aria-controls="routing-manager-actions" aria-selected="true">Actions</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <div class="inner-container">
                 <!-- Routing List Tab -->
                 <div class="fade show w-100" id="routingListTab">
@@ -219,61 +275,6 @@
                 </div>
                 <!-- Routing Manager Tab -->
                 <div class="fade d-none w-100" id="routingManagerTab">
-                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item">
-                                    <a href="#" id="switchBackToRoutingTab">Routing</a>
-                                </li>
-                                <li class="breadcrumb-item active" aria-current="page"><span id="currentRouteName">Route</span></li>
-                            </ol>
-                        </nav>
-                        <div>
-                            <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="routeDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
-                                <i class='fa-regular fa-wrench text-dark'></i>
-                                <span> Debug</span>
-                            </button>
-                            <div class="btn-group" id="publishRoutingDropdown">
-                                <button class="btn btn-primary btn-sm btn-ic-span-align dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class='fa-regular fa-wrench'></i>
-                                    <span> Publish</span>
-                                </button>
-                                <div class="dropdown-menu p-3">
-                                    <div class="mb-2">
-                                        <label style="opacity: 0.7; font-size: 0.8em">Last Published</label>
-                                        <p class="mb-0" style="font-size: 0.9em;font-weight: 600;">
-                                            Published
-                                            20 minutes ago
-                                        </p>
-                                    </div>
-                                    <button class="btn btn-primary btn-sm w-100" id="confirmPublishRoutingButton">
-                                        <span>Update</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Manager Inner Tabs -->
-                    <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                        <ul class="nav mb-3" id="routing-manager-tab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="routing-manager-general-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-general" type="button" role="tab" aria-controls="routing-manager-general" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="routing-manager-language-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-language" type="button" role="tab" aria-controls="routing-manager-language" aria-selected="true">Language</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="routing-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-configuration" type="button" role="tab" aria-controls="routing-manager-configuration" aria-selected="true">Configuration</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="routing-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-agent" type="button" role="tab" aria-controls="routing-manager-agent" aria-selected="true">Agent</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="routing-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-actions" type="button" role="tab" aria-controls="routing-manager-actions" aria-selected="true">Actions</button>
-                            </li>
-                        </ul>
-                    </div>
 
                     <div class="tab-content w-100" id="routing-manager-tabContent">
                         <!-- General -->
@@ -788,7 +789,7 @@
 
              -->
         <!-- Agents Container -->
-        <div class="main-container fade show w-100" id="agents-tab">
+        <div class="main-container fade d-none w-100" id="agents-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-headset'></i> <span>Agents</span></h3>
             <div class="inner-header-container w-100 mb-3 fade d-none" id="agents-manager-header">
 
@@ -5160,6 +5161,7 @@
                                         initCacheTab();
                                         initIntegrationsTab();
                                         initAgentTab();
+                                        initRoutingTab();
 
                                         let businessTutorials = BusinessFullData.businessData.tutorials;
                                         if (businessTutorials) {

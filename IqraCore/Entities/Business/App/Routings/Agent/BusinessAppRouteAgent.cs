@@ -8,7 +8,7 @@ namespace IqraCore.Entities.Business
         public long OpeningScriptId { get; set; } = -1;
         public AgentConversationTypeENUM ConversationType { get; set; } = AgentConversationTypeENUM.Interruptible;
         public int? InterruptibleConversationTypeWords { get; set; } = null;
-        public string Timezone { get; set; } = "0";
+        public List<string> Timezone { get; set; } = new List<string>();
         public bool CallerNumberInContext { get; set; } = true;
         public bool RouteNumberInContext { get; set; } = true;
     }

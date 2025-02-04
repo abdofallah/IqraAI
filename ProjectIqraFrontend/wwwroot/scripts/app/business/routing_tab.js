@@ -1,81 +1,109 @@
-$(document).ready(() => {
-    const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+/** Dynamic Variables **/
 
-    const addNewRoutingButton = $("#addNewRouteButton");
+/** Element Variables  **/
+const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
+const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    const routingListTab = $("#routingListTab");
-    const routingManagerTab = $("#routingManagerTab");
+const routingTab = $("#routing-tab");
 
-    const currentRouteName = $("#currentRouteName");
+const routingHeader = routingTab.find("#routing-header");
 
-    const editRouteDefaultLanguageSelect = $("#editRouteDefaultLanguageSelect");
+// List Tab
+const routingListTab = routingTab.find("#routingListTab");
 
-    const switchBackToRoutingTabButton = $("#switchBackToRoutingTab");
+const addNewRoutingButton = routingListTab.find("#addNewRouteButton");
 
-    const editRouteMultiLanguageCheck = $("#editRouteMultiLanguageCheck");
+// Manager Tab
+const currentRouteName = routingHeader.find("#currentRouteName");
+const switchBackToRoutingTabButton = routingHeader.find("#switchBackToRoutingTab");
 
-    const editRouteAddMultiLanguageEnabledSelect = $("#editRouteAddMultiLanguageEnabledSelect");
-    const routeMultiLanguagesEnabledList = $("#routeMultiLanguagesEnabledList");
+const routingManagerTab = routingTab.find("#routingManagerTab");
 
-    const editRouteAgentConversationTypeSelect = $("#editRouteAgentConversationTypeSelect");
+const editRouteDefaultLanguageSelect = routingTab.find("#editRouteDefaultLanguageSelect");
 
-    addNewRoutingButton.on("click", (event) => {
-        event.preventDefault();
+const editRouteMultiLanguageCheck = routingTab.find("#editRouteMultiLanguageCheck");
 
-        currentRouteName.text("New Route");
+const editRouteAddMultiLanguageEnabledSelect = routingTab.find("#editRouteAddMultiLanguageEnabledSelect");
+const routeMultiLanguagesEnabledList = routingTab.find("#routeMultiLanguagesEnabledList");
 
-        routingListTab.removeClass("show");
-        setTimeout(() => {
-            routingListTab.addClass("d-none");
+const editRouteAgentConversationTypeSelect = routingTab.find("#editRouteAgentConversationTypeSelect");
 
-            routingManagerTab.removeClass("d-none");
-            setTimeout(() => {
-                routingManagerTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+/** API FUNCTIONS **/
 
-    switchBackToRoutingTabButton.on("click", (event) => {
-        event.preventDefault();
+/** Functions **/
+function showRoutingManagerTab() {
+	routingListTab.removeClass("show");
+	setTimeout(() => {
+		routingListTab.addClass("d-none");
 
-        routingManagerTab.removeClass("show");
-        setTimeout(() => {
-            routingManagerTab.addClass("d-none");
+		routingManagerTab.removeClass("d-none");
+		routingHeader.removeClass("d-none");
+		setTimeout(() => {
+			routingManagerTab.addClass("show");
+			routingHeader.addClass("show");
 
-            routingListTab.removeClass("d-none");
-            setTimeout(() => {
-                routingListTab.addClass("show");
-            }, 10);
-        }, 150);
-    });
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
 
-    editRouteMultiLanguageCheck.on('change', (event) => {
-        let isChecked = $(event.currentTarget).is(':checked');
+function showRoutingListTab() {
+	routingManagerTab.removeClass("show");
+	routingHeader.removeClass("show");
+	setTimeout(() => {
+		routingManagerTab.addClass("d-none");
+		routingHeader.addClass("d-none");
 
-        editRouteAddMultiLanguageEnabledSelect.prop('disabled', !isChecked);
-        if (isChecked) {
-            routeMultiLanguagesEnabledList.removeClass('disabled');
-        }
-        else {
-            routeMultiLanguagesEnabledList.addClass('disabled');
-        }
+		routingListTab.removeClass("d-none");
+		setTimeout(() => {
+			routingListTab.addClass("show");
 
-        routeMultiLanguagesEnabledList.find('tr td button, tr td input').each((index, element) => {
-            $(element).prop('disabled', !isChecked);
-        });
-    });
+			setDynamicBodyHeight();
+		}, 10);
+	}, 300);
+}
 
-    editRouteAddMultiLanguageEnabledSelect.on('change', (event) => {
-        let selectedValue = $(event.currentTarget).val();
-        if (selectedValue === "select" || !selectedValue || selectedValue === "") return;
+function initRoutingTab() {
+	$(document).ready(() => {
+		addNewRoutingButton.on("click", (event) => {
+			event.preventDefault();
 
-        let optionElement = editRouteAddMultiLanguageEnabledSelect.find('option[value="' + selectedValue + '"]');
-        let optionText = optionElement.text();
+			currentRouteName.text("New Route");
 
-        let tbody = $(routeMultiLanguagesEnabledList.find('tbody')[0]);
+			showRoutingManagerTab();
+		});
 
-        tbody.append(`
+		switchBackToRoutingTabButton.on("click", (event) => {
+			event.preventDefault();
+
+			showRoutingListTab();
+		});
+
+		editRouteMultiLanguageCheck.on("change", (event) => {
+			const isChecked = $(event.currentTarget).is(":checked");
+
+			editRouteAddMultiLanguageEnabledSelect.prop("disabled", !isChecked);
+			if (isChecked) {
+				routeMultiLanguagesEnabledList.removeClass("disabled");
+			} else {
+				routeMultiLanguagesEnabledList.addClass("disabled");
+			}
+
+			routeMultiLanguagesEnabledList.find("tr td button, tr td input").each((index, element) => {
+				$(element).prop("disabled", !isChecked);
+			});
+		});
+
+		editRouteAddMultiLanguageEnabledSelect.on("change", (event) => {
+			const selectedValue = $(event.currentTarget).val();
+			if (selectedValue === "select" || !selectedValue || selectedValue === "") return;
+
+			const optionElement = editRouteAddMultiLanguageEnabledSelect.find('option[value="' + selectedValue + '"]');
+			const optionText = optionElement.text();
+
+			const tbody = $(routeMultiLanguagesEnabledList.find("tbody")[0]);
+
+			tbody.append(`
                               <tr code="${selectedValue}" name="${optionText}">
                                    <td class="text-center px-2">
                                         <button class="btn text-center" button-type="move-enabled-language">
@@ -96,67 +124,69 @@ $(document).ready(() => {
                               </tr>
                          `);
 
-        optionElement.remove();
+			optionElement.remove();
 
-        editRouteAddMultiLanguageEnabledSelect.val("select");
-        editRouteAddMultiLanguageEnabledSelect.change();
-    });
+			editRouteAddMultiLanguageEnabledSelect.val("select");
+			editRouteAddMultiLanguageEnabledSelect.change();
+		});
 
-    $(document).on('click', '[button-type="remove-enabled-language"]', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
+		$(document).on("click", '[button-type="remove-enabled-language"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			event.stopImmediatePropagation();
 
-        let parent = $(event.currentTarget).parent().parent();
-        let code = parent.attr('code');
-        let name = parent.attr('name');
+			const parent = $(event.currentTarget).parent().parent();
+			const code = parent.attr("code");
+			const name = parent.attr("name");
 
-        editRouteAddMultiLanguageEnabledSelect.append(`<option value="${code}">${name}</option>`);
-        parent.remove();
+			editRouteAddMultiLanguageEnabledSelect.append(`<option value="${code}">${name}</option>`);
+			parent.remove();
 
-        ResortMultiLanugageEnabledListNumbers();
-    });
+			ResortMultiLanugageEnabledListNumbers();
+		});
 
-    routeMultiLanguagesEnabledList.find("tbody").sortable({
-        items: 'tr:not([data-type="nothing-added"])',
-        cursor: 'pointer',
-        axis: 'y',
-        dropOnEmpty: false,
-        forceHelperSize: true,
-        forcePlaceholderSize: true,
-        handle: 'button[button-type="move-enabled-language"]',
-        cancel: '',
-        start: (e, ui) => {
-            ui.item.addClass("selected");
-        },
-        stop: (e, ui) => {
-            ui.item.removeClass("selected");
+		routeMultiLanguagesEnabledList.find("tbody").sortable({
+			items: 'tr:not([data-type="nothing-added"])',
+			cursor: "pointer",
+			axis: "y",
+			dropOnEmpty: false,
+			forceHelperSize: true,
+			forcePlaceholderSize: true,
+			handle: 'button[button-type="move-enabled-language"]',
+			cancel: "",
+			start: (e, ui) => {
+				ui.item.addClass("selected");
+			},
+			stop: (e, ui) => {
+				ui.item.removeClass("selected");
 
-            ResortMultiLanugageEnabledListNumbers();
-        }
-    });
+				ResortMultiLanugageEnabledListNumbers();
+			},
+		});
 
-    function ResortMultiLanugageEnabledListNumbers() {
-        let tbodyChild = $(routeMultiLanguagesEnabledList.find('tbody')[0]).children();
+		function ResortMultiLanugageEnabledListNumbers() {
+			const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
 
-        tbodyChild.each((index, element) => {
-            console.log(element);
-            $(element).find('td:nth-child(2)').text(index + 1);
-        });
-    }
+			tbodyChild.each((index, element) => {
+				console.log(element);
+				$(element)
+					.find("td:nth-child(2)")
+					.text(index + 1);
+			});
+		}
 
-    editRouteAgentConversationTypeSelect.on('change', (event) => {
-        let selectedValue = editRouteAgentConversationTypeSelect.val();
+		editRouteAgentConversationTypeSelect.on("change", (event) => {
+			const selectedValue = editRouteAgentConversationTypeSelect.val();
 
-        if (!selectedValue) return;
+			if (!selectedValue) return;
 
-        let interruptibleBox = $('.route-conversation-type-box[box-type="interruptible"]');
+			const interruptibleBox = $('.route-conversation-type-box[box-type="interruptible"]');
 
-        if (selectedValue === "interruptible") {
-            interruptibleBox.removeClass('d-none');
-        }
-        else if (selectedValue === "turnbyturn") {
-            interruptibleBox.addClass('d-none');
-        }
-    });
-});
+			if (selectedValue === "interruptible") {
+				interruptibleBox.removeClass("d-none");
+			} else if (selectedValue === "turnbyturn") {
+				interruptibleBox.addClass("d-none");
+			}
+		});
+	});
+}
