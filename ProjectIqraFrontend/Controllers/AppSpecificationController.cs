@@ -2,9 +2,11 @@
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
+using IqraCore.Entities.Region;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraCore.Entities.User;
+using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
@@ -20,15 +22,17 @@ namespace ProjectIqraFrontend.Controllers
     {
         private readonly UserManager _userManager;
         private readonly LanguagesManager _languagesManager;
+        private readonly RegionManager _regionManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
 
-        public AppSpecificationController(UserManager userManager, LanguagesManager languagesManager, IntegrationsManager integrationsManager, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
+        public AppSpecificationController(UserManager userManager, LanguagesManager languagesManager, RegionManager regionManager, IntegrationsManager integrationsManager, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
         {
             _userManager = userManager;
             _languagesManager = languagesManager;
+            _regionManager = regionManager;
             _integrationsManager = integrationsManager;
             _llmProviderManager = llmProviderManager;
             _sttProviderManager = sttProviderManager;
@@ -120,6 +124,50 @@ namespace ProjectIqraFrontend.Controllers
 
             result.Success = true;
             result.Data = getIntegrationsListResult.Data;
+            return result;
+        }
+
+        [HttpPost("/app/specification/regions")]
+        public async Task<FunctionReturnResult<List<RegionData>?>> GetRegions([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<List<RegionData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetRegions:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetRegions:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetRegions:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            var getRegionsListResult = await _regionManager.GetRegions();
+            if (!getRegionsListResult.Success)
+            {
+                result.Code = "GetRegions:" + getRegionsListResult.Code;
+                result.Message = getRegionsListResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = getRegionsListResult.Data;
             return result;
         }
 

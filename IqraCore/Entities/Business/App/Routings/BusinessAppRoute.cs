@@ -2,6 +2,7 @@
 {
     public class BusinessAppRoute
     {
+        public string Id { get; set; } = string.Empty;
         public BusinessAppRouteGeneral General { get; set; } = new BusinessAppRouteGeneral();
         public BusinessAppRouteLanguage Language { get; set; } = new BusinessAppRouteLanguage();
         public BusinessAppRouteConfiguration Configuration { get; set; } = new BusinessAppRouteConfiguration();

@@ -4,11 +4,11 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppRouteAgent
     {
-        public long SelectedAgentId { get; set; } = -1;
-        public long OpeningScriptId { get; set; } = -1;
+        public string SelectedAgentId { get; set; } = string.Empty;
+        public string OpeningScriptId { get; set; } = string.Empty;
         public AgentConversationTypeENUM ConversationType { get; set; } = AgentConversationTypeENUM.Interruptible;
-        public int? InterruptibleConversationTypeWords { get; set; } = null;
-        public List<string> Timezone { get; set; } = new List<string>();
+        public int? InterruptibleConversationTypeWords { get; set; } = 3;
+        public List<string> Timezones { get; set; } = new List<string>();
         public bool CallerNumberInContext { get; set; } = true;
         public bool RouteNumberInContext { get; set; } = true;
     }

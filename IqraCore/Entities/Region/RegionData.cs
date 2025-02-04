@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using IqraCore.Attributes;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Region
 {
@@ -11,6 +12,8 @@ namespace IqraCore.Entities.Region
 
         public DateTime? DisabledAt { get; set; } = null;
 
+        [ExcludeInAllEndpoints]
+        [IncludeInEndpoint("/app/admin/regions")]
         public List<RegionServer> Servers { get; set; } = new List<RegionServer>();
     }
 }

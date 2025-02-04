@@ -4,6 +4,7 @@ using IqraInfrastructure.Repositories.App;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
+using Twilio.Base;
 
 namespace IqraInfrastructure.Services.App
 {
@@ -35,9 +36,23 @@ namespace IqraInfrastructure.Services.App
             return result;
         }
 
-        public async Task<List<RegionData>> GetRegions()
+        public async Task<FunctionReturnResult<List<RegionData>?>> GetRegions()
         {
-            return await _regionRepository.GetRegions();
+            var result = new FunctionReturnResult<List<RegionData>?>();
+
+            var businesses = await _regionRepository.GetRegions();
+            if (businesses == null)
+            {
+                result.Code = "GetRegions:1";
+                Log.Logger.Error("[RegionManager] Null - Regions not found");
+            }
+            else
+            {
+                result.Success = true;
+                result.Data = businesses;
+            }
+
+            return result;
         }
 
         public async Task<RegionData?> GetRegion(string countryCode, string countryRegion)

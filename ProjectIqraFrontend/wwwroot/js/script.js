@@ -117,6 +117,11 @@ function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
 
 $(document).ready(() => {
 	$(document).on("click", ".l-navbar .nav_link", async (event) => {
+		const hasHrefTag = event.currentTarget.hasAttribute("href");
+		if (hasHrefTag) {
+			return true;
+		}
+
 		event.preventDefault();
 
 		const currentElement = $(event.currentTarget);

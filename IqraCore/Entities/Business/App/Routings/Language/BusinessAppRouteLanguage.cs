@@ -4,6 +4,6 @@
     {
         public string DefaultLanguageCode { get; set; } = string.Empty;
         public bool MultiLanguageEnabled { get; set; } = false;
-        public List<BusinessAppRouteLanguageMultiEnabled> EnabledMultiLanguages { get; set; } = new List<BusinessAppRouteLanguageMultiEnabled>();
+        public List<BusinessAppRouteLanguageMultiEnabled>? EnabledMultiLanguages { get; set; } = null;
     }
 }

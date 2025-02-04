@@ -1,4 +1,6 @@
 /** Dynamic Variables **/
+let ManageRouteType = null; // edit or new
+let ManageCurrentRouteData = null;
 
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
@@ -17,8 +19,26 @@ const addNewRoutingButton = routingListTab.find("#addNewRouteButton");
 const currentRouteName = routingHeader.find("#currentRouteName");
 const switchBackToRoutingTabButton = routingHeader.find("#switchBackToRoutingTab");
 
+const saveRouteButton = routingHeader.find("#saveRouteButton");
+
 const routingManagerTab = routingTab.find("#routingManagerTab");
 
+// Genral Tab
+const routeIconPicker = new EmojiPicker({
+	trigger: [
+		{
+			selector: "#editRouteIconInput",
+			insertInto: "#editRouteIconInput",
+		},
+	],
+	closeButton: true,
+	closeOnInsert: true,
+});
+
+const editRouteIconInput = routingTab.find("#editRouteIconInput");
+const editRouteDescriptionInput = routingTab.find("#editRouteDescriptionInput");
+
+// Language Tab
 const editRouteDefaultLanguageSelect = routingTab.find("#editRouteDefaultLanguageSelect");
 
 const editRouteMultiLanguageCheck = routingTab.find("#editRouteMultiLanguageCheck");
@@ -26,7 +46,40 @@ const editRouteMultiLanguageCheck = routingTab.find("#editRouteMultiLanguageChec
 const editRouteAddMultiLanguageEnabledSelect = routingTab.find("#editRouteAddMultiLanguageEnabledSelect");
 const routeMultiLanguagesEnabledList = routingTab.find("#routeMultiLanguagesEnabledList");
 
+// Number Tab
+let editChangeRouteNumberModal = null;
+const saveChangeRouteNumberButton = $("#editChangeRouteNumberModal #saveChangeRouteNumberButton");
+const routeNumbersList = routingTab.find("#routeNumbersList");
+
+// Configuration Tab
+const editRouteRegionSelect = routingTab.find("#editRouteRegionSelect");
+const editRouteNumberPickupDelay = routingTab.find("#editRouteNumberPickupDelay");
+const editRouteNumberSilenceNotify = routingTab.find("#editRouteNumberSilenceNotify");
+const editRouteNumberSilenceEnd = routingTab.find("#editRouteNumberSilenceEnd");
+const editRouteNumberTotalCallTime = routingTab.find("#editRouteNumberTotalCallTime");
+
+// Agent Tab
+let editChangeRouteAgentModal = null;
+const routingManagerSelectAgentModalList = $("#editChangeRouteAgentModal #routing-manager-select-agent-modal-list");
+const saveChangeRouteAgentButton = $("#editChangeRouteAgentModal #saveChangeRouteAgentButton");
 const editRouteAgentConversationTypeSelect = routingTab.find("#editRouteAgentConversationTypeSelect");
+const editRouteAgentConversationTypeInterruptibleMaxWords = routingTab.find("#editRouteAgentConversationTypeInterruptibleMaxWords");
+const editRouteNumberTimezoneSelect = routingTab.find("#editRouteNumberTimezoneSelect");
+const editRouteAgentCallerNumberInContextCheck = routingTab.find("#editRouteAgentCallerNumberInContextCheck");
+const editRouteAgentRouteNumberInContextCheck = routingTab.find("#editRouteAgentRouteNumberInContextCheck");
+
+// Actions Tab
+const editRouteActionToolRinging = routingTab.find("#editRouteActionToolRinging");
+const editRouteActionToolRingingInputArgumentsSelect = routingTab.find("#editRouteActionToolRingingInputArgumentsSelect");
+const editRouteActionToolRingingInputArgumentsList = routingTab.find("#editRouteActionToolRingingInputArgumentsList");
+
+const editRouteActionToolPicked = routingTab.find("#editRouteActionToolPicked");
+const editRouteActionToolPickedInputArgumentsSelect = routingTab.find("#editRouteActionToolPickedInputArgumentsSelect");
+const editRouteActionToolPickedInputArgumentsList = routingTab.find("#editRouteActionToolPickedInputArgumentsList");
+
+const editRouteActionToolEnded = routingTab.find("#editRouteActionToolEnded");
+const editRouteActionToolEndedInputArgumentsSelect = routingTab.find("#editRouteActionToolEndedInputArgumentsSelect");
+const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteActionToolEndedInputArgumentsList");
 
 /** API FUNCTIONS **/
 
@@ -63,14 +116,133 @@ function showRoutingListTab() {
 	}, 300);
 }
 
+function ResortMultiLanugageEnabledListNumbers() {
+	const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
+
+	tbodyChild.each((index, element) => {
+		$(element)
+			.find("td:nth-child(2)")
+			.text(index + 1);
+	});
+}
+
+function createDefaultRouteObject() {
+	const object = {
+		general: {
+			emoji: "📞",
+			name: "",
+			description: "",
+		},
+		language: {
+			defaultLanguageCode: "",
+			multiLanguageEnabled: false,
+			enabledMultiLanguages: null,
+		},
+		configuration: {
+			selectedRegionId: "",
+			PickUpDelayMS: 0,
+			notifyOnSilenceMS: 10000,
+			endCallOnSilenceMS: 30000,
+			MaxCallTimeS: 600,
+		},
+		numbers: [],
+		agent: {
+			selectedAgentId: "",
+			openingScriptId: "",
+			conversationType: {
+				value: 0,
+			},
+			interruptibleConversationTypeWords: 3,
+			timezones: [],
+			callerNumberInContext: true,
+			routeNumberInContext: true,
+		},
+		actions: {
+			ringingTool: {
+				selectedToolId: "",
+				arguements: null,
+			},
+			pickedTool: {
+				selectedToolId: "",
+				arguements: null,
+			},
+			endedTool: {
+				selectedToolId: "",
+				arguements: null,
+			},
+		},
+	};
+
+	return object;
+}
+
+function resetAndEmptyRouteManagerTab() {
+	// Langauge
+	editRouteAddMultiLanguageEnabledSelect.empty();
+	editRouteDefaultLanguageSelect.empty();
+	editRouteAddMultiLanguageEnabledSelect.append(`<option value="" disabled selected>Add Language</option>`);
+	editRouteDefaultLanguageSelect.append(`<option value="" disabled selected>Select Language</option>`);
+	BusinessFullData.businessData.languages.forEach((language) => {
+		const currentLanguageData = SpecificationLanguagesListData.find((l) => l.id === language);
+		editRouteAddMultiLanguageEnabledSelect.append(`<option value="${language}">${language} | ${currentLanguageData.name}</option>`);
+		editRouteDefaultLanguageSelect.append(`<option value="${language}">${language} | ${currentLanguageData.name}</option>`);
+	});
+
+	// Region
+	editRouteRegionSelect.empty();
+	editRouteRegionSelect.append(`<option value="" disabled selected>Select Region</option>`);
+	SpecificationRegionsListData.forEach((region) => {
+		if (region.disabledAt !== null) return;
+		editRouteRegionSelect.append(`<option region-id="${region.id}">${region.countryCode}-${region.countryRegion}</option>`);
+	});
+
+	$("#routing-manager-general-tab").click();
+	saveRouteButton.prop("disabled", true);
+}
+
+function createRouteLanguageMultiTableElement(langaugeCode, languageName, index) {
+	const element = `
+        <tr code="${langaugeCode}" name="${languageName}">
+            <td class="text-center px-2">
+                <button class="btn text-center" button-type="move-enabled-language">
+                        <i class="fa-regular fa-arrows-up-down"></i>
+                </button>
+            </td>
+            <td>${index}</td>
+            <td>${languageName}</td>
+            <td>${langaugeCode}</td>
+            <td class="py-2">
+                <input class="form-control" style="width: 90%" placeholder="Message to speak to user for language selection" value="Press {number} for {name}">
+            </td>
+            <td>
+                <button class="btn btn-danger" button-type="remove-enabled-language">
+                        <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+	return element;
+}
+
+/** Init **/
 function initRoutingTab() {
 	$(document).ready(() => {
+		/** INIT **/
+		editChangeRouteNumberModal = new bootstrap.Modal($("#editChangeRouteNumberModal"));
+		editChangeRouteAgentModal = new bootstrap.Modal($("#editChangeRouteAgentModal"));
+
+		/** Event Handlers */
 		addNewRoutingButton.on("click", (event) => {
 			event.preventDefault();
 
+			ManageCurrentRouteData = createDefaultRouteObject();
 			currentRouteName.text("New Route");
 
+			resetAndEmptyRouteManagerTab();
+
 			showRoutingManagerTab();
+
+			ManageRouteType = "new";
 		});
 
 		switchBackToRoutingTabButton.on("click", (event) => {
@@ -98,39 +270,20 @@ function initRoutingTab() {
 			const selectedValue = $(event.currentTarget).val();
 			if (selectedValue === "select" || !selectedValue || selectedValue === "") return;
 
-			const optionElement = editRouteAddMultiLanguageEnabledSelect.find('option[value="' + selectedValue + '"]');
+			const optionElement = editRouteAddMultiLanguageEnabledSelect.find(`option[value="${selectedValue}"]`);
 			const optionText = optionElement.text();
 
 			const tbody = $(routeMultiLanguagesEnabledList.find("tbody")[0]);
 
-			tbody.append(`
-                              <tr code="${selectedValue}" name="${optionText}">
-                                   <td class="text-center px-2">
-                                        <button class="btn text-center" button-type="move-enabled-language">
-                                             <i class="fa-regular fa-arrows-up-down"></i>
-                                        </button>
-                                   </td>
-                                   <td>${tbody.children().length + 1}</td>
-                                   <td>${optionText}</td>
-                                   <td>${selectedValue}</td>
-                                   <td class="py-2">
-                                        <input class="form-control" style="width: 90%" placeholder="Message to speak to user for language selection" value="Press {number} for {name}">
-                                   </td>
-                                   <td>
-                                        <button class="btn btn-danger" button-type="remove-enabled-language">
-                                             <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                   </td>
-                              </tr>
-                         `);
+			tbody.append($(createRouteLanguageMultiTableElement(selectedValue, optionText, tbody.children().length + 1)));
 
 			optionElement.remove();
 
-			editRouteAddMultiLanguageEnabledSelect.val("select");
+			editRouteAddMultiLanguageEnabledSelect.val("");
 			editRouteAddMultiLanguageEnabledSelect.change();
 		});
 
-		$(document).on("click", '[button-type="remove-enabled-language"]', (event) => {
+		routeMultiLanguagesEnabledList.on("click", '[button-type="remove-enabled-language"]', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			event.stopImmediatePropagation();
@@ -163,17 +316,6 @@ function initRoutingTab() {
 				ResortMultiLanugageEnabledListNumbers();
 			},
 		});
-
-		function ResortMultiLanugageEnabledListNumbers() {
-			const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
-
-			tbodyChild.each((index, element) => {
-				console.log(element);
-				$(element)
-					.find("td:nth-child(2)")
-					.text(index + 1);
-			});
-		}
 
 		editRouteAgentConversationTypeSelect.on("change", (event) => {
 			const selectedValue = editRouteAgentConversationTypeSelect.val();

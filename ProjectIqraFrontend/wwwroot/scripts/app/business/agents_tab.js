@@ -580,7 +580,18 @@ function ResetAndEmptyAgentsManageTab() {
 		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
 
+	// Scripts
+	agentScriptsListTab.find("tbody").empty();
+	agentScriptsListTab.find("tbody").append(
+		$(`
+			<tr class="none-agent-script-notice">
+				<td colspan="2">No scripts added yet...</td>
+			</tr>
+		`),
+	);
+
 	confirmPublishAgentButton.prop("disabled", true);
+	$("#agents-manager-general-tab").click();
 }
 
 function CreateAgentBackgroundAudioWavesurfer(containerId) {
@@ -1913,6 +1924,7 @@ function ResetAndEmptyAgentsScriptManageTab() {
 	});
 
 	saveAgentScriptButton.prop("disabled", true);
+	$("#agents-manager-script-general-tab").click();
 }
 
 async function canLeaveAgentScriptManagerTab() {
@@ -2300,15 +2312,8 @@ function createAgentScriptTableElement(scriptData) {
 }
 
 function fillAgentScriptsListTab() {
-	if (CurrentManageAgentData.scripts.length === 0) {
-		agentScriptsListTab.find("tbody").append(
-			$(`
-				<tr class="none-agent-script-notice">
-					<td colspan="2">No scripts added yet...</td>
-				</tr>
-			`),
-		);
-	} else {
+	if (CurrentManageAgentData.scripts.length !== 0) {
+		agentScriptsListTab.find("tbody").empty();
 		CurrentManageAgentData.scripts.forEach((script) => {
 			const element = createAgentScriptTableElement(script);
 			agentScriptsListTab.find("tbody").append($(element));
@@ -4611,10 +4616,6 @@ function initAgentTab() {
 
 				const canLeave = await canLeaveAgentScriptManagerTab();
 				if (!canLeave) return;
-
-				setTimeout(() => {
-					$("#agents-manager-script-general-tab").click();
-				}, 100);
 
 				showAgentScriptListTab();
 

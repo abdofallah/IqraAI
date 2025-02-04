@@ -2,7 +2,7 @@
 {
     public class BusinessAppRouteActionTool
     {
-        public long? SelectedToolId { get; set; } = null;
-        public Dictionary<long, string>? Arguements { get; set; } = new Dictionary<long, string>();
+        public string? SelectedToolId { get; set; } = null;
+        public Dictionary<long, string>? Arguements { get; set; } = null;
     }
 }
