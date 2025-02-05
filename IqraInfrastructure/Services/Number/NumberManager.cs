@@ -188,11 +188,32 @@ namespace IqraInfrastructure.Services.Number
         {
             var result = new FunctionReturnResult<List<NumberData>?>();
 
-            var numberResults = await _numberRepository.GetUserNumbersByProviderAsync(provider, email, page, pageSize);
+            var numberResults = await _numberRepository.GetUserNumbersByProvider(provider, email, page, pageSize);
 
             if (numberResults == null)
             {
                 result.Code = "GetUserNumbersByProvider:1";
+
+                result.Message = "Null - Numbers not found";
+                Log.Logger.Error("[NumberManager] " + result.Message);
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numberResults;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbers(string email)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            var numberResults = await _numberRepository.GetUserNumbers(email);
+
+            if (numberResults == null)
+            {
+                result.Code = "GetUserNumbers:1";
 
                 result.Message = "Null - Numbers not found";
                 Log.Logger.Error("[NumberManager] " + result.Message);

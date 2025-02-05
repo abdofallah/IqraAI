@@ -400,7 +400,7 @@
                                     Route Agent
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text">-</span>
+                                    <span class="input-group-text" id="editSelectedRouteAgentIcon">-</span>
                                     <input type="text" class="form-control" id="editSelectedRouteAgentName" placeholder="Select Agent" disabled>
                                     <button class="btn btn-primary" id="editChangeRouteAgentButton" data-bs-toggle="modal" data-bs-target="#editChangeRouteAgentModal">
                                         Select
@@ -562,7 +562,7 @@
                         </div>
                         <!-- Actions -->
                         <div class="tab-pane fade w-100" id="routing-manager-actions" role="tabpanel" aria-labelledby="routing-manager-actions-tab" tabindex="0">
-                            <div class="mb-3">
+                            <div class="mb-3" id="editRouteActionToolRingingContainer">
                                 <label class="form-label btn-ic-span-align" for="editRouteActionToolRinging">
                                     <span>Ringing Action </span>
 
@@ -571,12 +571,9 @@
                                     </a>
                                 </label>
                                 <select class="form-select" id="editRouteActionToolRinging">
-                                    <option value="-1" selected>None</option>
-                                    <option value="make_appointment" is-custom-tool="true">
-                                        Make Appointment
-                                    </option>
+                                    <!-- Dynamically Generated -->
                                 </select>
-                                <div class="custom-tool-input-arguments">
+                                <div class="custom-tool-input-arguments d-none">
                                     <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolRingingInputArgumentsSelect">
                                         <span>Input Arguments </span>
 
@@ -584,24 +581,15 @@
                                             <i class="fa-regular fa-circle-question"></i>
                                         </a>
                                     </label>
-                                    <div class="input-group">
-                                        <select class="form-select" id="editRouteActionToolRingingInputArgumentsSelect">
-                                            <option value="-1">Select Input Argument</option>
-                                        </select>
-                                        <button class="btn btn-light" id="editRouteActionToolRingingInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                    </div>
+                                    <select class="form-select" id="editRouteActionToolRingingInputArgumentsSelect">
+                                        <option value="-1">Select Input Argument</option>
+                                    </select>
                                     <div class="mt-1" id="editRouteActionToolRingingInputArgumentsList">
-                                        <div class="input-group">
-                                            <span class="input-group-text">Appointment Time</span>
-                                            <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                            <button class="btn btn-danger">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </div>
+                                        <!-- Dynamically Generated -->
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-3" id="editRouteActionToolPickedContainer">
                                 <label class="form-label btn-ic-span-align" for="editRouteActionToolPicked">
                                     <span>Call Picked Action </span>
 
@@ -610,12 +598,9 @@
                                     </a>
                                 </label>
                                 <select class="form-select" id="editRouteActionToolPicked">
-                                    <option value="-1" selected>None</option>
-                                    <option value="make_appointment" is-custom-tool="true">
-                                        Make Appointment
-                                    </option>
+                                    <!-- Dynamically Generated -->
                                 </select>
-                                <div class="custom-tool-input-arguments">
+                                <div class="custom-tool-input-arguments d-none">
                                     <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolPickedInputArgumentsSelect">
                                         <span>Input Arguments </span>
 
@@ -623,24 +608,15 @@
                                             <i class="fa-regular fa-circle-question"></i>
                                         </a>
                                     </label>
-                                    <div class="input-group">
-                                        <select class="form-select" id="editRouteActionToolPickedInputArgumentsSelect">
-                                            <option value="-1">Select Input Argument</option>
-                                        </select>
-                                        <button class="btn btn-light" id="editRouteActionToolPickedInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                    </div>
+                                    <select class="form-select" id="editRouteActionToolPickedInputArgumentsSelect">
+                                        <option value="-1">Select Input Argument</option>
+                                    </select>
                                     <div class="mt-1" id="editRouteActionToolPickedInputArgumentsList">
-                                        <div class="input-group">
-                                            <span class="input-group-text">Appointment Time</span>
-                                            <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                            <button class="btn btn-danger">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </div>
+                                        <!-- Dynamically Generated -->
                                     </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
+                            <div class="" id="editRouteActionToolEndedContainer">
                                 <label class="form-label btn-ic-span-align" for="editRouteActionToolEnded">
                                     <span>Call Ended Action </span>
 
@@ -649,12 +625,9 @@
                                     </a>
                                 </label>
                                 <select class="form-select" id="editRouteActionToolEnded">
-                                    <option value="-1" selected>None</option>
-                                    <option value="make_appointment" is-custom-tool="true">
-                                        Make Appointment
-                                    </option>
+                                    <!-- Dynamically Generated -->
                                 </select>
-                                <div class="custom-tool-input-arguments">
+                                <div class="custom-tool-input-arguments d-none">
                                     <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolEndedInputArgumentsSelect">
                                         <span>Input Arguments </span>
 
@@ -662,20 +635,11 @@
                                             <i class="fa-regular fa-circle-question"></i>
                                         </a>
                                     </label>
-                                    <div class="input-group">
-                                        <select class="form-select" id="editRouteActionToolEndedInputArgumentsSelect">
-                                            <option value="-1">Select Input Argument</option>
-                                        </select>
-                                        <button class="btn btn-light" id="editRouteActionToolEndedInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                    </div>
+                                    <select class="form-select" id="editRouteActionToolEndedInputArgumentsSelect">
+                                        <option value="-1">Select Input Argument</option>
+                                    </select>
                                     <div class="mt-1" id="editRouteActionToolEndedInputArgumentsList">
-                                        <div class="input-group">
-                                            <span class="input-group-text">Appointment Time</span>
-                                            <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                            <button class="btn btn-danger">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </div>
+                                        <!-- Dynamically Generated -->
                                     </div>
                                 </div>
                             </div>
@@ -4571,19 +4535,19 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                            <ul class="nav mb-3" id="routing-manager-assign-number-modal-tab" role="tablist">
+                        <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                            <ul class="nav" id="routing-manager-assign-number-modal-tab" role="tablist">
                                 <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
+                                    <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
                                         Physical
                                         Sim
                                     </button>
                                 </li>
                                 <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="routing-manager-assign-number-modal-twilio-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-twilio" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-twilio" aria-selected="true">Twilio</button>
+                                    <button class="nav-link" id="routing-manager-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-twilio" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-twilio" aria-selected="true">Twilio</button>
                                 </li>
                                 <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
+                                    <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
                                 </li>
                             </ul>
                         </div>
@@ -4594,19 +4558,26 @@
                                     <i class="fa-regular fa-magnifying-glass"></i>
                                 </button>
                             </div>
-                            <div class="list-group" id="routing-manager-assign-number-modal-list">
-                                <button type="button" class="list-group-item list-group-item-action active" aria-current="true" value="+968724912671">
-                                    +968
-                                    724912671
-                                </button>
-                                <button type="button" class="list-group-item list-group-item-action" value="+1 52984555887">
-                                    +1
-                                    52984555887
-                                </button>
-                                <button type="button" class="list-group-item list-group-item-action" value="+1 59519489814" disabled>
-                                    +1
-                                    59519489814
-                                </button>
+
+                            <!-- Physical Sim -->
+                            <div class="tab-pane fade show active" id="routing-manager-assign-number-modal-physical-sim" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-physical-sim-tab">
+                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="1">
+                                    <!-- Dynamically Generated -->
+                                </div>
+                            </div>
+
+                            <!-- Twilio -->
+                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-twilio" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-twilio-tab">
+                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="2">
+                                    <!-- Dynamically Generated -->
+                                </div>
+                            </div>
+
+                            <!-- Vonage -->
+                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-vonage" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-vonage-tab">
+                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="3">
+                                    <!-- Dynamically Generated -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4636,14 +4607,12 @@
                             </button>
                         </div>
                         <div class="list-group" id="routing-manager-select-agent-modal-list">
-                            <button type="button" class="list-group-item list-group-item-action active" aria-current="true" value="34124">
-                                <span>🤖 Opening Agent</span>
-                            </button>
+                            <!-- Dynamically Generated -->
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="saveChangeRouteAgentButton">
+                        <button type="button" class="btn btn-primary" id="saveChangeRouteAgentButton" disabled>
                             Select Agent
                         </button>
                     </div>
@@ -5054,6 +5023,7 @@
     <script src="~/scripts/app/business/make_calls_tab.js"></script>
     <script src="~/scripts/app/business/conversations_tab.js"></script>
 
+    <!-- Main Init Script -->
     <script>
         $(window).on('load', () => {
 

@@ -141,6 +141,7 @@ body {
      justify-content: space-between;
      overflow: hidden;
      width: inherit;
+     min-height: inherit;
 }
 
 .l-navbar .nav .nav_link {

@@ -598,8 +598,8 @@ namespace ProjectIqraFrontend.Controllers.User
          * 
         **/
 
-        [HttpPost("/app/user/numbers/{provider}")]
-        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbers(int provider, int page, int pageSize)
+        [HttpPost("/app/user/numbers")]
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbers(int provider)
         {
             var result = new FunctionReturnResult<List<NumberData>?>();
 
@@ -636,10 +636,62 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            FunctionReturnResult<List<NumberData>?> numbersResult = await _numberManager.GetUserNumbersByProvider((NumberProviderEnum)provider, user.Email, page, pageSize);
+            FunctionReturnResult<List<NumberData>?> numbersResult = await _numberManager.GetUserNumbers(user.Email);
             if (!numbersResult.Success)
             {
                 result.Code = "GetUserNumbers:" + numbersResult.Code;
+                result.Message = numbersResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = numbersResult.Data;
+
+            return result;
+        }
+
+        [HttpPost("/app/user/numbers/{provider}")]
+        public async Task<FunctionReturnResult<List<NumberData>?>> GetUserNumbersByProvider(int provider, int page, int pageSize)
+        {
+            var result = new FunctionReturnResult<List<NumberData>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetUserNumbersByProvider:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "GetUserNumbersByProvider:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetUserNumbersByProvider:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!Enum.IsDefined(typeof(NumberProviderEnum), provider))
+            {
+                result.Code = "GetUserNumbersByProvider:4";
+                result.Message = "Invalid provider";
+                return result;
+            }
+
+            FunctionReturnResult<List<NumberData>?> numbersResult = await _numberManager.GetUserNumbersByProvider((NumberProviderEnum)provider, user.Email, page, pageSize);
+            if (!numbersResult.Success)
+            {
+                result.Code = "GetUserNumbersByProvider:" + numbersResult.Code;
                 result.Message = numbersResult.Message;
                 return result;
             }
