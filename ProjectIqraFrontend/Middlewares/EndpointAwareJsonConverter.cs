@@ -197,7 +197,7 @@ namespace ProjectIqraFrontend.Middlewares
             writer.WriteStartObject();
 
             var type = value.GetType();
-            var currentEndpoint = _httpContextAccessor.HttpContext?.Request.Path.Value ?? string.Empty;
+            var currentEndpoint = GetRouteTemplate();
             var properties = GetSerializableProperties(type, currentEndpoint);
 
             foreach (var property in properties)
@@ -382,9 +382,20 @@ namespace ProjectIqraFrontend.Middlewares
         {
             return _propertyCache.GetOrAdd((type, currentEndpoint), key =>
             {
-                return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => ShouldSerializeProperty(p, currentEndpoint) && !p.GetIndexParameters().Any())
-                    .ToArray();
+                var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+                var serializableProperties = new List<PropertyInfo>();
+                foreach(var property in properties)
+                {
+                    var isSerializable = ShouldSerializeProperty(property, currentEndpoint);
+
+                    if (isSerializable)
+                    {
+                        serializableProperties.Add(property);
+                    }
+                }
+
+                return serializableProperties.ToArray();
             });
         }
 
@@ -393,11 +404,53 @@ namespace ProjectIqraFrontend.Middlewares
             if (property.GetCustomAttribute<ExcludeInAllEndpointsAttribute>() is object)
             {
                 return property.GetCustomAttributes<IncludeInEndpointAttribute>()
-                    .Any(attr => attr.Endpoint == currentEndpoint);
+                    .Any(attr => MatchPattern(attr.Endpoint, currentEndpoint));
             }
 
             return !property.GetCustomAttributes<ExcludeInEndpointAttribute>()
-                .Any(attr => attr.Endpoint == currentEndpoint);
+                .Any(attr => MatchPattern(attr.Endpoint, currentEndpoint));
+        }
+
+        private static bool MatchPattern(string template, string actual)
+        {
+            while (actual.StartsWith("/"))
+            {
+                actual = actual.Substring(1);
+            }
+
+            while (template.StartsWith("/"))
+            {
+                template = template.Substring(1);
+            }
+
+            if (actual == template)
+                return true;
+
+            var templateParts = template.Split('/');
+            var actualParts = actual.Split('/');
+
+            if (templateParts.Length != actualParts.Length)
+                return false;
+
+            for (int i = 0; i < templateParts.Length; i++)
+            {
+                var templatePart = templateParts[i];
+                var actualPart = actualParts[i];
+
+                if (templatePart.StartsWith("{") && templatePart.EndsWith("}"))
+                    continue;
+
+                if (templatePart != actualPart)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private string GetRouteTemplate()
+        {
+            var endpoint = _httpContextAccessor.HttpContext?.GetEndpoint() as RouteEndpoint;
+            return endpoint?.RoutePattern?.RawText ?? _httpContextAccessor.HttpContext?.Request.Path.Value ?? string.Empty;
         }
     }
 }

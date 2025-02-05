@@ -36,39 +36,39 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a href="#" class="nav_link" for="users-tab">
+                    <a class="nav_link" for="users-tab">
                         <i class='fa-regular fa-user nav_icon'></i>
                         <span class="nav_name">Users</span>
                     </a>
-                    <a href="#" class="nav_link" for="business-tab">
+                    <a class="nav_link" for="business-tab">
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a href="#" class="nav_link" for="phone-numbers-tab">
+                    <a class="nav_link" for="phone-numbers-tab">
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
-                    <a href="#" class="nav_link" for="region-tab">
+                    <a class="nav_link" for="region-tab">
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
                     </a>
-                    <a href="#" class="nav_link" for="llm-provider-tab">
+                    <a class="nav_link" for="llm-provider-tab">
                         <i class='fa-regular fa-message-text nav_icon'></i>
                         <span class="nav_name">LLM Provider</span>
                     </a>
-                    <a href="#" class="nav_link active" for="tts-provider-tab">
+                    <a class="nav_link active" for="tts-provider-tab">
                         <i class='fa-regular fa-volume-high nav_icon'></i>
                         <span class="nav_name">TTS Provider</span>
                     </a>
-                    <a href="#" class="nav_link" for="stt-provider-tab">
+                    <a class="nav_link" for="stt-provider-tab">
                         <i class='fa-regular fa-microphone nav_icon'></i>
                         <span class="nav_name">STT Provider</span>
                     </a>
-                    <a href="#" class="nav_link" for="languages-tab">
+                    <a class="nav_link" for="languages-tab">
                         <i class='fa-regular fa-language nav_icon'></i>
                         <span class="nav_name">Languages</span>
                     </a>
-                    <a href="#" class="nav_link" for="integrations-tab">
+                    <a class="nav_link" for="integrations-tab">
                         <i class='fa-regular fa-cube nav_icon'></i>
                         <span class="nav_name">Integrations</span>
                     </a>
@@ -747,7 +747,7 @@
                                         <div class="tab-pane fade" id="businesses-manage-permissions-conversation" role="tabpanel" aria-labelledby="businesses-manage-permissions-conversation-tab">
                                             <div class="mb-3">
                                                 <label class="form-label d-block">Inbound</label>
-                                                    <div class="mb-2">
+                                                <div class="mb-2">
                                                     <div class="form-check form-switch">
                                                         <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationInboundDisableFullInput" check-type="permission-with-reason">
                                                         <label for="businessPermissionsConversationInboundDisableFullInput" class="form-label d-block">Disable Full</label>
@@ -772,7 +772,7 @@
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label d-block">Outbound</label>
-                                                    <div class="mb-2">
+                                                <div class="mb-2">
                                                     <div class="form-check form-switch">
                                                         <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationOutboundDisableFullInput" check-type="permission-with-reason">
                                                         <label for="businessPermissionsConversationOutboundDisableFullInput" class="form-label d-block">Disable Full</label>
@@ -797,7 +797,7 @@
                                             </div>
                                             <div>
                                                 <label class="form-label d-block">Websocket</label>
-                                                    <div class="mb-2">
+                                                <div class="mb-2">
                                                     <div class="form-check form-switch">
                                                         <input class="form-check-input" type="checkbox" role="switch" id="businessPermissionsConversationWebsocketDisableFullInput" check-type="permission-with-reason">
                                                         <label for="businessPermissionsConversationWebsocketDisableFullInput" class="form-label d-block">Disable Full</label>
@@ -890,7 +890,7 @@
                                 <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
                                     analytics
                                 </div>
-                            </div>     
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -915,7 +915,7 @@
                         </li>
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link" id="phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage" type="button" role="tab" aria-controls="phone-numbers-vonage" aria-selected="false">Vonage</button>
-                        </li> 
+                        </li>
                     </ul>
                     <ol class="breadcrumb mb-0 fade w-100 d-none" id="phone-numbers-manage-breadcrumb">
                         <li class="breadcrumb-item">
@@ -968,7 +968,7 @@
                                             <th scope="col">#</th>
                                             <th scope="col">Country Code</th>
                                             <th scope="col">Number</th>
-                                            <th scope="col">Master User</th> 
+                                            <th scope="col">Master User</th>
                                             <th scope="col">Assigned Business</th>
                                             <th scope="col">Host</th>
                                             <th scope="col">Actions</th>
@@ -1466,9 +1466,7 @@
                                         <button class="nav-link" id="llm-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-models" type="button" role="tab" aria-controls="llm-provider-manager-models" aria-selected="true">Models</button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="llm-provider-manager-integrations-tab" data-bs-toggle="pill" 
-                                                data-bs-target="#llm-provider-manager-integrations" type="button" role="tab" 
-                                                aria-controls="llm-provider-manager-integrations" aria-selected="false">
+                                        <button class="nav-link" id="llm-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#llm-provider-manager-integrations" type="button" role="tab" aria-controls="llm-provider-manager-integrations" aria-selected="false">
                                             Integrations
                                         </button>
                                     </li>
@@ -1608,18 +1606,15 @@
                                 </div>
 
                                 <!-- Integrations -->
-                                <div class="tab-pane fade w-100" id="llm-provider-manager-integrations" role="tabpanel" 
-                                    aria-labelledby="llm-provider-manager-integrations-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="llm-provider-manager-integrations" role="tabpanel" aria-labelledby="llm-provider-manager-integrations-tab" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                    id="addNewLLMProviderIntegrationFieldButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewLLMProviderIntegrationFieldButton">
                                                 <span>+ Add New Field</span>
                                             </button>
                                         </div>
                                         <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Search Field" 
-                                                aria-label="Search Field" aria-describedby="searchLLMProviderIntegrationFieldButton">
+                                            <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchLLMProviderIntegrationFieldButton">
                                             <button class="input-group-button btn btn-primary" id="searchLLMProviderIntegrationFieldButton">
                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                             </button>
@@ -1642,7 +1637,7 @@
         <!-- TTS Provider Container -->
         <div class="main-container fade w-100 show" id="tts-provider-tab">
             <h3 class="fw-bold tab-title">
-                <i class='fa-regular fa-volume-high nav_icon'></i> 
+                <i class='fa-regular fa-volume-high nav_icon'></i>
                 <span>TTS Provider</span>
             </h3>
             <div class="inner-container">
@@ -1650,9 +1645,7 @@
                 <div class="mb-3">
                     <ul class="nav w-100 fade show" id="tts-provider-inner-tab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="tts-provider-list-tab" data-bs-toggle="pill" 
-                                    data-bs-target="#tts-provider-list" type="button" role="tab" 
-                                    aria-controls="tts-provider-list" aria-selected="true">List</button>
+                            <button class="nav-link active" id="tts-provider-list-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-list" type="button" role="tab" aria-controls="tts-provider-list" aria-selected="true">List</button>
                         </li>
                     </ul>
                     <nav class="w-100 fade d-none" aria-label="breadcrumb" id="tts-provider-manage-breadcrumb">
@@ -1689,15 +1682,13 @@
                 <!-- Tab Content -->
                 <div class="tab-content" id="tts-provider-tab-content">
                     <!-- List -->
-                    <div class="tab-pane fade w-100 show active" id="tts-provider-list" role="tabpanel" 
-                        aria-labelledby="tts-provider-list-tab" tabindex="0">
-                        
+                    <div class="tab-pane fade w-100 show active" id="tts-provider-list" role="tabpanel" aria-labelledby="tts-provider-list-tab" tabindex="0">
+
                         <!-- Table Tab -->
                         <div class="fade w-100 show" id="ttsProviderListTableTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="TTS Provider Name or Id" 
-                                        aria-label="TTS Provider Name or Id" aria-describedby="searchTTSProviderButton">
+                                    <input type="text" class="form-control" placeholder="TTS Provider Name or Id" aria-label="TTS Provider Name or Id" aria-describedby="searchTTSProviderButton">
                                     <button class="input-group-button btn btn-primary" id="searchTTSProviderButton">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -1722,26 +1713,16 @@
                         <!-- Provider Manage Tab -->
                         <div class="fade w-100 d-none" id="ttsProviderManageTab">
                             <!-- Manager Inner Tabs -->
-                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" 
-                                id="tts-provider-manager-inner-tab-container">
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="tts-provider-manager-inner-tab-container">
                                 <ul class="nav fade show" id="tts-provider-manager-inner-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="tts-provider-manager-general-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#tts-provider-manager-general" 
-                                                type="button" role="tab" aria-controls="tts-provider-manager-general" 
-                                                aria-selected="true">General</button>
+                                        <button class="nav-link active" id="tts-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-general" type="button" role="tab" aria-controls="tts-provider-manager-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="tts-provider-manager-speakers-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#tts-provider-manager-speakers" 
-                                                type="button" role="tab" aria-controls="tts-provider-manager-speakers" 
-                                                aria-selected="true">Speakers</button>
+                                        <button class="nav-link" id="tts-provider-manager-speakers-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-speakers" type="button" role="tab" aria-controls="tts-provider-manager-speakers" aria-selected="true">Speakers</button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="tts-provider-manager-integrations-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#tts-provider-manager-integrations" 
-                                                type="button" role="tab" aria-controls="tts-provider-manager-integrations" 
-                                                aria-selected="false">Integrations</button>
+                                        <button class="nav-link" id="tts-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#tts-provider-manager-integrations" type="button" role="tab" aria-controls="tts-provider-manager-integrations" aria-selected="false">Integrations</button>
                                     </li>
                                 </ul>
                                 <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageTTSProviderButton" disabled>
@@ -1753,12 +1734,10 @@
                             <!-- Tab Content -->
                             <div class="tab-content" id="tts-provider-manager-manage-tab-content">
                                 <!-- General Tab -->
-                                <div class="tab-pane fade w-100 show active" id="tts-provider-manager-general" 
-                                    role="tabpanel" aria-labelledby="tts-provider-manager-general-tab" tabindex="0">
+                                <div class="tab-pane fade w-100 show active" id="tts-provider-manager-general" role="tabpanel" aria-labelledby="tts-provider-manager-general-tab" tabindex="0">
                                     <div class="mb-3">
                                         <label class="form-label" for="manageTTSProviderIdInput">Identifier</label>
-                                        <input type="text" class="form-control" id="manageTTSProviderIdInput" 
-                                            placeholder="Identifier" disabled>
+                                        <input type="text" class="form-control" id="manageTTSProviderIdInput" placeholder="Identifier" disabled>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label" for="manageTTSProviderIntegrationSelect">Integration</label>
@@ -1767,28 +1746,24 @@
                                         </select>
                                     </div>
                                     <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" role="switch" 
-                                            id="manageTTSProviderDisabledInput">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderDisabledInput">
                                         <label class="form-check-label" for="manageTTSProviderDisabledInput">Disabled</label>
                                     </div>
                                 </div>
 
                                 <!-- Speakers Tab -->
-                                <div class="tab-pane fade w-100" id="tts-provider-manager-speakers" 
-                                    role="tabpanel" aria-labelledby="tts-provider-manager-speakers-tab" tabindex="0">
-                                    
+                                <div class="tab-pane fade w-100" id="tts-provider-manager-speakers" role="tabpanel" aria-labelledby="tts-provider-manager-speakers-tab" tabindex="0">
+
                                     <!-- Speakers List Tab -->
                                     <div class="fade w-100 show" id="ttsProviderManagerSpeakersListTab">
                                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                             <div style="min-width: 200px" class="me-4">
-                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                        id="addNewTTSProviderSpeakerButton">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTTSProviderSpeakerButton">
                                                     <span>+ Add New Speaker</span>
                                                 </button>
                                             </div>
                                             <div class="input-group w-100">
-                                                <input type="text" class="form-control" placeholder="Speaker Name or Id" 
-                                                    aria-label="Speaker Name or Id" aria-describedby="searchTTSProviderSpeakerButton">
+                                                <input type="text" class="form-control" placeholder="Speaker Name or Id" aria-label="Speaker Name or Id" aria-describedby="searchTTSProviderSpeakerButton">
                                                 <button class="input-group-button btn btn-primary" id="searchTTSProviderSpeakerButton">
                                                     <i class='fa-regular fa-magnifying-glass'></i>
                                                 </button>
@@ -1818,24 +1793,19 @@
                                         <!-- Basic Information -->
                                         <div class="mb-3">
                                             <label class="form-label" for="manageTTSProviderSpeakerIdInput">Identifier</label>
-                                            <input type="text" class="form-control" id="manageTTSProviderSpeakerIdInput" 
-                                                placeholder="Speaker Identifier">
+                                            <input type="text" class="form-control" id="manageTTSProviderSpeakerIdInput" placeholder="Speaker Identifier">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label" for="manageTTSProviderSpeakerNameInput">Name</label>
-                                            <input type="text" class="form-control" id="manageTTSProviderSpeakerNameInput" 
-                                                placeholder="Speaker Name">
+                                            <input type="text" class="form-control" id="manageTTSProviderSpeakerNameInput" placeholder="Speaker Name">
                                         </div>
 
                                         <!-- Price Settings -->
                                         <div class="mb-3">
                                             <label class="form-label">Price Per Unit</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" placeholder="Price" 
-                                                    id="manageTTSProviderSpeakerPriceInput">
-                                                <input type="text" class="form-control" style="max-width: 200px" 
-                                                    placeholder="Unit (e.g., per character)" 
-                                                    id="manageTTSProviderSpeakerPriceUnitInput">
+                                                <input type="number" class="form-control" placeholder="Price" id="manageTTSProviderSpeakerPriceInput">
+                                                <input type="text" class="form-control" style="max-width: 200px" placeholder="Unit (e.g., per character)" id="manageTTSProviderSpeakerPriceUnitInput">
                                             </div>
                                         </div>
 
@@ -1917,10 +1887,8 @@
                                             <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <label class="form-label mb-0">Supported Languages</label>
                                                 <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" role="switch" 
-                                                        id="manageTTSProviderSpeakerMultilingualInput">
-                                                    <label class="form-check-label" 
-                                                        for="manageTTSProviderSpeakerMultilingualInput">Multilingual</label>
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderSpeakerMultilingualInput">
+                                                    <label class="form-check-label" for="manageTTSProviderSpeakerMultilingualInput">Multilingual</label>
                                                 </div>
                                             </div>
                                             <div id="manageTTSProviderSpeakerLanguagesContainer">
@@ -1942,30 +1910,23 @@
                                         </div>
 
                                         <div class="form-check form-switch mb-3">
-                                            <input class="form-check-input" type="checkbox" role="switch" 
-                                                id="manageTTSProviderSpeakerDisabledInput">
-                                            <label class="form-check-label" 
-                                                for="manageTTSProviderSpeakerDisabledInput">Disabled</label>
+                                            <input class="form-check-input" type="checkbox" role="switch" id="manageTTSProviderSpeakerDisabledInput">
+                                            <label class="form-check-label" for="manageTTSProviderSpeakerDisabledInput">Disabled</label>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Integrations Tab -->
-                                <div class="tab-pane fade w-100" id="tts-provider-manager-integrations" 
-                                    role="tabpanel" aria-labelledby="tts-provider-manager-integrations-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="tts-provider-manager-integrations" role="tabpanel" aria-labelledby="tts-provider-manager-integrations-tab" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                    id="addNewTTSProviderIntegrationFieldButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTTSProviderIntegrationFieldButton">
                                                 <span>+ Add New Field</span>
                                             </button>
                                         </div>
                                         <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Search Field" 
-                                                aria-label="Search Field" 
-                                                aria-describedby="searchTTSProviderIntegrationFieldButton">
-                                            <button class="input-group-button btn btn-primary" 
-                                                    id="searchTTSProviderIntegrationFieldButton">
+                                            <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchTTSProviderIntegrationFieldButton">
+                                            <button class="input-group-button btn btn-primary" id="searchTTSProviderIntegrationFieldButton">
                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                             </button>
                                         </div>
@@ -1984,7 +1945,7 @@
         <!-- STT Provider Container -->
         <div class="main-container fade w-100 d-none" id="stt-provider-tab">
             <h3 class="fw-bold tab-title">
-                <i class='fa-regular fa-microphone nav_icon'></i> 
+                <i class='fa-regular fa-microphone nav_icon'></i>
                 <span>STT Provider</span>
             </h3>
             <div class="inner-container">
@@ -1992,9 +1953,7 @@
                 <div class="mb-3">
                     <ul class="nav w-100 fade show" id="stt-provider-inner-tab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="stt-provider-list-tab" data-bs-toggle="pill" 
-                                    data-bs-target="#stt-provider-list" type="button" role="tab" 
-                                    aria-controls="stt-provider-list" aria-selected="true">List</button>
+                            <button class="nav-link active" id="stt-provider-list-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-list" type="button" role="tab" aria-controls="stt-provider-list" aria-selected="true">List</button>
                         </li>
                     </ul>
                     <nav class="w-100 fade d-none" aria-label="breadcrumb" id="stt-provider-manage-breadcrumb">
@@ -2031,15 +1990,13 @@
                 <!-- Tab Content -->
                 <div class="tab-content" id="stt-provider-tab-content">
                     <!-- List -->
-                    <div class="tab-pane fade w-100 show active" id="stt-provider-list" role="tabpanel" 
-                        aria-labelledby="stt-provider-list-tab" tabindex="0">
-                        
+                    <div class="tab-pane fade w-100 show active" id="stt-provider-list" role="tabpanel" aria-labelledby="stt-provider-list-tab" tabindex="0">
+
                         <!-- Table Tab -->
                         <div class="fade w-100 show" id="sttProviderListTableTab">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div class="input-group w-100">
-                                    <input type="text" class="form-control" placeholder="STT Provider Name or Id" 
-                                        aria-label="STT Provider Name or Id" aria-describedby="searchSTTProviderButton">
+                                    <input type="text" class="form-control" placeholder="STT Provider Name or Id" aria-label="STT Provider Name or Id" aria-describedby="searchSTTProviderButton">
                                     <button class="input-group-button btn btn-primary" id="searchSTTProviderButton">
                                         <i class='fa-regular fa-magnifying-glass'></i>
                                     </button>
@@ -2064,26 +2021,16 @@
                         <!-- Provider Manage Tab -->
                         <div class="fade w-100 d-none" id="sttProviderManageTab">
                             <!-- Manager Inner Tabs -->
-                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" 
-                                id="stt-provider-manager-inner-tab-container">
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="stt-provider-manager-inner-tab-container">
                                 <ul class="nav fade show" id="stt-provider-manager-inner-tab" role="tablist">
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link active" id="stt-provider-manager-general-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#stt-provider-manager-general" 
-                                                type="button" role="tab" aria-controls="stt-provider-manager-general" 
-                                                aria-selected="true">General</button>
+                                        <button class="nav-link active" id="stt-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-general" type="button" role="tab" aria-controls="stt-provider-manager-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="stt-provider-manager-models-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#stt-provider-manager-models" 
-                                                type="button" role="tab" aria-controls="stt-provider-manager-models" 
-                                                aria-selected="true">Models</button>
+                                        <button class="nav-link" id="stt-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-models" type="button" role="tab" aria-controls="stt-provider-manager-models" aria-selected="true">Models</button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="stt-provider-manager-integrations-tab" 
-                                                data-bs-toggle="pill" data-bs-target="#stt-provider-manager-integrations" 
-                                                type="button" role="tab" aria-controls="stt-provider-manager-integrations" 
-                                                aria-selected="false">Integrations</button>
+                                        <button class="nav-link" id="stt-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#stt-provider-manager-integrations" type="button" role="tab" aria-controls="stt-provider-manager-integrations" aria-selected="false">Integrations</button>
                                     </li>
                                 </ul>
                                 <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageSTTProviderButton" disabled>
@@ -2095,12 +2042,10 @@
                             <!-- Tab Content -->
                             <div class="tab-content" id="stt-provider-manager-manage-tab-content">
                                 <!-- General Tab -->
-                                <div class="tab-pane fade w-100 show active" id="stt-provider-manager-general" 
-                                    role="tabpanel" aria-labelledby="stt-provider-manager-general-tab" tabindex="0">
+                                <div class="tab-pane fade w-100 show active" id="stt-provider-manager-general" role="tabpanel" aria-labelledby="stt-provider-manager-general-tab" tabindex="0">
                                     <div class="mb-3">
                                         <label class="form-label" for="manageSTTProviderIdInput">Identifier</label>
-                                        <input type="text" class="form-control" id="manageSTTProviderIdInput" 
-                                            placeholder="Identifier" disabled>
+                                        <input type="text" class="form-control" id="manageSTTProviderIdInput" placeholder="Identifier" disabled>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label" for="manageSTTProviderIntegrationSelect">Integration</label>
@@ -2110,28 +2055,24 @@
                                         </select>
                                     </div>
                                     <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" role="switch" 
-                                            id="manageSTTProviderDisabledInput">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageSTTProviderDisabledInput">
                                         <label class="form-check-label" for="manageSTTProviderDisabledInput">Disabled</label>
                                     </div>
                                 </div>
 
                                 <!-- Models Tab -->
-                                <div class="tab-pane fade w-100" id="stt-provider-manager-models" 
-                                    role="tabpanel" aria-labelledby="stt-provider-manager-models-tab" tabindex="0">
-                                    
+                                <div class="tab-pane fade w-100" id="stt-provider-manager-models" role="tabpanel" aria-labelledby="stt-provider-manager-models-tab" tabindex="0">
+
                                     <!-- Models List Tab -->
                                     <div class="fade w-100 show" id="sttProviderManagerModelsListTab">
                                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                             <div style="min-width: 200px" class="me-4">
-                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                        id="addNewSTTProviderModelButton">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewSTTProviderModelButton">
                                                     <span>+ Add New Model</span>
                                                 </button>
                                             </div>
                                             <div class="input-group w-100">
-                                                <input type="text" class="form-control" placeholder="Model Name or Id" 
-                                                    aria-label="Model Name or Id" aria-describedby="searchSTTProviderModelButton">
+                                                <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchSTTProviderModelButton">
                                                 <button class="input-group-button btn btn-primary" id="searchSTTProviderModelButton">
                                                     <i class='fa-regular fa-magnifying-glass'></i>
                                                 </button>
@@ -2157,21 +2098,17 @@
                                     <div class="fade w-100 d-none" id="sttProviderManagerModelManageTab">
                                         <div class="mb-3">
                                             <label class="form-label" for="manageSTTProviderModelIdInput">Identifier</label>
-                                            <input type="text" class="form-control" id="manageSTTProviderModelIdInput" 
-                                                placeholder="Model Identifier">
+                                            <input type="text" class="form-control" id="manageSTTProviderModelIdInput" placeholder="Model Identifier">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label" for="manageSTTProviderModelNameInput">Name</label>
-                                            <input type="text" class="form-control" id="manageSTTProviderModelNameInput" 
-                                                placeholder="Model Name">
+                                            <input type="text" class="form-control" id="manageSTTProviderModelNameInput" placeholder="Model Name">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Price Per Unit</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" placeholder="Price" 
-                                                    id="manageSTTProviderModelPriceInput">
-                                                <input type="text" class="form-control" style="max-width: 200px" 
-                                                    placeholder="Unit (e.g., per minute)" id="manageSTTProviderModelPriceUnitInput">
+                                                <input type="number" class="form-control" placeholder="Price" id="manageSTTProviderModelPriceInput">
+                                                <input type="text" class="form-control" style="max-width: 200px" placeholder="Unit (e.g., per minute)" id="manageSTTProviderModelPriceUnitInput">
                                             </div>
                                         </div>
                                         <div class="mb-3">
@@ -2181,8 +2118,7 @@
                                             </div>
                                         </div>
                                         <div class="form-check form-switch mb-3">
-                                            <input class="form-check-input" type="checkbox" role="switch" 
-                                                id="manageSTTProviderModelDisabledInput">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="manageSTTProviderModelDisabledInput">
                                             <label class="form-check-label" for="manageSTTProviderModelDisabledInput">
                                                 Disabled
                                             </label>
@@ -2191,20 +2127,16 @@
                                 </div>
 
                                 <!-- Integrations Tab -->
-                                <div class="tab-pane fade w-100" id="stt-provider-manager-integrations" 
-                                    role="tabpanel" aria-labelledby="stt-provider-manager-integrations-tab" tabindex="0">
+                                <div class="tab-pane fade w-100" id="stt-provider-manager-integrations" role="tabpanel" aria-labelledby="stt-provider-manager-integrations-tab" tabindex="0">
                                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                         <div style="min-width: 200px" class="me-4">
-                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                                    id="addNewSTTProviderIntegrationFieldButton">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewSTTProviderIntegrationFieldButton">
                                                 <span>+ Add New Field</span>
                                             </button>
                                         </div>
                                         <div class="input-group w-100">
-                                            <input type="text" class="form-control" placeholder="Search Field" 
-                                                aria-label="Search Field" aria-describedby="searchSTTProviderIntegrationFieldButton">
-                                            <button class="input-group-button btn btn-primary" 
-                                                    id="searchSTTProviderIntegrationFieldButton">
+                                            <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchSTTProviderIntegrationFieldButton">
+                                            <button class="input-group-button btn btn-primary" id="searchSTTProviderIntegrationFieldButton">
                                                 <i class='fa-regular fa-magnifying-glass'></i>
                                             </button>
                                         </div>
@@ -2329,21 +2261,19 @@
         <!-- Integrations Container -->
         <div class="main-container fade w-100 d-none" id="integrations-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-cube'></i> <span>Integrations</span></h3>
-            
+
             <!-- Main Navigation Header -->
             <div class="inner-header-container w-100 mb-3" id="integrations-header">
                 <!-- Integrations List Breadcrumb -->
                 <div class="d-flex flex-column align-items-center justify-content-center w-100" id="integrationsListBreadcrumb">
                     <div class="d-flex flex-row align-items-center justify-content-between w-100">
                         <div style="min-width: 300px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" 
-                                    id="addNewIntegrationButton">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewIntegrationButton">
                                 <span>+ Add New Integration</span>
                             </button>
                         </div>
                         <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Search Integration" 
-                                aria-label="Search Integration">
+                            <input type="text" class="form-control" placeholder="Search Integration" aria-label="Search Integration">
                             <button class="input-group-button btn btn-primary">
                                 <i class='fa-regular fa-magnifying-glass'></i>
                             </button>
@@ -2371,20 +2301,17 @@
                     </div>
                     <ul class="nav nav-pill" id="integrationManagerInnerTab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="integration-basic-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#integration-basic" type="button" role="tab">
+                            <button class="nav-link active" id="integration-basic-tab" data-bs-toggle="tab" data-bs-target="#integration-basic" type="button" role="tab">
                                 General
                             </button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="integration-fields-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#integration-fields" type="button" role="tab">
+                            <button class="nav-link" id="integration-fields-tab" data-bs-toggle="tab" data-bs-target="#integration-fields" type="button" role="tab">
                                 Fields
                             </button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="integration-help-tab" data-bs-toggle="tab" 
-                                    data-bs-target="#integration-help" type="button" role="tab">
+                            <button class="nav-link" id="integration-help-tab" data-bs-toggle="tab" data-bs-target="#integration-help" type="button" role="tab">
                                 Help
                             </button>
                         </li>
@@ -2408,33 +2335,27 @@
                         <div class="tab-pane fade show active" id="integration-basic" role="tabpanel">
                             <div class="mb-3">
                                 <label for="integrationIdInput" class="form-label">ID</label>
-                                <input type="text" class="form-control" id="integrationIdInput" 
-                                    placeholder="Integration ID (unique)">
+                                <input type="text" class="form-control" id="integrationIdInput" placeholder="Integration ID (unique)">
                             </div>
                             <div class="mb-3">
                                 <label for="integrationNameInput" class="form-label">Name</label>
-                                <input type="text" class="form-control" id="integrationNameInput" 
-                                    placeholder="Integration Name">
+                                <input type="text" class="form-control" id="integrationNameInput" placeholder="Integration Name">
                             </div>
                             <div class="mb-3">
                                 <label for="integrationDescriptionInput" class="form-label">Description</label>
-                                <textarea class="form-control" id="integrationDescriptionInput" 
-                                    placeholder="Integration Description" rows="3"></textarea>
+                                <textarea class="form-control" id="integrationDescriptionInput" placeholder="Integration Description" rows="3"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label for="integrationLogoInput" class="form-label">Logo</label>
                                 <div class="d-flex align-items-center">
-                                    <img src="/img/placeholder.png" id="integrationLogoPreview" 
-                                        class="me-3">
-                                    <input type="file" class="form-control" id="integrationLogoInput" 
-                                        accept="image/*">
+                                    <img src="/img/placeholder.png" id="integrationLogoPreview" class="me-3">
+                                    <input type="file" class="form-control" id="integrationLogoInput" accept="image/*">
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label for="integrationTypesInput" class="form-label">Types</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="integrationTypesInput" 
-                                        placeholder="Add type and press Enter">
+                                    <input type="text" class="form-control" id="integrationTypesInput" placeholder="Add type and press Enter">
                                     <button class="btn btn-outline-secondary" type="button" id="addTypeButton">
                                         Add
                                     </button>
@@ -2471,13 +2392,11 @@
                         <div class="tab-pane fade" id="integration-help" role="tabpanel">
                             <div class="mb-3">
                                 <label for="integrationHelpTextInput" class="form-label">Help Text</label>
-                                <input type="text" class="form-control" id="integrationHelpTextInput" 
-                                    placeholder="Help Text">
+                                <input type="text" class="form-control" id="integrationHelpTextInput" placeholder="Help Text">
                             </div>
                             <div class="mb-3">
                                 <label for="integrationHelpUrlInput" class="form-label">Help URL</label>
-                                <input type="url" class="form-control" id="integrationHelpUrlInput" 
-                                    placeholder="Help URL">
+                                <input type="url" class="form-control" id="integrationHelpUrlInput" placeholder="Help URL">
                             </div>
                         </div>
                     </div>
@@ -2790,8 +2709,7 @@
             });
         }
 
-        function SaveLanguagesData(formData, successCallback, errorCallback)
-        {
+        function SaveLanguagesData(formData, successCallback, errorCallback) {
             $.ajax({
                 type: "POST",
                 url: "/app/admin/languages/save",
@@ -2800,8 +2718,7 @@
                 processData: false,
                 contentType: false,
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         errorCallback(response, true);
                         return;
                     }
@@ -2814,8 +2731,7 @@
             });
         }
 
-        function SaveLLMProviderData(formData, successCallback, errorCallback)
-        {
+        function SaveLLMProviderData(formData, successCallback, errorCallback) {
             $.ajax({
                 type: "POST",
                 url: "/app/admin/llmproviders/save",
@@ -2824,8 +2740,7 @@
                 processData: false,
                 contentType: false,
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         errorCallback(response, true);
                         return;
                     }
@@ -2838,8 +2753,7 @@
             });
         }
 
-        function SaveLLMProviderModelData(formData, successCallback, errorCallback)
-        {
+        function SaveLLMProviderModelData(formData, successCallback, errorCallback) {
             $.ajax({
                 type: "POST",
                 url: "/app/admin/llmproviders/model/save",
@@ -2848,8 +2762,7 @@
                 processData: false,
                 contentType: false,
                 success: (response) => {
-                    if (!response.success)
-                    {
+                    if (!response.success) {
                         errorCallback(response, true);
                         return;
                     }
@@ -2907,14 +2820,14 @@
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -2927,14 +2840,14 @@
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -2948,14 +2861,14 @@
                     page: page,
                     pageSize: pageSize
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response.data);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -2968,14 +2881,14 @@
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -2988,14 +2901,14 @@
                 data: formData,
                 processData: false,
                 contentType: false,
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -3009,14 +2922,14 @@
                     page: page,
                     pageSize: pageSize
                 },
-                success: function(response) {
+                success: function (response) {
                     if (response.success) {
                         successCallback(response.data);
                     } else {
                         errorCallback(response, true);
                     }
                 },
-                error: function(xhr, status, error) {
+                error: function (xhr, status, error) {
                     errorCallback(error, false);
                 }
             });
@@ -3024,8 +2937,7 @@
 
         // Other Functions
 
-        function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions)
-        {
+        function DisableFullPermissionHelper(disableFullElement, subDisableElementsArray, dialogOptions) {
             disableFullElement.on("change", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -3047,8 +2959,7 @@
                         }
                     });
                 }
-                else
-                {
+                else {
                     subDisableElementsArray.forEach((element) => {
                         element.prop("checked", false).prop("disabled", false).change();
                     });
@@ -3098,7 +3009,7 @@
                     &&
                     CurrentIntegrationsList != null
                 ) {
-                    clearInterval(PageLoaderInterval);      
+                    clearInterval(PageLoaderInterval);
 
                     pageLoader.css("opacity", "0");
                     setTimeout(() => {
@@ -3106,10 +3017,9 @@
                     }, 300);
                 }
             }
-        , 100);
+            , 100);
 
-        function RunActionAfterLanguagesLoad(action)
-        {
+        function RunActionAfterLanguagesLoad(action) {
             var languagesCheckInterval = setInterval(
                 () => {
                     if (CurrentLanguagesList != null) {
@@ -3117,11 +3027,10 @@
                         action();
                     }
                 }
-            , 100);
+                , 100);
         }
 
-        function RunActionAfterIntegrationsLoad(action)
-        {
+        function RunActionAfterIntegrationsLoad(action) {
             var integrationsCheckInterval = setInterval(
                 () => {
                     if (CurrentIntegrationsList != null) {
@@ -3129,7 +3038,7 @@
                         action();
                     }
                 }
-            , 100);
+                , 100);
         }
     </script>
 

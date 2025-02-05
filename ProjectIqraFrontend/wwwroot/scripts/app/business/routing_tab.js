@@ -404,7 +404,7 @@ function initRoutingTab() {
 
 		/** Number Tab **/
 		function initNumberTabHandlers() {
-			routingManagerAssignNumberModalTab.on("click", "button.nav-link", (event) => {
+			routingManagerAssignNumberModalTab._element.on("click", "button.nav-link", (event) => {
 				event.preventDefault();
 
 				const currentElement = $(event.currentTarget);

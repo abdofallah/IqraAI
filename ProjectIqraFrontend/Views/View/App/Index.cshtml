@@ -29,6 +29,7 @@
         <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
     </header>
 
+    <!-- Sidebar -->
     <div class="l-navbar show" id="nav-bar">
         <nav class="nav">
             <div class="upper-navigation">
@@ -64,10 +65,11 @@
         </nav>
     </div>
 
+    <!-- Main Container -->
     <div class="w-100 main-container-wrapper" id="tabs-list">
         <!-- Bussiness Container -->
         <div class="main-container fade show w-100" id="business-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
             <div class="inner-container">
                 <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                     <div style="min-width: 200px" class="me-4">
@@ -147,19 +149,23 @@
 
         <!-- Phone Numbers Container -->
         <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
+            <div class="inner-header-container w-100 mb-3" id="phone-numbers-header">
+                <div class="" id="phone-numbers-inner-head">
+                    <ul class="nav mb-3" id="inner-phone-numbers-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">Physical Sim</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link me-2" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
+                        </li>
+                        <li class="nav-item me" role="presentation">
+                            <button class="nav-link" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <div class="inner-container">
-                <ul class="nav mb-3" id="inner-phone-numbers-tab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">Physical Sim</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link me-2" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
-                    </li>
-                    <li class="nav-item me" role="presentation">
-                        <button class="nav-link" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
-                    </li>
-                </ul>
                 <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
                     <!-- Physical Sim -->
                     <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
@@ -645,8 +651,7 @@
             return $(element);
         }
 
-        function ValidateAddNewBusinessModal(enableDisableButton = false)
-        {
+        function ValidateAddNewBusinessModal(enableDisableButton = false) {
             let isValid = true;
 
             if (addNewBusinessNameInput.val().trim().length == 0) {
@@ -662,8 +667,7 @@
                 isValid = false;
             }
 
-            if (enableDisableButton)
-            {
+            if (enableDisableButton) {
                 if (isValid) {
                     addNewBusinessButton.prop("disabled", false);
                 }
@@ -698,7 +702,7 @@
                     currentCardElement.css("color", "#1a1a1a");
                     currentCardElement.css("z-index", "99999");
 
-                    currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS/4)}ms ease`);
+                    currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS / 4)}ms ease`);
                     currentCardElement.find("h4").css("opacity", "0");
 
                     setTimeout(() => {
@@ -780,10 +784,9 @@
 
                 var formData = new FormData();
                 formData.append("BusinessName", name);
-                if (logoFile)
-                {
+                if (logoFile) {
                     formData.append("BusinessLogo", logoFile, logoFile.name);
-                }    
+                }
                 formData.append("BusinessType", type);
 
                 AddNewUserBusinessToAPI(formData,
@@ -801,7 +804,7 @@
                             message: "Error occured while adding new user business. Check browser console for logs.",
                             timeout: 5000
                         });
-                        
+
                         console.log("Error occured while adding new user business: ", businessError);
 
                         addNewBusinessButton.prop("disabled", false);
@@ -835,7 +838,7 @@
                                     message: "Error occured while fetching user businesses. Check browser console for logs.",
                                     enableDismiss: false
                                 });
-                                
+
                                 console.log("Error occured while fetching user businesses: ", userBusinessesError);
                             }
                         );
@@ -975,7 +978,7 @@
             return element;
         }
 
-        function CreateUserTwilioNumbersTableElement(numberData){
+        function CreateUserTwilioNumbersTableElement(numberData) {
             let countryData = CountriesList[numberData.countryCode.toUpperCase()]
             let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
 
@@ -997,7 +1000,7 @@
             return element;
         }
 
-        function CreateUserVonageNumbersTableElement(numberData){
+        function CreateUserVonageNumbersTableElement(numberData) {
             let countryData = CountriesList[numberData.countryCode.toUpperCase()]
             let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
 
