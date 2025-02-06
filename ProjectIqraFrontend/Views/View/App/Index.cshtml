@@ -90,63 +90,6 @@
                 <div class="row" id="BusinessesList">
                     <!-- Dynamically Generated -->
                 </div>
-                <!-- Add New Business Modal -->
-                <div class="modal modal-lg fade" id="addNewBusinessModal" tabindex="-1" aria-labelledby="addNewBusinessModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="addNewBusinessModalLabel">Add New Business</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label for="addNewBusinessNameInput" class="form-label">Name</label>
-                                    <input type="text" class="form-control" id="addNewBusinessNameInput" placeholder="Business Name">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="addNewBusinessLogoInput" class="form-label d-block">Logo</label>
-                                    <img src="~/img/picture_placeholder_light.png" class="rounded-3 image-fluid" id="addNewBusinessLogoPreview">
-                                    <input type="file" class="form-control d-none" id="addNewBusinessLogoInput" accept="image/png, image/gif, image/jpeg, image/webp">
-                                </div>
-                                <div>
-                                    <label class="form-label">Type</label>
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <div class="new-business-type-card active" business-type="NoCode">
-                                                <div class="d-flex flex-row align-items-center justify-content-center">
-                                                    <div>
-                                                        <i class="fa-solid fa-gear-complex-code"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h4>No-Code</h4>
-                                                        <p>Setup the business agents without prompting, using the context menu.</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-6">
-                                            <div class="new-business-type-card disabled" business-type="Advanced">
-                                                <span class="badge bg-primary position-absolute" style="top: -5px; right: -5px">Coming soon!</span>
-                                                <div class="d-flex flex-row align-items-center justify-content-center">
-                                                    <div>
-                                                        <i class="fa-solid fa-terminal"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h4>Advanced</h4>
-                                                        <p>Setup the business agents with full access to creating a custom prompt.</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-primary" id="addNewBusinessButton" disabled>Add Business</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -165,6 +108,9 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="inner-phone-numbers-telnyx-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-telnyx" type="button" role="tab" aria-controls="inner-phone-numbers-telnyx" aria-selected="true">Telnyx</button>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -174,7 +120,7 @@
                     <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                             <div style="min-width: 300px" class="me-4">
-                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCustomSimNumberButton" data-bs-toggle="modal" data-bs-target="#addNewCustomSimNumberModal">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCustomSimNumberButton">
                                     <span>+ Add Physical Sim Number</span>
                                 </button>
                             </div>
@@ -191,8 +137,8 @@
                                     <th scope="col" style="width: 160px;">Status</th>
                                     <th scope="col">Country</th>
                                     <th scope="col">Number</th>
-                                    <th scope="col">Host</th>
-                                    <th scope="col">Assigned</th>
+                                    <th scope="col">Server Region</th>
+                                    <th scope="col">Assigned Business</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
@@ -200,20 +146,6 @@
                                 <!-- Dynamically Generated -->
                             </tbody>
                         </table>
-                        <!-- Add Physical Number Modal -->
-                        <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add Physical Sim Number</h1>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        todo
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     <!-- Twilio -->
                     <div class="tab-pane fade w-100" id="inner-phone-numbers-twilio" role="tabpanel" aria-labelledby="inner-phone-numbers-twilio-tab" tabindex="0">
@@ -234,9 +166,11 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Status</th>
+                                    <th scope="col">Integration</th>
                                     <th scope="col">Country</th>
                                     <th scope="col">Number</th>
-                                    <th scope="col">Assigned</th>
+                                    <th scope="col">Server Region</th>
+                                    <th scope="col">Assigned Business</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
@@ -244,20 +178,6 @@
                                 <!-- Dynamically Generated -->
                             </tbody>
                         </table>
-                        <!-- Add Twilio Number Modal -->
-                        <div class="modal modal-lg fade" id="addNewTwilioNumberModal" tabindex="-1" aria-labelledby="addNewTwilioNumberModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h1 class="modal-title fs-5" id="addNewTwilioNumberModalLabel">Add Twilio Number</h1>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        todo
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     <!-- Vonage -->
                     <div class="tab-pane fade w-100" id="inner-phone-numbers-vonage" role="tabpanel" aria-labelledby="inner-phone-numbers-vonage-tab" tabindex="0">
@@ -278,9 +198,11 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Status</th>
+                                    <th scope="col">Integration</th>
                                     <th scope="col">Country</th>
                                     <th scope="col">Number</th>
-                                    <th scope="col">Assigned</th>
+                                    <th scope="col">Server Region</th>
+                                    <th scope="col">Assigned Business</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
@@ -288,20 +210,38 @@
                                 <!-- Dynamically Generated -->
                             </tbody>
                         </table>
-                        <!-- Add Vonage Number Modal -->
-                        <div class="modal modal-lg fade" id="addNewVonageSimNumberModal" tabindex="-1" aria-labelledby="addNewVonageSimNumberModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h1 class="modal-title fs-5" id="addNewVonageSimNumberModalLabel">Add Vonage Sim Number</h1>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        todo
-                                    </div>
-                                </div>
+                    </div>
+                    <!-- Telnyx -->
+                    <div class="tab-pane fade w-100" id="inner-phone-numbers-telnyx" role="tabpanel" aria-labelledby="inner-phone-numbers-telnyx-tab" tabindex="0">
+                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                            <div style="min-width: 300px" class="me-4">
+                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTelnyxSimNumberButton" data-bs-toggle="modal" data-bs-target="#addNewTelnyxSimNumberModal">
+                                    <span>+ Add Telnyx Sim Number</span>
+                                </button>
+                            </div>
+                            <div class="input-group w-100">
+                                <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchTelnyxSimNumberButton">
+                                <button class="input-group-button btn btn-primary" id="searchTelnyxSimNumberButton">
+                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                </button>
                             </div>
                         </div>
+                        <table id="telnyxNumbersTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Integration</th>
+                                    <th scope="col">Country</th>
+                                    <th scope="col">Number</th>
+                                    <th scope="col">Server Region</th>
+                                    <th scope="col">Assigned Business</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -431,689 +371,346 @@
                 <h6>Ah! This page is currently under development.</h6>
             </div>
         </div>
-    </div>
 
-    <!-- ASP -->
-    <script>
-        const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
-    </script>
+        <!-------------------
+        
+                MODALS
+        
+        --------------------->
 
-    <!-- libs -->
-    <script src="~/js/jquery-3.7.1.min.js"></script>
-    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
-
-    <!-- Custom Scripts -->
-    <script src="~/js/countries_list.js"></script>
-    <script src="~/js/alert_manager.js"></script>
-    <script src="~/js/confirm_dialog.js"></script>
-    <script src="~/js/script.js"></script>
-
-    <!-- Variables -->
-    <script>
-        var isBusinessAnimationEnabled = true;
-    </script>
-
-    <!-- Global -->
-    <script>
-        var AlertManager = new BootstrapAlertManager();
-
-        var CurrentUserBusinessPermission = null;
-
-        var CurrentBusinessesList = null;
-
-        var PhysicalSimNumbersList = null;
-        var TwilioNumbersList = null;
-        var VonageNumbersList = null;
-
-        var SpecificationRegionsListData = null;
-
-        // API Related Calls
-
-        function FetchSpecificationRegionsDataFromAPI(successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/specification/regions/',
-                type: 'POST',
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/user/permissions/business',
-                type: 'POST',
-                dataType: "json",
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/user/businesses',
-                type: 'POST',
-                dataType: "json",
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchUserNumbersFromAPI(provider, page, pageSize, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/user/numbers/' + provider,
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    page: page,
-                    pageSize: pageSize
-                },
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/user/business/add',
-                type: 'POST',
-                data: formData,
-                dataType: "json",
-                processData: false,
-                contentType: false,
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-    </script>
-
-    <!-- PageLoader -->
-    <script>
-        const pageLoader = $("#page-loader");
-
-        var PageLoaderInterval = setInterval(
-            () => {
-                if (
-                    CurrentBusinessesList != null
-                    &&
-                    SpecificationRegionsListData != null
-                    &&
-                    PhysicalSimNumbersList != null
-                    &&
-                    TwilioNumbersList != null
-                    &&
-                    VonageNumbersList != null
-                ) {
-                    clearInterval(PageLoaderInterval);
-
-                    pageLoader.css("opacity", "0");
-                    setTimeout(() => {
-                        pageLoader.addClass("d-none");
-                    }, 300);
-                }
-            }
-            , 100);
-    </script>
-
-    <!-- Businesses Tab -->
-    <script>
-        const BusinessTypeEnum = {
-            Unknown: 0,
-            NoCode: 1,
-            Advanced: 2
-        }
-
-        const businessTab = $("#business-tab");
-
-        const AddNewBusinessButton = businessTab.find("#AddNewBusinessButton");
-        const searchBusinessInput = businessTab.find("#searchBusinessInput");
-        const searchBusinessButton = businessTab.find("#searchBusinessButton");
-        const BusinessesList = businessTab.find("#BusinessesList");
-
-        const addNewBusinessModal = businessTab.find("#addNewBusinessModal");
-        const addNewBusinessNameInput = addNewBusinessModal.find("#addNewBusinessNameInput");
-        const addNewBusinessLogoInput = addNewBusinessModal.find("#addNewBusinessLogoInput");
-        const addNewBusinessLogoPreview = addNewBusinessModal.find("#addNewBusinessLogoPreview");
-        const addNewBusinessButton = addNewBusinessModal.find("#addNewBusinessButton");
-
-        function MoveToBusinessPage(BusinessId) {
-            window.location.href = "/app/business/" + BusinessId;
-        }
-
-        function CreateUserBusinessCard(businessData) {
-            let element = `
-                <div class="col-lg-4 col-md-6 col-12">
-                    <a href="/app/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
-                        <div class="d-flex flex-row align-items-center justify-content-start">
-                            <img src="${BusinessLogoURL + "/" + businessData.logoURL}.webp">
-                            <h4>${businessData.name}</h4>
+        <!-- Add New Business Modal -->
+        <div class="modal modal-lg fade" id="addNewBusinessModal" tabindex="-1" aria-labelledby="addNewBusinessModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addNewBusinessModalLabel">Add New Business</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="addNewBusinessNameInput" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="addNewBusinessNameInput" placeholder="Business Name">
                         </div>
-                    </a>
+                        <div class="mb-3">
+                            <label for="addNewBusinessLogoInput" class="form-label d-block">Logo</label>
+                            <img src="~/img/picture_placeholder_light.png" class="rounded-3 image-fluid" id="addNewBusinessLogoPreview">
+                            <input type="file" class="form-control d-none" id="addNewBusinessLogoInput" accept="image/png, image/gif, image/jpeg, image/webp">
+                        </div>
+                        <div>
+                            <label class="form-label">Type</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="new-business-type-card active" business-type="NoCode">
+                                        <div class="d-flex flex-row align-items-center justify-content-center">
+                                            <div>
+                                                <i class="fa-solid fa-gear-complex-code"></i>
+                                            </div>
+                                            <div>
+                                                <h4>No-Code</h4>
+                                                <p>Setup the business agents without prompting, using the context menu.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="new-business-type-card disabled" business-type="Advanced">
+                                        <span class="badge bg-primary position-absolute" style="top: -5px; right: -5px">Coming soon!</span>
+                                        <div class="d-flex flex-row align-items-center justify-content-center">
+                                            <div>
+                                                <i class="fa-solid fa-terminal"></i>
+                                            </div>
+                                            <div>
+                                                <h4>Advanced</h4>
+                                                <p>Setup the business agents with full access to creating a custom prompt.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="addNewBusinessButton" disabled>Add Business</button>
+                    </div>
                 </div>
-            `;
+            </div>
+        </div>
 
-            return $(element);
-        }
+        <!-- Add Physical Number Modal -->
+        <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add Physical Sim Number</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="physicalNumberModalCountrySelect" class="form-label">Country Code</label>
+                            <select class="form-select" id="physicalNumberModalCountrySelect">
+                                <!-- Dynamically Generated Once -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="physicalNumberModalNumberInput" class="form-label">Number</label>
+                            <input type="tel" class="form-control" id="physicalNumberModalNumberInput" placeholder="Number">
+                        </div>
+                        <div class="mb-3">
+                            <label for="physicalNumberModalRegionSelect" class="form-label">Server Region</label>
+                            <select class="form-select" id="physicalNumberModalRegionSelect">
+                                <!-- Dynamically Generated Once -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="physicalNumberModalBusinessSelect" class="form-label">Assigned to Business</label>
+                            <select class="form-select" id="physicalNumberModalBusinessSelect">
+                                <!-- Dynamically Generated -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="addNewPhysicalNumberButton" disabled>Save Number</button>
+                    </div>
+                </div>
+            </div>
 
-        function ValidateAddNewBusinessModal(enableDisableButton = false) {
-            let isValid = true;
+            <!-- Add Twilio Number Modal -->
+            <div class="modal modal-lg fade" id="addNewTwilioNumberModal" tabindex="-1" aria-labelledby="addNewTwilioNumberModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="addNewTwilioNumberModalLabel">Add Twilio Number</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            todo
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            if (addNewBusinessNameInput.val().trim().length == 0) {
-                isValid = false;
-            }
+            <!-- Add Vonage Number Modal -->
+            <div class="modal modal-lg fade" id="addNewVonageSimNumberModal" tabindex="-1" aria-labelledby="addNewVonageSimNumberModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="addNewVonageSimNumberModalLabel">Add Vonage Sim Number</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            todo
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            let activeBusinessType = addNewBusinessModal.find(".new-business-type-card.active");
-            if (activeBusinessType.length == 0) {
-                isValid = false;
-            }
-            let activeBusinessTypeAttr = activeBusinessType.attr("business-type");
-            if (!activeBusinessTypeAttr || !activeBusinessTypeAttr.length) {
-                isValid = false;
-            }
+        <!-- ASP -->
+        <script>
+            const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
+        </script>
 
-            if (enableDisableButton) {
-                if (isValid) {
-                    addNewBusinessButton.prop("disabled", false);
-                }
-                else {
-                    addNewBusinessButton.prop("disabled", true);
-                }
-            }
+        <!-- libs -->
+        <script src="~/js/jquery-3.7.1.min.js"></script>
+        <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
 
-            return isValid;
-        }
+        <!-- Custom Scripts -->
+        <script src="~/js/countries_list.js"></script>
+        <script src="~/js/alert_manager.js"></script>
+        <script src="~/js/confirm_dialog.js"></script>
+        <script src="~/js/script.js"></script>
 
-        $(document).ready(() => {
+        <!-- Variables -->
+        <script>
+            var isBusinessAnimationEnabled = true;
+        </script>
 
-            $(document).on("click", ".business-card", (event) => {
-                event.preventDefault();
+        <!-- Global -->
+        <script>
+            var AlertManager = new BootstrapAlertManager();
 
-                let currentCardElement = $(event.currentTarget);
-                let businessDataId = currentCardElement.attr("data-business-id");
+            var CurrentUserBusinessPermission = null;
 
-                if (!businessDataId || !businessDataId.length) {
-                    return;
-                }
+            var CurrentBusinessesList = null;
 
-                if (isBusinessAnimationEnabled) {
-                    $("body").css("overflow", "hidden");
+            var PhysicalSimNumbersList = null;
+            var TwilioNumbersList = null;
+            var VonageNumbersList = null;
+            var TelnyxNumbersList = null;
 
-                    let transitionTimeMS = 1000
+            var SpecificationRegionsListData = null;
 
-                    currentCardElement.css("transition", `all ${transitionTimeMS}ms ease`);
-                    currentCardElement.css("transform", "scale(40)");
-                    currentCardElement.css("background-color", "#1a1a1a");
-                    currentCardElement.css("color", "#1a1a1a");
-                    currentCardElement.css("z-index", "99999");
+            // API Related Calls
+            function FetchSpecificationRegionsDataFromAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/specification/regions/',
+                    type: 'POST',
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
+                        }
 
-                    currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS / 4)}ms ease`);
-                    currentCardElement.find("h4").css("opacity", "0");
-
-                    setTimeout(() => {
-                        MoveToBusinessPage(businessDataId);
-                    }, (transitionTimeMS / 1.1));
-                }
-                else {
-                    MoveToBusinessPage(businessDataId);
-                }
-            });
-
-            $(document).on("click", "#addNewBusinessModal .new-business-type-card", (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-
-                let current = $(event.currentTarget);
-
-                if (current.hasClass("disabled")) {
-                    return;
-                }
-
-                let currentActive = $("#addNewBusinessModal .new-business-type-card.active");
-
-                let businessType = current.attr("business-type");
-                let activeBusinessType = currentActive.attr("business-type");
-
-                if (businessType == activeBusinessType) {
-                    return;
-                }
-
-                currentActive.removeClass("active");
-                current.addClass("active");
-
-                ValidateAddNewBusinessModal(true);
-            });
-
-            addNewBusinessNameInput.on("input", (event) => {
-                ValidateAddNewBusinessModal(true);
-            });
-
-            addNewBusinessLogoPreview.on("click", (event) => {
-                addNewBusinessLogoInput.trigger("click");
-            });
-
-            addNewBusinessLogoInput.on("change", (event) => {
-                let file = event.currentTarget.files[0];
-
-                if (!file) {
-                    return;
-                }
-
-                let reader = new FileReader();
-
-                reader.onload = (event) => {
-                    addNewBusinessLogoPreview.attr("src", event.target.result);
-                }
-
-                reader.readAsDataURL(file);
-
-                ValidateAddNewBusinessModal(true);
-            });
-
-            addNewBusinessModal.on("hidden.bs.modal", (event) => {
-                addNewBusinessNameInput.val("");
-                addNewBusinessLogoInput.val("");
-                addNewBusinessLogoPreview.attr("src", "/img/picture_placeholder_light.png");
-
-                ValidateAddNewBusinessModal(true);
-            });
-
-            addNewBusinessButton.on("click", (event) => {
-                event.preventDefault();
-
-                let name = addNewBusinessNameInput.val().trim();
-                let logoFile = addNewBusinessLogoInput[0].files[0];
-                let type = BusinessTypeEnum[addNewBusinessModal.find(".new-business-type-card.active").attr("business-type")];
-
-                addNewBusinessButton.prop("disabled", true);
-
-                var formData = new FormData();
-                formData.append("BusinessName", name);
-                if (logoFile) {
-                    formData.append("BusinessLogo", logoFile, logoFile.name);
-                }
-                formData.append("BusinessType", type);
-
-                AddNewUserBusinessToAPI(formData,
-                    (businessData) => {
-                        let businessCardElement = CreateUserBusinessCard(businessData);
-
-                        BusinessesList.append(businessCardElement);
-
-                        addNewBusinessButton.prop("disabled", false);
-                        addNewBusinessModal.modal("hide");
+                        successCallback(response.data);
                     },
-                    (businessError) => {
-                        AlertManager.createAlert({
-                            type: "danger",
-                            message: "Error occured while adding new user business. Check browser console for logs.",
-                            timeout: 5000
-                        });
-
-                        console.log("Error occured while adding new user business: ", businessError);
-
-                        addNewBusinessButton.prop("disabled", false);
+                    error: (error) => {
+                        errorCallback(error);
                     }
-                );
-            });
+                });
+            }
 
-            // Init
-
-            FetchUserBusinessPermissionsFromAPI(
-                (userBusinessPermission) => {
-                    CurrentUserBusinessPermission = userBusinessPermission;
-
-                    if (userBusinessPermission.disableBusinessesAt == null) {
-                        searchBusinessInput.prop("disabled", false);
-                        searchBusinessButton.prop("disabled", false);
-
-                        FetchUserBusinessesFromAPI(
-                            (userBusinesses) => {
-                                CurrentBusinessesList = userBusinesses;
-
-                                userBusinesses.forEach((businessData) => {
-                                    let businessCardElement = CreateUserBusinessCard(businessData);
-
-                                    BusinessesList.append(businessCardElement);
-                                });
-                            },
-                            (userBusinessesError) => {
-                                AlertManager.createAlert({
-                                    type: "danger",
-                                    message: "Error occured while fetching user businesses. Check browser console for logs.",
-                                    enableDismiss: false
-                                });
-
-                                console.log("Error occured while fetching user businesses: ", userBusinessesError);
-                            }
-                        );
-                    }
-                    else {
-                        CurrentBusinessesList = [];
-
-                        let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
-                        if (userBusinessPermission.disableBusinessesReason != null) {
-                            alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.disableBusinessesReason;
-                        }
-                        else {
-                            alertMessage = alertMessage + "<br>Please contact support for more information.";
+            function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/permissions/business',
+                    type: 'POST',
+                    dataType: "json",
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
                         }
 
-                        AlertManager.createAlert({
-                            type: "danger",
-                            message: alertMessage,
-                            enableDismiss: false
-                        });
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
                     }
+                });
+            }
 
-                    if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                        if (userBusinessPermission.disableBusinessesAt == null) {
-                            let alertMessage = "Bussiness Adding is disabled for your account.";
-
-                            if (userBusinessPermission.addBusinessDisableReason != null) {
-                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.addBusinessDisableReason;
-                            }
-                            else {
-                                alertMessage = alertMessage + "<br>Please contact support for more information.";
-                            }
-
-                            AlertManager.createAlert({
-                                type: "danger",
-                                message: alertMessage,
-                                enableDismiss: false
-                            });
+            function FetchUserBusinessesFromAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/businesses',
+                    type: 'POST',
+                    dataType: "json",
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
                         }
+
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
                     }
-                    else {
-                        AddNewBusinessButton.prop("disabled", false);
-                    }
+                });
+            }
 
-                    if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                        if (userBusinessPermission.disableBusinessesAt == null) {
-                            let alertMessage = "Bussiness Editing is disabled for your account.";
-
-                            if (userBusinessPermission.editBusinessDisableReason != null) {
-                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.editBusinessDisableReason;
-                            }
-                            else {
-                                alertMessage = alertMessage + "<br>Please contact support for more information.";
-                            }
-
-                            AlertManager.createAlert({
-                                type: "danger",
-                                message: alertMessage,
-                                enableDismiss: false
-                            });
+            function FetchUserNumbersFromAPI(provider, page, pageSize, successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/numbers/' + provider,
+                    type: 'POST',
+                    dataType: "json",
+                    data: {
+                        page: page,
+                        pageSize: pageSize
+                    },
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
                         }
+
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
                     }
+                });
+            }
 
-                    if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                        if (userBusinessPermission.disableBusinessesAt == null) {
-                            let alertMessage = "Bussiness Deleting is disabled for your account.";
-
-                            if (userBusinessPermission.deleteBusinessDisableReason != null) {
-                                alertMessage = alertMessage + "<br>Reason: " + userBusinessPermission.deleteBusinessDisableReason;
-                            }
-                            else {
-                                alertMessage = alertMessage + "<br>Please contact support for more information.";
-                            }
-
-                            AlertManager.createAlert({
-                                type: "danger",
-                                message: alertMessage,
-                                enableDismiss: false
-                            });
+            function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/user/business/add',
+                    type: 'POST',
+                    data: formData,
+                    dataType: "json",
+                    processData: false,
+                    contentType: false,
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
                         }
-                    }
-                },
-                (userBusinessPermissionError) => {
-                    AlertManager.createAlert({
-                        type: "danger",
-                        message: "Error occured while fetching user businesses. Check browser console for logs.",
-                        enableDismiss: false
-                    });
 
-                    console.log("Error occured while fetching user businesses: ", userBusinessPermissionError);
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
+                    }
+                });
+            }
+        </script>
+
+        <!-- PageLoader -->
+        <script>
+            const pageLoader = $("#page-loader");
+
+            var PageLoaderInterval = setInterval(
+                () => {
+                    if (
+                        CurrentBusinessesList != null
+                        &&
+                        SpecificationRegionsListData != null
+                        &&
+                        PhysicalSimNumbersList != null
+                        &&
+                        TwilioNumbersList != null
+                        &&
+                        VonageNumbersList != null
+                        &&
+                        TelnyxNumbersList != null
+                    ) {
+                        clearInterval(PageLoaderInterval);
+
+                        pageLoader.css("opacity", "0");
+                        setTimeout(() => {
+                            pageLoader.addClass("d-none");
+                        }, 300);
+                    }
                 }
-            );
+                , 100);
 
+            function RunActionAfterBusinessesDataLoad(action) {
+                var businessDataCheckInterval = setInterval(
+                    () => {
+                        if (CurrentBusinessesList != null) {
+                            clearInterval(businessDataCheckInterval);
+                            action();
+                        }
+                    }
+                    , 100);
+            }
+        </script>
+
+        <!-- Scripts -->
+        <script src="~/scripts/app/index/businesses_tab.js"></script>
+        <script src="~/scripts/app/index/numbers_tab.js"></script>
+
+        <!-- Init -->
+        <script>
             FetchSpecificationRegionsDataFromAPI(
                 (specificationRegions) => {
                     SpecificationRegionsListData = specificationRegions;
+
+                    InitBusinessesTab();
+                    RunActionAfterBusinessesDataLoad(() => {
+                        InitNumbersTab();
+                    });
                 },
                 (specificationRegionsError) => {
                     AlertManager.createAlert({
                         type: "danger",
                         message: "Error occured while fetching specification regions. Check browser console for logs.",
-                        enableDismiss: false
+                        enableDismiss: false,
                     });
 
                     console.log("Error occured while fetching specification regions: ", specificationRegionsError);
-                }
-            )
-        });
-    </script>
-
-    <!-- Numbers -->
-    <script>
-        const NumberProviderEnum = {
-            "Physical": 1,
-            "Twilio": 2,
-            "Vonage": 3
-        }
-
-        var PhysicalSimNumbersListPage = 0;
-        var PhysicalSimNumbersListPageSize = 0;
-
-        var TwilioNumbersListPage = 0;
-        var TwilioNumbersListPageSize = 0;
-
-        var VonageNumbersListPage = 0;
-        var VonageNumbersListPageSize = 0;
-
-        const physicalSimNumbersTable = $("#physicalSimNumbersTable");
-        const twilioNumbersTable = $("#twilioNumbersTable");
-        const vonageNumbersTable = $("#vonageNumbersTable");
-
-        function CreateUserPhysicalNumbersTableElement(numberData) {
-            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
-            let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
-
-            let element = $(`<tr>
-                <td><span class="badge bg-success">Online</span></td>
-                <td>${countryData["Alpha-2 code"]}</td>
-                <td>${numberData.number}</td>
-                <td>${numberData.hostType.name}</td>
-                <td>${(businessData == null ? "-" : businessData.name)}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`);
-
-            return element;
-        }
-
-        function CreateUserTwilioNumbersTableElement(numberData) {
-            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
-            let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
-
-            let element = $(`<tr>
-                <td><span class="badge bg-success">Online</span></td>
-                <td>${countryData["Alpha-2 code"]}</td>
-                <td>${numberData.number}</td>
-                <td>${(businessData == null ? "-" : businessData.name)}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`);
-
-            return element;
-        }
-
-        function CreateUserVonageNumbersTableElement(numberData) {
-            let countryData = CountriesList[numberData.countryCode.toUpperCase()]
-            let businessData = CurrentBusinessesList.find((businessData) => businessData.id == numberData.assignedToBusinessId);
-
-            let element = $(`<tr>
-                <td><span class="badge bg-success">Online</span></td>
-                <td>${countryData["Alpha-2 code"]}</td>
-                <td>${numberData.number}</td>
-                <td>${(businessData == null ? "-" : businessData.name)}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`);
-
-            return element;
-        }
-
-        var LoadNumberAfterBusinesses = setInterval(
-            () => {
-
-                if (CurrentBusinessesList != null && SpecificationRegionsListData != null) {
-                    clearInterval(LoadNumberAfterBusinesses);
-
-                    $(document).ready(() => {
-                        // Init
-
-                        // Physical Numbers
-                        FetchUserNumbersFromAPI(NumberProviderEnum["Physical"], PhysicalSimNumbersListPage, PhysicalSimNumbersListPageSize,
-                            (userPhysicalNumbers) => {
-                                PhysicalSimNumbersList = userPhysicalNumbers;
-
-                                if (PhysicalSimNumbersList.length == 0) {
-                                    physicalSimNumbersTable.find("tbody").append($('<tr><td colspan="6">No numbers found</td></tr>'));
-                                }
-                                else {
-                                    PhysicalSimNumbersList.forEach((numberData) => {
-                                        physicalSimNumbersTable.find("tbody").append(CreateUserPhysicalNumbersTableElement(numberData));
-                                    })
-                                }
-                            },
-                            (userPhysicalNumbersError) => {
-                                AlertManager.createAlert({
-                                    type: "danger",
-                                    message: "Error occured while fetching user physical numbers. Check browser console for logs.",
-                                    enableDismiss: false,
-                                });
-
-                                console.log("Error occured while fetching user physical numbers: ", userPhysicalNumbersError);
-                            }
-                        );
-
-                        // Twilio Numbers
-                        FetchUserNumbersFromAPI(NumberProviderEnum["Twilio"], TwilioNumbersListPage, TwilioNumbersListPageSize,
-                            (userTwilioNumbers) => {
-                                TwilioNumbersList = userTwilioNumbers;
-
-                                if (TwilioNumbersList.length == 0) {
-                                    twilioNumbersTable.find("tbody").append($('<tr><td colspan="5">No numbers found</td></tr>'));
-                                }
-                                else {
-                                    TwilioNumbersList.forEach((numberData) => {
-                                        twilioNumbersTable.find("tbody").append(CreateUserTwilioNumbersTableElement(numberData));
-                                    })
-                                }
-                            },
-                            (userTwilioNumbersError) => {
-                                AlertManager.createAlert({
-                                    type: "danger",
-                                    message: "Error occured while fetching user twilio numbers. Check browser console for logs.",
-                                    enableDismiss: false,
-                                });
-
-                                console.log("Error occured while fetching user twilio numbers: ", userTwilioNumbersError);
-                            }
-                        );
-
-                        // Vonage Numbers
-                        FetchUserNumbersFromAPI(NumberProviderEnum["Vonage"], VonageNumbersListPage, VonageNumbersListPageSize,
-                            (userVonageNumbers) => {
-                                VonageNumbersList = userVonageNumbers;
-
-                                if (VonageNumbersList.length == 0) {
-                                    vonageNumbersTable.find("tbody").append($('<tr><td colspan="5">No numbers found</td></tr>'));
-                                }
-                                else {
-                                    VonageNumbersList.forEach((numberData) => {
-                                        vonageNumbersTable.find("tbody").append(CreateUserVonageNumbersTableElement(numberData));
-                                    })
-                                }
-                            },
-                            (userVonageNumbersError) => {
-                                AlertManager.createAlert({
-                                    type: "danger",
-                                    message: "Error occured while fetching user vonage numbers. Check browser console for logs.",
-                                    enableDismiss: false,
-                                });
-
-                                console.log("Error occured while fetching user vonage numbers: ", userVonageNumbersError);
-                            }
-                        );
-                    })
-                }
-
-            }, 100
-        );
-    </script>
+                },
+            );
+        </script>
 </body>
 
 </html>
