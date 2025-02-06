@@ -26,7 +26,7 @@ namespace IqraInfrastructure.Services.Number
                 return result;
             }
 
-            var numberResults = await _numberRepository.GetBusinessNumberByIdsAsync(numberIds, userEmail);
+            var numberResults = await _numberRepository.GetUserNumberByIdsAsync(numberIds, userEmail);
 
             if (numberResults == null) {
                 result.Code = "GetUserNumberByIds:1";

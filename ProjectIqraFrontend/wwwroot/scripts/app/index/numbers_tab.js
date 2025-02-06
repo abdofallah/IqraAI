@@ -40,7 +40,7 @@ const twilioNumbersTable = numbersTab.find("#twilioNumbersTable");
 const vonageNumbersTable = numbersTab.find("#vonageNumbersTable");
 
 // Telnyx
-const telenyxNumbersTable = numbersTab.find("#telenyxNumbersTable");
+const telnyxNumbersTable = numbersTab.find("#telnyxNumbersTable");
 
 /** API Functions **/
 function AddNewUserNumberToAPI(formData, successCallback, errorCallback) {
@@ -259,7 +259,7 @@ function CreateUserVonageNumbersTableElement(numberData) {
 }
 
 // Telnyx
-function CreateUserTelenyxNumbersTableElement(numberData) {
+function CreateUserTelnyxNumbersTableElement(numberData) {
 	const element = "TODO";
 
 	// todo
@@ -284,7 +284,7 @@ function InitNumbersTab() {
 
 		addNewCustomSimNumberModalElement.on("show.bs.modal", () => {
 			physicalNumberModalBusinessSelect.empty();
-			physicalNumberModalBusinessSelect.append($(`<option value="" ${CurrentManagePhysicalNumberData.assignedToBusinessId === "" ? "selected" : ""}>None</option>`));
+			physicalNumberModalBusinessSelect.append($(`<option value="" ${CurrentManagePhysicalNumberData.assignedToBusinessId === null ? "selected" : ""}>None</option>`));
 			CurrentBusinessesList.forEach((businessData) => {
 				physicalNumberModalBusinessSelect.append(
 					$(`<option value="${businessData.id}" ${CurrentManagePhysicalNumberData.assignedToBusinessId === businessData.id ? "selected" : ""}>${businessData.name}</option>`),
@@ -450,7 +450,7 @@ function InitNumbersTab() {
 				TwilioNumbersList = userTwilioNumbers;
 
 				if (TwilioNumbersList.length === 0) {
-					twilioNumbersTable.find("tbody").append($('<tr><td colspan="5">No numbers found</td></tr>'));
+					twilioNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
 				} else {
 					TwilioNumbersList.forEach((numberData) => {
 						twilioNumbersTable.find("tbody").append(CreateUserTwilioNumbersTableElement(numberData));
@@ -477,7 +477,7 @@ function InitNumbersTab() {
 				VonageNumbersList = userVonageNumbers;
 
 				if (VonageNumbersList.length === 0) {
-					vonageNumbersTable.find("tbody").append($('<tr><td colspan="5">No numbers found</td></tr>'));
+					vonageNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
 				} else {
 					VonageNumbersList.forEach((numberData) => {
 						vonageNumbersTable.find("tbody").append(CreateUserVonageNumbersTableElement(numberData));
@@ -500,25 +500,25 @@ function InitNumbersTab() {
 			NumberProviderEnum.TELNYX,
 			0,
 			0,
-			(userTelenyxNumbers) => {
-				TelenyxNumbersList = userTelenyxNumbers;
+			(userTelnyxNumbers) => {
+				TelnyxNumbersList = userTelnyxNumbers;
 
-				if (TelenyxNumbersList.length === 0) {
-					telenyxNumbersTable.find("tbody").append($('<tr><td colspan="5">No numbers found</td></tr>'));
+				if (TelnyxNumbersList.length === 0) {
+					telnyxNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
 				} else {
-					TelenyxNumbersList.forEach((numberData) => {
-						telenyxNumbersTable.find("tbody").append(CreateUserTelenyxNumbersTableElement(numberData));
+					TelnyxNumbersList.forEach((numberData) => {
+						telnyxNumbersTable.find("tbody").append(CreateUserTelnyxNumbersTableElement(numberData));
 					});
 				}
 			},
-			(userTelenyxNumbersError) => {
+			(userTelnyxNumbersError) => {
 				AlertManager.createAlert({
 					type: "danger",
-					message: "Error occured while fetching user telenyx numbers. Check browser console for logs.",
+					message: "Error occured while fetching user telnyx numbers. Check browser console for logs.",
 					enableDismiss: false,
 				});
 
-				console.log("Error occured while fetching user telenyx numbers: ", userTelenyxNumbersError);
+				console.log("Error occured while fetching user telnyx numbers: ", userTelnyxNumbersError);
 			},
 		);
 
