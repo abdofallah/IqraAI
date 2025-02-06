@@ -11,6 +11,7 @@ using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
@@ -702,5 +703,124 @@ namespace ProjectIqraFrontend.Controllers.User
             return result;
         }
 
+        [HttpPost("/app/user/numbers/add")]
+        public async Task<FunctionReturnResult<NumberData?>> AddUserNumber([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<NumberData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "AddUserNumber:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "AddUserNumber:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "AddUserNumber:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Number.DisableNumbersAt != null)
+            {
+                result.Code = "AddUserNumber:4";
+                result.Message = "User does not have permission to manage numbers";
+
+                if (user.Permission.Number.DisableNumbersAt != null && !string.IsNullOrEmpty(user.Permission.Number.DisableNumbersReason))
+                {
+                    result.Message += ": " + user.Permission.Number.DisableNumbersReason;
+                }
+
+                return result;
+            }
+
+            if (!formData.TryGetValue("postType", out StringValues postTypeValue))
+            {
+                result.Code = "AddUserNumber:5";
+                result.Message = "Missing post type";
+                return result;
+            }
+
+            string? postType = postTypeValue.ToString();
+            if (string.IsNullOrWhiteSpace(postType)
+                || postType != "new" && postType != "edit")
+            {
+                result.Code = "AddUserNumber:6";
+                result.Message = "Invalid post type";
+                return result;
+            }
+
+            string? exisitingNumberId = null;
+            if (postType == "new")
+            {
+                if (user.Permission.Number.AddNumberDisabledAt != null)
+                {
+                    result.Code = "AddUserNumber:7";
+                    result.Message = "User does not have permission to add numbers";
+
+                    if (user.Permission.Number.AddNumberDisabledAt != null && !string.IsNullOrEmpty(user.Permission.Number.AddNumberDisableReason))
+                    {
+                        result.Message += ": " + user.Permission.Number.AddNumberDisableReason;
+                    }
+
+                    return result;
+                }
+            }
+            else
+            {
+                if (user.Permission.Number.EditNumberDisabledAt != null)
+                {
+                    result.Code = "AddUserNumber:8";
+                    result.Message = "User does not have permission to edit numbers";
+
+                    if (user.Permission.Number.EditNumberDisabledAt != null && !string.IsNullOrEmpty(user.Permission.Number.EditNumberDisableReason))
+                    {
+                        result.Message += ": " + user.Permission.Number.EditNumberDisableReason;
+                    }
+
+                    return result;
+                }
+
+                if (!formData.TryGetValue("numberId", out StringValues numberIdValue))
+                {
+                    result.Code = "AddUserNumber:9";
+                    result.Message = "Missing number id";
+                    return result;
+                }
+
+                exisitingNumberId = numberIdValue.ToString();
+                if (string.IsNullOrWhiteSpace(exisitingNumberId))
+                {
+                    result.Code = "AddUserNumber:10";
+                    result.Message = "Invalid number id";
+                    return result;
+                }
+
+                bool numberExists = await _numberManager.CheckUserNumberExists(exisitingNumberId, userEmail);
+                if (!numberExists)
+                {
+                    result.Code = "AddUserNumber:11";
+                    result.Message = "Number not found";
+                    return result;
+                }
+            }
+
+            // todo addorupdate number manager function
+
+            return result;
+        }
     }
 }

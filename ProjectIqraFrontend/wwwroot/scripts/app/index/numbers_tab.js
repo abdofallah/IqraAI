@@ -72,7 +72,7 @@ function createDefaultPhysicalNumberObject() {
 	const object = {
 		countryCode: "",
 		number: "",
-		assignedToBusinessId: "",
+		assignedToBusinessId: null,
 		regionId: "",
 		provider: {
 			value: 1,
@@ -151,6 +151,7 @@ function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
 	}
 
 	changes.assignedToBusinessId = physicalNumberModalBusinessSelect.find("option:selected").val();
+	changes.assignedToBusinessId = changes.assignedToBusinessId === "" ? null : changes.assignedToBusinessId;
 	if (CurrentManagePhysicalNumberData.assignedToBusinessId !== changes.assignedToBusinessId) {
 		hasChanges = true;
 	}

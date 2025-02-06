@@ -13,7 +13,7 @@ namespace IqraCore.Entities.Number
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;
 
-        public string AssignedToBusinessId { get; set; } = string.Empty;
+        public long? AssignedToBusinessId { get; set; } = null;
         public string RegionId { get; set; } = string.Empty;
 
         public virtual NumberProviderEnum Provider { get; set; } = NumberProviderEnum.Unknown;

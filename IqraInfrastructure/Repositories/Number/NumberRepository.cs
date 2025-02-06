@@ -27,9 +27,15 @@ namespace IqraInfrastructure.Repositories.Number
             return await _numberCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
-        public async Task<List<NumberData>?> GetNumberByIdsAsync(List<string> numberIds)
+        public async Task<List<NumberData>?> GetUserNumberByIdsAsync(List<string> numberIds, string userEmail)
         {
-            var filter = Builders<NumberData>.Filter.In(x => x.Id, numberIds);
+            var filter = Builders<NumberData>.Filter.In(x => x.Id, numberIds) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            return await _numberCollection.Find(filter).ToListAsync();
+        }
+
+        public async Task<List<NumberData>?> GetBusinessNumberByIdsAsync(List<string> numberIds, long businessId)
+        {
+            var filter = Builders<NumberData>.Filter.In(x => x.Id, numberIds) & Builders<NumberData>.Filter.Eq(x => x.AssignedToBusinessId, businessId);
             return await _numberCollection.Find(filter).ToListAsync();
         }
 
@@ -54,6 +60,12 @@ namespace IqraInfrastructure.Repositories.Number
         {
             var filter = Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, email);
             return await _numberCollection.Find(filter).ToListAsync();
+        }
+
+        public async Task<bool> CheckUserNumberExists(string exisitingNumberId, string userEmail)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            return await _numberCollection.Find(filter).AnyAsync();
         }
     }
 }

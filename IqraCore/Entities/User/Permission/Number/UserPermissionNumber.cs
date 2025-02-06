@@ -2,16 +2,16 @@
 {
     public class UserPermissionNumber
     {
-        public DateTime? DisableBusinessesAt { get; set; } = null;
-        public string? DisableBusinessesReason { get; set; } = null;
+        public DateTime? DisableNumbersAt { get; set; } = null;
+        public string? DisableNumbersReason { get; set; } = null;
 
-        public DateTime? AddBusinessDisabledAt { get; set; } = null;
-        public string? AddBusinessDisableReason { get; set; } = null;
+        public DateTime? AddNumberDisabledAt { get; set; } = null;
+        public string? AddNumberDisableReason { get; set; } = null;
 
-        public DateTime? EditBusinessDisabledAt { get; set; } = null;
-        public string? EditBusinessDisableReason { get; set; } = null;
+        public DateTime? EditNumberDisabledAt { get; set; } = null;
+        public string? EditNumberDisableReason { get; set; } = null;
 
-        public DateTime? DeleteBusinessDisableAt { get; set; } = null;
-        public string? DeleteBusinessDisableReason { get; set; } = null;
+        public DateTime? DeleteNumberDisableAt { get; set; } = null;
+        public string? DeleteNumberDisableReason { get; set; } = null;
     }
 }
