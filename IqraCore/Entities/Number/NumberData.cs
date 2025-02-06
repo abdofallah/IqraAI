@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Number
 {
-    [BsonKnownTypes(typeof(NumberPhysical))]
+    [BsonKnownTypes(typeof(NumberPhysicalData), typeof(NumberTwilioData), typeof(NumberVonageData), typeof(NumberTelnyxData))]
     public class NumberData
     {
         [BsonId]
@@ -13,18 +13,16 @@ namespace IqraCore.Entities.Number
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;
 
-        public NumberProviderEnum Provider { get; set; } = NumberProviderEnum.Unknown;
+        public string AssignedToBusinessId { get; set; } = string.Empty;
+        public string RegionId { get; set; } = string.Empty;
+
+        public virtual NumberProviderEnum Provider { get; set; } = NumberProviderEnum.Unknown;
 
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/numbers")]
         [IncludeInEndpoint("/app/admin/numbers/{provider}")]
         public string MasterUserEmail { get; set; } = string.Empty;
-
-        [ExcludeInAllEndpoints]
-        [IncludeInEndpoint("/app/admin/numbers")]
-        [IncludeInEndpoint("/app/admin/numbers/{provider}")]
-        public long? AssignedToBusinessId { get; set; } = -1;
-
+        
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/numbers")]
         [IncludeInEndpoint("/app/admin/numbers/{provider}")]
