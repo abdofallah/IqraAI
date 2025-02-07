@@ -248,7 +248,7 @@ namespace IqraInfrastructure.Services.Number
 
             // Get assigned business ID
             long? assignedBusinessId = null;
-            if (changes.RootElement.TryGetProperty("assignedToBusinessId", out var businessIdElement))
+            if (changes.RootElement.TryGetProperty("assignedToBusinessId", out var businessIdElement) && businessIdElement.ValueKind != JsonValueKind.Null)
             {
                 if (!businessIdElement.TryGetInt64(out var businessId))
                 {
@@ -313,6 +313,8 @@ namespace IqraInfrastructure.Services.Number
             }
             else
             {
+                newNumberData.Id = exisitingNumberData.Id;
+
                 bool updateNumberResult = await _numberRepository.ReplaceNumberAsync(newNumberData);
                 if (!updateNumberResult)
                 {

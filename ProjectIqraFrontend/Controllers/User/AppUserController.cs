@@ -824,7 +824,7 @@ namespace ProjectIqraFrontend.Controllers.User
             if (!phoneNumberUtil.IsValidNumber(parsedPhoneNumber))
             {
                 result.Code = "AddUserNumber:13";
-                result.Message = "Invalid number.";
+                result.Message = "Number validation failed for specified country";
                 return result;
             }
 
@@ -940,6 +940,8 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
+            result.Success = true;
+            result.Data = saveResult.Data;
             return result;
         }
     }

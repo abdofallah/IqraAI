@@ -45,7 +45,7 @@ const telnyxNumbersTable = numbersTab.find("#telnyxNumbersTable");
 /** API Functions **/
 function AddNewUserNumberToAPI(formData, successCallback, errorCallback) {
 	$.ajax({
-		url: "/app/user/number/add",
+		url: "/app/user/numbers/add",
 		type: "POST",
 		data: formData,
 		dataType: "json",
@@ -85,7 +85,7 @@ function createDefaultPhysicalNumberObject() {
 function CreateUserPhysicalNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
 	const businessData = CurrentBusinessesList.find((businessData) => businessData.id === numberData.assignedToBusinessId);
-	const regionData = CurrentRegionsList.find((regionData) => regionData.id === numberData.regionId);
+	const regionData = SpecificationRegionsListData.find((regionData) => regionData.id === numberData.regionId);
 
 	let statusElement = "";
 	if (numberData.status.value === 0) {
@@ -104,7 +104,7 @@ function CreateUserPhysicalNumbersTableElement(numberData) {
                 <td>${businessData == null ? "-" : businessData.name}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-id="${numberData.id}" button-type="edit-physical-number">
-                        <i class="fa-regular fa-eye"></i>
+                        <i class="fa-regular fa-pen-to-square"></i>
                     </button>
                     <button class="btn btn-danger btn-sm" number-id="${numberData.id}" button-type="delete-physical-number">
                         <i class="fa-regular fa-trash"></i>
@@ -133,7 +133,9 @@ function FillInitialPhysicalSimModal() {
 
 function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
 	let hasChanges = false;
-	const changes = {};
+	const changes = {
+		provider: NumberProviderEnum.PHYSICAL,
+	};
 
 	changes.countryCode = physicalNumberModalCountrySelect.find("option:selected").val();
 	if (CurrentManagePhysicalNumberData.countryCode !== changes.countryCode) {
@@ -151,7 +153,7 @@ function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
 	}
 
 	changes.assignedToBusinessId = physicalNumberModalBusinessSelect.find("option:selected").val();
-	changes.assignedToBusinessId = changes.assignedToBusinessId === "" ? null : changes.assignedToBusinessId;
+	changes.assignedToBusinessId = changes.assignedToBusinessId === "" ? null : parseInt(changes.assignedToBusinessId);
 	if (CurrentManagePhysicalNumberData.assignedToBusinessId !== changes.assignedToBusinessId) {
 		hasChanges = true;
 	}
@@ -318,7 +320,9 @@ function InitNumbersTab() {
 			ManagePhysicalNumberType = null;
 
 			addNewCustomSimNumberModalElement.find(".is-invalid").removeClass("is-invalid");
+
 			addNewPhysicalNumberButton.prop("disabled", true);
+			addNewPhysicalNumberButtonSpinner.addClass("d-none");
 		});
 
 		addNewCustomSimNumberModalElement.on("change, input", "input, textarea, select", () => {
@@ -351,7 +355,7 @@ function InitNumbersTab() {
 
 			const formData = new FormData();
 			formData.append("postType", ManagePhysicalNumberType);
-			formData.append("changes", changes.changes);
+			formData.append("changes", JSON.stringify(changes.changes));
 
 			if (ManagePhysicalNumberType === "edit") {
 				formData.append("numberId", CurrentManagePhysicalNumberData.id);
@@ -360,40 +364,27 @@ function InitNumbersTab() {
 			AddNewUserNumberToAPI(
 				formData,
 				(responseResult) => {
-					if (!responseResult.success) {
-						AlertManager.createAlert({
-							type: "danger",
-							message: "Error occured while saving user number. Check browser console for logs.",
-							timeout: 6000,
-						});
+					if (ManagePhysicalNumberType === "new") {
+						PhysicalSimNumbersList.push(responseResult);
 
-						console.log("Error occured while saving user number: ", responseResult);
+						physicalSimNumbersTable.find("tbody").prepend(CreateUserPhysicalNumbersTableElement(responseResult));
 					} else {
-						if (ManagePhysicalNumberType === "new") {
-							PhysicalSimNumbersList.push(responseResult.data);
+						const exisitingIndex = PhysicalSimNumbersList.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
+						PhysicalSimNumbersList[exisitingIndex] = responseResult;
 
-							physicalSimNumbersTable.find("tbody").prepend(CreateUserPhysicalNumbersTableElement(responseResult.data));
-						} else {
-							const exisitingIndex = PhysicalSimNumbersList.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
-							PhysicalSimNumbersList[exisitingIndex] = responseResult.data;
-
-							const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManagePhysicalNumberData.id}"]`);
-							exisitingUserPhysicalNumbersTableElement.replaceWith(CreateUserPhysicalNumbersTableElement(responseResult.data));
-						}
-
-						AlertManager.createAlert({
-							type: "success",
-							message: `Successfully ${ManagePhysicalNumberType === "new" ? "added" : "updated"} user physical sim number.`,
-							timeout: 6000,
-						});
-
-						addNewCustomSimNumberModal.hide();
+						const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManagePhysicalNumberData.id}"]`);
+						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateUserPhysicalNumbersTableElement(responseResult));
 					}
 
-					addNewPhysicalNumberButton.prop("disabled", false);
-					addNewPhysicalNumberButtonSpinner.addClass("d-none");
+					AlertManager.createAlert({
+						type: "success",
+						message: `Successfully ${ManagePhysicalNumberType === "new" ? "added" : "updated"} user physical sim number.`,
+						timeout: 6000,
+					});
 
 					IsSavingPhysicalNumber = false;
+
+					addNewCustomSimNumberModal.hide();
 				},
 				(errorResult) => {
 					AlertManager.createAlert({
