@@ -403,6 +403,21 @@ function InitNumbersTab() {
 			);
 		});
 
+		physicalSimNumbersTable.on("click", 'button[button-type="edit-physical-number"]', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const currentElement = $(event.currentTarget);
+
+			const numberId = currentElement.attr("number-id");
+			const numberData = PhysicalSimNumbersList.find((number) => number.id === numberId);
+
+			CurrentManagePhysicalNumberData = numberData;
+			ManagePhysicalNumberType = "edit";
+
+			addNewCustomSimNumberModal.show();
+		});
+
 		/** Init **/
 
 		// Physical Numbers
