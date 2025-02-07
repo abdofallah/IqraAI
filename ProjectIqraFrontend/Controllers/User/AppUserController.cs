@@ -13,6 +13,8 @@ using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using PhoneNumbers;
+using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
@@ -22,6 +24,8 @@ namespace ProjectIqraFrontend.Controllers.User
         private readonly BusinessManager _businessManager;
         private readonly NumberManager _numberManager;
         private readonly RegionManager _regionManager;
+
+        private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
         public AppUserController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager, RegionManager regionManager)
         {
@@ -766,40 +770,92 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            if (!formData.TryGetValue("numberCountryCode", out StringValues numberCountryCodeValue))
+            // Number Changes Data
+            if (!formData.TryGetValue("changes", out var changesJsonString))
             {
                 result.Code = "AddUserNumber:7";
-                result.Message = "Missing number country code";
+                result.Message = "Changes not found in form data.";
                 return result;
             }
-            string? numberCountryCode = numberCountryCodeValue.ToString();
-            if (string.IsNullOrWhiteSpace(numberCountryCode))
+            JsonDocument? changes;
+            try
+            {
+                changes = JsonDocument.Parse(changesJsonString);
+            }
+            catch
             {
                 result.Code = "AddUserNumber:8";
-                result.Message = "Invalid number country code";
+                result.Message = "Unable to parse changes json string.";
                 return result;
             }
 
-            if (!formData.TryGetValue("number", out StringValues phoneNumberValue))
+            // Get country code
+            if (!changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement))
             {
                 result.Code = "AddUserNumber:9";
-                result.Message = "Missing phone number";
+                result.Message = "Country code not found in changes.";
                 return result;
             }
-            string? phoneNumber = phoneNumberValue.ToString();
-            if (string.IsNullOrWhiteSpace(phoneNumber))
+            string? countryCode = countryCodeElement.GetString();
+            if (string.IsNullOrWhiteSpace(countryCode))
             {
                 result.Code = "AddUserNumber:10";
-                result.Message = "Invalid phone number";
+                result.Message = "Country code cannot be empty.";
                 return result;
             }
+
+            // Get number
+            if (!changes.RootElement.TryGetProperty("number", out var numberElement))
+            {
+                result.Code = "AddUserNumber:11";
+                result.Message = "Number not found in changes.";
+                return result;
+            }
+            string? number = numberElement.GetString();
+            if (string.IsNullOrWhiteSpace(number))
+            {
+                result.Code = "AddUserNumber:12";
+                result.Message = "Number cannot be empty.";
+                return result;
+            }
+
+            // Validate Number based on number and country code
+            PhoneNumber parsedPhoneNumber = phoneNumberUtil.Parse(number, countryCode);
+            if (!phoneNumberUtil.IsValidNumber(parsedPhoneNumber))
+            {
+                result.Code = "AddUserNumber:13";
+                result.Message = "Invalid number.";
+                return result;
+            }
+
+            // Provider Type
+            NumberProviderEnum provider = NumberProviderEnum.Unknown;
+            if (!changes.RootElement.TryGetProperty("provider", out var providerElement))
+            {
+                result.Code = "AddUserNumber:14";
+                result.Message = "Provider not found in changes.";
+                return result;
+            }
+            if (!providerElement.TryGetInt32(out var providerInt))
+            {
+                result.Code = "AddUserNumber:15";
+                result.Message = "Invalid provider type.";
+                return result;
+            }
+            if (!Enum.IsDefined(typeof(NumberProviderEnum), providerInt))
+            {
+                result.Code = "AddUserNumber:16";
+                result.Message = "Invalid provider type.";
+                return result;
+            }
+            provider = (NumberProviderEnum)providerInt;
 
             NumberData? exisitingNumberData = null;
             if (postType == "new")
             {
                 if (user.Permission.Number.AddNumberDisabledAt != null)
                 {
-                    result.Code = "AddUserNumber:11";
+                    result.Code = "AddUserNumber:17";
                     result.Message = "User does not have permission to add numbers";
 
                     if (!string.IsNullOrEmpty(user.Permission.Number.AddNumberDisableReason))
@@ -810,10 +866,10 @@ namespace ProjectIqraFrontend.Controllers.User
                     return result;
                 }
 
-                bool numberExists = await _numberManager.CheckUserNumberExistsByNumber(numberCountryCode, phoneNumber, userEmail);
+                bool numberExists = await _numberManager.CheckUserNumberExistsByNumber(countryCode, number, userEmail);
                 if (numberExists)
                 {
-                    result.Code = "AddUserNumber:12";
+                    result.Code = "AddUserNumber:18";
                     result.Message = "Number already exists for user with same country code and number";
                     return result;
                 }
@@ -822,7 +878,7 @@ namespace ProjectIqraFrontend.Controllers.User
             {
                 if (user.Permission.Number.EditNumberDisabledAt != null)
                 {
-                    result.Code = "AddUserNumber:13";
+                    result.Code = "AddUserNumber:19";
                     result.Message = "User does not have permission to edit numbers";
 
                     if (!string.IsNullOrEmpty(user.Permission.Number.EditNumberDisableReason))
@@ -835,7 +891,7 @@ namespace ProjectIqraFrontend.Controllers.User
 
                 if (!formData.TryGetValue("numberId", out StringValues numberIdValue))
                 {
-                    result.Code = "AddUserNumber:14";
+                    result.Code = "AddUserNumber:20";
                     result.Message = "Missing number id";
                     return result;
                 }
@@ -843,7 +899,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 string? exisitingNumberId = numberIdValue.ToString();
                 if (string.IsNullOrWhiteSpace(exisitingNumberId))
                 {
-                    result.Code = "AddUserNumber:15";
+                    result.Code = "AddUserNumber:21";
                     result.Message = "Invalid number id";
                     return result;
                 }
@@ -851,21 +907,24 @@ namespace ProjectIqraFrontend.Controllers.User
                 exisitingNumberData = await _numberManager.GetUserNumberById(exisitingNumberId, userEmail);
                 if (exisitingNumberData == null)
                 {
-                    result.Code = "AddUserNumber:16";
+                    result.Code = "AddUserNumber:22";
                     result.Message = "Number not found";
                     return result;
                 }
 
-                if (exisitingNumberData.CountryCode != numberCountryCode || exisitingNumberData.Number != phoneNumber)
+                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider)
                 {
-                    result.Code = "AddUserNumber:17";
-                    result.Message = "You are not allowed to edit a number's country code or number";
+                    result.Code = "AddUserNumber:23";
+                    result.Message = "You are not allowed to edit a number's country code or number or provider";
                     return result;
                 }
             }
 
             var saveResult = await _numberManager.AddOrUpdateUserNumber(
-                formData,
+                changes,
+                countryCode,
+                number,
+                provider,
                 postType,
                 exisitingNumberData,
                 userEmail,

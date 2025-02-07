@@ -151,9 +151,9 @@ namespace IqraInfrastructure.Repositories.Business
             return business.Languages;
         }
 
-        public async Task<bool> CheckBusinessExists(long businessId)
+        public async Task<bool> CheckBusinessExists(long businessId, string userEmail)
         {
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
+            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId) & Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, userEmail);
             var business = await _businessCollection.Find(filter).FirstOrDefaultAsync();
             return business != null;
         }

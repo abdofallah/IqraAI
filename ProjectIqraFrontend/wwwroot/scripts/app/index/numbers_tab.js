@@ -355,9 +355,6 @@ function InitNumbersTab() {
 
 			if (ManagePhysicalNumberType === "edit") {
 				formData.append("numberId", CurrentManagePhysicalNumberData.id);
-			} else {
-				formData.append("numberCountryCode", changes.changes.countryCode);
-				formData.append("number", changes.changes.number);
 			}
 
 			AddNewUserNumberToAPI(

@@ -270,9 +270,9 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        public async Task<bool> CheckUserBusinessExists(long businessId)
+        public async Task<bool> CheckUserBusinessExists(long businessId, string userEmail)
         {
-            var result = await _businessRepository.CheckBusinessExists(businessId);
+            var result = await _businessRepository.CheckBusinessExists(businessId, userEmail);
             return result;
         }
 
