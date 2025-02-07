@@ -59,5 +59,10 @@ namespace IqraInfrastructure.Repositories.App
             var result = await _regionCollection.UpdateOneAsync(filterDefinition, updateDefinition);
             return result.ModifiedCount > 0;
         }
+
+        public async Task<RegionData?> GetRegionById(string regionId)
+        {
+            return await _regionCollection.Find(x => x.Id == regionId).FirstOrDefaultAsync();
+        }
     }
 }

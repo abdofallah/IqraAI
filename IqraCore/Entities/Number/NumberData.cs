@@ -7,6 +7,19 @@ namespace IqraCore.Entities.Number
     [BsonKnownTypes(typeof(NumberPhysicalData), typeof(NumberTwilioData), typeof(NumberVonageData), typeof(NumberTelnyxData))]
     public class NumberData
     {
+        public NumberData() { }
+        public NumberData(NumberData data)
+        {
+            this.Id = data.Id;
+            this.CountryCode = data.CountryCode;
+            this.Number = data.Number;
+            this.AssignedToBusinessId = data.AssignedToBusinessId;
+            this.RegionId = data.RegionId;
+            this.Provider = data.Provider;
+            this.MasterUserEmail = data.MasterUserEmail;
+            this.Permissions = data.Permissions;
+        }
+
         [BsonId]
         public string Id { get; set; } = string.Empty;
 

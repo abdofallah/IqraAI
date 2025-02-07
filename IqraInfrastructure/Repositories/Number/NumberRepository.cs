@@ -17,7 +17,7 @@ namespace IqraInfrastructure.Repositories.Number
             _numberCollection = database.GetCollection<NumberData>(CollectionName);
         }
 
-        public async Task AddNumberAsync(NumberData numberData)
+        public async Task InsertNumberAsync(NumberData numberData)
         {
             await _numberCollection.InsertOneAsync(numberData);
         }
@@ -65,6 +65,25 @@ namespace IqraInfrastructure.Repositories.Number
         public async Task<bool> CheckUserNumberExists(string exisitingNumberId, string userEmail)
         {
             var filter = Builders<NumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            return await _numberCollection.Find(filter).AnyAsync();
+        }
+
+        public async Task<NumberData?> GetUserNumberById(string exisitingNumberId, string userEmail)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            return await _numberCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> ReplaceNumberAsync(NumberData newNumberData)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, newNumberData.Id);
+            var result = await _numberCollection.ReplaceOneAsync(filter, newNumberData);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> CheckUserNumberExistsByNumber(string numberCountryCode, string phoneNumber, string userEmail)
+        {
+            var filter = Builders<NumberData>.Filter.Eq(x => x.CountryCode, numberCountryCode) & Builders<NumberData>.Filter.Eq(x => x.Number, phoneNumber) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
             return await _numberCollection.Find(filter).AnyAsync();
         }
     }

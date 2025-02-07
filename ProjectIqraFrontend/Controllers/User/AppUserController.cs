@@ -7,6 +7,7 @@ using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
 using IqraCore.Models.AppUser;
 using IqraCore.Utilities;
+using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
@@ -20,12 +21,14 @@ namespace ProjectIqraFrontend.Controllers.User
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly NumberManager _numberManager;
+        private readonly RegionManager _regionManager;
 
-        public AppUserController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager)
+        public AppUserController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager, RegionManager regionManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
             _numberManager = numberManager;
+            _regionManager = regionManager;
         }
 
         /**
@@ -739,7 +742,7 @@ namespace ProjectIqraFrontend.Controllers.User
                 result.Code = "AddUserNumber:4";
                 result.Message = "User does not have permission to manage numbers";
 
-                if (user.Permission.Number.DisableNumbersAt != null && !string.IsNullOrEmpty(user.Permission.Number.DisableNumbersReason))
+                if (!string.IsNullOrEmpty(user.Permission.Number.DisableNumbersReason))
                 {
                     result.Message += ": " + user.Permission.Number.DisableNumbersReason;
                 }
@@ -763,19 +766,55 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            string? exisitingNumberId = null;
+            if (!formData.TryGetValue("numberCountryCode", out StringValues numberCountryCodeValue))
+            {
+                result.Code = "AddUserNumber:7";
+                result.Message = "Missing number country code";
+                return result;
+            }
+            string? numberCountryCode = numberCountryCodeValue.ToString();
+            if (string.IsNullOrWhiteSpace(numberCountryCode))
+            {
+                result.Code = "AddUserNumber:8";
+                result.Message = "Invalid number country code";
+                return result;
+            }
+
+            if (!formData.TryGetValue("number", out StringValues phoneNumberValue))
+            {
+                result.Code = "AddUserNumber:9";
+                result.Message = "Missing phone number";
+                return result;
+            }
+            string? phoneNumber = phoneNumberValue.ToString();
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                result.Code = "AddUserNumber:10";
+                result.Message = "Invalid phone number";
+                return result;
+            }
+
+            NumberData? exisitingNumberData = null;
             if (postType == "new")
             {
                 if (user.Permission.Number.AddNumberDisabledAt != null)
                 {
-                    result.Code = "AddUserNumber:7";
+                    result.Code = "AddUserNumber:11";
                     result.Message = "User does not have permission to add numbers";
 
-                    if (user.Permission.Number.AddNumberDisabledAt != null && !string.IsNullOrEmpty(user.Permission.Number.AddNumberDisableReason))
+                    if (!string.IsNullOrEmpty(user.Permission.Number.AddNumberDisableReason))
                     {
                         result.Message += ": " + user.Permission.Number.AddNumberDisableReason;
                     }
 
+                    return result;
+                }
+
+                bool numberExists = await _numberManager.CheckUserNumberExistsByNumber(numberCountryCode, phoneNumber, userEmail);
+                if (numberExists)
+                {
+                    result.Code = "AddUserNumber:12";
+                    result.Message = "Number already exists for user with same country code and number";
                     return result;
                 }
             }
@@ -783,10 +822,10 @@ namespace ProjectIqraFrontend.Controllers.User
             {
                 if (user.Permission.Number.EditNumberDisabledAt != null)
                 {
-                    result.Code = "AddUserNumber:8";
+                    result.Code = "AddUserNumber:13";
                     result.Message = "User does not have permission to edit numbers";
 
-                    if (user.Permission.Number.EditNumberDisabledAt != null && !string.IsNullOrEmpty(user.Permission.Number.EditNumberDisableReason))
+                    if (!string.IsNullOrEmpty(user.Permission.Number.EditNumberDisableReason))
                     {
                         result.Message += ": " + user.Permission.Number.EditNumberDisableReason;
                     }
@@ -796,29 +835,51 @@ namespace ProjectIqraFrontend.Controllers.User
 
                 if (!formData.TryGetValue("numberId", out StringValues numberIdValue))
                 {
-                    result.Code = "AddUserNumber:9";
+                    result.Code = "AddUserNumber:14";
                     result.Message = "Missing number id";
                     return result;
                 }
 
-                exisitingNumberId = numberIdValue.ToString();
+                string? exisitingNumberId = numberIdValue.ToString();
                 if (string.IsNullOrWhiteSpace(exisitingNumberId))
                 {
-                    result.Code = "AddUserNumber:10";
+                    result.Code = "AddUserNumber:15";
                     result.Message = "Invalid number id";
                     return result;
                 }
 
-                bool numberExists = await _numberManager.CheckUserNumberExists(exisitingNumberId, userEmail);
-                if (!numberExists)
+                exisitingNumberData = await _numberManager.GetUserNumberById(exisitingNumberId, userEmail);
+                if (exisitingNumberData == null)
                 {
-                    result.Code = "AddUserNumber:11";
+                    result.Code = "AddUserNumber:16";
                     result.Message = "Number not found";
+                    return result;
+                }
+
+                if (exisitingNumberData.CountryCode != numberCountryCode || exisitingNumberData.Number != phoneNumber)
+                {
+                    result.Code = "AddUserNumber:17";
+                    result.Message = "You are not allowed to edit a number's country code or number";
                     return result;
                 }
             }
 
-            // todo addorupdate number manager function
+            var saveResult = await _numberManager.AddOrUpdateUserNumber(
+                formData,
+                postType,
+                exisitingNumberData,
+                userEmail,
+                _userManager,
+                _businessManager,
+                _regionManager
+            );
+
+            if (!saveResult.Success)
+            {
+                result.Code = "AddUserNumber:" + saveResult.Code;
+                result.Message = saveResult.Message;
+                return result;
+            }
 
             return result;
         }

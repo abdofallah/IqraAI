@@ -118,5 +118,10 @@ namespace IqraInfrastructure.Services.App
 
             return await _regionRepository.UpdateRegion(filterDefinition, updateDefinition);
         }
+
+        public async Task<RegionData?> GetRegionById(string regionId)
+        {
+            return await _regionRepository.GetRegionById(regionId);
+        }
     }
 }
