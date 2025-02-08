@@ -1,14 +1,10 @@
 var CurrentManageUserBusinesses = [];
-var CurrentManageUserNumbers = [];
 
 var CurrentManageAddUserBusinessesSearched = [];
-var CurrentManageAddUserNumbersSearched = [];
 
 var CurrentManageUserEmail = "";
 var CurrentManageUserAddBusiness = [];
 var CurrentManageUserDeletedBusiness = [];
-var CurrentManageUserAddNumbers = [];
-var CurrentManageUserDeletedNumbers = [];
 
 var UsersTabListTabPage = 0;
 var UsersTabListTabPageSize = 30;
@@ -44,7 +40,6 @@ const searchAddUserBusinessModalButton = usersTab.find("#searchAddUserBusinessMo
 const addUserBusinessModalSaveButton = usersTab.find("#addUserBusinessModalSaveButton");
 
 const userBusinessesListTable = usersTab.find("#userBusinessesListTable");
-const userNumbersListTable = usersTab.find("#userNumbersListTable");
 
 const usersManageDisableCompleteBusinessInput = usersTab.find("#usersManageDisableCompleteBusinessInput");
 const usersManageDisableCompleteBusinessReasonInput = usersTab.find("#usersManageDisableCompleteBusinessReasonInput");
@@ -70,7 +65,6 @@ function CreateUsersListTableElement(userData) {
                 <td>${userData.email}</td>
                 <td>${userData.firstName} ${userData.lastName}</td>
                 <td>${userData.businesses.length}</td>
-                <td>${userData.numbers.length}</td>
                 <td>
                     <button class="btn btn-info btn-sm" user-email="${userData.email}" button-type="edit-user">
                         <i class="fa-regular fa-eye"></i>
@@ -88,7 +82,6 @@ function CreateUserManageBusinessesTableElement(businessData, isNew = false) {
 	let element = $(`<tr>
                 <td>${businessData.id}</td>
                 <td>${businessData.name}</td>
-                <td>${businessData.numberIds.length}</td>
                 <td>${businessData.subUsers.length}</td>
                 <td>
                     <button class="btn btn-info btn-sm" business-id="${businessData.id}" button-type="edit-business" ${isNew ? "disabled" : ""}>
@@ -103,35 +96,13 @@ function CreateUserManageBusinessesTableElement(businessData, isNew = false) {
 	return element;
 }
 
-function CreateUserManageNumbersTableElement(numberData) {
-	let countryData = CountriesList[numberData.countryCode.toUpperCase()];
-
-	let element = $(`<tr>
-                <td>${numberData.id}</td>
-                <td>${countryData["Alpha-2 code"]}</td>
-                <td>${numberData.number}</td>
-                <td>${numberData.provider.name}</td>
-                <td>${numberData.assignedToBusinessId}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-number">
-                        <i class="fa-regular fa-eye"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm">
-                        <i class="fa-regular fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`);
-
-	return element;
-}
-
 function ResetAndEmptyUsersManageTabData() {
 	usersManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
 	usersManageTab.find("input[type=checkbox]").prop("checked", false).change();
 	usersManageTab.find("table tbody").empty();
 }
 
-function FillUserManageTab(userData, userBusinessesData, userNumbersData) {
+function FillUserManageTab(userData, userBusinessesData) {
 	ResetAndEmptyUsersManageTabData();
 
 	// General
@@ -162,17 +133,6 @@ function FillUserManageTab(userData, userBusinessesData, userNumbersData) {
 		});
 	} else {
 		userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
-	}
-
-	// Numbers
-	userNumbersListTable.find("tbody").empty();
-	if (userNumbersData.length > 0) {
-		userNumbersData.forEach((numberData) => {
-			console.log(numberData);
-			userNumbersListTable.find("tbody").append(CreateUserManageNumbersTableElement(numberData));
-		});
-	} else {
-		userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
 	}
 }
 
@@ -257,28 +217,11 @@ $(document).ready(() => {
 			(userBusinessesData) => {
 				CurrentManageUserBusinesses = userBusinessesData;
 
-				FetchUserNumbersFromAPI(
-					userEmail,
-					currentUserData.numbers,
-					(userNumbersData) => {
-						CurrentManageUserNumbers = userNumbersData;
+				FillUserManageTab(currentUserData, CurrentManageUserBusinesses);
+				currentManageUserName.text(userEmail);
 
-						FillUserManageTab(currentUserData, CurrentManageUserBusinesses, CurrentManageUserNumbers);
-						currentManageUserName.text(userEmail);
-
-						$("#users-manage-general-tab").click();
-						ShowUserManageTab();
-					},
-					(userNumbersError) => {
-						AlertManager.createAlert({
-							type: "danger",
-							message: "Error occured while fetching user numbers. Check browser console for logs.",
-							timeout: 5000,
-						});
-
-						console.log("Error occured while fetching user numbers: ", userNumbersError);
-					},
-				);
+				$("#users-manage-general-tab").click();
+				ShowUserManageTab();
 			},
 			(userBusinessesError) => {
 				AlertManager.createAlert({
@@ -300,7 +243,6 @@ $(document).ready(() => {
 		CurrentManageUserEmail = "new";
 
 		userBusinessesListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No businesses</td></tr>');
-		userNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="6">No numbers</td></tr>');
 
 		ShowUserManageTab();
 	});

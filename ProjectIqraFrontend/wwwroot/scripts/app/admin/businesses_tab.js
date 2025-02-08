@@ -1,5 +1,3 @@
-var CurrentManageBusinessNumbers = [];
-
 var BusinessesTabListTabPage = 0;
 var BusinessesTabListTabPageSize = 30;
 
@@ -177,7 +175,6 @@ function CreateBusinessesListTableElement(businessData) {
 		`<tr tr-type="business">
                     <td>${businessData.id}</td>
                     <td>${businessData.name}</td>
-                    <td>${businessData.numberIds.length}</td>
                     <td>${businessData.masterUserEmail}</td>
                     <td>${businessData.subUsers.length}</td>
                     <td>
@@ -194,20 +191,15 @@ function CreateBusinessesListTableElement(businessData) {
 	return element;
 }
 
-function FillBusinessManageTab(businessData, businessNumbersArray) {
+function FillBusinessManageTab(businessData) {
 	// General Information
 	manageBusinessNameInput.val(businessData.name);
 	manageBusinessMasterUserInput.val(businessData.masterUserEmail);
 
 	// Numbers List
 	businessManageNumberListTable.find("tbody").empty();
-	if (businessNumbersArray.length > 0) {
-		businessNumbersArray.forEach((numberData) => {
-			businessManageNumberListTable.find("tbody").append(CreateBusinessManageNumberListTableElement(numberData));
-		});
-	} else {
-		businessManageNumberListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
-	}
+	// TODO NUMBERS
+	businessManageNumberListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="5">No numbers</td></tr>');
 
 	// Permissions
 	const permissions = businessData.permission;
@@ -609,25 +601,8 @@ $(document).ready(() => {
 
 		ResetAndEmptyBusinessManageTabData();
 
-		FetchBusinessNumbersFromAPI(
-			currentBusinessData.numberIds,
-			(businessNumbers) => {
-				CurrentManageBusinessNumbers = businessNumbers;
-
-				FillBusinessManageTab(currentBusinessData, CurrentManageBusinessNumbers);
-
-				ShowBusinessManageTab();
-			},
-			(businessNumbersError) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user numbers. Check browser console for logs.",
-					timeout: 5000,
-				});
-
-				console.log("Error occured while fetching user numbers: ", businessNumbersError);
-			},
-		);
+		FillBusinessManageTab(currentBusinessData);
+		ShowBusinessManageTab();
 	});
 
 	AddBusinessPermissionsHelper();

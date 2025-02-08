@@ -44,10 +44,6 @@
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a class="nav_link" for="phone-numbers-tab">
-                        <i class='fa-regular fa-hashtag nav_icon'></i>
-                        <span class="nav_name">Numbers</span>
-                    </a>
                     <a class="nav_link" for="region-tab">
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
@@ -137,7 +133,6 @@
                                         <th scope="col">Email</th>
                                         <th scope="col">Name</th>
                                         <th scope="col">Businesses</th>
-                                        <th scope="col">Numbers</th>
                                         <th scope="col">Actions</th>
                                     </tr>
                                 </thead>
@@ -162,9 +157,6 @@
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link" id="users-manage-businesses-tab" data-bs-toggle="pill" data-bs-target="#users-manage-businesses" type="button" role="tab" aria-controls="users-manage-businesses" aria-selected="true">Businesses</button>
-                                    </li>
-                                    <li class="nav-item me-2" role="presentation">
-                                        <button class="nav-link" id="users-manage-numbers-tab" data-bs-toggle="pill" data-bs-target="#users-manage-numbers" type="button" role="tab" aria-controls="users-manage-numbers" aria-selected="true">Numbers</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link disabled" id="users-manage-analytics-tab" data-bs-toggle="pill" data-bs-target="#users-manage-analytics" type="button" role="tab" aria-controls="users-manage-analytics" aria-selected="true">Analytics</button>
@@ -278,7 +270,6 @@
                                             <tr>
                                                 <th scope="col">#</th>
                                                 <th scope="col">Name</th>
-                                                <th scope="col">Numbers</th>
                                                 <th scope="col">Users</th>
                                                 <th scope="col">Actions</th>
                                             </tr>
@@ -327,30 +318,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <!-- Numbers -->
-                                <div class="tab-pane fade w-100" id="users-manage-numbers" role="tabpanel" aria-labelledby="users-manage-numbers-tab" tabindex="0">
-                                    <div class="input-group w-100 mb-4">
-                                        <input type="text" class="form-control" placeholder="Number" aria-label="Number" aria-describedby="searchUserNumberButton">
-                                        <button class="input-group-button btn btn-primary" id="searchUserNumberButton">
-                                            <i class='fa-regular fa-magnifying-glass'></i>
-                                        </button>
-                                    </div>
-                                    <table id="userNumbersListTable" class="table w-100">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">#</th>
-                                                <th scope="col">Country</th>
-                                                <th scope="col">Number</th>
-                                                <th scope="col">Provider</th>
-                                                <th scope="col">Assigned</th>
-                                                <th scope="col">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Dynamically Generated -->
-                                        </tbody>
-                                    </table>
                                 </div>
                                 <!-- Analytics -->
                                 <div class="tab-pane fade w-100" id="users-manage-analytics" role="tabpanel" aria-labelledby="users-manage-analytics-tab" tabindex="0">
@@ -415,7 +382,6 @@
                                     <tr>
                                         <th scope="col">#</th>
                                         <th scope="col">Name</th>
-                                        <th scope="col">Numbers</th>
                                         <th scope="col">Master Email</th>
                                         <th scope="col">Users</th>
                                         <th scope="col">Actions</th>
@@ -890,305 +856,6 @@
                                 <div class="tab-pane fade w-100" id="businesses-manage-analytics" role="tabpanel" aria-labelledby="businesses-manage-analytics-tab" tabindex="0">
                                     analytics
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Phone Numbers Container -->
-        <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
-            <h3 class="fw-bold tab-title"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
-            <div class="inner-container">
-                <!-- Inner Tabs -->
-                <div class="mb-3">
-                    <ul class="nav w-100 fade show" id="phone-numbers-inner-tab" role="tablist">
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link disabled" id="phone-numbers-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-analytics" type="button" role="tab" aria-controls="phone-numbers-analytics" aria-selected="true">Analytics</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="phone-numbers-physical-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical" type="button" role="tab" aria-controls="phone-numbers-physical" aria-selected="false">Physical</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio" type="button" role="tab" aria-controls="phone-numbers-twilio" aria-selected="false">Twilio</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage" type="button" role="tab" aria-controls="phone-numbers-vonage" aria-selected="false">Vonage</button>
-                        </li>
-                    </ul>
-                    <ol class="breadcrumb mb-0 fade w-100 d-none" id="phone-numbers-manage-breadcrumb">
-                        <li class="breadcrumb-item">
-                            <a href="#" class="d-none" id="switchBackToPhysicalNumbersListTabFromManageTab">Physical Numbers</a>
-                            <a href="#" class="d-none" id="switchBackToTwilioNumbersListTabFromManageTab">Twilio Numbers</a>
-                            <a href="#" class="d-none" id="switchBackToVonageNumbersListTabFromManageTab">Vonage Numbers</a>
-                        </li>
-                        <li class="breadcrumb-item active" aria-current="page"><span id="currentPhysicalNumberId">Number</span></li>
-                    </ol>
-                </div>
-                <!-- Tabs Content -->
-                <div class="tab-content fade w-100 show" id="phone-numbers-tab-content">
-                    <!-- Analytics -->
-                    <div class="tab-pane fade w-100" id="phone-numbers-analytics" role="tabpanel" aria-labelledby="phone-numbers-analytics-tab" tabindex="0">
-                        analytics
-                    </div>
-                    <!-- Physical -->
-                    <div class="tab-pane fade w-100 show active" id="phone-numbers-physical" role="tabpanel" aria-labelledby="phone-numbers-physical-tab" tabindex="0">
-                        <!-- Physical Inner Tabs -->
-                        <div class="mb-3">
-                            <ul class="nav w-100 fade show" id="phone-numbers-physical-inner-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-physical-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-analytics" type="button" role="tab" aria-controls="phone-numbers-physical-analytics" aria-selected="true">Analytics</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="phone-numbers-physical-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-list" type="button" role="tab" aria-controls="phone-numbers-physical-list" aria-selected="false">List</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-physical-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-physical-settings" type="button" role="tab" aria-controls="phone-numbers-physical-settings" aria-selected="false">Settings</button>
-                                </li>
-                            </ul>
-                        </div>
-                        <!-- Tabs Content -->
-                        <div class="tab-content" id="phone-numbers-physical-tab-content">
-                            <!-- Analytics -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-physical-analytics" role="tabpanel" aria-labelledby="phone-numbers-physical-analytics-tab" tabindex="0">
-                                analytics
-                            </div>
-                            <!-- List -->
-                            <div class="tab-pane fade w-100 show active" id="phone-numbers-physical-list" role="tabpanel" aria-labelledby="phone-numbers-physical-list-tab" tabindex="0">
-                                <div class="input-group w-100 mb-3">
-                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchPhysicalNumberButton" id="searchPhysicalNumberInput">
-                                    <button class="input-group-button btn btn-primary" id="searchPhysicalNumberButton">
-                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                    </button>
-                                </div>
-                                <table id="physicalNumbersListTable" class="table w-100">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">#</th>
-                                            <th scope="col">Country Code</th>
-                                            <th scope="col">Number</th>
-                                            <th scope="col">Master User</th>
-                                            <th scope="col">Assigned Business</th>
-                                            <th scope="col">Host</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Dynamically Generated -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Settings -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-physical-settings" role="tabpanel" aria-labelledby="phone-numbers-physical-settings-tab" tabindex="0">
-                                settings
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Twilio -->
-                    <div class="tab-pane fade w-100" id="phone-numbers-twilio" role="tabpanel" aria-labelledby="phone-numbers-twilio-tab" tabindex="0">
-                        <!-- Twilio Inner Tabs -->
-                        <div class="mb-3">
-                            <ul class="nav w-100 fade show" id="phone-numbers-twilio-inner-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-twilio-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-analytics" type="button" role="tab" aria-controls="phone-numbers-twilio-analytics" aria-selected="true">Analytics</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="phone-numbers-twilio-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-list" type="button" role="tab" aria-controls="phone-numbers-twilio-list" aria-selected="false">List</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-twilio-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-twilio-settings" type="button" role="tab" aria-controls="phone-numbers-twilio-settings" aria-selected="false">Settings</button>
-                                </li>
-                            </ul>
-                        </div>
-                        <!-- Tabs Content -->
-                        <div class="tab-content" id="phone-numbers-twilio-tab-content">
-                            <!-- Analytics -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-twilio-analytics" role="tabpanel" aria-labelledby="phone-numbers-twilio-analytics-tab" tabindex="0">
-                                analytics
-                            </div>
-                            <!-- List -->
-                            <div class="tab-pane fade w-100 show active" id="phone-numbers-twilio-list" role="tabpanel" aria-labelledby="phone-numbers-twilio-list-tab" tabindex="0">
-                                <div class="input-group w-100 mb-3">
-                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchTwilioNumberButton" id="searchTwilioNumberInput">
-                                    <button class="input-group-button btn btn-primary" id="searchTwilioNumberButton">
-                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                    </button>
-                                </div>
-                                <table id="twilioNumbersListTable" class="table w-100">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">#</th>
-                                            <th scope="col">Country Code</th>
-                                            <th scope="col">Number</th>
-                                            <th scope="col">Master User</th>
-                                            <th scope="col">Assigned Business</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Dynamically Generated -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Settings -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-twilio-settings" role="tabpanel" aria-labelledby="phone-numbers-twilio-settings-tab" tabindex="0">
-                                settings
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Vonage -->
-                    <div class="tab-pane fade w-100" id="phone-numbers-vonage" role="tabpanel" aria-labelledby="phone-numbers-vonage-tab" tabindex="0">
-                        <!-- Vonage Inner Tabs -->
-                        <div class="mb-3">
-                            <ul class="nav w-100 fade show" id="phone-numbers-vonage-inner-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-vonage-analytics-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-analytics" type="button" role="tab" aria-controls="phone-numbers-vonage-analytics" aria-selected="true">Analytics</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="phone-numbers-vonage-list-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-list" type="button" role="tab" aria-controls="phone-numbers-vonage-list" aria-selected="false">List</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link disabled" id="phone-numbers-vonage-settings-tab" data-bs-toggle="pill" data-bs-target="#phone-numbers-vonage-settings" type="button" role="tab" aria-controls="phone-numbers-vonage-settings" aria-selected="false">Settings</button>
-                                </li>
-                            </ul>
-                        </div>
-                        <!-- Tabs Content -->
-                        <div class="tab-content" id="phone-numbers-vonage-tab-content">
-                            <!-- Analytics -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-vonage-analytics" role="tabpanel" aria-labelledby="phone-numbers-vonage-analytics-tab" tabindex="0">
-                                analytics
-                            </div>
-                            <!-- List -->
-                            <div class="tab-pane fade w-100 show active" id="phone-numbers-vonage-list" role="tabpanel" aria-labelledby="phone-numbers-vonage-list-tab" tabindex="0">
-                                <div class="input-group w-100 mb-3">
-                                    <input type="text" class="form-control" placeholder="Number or Id" aria-label="Number or Id" aria-describedby="searchVonageNumberButton" id="searchVonageNumberInput">
-                                    <button class="input-group-button btn btn-primary" id="searchVonageNumberButton">
-                                        <i class='fa-regular fa-magnifying-glass'></i>
-                                    </button>
-                                </div>
-                                <table id="vonageNumbersListTable" class="table w-100">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">#</th>
-                                            <th scope="col">Country Code</th>
-                                            <th scope="col">Number</th>
-                                            <th scope="col">Master User</th>
-                                            <th scope="col">Assigned Business</th>
-                                            <th scope="col">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Dynamically Generated -->
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Settings -->
-                            <div class="tab-pane fade w-100" id="phone-numbers-vonage-settings" role="tabpanel" aria-labelledby="phone-numbers-vonage-settings-tab" tabindex="0">
-                                settings
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Manage Tab -->
-                <div class="fade w-100 d-none" id="phoneNumbersManageTab">
-                    <!-- Manage Inner Tab -->
-                    <div class="mb-3 d-flex flex-row align-items-center justify-content-between">
-                        <ul class="nav" id="phoneNumbersManageInnerTab" role="tablist">
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link active" id="phoneNumbersManageGeneralTab" data-bs-toggle="pill" data-bs-target="#phoneNumbersManageGeneral" type="button" role="tab" aria-controls="phoneNumbersManageGeneral" aria-selected="true">General</button>
-                            </li>
-                            <li class="nav-item me-2" role="presentation">
-                                <button class="nav-link" id="phoneNumbersManagePermissionsTab" data-bs-toggle="pill" data-bs-target="#phoneNumbersManagePermissions" type="button" role="tab" aria-controls="phoneNumbersManagePermissions" aria-selected="false">Permissions</button>
-                            </li>
-                        </ul>
-                        <button class="btn btn-sm btn-primary btn-ic-span-align" id="phoneNumbersManageSaveButton">
-                            <i class='fa-regular fa-floppy-disk'></i>
-                            <span> Save</span>
-                        </button>
-                    </div>
-                    <!-- Manage Tab Content -->
-                    <div class="tab-content" id="phoneNumbersManageTabContent">
-                        <!-- General -->
-                        <div class="tab-pane fade w-100 show active" id="phoneNumbersManageGeneral" role="tabpanel" aria-labelledby="phoneNumbersManageGeneralTab" tabindex="0">
-                            <div class="mb-3">
-                                <label for="phoneNumbersManageIdInput" class="form-label">Id</label>
-                                <input type="text" class="form-control" id="phoneNumbersManageIdInput" placeholder="Id" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phoneNumbersManageMasterUserEmailInput" class="form-label">Master User Email</label>
-                                <input type="email" class="form-control" id="phoneNumbersManageMasterUserEmailInput" placeholder="Master User Email" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phoneNumbersManageCountryInput" class="form-label">Country</label>
-                                <input type="text" class="form-control" id="phoneNumbersManageCountryInput" placeholder="Country" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phoneNumbersManageNumberInput" class="form-label">Number</label>
-                                <input type="text" class="form-control" id="phoneNumbersManageNumberInput" placeholder="Number" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label for="phoneNumbersManageAssignedToBusinessInput" class="form-label">Assigned To Business</label>
-                                <input type="text" class="form-control" id="phoneNumbersManageAssignedToBusinessInput" placeholder="Assigned To Business" disabled>
-                            </div>
-                            <div>
-                                <label for="phoneNumbersManageHostTypeInput" class="form-label">Host Type</label>
-                                <input type="text" class="form-control" id="phoneNumbersManageHostTypeInput" placeholder="Host Type" disabled>
-                            </div>
-                            <div class="mt-3 d-none" id="phoneNumbersManageHostIqraContainer">
-                                <div class="mb-2">
-                                    <label for="phoneNumbersManageRegionInput" class="form-label">Region Name</label>
-                                    <input type="text" class="form-control" id="phoneNumbersManageRegionInput" placeholder="Region Name" disabled>
-                                </div>
-                                <div class="">
-                                    <label for="phoneNumbersManageRegionServerInput" class="form-label">Region Server</label>
-                                    <input type="text" class="form-control" id="phoneNumbersManageRegionServerInput" placeholder="Region Server" disabled>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Permissions -->
-                        <div class="tab-pane fade w-100" id="phoneNumbersManagePermissions" role="tabpanel" aria-labelledby="phoneNumbersManagePermissionsTab" tabindex="0">
-                            <div class="">
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableFullInput" check-type="permission-with-reason">
-                                        <label for="phoneNumbersManagePermissionDisableFullInput" class="form-label d-block">Disabled Full</label>
-                                    </div>
-                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableFullReasonInput" placeholder="Disabled Full Reason">
-                                </div>
-
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableEditingInput" check-type="permission-with-reason">
-                                        <label for="phoneNumbersManagePermissionDisableEditingInput" class="form-label d-block">Disabled Editing</label>
-                                    </div>
-                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableEditingReasonInput" placeholder="Disabled Editing Reason">
-                                </div>
-
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableDeletingInput" check-type="permission-with-reason">
-                                        <label for="phoneNumbersManagePermissionDisableDeletingInput" class="form-label d-block">Disabled Deleting</label>
-                                    </div>
-                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableDeletingReasonInput" placeholder="Disabled Deleting Reason">
-                                </div>
-
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableInboundCallingInput" check-type="permission-with-reason">
-                                        <label for="phoneNumbersManagePermissionDisableInboundCallingInput" class="form-label d-block">Disabled Inbound Calling</label>
-                                    </div>
-                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableInboundCallingReasonInput" placeholder="Disabled Inbound Calling Reason">
-                                </div>
-
-                                <div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="phoneNumbersManagePermissionDisableOutboundCallingInput" check-type="permission-with-reason">
-                                        <label for="phoneNumbersManagePermissionDisableOutboundCallingInput" class="form-label d-block">Disabled Outbound Calling</label>
-                                    </div>
-                                    <input type="text" class="form-control d-none" id="phoneNumbersManagePermissionDisableOutboundCallingReasonInput" placeholder="Disabled Outbound Calling Reason">
-                                </div>
-
                             </div>
                         </div>
                     </div>
@@ -2505,29 +2172,6 @@
             });
         }
 
-        function FetchUserNumbersFromAPI(userEmail, numberIds, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/admin/user/numbers',
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    email: userEmail,
-                    numberIds: numberIds
-                },
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
         function FetchBusinessesFromAPI(page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/businesses',
@@ -2573,75 +2217,6 @@
         function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback, errorCallback) {
             $.ajax({
                 url: '/app/admin/business/search',
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    query: query,
-                    page: page,
-                    pageSize: pageSize
-                },
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchBusinessNumbersFromAPI(numberIds, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/admin/business/numbers',
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    numberIds: numberIds
-                },
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchNumbersByProviderFromAPI(provider, page, pageSize, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/admin/numbers/' + provider,
-                type: 'POST',
-                dataType: "json",
-                data: {
-                    page: page,
-                    pageSize: pageSize
-                },
-                success: (response) => {
-                    if (!response.success) {
-                        errorCallback(response);
-                        return;
-                    }
-
-                    successCallback(response.data);
-                },
-                error: (error) => {
-                    errorCallback(error);
-                }
-            });
-        }
-
-        function FetchSearchedNumbersFromAPI(query, page, pageSize, successCallback, errorCallback) {
-            $.ajax({
-                url: '/app/admin/numbers/search',
                 type: 'POST',
                 dataType: "json",
                 data: {
@@ -2993,12 +2568,6 @@
                     &&
                     CurrentRegionsList != null
                     &&
-                    CurrentPhysicalNumbersList != null
-                    &&
-                    CurrentTwilioNumbersList != null
-                    &&
-                    CurrentVonageNumbersList != null
-                    &&
                     CurrentLLMProvidersList != null
                     &&
                     CurrentSTTProvidersList != null
@@ -3045,7 +2614,6 @@
     <!-- Scripts -->
     <script src="~/scripts/app/admin/users_tab.js"></script>
     <script src="~/scripts/app/admin/businesses_tab.js"></script>
-    <script src="~/scripts/app/admin/numbers_tab.js"></script>
     <script src="~/scripts/app/admin/regions_tab.js"></script>
     <script src="~/scripts/app/admin/llm_provider_tab.js"></script>
     <script src="~/scripts/app/admin/stt_provider_tab.js"></script>
