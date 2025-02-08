@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.Helper.Number
+﻿namespace IqraCore.Entities.Helper.Business
 {
-    public enum NumberProviderEnum
+    public enum BusinessNumberProviderEnum
     {
         Unknown = 0,
         Physical = 1,

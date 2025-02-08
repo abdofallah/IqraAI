@@ -35,6 +35,7 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessCacheManager _businessCacheManager;
         private readonly BusinessIntegrationsManager _businessIntegrationsManager;
         private readonly BusinessAgentsManager _businessAgentsManager;
+        private readonly BusinessNumberManager _businessNumberManager;
 
         public BusinessManager(
             BusinessRepository businessRepository,
@@ -63,6 +64,7 @@ namespace IqraInfrastructure.Services.Business
             _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
             _businessIntegrationsManager = new BusinessIntegrationsManager(this, businessAppRepository);
             _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
+            _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository);
         }
 
         /**
@@ -320,6 +322,11 @@ namespace IqraInfrastructure.Services.Business
         public BusinessAgentsManager GetAgentsManager()
         {
             return _businessAgentsManager;
+        }
+
+        public BusinessNumberManager GetNumberManager()
+        {
+            return _businessNumberManager;
         }
     }
 }

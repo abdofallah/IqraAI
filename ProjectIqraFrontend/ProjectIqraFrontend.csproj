@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="libphonenumber-csharp" Version="8.13.54" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
     <ProjectReference Include="..\IqraInfrastructure\IqraInfrastructure.csproj" />
     <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />

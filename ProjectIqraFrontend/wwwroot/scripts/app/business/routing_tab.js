@@ -49,8 +49,9 @@ const editRouteAddMultiLanguageEnabledSelect = routingTab.find("#editRouteAddMul
 const routeMultiLanguagesEnabledList = routingTab.find("#routeMultiLanguagesEnabledList");
 
 // Number Tab
+const editChangeRouteNumberModalElement = $("#editChangeRouteNumberModal");
 let editChangeRouteNumberModal = null;
-const saveChangeRouteNumberButton = $("#editChangeRouteNumberModal #saveChangeRouteNumberButton");
+const saveChangeRouteNumberButton = editChangeRouteNumberModalElement.find("#saveChangeRouteNumberButton");
 
 const routeNumbersList = routingTab.find("#routeNumbersList");
 
@@ -62,9 +63,10 @@ const editRouteNumberSilenceEnd = routingTab.find("#editRouteNumberSilenceEnd");
 const editRouteNumberTotalCallTime = routingTab.find("#editRouteNumberTotalCallTime");
 
 // Agent Tab
+const editChangeRouteAgentModalElement = $("#editChangeRouteAgentModal");
 let editChangeRouteAgentModal = null;
-const routingManagerSelectAgentModalList = $("#editChangeRouteAgentModal #routing-manager-select-agent-modal-list");
-const saveChangeRouteAgentButton = $("#editChangeRouteAgentModal #saveChangeRouteAgentButton");
+const routingManagerSelectAgentModalList = editChangeRouteAgentModalElement.find("#routing-manager-select-agent-modal-list");
+const saveChangeRouteAgentButton = editChangeRouteAgentModalElement.find("#saveChangeRouteAgentButton");
 
 const editSelectedRouteAgentIcon = routingTab.find("#editSelectedRouteAgentIcon");
 const editSelectedRouteAgentName = routingTab.find("#editSelectedRouteAgentName");
@@ -313,8 +315,8 @@ function createRouteNumberModalListElement(numberData) {
 function initRoutingTab() {
 	$(document).ready(() => {
 		/** INIT **/
-		editChangeRouteNumberModal = new bootstrap.Modal($("#editChangeRouteNumberModal"));
-		editChangeRouteAgentModal = new bootstrap.Modal($("#editChangeRouteAgentModal"));
+		editChangeRouteNumberModal = new bootstrap.Modal(editChangeRouteNumberModalElement);
+		editChangeRouteAgentModal = new bootstrap.Modal(editChangeRouteAgentModalElement);
 
 		/** Event Handlers */
 		addNewRoutingButton.on("click", (event) => {
@@ -404,7 +406,7 @@ function initRoutingTab() {
 
 		/** Number Tab **/
 		function initNumberTabHandlers() {
-			routingManagerAssignNumberModalTab._element.on("click", "button.nav-link", (event) => {
+			editChangeRouteNumberModalElement.on("click", "button.nav-link", (event) => {
 				event.preventDefault();
 
 				const currentElement = $(event.currentTarget);
@@ -415,7 +417,7 @@ function initRoutingTab() {
 
 		/** Agents Tab **/
 		function initAgentTabHandlers() {
-			$(editChangeRouteAgentModal._element).on("show.bs.modal", (event) => {
+			editChangeRouteAgentModalElement.on("show.bs.modal", (event) => {
 				const activeButton = routingManagerSelectAgentModalList.find("button.active");
 
 				if (activeButton.length > 0) {

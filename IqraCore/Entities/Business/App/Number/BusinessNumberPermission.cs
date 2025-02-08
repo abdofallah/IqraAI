@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.Number
+﻿namespace IqraCore.Entities.Business
 {
-    public class NumberPermission
+    public class BusinessNumberPermission
     {
         public DateTime? DisabledFullAt { get; set; } = null;
         public string? DisabledFullReason { get; set; } = null;

@@ -13,5 +13,6 @@ namespace IqraCore.Entities.Business
         public List<BusinessAppIntegration> Integrations { get; set; } = new List<BusinessAppIntegration>();
         public BusinessAppCache Cache { get; set; } = new BusinessAppCache();
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();
+        public List<BusinessNumberData> Numbers { get; set; } = new List<BusinessNumberData>();
     }
 }

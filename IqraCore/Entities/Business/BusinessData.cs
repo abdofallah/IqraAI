@@ -19,8 +19,6 @@ namespace IqraCore.Entities.Business
 
         public Dictionary<string, object> Tutorials { get; set; } = new Dictionary<string, object>();
 
-        public List<string> NumberIds { get; set; } = new List<string>();
-
         [ExcludeInEndpoint("/app/user/businesses")]
         public List<BusinessUser> SubUsers { get; set; } = new List<BusinessUser>();
 

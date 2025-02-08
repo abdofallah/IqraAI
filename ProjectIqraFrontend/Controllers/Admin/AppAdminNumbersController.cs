@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helper.Number;
+﻿using IqraCore.Entities.Helper.Business.Number;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
@@ -20,9 +20,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/numbers")]
-        public async Task<FunctionReturnResult<List<NumberData>?>> GetNumbers(int page = 0, int pageSize = 10)
+        public async Task<FunctionReturnResult<List<BusinessNumberData>?>> GetNumbers(int page = 0, int pageSize = 10)
         {
-            var result = new FunctionReturnResult<List<NumberData>?>();
+            var result = new FunctionReturnResult<List<BusinessNumberData>?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -72,9 +72,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/numbers/{provider}")]
-        public async Task<FunctionReturnResult<List<NumberData>?>> GetNumbersByType(int provider, int page = 0, int pageSize = 10)
+        public async Task<FunctionReturnResult<List<BusinessNumberData>?>> GetNumbersByType(int provider, int page = 0, int pageSize = 10)
         {
-            var result = new FunctionReturnResult<List<NumberData>?>();
+            var result = new FunctionReturnResult<List<BusinessNumberData>?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -109,14 +109,14 @@ namespace ProjectIqraFrontend.Controllers.Admin
                 return result;
             }
 
-            if (!Enum.IsDefined(typeof(NumberProviderEnum), provider))
+            if (!Enum.IsDefined(typeof(BusinessNumberProviderEnum), provider))
             {
                 result.Code = "GetNumbersByType:5";
                 result.Message = "Invalid provider";
                 return result;
             }
 
-            var numbersResult = await _numberManager.GetNumbersByProvider((NumberProviderEnum)provider, page, pageSize);
+            var numbersResult = await _numberManager.GetNumbersByProvider((BusinessNumberProviderEnum)provider, page, pageSize);
             if (!numbersResult.Success)
             {
                 result.Code = "GetNumbersByType:" + numbersResult.Code;

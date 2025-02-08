@@ -134,9 +134,9 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpPost("/app/admin/business/numbers")]
-        public async Task<FunctionReturnResult<List<NumberData>?>> GetBusinessNumbers(long businessId, List<string> numberIds)
+        public async Task<FunctionReturnResult<List<BusinessNumberData>?>> GetBusinessNumbers(long businessId, List<string> numberIds)
         {
-            var result = new FunctionReturnResult<List<NumberData>?>();
+            var result = new FunctionReturnResult<List<BusinessNumberData>?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];

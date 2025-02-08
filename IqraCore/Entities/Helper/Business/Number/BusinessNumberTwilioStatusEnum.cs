@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.Helper.Number
+﻿namespace IqraCore.Entities.Helper.Business
 {
-    public enum NumberTwilioStatusEnum
+    public enum BusinessNumberTwilioStatusEnum
     {
         Unknown = 0,
         Deleted = 1,

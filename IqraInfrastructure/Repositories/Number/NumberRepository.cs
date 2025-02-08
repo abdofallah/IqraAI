@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helper.Number;
+﻿using IqraCore.Entities.Helper.Business.Number;
 using IqraCore.Entities.Number;
 using MongoDB.Driver;
 
@@ -8,82 +8,82 @@ namespace IqraInfrastructure.Repositories.Number
     {
         private readonly string CollectionName = "Number";
 
-        private readonly IMongoCollection<NumberData> _numberCollection;
+        private readonly IMongoCollection<BusinessNumberData> _numberCollection;
 
         public NumberRepository(string connectionString, string databaseName)
         {
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
-            _numberCollection = database.GetCollection<NumberData>(CollectionName);
+            _numberCollection = database.GetCollection<BusinessNumberData>(CollectionName);
         }
 
-        public async Task InsertNumberAsync(NumberData numberData)
+        public async Task InsertNumberAsync(BusinessNumberData numberData)
         {
             await _numberCollection.InsertOneAsync(numberData);
         }
 
-        public async Task<NumberData?> GetNumberAsync(string id)
+        public async Task<BusinessNumberData?> GetNumberAsync(string id)
         {
             return await _numberCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
-        public async Task<List<NumberData>?> GetUserNumberByIdsAsync(List<string> numberIds, string userEmail)
+        public async Task<List<BusinessNumberData>?> GetUserNumberByIdsAsync(List<string> numberIds, string userEmail)
         {
-            var filter = Builders<NumberData>.Filter.In(x => x.Id, numberIds) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            var filter = Builders<BusinessNumberData>.Filter.In(x => x.Id, numberIds) & Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
             return await _numberCollection.Find(filter).ToListAsync();
         }
 
-        public async Task<List<NumberData>?> GetBusinessNumberByIdsAsync(List<string> numberIds, long businessId)
+        public async Task<List<BusinessNumberData>?> GetBusinessNumberByIdsAsync(List<string> numberIds, long businessId)
         {
-            var filter = Builders<NumberData>.Filter.In(x => x.Id, numberIds) & Builders<NumberData>.Filter.Eq(x => x.AssignedToBusinessId, businessId);
+            var filter = Builders<BusinessNumberData>.Filter.In(x => x.Id, numberIds) & Builders<BusinessNumberData>.Filter.Eq(x => x.AssignedToBusinessId, businessId);
             return await _numberCollection.Find(filter).ToListAsync();
         }
 
-        public async Task<List<NumberData>?> GetNumbersAsync(int page, int pageSize)
+        public async Task<List<BusinessNumberData>?> GetNumbersAsync(int page, int pageSize)
         {
             return await _numberCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
 
-        public async Task<List<NumberData>?> GetNumbersByProviderAsync(NumberProviderEnum provider, int page, int pageSize)
+        public async Task<List<BusinessNumberData>?> GetNumbersByProviderAsync(BusinessNumberProviderEnum provider, int page, int pageSize)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.Provider, provider);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.Provider, provider);
             return await _numberCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
 
-        public async Task<List<NumberData>?> GetUserNumbersByProvider(NumberProviderEnum provider, string email, int page, int pageSize)
+        public async Task<List<BusinessNumberData>?> GetUserNumbersByProvider(BusinessNumberProviderEnum provider, string email, int page, int pageSize)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.Provider, provider) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, email);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.Provider, provider) & Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, email);
             return await _numberCollection.Find(filter).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
 
-        public async Task<List<NumberData>?> GetUserNumbers(string email)
+        public async Task<List<BusinessNumberData>?> GetUserNumbers(string email)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, email);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, email);
             return await _numberCollection.Find(filter).ToListAsync();
         }
 
         public async Task<bool> CheckUserNumberExists(string exisitingNumberId, string userEmail)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
             return await _numberCollection.Find(filter).AnyAsync();
         }
 
-        public async Task<NumberData?> GetUserNumberById(string exisitingNumberId, string userEmail)
+        public async Task<BusinessNumberData?> GetUserNumberById(string exisitingNumberId, string userEmail)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.Id, exisitingNumberId) & Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
             return await _numberCollection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<bool> ReplaceNumberAsync(NumberData newNumberData)
+        public async Task<bool> ReplaceNumberAsync(BusinessNumberData newNumberData)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.Id, newNumberData.Id);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.Id, newNumberData.Id);
             var result = await _numberCollection.ReplaceOneAsync(filter, newNumberData);
             return result.ModifiedCount > 0;
         }
 
         public async Task<bool> CheckUserNumberExistsByNumber(string numberCountryCode, string phoneNumber, string userEmail)
         {
-            var filter = Builders<NumberData>.Filter.Eq(x => x.CountryCode, numberCountryCode) & Builders<NumberData>.Filter.Eq(x => x.Number, phoneNumber) & Builders<NumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
+            var filter = Builders<BusinessNumberData>.Filter.Eq(x => x.CountryCode, numberCountryCode) & Builders<BusinessNumberData>.Filter.Eq(x => x.Number, phoneNumber) & Builders<BusinessNumberData>.Filter.Eq(x => x.MasterUserEmail, userEmail);
             return await _numberCollection.Find(filter).AnyAsync();
         }
     }

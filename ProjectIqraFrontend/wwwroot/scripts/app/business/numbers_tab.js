@@ -269,7 +269,7 @@ function CreateUserTelnyxNumbersTableElement(numberData) {
 	return element;
 }
 
-function InitNumbersTab() {
+function initNumbersTab() {
 	$(document).ready(() => {
 		addNewCustomSimNumberModal = new bootstrap.Modal(addNewCustomSimNumberModalElement);
 
@@ -417,116 +417,6 @@ function InitNumbersTab() {
 
 			addNewCustomSimNumberModal.show();
 		});
-
-		/** Init **/
-
-		// Physical Numbers
-		FetchUserNumbersFromAPI(
-			NumberProviderEnum.PHYSICAL,
-			0,
-			100,
-			(userPhysicalNumbers) => {
-				PhysicalSimNumbersList = userPhysicalNumbers;
-
-				if (PhysicalSimNumbersList.length === 0) {
-					physicalSimNumbersTable.find("tbody").append($('<tr><td colspan="6">No numbers found</td></tr>'));
-				} else {
-					PhysicalSimNumbersList.forEach((numberData) => {
-						physicalSimNumbersTable.find("tbody").append(CreateUserPhysicalNumbersTableElement(numberData));
-					});
-				}
-			},
-			(userPhysicalNumbersError) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user physical numbers. Check browser console for logs.",
-					enableDismiss: false,
-				});
-
-				console.log("Error occured while fetching user physical numbers: ", userPhysicalNumbersError);
-			},
-		);
-
-		// Twilio Numbers
-		FetchUserNumbersFromAPI(
-			NumberProviderEnum.TWILIO,
-			0,
-			0,
-			(userTwilioNumbers) => {
-				TwilioNumbersList = userTwilioNumbers;
-
-				if (TwilioNumbersList.length === 0) {
-					twilioNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
-				} else {
-					TwilioNumbersList.forEach((numberData) => {
-						twilioNumbersTable.find("tbody").append(CreateUserTwilioNumbersTableElement(numberData));
-					});
-				}
-			},
-			(userTwilioNumbersError) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user twilio numbers. Check browser console for logs.",
-					enableDismiss: false,
-				});
-
-				console.log("Error occured while fetching user twilio numbers: ", userTwilioNumbersError);
-			},
-		);
-
-		// Vonage Numbers
-		FetchUserNumbersFromAPI(
-			NumberProviderEnum.VONAGE,
-			0,
-			0,
-			(userVonageNumbers) => {
-				VonageNumbersList = userVonageNumbers;
-
-				if (VonageNumbersList.length === 0) {
-					vonageNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
-				} else {
-					VonageNumbersList.forEach((numberData) => {
-						vonageNumbersTable.find("tbody").append(CreateUserVonageNumbersTableElement(numberData));
-					});
-				}
-			},
-			(userVonageNumbersError) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user vonage numbers. Check browser console for logs.",
-					enableDismiss: false,
-				});
-
-				console.log("Error occured while fetching user vonage numbers: ", userVonageNumbersError);
-			},
-		);
-
-		// Telnyx Numbers
-		FetchUserNumbersFromAPI(
-			NumberProviderEnum.TELNYX,
-			0,
-			0,
-			(userTelnyxNumbers) => {
-				TelnyxNumbersList = userTelnyxNumbers;
-
-				if (TelnyxNumbersList.length === 0) {
-					telnyxNumbersTable.find("tbody").append($('<tr><td colspan="7">No numbers found</td></tr>'));
-				} else {
-					TelnyxNumbersList.forEach((numberData) => {
-						telnyxNumbersTable.find("tbody").append(CreateUserTelnyxNumbersTableElement(numberData));
-					});
-				}
-			},
-			(userTelnyxNumbersError) => {
-				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user telnyx numbers. Check browser console for logs.",
-					enableDismiss: false,
-				});
-
-				console.log("Error occured while fetching user telnyx numbers: ", userTelnyxNumbersError);
-			},
-		);
 
 		// Init
 		FillInitialPhysicalSimModal();

@@ -11,6 +11,5 @@ namespace IqraCore.Entities.User
         public string? LoginDisabledReason { get; set; } = null;
 
         public UserPermissionBusiness Business { get; set; } = new UserPermissionBusiness();
-        public UserPermissionNumber Number { get; set; } = new UserPermissionNumber();
     }
 }

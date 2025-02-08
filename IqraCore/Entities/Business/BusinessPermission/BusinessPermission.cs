@@ -19,5 +19,6 @@
         public BusinessContextPermission Context { get; set; } = new BusinessContextPermission();
         public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
         public BusinessConversationsPermission Conversations { get; set; } = new BusinessConversationsPermission();
+        public BusinessNumbersPermission Numbers { get; set; } = new BusinessNumbersPermission();
     }
 }
