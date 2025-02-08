@@ -157,25 +157,5 @@ namespace IqraInfrastructure.Repositories.Business
             var business = await _businessCollection.Find(filter).FirstOrDefaultAsync();
             return business != null;
         }
-
-        public async Task<bool> addNumberIdToBusiness(string numberId, long businessId)
-        {
-            var updateDefinition = Builders<BusinessData>.Update
-                .AddToSet(b => b.NumberIds, numberId);
-
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
-            var result = await _businessCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
-        }
-
-        public async Task<bool> removeNumberIdFromBusiness(string numberId, long businessId)
-        {
-            var updateDefinition = Builders<BusinessData>.Update
-                .Pull(b => b.NumberIds, numberId);
-
-            var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId);
-            var result = await _businessCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
-        }
     }
 }

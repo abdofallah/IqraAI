@@ -5,7 +5,6 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
-using IqraInfrastructure.Repositories.Number;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
@@ -14,7 +13,6 @@ using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
-using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.STT;
 using IqraInfrastructure.Services.TTS;
 using IqraInfrastructure.Services.User;
@@ -128,16 +126,6 @@ namespace ProjectIqraFrontend
 
             BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository, businessToolAudioRepository, businessAgentAudioRepository);
             builder.Services.AddSingleton<BusinessManager>(businessManager);
-
-            // Number
-
-            NumberRepository numberRepository = new NumberRepository(
-                appConfig["NumberDatabase:ConnectionString"],
-                appConfig["NumberDatabase:DatabaseName"]
-            );
-
-            NumberManager numberManager = new NumberManager(numberRepository);
-            builder.Services.AddSingleton<NumberManager>(numberManager);
 
             // LLM Provider
             LLMProviderRepository lLMProviderRepository = new LLMProviderRepository(

@@ -23,9 +23,9 @@ namespace IqraInfrastructure.Services.Business
             _businessRepository = businessRepository;
         }
 
-        public async Task<BusinessNumberData?> GetBusinessNumberById(long businessId)
+        public async Task<BusinessNumberData?> GetBusinessNumberById(long businessId, string numberId)
         {
-            var numberData = await _businessAppRepository.GetBusinessNumberById(businessId);
+            var numberData = await _businessAppRepository.GetBusinessNumberById(businessId, numberId);
             return numberData;
         }
 
@@ -39,7 +39,7 @@ namespace IqraInfrastructure.Services.Business
             return await _businessAppRepository.CheckBusinessNumberExistsById(exisitingNumberId, businessId);
         }
 
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, BusinessNumberProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, string userEmail, RegionManager regionManager)
+        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, BusinessNumberProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
@@ -82,30 +82,6 @@ namespace IqraInfrastructure.Services.Business
 
             newNumberData.RegionId = regionId;
 
-            // Get assigned business ID
-            long? assignedBusinessId = null;
-            if (changes.RootElement.TryGetProperty("assignedToBusinessId", out var businessIdElement) && businessIdElement.ValueKind != JsonValueKind.Null)
-            {
-                if (!businessIdElement.TryGetInt64(out var businessId))
-                {
-                    result.Code = "AddOrUpdateBusinessNumber:5";
-                    result.Message = "Invalid business ID.";
-                    return result;
-                }
-
-                // Validate business exists and user owns it
-                bool businessExists = await businessManager.CheckUserBusinessExists(businessId, userEmail);
-                if (!businessExists)
-                {
-                    result.Code = "AddOrUpdateBusinessNumber:6";
-                    result.Message = "Business not found.";
-                    return result;
-                }
-
-                assignedBusinessId = businessId;
-            }
-            newNumberData.AssignedToBusinessId = assignedBusinessId;
-
             if (provider == BusinessNumberProviderEnum.Unknown)
             {
                 result.Code = "AddOrUpdateBusinessNumber:7";
@@ -137,13 +113,11 @@ namespace IqraInfrastructure.Services.Business
             {
                 newNumberData.Id = Guid.NewGuid().ToString();
 
-                await _numberRepository.InsertNumberAsync(newNumberData);
-
-                bool addNumberUserResult = await userManager.addNumberIdToUser(newNumberData.Id, userEmail);
-                if (!addNumberUserResult)
+                bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
+                if (!addNumberResult)
                 {
                     result.Code = "AddOrUpdateBusinessNumber:10";
-                    result.Message = $"Failed to add number to user.";
+                    result.Message = $"Failed to add number to business.";
                     return result;
                 }
             }
@@ -151,37 +125,11 @@ namespace IqraInfrastructure.Services.Business
             {
                 newNumberData.Id = exisitingNumberData.Id;
 
-                bool updateNumberResult = await _numberRepository.ReplaceNumberAsync(newNumberData);
+                bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData);
                 if (!updateNumberResult)
                 {
                     result.Code = "AddOrUpdateBusinessNumber:11";
                     result.Message = $"Failed to update number.";
-                    return result;
-                }
-
-                if (exisitingNumberData.AssignedToBusinessId != null)
-                {
-                    bool removeNumberFromOldBusinessResult = await businessManager.removeNumberIdFromBusiness(newNumberData.Id, exisitingNumberData.AssignedToBusinessId.Value);
-                    if (!removeNumberFromOldBusinessResult)
-                    {
-                        // TODO CRITICAL ERROR THIS WILL BREAK NUMBERING
-
-                        result.Code = "AddOrUpdateBusinessNumber:12";
-                        result.Message = $"Failed to remove number from old business.";
-                        return result;
-                    }
-                }
-            }
-
-            if (newNumberData.AssignedToBusinessId != null)
-            {
-                bool addNumberBusinessResult = await businessManager.addNumberIdToBusiness(newNumberData.Id, newNumberData.AssignedToBusinessId.Value);
-                if (!addNumberBusinessResult)
-                {
-                    // TODO REMOVE NUMBER AND NUMBER FROM USER
-
-                    result.Code = "AddOrUpdateBusinessNumber:13";
-                    result.Message = $"Failed to add number to business.";
                     return result;
                 }
             }

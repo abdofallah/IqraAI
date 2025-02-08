@@ -270,7 +270,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                exisitingNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId);
+                exisitingNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, exisitingNumberId);
                 if (exisitingNumberData == null)
                 {
                     result.Code = "AddBusinessNumber:25";
@@ -287,12 +287,13 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
 
             var saveResult = await _businessManager.GetNumberManager().AddOrUpdateBusinessNumber(
-                changes,
+                changes, 
                 countryCode,
                 number,
                 provider,
                 postType,
                 exisitingNumberData,
+                businessId,
                 _regionManager
             );
 

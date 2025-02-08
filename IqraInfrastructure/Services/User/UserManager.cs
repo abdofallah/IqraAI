@@ -201,13 +201,5 @@ namespace IqraInfrastructure.Services.User
 
             await _userDatabase.UpdateUser(user.Email, updateDefiniton);
         }
-
-        public async Task<bool> addNumberIdToUser(string id, string userEmail)
-        {
-            var updateDefinition = Builders<UserData>.Update
-                .AddToSet(u => u.Numbers, id);
-
-            return await _userDatabase.UpdateUser(userEmail, updateDefinition);
-        }
     }
 }

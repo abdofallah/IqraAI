@@ -278,16 +278,6 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
-        public async Task<bool> addNumberIdToBusiness(string numberId, long businessId)
-        {
-            return await _businessRepository.addNumberIdToBusiness(numberId, businessId);
-        }
-
-        public async Task<bool> removeNumberIdFromBusiness(string numberId, long businessId)
-        {
-            return await _businessRepository.removeNumberIdFromBusiness(numberId, businessId);
-        }
-
         /**
          * 
          * Sub Managers

@@ -3,7 +3,6 @@ using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +12,11 @@ namespace ProjectIqraFrontend.Controllers.User.Business
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly NumberManager _numberManager;
 
-        public AppUserBusinessSettingsController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager)
+        public AppUserBusinessSettingsController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
-            _numberManager = numberManager;
         }
 
         [HttpPost("/app/user/business/{businessId}/settings/save")]

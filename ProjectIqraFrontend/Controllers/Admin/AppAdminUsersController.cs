@@ -1,9 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,13 +11,11 @@ namespace ProjectIqraFrontend.Controllers.Admin
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly NumberManager _numberManager;
 
-        public AppAdminUsersController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager)
+        public AppAdminUsersController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
-            _numberManager = numberManager;
         }
 
         [HttpPost("/app/admin/users")]
@@ -176,59 +172,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
             result.Data = businessesResult.Data;
 
             return result;
-        }
-
-        [HttpPost("/app/admin/user/numbers")]
-        public async Task<FunctionReturnResult<List<BusinessNumberData>?>> GetUserNumbers(string inputUserEmail, List<string> numberIds)
-        {
-            var result = new FunctionReturnResult<List<BusinessNumberData>?>();
-
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
-            {
-                result.Code = "GetUserNumbers:1";
-                result.Message = "Invalid session data";
-                return result;
-            }
-
-            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
-            {
-                result.Code = "GetUserNumbers:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "GetUserNumbers:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (!user.Permission.IsAdmin)
-            {
-                result.Code = "GetUserNumbers:4";
-                result.Message = "User is not an admin";
-                return result;
-            }
-
-            var numbersResult = await _numberManager.GetUserNumberByIds(numberIds, inputUserEmail);
-            if (!numbersResult.Success)
-            {
-                result.Code = "GetUserNumbers:" + numbersResult.Code;
-                result.Message = numbersResult.Message;
-                return result;
-            }
-
-            result.Success = true;
-            result.Data = numbersResult.Data;
-
-            return result;
-        }
+        } 
 
     }
 }

@@ -1,20 +1,15 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helper.Business;
-using IqraCore.Entities.Helper.Business.Number;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Number;
 using IqraCore.Entities.User;
 using IqraCore.Models.AppUser;
 using IqraCore.Utilities;
 using IqraInfrastructure.Services.App;
 using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Number;
 using IqraInfrastructure.Services.User;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
 using PhoneNumbers;
-using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
@@ -22,16 +17,14 @@ namespace ProjectIqraFrontend.Controllers.User
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly NumberManager _numberManager;
         private readonly RegionManager _regionManager;
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(UserManager userManager, BusinessManager businessManager, NumberManager numberManager, RegionManager regionManager)
+        public AppUserController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
-            _numberManager = numberManager;
             _regionManager = regionManager;
         }
 
