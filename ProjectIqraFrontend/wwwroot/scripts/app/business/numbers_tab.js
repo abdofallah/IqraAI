@@ -27,7 +27,6 @@ let addNewCustomSimNumberModal = null;
 const physicalNumberModalCountrySelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalCountrySelect");
 const physicalNumberModalNumberInput = addNewCustomSimNumberModalElement.find("#physicalNumberModalNumberInput");
 const physicalNumberModalRegionSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalRegionSelect");
-const physicalNumberModalBusinessSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalBusinessSelect");
 const addNewPhysicalNumberButton = addNewCustomSimNumberModalElement.find("#addNewPhysicalNumberButton");
 const addNewPhysicalNumberButtonSpinner = addNewPhysicalNumberButton.find(".save-button-spinner");
 
@@ -43,9 +42,9 @@ const vonageNumbersTable = numbersTab.find("#vonageNumbersTable");
 const telnyxNumbersTable = numbersTab.find("#telnyxNumbersTable");
 
 /** API Functions **/
-function AddNewUserNumberToAPI(formData, successCallback, errorCallback) {
+function SaveBusinessNumberToAPI(formData, successCallback, errorCallback) {
 	$.ajax({
-		url: "/app/user/numbers/add",
+		url: `/app/user/business/${CurrentBusinessId}/numbers/save`,
 		type: "POST",
 		data: formData,
 		dataType: "json",
@@ -72,7 +71,6 @@ function createDefaultPhysicalNumberObject() {
 	const object = {
 		countryCode: "",
 		number: "",
-		assignedToBusinessId: null,
 		regionId: "",
 		provider: {
 			value: 1,
@@ -82,9 +80,8 @@ function createDefaultPhysicalNumberObject() {
 	return object;
 }
 
-function CreateUserPhysicalNumbersTableElement(numberData) {
+function CreateBusinessPhysicalNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const businessData = CurrentBusinessesList.find((businessData) => businessData.id === numberData.assignedToBusinessId);
 	const regionData = SpecificationRegionsListData.find((regionData) => regionData.id === numberData.regionId);
 
 	let statusElement = "";
@@ -101,7 +98,6 @@ function CreateUserPhysicalNumbersTableElement(numberData) {
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
                 <td>${regionData.id}</td>
-                <td>${businessData == null ? "-" : businessData.name}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-id="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-pen-to-square"></i>
@@ -113,6 +109,21 @@ function CreateUserPhysicalNumbersTableElement(numberData) {
             </tr>`);
 
 	return element;
+}
+
+function FillBusinessPhysicalSimList() {
+	physicalSimNumbersTable.find("tbody").empty();
+
+	const physicalSimNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.PHYSICAL);
+
+	if (physicalSimNumbersList.length === 0) {
+		physicalSimNumbersTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="5">No physical sim numbers found</td></tr>`);
+		return;
+	}
+
+	physicalSimNumbersList.forEach((numberData) => {
+		physicalSimNumbersTable.find("tbody").append(CreateBusinessPhysicalNumbersTableElement(numberData));
+	});
 }
 
 function FillInitialPhysicalSimModal() {
@@ -149,12 +160,6 @@ function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
 
 	changes.regionId = physicalNumberModalRegionSelect.find("option:selected").val();
 	if (CurrentManagePhysicalNumberData.regionId !== changes.regionId) {
-		hasChanges = true;
-	}
-
-	changes.assignedToBusinessId = physicalNumberModalBusinessSelect.find("option:selected").val();
-	changes.assignedToBusinessId = changes.assignedToBusinessId === "" ? null : parseInt(changes.assignedToBusinessId);
-	if (CurrentManagePhysicalNumberData.assignedToBusinessId !== changes.assignedToBusinessId) {
 		hasChanges = true;
 	}
 
@@ -215,15 +220,13 @@ function ValidatePhysicalNumberModalData(onlyRemove = true) {
 }
 
 // Twilio
-function CreateUserTwilioNumbersTableElement(numberData) {
+function CreateBusinessTwilioNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const businessData = CurrentBusinessesList.find((businessData) => businessData.id === numberData.assignedToBusinessId);
 
 	const element = $(`<tr>
                 <td><span class="badge bg-success">Online</span></td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${businessData == null ? "-" : businessData.name}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-eye"></i>
@@ -238,15 +241,13 @@ function CreateUserTwilioNumbersTableElement(numberData) {
 }
 
 // Vonage
-function CreateUserVonageNumbersTableElement(numberData) {
+function CreateBusinessVonageNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const businessData = CurrentBusinessesList.find((businessData) => businessData.id === numberData.assignedToBusinessId);
 
 	const element = $(`<tr>
                 <td><span class="badge bg-success">Online</span></td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${businessData == null ? "-" : businessData.name}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-email="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-eye"></i>
@@ -261,7 +262,7 @@ function CreateUserVonageNumbersTableElement(numberData) {
 }
 
 // Telnyx
-function CreateUserTelnyxNumbersTableElement(numberData) {
+function CreateBusinessTelnyxNumbersTableElement(numberData) {
 	const element = "TODO";
 
 	// todo
@@ -285,14 +286,6 @@ function initNumbersTab() {
 		});
 
 		addNewCustomSimNumberModalElement.on("show.bs.modal", () => {
-			physicalNumberModalBusinessSelect.empty();
-			physicalNumberModalBusinessSelect.append($(`<option value="" ${CurrentManagePhysicalNumberData.assignedToBusinessId === null ? "selected" : ""}>None</option>`));
-			CurrentBusinessesList.forEach((businessData) => {
-				physicalNumberModalBusinessSelect.append(
-					$(`<option value="${businessData.id}" ${CurrentManagePhysicalNumberData.assignedToBusinessId === businessData.id ? "selected" : ""}>${businessData.name}</option>`),
-				);
-			});
-
 			physicalNumberModalNumberInput.val(CurrentManagePhysicalNumberData.number);
 
 			physicalNumberModalCountrySelect.val(CurrentManagePhysicalNumberData.countryCode);
@@ -361,24 +354,26 @@ function initNumbersTab() {
 				formData.append("numberId", CurrentManagePhysicalNumberData.id);
 			}
 
-			AddNewUserNumberToAPI(
+			SaveBusinessNumberToAPI(
 				formData,
 				(responseResult) => {
 					if (ManagePhysicalNumberType === "new") {
 						PhysicalSimNumbersList.push(responseResult);
 
-						physicalSimNumbersTable.find("tbody").prepend(CreateUserPhysicalNumbersTableElement(responseResult));
+						physicalSimNumbersTable.find("tbody").prepend(CreateBusinessPhysicalNumbersTableElement(responseResult));
+
+						physicalSimNumbersTable.find('tbody tr[tr-type="none-notice"]').remove();
 					} else {
 						const exisitingIndex = PhysicalSimNumbersList.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
 						PhysicalSimNumbersList[exisitingIndex] = responseResult;
 
 						const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManagePhysicalNumberData.id}"]`);
-						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateUserPhysicalNumbersTableElement(responseResult));
+						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateBusinessPhysicalNumbersTableElement(responseResult));
 					}
 
 					AlertManager.createAlert({
 						type: "success",
-						message: `Successfully ${ManagePhysicalNumberType === "new" ? "added" : "updated"} user physical sim number.`,
+						message: `Successfully ${ManagePhysicalNumberType === "new" ? "added" : "updated"} business physical sim number.`,
 						timeout: 6000,
 					});
 
@@ -389,11 +384,11 @@ function initNumbersTab() {
 				(errorResult) => {
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Error occured while saving user number. Check browser console for logs.",
+						message: "Error occured while saving business number. Check browser console for logs.",
 						timeout: 6000,
 					});
 
-					console.log("Error occured while saving user number: ", errorResult);
+					console.log("Error occured while saving business number: ", errorResult);
 
 					addNewPhysicalNumberButton.prop("disabled", false);
 					addNewPhysicalNumberButtonSpinner.addClass("d-none");
@@ -419,6 +414,7 @@ function initNumbersTab() {
 		});
 
 		// Init
+		FillBusinessPhysicalSimList();
 		FillInitialPhysicalSimModal();
 	});
 }

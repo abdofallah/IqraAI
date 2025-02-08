@@ -25,8 +25,8 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             _regionManager = regionManager;
         }
 
-        [HttpPost("/app/user/business/{businessId}/numbers/add")]
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddBusinessNumber([FromForm] IFormCollection formData, long businessId)
+        [HttpPost("/app/user/business/{businessId}/numbers/save")]
+        public async Task<FunctionReturnResult<BusinessNumberData?>> SaveBusinessNumber([FromForm] IFormCollection formData, long businessId)
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
@@ -36,14 +36,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = "AddBusinessNumber:1";
+                result.Code = "SaveBusinessNumber:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
-                result.Code = "AddBusinessNumber:2";
+                result.Code = "SaveBusinessNumber:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -51,14 +51,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = "AddBusinessNumber:3";
+                result.Code = "SaveBusinessNumber:3";
                 result.Message = "User not found";
                 return result;
             }
 
             if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
             {
-                result.Code = "AddBusinessNumber:4";
+                result.Code = "SaveBusinessNumber:4";
                 result.Message = "User does not have permission to edit businesses";
 
                 if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
@@ -76,7 +76,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (!user.Businesses.Contains(businessId))
             {
-                result.Code = "AddBusinessNumber:5";
+                result.Code = "SaveBusinessNumber:5";
                 result.Message = "User does not own this business";
                 return result;
             }
@@ -84,14 +84,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
             if (!businessResult.Success)
             {
-                result.Code = "AddBusinessNumber:" + businessResult.Code;
+                result.Code = "SaveBusinessNumber:" + businessResult.Code;
                 result.Message = businessResult.Message;
                 return result;
             }
 
             if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
             {
-                result.Code = "AddBusinessNumber:6";
+                result.Code = "SaveBusinessNumber:6";
                 result.Message = "Business is currently disabled";
 
                 if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
@@ -109,7 +109,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (businessResult.Data.Permission.Numbers.DisabledFullAt != null)
             {
-                result.Code = "AddBusinessNumber:7";
+                result.Code = "SaveBusinessNumber:7";
                 result.Message = "Business does not have permission to access numbers";
 
                 if (!string.IsNullOrEmpty(businessResult.Data.Permission.Numbers.DisabledFullReason))
@@ -122,7 +122,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (!formData.TryGetValue("postType", out StringValues postTypeValue))
             {
-                result.Code = "AddBusinessNumber:8";
+                result.Code = "SaveBusinessNumber:8";
                 result.Message = "Missing post type";
                 return result;
             }
@@ -131,7 +131,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             if (string.IsNullOrWhiteSpace(postType)
                 || postType != "new" && postType != "edit")
             {
-                result.Code = "AddBusinessNumber:9";
+                result.Code = "SaveBusinessNumber:9";
                 result.Message = "Invalid post type";
                 return result;
             }
@@ -139,7 +139,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             // Number Changes Data
             if (!formData.TryGetValue("changes", out var changesJsonString))
             {
-                result.Code = "AddBusinessNumber:10";
+                result.Code = "SaveBusinessNumber:10";
                 result.Message = "Changes not found in form data.";
                 return result;
             }
@@ -150,7 +150,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             catch
             {
-                result.Code = "AddBusinessNumber:11";
+                result.Code = "SaveBusinessNumber:11";
                 result.Message = "Unable to parse changes json string.";
                 return result;
             }
@@ -158,14 +158,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             // Get country code
             if (!changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement))
             {
-                result.Code = "AddBusinessNumber:12";
+                result.Code = "SaveBusinessNumber:12";
                 result.Message = "Country code not found in changes.";
                 return result;
             }
             string? countryCode = countryCodeElement.GetString();
             if (string.IsNullOrWhiteSpace(countryCode))
             {
-                result.Code = "AddBusinessNumber:13";
+                result.Code = "SaveBusinessNumber:13";
                 result.Message = "Country code cannot be empty.";
                 return result;
             }
@@ -173,14 +173,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             // Get number
             if (!changes.RootElement.TryGetProperty("number", out var numberElement))
             {
-                result.Code = "AddBusinessNumber:14";
+                result.Code = "SaveBusinessNumber:14";
                 result.Message = "Number not found in changes.";
                 return result;
             }
             string? number = numberElement.GetString();
             if (string.IsNullOrWhiteSpace(number))
             {
-                result.Code = "AddBusinessNumber:15";
+                result.Code = "SaveBusinessNumber:15";
                 result.Message = "Number cannot be empty.";
                 return result;
             }
@@ -189,7 +189,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             PhoneNumber parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(number, countryCode);
             if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
             {
-                result.Code = "AddBusinessNumber:16";
+                result.Code = "SaveBusinessNumber:16";
                 result.Message = "Number validation failed for specified country";
                 return result;
             }
@@ -198,19 +198,19 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             BusinessNumberProviderEnum provider = BusinessNumberProviderEnum.Unknown;
             if (!changes.RootElement.TryGetProperty("provider", out var providerElement))
             {
-                result.Code = "AddBusinessNumber:17";
+                result.Code = "SaveBusinessNumber:17";
                 result.Message = "Provider not found in changes.";
                 return result;
             }
             if (!providerElement.TryGetInt32(out var providerInt))
             {
-                result.Code = "AddBusinessNumber:18";
+                result.Code = "SaveBusinessNumber:18";
                 result.Message = "Invalid provider type.";
                 return result;
             }
             if (!Enum.IsDefined(typeof(BusinessNumberProviderEnum), providerInt))
             {
-                result.Code = "AddBusinessNumber:19";
+                result.Code = "SaveBusinessNumber:19";
                 result.Message = "Invalid provider type.";
                 return result;
             }
@@ -235,7 +235,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 bool numberExists = await _businessManager.GetNumberManager().CheckBusinessNumberExistsByNumber(countryCode, number, businessId);
                 if (numberExists)
                 {
-                    result.Code = "AddBusinessNumber:21";
+                    result.Code = "SaveBusinessNumber:21";
                     result.Message = "Number already exists for business with same country code and number";
                     return result;
                 }
@@ -257,7 +257,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
                 if (!formData.TryGetValue("numberId", out StringValues numberIdValue))
                 {
-                    result.Code = "AddBusinessNumber:23";
+                    result.Code = "SaveBusinessNumber:23";
                     result.Message = "Missing number id";
                     return result;
                 }
@@ -265,7 +265,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 string? exisitingNumberId = numberIdValue.ToString();
                 if (string.IsNullOrWhiteSpace(exisitingNumberId))
                 {
-                    result.Code = "AddBusinessNumber:24";
+                    result.Code = "SaveBusinessNumber:24";
                     result.Message = "Invalid number id";
                     return result;
                 }
@@ -273,14 +273,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 exisitingNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, exisitingNumberId);
                 if (exisitingNumberData == null)
                 {
-                    result.Code = "AddBusinessNumber:25";
+                    result.Code = "SaveBusinessNumber:25";
                     result.Message = "Number not found";
                     return result;
                 }
 
                 if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider)
                 {
-                    result.Code = "AddBusinessNumber:26";
+                    result.Code = "SaveBusinessNumber:26";
                     result.Message = "You are not allowed to edit a number's country code or number or provider";
                     return result;
                 }
@@ -299,7 +299,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (!saveResult.Success)
             {
-                result.Code = "AddBusinessNumber:" + saveResult.Code;
+                result.Code = "SaveBusinessNumber:" + saveResult.Code;
                 result.Message = saveResult.Message;
                 return result;
             }
