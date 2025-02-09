@@ -2279,7 +2279,7 @@ function initSettingsTab() {
 
 			const current = $(event.currentTarget);
 
-			const currentDomainId = current.attr("domain-id");
+			const currentDomainId = parseInt(current.attr("domain-id"));
 
 			const currentDomainData = BusinessFullData.businessWhiteLabelDomain.find((x) => x.id === currentDomainId);
 

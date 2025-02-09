@@ -71,6 +71,7 @@ function createDefaultPhysicalNumberObject() {
 	const object = {
 		countryCode: "",
 		number: "",
+		routeId: null,
 		regionId: "",
 		provider: {
 			value: 1,
@@ -358,14 +359,14 @@ function initNumbersTab() {
 				formData,
 				(responseResult) => {
 					if (ManagePhysicalNumberType === "new") {
-						PhysicalSimNumbersList.push(responseResult);
+						BusinessFullData.businessApp.numbers.push(responseResult);
 
 						physicalSimNumbersTable.find("tbody").prepend(CreateBusinessPhysicalNumbersTableElement(responseResult));
 
 						physicalSimNumbersTable.find('tbody tr[tr-type="none-notice"]').remove();
 					} else {
-						const exisitingIndex = PhysicalSimNumbersList.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
-						PhysicalSimNumbersList[exisitingIndex] = responseResult;
+						const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
+						BusinessFullData.businessApp.numbers[exisitingIndex] = responseResult;
 
 						const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManagePhysicalNumberData.id}"]`);
 						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateBusinessPhysicalNumbersTableElement(responseResult));
@@ -405,7 +406,7 @@ function initNumbersTab() {
 			const currentElement = $(event.currentTarget);
 
 			const numberId = currentElement.attr("number-id");
-			const numberData = PhysicalSimNumbersList.find((number) => number.id === numberId);
+			const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
 			CurrentManagePhysicalNumberData = numberData;
 			ManagePhysicalNumberType = "edit";

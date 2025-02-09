@@ -55,7 +55,6 @@
                         <i class='fa-regular fa-recycle nav_icon'></i>
                         <span class="nav_name">Cache</span>
                     </a>
-
                     <a class="nav_link" for="tools-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-wrench nav_icon'></i>
                         <span class="nav_name">Tools</span>
@@ -79,12 +78,12 @@
                         <span class="nav_name">Numbers</span>
                     </a>
                     <span class="mt-4 nav-category-label">Actions</span>
-                    <a class="nav_link" for="make-calls-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link disabled" for="make-calls-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-phone nav_icon'></i>
                         <span class="nav_name">Make Calls</span>
                     </a>
                     <span class="mt-4 nav-category-label">Analytics</span>
-                    <a class="nav_link " for="conversations-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link disabled" for="conversations-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-messages nav_icon'></i>
                         <span class="nav_name">Conversations</span>
                     </a>
@@ -334,31 +333,37 @@
                         </div>
                         <!-- Number -->
                         <div class="tab-pane fade w-100" id="routing-manager-number" role="tabpanel" aria-labelledby="routing-manager-number-tab" tabindex="0">
-                            <div class="mb-2">
-                                <label class="form-label d-block" for="editSelectedRouteNumber">Selected Numbers</label>
-                                <button class="btn btn-light btn-sm btn-ic-span-align" id="editChangeRouteNumberButton" data-bs-toggle="modal" data-bs-target="#editChangeRouteNumberModal">
-                                    <i class="fa-regular fa-plus"></i>
-                                    <span> Add Number</span>
-                                </button>
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="editChangeRouteNumberButton">
+                                        <span>+ Add New Number</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Number" aria-label="Number" aria-describedby="searchRouteAddedNumber">
+                                    <button class="input-group-button btn btn-primary" id="searchRouteAddedNumber">
+                                        <i class="fa-regular fa-magnifying-glass"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div id="routeNumbersList">
-                                <!-- Dynamically Added -->
+                            <div>
+                                <table id="routeNumbersList" class="table w-100">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Country Code</th>
+                                            <th scope="col">Number</th>
+                                            <th scope="col">Provider</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamically Generated -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                         <!-- Configuration -->
                         <div class="tab-pane fade w-100" id="routing-manager-configuration" role="tabpanel" aria-labelledby="routing-manager-configuration-tab" tabindex="0">
-                            <div class="mb-3">
-                                <label class="form-label btn-ic-span-align" for="editRouteRegion">
-                                    <span>Server Region </span>
-
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Which Iqra region's server will be used to process the call. (To have lower latency during call, use the same region as your LLM, TTS, STT or other integrations.)">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </label>
-                                <select class="form-select" id="editRouteRegionSelect">
-                                    <!-- Dynamically Added -->
-                                </select>
-                            </div>
                             <div class="mb-3">
                                 <label class="form-label btn-ic-span-align" for="editRouteNumberPickupDelay">
                                     <span>Pick up delay (ms) </span>
@@ -367,7 +372,7 @@
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="editRouteNumberPickupDelay" value="1000">
+                                <input type="number" class="form-control" id="editRouteNumberPickupDelay" value="0">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label btn-ic-span-align" for="editRouteNumberSilenceNotify">
@@ -377,7 +382,7 @@
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="editRouteNumberSilenceNotify" value="1000">
+                                <input type="number" class="form-control" id="editRouteNumberSilenceNotify" value="10000">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label btn-ic-span-align" for="editRouteNumberSilenceEnd">
@@ -387,7 +392,7 @@
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="editRouteNumberSilenceEnd" value="1000">
+                                <input type="number" class="form-control" id="editRouteNumberSilenceEnd" value="30000">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label btn-ic-span-align" for="editRouteNumberTotalCallTime">
@@ -397,7 +402,7 @@
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="editRouteNumberTotalCallTime" value="120">
+                                <input type="number" class="form-control" id="editRouteNumberTotalCallTime" value="600">
                             </div>
                         </div>
                         <!-- Agent -->
@@ -4686,8 +4691,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h1 class="modal-title fs-5" id="editChangeRouteNumberModalLabel">
-                            Select Phone
-                            Number
+                            Select Number
                         </h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -4705,6 +4709,9 @@
                                 </li>
                                 <li class="nav-item me-2" role="presentation">
                                     <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="routing-manager-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-telnyx" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-telnyx" aria-selected="true">Telnyx</button>
                                 </li>
                             </ul>
                         </div>
@@ -4736,11 +4743,18 @@
                                     <!-- Dynamically Generated -->
                                 </div>
                             </div>
+
+                            <!-- Telnyx -->
+                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-telnyx" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-telnyx-tab">
+                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="4">
+                                    <!-- Dynamically Generated -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton">
+                        <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton" disabled>
                             Select Number
                         </button>
                     </div>

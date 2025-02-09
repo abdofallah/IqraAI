@@ -12,7 +12,7 @@ namespace IqraCore.Entities.Business
             this.Id = data.Id;
             this.CountryCode = data.CountryCode;
             this.Number = data.Number;
-            this.AssignedToBusinessId = data.AssignedToBusinessId;
+            this.RouteId = data.RouteId;
             this.RegionId = data.RegionId;
             this.Provider = data.Provider;
         }
@@ -23,7 +23,7 @@ namespace IqraCore.Entities.Business
         public string CountryCode { get; set; } = string.Empty;
         public string Number { get; set; } = string.Empty;
 
-        public long? AssignedToBusinessId { get; set; } = null;
+        public string? RouteId { get; set; } = null;
         public string RegionId { get; set; } = string.Empty;
 
         public virtual BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.Unknown;

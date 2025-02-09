@@ -2,7 +2,10 @@
 let ManageRouteType = null; // edit or new
 let ManageCurrentRouteData = null;
 
-let currentRouteAgentSelectedId = null;
+let currentRouteNumbersList = [];
+let currentRouteAgentSelectedId = "";
+
+let IsSavingRouteManageTab = false;
 
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
@@ -22,6 +25,7 @@ const currentRouteName = routingHeader.find("#currentRouteName");
 const switchBackToRoutingTabButton = routingHeader.find("#switchBackToRoutingTab");
 
 const saveRouteButton = routingHeader.find("#saveRouteButton");
+const saveRouteButtonSpinner = routingHeader.find(".save-button-spinner");
 
 const routingManagerTab = routingTab.find("#routingManagerTab");
 
@@ -38,6 +42,7 @@ const routeIconPicker = new EmojiPicker({
 });
 
 const editRouteIconInput = routingTab.find("#editRouteIconInput");
+const editRouteNameInput = routingTab.find("#editRouteNameInput");
 const editRouteDescriptionInput = routingTab.find("#editRouteDescriptionInput");
 
 // Language Tab
@@ -49,6 +54,8 @@ const editRouteAddMultiLanguageEnabledSelect = routingTab.find("#editRouteAddMul
 const routeMultiLanguagesEnabledList = routingTab.find("#routeMultiLanguagesEnabledList");
 
 // Number Tab
+const editChangeRouteNumberButton = routingTab.find("#editChangeRouteNumberButton");
+
 const editChangeRouteNumberModalElement = $("#editChangeRouteNumberModal");
 let editChangeRouteNumberModal = null;
 const saveChangeRouteNumberButton = editChangeRouteNumberModalElement.find("#saveChangeRouteNumberButton");
@@ -56,7 +63,6 @@ const saveChangeRouteNumberButton = editChangeRouteNumberModalElement.find("#sav
 const routeNumbersList = routingTab.find("#routeNumbersList");
 
 // Configuration Tab
-const editRouteRegionSelect = routingTab.find("#editRouteRegionSelect");
 const editRouteNumberPickupDelay = routingTab.find("#editRouteNumberPickupDelay");
 const editRouteNumberSilenceNotify = routingTab.find("#editRouteNumberSilenceNotify");
 const editRouteNumberSilenceEnd = routingTab.find("#editRouteNumberSilenceEnd");
@@ -98,6 +104,25 @@ const editRouteActionToolEndedInputArgumentsSelect = routingTab.find("#editRoute
 const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteActionToolEndedInputArgumentsList");
 
 /** API FUNCTIONS **/
+function SaveBusinessRoute(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: `/app/user/business/${BusinessId}/routes/save`,
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: (xhr, status, error) => {
+			errorCallback(error, false);
+		},
+	});
+}
 
 /** Functions **/
 
@@ -116,6 +141,35 @@ function showRoutingListTab() {
 			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
+}
+
+function createRouteListElement(routeData) {
+	let numberText = "No number assigned";
+	if (routeData.numbers.length > 0) {
+		const firstNumber = BusinessFullData.businessApp.numbers.find((num) => num.id === routeData.numbers[0]);
+		if (firstNumber) {
+			numberText = `+${CountriesList[firstNumber.countryCode.toUpperCase()].phone_code} ${firstNumber.number}`;
+		}
+	}
+
+	return `
+        <div class="col-lg-4 col-md-6 col-12">
+            <div class="agent-card routing-card d-flex flex-column align-items-start justify-content-center" data-route-id="${routeData.id}">
+                <div class="d-flex flex-row align-items-center justify-content-start mb-4">
+                    <span class="agent-icon">${routeData.general.emoji}</span>
+                    <div class="card-data">
+                        <h4>${routeData.general.name}</h4>
+                        <h6>${numberText}</h6>
+                    </div>
+                </div>
+                <div>
+                    <h5 class="h5-info agent-description">
+                        <span>${routeData.general.description}</span>
+                    </h5>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 /** Agent Manager Tab **/
@@ -148,11 +202,10 @@ function createDefaultRouteObject() {
 			enabledMultiLanguages: null,
 		},
 		configuration: {
-			selectedRegionId: "",
-			PickUpDelayMS: 0,
+			pickUpDelayMS: 0,
 			notifyOnSilenceMS: 10000,
 			endCallOnSilenceMS: 30000,
-			MaxCallTimeS: 600,
+			maxCallTimeS: 600,
 		},
 		numbers: [],
 		agent: {
@@ -168,15 +221,15 @@ function createDefaultRouteObject() {
 		},
 		actions: {
 			ringingTool: {
-				selectedToolId: "",
+				selectedToolId: null,
 				arguements: null,
 			},
 			pickedTool: {
-				selectedToolId: "",
+				selectedToolId: null,
 				arguements: null,
 			},
 			endedTool: {
-				selectedToolId: "",
+				selectedToolId: null,
 				arguements: null,
 			},
 		},
@@ -197,14 +250,6 @@ function resetAndEmptyRouteManagerTab() {
 		editRouteDefaultLanguageSelect.append(`<option value="${language}">${language} | ${currentLanguageData.name}</option>`);
 	});
 
-	// Region
-	editRouteRegionSelect.empty();
-	editRouteRegionSelect.append(`<option value="" disabled selected>Select Region</option>`);
-	SpecificationRegionsListData.forEach((region) => {
-		if (region.disabledAt !== null) return;
-		editRouteRegionSelect.append(`<option region-id="${region.id}">${region.countryCode}-${region.countryRegion}</option>`);
-	});
-
 	// Agents Tab
 	routingManagerSelectAgentModalList.empty();
 	BusinessFullData.businessApp.agents.forEach((agent) => {
@@ -212,12 +257,8 @@ function resetAndEmptyRouteManagerTab() {
 	});
 
 	// Numbers
-	routeNumbersList.empty();
-	$("#editChangeRouteNumberModal #routing-manager-assign-number-modal-list").each((index, element) => {
-		$(element).empty();
-
-		// TODO ADD NUMBERS
-	});
+	routeNumbersList.find("tbody").empty();
+	routeNumbersList.find("tbody").append(`<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>`);
 
 	// Actions
 	editRouteActionToolRinging.empty();
@@ -248,10 +289,479 @@ function resetAndEmptyRouteManagerTab() {
 
 	$("#routing-manager-general-tab").click();
 	saveRouteButton.prop("disabled", true);
+
+	// Dynamic Variables
+	currentRouteAgentSelectedId = "";
 }
 
 function checkRoutingTabHasChanges(enableDisableButton = true) {
-	// TO IMPLEMENT
+	const changes = {};
+	let hasChanges = false;
+
+	// General Tab
+	function checkGeneralTab() {
+		changes.general = {
+			emoji: editRouteIconInput.text(),
+			name: editRouteNameInput.val().trim(),
+			description: editRouteDescriptionInput.val().trim(),
+		};
+
+		if (
+			changes.general.emoji !== ManageCurrentRouteData.general.emoji ||
+			changes.general.name !== ManageCurrentRouteData.general.name ||
+			changes.general.description !== ManageCurrentRouteData.general.description
+		) {
+			hasChanges = true;
+		}
+	}
+
+	// Language Tab
+	function checkLanguageTab() {
+		changes.language = {
+			defaultLanguageCode: editRouteDefaultLanguageSelect.find("option:selected").val(),
+			multiLanguageEnabled: editRouteMultiLanguageCheck.is(":checked"),
+			enabledMultiLanguages: null,
+		};
+
+		if (changes.language.multiLanguageEnabled) {
+			changes.language.enabledMultiLanguages = [];
+			routeMultiLanguagesEnabledList.find("tbody tr").each((idx, element) => {
+				const currentElement = $(element);
+				if (!currentElement.attr("tr-type")) {
+					changes.language.enabledMultiLanguages.push({
+						languageCode: currentElement.attr("code"),
+						messageToPlay: currentElement.find("input").val().trim(),
+					});
+				}
+			});
+		}
+
+		if (
+			changes.language.defaultLanguageCode !== ManageCurrentRouteData.language.defaultLanguageCode ||
+			changes.language.multiLanguageEnabled !== ManageCurrentRouteData.language.multiLanguageEnabled
+		) {
+			hasChanges = true;
+		}
+
+		if (changes.language.multiLanguageEnabled) {
+			if (!ManageCurrentRouteData.language.enabledMultiLanguages && changes.language.enabledMultiLanguages.length > 0) {
+				hasChanges = true;
+			} else if (ManageCurrentRouteData.language.enabledMultiLanguages) {
+				if (JSON.stringify(changes.language.enabledMultiLanguages) !== JSON.stringify(ManageCurrentRouteData.language.enabledMultiLanguages)) {
+					hasChanges = true;
+				}
+			}
+		}
+	}
+
+	// Configuration Tab
+	function checkConfigurationTab() {
+		changes.configuration = {
+			pickUpDelayMS: parseInt(editRouteNumberPickupDelay.val()),
+			notifyOnSilenceMS: parseInt(editRouteNumberSilenceNotify.val()),
+			endCallOnSilenceMS: parseInt(editRouteNumberSilenceEnd.val()),
+			maxCallTimeS: parseInt(editRouteNumberTotalCallTime.val()),
+		};
+
+		if (
+			changes.configuration.pickUpDelayMS !== ManageCurrentRouteData.configuration.pickUpDelayMS ||
+			changes.configuration.notifyOnSilenceMS !== ManageCurrentRouteData.configuration.notifyOnSilenceMS ||
+			changes.configuration.endCallOnSilenceMS !== ManageCurrentRouteData.configuration.endCallOnSilenceMS ||
+			changes.configuration.maxCallTimeS !== ManageCurrentRouteData.configuration.maxCallTimeS
+		) {
+			hasChanges = true;
+		}
+	}
+
+	// Numbers Tab
+	function checkNumbersTab() {
+		changes.numbers = [...currentRouteNumbersList];
+
+		if (JSON.stringify(changes.numbers) !== JSON.stringify(ManageCurrentRouteData.numbers)) {
+			hasChanges = true;
+		}
+	}
+
+	// Agent Tab
+	function checkAgentTab() {
+		changes.agent = {
+			selectedAgentId: currentRouteAgentSelectedId,
+			openingScriptId: editRouteAgentDefaultScriptSelect.find("option:selected").val(),
+			conversationType: editRouteAgentConversationTypeSelect.val() === "interruptible" ? 0 : 1,
+			interruptibleConversationTypeWords: parseInt(editRouteAgentConversationTypeInterruptibleMaxWords.val()),
+			timezones: editRouteNumberTimezoneSelect.val() ? [editRouteNumberTimezoneSelect.val()] : [],
+			callerNumberInContext: editRouteAgentCallerNumberInContextCheck.is(":checked"),
+			routeNumberInContext: editRouteAgentRouteNumberInContextCheck.is(":checked"),
+		};
+
+		if (
+			changes.agent.selectedAgentId !== ManageCurrentRouteData.agent.selectedAgentId ||
+			changes.agent.openingScriptId !== ManageCurrentRouteData.agent.openingScriptId ||
+			changes.agent.conversationType !== ManageCurrentRouteData.agent.conversationType.value ||
+			changes.agent.interruptibleConversationTypeWords !== ManageCurrentRouteData.agent.interruptibleConversationTypeWords ||
+			JSON.stringify(changes.agent.timezones) !== JSON.stringify(ManageCurrentRouteData.agent.timezones) ||
+			changes.agent.callerNumberInContext !== ManageCurrentRouteData.agent.callerNumberInContext ||
+			changes.agent.routeNumberInContext !== ManageCurrentRouteData.agent.routeNumberInContext
+		) {
+			hasChanges = true;
+		}
+	}
+
+	// Actions Tab
+	function checkActionsTab() {
+		changes.actions = {
+			ringingTool: {
+				selectedToolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
+				arguements: null,
+			},
+			pickedTool: {
+				selectedToolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
+				arguements: null,
+			},
+			endedTool: {
+				selectedToolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
+				arguements: null,
+			},
+		};
+
+		// Check Ringing Tool Arguments
+		if (changes.actions.ringingTool.selectedToolId) {
+			changes.actions.ringingTool.arguements = {};
+			editRouteActionToolRingingInputArgumentsList.find(".input-group").each((idx, element) => {
+				const input = $(element).find("input");
+				changes.actions.ringingTool.arguements[input.attr("input_arguement")] = input.val().trim();
+			});
+		}
+
+		// Check Picked Tool Arguments
+		if (changes.actions.pickedTool.selectedToolId) {
+			changes.actions.pickedTool.arguements = {};
+			editRouteActionToolPickedInputArgumentsList.find(".input-group").each((idx, element) => {
+				const input = $(element).find("input");
+				changes.actions.pickedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+			});
+		}
+
+		// Check Ended Tool Arguments
+		if (changes.actions.endedTool.selectedToolId) {
+			changes.actions.endedTool.arguements = {};
+			editRouteActionToolEndedInputArgumentsList.find(".input-group").each((idx, element) => {
+				const input = $(element).find("input");
+				changes.actions.endedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+			});
+		}
+
+		// Compare with original data
+		if (JSON.stringify(changes.actions) !== JSON.stringify(ManageCurrentRouteData.actions)) {
+			hasChanges = true;
+		}
+	}
+
+	// Execute all check functions
+	checkGeneralTab();
+	checkLanguageTab();
+	checkConfigurationTab();
+	checkNumbersTab();
+	checkAgentTab();
+	checkActionsTab();
+
+	if (enableDisableButton) {
+		saveRouteButton.prop("disabled", !hasChanges);
+	}
+
+	return {
+		hasChanges: hasChanges,
+		changes: changes,
+	};
+}
+
+function validateRoutingTab(onlyRemove = true) {
+	const errors = [];
+	let validated = true;
+
+	// General Tab
+	function validateGeneralTab() {
+		if (!editRouteNameInput.val().trim()) {
+			validated = false;
+			errors.push("Route name is required");
+
+			if (!onlyRemove) {
+				editRouteNameInput.addClass("is-invalid");
+			}
+		} else {
+			editRouteNameInput.removeClass("is-invalid");
+		}
+
+		if (!editRouteDescriptionInput.val().trim()) {
+			validated = false;
+			errors.push("Route description is required");
+
+			if (!onlyRemove) {
+				editRouteDescriptionInput.addClass("is-invalid");
+			}
+		} else {
+			editRouteDescriptionInput.removeClass("is-invalid");
+		}
+	}
+
+	// Language Tab
+	function validateLanguageTab() {
+		if (!editRouteDefaultLanguageSelect.val()) {
+			validated = false;
+			errors.push("Default language is required");
+
+			if (!onlyRemove) {
+				editRouteDefaultLanguageSelect.addClass("is-invalid");
+			}
+		} else {
+			editRouteDefaultLanguageSelect.removeClass("is-invalid");
+		}
+
+		if (editRouteMultiLanguageCheck.is(":checked")) {
+			const enabledLanguages = routeMultiLanguagesEnabledList.find("tbody tr").not('[tr-type="none-notice"]');
+
+			if (enabledLanguages.length === 0) {
+				validated = false;
+				errors.push("At least one language must be enabled when multi-language is checked");
+
+				if (!onlyRemove) {
+					editRouteAddMultiLanguageEnabledSelect.addClass("is-invalid");
+				}
+			} else {
+				editRouteAddMultiLanguageEnabledSelect.removeClass("is-invalid");
+			}
+
+			enabledLanguages.each((idx, element) => {
+				const messageInput = $(element).find("input");
+				if (!messageInput.val().trim()) {
+					validated = false;
+					errors.push(`Language message for ${$(element).attr("name")} is required`);
+
+					if (!onlyRemove) {
+						messageInput.addClass("is-invalid");
+					}
+				} else {
+					messageInput.removeClass("is-invalid");
+				}
+			});
+		}
+	}
+
+	// Configuration Tab
+	function validateConfigurationTab() {
+		// Pickup Delay
+		if (editRouteNumberPickupDelay.val() === "" || isNaN(editRouteNumberPickupDelay.val())) {
+			validated = false;
+			errors.push("Pick up delay must be a valid number");
+
+			if (!onlyRemove) {
+				editRouteNumberPickupDelay.addClass("is-invalid");
+			}
+		} else if (parseInt(editRouteNumberPickupDelay.val()) < 0) {
+			validated = false;
+			errors.push("Pick up delay cannot be negative");
+
+			if (!onlyRemove) {
+				editRouteNumberPickupDelay.addClass("is-invalid");
+			}
+		} else {
+			editRouteNumberPickupDelay.removeClass("is-invalid");
+		}
+
+		// Silence Notify
+		if (editRouteNumberSilenceNotify.val() === "" || isNaN(editRouteNumberSilenceNotify.val())) {
+			validated = false;
+			errors.push("Notify on silence must be a valid number");
+
+			if (!onlyRemove) {
+				editRouteNumberSilenceNotify.addClass("is-invalid");
+			}
+		} else if (parseInt(editRouteNumberSilenceNotify.val()) < 0) {
+			validated = false;
+			errors.push("Notify on silence cannot be negative");
+
+			if (!onlyRemove) {
+				editRouteNumberSilenceNotify.addClass("is-invalid");
+			}
+		} else {
+			editRouteNumberSilenceNotify.removeClass("is-invalid");
+		}
+
+		// Silence End
+		if (editRouteNumberSilenceEnd.val() === "" || isNaN(editRouteNumberSilenceEnd.val())) {
+			validated = false;
+			errors.push("End call on silence must be a valid number");
+
+			if (!onlyRemove) {
+				editRouteNumberSilenceEnd.addClass("is-invalid");
+			}
+		} else if (parseInt(editRouteNumberSilenceEnd.val()) < 0) {
+			validated = false;
+			errors.push("End call on silence cannot be negative");
+
+			if (!onlyRemove) {
+				editRouteNumberSilenceEnd.addClass("is-invalid");
+			}
+		} else {
+			editRouteNumberSilenceEnd.removeClass("is-invalid");
+		}
+
+		// Max Call Time
+		if (editRouteNumberTotalCallTime.val() === "" || isNaN(editRouteNumberTotalCallTime.val())) {
+			validated = false;
+			errors.push("Max call time must be a valid number");
+
+			if (!onlyRemove) {
+				editRouteNumberTotalCallTime.addClass("is-invalid");
+			}
+		} else if (parseInt(editRouteNumberTotalCallTime.val()) < 0) {
+			validated = false;
+			errors.push("Max call time cannot be negative");
+
+			if (!onlyRemove) {
+				editRouteNumberTotalCallTime.addClass("is-invalid");
+			}
+		} else {
+			editRouteNumberTotalCallTime.removeClass("is-invalid");
+		}
+	}
+
+	// Numbers Tab
+	function validateNumbersTab() {
+		if (currentRouteNumbersList.length === 0) {
+			validated = false;
+			errors.push("At least one number must be added to the route");
+		}
+	}
+
+	// Agent Tab
+	function validateAgentTab() {
+		if (!currentRouteAgentSelectedId) {
+			validated = false;
+			errors.push("An agent must be selected");
+
+			if (!onlyRemove) {
+				editSelectedRouteAgentName.addClass("is-invalid");
+			}
+		} else {
+			editSelectedRouteAgentName.removeClass("is-invalid");
+		}
+
+		if (!editRouteAgentDefaultScriptSelect.val() && !editRouteAgentDefaultScriptSelect.prop("disabled")) {
+			validated = false;
+			errors.push("Opening script must be selected");
+
+			if (!onlyRemove) {
+				editRouteAgentDefaultScriptSelect.addClass("is-invalid");
+			}
+		} else {
+			editRouteAgentDefaultScriptSelect.removeClass("is-invalid");
+		}
+
+		if (editRouteAgentConversationTypeSelect.val() === "interruptible") {
+			const wordsValue = parseInt(editRouteAgentConversationTypeInterruptibleMaxWords.val());
+			if (isNaN(wordsValue) || wordsValue < 1) {
+				validated = false;
+				errors.push("Words to interrupt must be a positive number");
+
+				if (!onlyRemove) {
+					editRouteAgentConversationTypeInterruptibleMaxWords.addClass("is-invalid");
+				}
+			} else {
+				editRouteAgentConversationTypeInterruptibleMaxWords.removeClass("is-invalid");
+			}
+		}
+
+		if (!editRouteNumberTimezoneSelect.val()) {
+			validated = false;
+			errors.push("Timezone must be selected");
+
+			if (!onlyRemove) {
+				editRouteNumberTimezoneSelect.addClass("is-invalid");
+			}
+		} else {
+			editRouteNumberTimezoneSelect.removeClass("is-invalid");
+		}
+	}
+
+	// Actions Tab
+	function validateActionsTab() {
+		// Validate Ringing Tool Arguments
+		if (editRouteActionToolRinging.val() !== "none") {
+			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolRinging.val());
+			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
+			const currentArguments = editRouteActionToolRingingInputArgumentsList.find(".input-group input");
+
+			requiredArguments.forEach((reqArg) => {
+				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
+				if (argInput.length === 0 || !argInput.val().trim()) {
+					validated = false;
+					errors.push(`Ringing tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
+
+					if (!onlyRemove && argInput.length > 0) {
+						argInput.addClass("is-invalid");
+					}
+				} else {
+					argInput.removeClass("is-invalid");
+				}
+			});
+		}
+
+		// Validate Picked Tool Arguments
+		if (editRouteActionToolPicked.val() !== "none") {
+			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolPicked.val());
+			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
+			const currentArguments = editRouteActionToolPickedInputArgumentsList.find(".input-group input");
+
+			requiredArguments.forEach((reqArg) => {
+				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
+				if (argInput.length === 0 || !argInput.val().trim()) {
+					validated = false;
+					errors.push(`Picked tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
+
+					if (!onlyRemove && argInput.length > 0) {
+						argInput.addClass("is-invalid");
+					}
+				} else {
+					argInput.removeClass("is-invalid");
+				}
+			});
+		}
+
+		// Validate Ended Tool Arguments
+		if (editRouteActionToolEnded.val() !== "none") {
+			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolEnded.val());
+			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
+			const currentArguments = editRouteActionToolEndedInputArgumentsList.find(".input-group input");
+
+			requiredArguments.forEach((reqArg) => {
+				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
+				if (argInput.length === 0 || !argInput.val().trim()) {
+					validated = false;
+					errors.push(`Ended tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
+
+					if (!onlyRemove && argInput.length > 0) {
+						argInput.addClass("is-invalid");
+					}
+				} else {
+					argInput.removeClass("is-invalid");
+				}
+			});
+		}
+	}
+
+	// Execute all validation functions
+	validateGeneralTab();
+	validateLanguageTab();
+	validateConfigurationTab();
+	validateNumbersTab();
+	validateAgentTab();
+	validateActionsTab();
+
+	return {
+		validated: validated,
+		errors: errors,
+	};
 }
 
 /** Language Tab **/
@@ -301,14 +811,58 @@ function createRouteAgentModalListElement(agentData) {
 }
 
 /** Numbers Tab **/
-function createRouteNumberModalListElement(numberData) {
+function createAddedRouteNumberListElement(numberData) {
+	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
+
 	const element = `
-		<button type="button" class="list-group-item list-group-item-action" number-id="${numberData.id}" number-provider="${numberData.provider.value}">
-			+968 724912671
+		<tr>
+			<td>${countryData["Alpha-2 code"]} ${countryData.phone_code}</td>
+			<td>${numberData.number}</td>
+			<td>${numberData.provider.name}</td>
+			<td>
+				<button class="btn btn-danger btn-sm" number-id="${numberData.id}" button-type="remove-number-from-route">
+					<i class="fa-regular fa-trash"></i>
+				</button>
+			</td>
+		</tr>
+	`;
+
+	return element;
+}
+
+function createRouteNumberModalListElement(numberData) {
+	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
+
+	// TODO CHANGE
+	const isNumberActiveInRoute = currentRouteNumbersList.findIndex((number) => number === numberData.id) !== -1;
+	const isUsedByOtherRoute = numberData.routeId !== null && numberData.routeId !== ManageCurrentRouteData.id;
+
+	const element = `
+		<button type="button" class="list-group-item list-group-item-action ${isUsedByOtherRoute || isNumberActiveInRoute ? "disabled" : ""}" button-type="add-number-to-route" number-id="${numberData.id}" number-provider="${numberData.provider.value}">
+			${countryData.phone_code} ${numberData.number} ${isUsedByOtherRoute ? "(Used by another route)" : ""} ${isNumberActiveInRoute ? "(Already added)" : ""}
 		</button>
 	`;
 
 	return element;
+}
+
+function fillRouteNumberModalNumbersList() {
+	Object.keys(NumberProviderEnum).forEach((providerType) => {
+		const providerKey = NumberProviderEnum[providerType];
+
+		const providerNumbers = BusinessFullData.businessApp.numbers.filter((number) => number.provider.value === providerKey);
+
+		const listElement = editChangeRouteNumberModalElement.find(`#routing-manager-assign-number-modal-list[number-provider="${providerKey}"]`);
+
+		listElement.empty();
+		if (providerNumbers.length === 0) {
+			listElement.append("<span>No numbers found for provider.</span>");
+		} else {
+			providerNumbers.forEach((number) => {
+				listElement.append($(createRouteNumberModalListElement(number)));
+			});
+		}
+	});
 }
 
 /** Init **/
@@ -323,6 +877,7 @@ function initRoutingTab() {
 			event.preventDefault();
 
 			ManageCurrentRouteData = createDefaultRouteObject();
+			currentRouteNumbersList = [];
 			currentRouteName.text("New Route");
 
 			resetAndEmptyRouteManagerTab();
@@ -406,11 +961,80 @@ function initRoutingTab() {
 
 		/** Number Tab **/
 		function initNumberTabHandlers() {
-			editChangeRouteNumberModalElement.on("click", "button.nav-link", (event) => {
+			editChangeRouteNumberButton.on("click", (event) => {
+				event.preventDefault();
+
+				fillRouteNumberModalNumbersList();
+
+				editChangeRouteNumberModal.show();
+
+				saveChangeRouteNumberButton.prop("disabled", true);
+			});
+
+			editChangeRouteNumberModalElement.on("click", "[button-type=add-number-to-route]", (event) => {
 				event.preventDefault();
 
 				const currentElement = $(event.currentTarget);
-				const numberProvider = currentElement.attr("number-provider");
+				const numberId = currentElement.attr("number-id");
+
+				const currentActiveElement = editChangeRouteNumberModalElement.find('[button-type="add-number-to-route"].active');
+				if (currentActiveElement.length > 0) {
+					const currentActiveNumberId = currentActiveElement.attr("number-id");
+
+					if (currentActiveNumberId === numberId) {
+						return;
+					}
+
+					currentActiveElement.removeClass("active");
+				}
+
+				currentElement.addClass("active");
+				saveChangeRouteNumberButton.prop("disabled", false);
+			});
+
+			saveChangeRouteNumberButton.on("click", (event) => {
+				event.preventDefault();
+
+				const currentActiveElement = editChangeRouteNumberModalElement.find('[button-type="add-number-to-route"].active');
+				if (currentActiveElement.length === 0) return;
+
+				const numberId = currentActiveElement.attr("number-id");
+
+				const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
+
+				routeNumbersList.find("tbody").append($(createAddedRouteNumberListElement(numberData)));
+
+				const noneNotice = routeNumbersList.find("tbody tr[tr-type=none-notice]");
+				if (noneNotice.length > 0) {
+					noneNotice.remove();
+				}
+
+				currentRouteNumbersList.push(numberId);
+
+				editChangeRouteNumberModal.hide();
+
+				checkRoutingTabHasChanges();
+			});
+
+			routeNumbersList.on("click", '[button-type="remove-number-from-route"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const currentElement = $(event.currentTarget);
+				const numberId = currentElement.attr("number-id");
+
+				const index = currentRouteNumbersList.indexOf(numberId);
+				if (index > -1) {
+					currentRouteNumbersList.splice(index, 1);
+				}
+
+				currentElement.parent().parent().remove();
+
+				if (routeNumbersList.find("tbody").children().length === 0) {
+					routeNumbersList.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>');
+				}
+
+				checkRoutingTabHasChanges();
 			});
 		}
 		initNumberTabHandlers();
@@ -662,5 +1286,105 @@ function initRoutingTab() {
 			});
 		}
 		initActionTabHandlers();
+
+		// Save Button Click Handler
+		saveRouteButton.on("click", async (event) => {
+			event.preventDefault();
+
+			if (IsSavingRouteManageTab) return;
+
+			// Validate the route
+			const validationResult = validateRoutingTab(false);
+			if (!validationResult.validated) {
+				AlertManager.createAlert({
+					type: "danger",
+					message: `Validation for required route fields failed.<br><br>${validationResult.errors.join("<br>")}`,
+					timeout: 6000,
+				});
+				return;
+			}
+
+			// Check for changes
+			const routeChanges = checkRoutingTabHasChanges(false);
+			if (!routeChanges.hasChanges) {
+				return;
+			}
+
+			// Disable button and show spinner
+			saveRouteButton.prop("disabled", true);
+			saveRouteButtonSpinner.removeClass("d-none");
+
+			IsSavingRouteManageTab = true;
+
+			// Create form data
+			const formData = new FormData();
+			formData.append("postType", ManageRouteType);
+			formData.append("changes", JSON.stringify(routeChanges.changes));
+
+			if (ManageRouteType === "edit") {
+				formData.append("existingRouteId", ManageCurrentRouteData.id);
+			}
+
+			// Call API to save route
+			SaveBusinessRoute(
+				formData,
+				(saveResponse) => {
+					// Update current route data with saved data
+					ManageCurrentRouteData = saveResponse.data;
+
+					// Update route name in header
+					currentRouteName.text(ManageCurrentRouteData.general.name);
+
+					if (ManageRouteType === "edit") {
+						// Update existing route in business data
+						const existingDataIndex = BusinessFullData.businessApp.routes.findIndex((route) => route.id === ManageCurrentRouteData.id);
+						BusinessFullData.businessApp.routes[existingDataIndex] = ManageCurrentRouteData;
+
+						// Update route in list
+						const routeListElement = routingListTab.find(`[data-route-id="${ManageCurrentRouteData.id}"]`);
+						routeListElement.replaceWith(createRouteListElement(ManageCurrentRouteData));
+					} else if (ManageRouteType === "new") {
+						// Add new route to business data
+						BusinessFullData.businessApp.routes.push(ManageCurrentRouteData);
+
+						// Add new route to list
+						const newRouteElement = $(createRouteListElement(ManageCurrentRouteData));
+						routingListTab.find(".row").append(newRouteElement);
+					}
+
+					// Reset save button state
+					saveRouteButton.prop("disabled", true);
+					saveRouteButtonSpinner.addClass("d-none");
+
+					IsSavingRouteManageTab = false;
+
+					// Show success message
+					AlertManager.createAlert({
+						type: "success",
+						message: "Route saved successfully.",
+						timeout: 6000,
+					});
+
+					// Update route type to edit mode
+					ManageRouteType = "edit";
+				},
+				(saveError, isUnsuccessful) => {
+					// Show error message
+					AlertManager.createAlert({
+						type: "danger",
+						message: "Error occurred while saving route data. Check browser console for logs.",
+						timeout: 6000,
+					});
+
+					console.log("Error occurred while saving route data: ", saveError);
+
+					// Reset save button state
+					saveRouteButton.prop("disabled", false);
+					saveRouteButtonSpinner.addClass("d-none");
+
+					IsSavingRouteManageTab = false;
+				},
+			);
+		});
 	});
 }
