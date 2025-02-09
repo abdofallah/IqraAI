@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Business
 {
-    public class BusinessRoutingPermission
+    public class BusinessRoutesPermission
     {
         public DateTime? DisabledFullAt { get; set; } = null;
         public string? DisabledFullReason { get; set; } = null;

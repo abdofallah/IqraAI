@@ -56,6 +56,22 @@ namespace IqraInfrastructure.Repositories.Business
             return result.ModifiedCount > 0;
         }
 
+        public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Tools, t => t.Id == selectedToolId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+
+            if (result == null)
+            {
+                throw new Exception("Business not found");
+            }
+
+            return result.Tools.FirstOrDefault(t => t.Id == selectedToolId);
+        }
+
         public async Task<bool> CheckBusinessAppToolExists(long businessId, string toolId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -477,6 +493,20 @@ namespace IqraInfrastructure.Repositories.Business
         * 
         **/
 
+        public async Task<List<BusinessNumberData>> GetBusinessNumbers(long businessId)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var projection = Builders<BusinessApp>.Projection.Include(b => b.Numbers).Include(b => b.Id);
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+
+            if (result == null)
+            {
+                throw new Exception("Business not found");
+            }
+
+            return result.Numbers;
+        }
+
         public async Task<BusinessNumberData?> GetBusinessNumberById(long businessId, string numberId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -524,6 +554,44 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.Set(
                 $"Numbers.$",
                 new BsonDocument(newNumberData.ToBsonDocument())
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        /**
+        * 
+        * Routes Tab
+        * 
+        **/
+
+        public async Task<bool> CheckBusinessRouteExists(long businessId, string existingRouteId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, t => t.Id == existingRouteId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> AddBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Routings, newBusinessAppRouteData);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, g => g.Id == newBusinessAppRouteData.Id)
+            );
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Routings.$",
+                new BsonDocument(newBusinessAppRouteData.ToBsonDocument())
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
