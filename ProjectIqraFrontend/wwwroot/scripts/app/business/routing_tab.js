@@ -470,35 +470,71 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 			},
 		};
 
-		// Check Ringing Tool Arguments
+		// Helper function to collect arguments from input list
+		function collectToolArguments(inputList) {
+			const args = {};
+			inputList.find(".input-group").each((idx, element) => {
+				const input = $(element).find("input");
+				args[input.attr("input_arguement")] = input.val().trim();
+			});
+			return args;
+		}
+
+		// Helper function to compare tool data
+		function compareToolData(newTool, originalTool) {
+			// Compare selectedToolId
+			if (newTool.selectedToolId !== originalTool.selectedToolId) {
+				return true;
+			}
+
+			// If both have no arguments, they're equal
+			if (!newTool.arguments && !originalTool.arguments) {
+				return false;
+			}
+
+			// If one has arguments and the other doesn't, they're different
+			if ((!newTool.arguments && originalTool.arguments) || (newTool.arguments && !originalTool.arguments)) {
+				return true;
+			}
+
+			// If both have arguments, compare them
+			if (newTool.arguments && originalTool.arguments) {
+				const newKeys = Object.keys(newTool.arguments);
+				const originalKeys = Object.keys(originalTool.arguments);
+
+				// Compare number of arguments
+				if (newKeys.length !== originalKeys.length) {
+					return true;
+				}
+
+				// Compare each argument
+				for (const key of newKeys) {
+					if (!originalTool.arguments.hasOwnProperty(key) || newTool.arguments[key] !== originalTool.arguments[key]) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		// Collect arguments for each tool
 		if (changes.actions.ringingTool.selectedToolId) {
-			changes.actions.ringingTool.arguments = {};
-			editRouteActionToolRingingInputArgumentsList.find(".input-group").each((idx, element) => {
-				const input = $(element).find("input");
-				changes.actions.ringingTool.arguments[input.attr("input_arguement")] = input.val().trim();
-			});
+			changes.actions.ringingTool.arguments = collectToolArguments(editRouteActionToolRingingInputArgumentsList);
 		}
-
-		// Check Picked Tool Arguments
 		if (changes.actions.callPickedTool.selectedToolId) {
-			changes.actions.callPickedTool.arguments = {};
-			editRouteActionToolPickedInputArgumentsList.find(".input-group").each((idx, element) => {
-				const input = $(element).find("input");
-				changes.actions.callPickedTool.arguments[input.attr("input_arguement")] = input.val().trim();
-			});
+			changes.actions.callPickedTool.arguments = collectToolArguments(editRouteActionToolPickedInputArgumentsList);
 		}
-
-		// Check Ended Tool Arguments
 		if (changes.actions.callEndedTool.selectedToolId) {
-			changes.actions.callEndedTool.arguments = {};
-			editRouteActionToolEndedInputArgumentsList.find(".input-group").each((idx, element) => {
-				const input = $(element).find("input");
-				changes.actions.callEndedTool.arguments[input.attr("input_arguement")] = input.val().trim();
-			});
+			changes.actions.callEndedTool.arguments = collectToolArguments(editRouteActionToolEndedInputArgumentsList);
 		}
 
-		// Compare with original data
-		if (JSON.stringify(changes.actions) !== JSON.stringify(ManageCurrentRouteData.actions)) {
+		// Compare each tool independently
+		if (
+			compareToolData(changes.actions.ringingTool, ManageCurrentRouteData.actions.ringingTool) ||
+			compareToolData(changes.actions.callPickedTool, ManageCurrentRouteData.actions.callPickedTool) ||
+			compareToolData(changes.actions.callEndedTool, ManageCurrentRouteData.actions.callEndedTool)
+		) {
 			hasChanges = true;
 		}
 	}
