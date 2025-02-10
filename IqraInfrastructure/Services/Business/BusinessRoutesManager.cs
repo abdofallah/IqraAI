@@ -27,7 +27,12 @@ namespace IqraInfrastructure.Services.Business
             return await _businessAppRepository.CheckBusinessRouteExists(businessId, existingRouteId);
         }
 
-        public async Task<FunctionReturnResult<BusinessAppRoute?>> AddOrUpdateUserBusinessRoute(long businessId,  IFormCollection formData, string postType, string? existingRouteId)
+        public async Task<BusinessAppRoute?> GetBusinessRoute(long businessId, string existingRouteId)
+        {
+            return await _businessAppRepository.GetBusinessRoute(businessId, existingRouteId);
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppRoute?>> AddOrUpdateUserBusinessRoute(long businessId,  IFormCollection formData, string postType, BusinessAppRoute? existingRouteData)
         {
             var result = new FunctionReturnResult<BusinessAppRoute?>();
 
@@ -298,7 +303,7 @@ namespace IqraInfrastructure.Services.Business
                 }
                 else
                 {
-                    if (numberData.RouteId != null && numberData.RouteId != existingRouteId)
+                    if (numberData.RouteId != null && numberData.RouteId != existingRouteData.Id)
                     {
                         result.Code = "AddOrUpdateUserBusinessRoute:29";
                         result.Message = "Number with id " + numberId + " already has a route.";
@@ -457,7 +462,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessAppRouteData.Actions.RingingTool = ringingToolValidationResult.Data;
 
             // Validate Picked Tool
-            if (!actionsTabRootElement.TryGetProperty("pickedTool", out var pickedToolElement))
+            if (!actionsTabRootElement.TryGetProperty("callPickedTool", out var pickedToolElement))
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:47";
                 result.Message = "Picked tool not found.";
@@ -473,7 +478,7 @@ namespace IqraInfrastructure.Services.Business
             newBusinessAppRouteData.Actions.CallPickedTool = pickedToolValidationResult.Data;
 
             // Validate Ended Tool
-            if (!actionsTabRootElement.TryGetProperty("endedTool", out var endedToolElement))
+            if (!actionsTabRootElement.TryGetProperty("callEndedTool", out var endedToolElement))
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:49";
                 result.Message = "Ended tool not found.";
@@ -502,7 +507,7 @@ namespace IqraInfrastructure.Services.Business
             }
             else
             {
-                newBusinessAppRouteData.Id = existingRouteId!;
+                newBusinessAppRouteData.Id = existingRouteData.Id;
                 var updateRouteResult = await _businessAppRepository.UpdateBusinessAppRoute(businessId, newBusinessAppRouteData);
                 if (!updateRouteResult)
                 {
@@ -510,6 +515,19 @@ namespace IqraInfrastructure.Services.Business
                     result.Message = "Failed to update business app route.";
                     return result;
                 }
+
+                foreach (var oldNumberId in existingRouteData.Numbers)
+                {
+                    if (!newBusinessAppRouteData.Numbers.Contains(oldNumberId))
+                    {
+                        await _businessAppRepository.UpdateBusinessNumberRoute(businessId, oldNumberId, null);
+                    }
+                }
+            }
+
+            foreach (var numberId in newBusinessAppRouteData.Numbers)
+            {
+                await _businessAppRepository.UpdateBusinessNumberRoute(businessId, numberId, newBusinessAppRouteData.Id);
             }
 
             result.Success = true;

@@ -120,6 +120,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             formData.TryGetValue("existingRouteId", out StringValues existingRouteIdStringValue);
             string? existingRouteId = existingRouteIdStringValue.ToString();
             
+            BusinessAppRoute? existingRouteData = null;
             if (postType == "new")
             {
                 if (businessResult.Data.Permission.Routings.DisabledAddingAt != null)
@@ -157,8 +158,8 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool routeExistsResult = await _businessManager.GetRoutesManager().CheckBusinessRouteExists(businessId, existingRouteId);
-                if (!routeExistsResult)
+                existingRouteData = await _businessManager.GetRoutesManager().GetBusinessRoute(businessId, existingRouteId);
+                if (existingRouteData == null)
                 {
                     result.Code = "SaveBusinessRoute:11";
                     result.Message = "Existing route not found.";
@@ -167,7 +168,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
 
             // Process the save/update
-            FunctionReturnResult<BusinessAppRoute?> updateResult = await _businessManager.GetRoutesManager().AddOrUpdateUserBusinessRoute(businessId, formData, postType, existingRouteId);
+            FunctionReturnResult<BusinessAppRoute?> updateResult = await _businessManager.GetRoutesManager().AddOrUpdateUserBusinessRoute(businessId, formData, postType, existingRouteData);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessRoute:" + updateResult.Code;

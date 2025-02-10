@@ -567,12 +567,21 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> CheckBusinessRouteExists(long businessId, string existingRouteId)
         {
+            return await GetBusinessRoute(businessId, existingRouteId) != null;
+        }
+
+        public async Task<BusinessAppRoute?> GetBusinessRoute(long businessId, string existingRouteId)
+        {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Routings, t => t.Id == existingRouteId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
-            return result != null;
+            var projection = Builders<BusinessApp>.Projection.Include(b => b.Routings).Include(b => b.Id);
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+
+            if (result == null) return null;
+
+            return result.Routings.FirstOrDefault(t => t.Id == existingRouteId);
         }
 
         public async Task<bool> AddBusinessAppRoute(long businessId, BusinessAppRoute newBusinessAppRouteData)
@@ -592,6 +601,21 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.Set(
                 $"Routings.$",
                 new BsonDocument(newBusinessAppRouteData.ToBsonDocument())
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateBusinessNumberRoute(long businessId, string numberId, string? routeId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, g => g.Id == numberId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Numbers.$.RouteId",
+                routeId
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;

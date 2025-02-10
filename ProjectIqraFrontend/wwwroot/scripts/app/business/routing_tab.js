@@ -19,6 +19,7 @@ const routingHeader = routingTab.find("#routing-header");
 const routingListTab = routingTab.find("#routingListTab");
 
 const addNewRoutingButton = routingListTab.find("#addNewRouteButton");
+const routingListTable = routingListTab.find("#routingListTable");
 
 // Manager Tab
 const currentRouteName = routingHeader.find("#currentRouteName");
@@ -30,6 +31,8 @@ const saveRouteButtonSpinner = routingHeader.find(".save-button-spinner");
 const routingManagerTab = routingTab.find("#routingManagerTab");
 
 // Genral Tab
+const routeManagerGeneralTab = routingManagerTab.find("#routing-manager-general");
+
 const routeIconPicker = new EmojiPicker({
 	trigger: [
 		{
@@ -41,17 +44,19 @@ const routeIconPicker = new EmojiPicker({
 	closeOnInsert: true,
 });
 
-const editRouteIconInput = routingTab.find("#editRouteIconInput");
-const editRouteNameInput = routingTab.find("#editRouteNameInput");
-const editRouteDescriptionInput = routingTab.find("#editRouteDescriptionInput");
+const editRouteIconInput = routeManagerGeneralTab.find("#editRouteIconInput");
+const editRouteNameInput = routeManagerGeneralTab.find("#editRouteNameInput");
+const editRouteDescriptionInput = routeManagerGeneralTab.find("#editRouteDescriptionInput");
 
 // Language Tab
-const editRouteDefaultLanguageSelect = routingTab.find("#editRouteDefaultLanguageSelect");
+const routeManagerLanguageTab = routingManagerTab.find("#routing-manager-language");
 
-const editRouteMultiLanguageCheck = routingTab.find("#editRouteMultiLanguageCheck");
+const editRouteDefaultLanguageSelect = routeManagerLanguageTab.find("#editRouteDefaultLanguageSelect");
 
-const editRouteAddMultiLanguageEnabledSelect = routingTab.find("#editRouteAddMultiLanguageEnabledSelect");
-const routeMultiLanguagesEnabledList = routingTab.find("#routeMultiLanguagesEnabledList");
+const editRouteMultiLanguageCheck = routeManagerLanguageTab.find("#editRouteMultiLanguageCheck");
+
+const editRouteAddMultiLanguageEnabledSelect = routeManagerLanguageTab.find("#editRouteAddMultiLanguageEnabledSelect");
+const routeMultiLanguagesEnabledList = routeManagerLanguageTab.find("#routeMultiLanguagesEnabledList");
 
 // Number Tab
 const editChangeRouteNumberButton = routingTab.find("#editChangeRouteNumberButton");
@@ -63,10 +68,12 @@ const saveChangeRouteNumberButton = editChangeRouteNumberModalElement.find("#sav
 const routeNumbersList = routingTab.find("#routeNumbersList");
 
 // Configuration Tab
-const editRouteNumberPickupDelay = routingTab.find("#editRouteNumberPickupDelay");
-const editRouteNumberSilenceNotify = routingTab.find("#editRouteNumberSilenceNotify");
-const editRouteNumberSilenceEnd = routingTab.find("#editRouteNumberSilenceEnd");
-const editRouteNumberTotalCallTime = routingTab.find("#editRouteNumberTotalCallTime");
+const routeManagerConfigurationTab = routingManagerTab.find("#routing-manager-configuration");
+
+const editRouteNumberPickupDelay = routeManagerConfigurationTab.find("#editRouteNumberPickupDelay");
+const editRouteNumberSilenceNotify = routeManagerConfigurationTab.find("#editRouteNumberSilenceNotify");
+const editRouteNumberSilenceEnd = routeManagerConfigurationTab.find("#editRouteNumberSilenceEnd");
+const editRouteNumberTotalCallTime = routeManagerConfigurationTab.find("#editRouteNumberTotalCallTime");
 
 // Agent Tab
 const editChangeRouteAgentModalElement = $("#editChangeRouteAgentModal");
@@ -106,7 +113,7 @@ const editRouteActionToolEndedInputArgumentsList = routingTab.find("#editRouteAc
 /** API FUNCTIONS **/
 function SaveBusinessRoute(formData, successCallback, errorCallback) {
 	$.ajax({
-		url: `/app/user/business/${BusinessId}/routes/save`,
+		url: `/app/user/business/${CurrentBusinessId}/routes/save`,
 		type: "POST",
 		data: formData,
 		processData: false,
@@ -144,22 +151,17 @@ function showRoutingListTab() {
 }
 
 function createRouteListElement(routeData) {
-	let numberText = "No number assigned";
-	if (routeData.numbers.length > 0) {
-		const firstNumber = BusinessFullData.businessApp.numbers.find((num) => num.id === routeData.numbers[0]);
-		if (firstNumber) {
-			numberText = `+${CountriesList[firstNumber.countryCode.toUpperCase()].phone_code} ${firstNumber.number}`;
-		}
-	}
+	const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === routeData.agent.selectedAgentId);
 
 	return `
         <div class="col-lg-4 col-md-6 col-12">
-            <div class="agent-card routing-card d-flex flex-column align-items-start justify-content-center" data-route-id="${routeData.id}">
+            <div class="agent-card routing-card d-flex flex-column align-items-start justify-content-center" route-id="${routeData.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
                     <span class="agent-icon">${routeData.general.emoji}</span>
                     <div class="card-data">
                         <h4>${routeData.general.name}</h4>
-                        <h6>${numberText}</h6>
+                        <h6>${routeData.numbers.length} Number${routeData.numbers.length === 1 ? "" : "s"} Assigned</h6>
+						<h6>Agent ${agentData.general.emoji} ${agentData.general.name[BusinessDefaultLanguage]}</h6>
                     </div>
                 </div>
                 <div>
@@ -170,6 +172,20 @@ function createRouteListElement(routeData) {
             </div>
         </div>
     `;
+}
+
+function fillRouteList() {
+	const routes = BusinessFullData.businessApp.routings;
+
+	routingListTable.empty();
+	if (routes.length === 0) {
+		routingListTable.append("<span>No routes found.</span>");
+	} else {
+		routes.forEach((route) => {
+			const element = createRouteListElement(route);
+			routingListTable.append($(element));
+		});
+	}
 }
 
 /** Agent Manager Tab **/
@@ -224,11 +240,11 @@ function createDefaultRouteObject() {
 				selectedToolId: null,
 				arguements: null,
 			},
-			pickedTool: {
+			callPickedTool: {
 				selectedToolId: null,
 				arguements: null,
 			},
-			endedTool: {
+			callEndedTool: {
 				selectedToolId: null,
 				arguements: null,
 			},
@@ -239,26 +255,54 @@ function createDefaultRouteObject() {
 }
 
 function resetAndEmptyRouteManagerTab() {
+	// General Tab
+	editRouteNameInput.val("");
+	editRouteDescriptionInput.val("");
+	editRouteIconInput.html("📞");
+
 	// Langauge
+	editRouteMultiLanguageCheck.prop("checked", false).change();
+	routeMultiLanguagesEnabledList.find("tbody").empty();
+
 	editRouteAddMultiLanguageEnabledSelect.empty();
-	editRouteDefaultLanguageSelect.empty();
 	editRouteAddMultiLanguageEnabledSelect.append(`<option value="" disabled selected>Add Language</option>`);
+
+	editRouteDefaultLanguageSelect.empty();
 	editRouteDefaultLanguageSelect.append(`<option value="" disabled selected>Select Language</option>`);
+
 	BusinessFullData.businessData.languages.forEach((language) => {
 		const currentLanguageData = SpecificationLanguagesListData.find((l) => l.id === language);
+
 		editRouteAddMultiLanguageEnabledSelect.append(`<option value="${language}">${language} | ${currentLanguageData.name}</option>`);
+
 		editRouteDefaultLanguageSelect.append(`<option value="${language}">${language} | ${currentLanguageData.name}</option>`);
 	});
+
+	// Numbers
+	routeNumbersList.find("tbody").empty();
+	routeNumbersList.find("tbody").append(`<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>`);
+
+	// Configuration
+	editRouteNumberPickupDelay.val(0);
+	editRouteNumberSilenceNotify.val(10000);
+	editRouteNumberSilenceEnd.val(30000);
+	editRouteNumberTotalCallTime.val(600);
 
 	// Agents Tab
 	routingManagerSelectAgentModalList.empty();
 	BusinessFullData.businessApp.agents.forEach((agent) => {
 		routingManagerSelectAgentModalList.append($(createRouteAgentModalListElement(agent)));
 	});
-
-	// Numbers
-	routeNumbersList.find("tbody").empty();
-	routeNumbersList.find("tbody").append(`<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>`);
+	editSelectedRouteAgentName.val("");
+	editSelectedRouteAgentIcon.html("-");
+	editRouteAgentDefaultScriptSelect.empty();
+	editRouteAgentDefaultScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
+	editRouteAgentDefaultScriptSelect.prop("disabled", true);
+	editRouteAgentConversationTypeSelect.val("interruptible").change();
+	editRouteAgentConversationTypeInterruptibleMaxWords.val(3);
+	editRouteNumberTimezoneSelect.val("").change();
+	editRouteAgentCallerNumberInContextCheck.prop("checked", true);
+	editRouteAgentRouteNumberInContextCheck.prop("checked", true);
 
 	// Actions
 	editRouteActionToolRinging.empty();
@@ -295,6 +339,8 @@ function resetAndEmptyRouteManagerTab() {
 }
 
 function checkRoutingTabHasChanges(enableDisableButton = true) {
+	if (ManageRouteType === null) return;
+
 	const changes = {};
 	let hasChanges = false;
 
@@ -414,11 +460,11 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 				selectedToolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
 				arguements: null,
 			},
-			pickedTool: {
+			callPickedTool: {
 				selectedToolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
 				arguements: null,
 			},
-			endedTool: {
+			callEndedTool: {
 				selectedToolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
 				arguements: null,
 			},
@@ -434,20 +480,20 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		}
 
 		// Check Picked Tool Arguments
-		if (changes.actions.pickedTool.selectedToolId) {
-			changes.actions.pickedTool.arguements = {};
+		if (changes.actions.callPickedTool.selectedToolId) {
+			changes.actions.callPickedTool.arguements = {};
 			editRouteActionToolPickedInputArgumentsList.find(".input-group").each((idx, element) => {
 				const input = $(element).find("input");
-				changes.actions.pickedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+				changes.actions.callPickedTool.arguements[input.attr("input_arguement")] = input.val().trim();
 			});
 		}
 
 		// Check Ended Tool Arguments
-		if (changes.actions.endedTool.selectedToolId) {
-			changes.actions.endedTool.arguements = {};
+		if (changes.actions.callEndedTool.selectedToolId) {
+			changes.actions.callEndedTool.arguements = {};
 			editRouteActionToolEndedInputArgumentsList.find(".input-group").each((idx, element) => {
 				const input = $(element).find("input");
-				changes.actions.endedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+				changes.actions.callEndedTool.arguements[input.attr("input_arguement")] = input.val().trim();
 			});
 		}
 
@@ -476,6 +522,8 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 }
 
 function validateRoutingTab(onlyRemove = true) {
+	if (ManageRouteType === null) return;
+
 	const errors = [];
 	let validated = true;
 
@@ -764,6 +812,193 @@ function validateRoutingTab(onlyRemove = true) {
 	};
 }
 
+function fillRoutingManagerTab() {
+	// General Tab
+	editRouteIconInput.text(ManageCurrentRouteData.general.emoji);
+	editRouteNameInput.val(ManageCurrentRouteData.general.name);
+	editRouteDescriptionInput.val(ManageCurrentRouteData.general.description);
+
+	// Language Tab
+	editRouteDefaultLanguageSelect.val(ManageCurrentRouteData.language.defaultLanguageCode);
+	editRouteMultiLanguageCheck.prop("checked", ManageCurrentRouteData.language.multiLanguageEnabled);
+
+	if (ManageCurrentRouteData.language.multiLanguageEnabled) {
+		editRouteAddMultiLanguageEnabledSelect.prop("disabled", false);
+		routeMultiLanguagesEnabledList.removeClass("disabled");
+
+		if (ManageCurrentRouteData.language.enabledMultiLanguages) {
+			ManageCurrentRouteData.language.enabledMultiLanguages.forEach((language, index) => {
+				const languageData = SpecificationLanguagesListData.find((l) => l.id === language.languageCode);
+				const element = $(createRouteLanguageMultiTableElement(language.languageCode, `${language.languageCode} | ${languageData.name}`, index + 1));
+				element.find("input").val(language.messageToPlay);
+				routeMultiLanguagesEnabledList.find("tbody").append(element);
+
+				// Remove from select options
+				editRouteAddMultiLanguageEnabledSelect.find(`option[value="${language.languageCode}"]`).remove();
+			});
+		}
+	} else {
+		editRouteAddMultiLanguageEnabledSelect.prop("disabled", true);
+		routeMultiLanguagesEnabledList.addClass("disabled");
+	}
+
+	// Configuration Tab
+	editRouteNumberPickupDelay.val(ManageCurrentRouteData.configuration.pickUpDelayMS);
+	editRouteNumberSilenceNotify.val(ManageCurrentRouteData.configuration.notifyOnSilenceMS);
+	editRouteNumberSilenceEnd.val(ManageCurrentRouteData.configuration.endCallOnSilenceMS);
+	editRouteNumberTotalCallTime.val(ManageCurrentRouteData.configuration.maxCallTimeS);
+
+	// Numbers Tab
+	routeNumbersList.find("tbody tr[tr-type='none-notice']").remove();
+	ManageCurrentRouteData.numbers.forEach((numberId) => {
+		const numberData = BusinessFullData.businessApp.numbers.find((n) => n.id === numberId);
+		if (numberData) {
+			routeNumbersList.find("tbody").append($(createAddedRouteNumberListElement(numberData)));
+		}
+	});
+	if (ManageCurrentRouteData.numbers.length === 0) {
+		routeNumbersList.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>');
+	}
+
+	// Agent Tab
+	if (ManageCurrentRouteData.agent.selectedAgentId) {
+		const agentData = BusinessFullData.businessApp.agents.find((agent) => agent.id === ManageCurrentRouteData.agent.selectedAgentId);
+		if (agentData) {
+			currentRouteAgentSelectedId = agentData.id;
+			editSelectedRouteAgentIcon.text(agentData.general.emoji);
+			editSelectedRouteAgentName.val(agentData.general.name[BusinessDefaultLanguage]);
+
+			// Enable and populate scripts dropdown
+			editRouteAgentDefaultScriptSelect.prop("disabled", false);
+			editRouteAgentDefaultScriptSelect.empty();
+			editRouteAgentDefaultScriptSelect.append('<option value="" disabled>Select Script</option>');
+			agentData.scripts.forEach((script) => {
+				editRouteAgentDefaultScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
+			});
+			editRouteAgentDefaultScriptSelect.val(ManageCurrentRouteData.agent.openingScriptId);
+		}
+	}
+
+	// Set conversation type
+	const conversationType = ManageCurrentRouteData.agent.conversationType.value === 0 ? "interruptible" : "turnbyturn";
+	editRouteAgentConversationTypeSelect.val(conversationType);
+
+	if (conversationType === "interruptible") {
+		$('.route-conversation-type-box[box-type="interruptible"]').removeClass("d-none");
+		editRouteAgentConversationTypeInterruptibleMaxWords.val(ManageCurrentRouteData.agent.interruptibleConversationTypeWords);
+	} else {
+		$('.route-conversation-type-box[box-type="interruptible"]').addClass("d-none");
+	}
+
+	// Set timezone and context checkboxes
+	if (ManageCurrentRouteData.agent.timezones.length > 0) {
+		editRouteNumberTimezoneSelect.val(ManageCurrentRouteData.agent.timezones[0]);
+	}
+	editRouteAgentCallerNumberInContextCheck.prop("checked", ManageCurrentRouteData.agent.callerNumberInContext);
+	editRouteAgentRouteNumberInContextCheck.prop("checked", ManageCurrentRouteData.agent.routeNumberInContext);
+
+	// Actions Tab
+	function fillActionTool(toolData, selectElement, argumentsContainer, argumentsSelect, argumentsList) {
+		if (toolData.selectedToolId) {
+			selectElement.val(toolData.selectedToolId);
+			argumentsContainer.removeClass("d-none");
+
+			const tool = BusinessFullData.businessApp.tools.find((t) => t.id === toolData.selectedToolId);
+			if (tool) {
+				// Clear and populate arguments select
+				argumentsSelect.empty();
+				argumentsSelect.append('<option value="" disabled selected>Add Input Argument</option>');
+
+				// Add available arguments that aren't already used
+				const usedArguments = toolData.arguements ? Object.keys(toolData.arguements) : [];
+				tool.configuration.inputSchemea.forEach((arg) => {
+					if (!usedArguments.includes(arg.id)) {
+						argumentsSelect.append(`<option value="${arg.id}">${arg.name[BusinessDefaultLanguage]}${arg.isRequired ? "*" : ""}</option>`);
+					}
+				});
+
+				// Fill existing arguments
+				if (toolData.arguements) {
+					Object.entries(toolData.arguements).forEach(([argId, value]) => {
+						const argData = tool.configuration.inputSchemea.find((a) => a.id === argId);
+						if (argData) {
+							argumentsList.append(`
+                                <div class="input-group mb-1">
+                                    <span class="input-group-text">${argData.name[BusinessDefaultLanguage]}</span>
+                                    <input type="text" class="form-control" input_arguement="${argData.id}" 
+                                        placeholder="Enter ${argData.type.name} variable" value="${value}">
+                                    <button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" 
+                                        input_arguement="${argData.id}">
+                                        <i class="fa-regular fa-trash"></i>
+                                    </button>
+                                </div>
+                            `);
+						}
+					});
+				}
+			}
+		} else {
+			selectElement.val("none");
+			argumentsContainer.addClass("d-none");
+		}
+	}
+
+	// Fill each action tool
+	fillActionTool(
+		ManageCurrentRouteData.actions.ringingTool,
+		editRouteActionToolRinging,
+		editRouteActionToolRingingInputArguementContainer,
+		editRouteActionToolRingingInputArgumentsSelect,
+		editRouteActionToolRingingInputArgumentsList,
+	);
+
+	fillActionTool(
+		ManageCurrentRouteData.actions.callPickedTool,
+		editRouteActionToolPicked,
+		editRouteActionToolPickedInputArguementContainer,
+		editRouteActionToolPickedInputArgumentsSelect,
+		editRouteActionToolPickedInputArgumentsList,
+	);
+
+	fillActionTool(
+		ManageCurrentRouteData.actions.callEndedTool,
+		editRouteActionToolEnded,
+		editRouteActionToolEndedInputArguementContainer,
+		editRouteActionToolEndedInputArgumentsSelect,
+		editRouteActionToolEndedInputArgumentsList,
+	);
+}
+
+async function canLeaveRoutingTab(leaveMessage = "") {
+	if (IsSavingRouteManageTab) {
+		AlertManager.createAlert({
+			type: "warning",
+			message: "Route is currently being saved. Please wait for the save to finish.",
+			timeout: 6000,
+		});
+		return false;
+	}
+
+	const changes = checkRoutingTabHasChanges(false);
+	if (changes.hasChanges) {
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: "Unsaved Changes Pending",
+			message: `You have unsaved changes in the route.${leaveMessage}`,
+			confirmText: "Discard",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 /** Language Tab **/
 function ResortMultiLanugageEnabledListNumbers() {
 	const tbodyChild = $(routeMultiLanguagesEnabledList.find("tbody")[0]).children();
@@ -887,77 +1122,155 @@ function initRoutingTab() {
 			ManageRouteType = "new";
 		});
 
-		switchBackToRoutingTabButton.on("click", (event) => {
+		switchBackToRoutingTabButton.on("click", async (event) => {
 			event.preventDefault();
+
+			if (ManageRouteType !== null) {
+				const canLeaveResult = await canLeaveRoutingTab(" Are you sure you want to discard these changes and leave the routes manage tab?");
+				if (!canLeaveResult) {
+					return false;
+				}
+			}
 
 			showRoutingListTab();
 		});
 
-		editRouteMultiLanguageCheck.on("change", (event) => {
-			const isChecked = $(event.currentTarget).is(":checked");
-
-			editRouteAddMultiLanguageEnabledSelect.prop("disabled", !isChecked);
-			if (isChecked) {
-				routeMultiLanguagesEnabledList.removeClass("disabled");
-			} else {
-				routeMultiLanguagesEnabledList.addClass("disabled");
-			}
-
-			routeMultiLanguagesEnabledList.find("tr td button, tr td input").each((index, element) => {
-				$(element).prop("disabled", !isChecked);
-			});
-		});
-
-		editRouteAddMultiLanguageEnabledSelect.on("change", (event) => {
-			const selectedValue = $(event.currentTarget).val();
-			if (selectedValue === "select" || !selectedValue || selectedValue === "") return;
-
-			const optionElement = editRouteAddMultiLanguageEnabledSelect.find(`option[value="${selectedValue}"]`);
-			const optionText = optionElement.text();
-
-			const tbody = $(routeMultiLanguagesEnabledList.find("tbody")[0]);
-
-			tbody.append($(createRouteLanguageMultiTableElement(selectedValue, optionText, tbody.children().length + 1)));
-
-			optionElement.remove();
-
-			editRouteAddMultiLanguageEnabledSelect.val("");
-			editRouteAddMultiLanguageEnabledSelect.change();
-		});
-
-		routeMultiLanguagesEnabledList.on("click", '[button-type="remove-enabled-language"]', (event) => {
+		routingListTable.on("click", ".routing-card", (event) => {
 			event.preventDefault();
-			event.stopPropagation();
-			event.stopImmediatePropagation();
 
-			const parent = $(event.currentTarget).parent().parent();
-			const code = parent.attr("code");
-			const name = parent.attr("name");
+			const routeId = $(event.currentTarget).attr("route-id");
+			ManageCurrentRouteData = BusinessFullData.businessApp.routings.find((route) => route.id === routeId);
+			currentRouteNumbersList = [...ManageCurrentRouteData.numbers];
 
-			editRouteAddMultiLanguageEnabledSelect.append(`<option value="${code}">${name}</option>`);
-			parent.remove();
+			currentRouteName.text(ManageCurrentRouteData.general.name);
 
-			ResortMultiLanugageEnabledListNumbers();
+			resetAndEmptyRouteManagerTab();
+
+			fillRoutingManagerTab(); // todo
+
+			showRoutingManagerTab();
+
+			ManageRouteType = "edit";
 		});
 
-		routeMultiLanguagesEnabledList.find("tbody").sortable({
-			items: 'tr:not([data-type="nothing-added"])',
-			cursor: "pointer",
-			axis: "y",
-			dropOnEmpty: false,
-			forceHelperSize: true,
-			forcePlaceholderSize: true,
-			handle: 'button[button-type="move-enabled-language"]',
-			cancel: "",
-			start: (e, ui) => {
-				ui.item.addClass("selected");
-			},
-			stop: (e, ui) => {
-				ui.item.removeClass("selected");
+		$("#nav-bar").on("tabChange", async (event) => {
+			const activeTab = event.detail.from;
+			if (activeTab !== "routing-tab") return;
+
+			if (ManageRouteType == null) return;
+
+			const canLeaveResult = await canLeaveRoutingTab(" Are you sure you want to discard these changes and leave the routing tab?");
+
+			if (canLeaveResult) {
+				if (ManageRouteType != null) {
+					ManageRouteType = null;
+					switchBackToRoutingTabButton.click();
+				}
+			} else {
+				event.preventDefault();
+			}
+		});
+
+		/** General Tab **/
+		function initGeneralTabHandlers() {
+			routeManagerGeneralTab.on("input", "input", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteIconInput.on("emojiSelected", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+		}
+		initGeneralTabHandlers();
+
+		/** Language Tab **/
+		function initLanguageTabHandlers() {
+			editRouteDefaultLanguageSelect.on("change", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteMultiLanguageCheck.on("change", (event) => {
+				const isChecked = $(event.currentTarget).is(":checked");
+
+				editRouteAddMultiLanguageEnabledSelect.prop("disabled", !isChecked);
+				if (isChecked) {
+					routeMultiLanguagesEnabledList.removeClass("disabled");
+				} else {
+					routeMultiLanguagesEnabledList.addClass("disabled");
+				}
+
+				routeMultiLanguagesEnabledList.find("tr td button, tr td input").each((index, element) => {
+					$(element).prop("disabled", !isChecked);
+				});
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteAddMultiLanguageEnabledSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+				if (selectedValue === "select" || !selectedValue || selectedValue === "") return;
+
+				const optionElement = editRouteAddMultiLanguageEnabledSelect.find(`option[value="${selectedValue}"]`);
+				const optionText = optionElement.text();
+
+				const tbody = $(routeMultiLanguagesEnabledList.find("tbody")[0]);
+
+				tbody.append($(createRouteLanguageMultiTableElement(selectedValue, optionText, tbody.children().length + 1)));
+
+				optionElement.remove();
+
+				editRouteAddMultiLanguageEnabledSelect.val("");
+				editRouteAddMultiLanguageEnabledSelect.change();
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			routeMultiLanguagesEnabledList.on("click", '[button-type="remove-enabled-language"]', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				event.stopImmediatePropagation();
+
+				const parent = $(event.currentTarget).parent().parent();
+				const code = parent.attr("code");
+				const name = parent.attr("name");
+
+				editRouteAddMultiLanguageEnabledSelect.append(`<option value="${code}">${name}</option>`);
+				parent.remove();
 
 				ResortMultiLanugageEnabledListNumbers();
-			},
-		});
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			routeMultiLanguagesEnabledList.find("tbody").sortable({
+				items: 'tr:not([data-type="nothing-added"])',
+				cursor: "pointer",
+				axis: "y",
+				dropOnEmpty: false,
+				forceHelperSize: true,
+				forcePlaceholderSize: true,
+				handle: 'button[button-type="move-enabled-language"]',
+				cancel: "",
+				start: (e, ui) => {
+					ui.item.addClass("selected");
+				},
+				stop: (e, ui) => {
+					ui.item.removeClass("selected");
+
+					ResortMultiLanugageEnabledListNumbers();
+
+					checkRoutingTabHasChanges();
+					validateRoutingTab(true);
+				},
+			});
+		}
+		initLanguageTabHandlers();
 
 		/** Number Tab **/
 		function initNumberTabHandlers() {
@@ -1014,6 +1327,7 @@ function initRoutingTab() {
 				editChangeRouteNumberModal.hide();
 
 				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 
 			routeNumbersList.on("click", '[button-type="remove-number-from-route"]', (event) => {
@@ -1035,9 +1349,19 @@ function initRoutingTab() {
 				}
 
 				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 		}
 		initNumberTabHandlers();
+
+		/** Configuration Tab **/
+		function initConfigurationTabHandlers() {
+			routeManagerConfigurationTab.on("input", "input", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+		}
+		initConfigurationTabHandlers();
 
 		/** Agents Tab **/
 		function initAgentTabHandlers() {
@@ -1090,6 +1414,9 @@ function initRoutingTab() {
 				});
 
 				editChangeRouteAgentModal.hide();
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 
 			editRouteAgentConversationTypeSelect.on("change", (event) => {
@@ -1104,6 +1431,34 @@ function initRoutingTab() {
 				} else if (selectedValue === "turnbyturn") {
 					interruptibleBox.addClass("d-none");
 				}
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteAgentDefaultScriptSelect.on("change", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteNumberTimezoneSelect.on("change", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteAgentConversationTypeInterruptibleMaxWords.on("input", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteAgentCallerNumberInContextCheck.on("change", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			});
+
+			editRouteAgentRouteNumberInContextCheck.on("change", (event) => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 		}
 		initAgentTabHandlers();
@@ -1120,6 +1475,9 @@ function initRoutingTab() {
 
 				if (selectedValue === "none") {
 					editRouteActionToolRingingInputArguementContainer.addClass("d-none");
+
+					checkRoutingTabHasChanges();
+					validateRoutingTab(true);
 					return;
 				}
 
@@ -1130,6 +1488,9 @@ function initRoutingTab() {
 				toolData.configuration.inputSchemea.forEach((inputArguement) => {
 					editRouteActionToolRingingInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
 				});
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolRingingInputArgumentsSelect.on("change", (event) => {
 				const selectedValue = editRouteActionToolRingingInputArgumentsSelect.val();
@@ -1141,7 +1502,7 @@ function initRoutingTab() {
 
 				editRouteActionToolRingingInputArgumentsList.append(`
 					<div class="input-group mb-1">
-						<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}</span>
+						<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
 						<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
 						<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
 							<i class="fa-regular fa-trash"></i>
@@ -1152,6 +1513,9 @@ function initRoutingTab() {
 				editRouteActionToolRingingInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
 
 				editRouteActionToolRingingInputArgumentsSelect.val("");
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolRingingInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
 				event.preventDefault();
@@ -1167,6 +1531,9 @@ function initRoutingTab() {
 				editRouteActionToolRingingInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
 
 				currentElement.parent().remove();
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 
 			// Tool Picked Up Event
@@ -1179,6 +1546,9 @@ function initRoutingTab() {
 
 				if (selectedValue === "none") {
 					editRouteActionToolPickedInputArguementContainer.addClass("d-none");
+
+					checkRoutingTabHasChanges();
+					validateRoutingTab(true);
 					return;
 				}
 
@@ -1189,6 +1559,9 @@ function initRoutingTab() {
 				toolData.configuration.inputSchemea.forEach((inputArguement) => {
 					editRouteActionToolPickedInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
 				});
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolPickedInputArgumentsSelect.on("change", (event) => {
 				const selectedValue = editRouteActionToolPickedInputArgumentsSelect.val();
@@ -1200,7 +1573,7 @@ function initRoutingTab() {
 
 				editRouteActionToolPickedInputArgumentsList.append(`
 			<div class="input-group mb-1">
-				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}</span>
+				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
 				<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
 				<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
 					<i class="fa-regular fa-trash"></i>
@@ -1210,6 +1583,9 @@ function initRoutingTab() {
 
 				editRouteActionToolPickedInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
 				editRouteActionToolPickedInputArgumentsSelect.val("");
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolPickedInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
 				event.preventDefault();
@@ -1225,6 +1601,9 @@ function initRoutingTab() {
 				editRouteActionToolPickedInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
 
 				currentElement.parent().remove();
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 
 			// Tool Ended Event
@@ -1237,6 +1616,9 @@ function initRoutingTab() {
 
 				if (selectedValue === "none") {
 					editRouteActionToolEndedInputArguementContainer.addClass("d-none");
+
+					checkRoutingTabHasChanges();
+					validateRoutingTab(true);
 					return;
 				}
 
@@ -1247,6 +1629,9 @@ function initRoutingTab() {
 				toolData.configuration.inputSchemea.forEach((inputArguement) => {
 					editRouteActionToolEndedInputArgumentsSelect.append(`<option value="${inputArguement.id}">${inputArguement.name[BusinessDefaultLanguage]}${inputArguement.isRequired ? "*" : ""}</option>`);
 				});
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolEndedInputArgumentsSelect.on("change", (event) => {
 				const selectedValue = editRouteActionToolEndedInputArgumentsSelect.val();
@@ -1258,7 +1643,7 @@ function initRoutingTab() {
 
 				editRouteActionToolEndedInputArgumentsList.append(`
 			<div class="input-group mb-1">
-				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}</span>
+				<span class="input-group-text">${inputArguementData.name[BusinessDefaultLanguage]}${inputArguementData.isRequired ? "*" : ""}</span>
 				<input type="text" class="form-control" input_arguement="${inputArguementData.id}" placeholder="Enter ${inputArguementData.type.name} variable" value="">
 				<button class="btn btn-danger" btn-action="remove-route-action-tool-arguement" input_arguement="${inputArguementData.id}">
 					<i class="fa-regular fa-trash"></i>
@@ -1268,6 +1653,9 @@ function initRoutingTab() {
 
 				editRouteActionToolEndedInputArgumentsSelect.find(`option[value="${selectedValue}"]`).remove();
 				editRouteActionToolEndedInputArgumentsSelect.val("");
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 			editRouteActionToolEndedInputArgumentsList.on("click", '[btn-action="remove-route-action-tool-arguement"]', (event) => {
 				event.preventDefault();
@@ -1283,6 +1671,9 @@ function initRoutingTab() {
 				editRouteActionToolEndedInputArgumentsSelect.append(`<option value="${inputArguementData.id}">${inputArguementData.name[BusinessDefaultLanguage]}</option>`);
 
 				currentElement.parent().remove();
+
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
 			});
 		}
 		initActionTabHandlers();
@@ -1329,27 +1720,45 @@ function initRoutingTab() {
 			SaveBusinessRoute(
 				formData,
 				(saveResponse) => {
-					// Update current route data with saved data
+					// Update Remove Numbers Route
+					if (ManageRouteType === "edit") {
+						ManageCurrentRouteData.numbers.forEach((number) => {
+							const existingIndex = currentRouteNumbersList.findIndex((num) => num === number);
+							if (existingIndex === -1) {
+								const numberIndex = BusinessFullData.businessApp.numbers.findIndex((num) => num.id === number);
+								BusinessFullData.businessApp.numbers[numberIndex].routeId = null;
+							}
+						});
+					}
+
+					// Set New Route Data
 					ManageCurrentRouteData = saveResponse.data;
+					currentRouteNumbersList = [...ManageCurrentRouteData.numbers];
+
+					// Set New/Current Numbers Route
+					currentRouteNumbersList.forEach((number) => {
+						const numberIndex = BusinessFullData.businessApp.numbers.findIndex((num) => num.id === number);
+						BusinessFullData.businessApp.numbers[numberIndex].routeId = ManageCurrentRouteData.id;
+					});
 
 					// Update route name in header
 					currentRouteName.text(ManageCurrentRouteData.general.name);
 
 					if (ManageRouteType === "edit") {
 						// Update existing route in business data
-						const existingDataIndex = BusinessFullData.businessApp.routes.findIndex((route) => route.id === ManageCurrentRouteData.id);
-						BusinessFullData.businessApp.routes[existingDataIndex] = ManageCurrentRouteData;
+						const existingDataIndex = BusinessFullData.businessApp.routings.findIndex((route) => route.id === ManageCurrentRouteData.id);
+						BusinessFullData.businessApp.routings[existingDataIndex] = ManageCurrentRouteData;
 
 						// Update route in list
-						const routeListElement = routingListTab.find(`[data-route-id="${ManageCurrentRouteData.id}"]`);
-						routeListElement.replaceWith(createRouteListElement(ManageCurrentRouteData));
+						const routeListElement = routingListTable.find(`[route-id="${ManageCurrentRouteData.id}"]`);
+						routeListElement.parent().replaceWith(createRouteListElement(ManageCurrentRouteData));
 					} else if (ManageRouteType === "new") {
 						// Add new route to business data
-						BusinessFullData.businessApp.routes.push(ManageCurrentRouteData);
+						BusinessFullData.businessApp.routings.push(ManageCurrentRouteData);
 
 						// Add new route to list
 						const newRouteElement = $(createRouteListElement(ManageCurrentRouteData));
-						routingListTab.find(".row").append(newRouteElement);
+						routingListTable.append(newRouteElement);
 					}
 
 					// Reset save button state
@@ -1386,5 +1795,8 @@ function initRoutingTab() {
 				},
 			);
 		});
+
+		// INIT
+		fillRouteList();
 	});
 }
