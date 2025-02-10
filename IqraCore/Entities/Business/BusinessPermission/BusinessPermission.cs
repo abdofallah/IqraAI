@@ -11,7 +11,7 @@
         public DateTime? DisabledDeletingAt { get; set; } = null;
         public string? DisabledDeletingReason { get; set; } = null;
 
-        public BusinessRoutesPermission Routes { get; set; } = new BusinessRoutesPermission();
+        public BusinessRoutesPermission Routings { get; set; } = new BusinessRoutesPermission();
         public BusinessAgentsPermission Agents { get; set; } = new BusinessAgentsPermission();
         public BusinessCachePermission Cache { get; set; } = new BusinessCachePermission();
         public BusnessIntegrationsPermission Integrations { get; set; } = new BusnessIntegrationsPermission();

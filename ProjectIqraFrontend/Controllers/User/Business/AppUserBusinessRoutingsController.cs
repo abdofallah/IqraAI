@@ -8,12 +8,12 @@ using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessRoutesController : Controller
+    public class AppUserBusinessRoutingsController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppUserBusinessRoutesController(UserManager userManager, BusinessManager businessManager)
+        public AppUserBusinessRoutingsController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
@@ -122,14 +122,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             
             if (postType == "new")
             {
-                if (businessResult.Data.Permission.Routes.DisabledAddingAt != null)
+                if (businessResult.Data.Permission.Routings.DisabledAddingAt != null)
                 {
                     result.Code = "SaveBusinessRoute:8";
                     result.Message = "Business does not have permission to add new routes";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routes.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routings.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Routes.DisabledAddingReason;
+                        result.Message += ": " + businessResult.Data.Permission.Routings.DisabledAddingReason;
                     }
 
                     return result;
@@ -137,14 +137,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             else
             {
-                if (businessResult.Data.Permission.Routes.DisabledEditingAt != null)
+                if (businessResult.Data.Permission.Routings.DisabledEditingAt != null)
                 {
                     result.Code = "SaveBusinessRoute:9";
                     result.Message = "Business does not have permission to edit routes";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routes.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Routings.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Routes.DisabledEditingReason;
+                        result.Message += ": " + businessResult.Data.Permission.Routings.DisabledEditingReason;
                     }
 
                     return result;

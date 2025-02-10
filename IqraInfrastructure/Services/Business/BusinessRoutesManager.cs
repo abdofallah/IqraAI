@@ -613,6 +613,7 @@ namespace IqraInfrastructure.Services.Business
             return result;
         }
 
+        // move to a tool helper class/function
         private FunctionReturnResult<object> ValidateArgumentValue(string businessDefaultLanguage, JsonElement value, BusinessAppToolConfigurationInputSchemea argument, string actionType)
         {
             var result = new FunctionReturnResult<object>();
