@@ -238,15 +238,15 @@ function createDefaultRouteObject() {
 		actions: {
 			ringingTool: {
 				selectedToolId: null,
-				arguements: null,
+				arguments: null,
 			},
 			callPickedTool: {
 				selectedToolId: null,
-				arguements: null,
+				arguments: null,
 			},
 			callEndedTool: {
 				selectedToolId: null,
-				arguements: null,
+				arguments: null,
 			},
 		},
 	};
@@ -458,42 +458,42 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		changes.actions = {
 			ringingTool: {
 				selectedToolId: editRouteActionToolRinging.val() === "none" ? null : editRouteActionToolRinging.val(),
-				arguements: null,
+				arguments: null,
 			},
 			callPickedTool: {
 				selectedToolId: editRouteActionToolPicked.val() === "none" ? null : editRouteActionToolPicked.val(),
-				arguements: null,
+				arguments: null,
 			},
 			callEndedTool: {
 				selectedToolId: editRouteActionToolEnded.val() === "none" ? null : editRouteActionToolEnded.val(),
-				arguements: null,
+				arguments: null,
 			},
 		};
 
 		// Check Ringing Tool Arguments
 		if (changes.actions.ringingTool.selectedToolId) {
-			changes.actions.ringingTool.arguements = {};
+			changes.actions.ringingTool.arguments = {};
 			editRouteActionToolRingingInputArgumentsList.find(".input-group").each((idx, element) => {
 				const input = $(element).find("input");
-				changes.actions.ringingTool.arguements[input.attr("input_arguement")] = input.val().trim();
+				changes.actions.ringingTool.arguments[input.attr("input_arguement")] = input.val().trim();
 			});
 		}
 
 		// Check Picked Tool Arguments
 		if (changes.actions.callPickedTool.selectedToolId) {
-			changes.actions.callPickedTool.arguements = {};
+			changes.actions.callPickedTool.arguments = {};
 			editRouteActionToolPickedInputArgumentsList.find(".input-group").each((idx, element) => {
 				const input = $(element).find("input");
-				changes.actions.callPickedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+				changes.actions.callPickedTool.arguments[input.attr("input_arguement")] = input.val().trim();
 			});
 		}
 
 		// Check Ended Tool Arguments
 		if (changes.actions.callEndedTool.selectedToolId) {
-			changes.actions.callEndedTool.arguements = {};
+			changes.actions.callEndedTool.arguments = {};
 			editRouteActionToolEndedInputArgumentsList.find(".input-group").each((idx, element) => {
 				const input = $(element).find("input");
-				changes.actions.callEndedTool.arguements[input.attr("input_arguement")] = input.val().trim();
+				changes.actions.callEndedTool.arguments[input.attr("input_arguement")] = input.val().trim();
 			});
 		}
 
@@ -910,7 +910,7 @@ function fillRoutingManagerTab() {
 				argumentsSelect.append('<option value="" disabled selected>Add Input Argument</option>');
 
 				// Add available arguments that aren't already used
-				const usedArguments = toolData.arguements ? Object.keys(toolData.arguements) : [];
+				const usedArguments = toolData.arguments ? Object.keys(toolData.arguments) : [];
 				tool.configuration.inputSchemea.forEach((arg) => {
 					if (!usedArguments.includes(arg.id)) {
 						argumentsSelect.append(`<option value="${arg.id}">${arg.name[BusinessDefaultLanguage]}${arg.isRequired ? "*" : ""}</option>`);
@@ -918,8 +918,8 @@ function fillRoutingManagerTab() {
 				});
 
 				// Fill existing arguments
-				if (toolData.arguements) {
-					Object.entries(toolData.arguements).forEach(([argId, value]) => {
+				if (toolData.arguments) {
+					Object.entries(toolData.arguments).forEach(([argId, value]) => {
 						const argData = tool.configuration.inputSchemea.find((a) => a.id === argId);
 						if (argData) {
 							argumentsList.append(`

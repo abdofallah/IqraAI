@@ -559,7 +559,7 @@ namespace IqraInfrastructure.Services.Business
                 return result;
             }
             result.Data.SelectedToolId = selectedToolId;
-            result.Data.Arguements = new Dictionary<string, object>();
+            result.Data.Arguments = new Dictionary<string, object>();
 
             if (!actionsTabRootElement.TryGetProperty("arguments", out var argumentsProperty))
             {
@@ -610,7 +610,7 @@ namespace IqraInfrastructure.Services.Business
                             return result;
                         }
 
-                        result.Data.Arguements.Add(toolInputArgument.Id, arrayValues);
+                        result.Data.Arguments.Add(toolInputArgument.Id, arrayValues);
                     }
                     // Handle Single Value
                     else
@@ -622,7 +622,7 @@ namespace IqraInfrastructure.Services.Business
                             result.Message = validationResult.Message;
                             return result;
                         }
-                        result.Data.Arguements.Add(toolInputArgument.Id, validationResult.Data);
+                        result.Data.Arguments.Add(toolInputArgument.Id, validationResult.Data);
                     }
                 }
             }
