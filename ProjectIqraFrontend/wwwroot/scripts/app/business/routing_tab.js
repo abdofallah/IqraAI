@@ -382,19 +382,41 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 			});
 		}
 
+		// Check basic properties
 		if (
 			changes.language.defaultLanguageCode !== ManageCurrentRouteData.language.defaultLanguageCode ||
 			changes.language.multiLanguageEnabled !== ManageCurrentRouteData.language.multiLanguageEnabled
 		) {
 			hasChanges = true;
+			return;
 		}
 
+		// Check enabled languages
 		if (changes.language.multiLanguageEnabled) {
+			// Case: New has languages but original doesn't
 			if (!ManageCurrentRouteData.language.enabledMultiLanguages && changes.language.enabledMultiLanguages.length > 0) {
 				hasChanges = true;
-			} else if (ManageCurrentRouteData.language.enabledMultiLanguages) {
-				if (JSON.stringify(changes.language.enabledMultiLanguages) !== JSON.stringify(ManageCurrentRouteData.language.enabledMultiLanguages)) {
+				return;
+			}
+
+			// Case: Both have languages
+			if (ManageCurrentRouteData.language.enabledMultiLanguages) {
+				// Compare lengths first
+				if (changes.language.enabledMultiLanguages.length !== ManageCurrentRouteData.language.enabledMultiLanguages.length) {
 					hasChanges = true;
+					return;
+				}
+
+				// Compare each language entry
+				for (let i = 0; i < changes.language.enabledMultiLanguages.length; i++) {
+					const newLang = changes.language.enabledMultiLanguages[i];
+					const originalLang = ManageCurrentRouteData.language.enabledMultiLanguages[i];
+
+					// Compare language codes and messages
+					if (newLang.languageCode !== originalLang.languageCode || newLang.messageToPlay !== originalLang.messageToPlay) {
+						hasChanges = true;
+						return;
+					}
 				}
 			}
 		}
@@ -423,8 +445,22 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 	function checkNumbersTab() {
 		changes.numbers = [...currentRouteNumbersList];
 
-		if (JSON.stringify(changes.numbers) !== JSON.stringify(ManageCurrentRouteData.numbers)) {
+		// If lengths are different, there are changes
+		if (changes.numbers.length !== ManageCurrentRouteData.numbers.length) {
 			hasChanges = true;
+			return;
+		}
+
+		// Sort both arrays for comparison
+		const sortedNewNumbers = [...changes.numbers].sort();
+		const sortedOriginalNumbers = [...ManageCurrentRouteData.numbers].sort();
+
+		// Compare each number
+		for (let i = 0; i < sortedNewNumbers.length; i++) {
+			if (sortedNewNumbers[i] !== sortedOriginalNumbers[i]) {
+				hasChanges = true;
+				return;
+			}
 		}
 	}
 
@@ -440,15 +476,31 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 			routeNumberInContext: editRouteAgentRouteNumberInContextCheck.is(":checked"),
 		};
 
+		// Compare basic properties
 		if (
 			changes.agent.selectedAgentId !== ManageCurrentRouteData.agent.selectedAgentId ||
 			changes.agent.openingScriptId !== ManageCurrentRouteData.agent.openingScriptId ||
 			changes.agent.conversationType !== ManageCurrentRouteData.agent.conversationType.value ||
 			changes.agent.interruptibleConversationTypeWords !== ManageCurrentRouteData.agent.interruptibleConversationTypeWords ||
-			JSON.stringify(changes.agent.timezones) !== JSON.stringify(ManageCurrentRouteData.agent.timezones) ||
 			changes.agent.callerNumberInContext !== ManageCurrentRouteData.agent.callerNumberInContext ||
 			changes.agent.routeNumberInContext !== ManageCurrentRouteData.agent.routeNumberInContext
 		) {
+			hasChanges = true;
+			return;
+		}
+
+		// Compare timezones
+		const newTimezones = new Set(changes.agent.timezones);
+		const originalTimezones = new Set(ManageCurrentRouteData.agent.timezones);
+
+		// Check if lengths are different
+		if (newTimezones.size !== originalTimezones.size) {
+			hasChanges = true;
+			return;
+		}
+
+		// Check if all timezones in new set exist in original set
+		if ([...newTimezones].some((timezone) => !originalTimezones.has(timezone))) {
 			hasChanges = true;
 		}
 	}
