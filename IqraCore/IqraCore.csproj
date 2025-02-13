@@ -20,8 +20,4 @@
     <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Entities\Number\" />
-  </ItemGroup>
-
 </Project>
