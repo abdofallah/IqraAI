@@ -1,14 +1,12 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
-using OpenAI;
-using OpenAI.Managers;
-using OpenAI.ObjectModels.RequestModels;
+using OpenAI.Chat;
 
 namespace IqraInfrastructure.Services.LLM.Providers
 {
     public class OpenAIGPTStreamingLLMService : IAIService
     {
-        private readonly OpenAIService _client;
+        private readonly ChatClient _client;
 
         // Config
         private int _maxTokens;
@@ -24,10 +22,7 @@ namespace IqraInfrastructure.Services.LLM.Providers
 
         public OpenAIGPTStreamingLLMService(string APIKey, int MaxOutputToken, float Temperature, float TopP, string Model)
         {
-            _client = new OpenAIService(new OpenAiOptions()
-            {
-                ApiKey = APIKey
-            });
+            _client = new ChatClient(Model, APIKey);
 
             _maxTokens = MaxOutputToken;
             _temperature = Temperature;
@@ -45,23 +40,22 @@ namespace IqraInfrastructure.Services.LLM.Providers
                 .Concat(_messagesMemory)
                 .Concat(
                     new List<ChatMessage> {
-                        ChatMessage.FromUser(input)
+                        ChatMessage.CreateUserMessage(input)
                     }
+                .Prepend(ChatMessage.CreateSystemMessage(_systemPrompt))
             ).ToList();
 
-            var parameters = new CompletionCreateRequest()
+            var parameters = new ChatCompletionOptions()
             {
-                Prompt = _systemPrompt,
-                MaxTokens = _maxTokens,
+                MaxOutputTokenCount = _maxTokens,
+                ResponseFormat = ChatResponseFormat.CreateTextFormat(),
                 Temperature = _temperature,
-                Stream = true,
-                Model = _model,
                 TopP = _topP
             };
 
             try
             {
-                var completionResult = _client.Completions.CreateCompletionAsStream(parameters, _model, cancellationToken);
+                var completionResult = _client.CompleteChatStreamingAsync(finalMessages, parameters, cancellationToken);
 
                 await foreach (var completion in completionResult)
                 {
@@ -72,10 +66,12 @@ namespace IqraInfrastructure.Services.LLM.Providers
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
+                    // TODO IMPLEMENT LOGGER
                     Console.WriteLine("ProcessInputAsync Cancelled");
                 }
                 else
                 {
+                    // TODO IMPLEMENT LOGGER
                     Console.WriteLine(ex.Message);
                 }
             }
@@ -105,22 +101,22 @@ namespace IqraInfrastructure.Services.LLM.Providers
         {
             _initialMessages = new List<ChatMessage>()
             {
-                ChatMessage.FromUser("call_started"),
-                ChatMessage.FromAssistant($"response_to_customer: {initialMessage}")
+                ChatMessage.CreateUserMessage("call_started"),
+                ChatMessage.CreateAssistantMessage($"response_to_customer: {initialMessage}")
             };
         }
 
         public void AddUserMessage(string message)
         {
             _messagesMemory.Add(
-                ChatMessage.FromUser(message)
+                ChatMessage.CreateUserMessage(message)
             );
         }
 
         public void AddAssistantMessage(string message)
         {
             _messagesMemory.Add(
-                ChatMessage.FromAssistant(message)
+                ChatMessage.CreateAssistantMessage(message)
             );
         }
 

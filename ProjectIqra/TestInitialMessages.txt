@@ -1,1 +1,0 @@
-Welcome to {{COMPANY_NAME}}. My name is Iqra, and I'm the customer support AI assistant here. How may I assist you?

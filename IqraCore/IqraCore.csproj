@@ -7,17 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="libphonenumber-csharp" Version="8.13.54" />
+    <PackageReference Include="libphonenumber-csharp" Version="8.13.55" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
-    <PackageReference Include="MongoDB.Driver" Version="2.25.0" />
+    <PackageReference Include="MongoDB.Driver" Version="3.2.1" />
     <PackageReference Include="RJCP.SerialPortStream" Version="3.0.1" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="System.Data.HashFunction.xxHash" Version="2.0.0" />
-    <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\SimcomModuleManager\SimcomModuleManager.csproj" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.2" />
   </ItemGroup>
 
 </Project>
