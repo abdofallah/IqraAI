@@ -362,6 +362,3 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /ProjectIqraFrontend/appsettings.json
-
-# windsurf rules
-.windsurfrules

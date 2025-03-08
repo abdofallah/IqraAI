@@ -40,17 +40,13 @@ namespace IqraInfrastructure.Services.LLM.Providers
                 .Concat(_messagesMemory)
                 .Concat(
                     new List<Message> {
-                        new Message
-                        {
-                            Role = RoleType.User,
-                            Content = input
-                        }
+                        new Message(RoleType.User, input)
                     }
             ).ToList();
 
             var parameters = new MessageParameters
             {
-                SystemMessage = _systemPrompt,
+                System = new List<SystemMessage>() { new SystemMessage(_systemPrompt) },
                 Messages = finalMessages,
                 MaxTokens = _maxTokens,
                 Model = _model,
@@ -102,38 +98,22 @@ namespace IqraInfrastructure.Services.LLM.Providers
         {
             _initialMessages = new List<Message>()
             {
-                new Message
-                {
-                    Role = RoleType.User,
-                    Content = "call_started"
-                },
-                new Message
-                {
-                    Role = RoleType.Assistant,
-                    Content = $"response_to_customer: {initialMessage}"
-                }
+                new Message(RoleType.User, "call_started"),
+                new Message(RoleType.Assistant, $"response_to_customer: {initialMessage}")
             };
         }
 
         public void AddUserMessage(string message)
         {
             _messagesMemory.Add(
-                new Message
-                {
-                    Role = RoleType.User,
-                    Content = message
-                }
+                new Message(RoleType.User, message)
             );
         }
 
         public void AddAssistantMessage(string message)
         {
             _messagesMemory.Add(
-                new Message
-                {
-                    Role = RoleType.Assistant,
-                    Content = message
-                }
+                new Message(RoleType.Assistant, message)
             );
         }
 
