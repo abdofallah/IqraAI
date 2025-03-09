@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Helper.Business
 {
-    public enum BusinessNumberPhysicalStatusEnum
+    public enum BusinessNumberModemTelStatusEnum
     {
         Unknown = 0,
         Offline = 0,

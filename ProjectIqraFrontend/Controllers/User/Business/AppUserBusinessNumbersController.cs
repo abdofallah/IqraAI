@@ -155,17 +155,32 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
+            // Get Integration Id
+            if (!changes.RootElement.TryGetProperty("integrationId", out var integrationIdElement))
+            {
+                result.Code = "SaveBusinessNumber:12";
+                result.Message = "Integration ID not found in changes.";
+                return result;
+            }
+            string? integrationId = integrationIdElement.GetString();
+            if (string.IsNullOrWhiteSpace(integrationId))
+            {
+                result.Code = "SaveBusinessNumber:13";
+                result.Message = "Integration ID cannot be empty.";
+                return result;
+            }
+
             // Get country code
             if (!changes.RootElement.TryGetProperty("countryCode", out var countryCodeElement))
             {
-                result.Code = "SaveBusinessNumber:12";
+                result.Code = "SaveBusinessNumber:14";
                 result.Message = "Country code not found in changes.";
                 return result;
             }
             string? countryCode = countryCodeElement.GetString();
             if (string.IsNullOrWhiteSpace(countryCode))
             {
-                result.Code = "SaveBusinessNumber:13";
+                result.Code = "SaveBusinessNumber:15";
                 result.Message = "Country code cannot be empty.";
                 return result;
             }
@@ -173,14 +188,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             // Get number
             if (!changes.RootElement.TryGetProperty("number", out var numberElement))
             {
-                result.Code = "SaveBusinessNumber:14";
+                result.Code = "SaveBusinessNumber:16";
                 result.Message = "Number not found in changes.";
                 return result;
             }
             string? number = numberElement.GetString();
             if (string.IsNullOrWhiteSpace(number))
             {
-                result.Code = "SaveBusinessNumber:15";
+                result.Code = "SaveBusinessNumber:17";
                 result.Message = "Number cannot be empty.";
                 return result;
             }
@@ -278,10 +293,10 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider)
+                if (exisitingNumberData.CountryCode != countryCode || exisitingNumberData.Number != number || exisitingNumberData.Provider != provider || exisitingNumberData.IntegrationId != integrationId)
                 {
                     result.Code = "SaveBusinessNumber:26";
-                    result.Message = "You are not allowed to edit a number's country code or number or provider";
+                    result.Message = "You are not allowed to edit a number's country code or number or provider or integration";
                     return result;
                 }
             }
@@ -290,6 +305,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 changes, 
                 countryCode,
                 number,
+                integrationId,
                 provider,
                 postType,
                 exisitingNumberData,

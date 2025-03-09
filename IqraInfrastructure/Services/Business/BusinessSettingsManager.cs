@@ -27,6 +27,8 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
 
+        private readonly List<Task> _sslFailedRetryTasks = new List<Task>();
+
         public BusinessSettingsManager(BusinessManager businessManager, BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessLogoRepository businessLogoRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
         {
             _parentBusinessManager = businessManager;
@@ -411,19 +413,47 @@ namespace IqraInfrastructure.Services.Business
                     }
 
                     var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddIqraBusinessSubDomainLetsEncryptSSL(currentIqraSubdomainData.SubDomain);
-                    if (!addSSLResult.Success)
+                    if (addSSLResult.Success)
                     {
-                        result.Code = "AddOrUpdateUserBusinessDomain:" + addSSLResult.Code;
-                        result.Message = addSSLResult.Message;
-                        return result;
+                        var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultProxyTemplate(currentIqraSubdomainData.SubDomain, true);
+                        if (!setHTTPSTemplateResult.Success)
+                        {
+                            result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPSTemplateResult.Code;
+                            result.Message = setHTTPSTemplateResult.Message;
+                            return result;
+                        }
                     }
-
-                    var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultProxyTemplate(currentIqraSubdomainData.SubDomain, true);
-                    if (!setHTTPSTemplateResult.Success)
+                    else
                     {
-                        result.Code = "AddOrUpdateUserBusinessDomain:" + setHTTPSTemplateResult.Code;
-                        result.Message = setHTTPSTemplateResult.Message;
-                        return result;
+                        _sslFailedRetryTasks.Add(
+                            Task.Run(async () =>
+                                {
+                                    var tries = 0;
+                                    while (true)
+                                    {
+                                        if (tries == 6)
+                                        {
+                                            break;
+                                        }
+
+                                        var addSSLResult = await _businessIqraBusinessDomainsVestaCPRepository.AddIqraBusinessSubDomainLetsEncryptSSL(currentIqraSubdomainData.SubDomain);
+                                        if (!addSSLResult.Success)
+                                        {
+                                            continue;
+                                        }
+
+                                        var setHTTPSTemplateResult = await _businessIqraBusinessDomainsVestaCPRepository.SetIqraSubDomainDefaultProxyTemplate(currentIqraSubdomainData.SubDomain, true);
+                                        if (!setHTTPSTemplateResult.Success)
+                                        {
+                                            // TODO LOG THIS
+                                        }
+
+                                        await Task.Delay(180000); // 3 minutes
+                                        tries++;
+                                    }
+                                }
+                            )
+                        );
                     }
                 }
                 else if (((BusinessUserWhiteLabelDomainTypeEnum)domainTypeEnum) == BusinessUserWhiteLabelDomainTypeEnum.CustomDomain)

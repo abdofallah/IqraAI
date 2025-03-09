@@ -66,7 +66,7 @@ namespace IqraInfrastructure.Services.App
                 return false;
             }
 
-            regionData.Id = regionData.CountryCode + "-" + regionData.CountryRegion;
+            regionData.CountryRegion = regionData.CountryCode + "-" + regionData.CountryRegion;
             return await _regionRepository.AddRegion(regionData);
         }
 

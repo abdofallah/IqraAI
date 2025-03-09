@@ -11,7 +11,7 @@ const searchBusinessInput = businessTab.find("#searchBusinessInput");
 const searchBusinessButton = businessTab.find("#searchBusinessButton");
 const BusinessesList = businessTab.find("#BusinessesList");
 
-const addNewBusinessModal = businessTab.find("#addNewBusinessModal");
+const addNewBusinessModal = $("#addNewBusinessModal");
 const addNewBusinessNameInput = addNewBusinessModal.find("#addNewBusinessNameInput");
 const addNewBusinessLogoInput = addNewBusinessModal.find("#addNewBusinessLogoInput");
 const addNewBusinessLogoPreview = addNewBusinessModal.find("#addNewBusinessLogoPreview");

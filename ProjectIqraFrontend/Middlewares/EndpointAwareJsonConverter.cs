@@ -11,13 +11,14 @@ namespace ProjectIqraFrontend.Middlewares
 {
     public class EndpointAwareJsonConverter : JsonConverter<object>
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private IHttpContextAccessor _httpContextAccessor;
         private readonly ConcurrentDictionary<(Type, string), PropertyInfo[]> _propertyCache = new ConcurrentDictionary<(Type, string), PropertyInfo[]>();
 
-        public EndpointAwareJsonConverter(IHttpContextAccessor httpContextAccessor)
+        public EndpointAwareJsonConverter()
         {
-            _httpContextAccessor = httpContextAccessor;
         }
+
+        public void SetHttpContextAccessor(IHttpContextAccessor httpContextAccessor) => _httpContextAccessor = httpContextAccessor;
 
         public override bool CanConvert(Type typeToConvert) =>
             !typeToConvert.IsPrimitive &&

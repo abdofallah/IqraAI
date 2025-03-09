@@ -1,16 +1,16 @@
 /** Dynamic Variables **/
 
 const NumberProviderEnum = {
-	PHYSICAL: 1,
+	MODEMTEL: 1,
 	TWILIO: 2,
 	VONAGE: 3,
 	TELYNX: 4,
 };
 
-// Physical Sim
-let CurrentManagePhysicalNumberData = null;
-let ManagePhysicalNumberType = null; // new or edit
-let IsSavingPhysicalNumber = false;
+// ModemTel
+let CurrentManageModemTelNumberData = null;
+let ManageModemTelNumberType = null; // new or edit
+let IsSavingModemTelNumber = false;
 
 // Twilio
 
@@ -20,10 +20,11 @@ let IsSavingPhysicalNumber = false;
 
 const numbersTab = $("#phone-numbers-tab");
 
-// Physical Sim
+// ModemTel
 const addNewCustomSimNumberButton = numbersTab.find("#addNewCustomSimNumberButton");
 const addNewCustomSimNumberModalElement = $("#addNewCustomSimNumberModal");
 let addNewCustomSimNumberModal = null;
+const physicalNumberModalIntegrationSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalIntegrationSelect");
 const physicalNumberModalCountrySelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalCountrySelect");
 const physicalNumberModalNumberInput = addNewCustomSimNumberModalElement.find("#physicalNumberModalNumberInput");
 const physicalNumberModalRegionSelect = addNewCustomSimNumberModalElement.find("#physicalNumberModalRegionSelect");
@@ -66,9 +67,25 @@ function SaveBusinessNumberToAPI(formData, successCallback, errorCallback) {
 
 /** Functions **/
 
-// Physical Sim
-function createDefaultPhysicalNumberObject() {
+// ModemTel
+function resetOrClearModemTelModal() {
+	physicalNumberModalIntegrationSelect.empty();
+
+	const modemTelIntegrations = BusinessFullData.businessApp.integrations.filter((integration) => integration.type === "modemtel");
+	if (modemTelIntegrations.length == 0) {
+		physicalNumberModalIntegrationSelect.append($(`<option value="" disabled selected>No ModemTel integrations found</option>`));
+	}
+	else {
+        physicalNumberModalIntegrationSelect.append($(`<option value="" disabled selected>Select Integration</option>`));
+		modemTelIntegrations.forEach((integration) => {
+			physicalNumberModalIntegrationSelect.append($(`<option value="${integration.id}">${integration.friendlyName}</option>`));
+		});
+	}
+}
+
+function createDefaultModemTelNumberObject() {
 	const object = {
+		integrationId: "",
 		countryCode: "",
 		number: "",
 		routeId: null,
@@ -81,9 +98,9 @@ function createDefaultPhysicalNumberObject() {
 	return object;
 }
 
-function CreateBusinessPhysicalNumbersTableElement(numberData) {
+function CreateBusinessModemTelNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const regionData = SpecificationRegionsListData.find((regionData) => regionData.id === numberData.regionId);
+	const regionData = SpecificationRegionsListData.find((regionData) => regionData.countryRegion === numberData.regionId);
 
 	let statusElement = "";
 	if (numberData.status.value === 0) {
@@ -98,7 +115,7 @@ function CreateBusinessPhysicalNumbersTableElement(numberData) {
                 <td>${statusElement}</td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
-                <td>${regionData.id}</td>
+                <td>${regionData.countryRegion}</td>
                 <td>
                     <button class="btn btn-info btn-sm" number-id="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-pen-to-square"></i>
@@ -112,22 +129,22 @@ function CreateBusinessPhysicalNumbersTableElement(numberData) {
 	return element;
 }
 
-function FillBusinessPhysicalSimList() {
+function FillBusinessModemTelList() {
 	physicalSimNumbersTable.find("tbody").empty();
 
-	const physicalSimNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.PHYSICAL);
+	const physicalSimNumbersList = BusinessFullData.businessApp.numbers.filter((numberData) => numberData.provider.value === NumberProviderEnum.MODEMTEL);
 
 	if (physicalSimNumbersList.length === 0) {
-		physicalSimNumbersTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="5">No physical sim numbers found</td></tr>`);
+		physicalSimNumbersTable.find("tbody").append(`<tr tr-type="none-notice"><td colspan="5">No ModemTel numbers found</td></tr>`);
 		return;
 	}
 
 	physicalSimNumbersList.forEach((numberData) => {
-		physicalSimNumbersTable.find("tbody").append(CreateBusinessPhysicalNumbersTableElement(numberData));
+		physicalSimNumbersTable.find("tbody").append(CreateBusinessModemTelNumbersTableElement(numberData));
 	});
 }
 
-function FillInitialPhysicalSimModal() {
+function FillInitialModemTelModal() {
 	// Fill Country Code Select
 	physicalNumberModalCountrySelect.append($(`<option value="" disabled selected>Select Country Code</option>`));
 	Object.keys(CountriesList).forEach((countryCode) => {
@@ -139,28 +156,33 @@ function FillInitialPhysicalSimModal() {
 	physicalNumberModalRegionSelect.append($(`<option value="" disabled selected>Select Region</option>`));
 	SpecificationRegionsListData.forEach((regionData) => {
 		const countryData = CountriesList[regionData.countryCode.toUpperCase()];
-		physicalNumberModalRegionSelect.append($(`<option value="${regionData.id}">${countryData.Country} (${regionData.id})</option>`));
+		physicalNumberModalRegionSelect.append($(`<option value="${regionData.countryRegion}">${countryData.Country} (${regionData.countryRegion})</option>`));
 	});
 }
 
-function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
+function CheckModemTelNumberModalHasChanges(enableDisableButton = true) {
 	let hasChanges = false;
 	const changes = {
-		provider: NumberProviderEnum.PHYSICAL,
+		provider: NumberProviderEnum.MODEMTEL,
 	};
 
+	changes.integrationId = physicalNumberModalIntegrationSelect.find("option:selected").val();
+	if (CurrentManageModemTelNumberData.integrationId !== changes.integrationId) {
+        hasChanges = true;
+    }
+
 	changes.countryCode = physicalNumberModalCountrySelect.find("option:selected").val();
-	if (CurrentManagePhysicalNumberData.countryCode !== changes.countryCode) {
+	if (CurrentManageModemTelNumberData.countryCode !== changes.countryCode) {
 		hasChanges = true;
 	}
 
 	changes.number = physicalNumberModalNumberInput.val();
-	if (CurrentManagePhysicalNumberData.number !== changes.number) {
+	if (CurrentManageModemTelNumberData.number !== changes.number) {
 		hasChanges = true;
 	}
 
 	changes.regionId = physicalNumberModalRegionSelect.find("option:selected").val();
-	if (CurrentManagePhysicalNumberData.regionId !== changes.regionId) {
+	if (CurrentManageModemTelNumberData.regionId !== changes.regionId) {
 		hasChanges = true;
 	}
 
@@ -174,9 +196,21 @@ function CheckPhysicalNumberModalHasChanges(enableDisableButton = true) {
 	};
 }
 
-function ValidatePhysicalNumberModalData(onlyRemove = true) {
+function ValidateModemTelNumberModalData(onlyRemove = true) {
 	const errors = [];
 	let validated = true;
+
+	// Validate Integration
+    const integrationId = physicalNumberModalIntegrationSelect.find("option:selected").val();
+    if (!integrationId || integrationId === "" || integrationId === null) {
+        validated = false;
+        errors.push("Integration is required");
+        if (!onlyRemove) {
+            physicalNumberModalIntegrationSelect.addClass("is-invalid");
+        }
+    } else {
+        physicalNumberModalIntegrationSelect.removeClass("is-invalid");
+    }
 
 	// Validate Country Code
 	const countryCode = physicalNumberModalCountrySelect.find("option:selected").val();
@@ -277,32 +311,36 @@ function initNumbersTab() {
 
 		/** Event Listeners **/
 
-		// Physical Sim
+		// ModemTel
 		addNewCustomSimNumberButton.on("click", () => {
-			CurrentManagePhysicalNumberData = createDefaultPhysicalNumberObject();
+			CurrentManageModemTelNumberData = createDefaultModemTelNumberObject();
 
-			ManagePhysicalNumberType = "new";
+			ManageModemTelNumberType = "new";
 
 			addNewCustomSimNumberModal.show();
 		});
 
 		addNewCustomSimNumberModalElement.on("show.bs.modal", () => {
-			physicalNumberModalNumberInput.val(CurrentManagePhysicalNumberData.number);
+			resetOrClearModemTelModal();
 
-			physicalNumberModalCountrySelect.val(CurrentManagePhysicalNumberData.countryCode);
-			physicalNumberModalRegionSelect.val(CurrentManagePhysicalNumberData.regionId);
+            physicalNumberModalIntegrationSelect.val(CurrentManageModemTelNumberData.integrationId);
+			physicalNumberModalNumberInput.val(CurrentManageModemTelNumberData.number);
 
-			const shouldDisableFields = ManagePhysicalNumberType === "edit";
+			physicalNumberModalCountrySelect.val(CurrentManageModemTelNumberData.countryCode);
+			physicalNumberModalRegionSelect.val(CurrentManageModemTelNumberData.regionId);
+
+			const shouldDisableFields = ManageModemTelNumberType === "edit";
 
 			physicalNumberModalNumberInput.prop("disabled", shouldDisableFields);
 			physicalNumberModalCountrySelect.prop("disabled", shouldDisableFields);
+			physicalNumberModalIntegrationSelect.prop("disabled", shouldDisableFields);
 		});
 
 		addNewCustomSimNumberModalElement.on("hide.bs.modal", (event) => {
-			if (IsSavingPhysicalNumber) {
+			if (IsSavingModemTelNumber) {
 				AlertManager.createAlert({
 					type: "warning",
-					message: "Please wait while saving changes before closing the physical sim number modal...",
+					message: "Please wait while saving changes before closing the ModemTel number modal...",
 					timeout: 6000,
 				});
 
@@ -310,8 +348,8 @@ function initNumbersTab() {
 				return false;
 			}
 
-			CurrentManagePhysicalNumberData = null;
-			ManagePhysicalNumberType = null;
+			CurrentManageModemTelNumberData = null;
+			ManageModemTelNumberType = null;
 
 			addNewCustomSimNumberModalElement.find(".is-invalid").removeClass("is-invalid");
 
@@ -320,65 +358,65 @@ function initNumbersTab() {
 		});
 
 		addNewCustomSimNumberModalElement.on("change, input", "input, textarea, select", () => {
-			ValidatePhysicalNumberModalData();
-			CheckPhysicalNumberModalHasChanges();
+			ValidateModemTelNumberModalData();
+			CheckModemTelNumberModalHasChanges();
 		});
 
 		addNewPhysicalNumberButton.on("click", (event) => {
 			event.preventDefault();
 
-			if (IsSavingPhysicalNumber) return;
+			if (IsSavingModemTelNumber) return;
 
-			const validationResult = ValidatePhysicalNumberModalData(false);
+			const validationResult = ValidateModemTelNumberModalData(false);
 			if (!validationResult.validated) {
 				AlertManager.createAlert({
 					type: "danger",
-					message: `Physical Sim Saving Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
+					message: `ModemTel Saving Validation failed:<br><br>${validationResult.errors.join("<br>")}`,
 					timeout: 6000,
 				});
 				return;
 			}
 
-			const changes = CheckPhysicalNumberModalHasChanges(false);
+			const changes = CheckModemTelNumberModalHasChanges(false);
 			if (!changes.hasChanges) return;
 
-			IsSavingPhysicalNumber = true;
+			IsSavingModemTelNumber = true;
 
 			addNewPhysicalNumberButton.prop("disabled", true);
 			addNewPhysicalNumberButtonSpinner.removeClass("d-none");
 
 			const formData = new FormData();
-			formData.append("postType", ManagePhysicalNumberType);
+			formData.append("postType", ManageModemTelNumberType);
 			formData.append("changes", JSON.stringify(changes.changes));
 
-			if (ManagePhysicalNumberType === "edit") {
-				formData.append("numberId", CurrentManagePhysicalNumberData.id);
+			if (ManageModemTelNumberType === "edit") {
+				formData.append("numberId", CurrentManageModemTelNumberData.id);
 			}
 
 			SaveBusinessNumberToAPI(
 				formData,
 				(responseResult) => {
-					if (ManagePhysicalNumberType === "new") {
+					if (ManageModemTelNumberType === "new") {
 						BusinessFullData.businessApp.numbers.push(responseResult);
 
-						physicalSimNumbersTable.find("tbody").prepend(CreateBusinessPhysicalNumbersTableElement(responseResult));
+						physicalSimNumbersTable.find("tbody").prepend(CreateBusinessModemTelNumbersTableElement(responseResult));
 
 						physicalSimNumbersTable.find('tbody tr[tr-type="none-notice"]').remove();
 					} else {
-						const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === CurrentManagePhysicalNumberData.id);
+						const exisitingIndex = BusinessFullData.businessApp.numbers.findIndex((numberData) => numberData.id === CurrentManageModemTelNumberData.id);
 						BusinessFullData.businessApp.numbers[exisitingIndex] = responseResult;
 
-						const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManagePhysicalNumberData.id}"]`);
-						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateBusinessPhysicalNumbersTableElement(responseResult));
+						const exisitingUserPhysicalNumbersTableElement = physicalSimNumbersTable.find(`tbody tr[number-id="${CurrentManageModemTelNumberData.id}"]`);
+						exisitingUserPhysicalNumbersTableElement.replaceWith(CreateBusinessModemTelNumbersTableElement(responseResult));
 					}
 
 					AlertManager.createAlert({
 						type: "success",
-						message: `Successfully ${ManagePhysicalNumberType === "new" ? "added" : "updated"} business physical sim number.`,
+						message: `Successfully ${ManageModemTelNumberType === "new" ? "added" : "updated"} business ModemTel number.`,
 						timeout: 6000,
 					});
 
-					IsSavingPhysicalNumber = false;
+					IsSavingModemTelNumber = false;
 
 					addNewCustomSimNumberModal.hide();
 				},
@@ -394,7 +432,7 @@ function initNumbersTab() {
 					addNewPhysicalNumberButton.prop("disabled", false);
 					addNewPhysicalNumberButtonSpinner.addClass("d-none");
 
-					IsSavingPhysicalNumber = false;
+					IsSavingModemTelNumber = false;
 				},
 			);
 		});
@@ -408,14 +446,14 @@ function initNumbersTab() {
 			const numberId = currentElement.attr("number-id");
 			const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-			CurrentManagePhysicalNumberData = numberData;
-			ManagePhysicalNumberType = "edit";
+			CurrentManageModemTelNumberData = numberData;
+			ManageModemTelNumberType = "edit";
 
 			addNewCustomSimNumberModal.show();
 		});
 
 		// Init
-		FillBusinessPhysicalSimList();
-		FillInitialPhysicalSimModal();
+		FillBusinessModemTelList();
+		FillInitialModemTelModal();
 	});
 }

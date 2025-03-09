@@ -3,7 +3,8 @@ using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services.App;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Services.Integrations;
+using IqraInfrastructure.Services.Numbers.Providers;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Services.Business
@@ -15,12 +16,20 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
 
-        public BusinessNumberManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository)
+        private readonly ModemTelManager _modemTelManager;
+
+        private readonly IntegrationsManager _integrationsManager;
+
+        public BusinessNumberManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, ModemTelManager modemTelManager, IntegrationsManager integrationsManager)
         {
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
+
+            _modemTelManager = modemTelManager;
+
+            _integrationsManager = integrationsManager;
         }
 
         public async Task<BusinessNumberData?> GetBusinessNumberById(long businessId, string numberId)
@@ -39,7 +48,7 @@ namespace IqraInfrastructure.Services.Business
             return await _businessAppRepository.CheckBusinessNumberExistsById(exisitingNumberId, businessId);
         }
 
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, BusinessNumberProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
+        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, string integrationId, BusinessNumberProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
@@ -49,18 +58,29 @@ namespace IqraInfrastructure.Services.Business
                 Number = number,
                 Provider = provider
             };
+   
+            // Get Integration Data
+            var integrationData = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, integrationId);
+            if (!integrationData.Success)
+            {
+                result.Code = "AddOrUpdateBusinessNumber:" + integrationData.Code;
+                result.Message = integrationData.Message;
+                return result;
+            }
+
+            newNumberData.IntegrationId = integrationId;
 
             // Get region ID
             if (!changes.RootElement.TryGetProperty("regionId", out var regionIdElement))
             {
-                result.Code = "AddOrUpdateBusinessNumber:1";
+                result.Code = "AddOrUpdateBusinessNumber:3";
                 result.Message = "Region ID not found in changes.";
                 return result;
             }
             string? regionId = regionIdElement.GetString();
             if (string.IsNullOrWhiteSpace(regionId))
             {
-                result.Code = "AddOrUpdateBusinessNumber:2";
+                result.Code = "AddOrUpdateBusinessNumber:4";
                 result.Message = "Region ID cannot be empty.";
                 return result;
             }
@@ -69,19 +89,18 @@ namespace IqraInfrastructure.Services.Business
             var regionData = await regionManager.GetRegionById(regionId);
             if (regionData == null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:3";
+                result.Code = "AddOrUpdateBusinessNumber:5";
                 result.Message = "Region not found.";
                 return result;
             }
             if (regionData.DisabledAt != null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:4";
+                result.Code = "AddOrUpdateBusinessNumber:6";
                 result.Message = "Region is disabled.";
                 return result;
             }
 
             newNumberData.RegionId = regionId;
-
             if (provider == BusinessNumberProviderEnum.Unknown)
             {
                 result.Code = "AddOrUpdateBusinessNumber:7";
@@ -89,12 +108,47 @@ namespace IqraInfrastructure.Services.Business
                 return result;
             }
 
-            if (provider == BusinessNumberProviderEnum.Physical)
+            if (provider == BusinessNumberProviderEnum.ModemTel)
             {
-                newNumberData = new BusinessNumberPhysicalData(newNumberData)
+                newNumberData = new BusinessNumberModemTelData(newNumberData)
                 {
-                    Status = BusinessNumberPhysicalStatusEnum.Offline
+                    Status = BusinessNumberModemTelStatusEnum.Offline
                 };
+
+                var decryptedKey = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]);
+
+                var phoneNumberData = await _modemTelManager.GetPhoneNumberByCountryCodeAndNumberAsync(decryptedKey, integrationData.Data.Fields["endpoint"], countryCode, number);
+                if (!phoneNumberData.Success)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:" + phoneNumberData.Code;
+                    result.Message = phoneNumberData.Message;
+                    return result;
+                }
+
+                if (!phoneNumberData.Data.IsActive)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:3";
+                    result.Message = "Phone number is not active.";
+                    return result;
+                }
+
+                if (!phoneNumberData.Data.CanMakeCalls)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:4";
+                    result.Message = "Phone number cannot make calls.";
+                    return result;
+                }
+
+                if (!phoneNumberData.Data.CanSendSms)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:5";
+                    result.Message = "Phone number cannot make SMS.";
+                    return result;
+                }
+
+                ((BusinessNumberModemTelData)newNumberData).PhoneNumberId = phoneNumberData.Data.Id;
+
+                // TODO update the webhook url in-app
             }
             else if (provider == BusinessNumberProviderEnum.Twilio || provider == BusinessNumberProviderEnum.Vonage || provider == BusinessNumberProviderEnum.Telnyx)
             {

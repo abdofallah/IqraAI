@@ -13,6 +13,7 @@ using IqraInfrastructure.Services.Business;
 using IqraInfrastructure.Services.Integrations;
 using IqraInfrastructure.Services.Languages;
 using IqraInfrastructure.Services.LLM;
+using IqraInfrastructure.Services.Numbers.Providers;
 using IqraInfrastructure.Services.STT;
 using IqraInfrastructure.Services.TTS;
 using IqraInfrastructure.Services.User;
@@ -32,49 +33,24 @@ namespace ProjectIqraFrontend
              * 
             **/
 
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("ModemTelClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+
             var appConfig = builder.Configuration;
 
-            // App Repo
-
+            // Repo
             AppRepository appRepository = new AppRepository(
                 appConfig["AppDatabase:ConnectionString"],
                 appConfig["AppDatabase:DatabaseName"]
             );
-
-            // Languages
-
             LanguagesRepository languagesRepository = new LanguagesRepository(
                 appConfig["LanguagesDatabase:ConnectionString"],
                 appConfig["LanguagesDatabase:DatabaseName"]
             );
-            LanguagesManager languagesManager = new LanguagesManager(languagesRepository);
-            builder.Services.AddSingleton<LanguagesManager>(languagesManager);
-
-            // Region
-
-            RegionRepository regionRepository = new RegionRepository(
-                appConfig["AppDatabase:ConnectionString"],
-                appConfig["AppDatabase:DatabaseName"]
-            );
-
-            RegionManager regionManager = new RegionManager(regionRepository);
-            builder.Services.AddSingleton<RegionManager>(regionManager);
-
-            // User
-
-            UserSessionRepository userSessionRepository = new UserSessionRepository(
-                appConfig["UserSessionDatabase:ConnectionString"]
-            );
-            UserRepository userRepository = new UserRepository(
-                appConfig["UserDatabase:ConnectionString"],
-                appConfig["UserDatabase:DatabaseName"]
-            );
-
-            UserManager userManager = new UserManager(userSessionRepository, userRepository);
-            builder.Services.AddSingleton<UserManager>(userManager);
-
-            // Business
-
             BusinessRepository businessRepository = new BusinessRepository(
                 appConfig["BusinessDatabase:ConnectionString"],
                 appConfig["BusinessDatabase:DatabaseName"]
@@ -82,6 +58,29 @@ namespace ProjectIqraFrontend
             BusinessAppRepository businessAppRepository = new BusinessAppRepository(
                 appConfig["BusinessAppDatabase:ConnectionString"],
                 appConfig["BusinessAppDatabase:DatabaseName"]
+            );
+            RegionRepository regionRepository = new RegionRepository(
+                appConfig["AppDatabase:ConnectionString"],
+                appConfig["AppDatabase:DatabaseName"]
+            );
+            IntegrationsRepository integrationsRepository = new IntegrationsRepository(
+                appConfig["IntegrationsDatabase:ConnectionString"],
+                appConfig["IntegrationsDatabase:DatabaseName"]
+            );
+            IntegrationsLogoRepository integrationsLogoRepository = new IntegrationsLogoRepository(
+                appConfig["IntegrationsLogoRepository:Endpoint"],
+                int.Parse(appConfig["IntegrationsLogoRepository:Port"]),
+                appConfig["IntegrationsLogoRepository:AccessKey"],
+                appConfig["IntegrationsLogoRepository:SecretKey"],
+                appConfig["IntegrationsLogoRepository:BucketName"],
+                bool.Parse(appConfig["IntegrationsLogoRepository:IsSecure"])
+            );
+            UserSessionRepository userSessionRepository = new UserSessionRepository(
+                appConfig["UserSessionDatabase:ConnectionString"]
+            );
+            UserRepository userRepository = new UserRepository(
+                appConfig["UserDatabase:ConnectionString"],
+                appConfig["UserDatabase:DatabaseName"]
             );
             BusinessLogoRepository businessLogoRepository = new BusinessLogoRepository(
                 appConfig["BusinessLogoRepository:Endpoint"],
@@ -123,54 +122,70 @@ namespace ProjectIqraFrontend
                 appConfig["BusinessAgentAudioRepository:BucketName"],
                 bool.Parse(appConfig["BusinessAgentAudioRepository:IsSecure"])
             );
-
-            BusinessManager businessManager = new BusinessManager(businessRepository, businessAppRepository, businessLogoRepository, businessWhiteLabelDomainRepository, businessDomainVestaCPRepository, businessToolAudioRepository, businessAgentAudioRepository);
-            builder.Services.AddSingleton<BusinessManager>(businessManager);
-
-            // LLM Provider
             LLMProviderRepository lLMProviderRepository = new LLMProviderRepository(
                 appConfig["LLMProviderDatabase:ConnectionString"],
                 appConfig["LLMProviderDatabase:DatabaseName"]
             );
+            STTProviderRepository sTTProviderRepository = new STTProviderRepository(
+                appConfig["STTProviderDatabase:ConnectionString"],
+                appConfig["STTProviderDatabase:DatabaseName"]
+            );
+            TTSProviderRepository tTSProviderRepository = new TTSProviderRepository(
+                appConfig["TTSProviderDatabase:ConnectionString"],
+                appConfig["TTSProviderDatabase:DatabaseName"]
+            );
+
+            // Languages           
+            LanguagesManager languagesManager = new LanguagesManager(languagesRepository);
+            builder.Services.AddSingleton<LanguagesManager>(languagesManager);
+
+            // Region            
+            RegionManager regionManager = new RegionManager(regionRepository);
+            builder.Services.AddSingleton<RegionManager>(regionManager);
+
+            // Integrations
+            AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(appConfig["Integrations:EncryptionKey"]);
+            IntegrationsManager integrationsManager = new IntegrationsManager(integrationsRepository, businessAppRepository, integrationsLogoRepository, integrationFieldsEncryptionService);
+            builder.Services.AddSingleton<IntegrationsManager>(integrationsManager);
+
+            // Number Providers
+
+            // ModemTel
+            ModemTelManager modemTelManager = new ModemTelManager();
+            builder.Services.AddSingleton<ModemTelManager>(modemTelManager);
+
+            // User
+            UserManager userManager = new UserManager(userSessionRepository, userRepository);
+            builder.Services.AddSingleton<UserManager>(userManager);
+
+            // Business
+            BusinessManager businessManager = new BusinessManager(
+                businessRepository,
+                businessAppRepository,
+                businessLogoRepository,
+                businessWhiteLabelDomainRepository,
+                businessDomainVestaCPRepository,
+                businessToolAudioRepository,
+                businessAgentAudioRepository,
+                modemTelManager,
+                integrationsManager
+            );
+            builder.Services.AddSingleton<BusinessManager>(businessManager);
+
+            // LLM Provider
             LLMProviderManager llmProviderManager = new LLMProviderManager(lLMProviderRepository, languagesManager);
             builder.Services.AddSingleton<LLMProviderManager>(llmProviderManager);
             await llmProviderManager.InitializeProvidersAsync();
 
             // STT Provider
-            STTProviderRepository sTTProviderRepository = new STTProviderRepository(
-                appConfig["STTProviderDatabase:ConnectionString"],
-                appConfig["STTProviderDatabase:DatabaseName"]
-            );
             STTProviderManager sttProviderManager = new STTProviderManager(sTTProviderRepository);
             builder.Services.AddSingleton<STTProviderManager>(sttProviderManager);
             await sttProviderManager.InitializeProvidersAsync();
 
             // TTS Provider
-            TTSProviderRepository tTSProviderRepository = new TTSProviderRepository(
-                appConfig["TTSProviderDatabase:ConnectionString"],
-                appConfig["TTSProviderDatabase:DatabaseName"]
-            );
             TTSProviderManager ttsProviderManager = new TTSProviderManager(tTSProviderRepository);
             builder.Services.AddSingleton<TTSProviderManager>(ttsProviderManager);
             await ttsProviderManager.InitializeProvidersAsync();
-
-            // Integrations
-            IntegrationsRepository integrationsRepository = new IntegrationsRepository(
-                appConfig["IntegrationsDatabase:ConnectionString"],
-                appConfig["IntegrationsDatabase:DatabaseName"]
-            );
-            IntegrationsLogoRepository integrationsLogoRepository = new IntegrationsLogoRepository(
-                appConfig["IntegrationsLogoRepository:Endpoint"],
-                int.Parse(appConfig["IntegrationsLogoRepository:Port"]),
-                appConfig["IntegrationsLogoRepository:AccessKey"],
-                appConfig["IntegrationsLogoRepository:SecretKey"],
-                appConfig["IntegrationsLogoRepository:BucketName"],
-                bool.Parse(appConfig["IntegrationsLogoRepository:IsSecure"])
-            );
-            AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(appConfig["Integrations:EncryptionKey"]);
-            IntegrationsManager integrationsManager = new IntegrationsManager(integrationsRepository, businessAppRepository, integrationsLogoRepository, integrationFieldsEncryptionService);
-            builder.Services.AddSingleton<IntegrationsManager>(integrationsManager);      
-
 
             // Views Links Config
             ViewLinkConfiguration viewLinkConfiguration = new ViewLinkConfiguration()
@@ -188,30 +203,23 @@ namespace ProjectIqraFrontend
              * 
             **/
 
-            builder.Services.AddHttpContextAccessor();
-
-            var builtServiceProvider = builder.Services.BuildServiceProvider();
-
-            var httpContextAccessor = builtServiceProvider.GetRequiredService<IHttpContextAccessor>();
-
+            var customJSONMiddleware = new EndpointAwareJsonConverter();
             builder.Services
                 .AddControllersWithViews()
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.Converters.Add(
-                        new EndpointAwareJsonConverter(
-                            httpContextAccessor
-                        )
+                        customJSONMiddleware
                     );
                 });
 
             var app = builder.Build();
 
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseExceptionHandler("/Error");
-                app.UseHsts();
-            }
+            var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+            customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
+
+            var IHttpClientFactory = app.Services.GetRequiredService<IHttpClientFactory>();
+            modemTelManager.SetHttpClientFactory(IHttpClientFactory);
 
             app.UseStaticFiles();
             app.UseRouting();

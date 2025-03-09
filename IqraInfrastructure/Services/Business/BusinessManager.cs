@@ -8,6 +8,7 @@ using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services.Integrations;
+using IqraInfrastructure.Services.Numbers.Providers;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using Serilog;
@@ -28,6 +29,9 @@ namespace IqraInfrastructure.Services.Business
 
         private readonly AudioFileProcessor _audioProcessor;
 
+        private readonly IntegrationsManager _integrationsManager;
+        private readonly ModemTelManager _modemTelManager;
+
         // Sub Managers
         private readonly BusinessSettingsManager _businessSettingsManager;
         private readonly BusinessToolsManager _businessToolsManager;
@@ -38,6 +42,8 @@ namespace IqraInfrastructure.Services.Business
         private readonly BusinessNumberManager _businessNumberManager;
         private readonly BusinessRoutesManager _businessRoutesManager;
 
+
+
         public BusinessManager(
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
@@ -45,7 +51,9 @@ namespace IqraInfrastructure.Services.Business
             BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
             BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository,
             BusinessToolAudioRepository businessToolAudioRepository,
-            BusinessAgentAudioRepository businessAgentAudioRepository
+            BusinessAgentAudioRepository businessAgentAudioRepository,
+            ModemTelManager modemTelManager,
+            IntegrationsManager integrationsManager
         )
         {
             _businessRepository = businessRepository;
@@ -58,6 +66,9 @@ namespace IqraInfrastructure.Services.Business
 
             _audioProcessor = new AudioFileProcessor();
 
+            _integrationsManager = integrationsManager;
+            _modemTelManager = modemTelManager;
+
             // Sub Managers
             _businessSettingsManager = new BusinessSettingsManager(this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
             _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
@@ -65,7 +76,7 @@ namespace IqraInfrastructure.Services.Business
             _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
             _businessIntegrationsManager = new BusinessIntegrationsManager(this, businessAppRepository);
             _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
-            _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository);
+            _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, integrationsManager);
             _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository);
         }
 

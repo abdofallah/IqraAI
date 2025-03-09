@@ -39,12 +39,12 @@ namespace IqraInfrastructure.Repositories.App
 
         public async Task<RegionData> GetRegion(string id)
         {
-            return await _regionCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+            return await _regionCollection.Find(x => x.CountryRegion == id).FirstOrDefaultAsync();
         }
 
         public async Task<bool> UpdateRegion(string id, UpdateDefinition<RegionData> updateDefinition)
         {
-            var result = await _regionCollection.UpdateOneAsync(x => x.Id == id, updateDefinition);
+            var result = await _regionCollection.UpdateOneAsync(x => x.CountryRegion == id, updateDefinition);
             return result.ModifiedCount > 0;
         }
 
@@ -62,7 +62,7 @@ namespace IqraInfrastructure.Repositories.App
 
         public async Task<RegionData?> GetRegionById(string regionId)
         {
-            return await _regionCollection.Find(x => x.Id == regionId).FirstOrDefaultAsync();
+            return await _regionCollection.Find(x => x.CountryRegion == regionId).FirstOrDefaultAsync();
         }
     }
 }

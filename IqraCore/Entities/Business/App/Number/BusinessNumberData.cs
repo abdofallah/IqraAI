@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
-    [BsonKnownTypes(typeof(BusinessNumberPhysicalData), typeof(BusinessNumberTwilioData), typeof(BusinessNumberVonageData), typeof(BusinessNumberTelnyxData))]
+    [BsonKnownTypes(typeof(BusinessNumberModemTelData), typeof(BusinessNumberTwilioData), typeof(BusinessNumberVonageData), typeof(BusinessNumberTelnyxData))]
     public class BusinessNumberData
     {
         public BusinessNumberData() { }
@@ -15,6 +15,7 @@ namespace IqraCore.Entities.Business
             this.RouteId = data.RouteId;
             this.RegionId = data.RegionId;
             this.Provider = data.Provider;
+            this.IntegrationId = data.IntegrationId;
         }
 
         [BsonId]
@@ -25,6 +26,8 @@ namespace IqraCore.Entities.Business
 
         public string? RouteId { get; set; } = null;
         public string RegionId { get; set; } = string.Empty;
+
+        public string IntegrationId { get; set; } = string.Empty;
 
         public virtual BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.Unknown;
     }

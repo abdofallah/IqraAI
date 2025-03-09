@@ -2467,7 +2467,7 @@
                 <div class="" id="phone-numbers-inner-head">
                     <ul class="nav" id="inner-phone-numbers-tab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">Physical Sim</button>
+                            <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">ModemTel</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link me-2 disabled" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
@@ -2483,12 +2483,12 @@
             </div>
             <div class="inner-container">
                 <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
-                    <!-- Physical Sim -->
+                    <!-- ModemTel -->
                     <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
                         <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                             <div style="min-width: 300px" class="me-4">
                                 <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCustomSimNumberButton">
-                                    <span>+ Add Physical Sim Number</span>
+                                    <span>+ Add ModemTel Number</span>
                                 </button>
                             </div>
                             <div class="input-group w-100">
@@ -2720,8 +2720,7 @@
                                                     <ul class="nav mb-3" id="make-call-assign-number-modal-tab" role="tablist">
                                                         <li class="nav-item me-2" role="presentation">
                                                             <button class="nav-link active" id="make-call-assign-number-modal-physical-sim-tab" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="make-call-assign-number-modal-physical-sim" aria-selected="true">
-                                                                Physical
-                                                                Sim
+                                                                ModemTel
                                                             </button>
                                                         </li>
                                                         <li class="nav-item me-2" role="presentation">
@@ -4685,8 +4684,7 @@
                             <ul class="nav" id="routing-manager-assign-number-modal-tab" role="tablist">
                                 <li class="nav-item me-2" role="presentation">
                                     <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
-                                        Physical
-                                        Sim
+                                        ModemTel
                                     </button>
                                 </li>
                                 <li class="nav-item me-2" role="presentation">
@@ -4708,7 +4706,7 @@
                                 </button>
                             </div>
 
-                            <!-- Physical Sim -->
+                            <!-- ModemTel -->
                             <div class="tab-pane fade show active" id="routing-manager-assign-number-modal-physical-sim" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-physical-sim-tab">
                                 <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="1">
                                     <!-- Dynamically Generated -->
@@ -4747,15 +4745,21 @@
             </div>
         </div>
 
-        <!-- Add Physical Number Modal -->
+        <!-- Add ModemTel Modal -->
         <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add Physical Sim Number</h1>
+                        <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add ModemTel Number</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="physicalNumberModalIntegrationSelect" class="form-label">Integration</label>
+                            <select class="form-select" id="physicalNumberModalIntegrationSelect">
+                                <!-- Dynamically Generated Once -->
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label for="physicalNumberModalCountrySelect" class="form-label">Country Code</label>
                             <select class="form-select" id="physicalNumberModalCountrySelect">
