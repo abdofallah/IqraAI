@@ -14,6 +14,6 @@ namespace IqraCore.Entities.Region
 
         [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/regions")]
-        public List<RegionServer> Servers { get; set; } = new List<RegionServer>();
+        public List<RegionServerData> Servers { get; set; } = new List<RegionServerData>();
     }
 }

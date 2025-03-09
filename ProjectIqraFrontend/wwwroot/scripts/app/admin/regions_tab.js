@@ -29,10 +29,9 @@ const regionManagerGeneralTab = regionTab.find("#region-manager-general-tab");
 
 const switchBackToRegionManagerServersListTabFromServersTab = regionTab.find("#switchBackToRegionManagerServersListTabFromServersTab");
 
-const manageRegionServerIdInput = regionTab.find("#manageRegionServerIdInput");
 const manageRegionServerIpInput = regionTab.find("#manageRegionServerIpInput");
+const manageRegionServerTypeSelect = regionTab.find("#manageRegionServerTypeSelect");
 const manageRegionServerDisabledInput = regionTab.find("#manageRegionServerDisabledInput");
-const manageRegionServerSimModulesInput = regionTab.find("#manageRegionServerSimModulesInput");
 
 const addNewRegionButton = regionTab.find("#addNewRegionButton");
 
@@ -44,13 +43,12 @@ function CreateRegionListTableElement(regionData) {
 	let countryData = CountriesList[regionData.countryCode.toUpperCase()];
 
 	let element = $(`<tr>
-                <td><span class="badge bg-success">Healthy</span></td>
-                <td>${regionData.id}</td>
-                <td>${countryData["Country"]}</td>
+                <td><span class="badge bg-info">UNK</span></td>
                 <td>${regionData.countryRegion}</td>
+                <td>${countryData["Country"]}</td>
                 <td>${regionData.servers.length}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" region-id="${regionData.id}" button-type="edit-region">
+                    <button class="btn btn-info btn-sm" region-id="${regionData.countryRegion}" button-type="edit-region">
                         <i class="fa-regular fa-eye"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
@@ -64,12 +62,11 @@ function CreateRegionListTableElement(regionData) {
 
 function CreateServerListTableElement(regionId, serverData) {
 	let element = $(`<tr>
-                <td><span class="badge bg-success">Healthy</span></td>
-                <td>${serverData.id}</td>
-                <td>${serverData.ipAddress}</td>
-                <td>${serverData.hasSimModules === true ? "Yes" : "No"}</td>
+                <td><span class="badge bg-info">UNK</span></td>
+                <td>${serverData.endpoint}</td>
+                <td>${serverData.type.name}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" region-id="${regionId}" server-id="${serverData.id}" button-type="edit-region-server">
+                    <button class="btn btn-info btn-sm" region-id="${regionId}" server-id="${serverData.endpoint}" button-type="edit-region-server">
                         <i class="fa-regular fa-eye"></i>
                     </button>
                     <button class="btn btn-danger btn-sm">
@@ -131,7 +128,7 @@ function FillRegionManageTab(regionData) {
 	}
 
 	regionData.servers.forEach((serverData) => {
-		regionServerListTable.append(CreateServerListTableElement(regionData.id, serverData));
+		regionServerListTable.append(CreateServerListTableElement(regionData.countryRegion, serverData));
 	});
 }
 
@@ -183,16 +180,15 @@ function HideRegionServerManageTab() {
 }
 
 function FillRegionServerManageTab(serverData) {
-	manageRegionServerIdInput.val(serverData.id);
-	manageRegionServerIdInput.prop("disabled", true);
+	manageRegionServerIpInput.val(serverData.endpoint);
+	manageRegionServerIpInput.prop("disabled", true);
 
-	manageRegionServerIpInput.val(serverData.ipAddress);
+	manageRegionServerTypeSelect.val(serverData.type.value);
+    manageRegionServerTypeSelect.prop("disabled", true);
 
 	if (serverData.disabledAt != null) {
 		manageRegionServerDisabledInput.prop("checked", true);
 	}
-
-	manageRegionServerSimModulesInput.prop("checked", serverData.hasSimModules);
 }
 
 function ResetAndEmptyRegionServerManageTab() {
@@ -212,7 +208,7 @@ $(document).ready(() => {
 		currentManageServerRegionName.text(elementRegionId);
 
 		let currentRegionData = CurrentRegionsList.find((regionData) => {
-			return regionData.id == elementRegionId;
+			return regionData.countryRegion == elementRegionId;
 		});
 
 		// View
@@ -238,10 +234,10 @@ $(document).ready(() => {
 		let elementServerId = $(event.currentTarget).attr("server-id");
 
 		let currentRegionData = CurrentRegionsList.find((regionData) => {
-			return regionData.id == elementRegionId;
+			return regionData.countryRegion == elementRegionId;
 		});
 		let currentServerData = currentRegionData.servers.find((serverData) => {
-			return serverData.id == elementServerId;
+			return serverData.endpoint == elementServerId;
 		});
 
 		currentManageRegionServerName.text(elementServerId);

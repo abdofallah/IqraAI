@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Business;
+using IqraCore.Entities.Helper.Region;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Services.App;
@@ -73,14 +74,14 @@ namespace IqraInfrastructure.Services.Business
             // Get region ID
             if (!changes.RootElement.TryGetProperty("regionId", out var regionIdElement))
             {
-                result.Code = "AddOrUpdateBusinessNumber:3";
+                result.Code = "AddOrUpdateBusinessNumber:1";
                 result.Message = "Region ID not found in changes.";
                 return result;
             }
             string? regionId = regionIdElement.GetString();
             if (string.IsNullOrWhiteSpace(regionId))
             {
-                result.Code = "AddOrUpdateBusinessNumber:4";
+                result.Code = "AddOrUpdateBusinessNumber:2";
                 result.Message = "Region ID cannot be empty.";
                 return result;
             }
@@ -89,21 +90,33 @@ namespace IqraInfrastructure.Services.Business
             var regionData = await regionManager.GetRegionById(regionId);
             if (regionData == null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:5";
+                result.Code = "AddOrUpdateBusinessNumber:3";
                 result.Message = "Region not found.";
                 return result;
             }
             if (regionData.DisabledAt != null)
             {
-                result.Code = "AddOrUpdateBusinessNumber:6";
+                result.Code = "AddOrUpdateBusinessNumber:4";
                 result.Message = "Region is disabled.";
                 return result;
             }
 
             newNumberData.RegionId = regionId;
+
+            // Get Regions's Webhook
+            var getRegionWebhookServer = regionData.Servers.Find(x => x.Type == RegionServerTypeEnum.Proxy);
+            if (getRegionWebhookServer == null)
+            {
+                result.Code = "AddOrUpdateBusinessNumber:5";
+                result.Message = "Region does not have a proxy server.";
+                return result;
+            }
+
+            newNumberData.RegionWebhookEndpoint = getRegionWebhookServer.Endpoint;
+
             if (provider == BusinessNumberProviderEnum.Unknown)
             {
-                result.Code = "AddOrUpdateBusinessNumber:7";
+                result.Code = "AddOrUpdateBusinessNumber:6";
                 result.Message = "Invalid provider type.";
                 return result;
             }
@@ -127,21 +140,21 @@ namespace IqraInfrastructure.Services.Business
 
                 if (!phoneNumberData.Data.IsActive)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:3";
+                    result.Code = "AddOrUpdateBusinessNumber:7";
                     result.Message = "Phone number is not active.";
                     return result;
                 }
 
                 if (!phoneNumberData.Data.CanMakeCalls)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:4";
+                    result.Code = "AddOrUpdateBusinessNumber:8";
                     result.Message = "Phone number cannot make calls.";
                     return result;
                 }
 
                 if (!phoneNumberData.Data.CanSendSms)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:5";
+                    result.Code = "AddOrUpdateBusinessNumber:9";
                     result.Message = "Phone number cannot make SMS.";
                     return result;
                 }
@@ -152,13 +165,13 @@ namespace IqraInfrastructure.Services.Business
             }
             else if (provider == BusinessNumberProviderEnum.Twilio || provider == BusinessNumberProviderEnum.Vonage || provider == BusinessNumberProviderEnum.Telnyx)
             {
-                result.Code = "AddOrUpdateBusinessNumber:8";
+                result.Code = "AddOrUpdateBusinessNumber:10";
                 result.Message = "Provider type currently not implemented.";
                 return result;
             }
             else
             {
-                result.Code = "AddOrUpdateBusinessNumber:9";
+                result.Code = "AddOrUpdateBusinessNumber:11";
                 result.Message = "Invalid provider type.";
                 return result;
             }
@@ -170,7 +183,7 @@ namespace IqraInfrastructure.Services.Business
                 bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
                 if (!addNumberResult)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:10";
+                    result.Code = "AddOrUpdateBusinessNumber:12";
                     result.Message = $"Failed to add number to business.";
                     return result;
                 }
@@ -182,7 +195,7 @@ namespace IqraInfrastructure.Services.Business
                 bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData);
                 if (!updateNumberResult)
                 {
-                    result.Code = "AddOrUpdateBusinessNumber:11";
+                    result.Code = "AddOrUpdateBusinessNumber:13";
                     result.Message = $"Failed to update number.";
                     return result;
                 }

@@ -915,9 +915,8 @@
                                 <thead>
                                     <tr>
                                         <th scope="col" style="width: 100px"></th>
-                                        <th scope="col">#</th>
+                                        <th scope="col"># Region</th>
                                         <th scope="col">Country</th>
-                                        <th scope="col">Region</th>
                                         <th scope="col">Servers</th>
                                         <th scope="col">Actions</th>
                                     </tr>
@@ -987,9 +986,8 @@
                                             <thead>
                                                 <tr>
                                                     <th scope="col" style="width: 100px"></th>
-                                                    <th scope="col">#</th>
-                                                    <th scope="col">IP</th>
-                                                    <th scope="col">Has Sim Modules?</th>
+                                                    <th scope="col"># Endpoint</th>
+                                                    <th scope="col">Type</th>
                                                     <th scope="col">Actions</th>
                                                 </tr>
                                             </thead>
@@ -1020,20 +1018,20 @@
                                             <!-- General -->
                                             <div class="tab-pane fade w-100 show active" id="region-server-manager-general" role="tabpanel" aria-labelledby="region-server-manager-general-tab" tabindex="0">
                                                 <div class="mb-3">
-                                                    <label class="form-label" for="manageRegionServerIdInput">Identifer</label>
-                                                    <input type="text" class="form-control" id="manageRegionServerIdInput" placeholder="Server Identifer">
-                                                </div>
-                                                <div class="mb-3">
                                                     <label class="form-label" for="manageRegionServerIpInput">IP Address</label>
                                                     <input type="text" class="form-control" id="manageRegionServerIpInput" placeholder="Server IP">
                                                 </div>
-                                                <div class="form-check form-switch mb-3">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRegionServerTypeSelect">Server Type</label>
+                                                    <select class="form-select" id="manageRegionServerTypeSelect">
+                                                        <option value="" selected disabled>Select Server Type</option>
+                                                        <option value="1">Backend</option>
+                                                        <option value="2">Proxy</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form-check form-switch">
                                                     <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerDisabledInput">
                                                     <label class="form-check-label" for="manageRegionServerDisabledInput">Disabled</label>
-                                                </div>
-                                                <div class="form-check form-switch mb-3">
-                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRegionServerSimModulesInput">
-                                                    <label class="form-check-label" for="manageRegionServerSimModulesInput">Has Sim Modules?</label>
                                                 </div>
                                             </div>
                                             <!-- Analytics -->

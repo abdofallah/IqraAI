@@ -14,6 +14,7 @@ namespace IqraCore.Entities.Business
             this.Number = data.Number;
             this.RouteId = data.RouteId;
             this.RegionId = data.RegionId;
+            this.RegionWebhookEndpoint = data.RegionWebhookEndpoint;
             this.Provider = data.Provider;
             this.IntegrationId = data.IntegrationId;
         }
@@ -26,6 +27,7 @@ namespace IqraCore.Entities.Business
 
         public string? RouteId { get; set; } = null;
         public string RegionId { get; set; } = string.Empty;
+        public string RegionWebhookEndpoint { get; set; } = string.Empty;
 
         public string IntegrationId { get; set; } = string.Empty;
 

@@ -91,7 +91,7 @@ namespace IqraInfrastructure.Services.App
             var filterDefinition = Builders<RegionData>.Filter.And(
                 Builders<RegionData>.Filter.Eq(r => r.CountryCode, countryCode),
                 Builders<RegionData>.Filter.Eq(r => r.CountryRegion, countryRegion),
-                Builders<RegionData>.Filter.ElemMatch(r => r.Servers, s => s.IpAddress == ipAddress)
+                Builders<RegionData>.Filter.ElemMatch(r => r.Servers, s => s.Endpoint == ipAddress)
             );
 
             var updateDefinition = Builders<RegionData>.Update.Set(
@@ -107,7 +107,7 @@ namespace IqraInfrastructure.Services.App
             var filterDefinition = Builders<RegionData>.Filter.And(
                 Builders<RegionData>.Filter.Eq(r => r.CountryCode, countryCode),
                 Builders<RegionData>.Filter.Eq(r => r.CountryRegion, countryRegion),
-                Builders<RegionData>.Filter.ElemMatch(r => r.Servers, s => s.IpAddress == ipAddress)
+                Builders<RegionData>.Filter.ElemMatch(r => r.Servers, s => s.Endpoint == ipAddress)
             );
 
             var updateDefinition = Builders<RegionData>.Update.Set(

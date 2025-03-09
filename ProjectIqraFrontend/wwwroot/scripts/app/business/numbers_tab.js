@@ -90,6 +90,7 @@ function createDefaultModemTelNumberObject() {
 		number: "",
 		routeId: null,
 		regionId: "",
+		regionWebhookEndpoint: "",
 		provider: {
 			value: 1,
 		},
@@ -117,6 +118,9 @@ function CreateBusinessModemTelNumbersTableElement(numberData) {
                 <td>${numberData.number}</td>
                 <td>${regionData.countryRegion}</td>
                 <td>
+					<button class="btn btn-light btn-sm" number-id="${numberData.id}" button-type="view-webhook-physical-number">
+                        <i class="fa-regular fa-webhook"></i>
+                    </button>
                     <button class="btn btn-info btn-sm" number-id="${numberData.id}" button-type="edit-physical-number">
                         <i class="fa-regular fa-pen-to-square"></i>
                     </button>
@@ -450,6 +454,48 @@ function initNumbersTab() {
 			ManageModemTelNumberType = "edit";
 
 			addNewCustomSimNumberModal.show();
+		});
+
+		physicalSimNumbersTable.on("click", 'button[button-type="view-webhook-physical-number"]', async (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const currentElement = $(event.currentTarget);
+
+			const numberId = currentElement.attr("number-id");
+            const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
+
+			const webhookURI = `https://${numberData.regionWebhookEndpoint}/${CurrentBusinessId}/${numberId}`;
+
+			const webhookDialog = new BootstrapConfirmDialog({
+				title: `Number (${numberData.countryCode}-${numberData.number})  Webhook`,
+				message: `
+					<div class="mb-3">
+						<label class="form-label">Webhook URI</label>
+						<input type="text" class="form-control" value="${webhookURI}" readonly>
+					</div>
+
+					<a href="https://www.modemtel.com" target="_blank" class="text-decoration-none">
+						<i class="fa-regular fa-circle-question me-1"></i>
+						How to set your Phone Number Webhook URL?
+					</a>
+				`,
+				confirmText: "Copy & Close",
+				cancelText: "Cancel",
+				confirmButtonClass: "btn-success",
+				modalClass: "modal-lg",
+			});
+
+			const confirmResult = await webhookDialog.show();
+			if (confirmResult) {
+				navigator.clipboard.writeText(webhookURI);
+
+				AlertManager.createAlert({
+                    type: "success",
+                    message: "Copied webhook URI to clipboard.",
+					timeout: 2000,
+                });
+			}
 		});
 
 		// Init
