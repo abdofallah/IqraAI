@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="4.7.1" />
     <PackageReference Include="FluentFTP" Version="52.0.0" />
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.42.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />

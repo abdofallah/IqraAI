@@ -1,11 +1,11 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
-using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.Region;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
 
-namespace IqraInfrastructure.Services.App
+namespace IqraInfrastructure.Services.Region
 {
     public class RegionManager
     {

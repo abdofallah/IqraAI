@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Region;
 using MongoDB.Driver;
 
-namespace IqraInfrastructure.Repositories.App
+namespace IqraInfrastructure.Repositories.Region
 {
     public class RegionRepository
     {

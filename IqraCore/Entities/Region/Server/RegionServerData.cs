@@ -8,6 +8,7 @@ namespace IqraCore.Entities.Region
     {
         [BsonId]
         public string Endpoint { get; set; } = string.Empty;
+        public string APIKey { get; set; } = string.Empty;
 
         public virtual RegionServerTypeEnum Type { get; set; } = RegionServerTypeEnum.Unknown;
 

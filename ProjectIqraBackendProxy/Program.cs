@@ -1,4 +1,7 @@
 
+using IqraInfrastructure.Repositories.Server;
+using IqraInfrastructure.Services.Server;
+
 namespace ProjectIqraBackendProxy
 {
     public class Program
@@ -7,7 +10,32 @@ namespace ProjectIqraBackendProxy
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            /**
+             * 
+             * START
+             * 
+            **/
+
+            // Configuration
+            var appConfig = builder.Configuration;
+            string ServerIdentifier = appConfig["Server:Identifier"];
+
+            // Repo
+            ServerHistoricalStatusRepository serverHistoricalStatusRepository = new ServerHistoricalStatusRepository(
+                ServerIdentifier,
+                appConfig["ServerHistoricalStatus:ConnectionString"],
+                appConfig["ServerHistoricalStatus:DatabaseName"]
+            );
+
+            // Managers
+            ServerManager serverManager = new ServerManager(ServerIdentifier, serverHistoricalStatusRepository);
+            serverManager.StartServerMonitor(new CancellationTokenSource());
+
+            /**
+             * 
+             * END
+             * 
+            **/
 
             builder.Services.AddControllers();
 
