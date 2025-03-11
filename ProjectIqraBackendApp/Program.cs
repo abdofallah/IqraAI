@@ -28,10 +28,10 @@ namespace ProjectIqraBackendApp
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            // Add health checks
+            // Health checks
             builder.Services.AddHealthChecks();
 
-            // Add server configuration
+            // Server configuration
             builder.Services.AddSingleton<ServerConfig>(sp =>
             {
                 return new ServerConfig
@@ -42,33 +42,37 @@ namespace ProjectIqraBackendApp
                 };
             });
 
-            // Add Redis connection
+            // Redis connection
             builder.Services.AddSingleton<IRedisConnectionFactory>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("Redis");
-                return new RedisConnectionFactory(connectionString);
+                var logger = sp.GetRequiredService<ILogger<RedisConnectionFactory>>();
+                return new RedisConnectionFactory(connectionString, logger);
             });
 
-            // Add MongoDB repositories
+            // MongoDB repositories
             builder.Services.AddSingleton<CallQueueRepository>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
                 var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new CallQueueRepository(connectionString, databaseName);
+                var logger = sp.GetRequiredService<ILogger<CallQueueRepository>>();
+                return new CallQueueRepository(connectionString, databaseName, logger);
             });
 
             builder.Services.AddSingleton<CallSessionRepository>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
                 var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new CallSessionRepository(connectionString, databaseName);
+                var logger = sp.GetRequiredService<ILogger<CallSessionRepository>>();
+                return new CallSessionRepository(connectionString, databaseName, logger);
             });
 
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
                 var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new ServerStatusRepository(connectionString, databaseName);
+                var logger = sp.GetRequiredService<ILogger<ServerStatusRepository>>();
+                return new ServerStatusRepository(connectionString, databaseName, logger);
             });
 
             builder.Services.AddSingleton<ConversationRepository>(sp =>

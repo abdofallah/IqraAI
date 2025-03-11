@@ -33,7 +33,8 @@ namespace ProjectIqraBackendProxy
             builder.Services.AddSingleton<IRedisConnectionFactory>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("Redis");
-                return new RedisConnectionFactory(connectionString);
+                var logger = sp.GetRequiredService<ILogger<RedisConnectionFactory>>();
+                return new RedisConnectionFactory(connectionString, logger);
             });
 
             // MongoDB repositories
@@ -41,16 +42,17 @@ namespace ProjectIqraBackendProxy
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
                 var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new CallQueueRepository(connectionString, databaseName);
+                var logger = sp.GetRequiredService<ILogger<CallQueueRepository>>();
+                return new CallQueueRepository(connectionString, databaseName, logger);
             });
 
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
                 var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new ServerStatusRepository(connectionString, databaseName);
+                var logger = sp.GetRequiredService<ILogger<ServerStatusRepository>>();
+                return new ServerStatusRepository(connectionString, databaseName, logger);
             });
-
             // Application services
             builder.Services.AddSingleton<ServerSelectionService>();
             builder.Services.AddScoped<CallDistributionService>();
