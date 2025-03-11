@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.User;
-using IqraCore.Models.AppAuthentication;
+using IqraCore.Models.Authentication;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 

@@ -3,7 +3,7 @@ using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
-using IqraCore.Models.AppUser;
+using IqraCore.Models.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Region;

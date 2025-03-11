@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace IqraCore.Models.AppAuthentication
+namespace IqraCore.Models.Authentication
 {
     public class RegisterModel
     {

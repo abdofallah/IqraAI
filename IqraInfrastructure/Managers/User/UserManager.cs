@@ -3,10 +3,10 @@ using System.Security.Cryptography;
 using System.Text;
 using IqraCore.Entities.User;
 using UserData = IqraCore.Entities.User.UserData;
-using IqraCore.Models.AppAuthentication;
 using IqraCore.Entities.Helpers;
 using Serilog;
 using IqraInfrastructure.Repositories.User;
+using IqraCore.Models.Authentication;
 
 namespace IqraInfrastructure.Managers.User
 {

@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.WhiteLabelDomain;
 
-namespace IqraCore.Models.AppUser
+namespace IqraCore.Models.User
 {
     public class GetUserBusinessFullReturnModel
     {
