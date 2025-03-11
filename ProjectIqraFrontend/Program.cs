@@ -9,15 +9,15 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
-using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Integrations;
-using IqraInfrastructure.Services.Languages;
-using IqraInfrastructure.Services.LLM;
-using IqraInfrastructure.Services.Numbers.Providers;
-using IqraInfrastructure.Services.Region;
-using IqraInfrastructure.Services.STT;
-using IqraInfrastructure.Services.TTS;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Numbers.Providers;
+using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.User;
 using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend

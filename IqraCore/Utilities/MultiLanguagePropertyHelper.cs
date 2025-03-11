@@ -6,7 +6,7 @@ namespace IqraCore.Utilities
 {
     public class MultiLanguagePropertyHelper
     {
-        public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageProperty(
+        public static FunctionReturnResult ValidateAndAssignMultiLanguageProperty(
             IEnumerable<string> languages,
             JsonElement jsonElement,
             string propertyKey,
@@ -18,14 +18,14 @@ namespace IqraCore.Utilities
             return ValidateAndAssignMultiLanguageProperty(languageList, jsonElement, propertyKey, targetDictionary, isOptional);
         }
 
-        public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageProperty(
+        public static FunctionReturnResult ValidateAndAssignMultiLanguageProperty(
             IEnumerable<LanguagesData> languages,
             JsonElement jsonElement,
             string propertyKey,
             IDictionary<string, string> targetDictionary,
             bool isOptional = false)
         {
-            var result = new FunctionReturnResult<bool>();
+            var result = new FunctionReturnResult();
 
             if (!jsonElement.TryGetProperty(propertyKey, out var multiLangElement)
                 || multiLangElement.ValueKind != JsonValueKind.Object)
@@ -65,7 +65,7 @@ namespace IqraCore.Utilities
             return result;
         }
 
-        public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageListProperty(
+        public static FunctionReturnResult ValidateAndAssignMultiLanguageListProperty(
             IEnumerable<string> languages,
             JsonElement jsonElement,
             string propertyKey,
@@ -77,14 +77,14 @@ namespace IqraCore.Utilities
             return ValidateAndAssignMultiLanguageListProperty(languageList, jsonElement, propertyKey, targetDictionary, isOptional);
         }
 
-        public static FunctionReturnResult<bool> ValidateAndAssignMultiLanguageListProperty(
+        public static FunctionReturnResult ValidateAndAssignMultiLanguageListProperty(
             IEnumerable<LanguagesData> languages,
             JsonElement jsonElement,
             string propertyKey,
             IDictionary<string, List<string>> targetDictionary,
             bool isOptional = false)
         {
-            var result = new FunctionReturnResult<bool>();
+            var result = new FunctionReturnResult();
 
             if (!jsonElement.TryGetProperty(propertyKey, out var multiLangElement)
                 || multiLangElement.ValueKind != JsonValueKind.Object)

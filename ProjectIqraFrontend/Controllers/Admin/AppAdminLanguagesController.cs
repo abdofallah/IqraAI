@@ -1,8 +1,8 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Languages;
 using IqraCore.Entities.User;
-using IqraInfrastructure.Services.Languages;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.Admin

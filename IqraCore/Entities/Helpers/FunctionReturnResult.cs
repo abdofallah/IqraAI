@@ -7,4 +7,11 @@
         public string? Code { get; set; } = null;
         public T? Data { get; set; } = default(T);
     }
+
+    public class FunctionReturnResult
+    {
+        public bool Success { get; set; } = false;
+        public string? Message { get; set; } = null;
+        public string? Code { get; set; } = null;
+    }
 }

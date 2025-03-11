@@ -2,8 +2,8 @@
 using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
-using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.User.Business

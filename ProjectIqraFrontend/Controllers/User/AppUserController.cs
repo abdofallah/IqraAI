@@ -5,9 +5,9 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.AppUser;
 using IqraCore.Utilities;
-using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Region;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using PhoneNumbers;
 

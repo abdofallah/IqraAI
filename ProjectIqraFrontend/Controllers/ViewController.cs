@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Frontend;
 using IqraCore.Entities.User;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers

@@ -2,8 +2,8 @@
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.User;
 using IqraCore.Utilities;
-using IqraInfrastructure.Services.Integrations;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 

@@ -1,6 +1,6 @@
 
 using IqraInfrastructure.Repositories.Server;
-using IqraInfrastructure.Services.Server;
+using IqraInfrastructure.Managers.Server;
 
 namespace ProjectIqraBackendProxy
 {

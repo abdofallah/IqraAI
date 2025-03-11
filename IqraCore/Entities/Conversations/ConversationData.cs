@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Conversation
 {
+    [BsonKnownTypes(typeof(ConversationInbound), typeof(ConversationOutbound), typeof(ConversationWebsocket))]
     public class ConversationData
     {
         [BsonId]

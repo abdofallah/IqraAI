@@ -1,12 +1,12 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
-using IqraInfrastructure.Services.Business;
-using IqraInfrastructure.Services.Integrations;
-using IqraInfrastructure.Services.LLM;
-using IqraInfrastructure.Services.STT;
-using IqraInfrastructure.Services.TTS;
-using IqraInfrastructure.Services.User;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
