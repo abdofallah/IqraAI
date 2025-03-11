@@ -4,9 +4,9 @@ using IqraCore.Entities.Helper.Region;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.Numbers.Providers;
 using IqraInfrastructure.Managers.Region;
 using System.Text.Json;
+using IqraInfrastructure.Managers.Telephony;
 
 namespace IqraInfrastructure.Managers.Business
 {

@@ -1,6 +1,0 @@
-@ProjectIqraBackendProxy_HostAddress = http://localhost:5062
-
-GET {{ProjectIqraBackendProxy_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

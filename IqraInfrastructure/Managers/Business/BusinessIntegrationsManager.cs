@@ -4,12 +4,7 @@ using IqraCore.Entities.Integrations;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Business
 {

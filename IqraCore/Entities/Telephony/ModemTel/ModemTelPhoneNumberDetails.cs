@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IqraCore.Entities.Numbers.Providers.ModemTel
+namespace IqraCore.Entities.Telephony.ModemTel
 {
     public class ModemTelPhoneNumberDetails : ModemTelPhoneNumber
     {

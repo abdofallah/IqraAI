@@ -8,12 +8,12 @@ using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.Numbers.Providers;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 using Serilog;
 using System.Net;
 using System.Text.Json;
+using IqraInfrastructure.Managers.Telephony;
 
 namespace IqraInfrastructure.Managers.Business
 {

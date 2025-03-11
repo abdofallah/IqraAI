@@ -2,9 +2,9 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
-using IqraCore.Entities.Numbers.Providers.ModemTel;
+using IqraCore.Entities.Telephony.ModemTel;
 
-namespace IqraInfrastructure.Managers.Numbers.Providers
+namespace IqraInfrastructure.Managers.Telephony
 {
     public class ModemTelManager
     {
