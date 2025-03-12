@@ -1,7 +1,7 @@
 ﻿using StackExchange.Redis;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Redis
+namespace IqraInfrastructure.Repositories.Redis
 {
     public class RedisConnectionFactory : IRedisConnectionFactory
     {

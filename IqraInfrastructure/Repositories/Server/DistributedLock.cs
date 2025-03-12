@@ -1,7 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using IqraInfrastructure.Repositories.Redis;
+using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
-namespace IqraInfrastructure.Redis
+namespace IqraInfrastructure.Repositories.Server
 {
     public class DistributedLock : IDisposable
     {

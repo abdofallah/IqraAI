@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Business;
+using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraCore.Entities.Business
 {
@@ -8,10 +9,10 @@ namespace IqraCore.Entities.Business
         {
         }
 
-        public override BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.ModemTel;
+        public override TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.ModemTel;
 
         public BusinessNumberModemTelStatusEnum Status { get; set; } = BusinessNumberModemTelStatusEnum.Unknown;
 
-        public string PhoneNumberId { get; set; } = "";
+        public string ModemTelPhoneNumberId { get; set; } = "";
     }
 }

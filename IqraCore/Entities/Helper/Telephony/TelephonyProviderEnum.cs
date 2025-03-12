@@ -5,7 +5,8 @@
         Unknown = 0,
         ModemTel = 1,
         Twilio = 2,
-        Telnyx = 3,
-        Plivo = 4
+        Vonage = 3,
+        Telnyx = 4,
+        SIPTrunking = 10
     }
 }

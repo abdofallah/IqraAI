@@ -1,9 +1,9 @@
-﻿using IqraCore.Entities.Helper.Business;
+﻿using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraCore.Entities.Business
 {
     public class BusinessNumberVonageData : BusinessNumberData
     {
-        public override BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.Vonage;
+        public override TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Vonage;
     }
 }

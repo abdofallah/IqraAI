@@ -1,17 +1,19 @@
 ﻿using IqraCore.Entities.Server;
+using IqraInfrastructure.Repositories.Redis;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace IqraInfrastructure.Redis
+namespace IqraInfrastructure.Repositories.Server
 {
-    public class ServerStatusChannel
+    public class ServerLiveStatusChannelRepository
     {
         private readonly IRedisConnectionFactory _redisFactory;
-        private readonly ILogger<ServerStatusChannel> _logger;
+        private readonly ILogger<ServerLiveStatusChannelRepository> _logger;
+
         private readonly string _channelName = "server:status:updates";
         private readonly TimeSpan _statusExpiry = TimeSpan.FromMinutes(1);
 
-        public ServerStatusChannel(IRedisConnectionFactory redisFactory, ILogger<ServerStatusChannel> logger)
+        public ServerLiveStatusChannelRepository(IRedisConnectionFactory redisFactory, ILogger<ServerLiveStatusChannelRepository> logger)
         {
             _redisFactory = redisFactory;
             _logger = logger;

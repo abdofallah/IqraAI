@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Business;
+using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
@@ -31,6 +32,6 @@ namespace IqraCore.Entities.Business
 
         public string IntegrationId { get; set; } = string.Empty;
 
-        public virtual BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.Unknown;
+        public virtual TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
     }
 }

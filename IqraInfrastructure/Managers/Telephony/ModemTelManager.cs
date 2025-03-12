@@ -164,13 +164,13 @@ namespace IqraInfrastructure.Managers.Telephony
             }
         }
 
-        public async Task<FunctionReturnResult> ValidatePhoneNumberAsync(string apiKey, string apiBaseUrl, string phoneNumberId, bool requireCallCapability = true, bool requireSmsCapability = false)
+        public async Task<FunctionReturnResult> ValidatePhoneNumberAsync(string apiKey, string apiBaseUrl, string modemTelPhoneNumberId, bool requireCallCapability = true, bool requireSmsCapability = false)
         {
             var result = new FunctionReturnResult();
 
             try
             {
-                var phoneNumberResult = await GetPhoneNumberDetailsAsync(apiKey, apiBaseUrl, phoneNumberId);
+                var phoneNumberResult = await GetPhoneNumberDetailsAsync(apiKey, apiBaseUrl, modemTelPhoneNumberId);
 
                 if (!phoneNumberResult.Success)
                 {

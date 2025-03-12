@@ -2,7 +2,6 @@
 using IqraCore.Entities.Server;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Region;
-using IqraInfrastructure.Redis;
 using IqraInfrastructure.Repositories.Server;
 using Microsoft.Extensions.Logging;
 
@@ -12,25 +11,22 @@ namespace IqraInfrastructure.Managers.Server
     {
         private readonly ILogger<ServerSelectionManager> _logger;
         private readonly RegionManager _regionManager;
-        private readonly ServerStatusRepository _serverStatusRepository;
-        private readonly ServerStatusChannel _serverStatusChannel;
-        private readonly IDistributedLockFactory _lockFactory;
+        private readonly ServerLiveStatusChannelRepository _serverStatusChannel;
+        private readonly DistributedLockFactory _lockFactory;
 
         public ServerSelectionManager(
             ILogger<ServerSelectionManager> logger,
             RegionManager regionManager,
-            ServerStatusRepository serverStatusRepository,
-            ServerStatusChannel serverStatusChannel,
-            IDistributedLockFactory lockFactory)
+            ServerLiveStatusChannelRepository serverStatusChannel,
+            DistributedLockFactory lockFactory)
         {
             _logger = logger;
             _regionManager = regionManager;
-            _serverStatusRepository = serverStatusRepository;
             _serverStatusChannel = serverStatusChannel;
             _lockFactory = lockFactory;
         }
 
-        public async Task<ServerSelectionResultModel> SelectOptimalServerAsync(string regionId, long businessId)
+        public async Task<ServerSelectionResultModel> SelectOptimalServerAsync(string regionId)
         {
             var result = new ServerSelectionResultModel();
 
@@ -103,9 +99,7 @@ namespace IqraInfrastructure.Managers.Server
                 var selectedServer = scoredServers.First().Server;
 
                 // Use a distributed lock to avoid race conditions when updating the server load
-                using (var serverLock = await _lockFactory.CreateLockAsync(
-                    $"server:selection:{selectedServer.ServerId}", 
-                    TimeSpan.FromSeconds(10)))
+                using (var serverLock = await _lockFactory.CreateLockAsync($"server:selection:{selectedServer.ServerId}", TimeSpan.FromSeconds(10)))
                 {
                     if (await serverLock.AcquireAsync())
                     {
@@ -118,7 +112,7 @@ namespace IqraInfrastructure.Managers.Server
                             {
                                 result.Success = true;
                                 result.ServerId = selectedServer.ServerId;
-                                result.ServerEndpoint = selectedServer.ServerId; // In real implementation, map to actual endpoint
+                                result.ServerEndpoint = selectedServer.ServerId; // Currently Server id is the server endpoint, in case server id is different than endpoint, edit here CAUTION
                                 result.Score = scoredServers.First().Score;
 
                                 _logger.LogInformation("Selected server {ServerId} with score {Score} for region {RegionId}",
@@ -150,13 +144,6 @@ namespace IqraInfrastructure.Managers.Server
             }
 
             return result;
-        }
-
-        public async Task<ServerSelectionResultModel> SelectFallbackServerAsync(string regionId, string currentServerId)
-        {
-            // Similar to SelectOptimalServer but excludes the current server and prioritizes regions closer to the original
-            // Implementation would be similar to SelectOptimalServerAsync with modifications
-            throw new NotImplementedException("Fallback server selection not implemented");
         }
 
         private double CalculateServerScore(ServerStatusData server)

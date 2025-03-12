@@ -7,15 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace ProjectIqraBackendProxy.Controllers
 {
     [ApiController]
-    [Route("api/webhook/modemtel")]
+    [Route("api/modemtel/webhook")]
     public class ModemTelWebhookController : ControllerBase
     {
         private readonly ILogger<ModemTelWebhookController> _logger;
-        private readonly CallDistributionManager _callDistributionManager;
+        private readonly InboundCallManager _callDistributionManager;
 
         public ModemTelWebhookController(
             ILogger<ModemTelWebhookController> logger,
-            CallDistributionManager distributionService
+            InboundCallManager distributionService
         )
         {
             _logger = logger;
@@ -70,33 +70,32 @@ namespace ProjectIqraBackendProxy.Controllers
                     return BadRequest("Invalid incoming call webhook data");
                 }
 
-                // Extract business and number information from incoming call
-                var distributionResult = await _callDistributionManager.DistributeIncomingCall(
-                    new TelephonyWebhookContextModel
+                var webhookContext = new TelephonyWebhookContextModel
+                {
+                    Provider = TelephonyProviderEnum.ModemTel,
+                    CallId = incomingCallData.CallId,
+                    BusinessId = businessId,
+                    PhoneNumberId = phoneNumberId,
+                    To = incomingCallData.To,
+                    From = incomingCallData.From,
+                    AdditionalData = new Dictionary<string, string>
                     {
-                        Provider = TelephonyProviderEnum.ModemTel,
-                        CallId = incomingCallData.CallId,
-                        BusinessId = businessId,
-                        PhoneNumberId = phoneNumberId,
-                        To = incomingCallData.To,
-                        From = incomingCallData.From,
-                        AdditionalData = new Dictionary<string, string>
-                        {
-                            ["event"] = webhookData.Event,
-                            ["direction"] = incomingCallData.Direction,
-                            // MediaSession
-                            ["mediaSessionToken"] = incomingCallData.Media.Token,
-                            ["mediaSessionWebSocketUrl"] = incomingCallData.Media.WebSocketURL
-                        }
-                    });
+                        ["event"] = webhookData.Event,
+                        ["direction"] = incomingCallData.Direction,
+                        // MediaSession
+                        ["mediaSessionToken"] = incomingCallData.Media.Token,
+                        ["mediaSessionWebSocketUrl"] = incomingCallData.Media.WebSocketURL
+                    }
+                };
 
+                var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
                 if (!distributionResult.Success)
                 {
                     _logger.LogWarning("Failed to distribute call {CallId}: {Message} for {BusinessId}/{PhoneNumberId}", incomingCallData.CallId, distributionResult.Message, businessId, phoneNumberId);
                     return NoContent();
                 }
 
-                _logger.LogInformation("Call {CallId} routed to {BackendUrl} for {BusinessId}/{PhoneNumberId}", incomingCallData.CallId, distributionResult.MediaUrl, businessId, phoneNumberId);
+                _logger.LogInformation("Call {CallId} routed to {BackendUrl} for {BusinessId}/{PhoneNumberId}", incomingCallData.CallId, distributionResult.Data.BackendServerId, businessId, phoneNumberId);
 
                 return Ok();
             }
@@ -132,7 +131,9 @@ namespace ProjectIqraBackendProxy.Controllers
             // Inform the backend app that the call has ended (through Redis pubsub)
             await _callDistributionManager.NotifyCallEnded(
                 endedData.CallId,
-                TelephonyProviderEnum.ModemTel
+                TelephonyProviderEnum.ModemTel,
+                businessId,
+                phoneNumberId
             );
 
             _logger.LogInformation("Call {CallId} ended for {BusinessId}/{PhoneNumberId}", endedData.CallId, businessId, phoneNumberId);

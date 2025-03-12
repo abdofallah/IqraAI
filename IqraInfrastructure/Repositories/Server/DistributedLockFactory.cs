@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using IqraInfrastructure.Repositories.Redis;
+using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Redis
+namespace IqraInfrastructure.Repositories.Server
 {
-    public class DistributedLockFactory : IDistributedLockFactory
+    public class DistributedLockFactory
     {
         private readonly IRedisConnectionFactory _redisFactory;
         private readonly ILoggerFactory _loggerFactory;

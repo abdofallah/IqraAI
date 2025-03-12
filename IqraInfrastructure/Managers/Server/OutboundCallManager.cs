@@ -5,40 +5,50 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Telephony;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using IqraCore.Models.Server;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Business;
+using IqraInfrastructure.Managers.Integrations;
+using System.Net.Http.Headers;
+using IqraInfrastructure.Managers.Region;
 
 namespace IqraInfrastructure.Managers.Server
 {
     public class OutboundCallManager
     {
         private readonly ILogger<OutboundCallManager> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
+
         private readonly BusinessManager _businessManager;
-        private readonly BusinessPlanService _businessPlanService;
         private readonly ServerSelectionManager _serverSelectionService;
         private readonly CallQueueRepository _callQueueRepository;
         private readonly ModemTelManager _modemTelManager;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _configuration;
+        private readonly TwilioManager _twilioManager;
+        private readonly IntegrationsManager _integrationsManager;
+        private readonly RegionManager _regionManager;
 
         public OutboundCallManager(
             ILogger<OutboundCallManager> logger,
+            IHttpClientFactory httpClientFactory,
+
             BusinessManager businessManager,
-            BusinessPlanService businessPlanService,
             ServerSelectionManager serverSelectionService,
             CallQueueRepository callQueueRepository,
             ModemTelManager modemTelManager,
-            IHttpClientFactory httpClientFactory,
-            IConfiguration configuration)
+            TwilioManager twilioManager,
+            IntegrationsManager integrationsManager,
+            RegionManager regionManager
+        )
         {
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+
             _businessManager = businessManager;
-            _businessPlanService = businessPlanService;
             _serverSelectionService = serverSelectionService;
             _callQueueRepository = callQueueRepository;
             _modemTelManager = modemTelManager;
-            _httpClientFactory = httpClientFactory;
-            _configuration = configuration;
+            _integrationsManager = integrationsManager;
+            _regionManager = regionManager;
         }
 
         public async Task<OutboundCallServiceResult> InitiateOutboundCallAsync(OutboundCallRequestModel request)
@@ -75,9 +85,7 @@ namespace IqraInfrastructure.Managers.Server
                 }
 
                 // 2. Verify number ownership and capabilities
-                var numberValidation = await ValidatePhoneNumberAsync(
-                    request.BusinessId, request.PhoneNumberId);
-                
+                var numberValidation = await ValidatePhoneNumberAsync(request.BusinessId, request.PhoneNumberId);
                 if (!numberValidation.Success)
                 {
                     result.Message = numberValidation.Message;
@@ -85,22 +93,19 @@ namespace IqraInfrastructure.Managers.Server
                     return result;
                 }
 
-                // 3. Check concurrent call limits
-                var planValidation = await _businessPlanService.ValidateCallLimitsAsync(
-                    request.BusinessId, isOutbound: true);
-                
-                if (!planValidation.Success)
-                {
-                    result.Message = planValidation.Message;
-                    _logger.LogWarning("Business plan validation failed: {Message}", planValidation.Message);
-                    return result;
-                }
+                // TODO - Disabled for now as business plans are not yet implemented
+                //// 3. Check concurrent call limits
+                //var planValidation = await _businessPlanManager.ValidateCallLimitsAsync(
+                //    request.BusinessId, isOutbound: true);
+                //if (!planValidation.Success)
+                //{
+                //    result.Message = planValidation.Message;
+                //    _logger.LogWarning("Business plan validation failed: {Message}", planValidation.Message);
+                //    return result;
+                //}
 
-                // 4. Determine region if not specified
-                string regionId = request.RegionId ?? await GetPhoneNumberRegion(request.BusinessId, request.PhoneNumberId);
-
-                // 5. Select optimal server
-                var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId, request.BusinessId);
+                // 4. Select optimal server
+                var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(numberValidation.Data.RegionId);
                 if (!serverSelection.Success)
                 {
                     result.Message = serverSelection.Message;
@@ -108,16 +113,33 @@ namespace IqraInfrastructure.Managers.Server
                     return result;
                 }
 
+                // 5. Get Server API Key
+                var regionData = await _regionManager.GetRegionById(numberValidation.Data.RegionId);
+                if (regionData == null)
+                {
+                    result.Message = "Unable to get region data";
+                    _logger.LogWarning("Unable to get region data for region {RegionId}", numberValidation.Data.RegionId);
+                    return result;
+                }
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.ServerEndpoint);
+                if (regionServerData == null)
+                {
+                    result.Message = "Unable to get region server data";
+                    _logger.LogWarning("Unable to get region server data for region {RegionId} and endpoint {Endpoint}", numberValidation.Data.RegionId, serverSelection.ServerEndpoint);
+                    return result;
+                }
+                var serverApiKey = regionServerData.APIKey;
+
                 // 6. Create call queue entry
                 var callQueue = new CallQueueData
                 {
                     BusinessId = request.BusinessId,
-                    RegionId = regionId,
+                    RegionId = numberValidation.Data.RegionId,
                     NumberId = request.PhoneNumberId,
-                    RouteId = request.RouteId,
-                    Provider = TelephonyProviderEnum.ModemTel, // Hardcoded for now
-                    CallerNumber = numberValidation.PhoneNumber,
-                    Priority = 2, // Higher priority for outbound calls
+                    RouteId = numberValidation.Data.RouteId,
+                    Provider = numberValidation.Data.Provider,
+                    CallerNumber = numberValidation.Data.Number,
+                    Priority = 1, // Normal priority for outbound calls
                     IsOutbound = true,
                     ProcessingServerId = serverSelection.ServerId,
                     ProviderMetadata = request.Metadata ?? new Dictionary<string, string>()
@@ -125,9 +147,10 @@ namespace IqraInfrastructure.Managers.Server
 
                 string queueId = await _callQueueRepository.EnqueueCallAsync(callQueue);
 
-                // 7. Initiate the outbound call through the backend app
+                // 6. Initiate the outbound call through the backend app
                 var initiateResult = await InitiateCallThroughBackendAsync(
-                    serverSelection.ServerEndpoint, 
+                    serverSelection.ServerEndpoint,
+                    serverApiKey,
                     callQueue,
                     request.ToNumber);
 
@@ -135,7 +158,7 @@ namespace IqraInfrastructure.Managers.Server
                 {
                     // Mark queue entry as failed
                     await _callQueueRepository.MarkCallAsCompletedAsync(queueId, false);
-                    
+
                     result.Message = initiateResult.Message;
                     _logger.LogError("Call initiation failed: {Message}", initiateResult.Message);
                     return result;
@@ -160,59 +183,95 @@ namespace IqraInfrastructure.Managers.Server
             }
         }
 
-        private async Task<PhoneNumberValidationResult> ValidatePhoneNumberAsync(
-            long businessId, string phoneNumberId)
+        private async Task<FunctionReturnResult<BusinessNumberData?>> ValidatePhoneNumberAsync(long businessId, string phoneNumberId)
         {
-            var result = new PhoneNumberValidationResult();
+            var result = new FunctionReturnResult<BusinessNumberData?>();
 
             try
             {
                 // Check if the phone number exists and belongs to the business
-                var businessNumber = await _businessManager.GetNumberManager()
-                    .GetBusinessNumberById(businessId, phoneNumberId);
-
+                var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(businessId, phoneNumberId);
                 if (businessNumber == null)
                 {
                     result.Message = "Phone number not found or does not belong to the business";
                     return result;
                 }
 
+                if (businessNumber.Provider == TelephonyProviderEnum.Unknown)
+                {
+                    result.Message = "Unknown phone number provider";
+                    return result;
+                }
+
+                var numberIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, businessNumber.IntegrationId);
+                if (!numberIntegrationData.Success)
+                {
+                    result.Message = numberIntegrationData.Message;
+                    return result;
+                }
+
                 // Verify the number's capabilities with the provider
                 if (businessNumber.Provider == TelephonyProviderEnum.ModemTel)
                 {
-                    // Get the ModemTel credentials from configuration
-                    string apiKey = _configuration["ModemTel:ApiKey"];
-                    string apiBaseUrl = _configuration["ModemTel:ApiBaseUrl"];
-
-                    var numberValidation = await _modemTelManager.ValidatePhoneNumberAsync(
-                        apiKey, apiBaseUrl, businessNumber.Id, requireCallCapability: true);
-
-                    if (!numberValidation.Success)
-                    {
-                        result.Message = $"Phone number validation failed: {numberValidation.Message}";
-                        return result;
-                    }
+                    var apiKey = _integrationsManager.DecryptField(numberIntegrationData.Data.EncryptedFields["apikey"]);
+                    var apiEndpoint = numberIntegrationData.Data.Fields["endpoint"];
 
                     // Get the phone number details to use for caller ID
-                    var numberDetailsResult = await _modemTelManager.GetPhoneNumberDetailsAsync(
-                        apiKey, apiBaseUrl, businessNumber.Id);
-
+                    var numberDetailsResult = await _modemTelManager.GetPhoneNumberDetailsAsync(apiKey, apiEndpoint, ((BusinessNumberModemTelData)businessNumber).ModemTelPhoneNumberId);
                     if (!numberDetailsResult.Success || numberDetailsResult.Data == null)
                     {
                         result.Message = $"Unable to get phone number details: {numberDetailsResult.Message}";
                         return result;
                     }
 
-                    result.PhoneNumber = $"{numberDetailsResult.Data.CountryCode}{numberDetailsResult.Data.Number}";
+                    if (!numberDetailsResult.Data.IsActive)
+                    {
+                        result.Message = "Phone number is not active";
+                        return result;
+                    }
+
+                    if (!numberDetailsResult.Data.CanMakeCalls)
+                    {
+                        result.Message = "Phone number cannot make calls";
+                        return result;
+                    }
+
+                    result.Data = businessNumber;
+                    result.Success = true;
+                    return result;
                 }
-                else
+                else if (businessNumber.Provider == TelephonyProviderEnum.Twilio)
                 {
-                    // For other providers, implement similar validation
-                    result.Message = $"Unsupported provider: {businessNumber.Provider}";
+                    string accountSid = numberIntegrationData.Data.Fields["accountsid"];
+                    string authToken = _integrationsManager.DecryptField(numberIntegrationData.Data.EncryptedFields["authToken"]);
+
+                    // Get the number details from Twilio
+                    var numberDetailsResult = await _twilioManager.GetPhoneNumberDetailsAsync(accountSid, authToken, ((BusinessNumberTwilioData)businessNumber).TwilioPhoneNumberId);
+                    if (!numberDetailsResult.Success || numberDetailsResult.Data == null)
+                    {
+                        _logger.LogWarning("Failed to get phone number details from Twilio: {Message}", numberDetailsResult.Message);
+                        return result;
+                    }
+
+                    if (numberDetailsResult.Data.Status.Replace("_", "") != "in use")
+                    {
+                        _logger.LogWarning("Twilio phone number is not active: {businessId}/{PhoneNumberId}", businessId, phoneNumberId);
+                        return result;
+                    }
+
+                    if (!numberDetailsResult.Data.Capabilities.Voice)
+                    {
+                        _logger.LogWarning("Twilio phone number does not support voice calls: {businessId}/{PhoneNumberId}", businessId, phoneNumberId);
+                        return result;
+                    }
+
+                    result.Data = businessNumber;
+                    result.Success = true;
                     return result;
                 }
 
-                result.Success = true;
+                // For other providers, implement similar validation
+                result.Message = $"Unsupported provider: {businessNumber.Provider}";
                 return result;
             }
             catch (Exception ex)
@@ -223,46 +282,18 @@ namespace IqraInfrastructure.Managers.Server
             }
         }
 
-        private async Task<string> GetPhoneNumberRegion(long businessId, string phoneNumberId)
+        private async Task<BackendInitiateCallResult> InitiateCallThroughBackendAsync(string serverEndpoint, string serverApiKey, CallQueueData callQueue, string toNumber)
         {
-            try
-            {
-                var businessNumber = await _businessManager.GetNumberManager()
-                    .GetBusinessNumberById(businessId, phoneNumberId);
-
-                if (businessNumber != null && !string.IsNullOrEmpty(businessNumber.RegionId))
-                {
-                    return businessNumber.RegionId;
-                }
-
-                // Default region if none specified
-                return _configuration["DefaultRegion"] ?? "OM-MCT";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting phone number region");
-                return _configuration["DefaultRegion"] ?? "OM-MCT";
-            }
-        }
-
-        private async Task<InitiateCallResult> InitiateCallThroughBackendAsync(
-            string serverEndpoint, 
-            CallQueueData callQueue,
-            string toNumber)
-        {
-            var result = new InitiateCallResult();
+            var result = new BackendInitiateCallResult();
 
             try
             {
                 // Create HttpClient
                 using var client = _httpClientFactory.CreateClient();
-                
-                // Get the API key for backend authentication
-                string apiKey = _configuration["Security:BackendApiKey"];
-                
+
                 // Set headers
-                client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                 // Prepare request body
                 var requestBody = new
@@ -292,7 +323,7 @@ namespace IqraInfrastructure.Managers.Server
 
                 // Parse response
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<OutboundCallResponse>(responseContent);
+                var responseData = JsonSerializer.Deserialize<BackendOutboundCallResponse>(responseContent);
 
                 if (responseData == null || string.IsNullOrEmpty(responseData.CallId))
                 {
@@ -311,35 +342,5 @@ namespace IqraInfrastructure.Managers.Server
                 return result;
             }
         }
-
-        private class PhoneNumberValidationResult
-        {
-            public bool Success { get; set; }
-            public string Message { get; set; } = string.Empty;
-            public string PhoneNumber { get; set; } = string.Empty;
-        }
-
-        private class InitiateCallResult
-        {
-            public bool Success { get; set; }
-            public string Message { get; set; } = string.Empty;
-            public string CallId { get; set; } = string.Empty;
-            public string Status { get; set; } = string.Empty;
-        }
-
-        private class OutboundCallResponse
-        {
-            public string CallId { get; set; } = string.Empty;
-            public string Status { get; set; } = string.Empty;
-        }
-    }
-
-    public class OutboundCallServiceResult
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public string QueueId { get; set; } = string.Empty;
-        public string CallId { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
     }
 }

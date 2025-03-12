@@ -172,6 +172,28 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
+        public async Task<CallQueueData?> GetCallByProviderCallIdAsync(TelephonyProviderEnum provider, string callId, long businessId, string phoneNumberId)
+        {
+            try
+            {
+                var filter =
+                    Builders<CallQueueData>.Filter.Eq(c => c.ProviderCallId, callId)
+                    &
+                    Builders<CallQueueData>.Filter.Eq(c => c.Provider, provider)
+                    &
+                    Builders<CallQueueData>.Filter.Eq(c => c.BusinessId, businessId)
+                    &
+                    Builders<CallQueueData>.Filter.Eq(c => c.NumberId, phoneNumberId);
+
+                return await _callQueueCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting call by provider call ID {CallId}", callId);
+                return null;
+            }
+        }
+
         public async Task UpdateCallSessionIdAsync(string callId, string sessionId)
         {
             try

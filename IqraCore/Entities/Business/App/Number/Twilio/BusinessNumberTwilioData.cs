@@ -1,11 +1,14 @@
 ﻿using IqraCore.Entities.Helper.Business;
+using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraCore.Entities.Business
 {
     public class BusinessNumberTwilioData : BusinessNumberData
     {
-        public override BusinessNumberProviderEnum Provider { get; set; } = BusinessNumberProviderEnum.Twilio;
+        public override TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Twilio;
 
         public BusinessNumberTwilioStatusEnum Status { get; set; } = BusinessNumberTwilioStatusEnum.Unknown;
+
+        public string TwilioPhoneNumberId { get; set; } = string.Empty;
     }
 }

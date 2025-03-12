@@ -13,11 +13,8 @@ namespace IqraCore.Models.Server
         [JsonPropertyName("toNumber")]
         public string ToNumber { get; set; } = string.Empty;
 
-        [JsonPropertyName("routeId")]
-        public string RouteId { get; set; } = string.Empty;
-
-        [JsonPropertyName("regionId")]
-        public string? RegionId { get; set; }
+        [JsonPropertyName("callConfigurationId")]
+        public string CallConfigurationId { get; set; } = string.Empty;
 
         [JsonPropertyName("metadata")]
         public Dictionary<string, string>? Metadata { get; set; }

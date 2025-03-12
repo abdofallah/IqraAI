@@ -1,6 +1,6 @@
 ﻿using StackExchange.Redis;
 
-namespace IqraInfrastructure.Redis
+namespace IqraInfrastructure.Repositories.Redis
 {
     public interface IRedisConnectionFactory
     {

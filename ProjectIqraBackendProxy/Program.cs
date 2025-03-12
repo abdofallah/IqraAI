@@ -1,5 +1,6 @@
 using IqraCore.Utilities;
-using IqraInfrastructure.Redis;
+using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -45,7 +46,6 @@ namespace ProjectIqraBackendProxy
                 var logger = sp.GetRequiredService<ILogger<CallQueueRepository>>();
                 return new CallQueueRepository(connectionString, databaseName, logger);
             });
-
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 var connectionString = builder.Configuration.GetConnectionString("MongoDB");
@@ -53,10 +53,19 @@ namespace ProjectIqraBackendProxy
                 var logger = sp.GetRequiredService<ILogger<ServerStatusRepository>>();
                 return new ServerStatusRepository(connectionString, databaseName, logger);
             });
+
             // Application services
-            builder.Services.AddSingleton<ServerSelectionService>();
-            builder.Services.AddScoped<CallDistributionService>();
-            builder.Services.AddScoped<WebhookGenerationService>();
+            builder.Services.AddSingleton<ServerSelectionManager>();
+            builder.Services.AddSingleton<InboundCallManager>();
+            builder.Services.AddSingleton<OutboundCallManager>();
+            // ADD BUSINESS MANAGER
+            // ADD MODEM TEL MANAGER
+            // ADD TWILIO MANAGER
+            // ADD INTEGRATIONS MANAGER
+            // ADD REGION MANAGER
+            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
+            // ADD DistributedLockFactory based on IRedisConnectionFactory
+            // ADD ServerLiveStatusChannelRepository based on IRedisConnectionFactory
 
             // Configure CORS
             builder.Services.AddCors(options =>

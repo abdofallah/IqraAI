@@ -1,7 +1,7 @@
 using IqraCore.Entities.Server;
 using IqraCore.Utilities;
-using IqraInfrastructure.Redis;
 using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -83,9 +83,9 @@ namespace ProjectIqraBackendApp
             });
 
             // Add application services
-            builder.Services.AddSingleton<ServerStatusService>();
+            builder.Services.AddSingleton<ServerStatusManager>();
             builder.Services.AddSingleton<CallManager>();
-            builder.Services.AddHostedService<CallProcessorService>();
+            builder.Services.AddHostedService<CallProcessorManager>();
 
             // Configure CORS
             builder.Services.AddCors(options =>

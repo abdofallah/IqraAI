@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace IqraCore.Interfaces
+﻿namespace IqraCore.Interfaces
 {
     public interface IAudioCache
     {

@@ -159,7 +159,7 @@ namespace IqraInfrastructure.Managers.Business
                     return result;
                 }
 
-                ((BusinessNumberModemTelData)newNumberData).PhoneNumberId = phoneNumberData.Data.Id;
+                ((BusinessNumberModemTelData)newNumberData).ModemTelPhoneNumberId = phoneNumberData.Data.Id;
 
                 // TODO update the webhook url in-app
             }

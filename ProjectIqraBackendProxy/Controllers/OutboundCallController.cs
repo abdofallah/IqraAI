@@ -24,8 +24,7 @@ namespace ProjectIqraBackendProxy.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<FunctionReturnResult<OutboundCallResultModel>>> InitiateOutboundCall(
-            [FromBody] OutboundCallRequestModel request)
+        public async Task<ActionResult<FunctionReturnResult<OutboundCallResultModel>>> InitiateOutboundCall([FromBody] OutboundCallRequestModel request)
         {
             var result = new FunctionReturnResult<OutboundCallResultModel>();
 
@@ -38,8 +37,7 @@ namespace ProjectIqraBackendProxy.Controllers
             }
 
             // Basic request validation
-            if (request == null || request.BusinessId <= 0 || string.IsNullOrEmpty(request.PhoneNumberId) ||
-                string.IsNullOrEmpty(request.ToNumber) || string.IsNullOrEmpty(request.RouteId))
+            if (request == null || request.BusinessId <= 0 || string.IsNullOrEmpty(request.PhoneNumberId) || string.IsNullOrEmpty(request.ToNumber) || string.IsNullOrEmpty(request.CallConfigurationId))
             {
                 result.Code = "InitiateOutboundCall:2";
                 result.Message = "Invalid request parameters";
