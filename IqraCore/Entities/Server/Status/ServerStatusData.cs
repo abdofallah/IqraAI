@@ -36,5 +36,24 @@ namespace IqraCore.Entities.Server
                 return ServerLoadStatusEnum.Minimal;
             }
         }
+
+        public ServerStatusData Clone()
+        {
+            return new ServerStatusData
+            {
+                ServerId = ServerId,
+                RegionId = RegionId,
+                Type = Type,
+                LastUpdated = LastUpdated,
+                MaintenanceMode = MaintenanceMode,
+                MaintenanceModeStartedAt = MaintenanceModeStartedAt,
+                CurrentActiveCalls = CurrentActiveCalls,
+                MaxConcurrentCalls = MaxConcurrentCalls,
+                QueuedCalls = QueuedCalls,
+                CpuUsagePercent = CpuUsagePercent,
+                MemoryUsagePercent = MemoryUsagePercent,
+                NetworkUsageMbps = NetworkUsageMbps
+            };
+        }
     }
 }

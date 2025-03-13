@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
-using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraBackendProxy.Controllers

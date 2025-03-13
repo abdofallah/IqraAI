@@ -7,6 +7,7 @@ using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
+using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -49,7 +50,7 @@ namespace IqraInfrastructure.Managers.Business
             return await _businessAppRepository.CheckBusinessNumberExistsById(exisitingNumberId, businessId);
         }
 
-        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, string integrationId, BusinessNumberProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
+        public async Task<FunctionReturnResult<BusinessNumberData?>> AddOrUpdateBusinessNumber(JsonDocument? changes, string countryCode, string number, string integrationId, TelephonyProviderEnum provider, string postType, BusinessNumberData? exisitingNumberData, long businessId, RegionManager regionManager)
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
@@ -114,14 +115,14 @@ namespace IqraInfrastructure.Managers.Business
 
             newNumberData.RegionWebhookEndpoint = getRegionWebhookServer.Endpoint;
 
-            if (provider == BusinessNumberProviderEnum.Unknown)
+            if (provider == TelephonyProviderEnum.Unknown)
             {
                 result.Code = "AddOrUpdateBusinessNumber:6";
                 result.Message = "Invalid provider type.";
                 return result;
             }
 
-            if (provider == BusinessNumberProviderEnum.ModemTel)
+            if (provider == TelephonyProviderEnum.ModemTel)
             {
                 newNumberData = new BusinessNumberModemTelData(newNumberData)
                 {
@@ -163,7 +164,7 @@ namespace IqraInfrastructure.Managers.Business
 
                 // TODO update the webhook url in-app
             }
-            else if (provider == BusinessNumberProviderEnum.Twilio || provider == BusinessNumberProviderEnum.Vonage || provider == BusinessNumberProviderEnum.Telnyx)
+            else if (provider == TelephonyProviderEnum.Twilio || provider == TelephonyProviderEnum.Vonage || provider == TelephonyProviderEnum.Telnyx)
             {
                 result.Code = "AddOrUpdateBusinessNumber:10";
                 result.Message = "Provider type currently not implemented.";

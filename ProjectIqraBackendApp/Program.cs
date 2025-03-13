@@ -1,10 +1,18 @@
 using IqraCore.Entities.Server;
 using IqraCore.Utilities;
-using IqraInfrastructure.Repositories;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation;
+using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Script;
+using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using ProjectIqraBackendApp.Managers;
 using Serilog;
 
 namespace ProjectIqraBackendApp
@@ -31,6 +39,10 @@ namespace ProjectIqraBackendApp
             // Health checks
             builder.Services.AddHealthChecks();
 
+            // HTTP Client
+            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
+            builder.Services.AddHttpClient();
+
             // Server configuration
             builder.Services.AddSingleton<ServerConfig>(sp =>
             {
@@ -42,59 +54,92 @@ namespace ProjectIqraBackendApp
                 };
             });
 
-            // Redis connection
+            // Redis
             builder.Services.AddSingleton<IRedisConnectionFactory>(sp =>
             {
-                var connectionString = builder.Configuration.GetConnectionString("Redis");
+                var connectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
                 var logger = sp.GetRequiredService<ILogger<RedisConnectionFactory>>();
                 return new RedisConnectionFactory(connectionString, logger);
             });
 
+            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>();
+            builder.Services.AddSingleton<DistributedLockFactory>();
+
             // MongoDB repositories
             builder.Services.AddSingleton<CallQueueRepository>(sp =>
             {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
+                var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "mongodb://localhost:27017";
+                var databaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "IqraTelephony";
                 var logger = sp.GetRequiredService<ILogger<CallQueueRepository>>();
                 return new CallQueueRepository(connectionString, databaseName, logger);
             });
 
             builder.Services.AddSingleton<CallSessionRepository>(sp =>
             {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
+                var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "mongodb://localhost:27017";
+                var databaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "IqraTelephony";
                 var logger = sp.GetRequiredService<ILogger<CallSessionRepository>>();
                 return new CallSessionRepository(connectionString, databaseName, logger);
             });
 
+            builder.Services.AddSingleton<ConversationStateRepository>(sp =>
+            {
+                var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "mongodb://localhost:27017";
+                var databaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "IqraTelephony";
+                var logger = sp.GetRequiredService<ILogger<ConversationStateRepository>>();
+                return new ConversationStateRepository(connectionString, databaseName, logger);
+            });
+
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
+                var connectionString = builder.Configuration.GetConnectionString("MongoDB") ?? "mongodb://localhost:27017";
+                var databaseName = builder.Configuration["MongoDB:DatabaseName"] ?? "IqraTelephony";
                 var logger = sp.GetRequiredService<ILogger<ServerStatusRepository>>();
                 return new ServerStatusRepository(connectionString, databaseName, logger);
             });
 
-            builder.Services.AddSingleton<ConversationRepository>(sp =>
+            // Minio storage
+            builder.Services.AddSingleton<ConversationAudioRepository>(sp =>
             {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                return new ConversationRepository(connectionString, databaseName);
+                var config = builder.Configuration.GetSection("Storage:Minio");
+                return new ConversationAudioRepository(
+                    config["Endpoint"] ?? "localhost",
+                    int.Parse(config["Port"] ?? "9000"),
+                    config["AccessKey"] ?? "minioadmin",
+                    config["SecretKey"] ?? "minioadmin",
+                    config["BucketName"] ?? "conversation-audio",
+                    bool.Parse(config["UseSSL"] ?? "false"),
+                    sp.GetRequiredService<ILogger<ConversationAudioRepository>>()
+                );
             });
 
-            // Add application services
+            // Telephony Providers
+            builder.Services.AddSingleton<ModemTelManager>();
+            builder.Services.AddSingleton<TwilioManager>();
+
+            // Manager services
+            // TODO THEIR DATABASES ARE NOT INITALIZED
+            builder.Services.AddSingleton<BusinessManager>();
+            builder.Services.AddSingleton<RegionManager>();
+            builder.Services.AddSingleton<IntegrationsManager>();
+
+            // Core server services
             builder.Services.AddSingleton<ServerStatusManager>();
-            builder.Services.AddSingleton<CallManager>();
-            builder.Services.AddHostedService<CallProcessorManager>();
+            builder.Services.AddSingleton<SystemPromptGenerator>();
+            builder.Services.AddSingleton<ScriptExecutionManager>();
+            builder.Services.AddSingleton<CallProcessorManager>();
+
+            // Background services
+            builder.Services.AddHostedService<ServerMetricsManager>();
+            builder.Services.AddHostedService<CallQueueCleanupManager>();
 
             // Configure CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowedOrigins",
-                    p => p
-                        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
+                options.AddPolicy("AllowedOrigins", p => p
+                    .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                    .AllowAnyMethod()
+                    .AllowAnyHeader());
             });
 
             var app = builder.Build();

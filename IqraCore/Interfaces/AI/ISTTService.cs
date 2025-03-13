@@ -1,7 +1,7 @@
 ﻿using IqraCore.Entities.Interfaces;
 using System;
 
-namespace IqraCore.Interfaces
+namespace IqraCore.Interfaces.AI
 {
     public interface ISTTService
     {

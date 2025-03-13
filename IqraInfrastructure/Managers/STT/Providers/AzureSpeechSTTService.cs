@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.Interfaces;
-using IqraCore.Interfaces;
+using IqraCore.Interfaces.AI;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 

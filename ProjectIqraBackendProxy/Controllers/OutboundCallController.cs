@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.Server;
-using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraBackendProxy.Controllers

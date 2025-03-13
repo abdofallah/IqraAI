@@ -8,10 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="4.7.1" />
+    <PackageReference Include="ComputerInfo" Version="0.2.0" />
     <PackageReference Include="FluentFTP" Version="52.0.0" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.42.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Minio" Version="6.0.4" />
     <PackageReference Include="MongoDB.Driver" Version="3.2.1" />
@@ -21,6 +23,7 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />
     <PackageReference Include="Twilio" Version="7.9.0" />
   </ItemGroup>
 

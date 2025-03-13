@@ -1,5 +1,10 @@
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
+using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
@@ -30,6 +35,13 @@ namespace ProjectIqraBackendProxy
             // Add health checks
             builder.Services.AddHealthChecks();
 
+            // Add health checks
+            builder.Services.AddHealthChecks();
+
+            // Add HttpClient
+            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
+            builder.Services.AddHttpClient();
+
             // Redis connection
             builder.Services.AddSingleton<IRedisConnectionFactory>(sp =>
             {
@@ -37,6 +49,10 @@ namespace ProjectIqraBackendProxy
                 var logger = sp.GetRequiredService<ILogger<RedisConnectionFactory>>();
                 return new RedisConnectionFactory(connectionString, logger);
             });
+
+            // Server status tracking
+            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>();
+            builder.Services.AddSingleton<DistributedLockFactory>();
 
             // MongoDB repositories
             builder.Services.AddSingleton<CallQueueRepository>(sp =>
@@ -54,18 +70,20 @@ namespace ProjectIqraBackendProxy
                 return new ServerStatusRepository(connectionString, databaseName, logger);
             });
 
+            // Telephony Providers
+            builder.Services.AddSingleton<ModemTelManager>();
+            builder.Services.AddSingleton<TwilioManager>();
+
+            // Manager services
+            // TODO THEIR DATABASES ARE NOT INITALIZED
+            builder.Services.AddSingleton<BusinessManager>();
+            builder.Services.AddSingleton<RegionManager>();
+            builder.Services.AddSingleton<IntegrationsManager>();
+
             // Application services
             builder.Services.AddSingleton<ServerSelectionManager>();
             builder.Services.AddSingleton<InboundCallManager>();
-            builder.Services.AddSingleton<OutboundCallManager>();
-            // ADD BUSINESS MANAGER
-            // ADD MODEM TEL MANAGER
-            // ADD TWILIO MANAGER
-            // ADD INTEGRATIONS MANAGER
-            // ADD REGION MANAGER
-            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
-            // ADD DistributedLockFactory based on IRedisConnectionFactory
-            // ADD ServerLiveStatusChannelRepository based on IRedisConnectionFactory
+            builder.Services.AddSingleton<OutboundCallManager>(); 
 
             // Configure CORS
             builder.Services.AddCors(options =>

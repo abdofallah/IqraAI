@@ -1,16 +1,10 @@
-﻿using System.Text.Json.Serialization;
-
-namespace IqraCore.Models.Server
+﻿namespace IqraCore.Models.Server
 {
     public class OutboundCallResultModel
     {
-        [JsonPropertyName("queueId")]
-        public string QueueId { get; set; } = string.Empty;
-
-        [JsonPropertyName("callId")]
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
         public string CallId { get; set; } = string.Empty;
-
-        [JsonPropertyName("status")]
         public string Status { get; set; } = string.Empty;
     }
 }

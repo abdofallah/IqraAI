@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Business;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraInfrastructure.Managers.Business;
@@ -210,7 +211,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
 
             // Provider Type
-            BusinessNumberProviderEnum provider = BusinessNumberProviderEnum.Unknown;
+            TelephonyProviderEnum provider = TelephonyProviderEnum.Unknown;
             if (!changes.RootElement.TryGetProperty("provider", out var providerElement))
             {
                 result.Code = "SaveBusinessNumber:17";
@@ -223,13 +224,13 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 result.Message = "Invalid provider type.";
                 return result;
             }
-            if (!Enum.IsDefined(typeof(BusinessNumberProviderEnum), providerInt))
+            if (!Enum.IsDefined(typeof(TelephonyProviderEnum), providerInt))
             {
                 result.Code = "SaveBusinessNumber:19";
                 result.Message = "Invalid provider type.";
                 return result;
             }
-            provider = (BusinessNumberProviderEnum)providerInt;
+            provider = (TelephonyProviderEnum)providerInt;
 
             BusinessNumberData? exisitingNumberData = null;
             if (postType == "new")
