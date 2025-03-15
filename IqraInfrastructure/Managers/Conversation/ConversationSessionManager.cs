@@ -1,23 +1,33 @@
-﻿using IqraCore.Entities.Conversation;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
+using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
-    public class ConversationSessionManager : IConversationSession
+    public class ConversationSessionManager
     {
-        private readonly string _sessionId;
         private readonly ILogger<ConversationSessionManager> _logger;
+        private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
+
+        private readonly string _sessionId;   
+
         private readonly List<IConversationClient> _clients = new();
         private readonly List<IConversationAgent> _agents = new();
         private readonly List<ConversationMessage> _messages = new();
+
         private readonly ConversationSessionConfiguration _configuration;
+
+        private BusinessApp _sessionBusinessAppData;
+        private BusinessAppRoute _sessionBusinessRouteData;
+
         private readonly object _clientsLock = new();
         private readonly object _agentsLock = new();
         private readonly object _messagesLock = new();
@@ -40,19 +50,41 @@ namespace IqraInfrastructure.Managers.Conversation
 
         public ConversationSessionManager(
             string sessionId,
+            BusinessManager businessManager,
             ConversationSessionConfiguration configuration,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
             ILogger<ConversationSessionManager> logger)
         {
             _sessionId = sessionId;
+            _businessManager = businessManager;
             _configuration = configuration;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
             _logger = logger;
 
             // Create initial conversation state in the repository
+            InitalizeConversationConfigurationAsync().Wait();
             InitializeConversationStateAsync().Wait();
+        }
+
+        private async Task InitalizeConversationConfigurationAsync()
+        {
+            var businessAppData = await _businessManager.GetUserBusinessAppById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
+            if (!businessAppData.Success)
+            {
+                _logger.LogError("Business app data not found for business ID {BusinessId}", _configuration.BusinessId);
+                throw new InvalidOperationException($"Business app data not found for business ID {_configuration.BusinessId}");
+            }
+            _sessionBusinessAppData = businessAppData.Data;
+
+            var businessRouteData = businessAppData.Data.Routings.Find(r => r.Id == _configuration.RouteId);
+            if (businessRouteData == null)
+            {
+                _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _configuration.BusinessId, _configuration.RouteId);
+                throw new InvalidOperationException($"Business route data not found for business ID {_configuration.BusinessId} and route ID {_configuration.RouteId}");
+            }
+            _sessionBusinessRouteData = businessRouteData;
         }
 
         private async Task InitializeConversationStateAsync()
@@ -65,8 +97,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 QueueId = _configuration.QueueId,
                 Status = ConversationSessionState.Created,
                 StartTime = DateTime.UtcNow,
-                LastActivityTime = DateTime.UtcNow,
-                LanguageCode = _configuration.LanguageCode
+                LastActivityTime = DateTime.UtcNow
             };
 
             await _conversationStateRepository.CreateAsync(conversationState);
@@ -184,7 +215,7 @@ namespace IqraInfrastructure.Managers.Conversation
             }
 
             // Initialize the agent with the provided configuration
-            await agent.InitializeAsync(configuration, CancellationToken.None);
+            await agent.InitializeAsync(configuration, _sessionBusinessAppData, _sessionBusinessRouteData, CancellationToken.None);
 
             // Create agent info in the database
             var agentInfo = new ConversationAgentInfo
@@ -194,8 +225,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 JoinedAt = DateTime.UtcNow,
                 Metadata = new Dictionary<string, string>
                 {
-                    ["Type"] = agent.GetType().Name,
-                    ["BusinessAgentId"] = configuration.BusinessAgentId
+                    ["Type"] = agent.GetType().Name
                 }
             };
 
@@ -266,7 +296,11 @@ namespace IqraInfrastructure.Managers.Conversation
             await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
             // Initialize clients
-            var clientTasks = _clients.Select(client => client.ConnectAsync(_sessionCts.Token));
+            var clientTasks = _clients.Select((client) =>
+                {
+                    return client.ConnectAsync(_sessionCts.Token);
+                }
+            );
             await Task.WhenAll(clientTasks);
 
             // Start silence detection timer
@@ -281,10 +315,10 @@ namespace IqraInfrastructure.Managers.Conversation
         private void StartTimers()
         {
             // Start silence detection timer
-            _silenceTimer = new Timer(CheckSilence, null, _configuration.NotifyOnSilenceMs, _configuration.NotifyOnSilenceMs);
+            _silenceTimer = new Timer(CheckSilence, null, _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS, _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS);
 
             // Start session duration timer
-            var maxDurationMs = _configuration.MaxDurationSeconds * 1000;
+            var maxDurationMs = _sessionBusinessRouteData.Configuration.MaxCallTimeS * 1000;
             _sessionDurationTimer = new Timer(EndSessionOnMaxDuration, null, maxDurationMs, Timeout.Infinite);
         }
 
@@ -292,7 +326,7 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             var silenceDuration = DateTime.UtcNow - _lastUserActivityTime;
 
-            if (silenceDuration.TotalMilliseconds > _configuration.EndOnSilenceMs)
+            if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.EndCallOnSilenceMS)
             {
                 _logger.LogInformation("Ending session {SessionId} due to silence timeout", _sessionId);
                 EndAsync("Silence timeout reached").ContinueWith(t =>
@@ -303,7 +337,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                 });
             }
-            else if (silenceDuration.TotalMilliseconds > _configuration.NotifyOnSilenceMs)
+            else if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS)
             {
                 _logger.LogDebug("Silence detected in session {SessionId}", _sessionId);
 
@@ -354,7 +388,6 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _logger.LogInformation("Session {SessionId} paused: {Reason}", _sessionId, reason);
         }
-
         public async Task ResumeAsync()
         {
             if (_state != ConversationSessionState.Paused)
@@ -520,23 +553,33 @@ namespace IqraInfrastructure.Managers.Conversation
             // Update last activity time for silence detection
             _lastUserActivityTime = DateTime.UtcNow;
 
-            // Forward the audio to all agents
-            lock (_agentsLock)
+            // If target agent is specified, send only to that agent
+            if (!string.IsNullOrEmpty(e.TargetAgentId))
             {
-                foreach (var agent in _agents)
+                var agent = GetAgents().FirstOrDefault(a => a.AgentId == e.TargetAgentId);
+                if (agent != null)
                 {
-                    agent.ProcessAudioAsync(e.AudioData, client.ClientId, CancellationToken.None)
-                        .ContinueWith(t =>
-                        {
-                            if (t.IsFaulted)
-                            {
-                                _logger.LogError(t.Exception, "Error forwarding audio to agent {AgentId}", agent.AgentId);
-                            }
-                        });
+                    agent.ProcessAudioAsync(e.AudioData, client.ClientId, CancellationToken.None);
+                }
+                else
+                {
+                    _logger.LogWarning("Target agent {TargetAgentId} not found", e.TargetAgentId);
+                }
+            }
+
+            // Otherwise Forward the audio to all agents
+            foreach (var agent in GetAgents())
+            {
+                try
+                {
+                    agent.ProcessAudioAsync(e.AudioData, client.ClientId, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing audio for agent {AgentId}", agent.AgentId);
                 }
             }
         }
-
         private async void OnClientTextReceived(object? sender, ConversationTextReceivedEventArgs e)
         {
             if (sender is not IConversationClient client)
@@ -571,21 +614,34 @@ namespace IqraInfrastructure.Managers.Conversation
             // Notify event subscribers
             MessageAdded?.Invoke(this, new ConversationMessageAddedEventArgs(message));
 
-            // Forward the text to all agents
-            lock (_agentsLock)
+            // if target agent is specified, send only to that agent
+            if (!string.IsNullOrEmpty(e.TargetAgentId))
             {
-                foreach (var agent in _agents)
+                var agent = GetAgents().FirstOrDefault(a => a.AgentId == e.TargetAgentId);
+                if (agent != null)
                 {
-                    agent.ProcessTextAsync(e.Text, client.ClientId, CancellationToken.None)
-                        .ContinueWith(t =>
-                        {
-                            if (t.IsFaulted)
-                            {
-                                _logger.LogError(t.Exception, "Error forwarding text to agent {AgentId}", agent.AgentId);
-                            }
-                        });
+                    await agent.ProcessTextAsync(e.Text, client.ClientId, CancellationToken.None);
+                }
+                else
+                {
+                    _logger.LogWarning("Target agent {TargetAgentId} not found", e.TargetAgentId);
+                }
+                return;
+            }
+
+            // Otherwise Forward the text to all agents
+            foreach (var agent in GetAgents())
+            {
+                try
+                {
+                    await agent.ProcessTextAsync(e.Text, client.ClientId, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error sending text to agent {AgentId}", agent.AgentId);
                 }
             }
+
         }
 
         private async void OnClientDisconnected(object? sender, ConversationClientDisconnectedEventArgs e)
@@ -609,7 +665,7 @@ namespace IqraInfrastructure.Managers.Conversation
             string? audioReference = null;
 
             // Store audio if recording is enabled
-            if (_configuration.RecordConversation)
+            if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
             {
                 try
                 {
@@ -650,7 +706,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 }
             }
         }
-
         private async void OnAgentTextGenerated(object? sender, ConversationTextGeneratedEventArgs e)
         {
             if (sender is not IConversationAgent agent)
@@ -721,7 +776,6 @@ namespace IqraInfrastructure.Managers.Conversation
             // Log the thought process
             AddLogEntry(ConversationLogLevel.Debug, $"Agent {agent.AgentId} thinking: {e.ThoughtProcess}");
         }
-
         private void OnAgentErrorOccurred(object? sender, ConversationAgentErrorEventArgs e)
         {
             if (sender is not IConversationAgent agent)

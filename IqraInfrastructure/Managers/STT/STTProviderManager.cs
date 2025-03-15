@@ -1,26 +1,35 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
-using IqraCore.Entities.LLM;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
-using IqraCore.Interfaces;
-using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
 using System.Reflection;
 using System.Text.Json;
+using IqraCore.Interfaces.AI;
+using IqraCore.Entities.Business;
+using IqraInfrastructure.Managers.STT.Providers;
+using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.STT
 {
     public class STTProviderManager
     {
+        private readonly ILogger<STTProviderManager> _logger;
+
         private readonly STTProviderRepository _sttProviderRepository;
+        private readonly IntegrationsManager _integrationsManager;
+
         private Dictionary<InterfaceSTTProviderEnum, Type> _sttProviderClasses = new Dictionary<InterfaceSTTProviderEnum, Type>();
 
-        public STTProviderManager(STTProviderRepository sttProviderRepository)
+        public STTProviderManager(ILogger<STTProviderManager> logger, STTProviderRepository sttProviderRepository, IntegrationsManager integrationsManager)
         {
+            _logger = logger;
+
             _sttProviderRepository = sttProviderRepository;
+            _integrationsManager = integrationsManager;
         }
 
         public async Task InitializeProvidersAsync()
@@ -449,6 +458,31 @@ namespace IqraInfrastructure.Managers.STT
             }
 
             return result;
+        }
+    
+        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        {
+            var result = new FunctionReturnResult<ISTTService?>();
+
+            var sttProviderData = await GetProviderDataByIntegration(integrationData.Type);
+            if (!sttProviderData.Success)
+            {
+                result.Code = "BuildProviderServiceByIntegration:1";
+                result.Message = "Provider not find by integration type";
+                return result;
+            }
+
+            switch (sttProviderData.Data.Id)
+            {
+                case InterfaceSTTProviderEnum.AzureSpeechServices:
+                    result.Success = true;
+                    result.Data = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["subscription_key"]), integrationData.Fields["region"], metaData["langauge"]);
+                    return result;
+
+                default:
+                    _logger.LogError("Business app STT provider {ProviderType} not supported", sttProviderData.Data.Id);
+                    return result;
+            }
         }
     }
 }

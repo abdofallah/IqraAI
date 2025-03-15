@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
@@ -29,7 +30,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
 
-        private readonly ConcurrentDictionary<string, IConversationSession> _activeSessions = new();
+        private readonly ConcurrentDictionary<string, ConversationSessionManager> _activeSessions = new();
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _sessionCancellationTokens = new();
         private readonly SemaphoreSlim _sessionCreationLock = new SemaphoreSlim(1, 1);
 
@@ -82,16 +83,23 @@ namespace IqraInfrastructure.Managers.Call
                 // Create conversation session
                 var conversationSession = new ConversationSessionManager(
                     sessionId,
+                    _businessManager,
                     config,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _serviceProvider.GetRequiredService<ILogger<ConversationSessionManager>>());
 
                 // Create telephony client based on provider
-                IConversationClient telephonyClient = CreateTelephonyClient(clientData, sessionId);
+                var telephonyClient = await CreateTelephonyClient(clientData, sessionId);
+                if (!telephonyClient.Success || telephonyClient.Data == null)
+                {
+                    _logger.LogWarning("Failed to create telephony client for session {SessionId} with message: {Message}", sessionId, telephonyClient.Message);
+                    await CleanupSessionAsync(sessionId);
+                    return string.Empty;
+                }
 
                 // Add client to session
-                await conversationSession.AddClientAsync(telephonyClient);
+                await conversationSession.AddClientAsync(telephonyClient.Data);
 
                 // Create and add AI agent
                 var agent = await CreateAIAgentAsync(sessionId, config);
@@ -100,7 +108,6 @@ namespace IqraInfrastructure.Managers.Call
                     await conversationSession.AddAgentAsync(agent, new ConversationAgentConfiguration
                     {
                         BusinessId = config.BusinessId,
-                        BusinessAgentId = await GetBusinessAgentIdFromRouteAsync(config.BusinessId, config.RouteId),
                         RouteId = config.RouteId
                     });
                 }
@@ -240,10 +247,27 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private IConversationClient CreateTelephonyClient(TelephonyWebhookContextModel clientData, string sessionId)
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(TelephonyWebhookContextModel clientData, string sessionId)
         {
+            var result = new FunctionReturnResult<IConversationClient?>();
+
             // Create a client ID from session ID and provider
             string clientId = $"{clientData.Provider}_{sessionId}";
+
+            var businessNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(clientData.BusinessId, clientData.PhoneNumberId);
+            if (businessNumberData == null)
+            {
+                result.Message = "Business number not found";
+                _logger.LogError("Business number not found for business {BusinessId}", clientData.BusinessId);
+                return result;
+            }
+            var integrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(clientData.BusinessId, businessNumberData.IntegrationId);
+            if (!integrationData.Success || integrationData.Data == null)
+            {
+                result.Message = "Integration not found";
+                _logger.LogError("Integration not found for business {BusinessId}", clientData.BusinessId);
+                return result;
+            }
 
             switch (clientData.Provider)
             {
@@ -252,32 +276,38 @@ namespace IqraInfrastructure.Managers.Call
                     var token = clientData.AdditionalData["mediaSessionToken"];
                     var wsUrl = clientData.AdditionalData["mediaSessionWebSocketUrl"];
 
-                    return new ModemTelConversationClient(
+                    result.Success = true;
+                    result.Data = new ModemTelConversationClient(
                         clientId,
                         clientData.CallId,
-                        GetApiKeyForBusiness(clientData.BusinessId, clientData.Provider),
-                        GetApiEndpointForBusiness(clientData.BusinessId, clientData.Provider),
+                        integrationData.Data.Fields["endpoint"],
+                        _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
                         token,
                         wsUrl,
                         _serviceProvider.GetRequiredService<ModemTelManager>(),
                         _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>());
+
+                    return result;
 
                 case TelephonyProviderEnum.Twilio:
                     // Get required Twilio data
                     var accountSid = clientData.AdditionalData["accountSid"];
                     var callbackUrl = clientData.AdditionalData["callbackUrl"];
 
-                    return new TwilioConversationClient(
+                    result.Success = true;
+                    result.Data = new TwilioConversationClient(
                         clientId,
                         clientData.CallId,
                         accountSid,
-                        GetAuthTokenForBusiness(clientData.BusinessId, clientData.Provider),
+                        _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
                         callbackUrl,
                         _serviceProvider.GetRequiredService<TwilioManager>(),
                         _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>());
+                    return result;
 
                 default:
-                    throw new NotSupportedException($"Unsupported telephony provider: {clientData.Provider}");
+                    result.Message = $"Unsupported provider {clientData.Provider}";
+                    return result;
             }
         }
 
@@ -289,65 +319,18 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Create the AI agent
-                return new AIAgent(
+                return new ConversationAIAgent(
                     agentId,
-                    _serviceProvider.GetRequiredService<ISTTService>(),
-                    _serviceProvider.GetRequiredService<ITTSService>(),
-                    _serviceProvider.GetRequiredService<ILLMService>(),
                     _businessManager,
                     _serviceProvider.GetRequiredService<SystemPromptGenerator>(),
                     _serviceProvider.GetRequiredService<ScriptExecutionManager>(),
-                    _serviceProvider.GetRequiredService<ILogger<AIAgent>>());
+                    _serviceProvider.GetRequiredService<ILogger<ConversationAIAgent>>());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating AI agent");
                 throw;
             }
-        }
-
-        private async Task<string> GetBusinessAgentIdFromRouteAsync(long businessId, string routeId)
-        {
-            try
-            {
-                var businessApp = await _businessManager.GetUserBusinessAppById(businessId, "GetBusinessAgentIdFromRouteAsync");
-                if (!businessApp.Success || businessApp.Data == null)
-                {
-                    throw new InvalidOperationException($"Business app not found: {businessId}");
-                }
-
-                var route = businessApp.Data.Routings.FirstOrDefault(r => r.Id == routeId);
-                if (route == null)
-                {
-                    throw new InvalidOperationException($"Route not found: {routeId}");
-                }
-
-                return route.Agent.SelectedAgentId;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting agent ID from route");
-                throw;
-            }
-        }
-
-        private string GetApiKeyForBusiness(long businessId, TelephonyProviderEnum provider)
-        {
-            // Implementation depends on where you store API keys
-            // This would typically retrieve the decrypted API key from your integration data
-            return "placeholder_api_key";
-        }
-
-        private string GetApiEndpointForBusiness(long businessId, TelephonyProviderEnum provider)
-        {
-            // Implementation depends on where you store API endpoints
-            return "https://api.example.com";
-        }
-
-        private string GetAuthTokenForBusiness(long businessId, TelephonyProviderEnum provider)
-        {
-            // Implementation to retrieve auth token
-            return "placeholder_auth_token";
         }
 
         private async Task<OutboundCallResultModel> InitiateModemTelOutboundCallAsync(
@@ -368,16 +351,12 @@ namespace IqraInfrastructure.Managers.Call
                 // Use the ModemTel manager to initiate the call
                 var modemTelManager = _serviceProvider.GetRequiredService<ModemTelManager>();
 
-                // Create callback URL for this server
-                var callbackUrl = $"{_serviceProvider.GetRequiredService<ServerConfig>().PublicBaseUrl}/api/call/modemtel-callback/{queueId}";
-
                 // Initiate the call
                 var callResult = await modemTelManager.MakeCallAsync(
                     apiKey,
                     apiBaseUrl,
                     phoneNumber.ModemTelPhoneNumberId,
-                    toNumber,
-                    callbackUrl);
+                    toNumber);
 
                 if (!callResult.Success || callResult.Data == null)
                 {
@@ -414,7 +393,7 @@ namespace IqraInfrastructure.Managers.Call
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
 
                 // Create callback URL for this server
-                var callbackUrl = $"{_serviceProvider.GetRequiredService<ServerConfig>().PublicBaseUrl}/api/call/twilio-callback/{queueId}";
+                var callbackUrl = $"TODO/api/call/twilio-callback/{queueId}";
 
                 // Initiate the call
                 var callResult = await twilioManager.MakeCallAsync(

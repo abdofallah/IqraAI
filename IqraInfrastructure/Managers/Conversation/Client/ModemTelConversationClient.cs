@@ -1,4 +1,5 @@
-﻿using IqraInfrastructure.Managers.Telephony;
+﻿using IqraCore.Entities.Helper.Telephony;
+using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
 using System.Text;
@@ -18,6 +19,10 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         private Task? _receiveTask;
         private readonly int _bufferSize = 4096;
 
+        private bool _isAnswered = false;
+
+        public string CallId => _callId;
+
         public ModemTelConversationClient(
             string clientId,
             string callId,
@@ -35,10 +40,22 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _mediaSessionToken = mediaSessionToken;
             _mediaSessionWebSocketUrl = mediaSessionWebSocketUrl;
             _modemTelManager = modemTelManager;
+            _clientTelephonyType = TelephonyProviderEnum.ModemTel;
         }
 
         public override async Task ConnectAsync(CancellationToken cancellationToken)
         {
+            if (!_isAnswered)
+            {
+                var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _callId);
+                if (!answerResult.Success)
+                {
+                    _logger.LogError("Error answering call {CallId}: {ErrorMessage}", _callId, answerResult.Message);
+                    return;
+                }
+                _isAnswered = true;
+            }
+
             if (_isConnected)
             {
                 _logger.LogWarning("WebSocket is already connected for call {CallId}", _callId);

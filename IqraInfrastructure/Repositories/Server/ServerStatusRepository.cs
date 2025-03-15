@@ -81,8 +81,8 @@ namespace IqraInfrastructure.Repositories.Server
                 {
                     ServerId = status.ServerId,
                     Timestamp = DateTime.UtcNow,
-                    ActiveCalls = status.CurrentActiveCalls,
-                    QueuedCalls = status.QueuedCalls,
+                    ActiveCalls = status.CurrentActiveCallsCount,
+                    QueuedCalls = status.QueuedCallsCount,
                     CpuUsagePercent = status.CpuUsagePercent,
                     MemoryUsagePercent = status.MemoryUsagePercent,
                     NetworkUsageMbps = status.NetworkUsageMbps

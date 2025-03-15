@@ -17,11 +17,13 @@
     public class ConversationAudioReceivedEventArgs : EventArgs
     {
         public byte[] AudioData { get; }
+        public string TargetAgentId { get; }
         public DateTime Timestamp { get; }
 
-        public ConversationAudioReceivedEventArgs(byte[] audioData)
+        public ConversationAudioReceivedEventArgs(byte[] audioData, string targetAgentId = null)
         {
             AudioData = audioData;
+            TargetAgentId = targetAgentId;
             Timestamp = DateTime.UtcNow;
         }
     }

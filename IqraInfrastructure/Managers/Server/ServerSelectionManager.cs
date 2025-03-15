@@ -108,7 +108,7 @@ namespace IqraInfrastructure.Managers.Server
                         if (freshStatus != null)
                         {
                             // Verify server still has capacity
-                            if (freshStatus.CurrentActiveCalls < freshStatus.MaxConcurrentCalls && !freshStatus.MaintenanceMode)
+                            if (freshStatus.CurrentActiveCallsCount < freshStatus.MaxConcurrentCallsCount && !freshStatus.MaintenanceMode)
                             {
                                 result.Success = true;
                                 result.ServerId = selectedServer.ServerId;
@@ -149,13 +149,13 @@ namespace IqraInfrastructure.Managers.Server
         private double CalculateServerScore(ServerStatusData server)
         {
             // Base capacity
-            double score = server.MaxConcurrentCalls;
+            double score = server.MaxConcurrentCallsCount;
 
             // Penalize by active calls (weighted higher)
-            score -= (server.CurrentActiveCalls * 1.5);
+            score -= (server.CurrentActiveCallsCount * 1.5);
 
             // Penalize by queued calls (weighted lower)
-            score -= (server.QueuedCalls * 0.7);
+            score -= (server.QueuedCallsCount * 0.7);
 
             // Penalize high CPU usage
             if (server.CpuUsagePercent > 80)

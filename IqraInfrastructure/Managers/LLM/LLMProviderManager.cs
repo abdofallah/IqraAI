@@ -8,23 +8,31 @@ using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
 using System.Reflection;
 using System.Text.Json;
+using IqraCore.Entities.Business;
+using IqraInfrastructure.Managers.LLM.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.LLM
 {
     public class LLMProviderManager
     {
+        private ILogger<LLMProviderManager> _logger;
+
         private readonly LLMProviderRepository _llmProviderRepository;
         private readonly LanguagesManager _languagesManager;
+        private readonly IntegrationsManager _integrationsManager;
 
         private Dictionary<InterfaceLLMProviderEnum, Type> _llmProviderClasses = new Dictionary<InterfaceLLMProviderEnum, Type>();
 
-        public LLMProviderManager(LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager)
+        public LLMProviderManager(ILogger<LLMProviderManager> logger, LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager, IntegrationsManager integrationsManager)
         {
+            _logger = logger;
+
             _llmProviderRepository = llmProviderRepository;
             _languagesManager = languagesManager;
+            _integrationsManager = integrationsManager;
         }
 
         public async Task InitializeProvidersAsync()
@@ -650,6 +658,36 @@ namespace IqraInfrastructure.Managers.LLM
             }
 
             return result;
+        }
+
+        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        {
+            var result = new FunctionReturnResult<ILLMService?>();
+
+            var llmProviderData = await GetProviderDataByIntegration(integrationData.Type);
+            if (!llmProviderData.Success)
+            {
+                result.Code = "BuildProviderServiceByIntegration:1";
+                result.Message = "Provider not find by integration type";
+                return result;
+            }
+
+            switch (llmProviderData.Data.Id)
+            {
+                case InterfaceLLMProviderEnum.AnthropicClaude:
+                    result.Success = true;
+                    result.Data = new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), int.Parse(integrationData.Fields["max_output_token"]), decimal.Parse(integrationData.Fields["temperature"]), integrationData.Fields["model"]);
+                    return result;
+
+                case InterfaceLLMProviderEnum.OpenAIGPT:
+                    result.Success = true;
+                    result.Data = new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), int.Parse(integrationData.Fields["max_output_token"]), float.Parse(integrationData.Fields["temperature"]), float.Parse(integrationData.Fields["top_p"]), integrationData.Fields["model"]);
+                    return result;
+
+                default:
+                    _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
+                    return result;
+            }
         }
     }
 }

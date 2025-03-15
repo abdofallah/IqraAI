@@ -4,6 +4,7 @@ using IqraCore.Entities.Server;
 using IqraCore.Models.Server;
 using IqraCore.Models.Telephony;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraBackendApp.Controllers
@@ -219,7 +220,7 @@ namespace ProjectIqraBackendApp.Controllers
             }
 
             // For Twilio, we need to create a callback URL for TwiML
-            var callbackUrl = $"{_serverConfig.PublicBaseUrl}/api/call/twilio/{request.CallId}/twiml";
+            var callbackUrl = $"TODO/api/call/twilio/{request.CallId}/twiml";
 
             return new TelephonyWebhookContextModel
             {

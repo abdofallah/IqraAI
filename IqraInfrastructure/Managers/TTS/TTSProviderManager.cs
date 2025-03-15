@@ -1,26 +1,34 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
-using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.AI;
-using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
 using System.Reflection;
 using System.Text.Json;
+using IqraCore.Entities.Business;
+using IqraInfrastructure.Managers.TTS.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.TTS
 {
     public class TTSProviderManager
     {
+        private readonly ILogger<TTSProviderManager> _logger;
+
         private readonly TTSProviderRepository _ttsProviderRepository;
+        private readonly IntegrationsManager _integrationsManager;
+
         private Dictionary<InterfaceTTSProviderEnum, Type> _ttsProviderClasses = new Dictionary<InterfaceTTSProviderEnum, Type>();
 
-        public TTSProviderManager(TTSProviderRepository ttsProviderRepository)
+        public TTSProviderManager(ILogger<TTSProviderManager> logger, TTSProviderRepository ttsProviderRepository, IntegrationsManager integrationsManager)
         {
+            _logger = logger;
+
             _ttsProviderRepository = ttsProviderRepository;
+            _integrationsManager = integrationsManager;
         }
 
         public async Task InitializeProvidersAsync()
@@ -461,6 +469,31 @@ namespace IqraInfrastructure.Managers.TTS
             }
 
             return result;
+        }
+
+        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        {
+            var result = new FunctionReturnResult<ITTSService?>();
+
+            var ttsProviderData = await GetProviderDataByIntegration(integrationData.Type);
+            if (!ttsProviderData.Success)
+            {
+                result.Code = "BuildProviderServiceByIntegration:1";
+                result.Message = "Provider not find by integration type";
+                return result;
+            }
+
+            switch (ttsProviderData.Data.Id)
+            {
+                case InterfaceTTSProviderEnum.AzureSpeechServices:
+                    result.Success = true;
+                    result.Data = new AzureSpeechTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["subscription_key"]), integrationData.Fields["region"], metaData["langauge"], integrationData.Fields["speaker"]);
+                    return result;
+
+                default:
+                    _logger.LogError("Business app TTS provider {ProviderType} not supported", ttsProviderData.Data.Id);
+                    return result;
+            }
         }
     }
 }

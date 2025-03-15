@@ -1,29 +1,49 @@
-﻿using IqraCore.Entities.Conversation.Configuration;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Script;
+using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.TTS;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
-    public class AIAgent : IConversationAgent
-    {
-        private readonly string _agentId;
-        private readonly ILogger<AIAgent> _logger;
-        private readonly ISTTService _sttService;
-        private readonly ITTSService _ttsService;
-        private readonly ILLMService _llmService;
+    public class ConversationAIAgent : IConversationAgent
+    {  
+        private readonly ILogger<ConversationAIAgent> _logger;
+
         private readonly BusinessManager _businessManager;
         private readonly SystemPromptGenerator _systemPromptGenerator;
         private readonly ScriptExecutionManager _scriptExecutionManager;
+        private readonly STTProviderManager _sttProviderManager;
+        private readonly TTSProviderManager _ttsProviderManager;
+        private readonly LLMProviderManager _llmProviderManager;
 
-        private ConversationAgentConfiguration? _configuration;
+        private readonly string _agentId;  
+
+        private ConversationAgentConfiguration _agentConfiguration;
+        private BusinessApp _businessApp;
+        private BusinessAppRoute _businessAppRoute;
+        private BusinessAppAgent _businessAppAgent;
+        private string _currentLanguageCode;
+
+        private BusinessAppIntegration _sttBusinessIntegrationData;
+        private ISTTService _sttService;
+
+        private BusinessAppIntegration _ttsBusinessIntegrationData;
+        private ITTSService _ttsService;
+
+        private BusinessAppIntegration _llmBusinessIntegrationData;
+        private ILLMService _llmService;
+
         private CancellationTokenSource? _processingCts;
         private bool _isInitialized;
         private bool _isProcessingAudio;
@@ -31,11 +51,6 @@ namespace IqraInfrastructure.Managers.Conversation
         private Task? _audioProcessingTask;
         private readonly Dictionary<string, string> _clientContextMap = new();
         private string? _currentClientId;
-        private string? _currentLanguageCode;
-        private string? _currentSpeakerVoice;
-        private long _businessId;
-        private string? _businessAgentId;
-        private string? _routeId;
 
         public string AgentId => _agentId;
         public ConversationAgentType AgentType => ConversationAgentType.AI;
@@ -45,49 +60,96 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentThinkingEventArgs>? Thinking;
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
-        public AIAgent(
+        public ConversationAIAgent(
             string agentId,
-            ISTTService sttService,
-            ITTSService ttsService,
-            ILLMService llmService,
             BusinessManager businessManager,
             SystemPromptGenerator systemPromptGenerator,
             ScriptExecutionManager scriptExecutionManager,
-            ILogger<AIAgent> logger)
+            ILogger<ConversationAIAgent> logger)
         {
-            _agentId = agentId;
-            _sttService = sttService;
-            _ttsService = ttsService;
-            _llmService = llmService;
+            _logger = logger;
+
             _businessManager = businessManager;
             _systemPromptGenerator = systemPromptGenerator;
             _scriptExecutionManager = scriptExecutionManager;
-            _logger = logger;
 
-            // Initialize STT event handlers
-            _sttService.TranscriptionResultReceived += OnTranscriptionResultReceived;
-            _sttService.OnRecoginizingRecieved += OnRecognizingReceived;
-
-            // Initialize LLM event handlers
-            _llmService.MessageStreamed += OnLLMMessageStreamed;
+            _agentId = agentId;        
         }
 
-        public async Task InitializeAsync(ConversationAgentConfiguration config, CancellationToken cancellationToken)
+        public async Task InitializeAsync(ConversationAgentConfiguration config, BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken)
         {
             if (_isInitialized)
             {
                 _logger.LogWarning("AI Agent {AgentId} is already initialized", _agentId);
                 return;
             }
-
-            _configuration = config ?? throw new ArgumentNullException(nameof(config));
-            _businessId = config.BusinessId;
-            _businessAgentId = config.BusinessAgentId;
-            _routeId = config.RouteId;
-            _currentLanguageCode = config.LanguageCode;
-
             try
             {
+                _agentConfiguration = config;
+                _businessApp = businessAppData;
+                _businessAppRoute = businessRouteData;   
+
+                _businessAppAgent = await _businessManager.GetAgentsManager().GetAgentById(_agentConfiguration.BusinessId, _businessAppRoute.Agent.SelectedAgentId);
+                if (_businessAppAgent == null)
+                {
+                    _logger.LogError("Business app agent {AgentId} not found", _businessAppRoute.Agent.SelectedAgentId);
+                    return;
+                }
+
+                _currentLanguageCode = _businessAppRoute.Language.DefaultLanguageCode;
+
+                var defaultSTTService = _businessAppAgent.Integrations.STT[_currentLanguageCode][0];
+                var defaultTTSService = _businessAppAgent.Integrations.TTS[_currentLanguageCode][0];
+                var defaultLLMService = _businessAppAgent.Integrations.LLM[_currentLanguageCode][0];
+
+                var sttBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultSTTService.Id);
+                if (!sttBusinessIntegrationData.Success || sttBusinessIntegrationData.Data == null)
+                {
+                    _logger.LogError("Business app STT integration {IntegrationId} not found", defaultSTTService.Id);
+                    return;
+                }
+                _sttBusinessIntegrationData = sttBusinessIntegrationData.Data;
+                var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(_sttBusinessIntegrationData, new Dictionary<string, string> { { "language", _currentLanguageCode } });
+                if (!sttServiceResult.Success || sttServiceResult.Data == null)
+                {
+                    _logger.LogError("Failed to build STT service for agent {AgentId} with error: {ErrorMessage}", _agentId, sttServiceResult.Message);
+                    return;
+                }
+                _sttService = sttServiceResult.Data;
+
+                var ttsBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultTTSService.Id);
+                if (!ttsBusinessIntegrationData.Success || ttsBusinessIntegrationData.Data == null)
+                {
+                    _logger.LogError("Business app TTS integration {IntegrationId} not found", defaultTTSService.Id);
+                    return;
+                }
+                _ttsBusinessIntegrationData = ttsBusinessIntegrationData.Data;
+                var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_ttsBusinessIntegrationData, new Dictionary<string, string> { { "language", _currentLanguageCode  } });
+                if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
+                {
+                    _logger.LogError("Failed to build TTS service for agent {AgentId} with error: {ErrorMessage}", _agentId, ttsServiceResult.Message);
+                    return;
+                }
+                _ttsService = ttsServiceResult.Data;
+                _sttService.TranscriptionResultReceived += OnTranscriptionResultReceived;
+                _sttService.OnRecoginizingRecieved += OnRecognizingReceived;
+
+                var llmBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultLLMService.Id);
+                if (!llmBusinessIntegrationData.Success)
+                {
+                    _logger.LogError("Business app LLM integration {IntegrationId} not found", defaultLLMService.Id);
+                    return;
+                }
+                _llmBusinessIntegrationData = llmBusinessIntegrationData.Data;
+                var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, new Dictionary<string, string> { });
+                if (!llmServiceResult.Success || llmServiceResult.Data == null)
+                {
+                    _logger.LogError("Failed to build LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, llmServiceResult.Message);
+                    return;
+                }
+                _llmService = llmServiceResult.Data;
+                _llmService.MessageStreamed += OnLLMMessageStreamed;
+
                 _processingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
                 // Initialize services
@@ -104,8 +166,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 _audioProcessingTask = Task.Run(ProcessAudioQueueAsync, _processingCts.Token);
 
                 _isInitialized = true;
-                _logger.LogInformation("AI Agent {AgentId} initialized with business ID {BusinessId}, route {RouteId}",
-                    _agentId, _businessId, _routeId);
+                _logger.LogInformation("AI Agent {AgentId} initialized with business ID {BusinessId}, route {RouteId}", _agentId, _agentConfiguration.BusinessId, _agentConfiguration.RouteId);
             }
             catch (Exception ex)
             {
@@ -251,58 +312,33 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             try
             {
-                // Get business agent and route configuration
-                var businessApp = await _businessManager.GetUserBusinessAppById(_businessId, "ConfigureLLMWithBusinessDataAsync");
-                if (!businessApp.Success || businessApp.Data == null)
-                {
-                    throw new InvalidOperationException($"Business app not found for ID {_businessId}");
-                }
-
-                var agent = businessApp.Data.Agents.FirstOrDefault(a => a.Id == _businessAgentId);
-                if (agent == null)
-                {
-                    throw new InvalidOperationException($"Agent not found with ID {_businessAgentId} in business {_businessId}");
-                }
-
-                var route = businessApp.Data.Routings.FirstOrDefault(r => r.Id == _routeId);
-                if (route == null)
-                {
-                    throw new InvalidOperationException($"Route not found with ID {_routeId} in business {_businessId}");
-                }
-
                 // Generate system prompt
                 var systemPrompt = _systemPromptGenerator.GenerateSystemPrompt(
-                    businessApp.Data,
-                    agent,
-                    route,
+                    _businessApp,
+                    _businessAppAgent,
+                    _businessAppRoute,
                     _currentLanguageCode
                 );
 
-                // Get script if specified in route
-                if (!string.IsNullOrEmpty(route.Agent.OpeningScriptId))
-                {
-                    await _scriptExecutionManager.LoadScriptAsync(
-                        _businessId,
-                        route.Agent.OpeningScriptId,
-                        _currentLanguageCode
-                    );
-                }
-
-                // Configure voice for TTS
-                ConfigureVoiceForLanguage();
+                // Get script from route
+                await _scriptExecutionManager.LoadScriptAsync(
+                    _agentConfiguration.BusinessId,
+                    _businessAppRoute.Agent.OpeningScriptId,
+                    _currentLanguageCode
+                );
 
                 // Configure LLM
                 _llmService.SetSystemPrompt(systemPrompt);
 
                 // Select LLM model based on configuration
-                var llmConfig = agent.Integrations.LLM.GetValueOrDefault(_currentLanguageCode)?.FirstOrDefault();
+                var llmConfig = _businessAppAgent.Integrations.LLM.GetValueOrDefault(_currentLanguageCode)?.FirstOrDefault();
                 if (llmConfig != null && llmConfig.FieldValues.TryGetValue("model", out var modelObj))
                 {
                     _llmService.SetModel(modelObj.ToString() ?? "");
                 }
 
                 // Get opening message if provided
-                var openingMessage = agent.Utterances.GreetingMessage.GetValueOrDefault(_currentLanguageCode);
+                var openingMessage = _businessAppAgent.Utterances.GreetingMessage.GetValueOrDefault(_currentLanguageCode);
                 if (!string.IsNullOrEmpty(openingMessage))
                 {
                     _llmService.SetInitialMessage(openingMessage);
@@ -316,30 +352,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error configuring agent: " + ex.Message, ex));
                 throw;
             }
-        }
-
-        private void ConfigureVoiceForLanguage()
-        {
-            if (string.IsNullOrEmpty(_currentLanguageCode)) return;
-
-            // Logic to select appropriate voice for the language
-            // This would be based on business configuration
-            switch (_currentLanguageCode.ToLower())
-            {
-                case "en":
-                    _currentSpeakerVoice = "en-US-GuyNeural";
-                    break;
-                case "ar":
-                    _currentSpeakerVoice = "ar-SA-HamedNeural";
-                    break;
-                // Add more language mappings as needed
-                default:
-                    _currentSpeakerVoice = "en-US-GuyNeural"; // Default voice
-                    break;
-            }
-
-            _logger.LogInformation("Selected voice {Voice} for language {Language}",
-                _currentSpeakerVoice, _currentLanguageCode);
         }
 
         private async Task ProcessSystemCommandAsync(string command, CancellationToken cancellationToken)
@@ -385,6 +397,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                 }
                 // Add other system commands as needed
+                // TODO
             }
             catch (Exception ex)
             {

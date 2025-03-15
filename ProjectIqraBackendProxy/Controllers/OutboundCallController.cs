@@ -37,7 +37,7 @@ namespace ProjectIqraBackendProxy.Controllers
             }
 
             // Basic request validation
-            if (request == null || request.BusinessId <= 0 || string.IsNullOrEmpty(request.PhoneNumberId) || string.IsNullOrEmpty(request.ToNumber) || string.IsNullOrEmpty(request.CallConfigurationId))
+            if (request == null || request.BusinessId <= 0 || string.IsNullOrEmpty(request.PhoneNumberId) || string.IsNullOrEmpty(request.ToNumber))
             {
                 result.Code = "InitiateOutboundCall:2";
                 result.Message = "Invalid request parameters";

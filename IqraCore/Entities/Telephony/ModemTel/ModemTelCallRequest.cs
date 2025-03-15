@@ -9,8 +9,5 @@ namespace IqraCore.Entities.Telephony.ModemTel
 
         [JsonPropertyName("to")]
         public string To { get; set; }
-
-        [JsonPropertyName("callbackUrl")]
-        public string CallbackUrl { get; set; }
     }
 }

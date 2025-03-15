@@ -15,9 +15,9 @@ namespace IqraCore.Entities.Server
         public bool MaintenanceMode { get; set; } = false;
         public DateTime? MaintenanceModeStartedAt { get; set; } = null;
 
-        public int CurrentActiveCalls { get; set; } = 0;
-        public int MaxConcurrentCalls { get; set; } = 100;
-        public int QueuedCalls { get; set; } = 0;
+        public int CurrentActiveCallsCount { get; set; } = 0;
+        public int MaxConcurrentCallsCount { get; set; } = 100;
+        public int QueuedCallsCount { get; set; } = 0;
 
         public double CpuUsagePercent { get; set; } = 0;
         public double MemoryUsagePercent { get; set; } = 0;
@@ -27,7 +27,7 @@ namespace IqraCore.Entities.Server
         {
             get
             {
-                double loadPercent = (double)CurrentActiveCalls / MaxConcurrentCalls * 100;
+                double loadPercent = (double)CurrentActiveCallsCount / MaxConcurrentCallsCount * 100;
 
                 if (loadPercent >= 90) return ServerLoadStatusEnum.Critical;
                 if (loadPercent >= 75) return ServerLoadStatusEnum.Heavy;
@@ -47,9 +47,9 @@ namespace IqraCore.Entities.Server
                 LastUpdated = LastUpdated,
                 MaintenanceMode = MaintenanceMode,
                 MaintenanceModeStartedAt = MaintenanceModeStartedAt,
-                CurrentActiveCalls = CurrentActiveCalls,
-                MaxConcurrentCalls = MaxConcurrentCalls,
-                QueuedCalls = QueuedCalls,
+                CurrentActiveCallsCount = CurrentActiveCallsCount,
+                MaxConcurrentCallsCount = MaxConcurrentCallsCount,
+                QueuedCallsCount = QueuedCallsCount,
                 CpuUsagePercent = CpuUsagePercent,
                 MemoryUsagePercent = MemoryUsagePercent,
                 NetworkUsageMbps = NetworkUsageMbps

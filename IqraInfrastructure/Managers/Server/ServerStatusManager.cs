@@ -43,9 +43,9 @@ namespace IqraInfrastructure.Managers.Server
                 Type = ServerTypeEnum.Backend,
                 LastUpdated = DateTime.UtcNow,
                 MaintenanceMode = false,
-                MaxConcurrentCalls = _serverConfig.MaxConcurrentCalls,
-                CurrentActiveCalls = 0,
-                QueuedCalls = 0
+                MaxConcurrentCallsCount = _serverConfig.MaxConcurrentCalls,
+                CurrentActiveCallsCount = 0,
+                QueuedCallsCount = 0
             };
 
             // Initialize performance counters if running on Windows
@@ -76,7 +76,7 @@ namespace IqraInfrastructure.Managers.Server
         {
             lock (_statusLock)
             {
-                _currentStatus.CurrentActiveCalls++;
+                _currentStatus.CurrentActiveCallsCount++;
                 _currentStatus.LastUpdated = DateTime.UtcNow;
             }
         }
@@ -85,7 +85,7 @@ namespace IqraInfrastructure.Managers.Server
         {
             lock (_statusLock)
             {
-                _currentStatus.CurrentActiveCalls = Math.Max(0, _currentStatus.CurrentActiveCalls - 1);
+                _currentStatus.CurrentActiveCallsCount = Math.Max(0, _currentStatus.CurrentActiveCallsCount - 1);
                 _currentStatus.LastUpdated = DateTime.UtcNow;
             }
         }
@@ -94,7 +94,7 @@ namespace IqraInfrastructure.Managers.Server
         {
             lock (_statusLock)
             {
-                _currentStatus.QueuedCalls = count;
+                _currentStatus.QueuedCallsCount = count;
                 _currentStatus.LastUpdated = DateTime.UtcNow;
             }
         }
@@ -209,8 +209,7 @@ namespace IqraInfrastructure.Managers.Server
         {
             lock (_statusLock)
             {
-                return !_currentStatus.MaintenanceMode &&
-                       _currentStatus.CurrentActiveCalls < _currentStatus.MaxConcurrentCalls;
+                return !_currentStatus.MaintenanceMode && _currentStatus.CurrentActiveCallsCount < _currentStatus.MaxConcurrentCallsCount;
             }
         }
     }

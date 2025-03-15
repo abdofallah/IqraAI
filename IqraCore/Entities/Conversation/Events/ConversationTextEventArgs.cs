@@ -17,11 +17,13 @@
     public class ConversationTextReceivedEventArgs : EventArgs
     {
         public string Text { get; }
+        public string TargetAgentId { get; }
         public DateTime Timestamp { get; }
 
-        public ConversationTextReceivedEventArgs(string text)
+        public ConversationTextReceivedEventArgs(string text, string targetAgentId = null)
         {
             Text = text;
+            TargetAgentId = targetAgentId;
             Timestamp = DateTime.UtcNow;
         }
     }

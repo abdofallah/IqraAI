@@ -240,5 +240,27 @@ namespace IqraInfrastructure.Repositories.Telephony
                 return 0;
             }
         }
+
+        public async Task<int> GetQueuedCallCountForServerAsync(string serverId, string regionId)
+        {
+            try
+            {
+                var filter = Builders<CallQueueData>.Filter.And(
+                    Builders<CallQueueData>.Filter.Eq(c => c.ProcessingServerId, serverId),
+                    Builders<CallQueueData>.Filter.Eq(c => c.RegionId, regionId),
+                    Builders<CallQueueData>.Filter.In(c => c.Status, new[]
+                    {
+                        CallQueueStatusEnum.Queued
+                    })
+                );
+
+                return (int)await _callQueueCollection.CountDocumentsAsync(filter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting queued call count for server {ServerId}", serverId);
+                return 0;
+            }
+        }
     }
 }

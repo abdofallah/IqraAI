@@ -258,7 +258,7 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
-        public async Task<FunctionReturnResult<ModemTelCall>> MakeCallAsync(string apiKey, string apiBaseUrl, string phoneNumberId, string toNumber, string callbackUrl = null)
+        public async Task<FunctionReturnResult<ModemTelCall>> MakeCallAsync(string apiKey, string apiBaseUrl, string phoneNumberId, string toNumber)
         {
             var result = new FunctionReturnResult<ModemTelCall>();
 
@@ -269,8 +269,7 @@ namespace IqraInfrastructure.Managers.Telephony
                     var callRequest = new ModemTelCallRequest
                     {
                         PhoneNumberId = phoneNumberId,
-                        To = toNumber,
-                        CallbackUrl = callbackUrl
+                        To = toNumber
                     };
 
                     var jsonContent = JsonSerializer.Serialize(callRequest, _jsonOptions);

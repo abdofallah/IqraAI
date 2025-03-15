@@ -1,6 +1,7 @@
 using IqraCore.Entities.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
@@ -12,7 +13,6 @@ using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using ProjectIqraBackendApp.Managers;
 using Serilog;
 
 namespace ProjectIqraBackendApp
