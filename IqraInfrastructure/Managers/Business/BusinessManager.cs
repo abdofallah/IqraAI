@@ -42,7 +42,7 @@ namespace IqraInfrastructure.Managers.Business
 
 
         public BusinessManager(
-            ILogger<BusinessManager> logger,
+            ILoggerFactory loggerFactory,
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
             BusinessLogoRepository businessLogoRepository,
@@ -54,7 +54,7 @@ namespace IqraInfrastructure.Managers.Business
             IntegrationsManager integrationsManager
         )
         {
-            _logger = logger;
+            _logger = loggerFactory.CreateLogger<BusinessManager>();
 
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
@@ -70,7 +70,7 @@ namespace IqraInfrastructure.Managers.Business
             _modemTelManager = modemTelManager;
 
             // Sub Managers
-            _businessSettingsManager = new BusinessSettingsManager(this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
+            _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
             _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
             _businessContextManager = new BusinessContextManager(this, businessAppRepository, businessRepository);
             _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
@@ -160,7 +160,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 result.Code = "GetUserBusinessesByEmail:1";
                 result.Message = "Null - Businesses not found for user: " + userEmail;
-                Log.Logger.Error("[BusinessManager] " + result.Message);
+                _logger.LogError("[BusinessManager] " + result.Message);
             }
             else
             {
@@ -188,13 +188,13 @@ namespace IqraInfrastructure.Managers.Business
             {
                 result.Code = "GetUserBusinessesByIds:1";
                 result.Message = "Null - Businesses not found for user: " + userEmail;
-                Log.Logger.Error("[BusinessManager] " + result.Message);
+                _logger.LogError("[BusinessManager] " + result.Message);
             }
             else if (businessesId.Count != getResult.Count)
             {
                 result.Code = "GetUserBusinessesByIds:2";
                 result.Message = "Not all bussiness found for user: " + userEmail;
-                Log.Logger.Error("[BusinessManager] " + result.Message);
+                _logger.LogError("[BusinessManager] " + result.Message);
             }
             else
             {
@@ -214,7 +214,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businessData == null)
             {
                 result.Code = "GetUserBusinessById:1";
-                Log.Logger.Error("[BusinessManager] Null - Business not found for user: " + userEmail);
+                _logger.LogError("[BusinessManager] Null - Business not found for user: " + userEmail);
             }
             else
             {
@@ -234,7 +234,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businessApp == null)
             {
                 result.Code = "GetUserBusinessAppById:1";
-                Log.Logger.Error("[BusinessManager] Null - Business app not found for user: " + userEmail);
+                _logger.LogError("[BusinessManager] Null - Business app not found for user: " + userEmail);
             }
             else
             {
@@ -254,7 +254,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businesses == null)
             {
                 result.Code = "GetBusinesses:1";
-                Log.Logger.Error("[BusinessManager] Null - Businesses not found");
+                _logger.LogError("[BusinessManager] Null - Businesses not found");
             }
             else
             {
@@ -274,7 +274,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businesses == null)
             {
                 result.Code = "SearchBusinesses:1";
-                Log.Logger.Error("[BusinessManager] Null - Search Businesses not found");
+                _logger.LogError("[BusinessManager] Null - Search Businesses not found");
             }
             else
             {

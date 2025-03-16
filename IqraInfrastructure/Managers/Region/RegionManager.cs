@@ -4,7 +4,6 @@ using IqraInfrastructure.Repositories.Region;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using Serilog;
 
 namespace IqraInfrastructure.Managers.Region
 {
@@ -29,7 +28,7 @@ namespace IqraInfrastructure.Managers.Region
             if (businesses == null)
             {
                 result.Code = "GetRegions:1";
-                Log.Logger.Error("[RegionManager] Null - Regions not found");
+                _logger.LogError("[RegionManager] Null - Regions not found");
             }
             else
             {
@@ -48,7 +47,7 @@ namespace IqraInfrastructure.Managers.Region
             if (businesses == null)
             {
                 result.Code = "GetRegions:1";
-                Log.Logger.Error("[RegionManager] Null - Regions not found");
+                _logger.LogError("[RegionManager] Null - Regions not found");
             }
             else
             {

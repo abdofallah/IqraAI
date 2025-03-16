@@ -6,19 +6,16 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
-using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Business
 {
     public class BusinessSettingsManager
     {
+        private readonly ILogger<BusinessSettingsManager> _logger;
+
         private readonly BusinessManager _parentBusinessManager;
 
         private readonly BusinessRepository _businessRepository;
@@ -29,8 +26,18 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly List<Task> _sslFailedRetryTasks = new List<Task>();
 
-        public BusinessSettingsManager(BusinessManager businessManager, BusinessRepository businessRepository, BusinessAppRepository businessAppRepository, BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository, BusinessLogoRepository businessLogoRepository, BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository)
+        public BusinessSettingsManager(
+            ILogger<BusinessSettingsManager> logger,
+            BusinessManager businessManager,
+            BusinessRepository businessRepository,
+            BusinessAppRepository businessAppRepository,
+            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
+            BusinessLogoRepository businessLogoRepository,
+            BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository
+        )
         {
+            _logger = logger;
+
             _parentBusinessManager = businessManager;
 
             _businessRepository = businessRepository;
@@ -208,7 +215,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businessWhiteLabelDomain == null)
             {
                 result.Code = "GetUserBusinessWhiteLabelDomainByIds:1";
-                Log.Logger.Error("[BusinessManager] Null - Business white label domains not found for user: " + email + " business id: " + businessId);
+                _logger.LogError("[BusinessManager] Null - Business white label domains not found for user: " + email + " business id: " + businessId);
             }
             else
             {
@@ -226,7 +233,7 @@ namespace IqraInfrastructure.Managers.Business
             if (businessWhiteLabelDomain == null)
             {
                 result.Code = "GetUserBusinessWhiteLabelDomain:1";
-                Log.Logger.Error("[BusinessManager] Null - Business white label domains not found for user: " + email + " business id: " + businessId);
+                _logger.LogError("[BusinessManager] Null - Business white label domains not found for user: " + email + " business id: " + businessId);
             }
             else
             {

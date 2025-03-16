@@ -299,7 +299,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessManager>((sp) =>
             {
                 return new BusinessManager(
-                    sp.GetRequiredService<ILogger<BusinessManager>>(),
+                    sp.GetRequiredService<ILoggerFactory>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),

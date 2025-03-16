@@ -4,7 +4,6 @@ using System.Text;
 using IqraCore.Entities.User;
 using UserData = IqraCore.Entities.User.UserData;
 using IqraCore.Entities.Helpers;
-using Serilog;
 using IqraInfrastructure.Repositories.User;
 using IqraCore.Models.Authentication;
 using Microsoft.Extensions.Logging;
@@ -187,7 +186,7 @@ namespace IqraInfrastructure.Managers.User
             if (users == null)
             {
                 result.Code = "GetUsersAsync:1";
-                Log.Logger.Error("[UserManager] Null - Users not found");
+                _logger.LogError("[UserManager] Null - Users not found");
             }
             else
             {
