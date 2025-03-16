@@ -6,7 +6,7 @@ namespace IqraInfrastructure.Repositories.Server
 {
     public class DistributedLock : IDisposable
     {
-        private readonly IRedisConnectionFactory _redisFactory;
+        private readonly RedisConnectionFactory _redisFactory;
         private readonly ILogger<DistributedLock> _logger;
         private readonly string _lockKey;
         private readonly string _lockValue;
@@ -17,7 +17,7 @@ namespace IqraInfrastructure.Repositories.Server
         public DistributedLock(
             string lockKey,
             TimeSpan expiry,
-            IRedisConnectionFactory redisFactory,
+            RedisConnectionFactory redisFactory,
             ILogger<DistributedLock> logger)
         {
             _lockKey = $"lock:{lockKey}";

@@ -272,7 +272,10 @@ namespace ProjectIqraFrontend
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
             {
-                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(appConfig["Integrations:EncryptionKey"]);
+                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["Integrations:EncryptionKey"]
+                );
                 return new IntegrationsManager(
                     sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),

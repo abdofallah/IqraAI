@@ -68,7 +68,7 @@ const brandingGlobalPhoneInput = brandingTab.find("#brandingGlobalPhoneInput");
 const brandingGlobalWebsiteInput = brandingTab.find("#brandingGlobalWebsiteInput");
 
 const addNewBrandInformationButton = contextTab.find("#addNewBrandInformation");
-const brandingBranchInformationList = contextTab.find("#brandingBranchInformationList");
+const brandingOtherInformationList = contextTab.find("#brandingOtherInformationList");
 
 // Branches
 // List Tab
@@ -308,7 +308,7 @@ function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
 
 		// Only check current elements if it's the selected language
 		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			brandingBranchInformationList.children().each((idx, element) => {
+			brandingOtherInformationList.children().each((idx, element) => {
 				const currentElement = $(element);
 				const key = currentElement.find('[data-type="key"]').val().trim();
 				const value = currentElement.find('[data-type="value"]').val().trim();
@@ -374,7 +374,7 @@ function validateContextBrandingAllMultilanguageElements() {
 
 		// Other Information validation - now language specific
 		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			brandingBranchInformationList.children().each((idx, element) => {
+			brandingOtherInformationList.children().each((idx, element) => {
 				const currentElement = $(element);
 				const key = currentElement.find('[data-type="key"]').val().trim();
 				const value = currentElement.find('[data-type="value"]').val().trim();
@@ -478,7 +478,7 @@ function ValidateContextBrandingTab(onlyRemove = true) {
 function updateBrandingOtherInformation(languageId) {
 	CurrentContextBrandingOtherInformationMultiLangData[languageId] = {};
 
-	brandingBranchInformationList.children().each((idx, element) => {
+	brandingOtherInformationList.children().each((idx, element) => {
 		const infoType = $(element).find("input").val().trim();
 		const infoValue = $(element).find("textarea").val().trim();
 
@@ -537,11 +537,22 @@ function CreateContextBrandingOtherInformationElement() {
 	return element;
 }
 
+function fillContextBrandOtherInformationForLanguage(language) {
+	brandingOtherInformationList.empty();
+	Object.entries(CurrentContextBrandingOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
+		const infoBox = $(CreateContextBrandingOtherInformationElement());
+		brandingOtherInformationList.append(infoBox);
+
+		infoBox.find('[data-type="key"]').val(key);
+		infoBox.find('[data-type="value"]').val(value);
+	});
+}
+
 function validateBrandingOtherInformationKeys() {
 	const seenKeys = new Set();
 	let hasDuplicates = false;
 
-	brandingBranchInformationList.children().each((idx, element) => {
+	brandingOtherInformationList.children().each((idx, element) => {
 		const currentElement = $(element);
 		const keyInput = currentElement.find('[data-type="key"]');
 		const key = keyInput.val().trim();
@@ -643,11 +654,13 @@ function ShowContextBranchesManagerTab() {
 		branchesManagerTabButtonHeader.removeClass("d-none");
 		branchesManageTabHeader.removeClass("d-none");
 		saveContextBranchesButton.removeClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.removeClass("d-none");
 		setTimeout(() => {
 			branchesManagerTab.addClass("show");
 			branchesManagerTabButtonHeader.addClass("show");
 			branchesManageTabHeader.addClass("show");
 			saveContextBranchesButton.addClass("show");
+            ContextTabMultiLanguageDropdown.$container.addClass("show");
 
 			setDynamicBodyHeight();
 		}, 10);
@@ -658,12 +671,14 @@ function ShowContextBranchesListTab() {
 	branchesManagerTab.removeClass("show");
 	branchesManagerTabButtonHeader.removeClass("show");
 	branchesManageTabHeader.removeClass("show");
-	saveContextBranchesButton.removeClass("d-none");
+	ContextTabMultiLanguageDropdown.$container.removeClass("show");
+	saveContextBranchesButton.removeClass("show");
 	setTimeout(() => {
 		branchesManagerTab.addClass("d-none");
 		branchesManagerTabButtonHeader.addClass("d-none");
 		branchesManageTabHeader.addClass("d-none");
 		saveContextBranchesButton.addClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.addClass("d-none");
 
 		branchesListTab.removeClass("d-none");
 		contextTabButtonHeader.removeClass("d-none");
@@ -1115,26 +1130,26 @@ function createContextBranchTeamElement(teamMember = null) {
                 <div class="d-flex flex-row gap-2 mb-2">
                     <div class="w-100">
                         <label class="form-label">Name</label>
-                        <input type="text" class="form-control" data-field="name" value="${teamMember?.name[BusinessDefaultLanguage] || ""}">
+                        <input type="text" class="form-control" data-field="name" value="${teamMember?.name[BusinessDefaultLanguage] || ""}" placeholder="Member Name">
                     </div>
                     <div class="w-100">
                         <label class="form-label">Role</label>
-                        <input type="text" class="form-control" data-field="role" value="${teamMember?.role[BusinessDefaultLanguage] || ""}">
+                        <input type="text" class="form-control" data-field="role" value="${teamMember?.role[BusinessDefaultLanguage] || ""}" placeholder="Member Role">
                     </div>
                 </div>
                 <div class="d-flex flex-row gap-2 mb-2">
                     <div class="w-100">
                         <label class="form-label">Email</label>
-                        <input type="email" class="form-control" data-field="email" value="${teamMember?.email[BusinessDefaultLanguage] || ""}">
+                        <input type="email" class="form-control" data-field="email" value="${teamMember?.email[BusinessDefaultLanguage] || ""}" placeholder="Member Email">
                     </div>
                     <div class="w-100">
                         <label class="form-label">Phone</label>
-                        <input type="tel" class="form-control" data-field="phone" value="${teamMember?.phone[BusinessDefaultLanguage] || ""}">
+                        <input type="tel" class="form-control" data-field="phone" value="${teamMember?.phone[BusinessDefaultLanguage] || ""}" placeholder="Member Phone">
                     </div>
                 </div>
                 <div class="mb-2">
                     <label class="form-label">Information</label>
-                    <textarea class="form-control" data-field="information" style="min-height: 70px">${teamMember?.information[BusinessDefaultLanguage] || ""}</textarea>
+                    <textarea class="form-control" data-field="information" style="min-height: 70px" placeholder="Member Information">${teamMember?.information[BusinessDefaultLanguage] || ""}</textarea>
                 </div>
                 <button class="btn btn-danger w-100" button-type="removeEditBranchTeam">
                     <i class="fa-regular fa-trash"></i>
@@ -1147,10 +1162,10 @@ function createContextBranchTeamElement(teamMember = null) {
 }
 
 function fillContextBranchOtherInformationForLanguage(language) {
-	brandingBranchInformationList.empty();
-	Object.entries(CurrentContextBrandingOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
+	contextBranchInformationList.empty();
+	Object.entries(CurrentContextBranchOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
 		const infoBox = $(CreateContextBrandingOtherInformationElement());
-		brandingBranchInformationList.append(infoBox);
+		contextBranchInformationList.append(infoBox);
 
 		infoBox.find('[data-type="key"]').val(key);
 		infoBox.find('[data-type="value"]').val(value);
@@ -1196,30 +1211,25 @@ function createContextBranchOtherInformationElement() {
 	return element;
 }
 
-function updateContextBranchTeamMembersData(languageId) {
-	const teamMembers = [];
+function createDefaultContextBranchTeamMemberObject() {
+	return {
+		name: {},
+		role: {},
+		email: {},
+		phone: {},
+		information: {},
+	};
+}
 
-	editBranchTeamInputsList.children().each((idx, element) => {
-		const memberElement = $(element);
-		const existingMember = CurrentContextBranchTeamMultiLangData[idx] || {
-			name: {},
-			role: {},
-			email: {},
-			phone: {},
-			information: {},
-		};
+function updateContextBranchTeamMembersData(languageId, index) {
+	var teamMemberData = CurrentContextBranchTeamMultiLangData[index];
+	var editBoxElement = $(editBranchTeamInputsList.children().get(index));
 
-		// Update current language data while preserving other languages
-		existingMember.name[languageId] = memberElement.find('[data-field="name"]').val();
-		existingMember.role[languageId] = memberElement.find('[data-field="role"]').val();
-		existingMember.email[languageId] = memberElement.find('[data-field="email"]').val();
-		existingMember.phone[languageId] = memberElement.find('[data-field="phone"]').val();
-		existingMember.information[languageId] = memberElement.find('[data-field="information"]').val();
-
-		teamMembers.push(existingMember);
-	});
-
-	CurrentContextBranchTeamMultiLangData = teamMembers;
+	teamMemberData.name[languageId] = editBoxElement.find('[data-field="name"]').val();
+	teamMemberData.role[languageId] = editBoxElement.find('[data-field="role"]').val();
+	teamMemberData.email[languageId] = editBoxElement.find('[data-field="email"]').val();
+	teamMemberData.phone[languageId] = editBoxElement.find('[data-field="phone"]').val();
+	teamMemberData.information[languageId] = editBoxElement.find('[data-field="information"]').val();
 }
 
 function createContextBranchWorkingHourElement() {
@@ -2088,7 +2098,7 @@ async function canLeaveContextProductsTab(leaveMessage = "") {
 
 function initContextTab() {
 	$(document).ready(() => {
-		ContextTabMultiLanguageDropdown = new MultiLanguageDropdown("contentTabMultiLanguageSelectContainer", BusinessFullLanguagesData);
+		ContextTabMultiLanguageDropdown = new MultiLanguageDropdown("contextTabMultiLanguageSelectContainer", BusinessFullLanguagesData);
 
 		DAYS.forEach((day) => {
 			editBranchOpeningHoursInputsList.append(`
@@ -2162,9 +2172,54 @@ function initContextTab() {
 			brandingGlobalContactInput.val(CurrentContextBrandingEmailMultiLangData[language.id] || "");
 			brandingGlobalPhoneInput.val(CurrentContextBrandingPhoneMultiLangData[language.id] || "");
 			brandingGlobalWebsiteInput.val(CurrentContextBrandingWebsiteMultiLangData[language.id] || "");
-			fillContextBranchOtherInformationForLanguage(language.id);
+			fillContextBrandOtherInformationForLanguage(language.id);
 
-			validateContextBrandingAllMultilanguageElements();
+			// Branches Tab
+			if (ManageContextBranchType != null) {
+				editBranchNameInput.val(CurrentContextBranchNameMultiLangData[language.id] || "");
+				editBranchAddressInput.val(CurrentContextBranchAddressMultiLangData[language.id] || "");
+				editBranchPhoneInput.val(CurrentContextBranchPhoneMultiLangData[language.id] || "");
+				editBranchEmailInput.val(CurrentContextBranchEmailMultiLangData[language.id] || "");
+                editBranchWebsiteInput.val(CurrentContextBranchWebsiteMultiLangData[language.id] || "");
+				fillContextBranchOtherInformationForLanguage(language.id);
+
+				editBranchTeamInputsList.children().each((index, teamElement) => {
+					var teamElementBox = $(teamElement);
+
+					var teamMemberData = CurrentContextBranchTeamMultiLangData[index];
+
+					teamElementBox.find('[data-field="name"]').val(teamMemberData.name[language.id]);
+					teamElementBox.find('[data-field="role"]').val(teamMemberData.role[language.id]);
+					teamElementBox.find('[data-field="email"]').val(teamMemberData.email[language.id]);
+					teamElementBox.find('[data-field="phone"]').val(teamMemberData.phone[language.id]);
+					teamElementBox.find('[data-field="information"]').val(teamMemberData.information[language.id]);
+				});
+			}
+
+            // Services Tab
+			if (ManageContextServiceType != null) {
+
+			}
+
+            // Products Tab
+			if (ManageContextProductType != null) {
+
+			}
+
+			// Validation
+			let activeTab = $("#context-inner-tab button.nav-link.active").attr("id");
+			if (activeTab === "context-inner-branding-tab") {
+				validateContextBrandingAllMultilanguageElements();
+			}
+			else if (activeTab === "context-inner-branches-tab") {
+				validateContextBranchAllMultilanguageElements();
+			}
+			else if (activeTab === "context-inner-services-tab") {
+				validateContextServiceAllMultilanguageElements();
+			}
+			else if (activeTab === "context-inner-products-tab") {
+				validateContextProductAllMultilanguageElements();
+			}
 		});
 
 		$("#context-inner-tab button.nav-link").on("show.bs.tab", (event) => {
@@ -2172,9 +2227,11 @@ function initContextTab() {
 
 			if (newTabId !== "context-inner-branding-tab") {
 				saveContextBrandingButton.removeClass("show");
+				ContextTabMultiLanguageDropdown.$container.removeClass("show");
 
 				setTimeout(() => {
 					saveContextBrandingButton.addClass("d-none");
+                    ContextTabMultiLanguageDropdown.$container.addClass("d-none");
 
 					setDynamicBodyHeight();
 				}, 300);
@@ -2182,9 +2239,11 @@ function initContextTab() {
 				validateContextBrandingAllMultilanguageElements();
 
 				saveContextBrandingButton.removeClass("d-none");
+                ContextTabMultiLanguageDropdown.$container.removeClass("d-none");
 
 				setTimeout(() => {
 					saveContextBrandingButton.addClass("show");
+                    ContextTabMultiLanguageDropdown.$container.addClass("show");
 
 					setDynamicBodyHeight();
 				}, 10);
@@ -2197,14 +2256,14 @@ function initContextTab() {
 			event.preventDefault();
 			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
-			brandingBranchInformationList.append($(CreateContextBrandingOtherInformationElement()));
+			brandingOtherInformationList.append($(CreateContextBrandingOtherInformationElement()));
 
 			updateBrandingOtherInformation(currentSelectedLanguage.id);
 			validateContextBrandingAllMultilanguageElements();
 			CheckContextBrandingTabHasChanges(true);
 		});
 
-		brandingBranchInformationList.on("click", '[button-type="brandingInformationRemove"]', (event) => {
+		brandingOtherInformationList.on("click", '[button-type="brandingInformationRemove"]', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
@@ -2240,7 +2299,7 @@ function initContextTab() {
 			}
 
 			// Update other information when those fields change
-			if ($(event.target).closest("#brandingBranchInformationList").length > 0) {
+			if ($(event.target).closest("#brandingOtherInformationList").length > 0) {
 				if (validateBrandingOtherInformationKeys()) {
 					updateBrandingOtherInformation(currentSelectedLanguage.id);
 				}
@@ -2326,6 +2385,8 @@ function initContextTab() {
 
 			ManageContextBranchType = "new";
 			CurrentContextBranchData = createDefaultContextBranchesObject();
+
+			validateContextBranchAllMultilanguageElements();
 		});
 
 		switchBackToBranchesTab.on("click", async (event) => {
@@ -2353,6 +2414,8 @@ function initContextTab() {
 			ShowContextBranchesManagerTab();
 
 			ManageContextBranchType = "edit";
+
+			validateContextBranchAllMultilanguageElements();
 		});
 
 		saveContextBranchesButton.on("click", async (event) => {
@@ -2551,12 +2614,19 @@ function initContextTab() {
 			event.preventDefault();
 
 			editBranchTeamInputsList.append($(createContextBranchTeamElement(null)));
+
+			CurrentContextBranchTeamMultiLangData.push(createDefaultContextBranchTeamMemberObject());
 		});
 
 		editBranchTeamInputsList.on("click", '[button-type="removeEditBranchTeam"]', (event) => {
 			event.stopPropagation();
 
-			$(event.currentTarget).parent().parent().remove();
+			const elementToRemove = $(event.currentTarget).closest(".editBranchTeamBox").parent();
+			const index = $(elementToRemove).index();
+
+			CurrentContextBranchTeamMultiLangData.splice(index, 1);
+			
+			elementToRemove.remove();
 		});
 
 		editBranchTeamInputsList.on("input change", "input, textarea", (event) => {
@@ -2564,7 +2634,10 @@ function initContextTab() {
 
 			const currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage();
 
-			updateContextBranchTeamMembersData(currentSelectedLanguage.id);
+			const elementParentBox = $(event.currentTarget).closest(".editBranchTeamBox").parent();
+			const index = $(elementParentBox).index();
+
+			updateContextBranchTeamMembersData(currentSelectedLanguage.id, index);
 
 			validateContextBranchAllMultilanguageElements();
 			CheckContextBranchTabHasChanges(true);

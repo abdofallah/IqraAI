@@ -7,13 +7,13 @@ namespace IqraInfrastructure.Repositories.Server
 {
     public class ServerLiveStatusChannelRepository
     {
-        private readonly IRedisConnectionFactory _redisFactory;
+        private readonly RedisConnectionFactory _redisFactory;
         private readonly ILogger<ServerLiveStatusChannelRepository> _logger;
 
         private readonly string _channelName = "server:status:updates";
         private readonly TimeSpan _statusExpiry = TimeSpan.FromMinutes(1);
 
-        public ServerLiveStatusChannelRepository(IRedisConnectionFactory redisFactory, ILogger<ServerLiveStatusChannelRepository> logger)
+        public ServerLiveStatusChannelRepository(RedisConnectionFactory redisFactory, ILogger<ServerLiveStatusChannelRepository> logger)
         {
             _redisFactory = redisFactory;
             _logger = logger;

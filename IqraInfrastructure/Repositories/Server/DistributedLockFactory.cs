@@ -5,11 +5,11 @@ namespace IqraInfrastructure.Repositories.Server
 {
     public class DistributedLockFactory
     {
-        private readonly IRedisConnectionFactory _redisFactory;
+        private readonly RedisConnectionFactory _redisFactory;
         private readonly ILoggerFactory _loggerFactory;
 
         public DistributedLockFactory(
-            IRedisConnectionFactory redisFactory,
+            RedisConnectionFactory redisFactory,
             ILoggerFactory loggerFactory)
         {
             _redisFactory = redisFactory;

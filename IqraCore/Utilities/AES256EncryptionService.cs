@@ -1,10 +1,13 @@
-﻿using System.Security.Cryptography;
+﻿using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace IqraCore.Utilities
 {
     public class AES256EncryptionService
     {
+        private ILogger<AES256EncryptionService> _logger;
+
         private readonly string _encryptionKey;
         private readonly byte[] _derivedKey;
         private const int KeySize = 32; // 256 bits
@@ -16,8 +19,10 @@ namespace IqraCore.Utilities
             0xE8, 0xF9, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB
         };
 
-        public AES256EncryptionService(string encryptionKey)
+        public AES256EncryptionService(ILogger<AES256EncryptionService> logger, string encryptionKey)
         {
+            _logger = logger;
+
             _encryptionKey = encryptionKey;
 
             using var pbkdf2 = new Rfc2898DeriveBytes(

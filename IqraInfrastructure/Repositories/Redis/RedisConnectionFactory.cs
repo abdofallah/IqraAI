@@ -3,21 +3,25 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Repositories.Redis
 {
-    public class RedisConnectionFactory : IRedisConnectionFactory
+    public class RedisConnectionFactory
     {
         private readonly object _lock = new object();
         private readonly string _connectionString;
         private readonly ILogger<RedisConnectionFactory> _logger;
         private ConnectionMultiplexer _connection;
         private bool _isConnected = false;
+        private int _defaultDatabase = -1;
 
         public RedisConnectionFactory(string connectionString, ILogger<RedisConnectionFactory> logger)
         {
             _connectionString = connectionString;
             _logger = logger;
+
+            // Init connection
+            GetConnection();
         }
 
-        public ConnectionMultiplexer GetConnection()
+        private ConnectionMultiplexer GetConnection()
         {
             if (_isConnected && _connection?.IsConnected == true)
                 return _connection;
@@ -47,6 +51,11 @@ namespace IqraInfrastructure.Repositories.Redis
                     var options = ConfigurationOptions.Parse(_connectionString);
                     options.AbortOnConnectFail = false;
 
+                    if (options.DefaultDatabase != null)
+                    {
+                        _defaultDatabase = options.DefaultDatabase.Value;
+                    }
+
                     _connection = ConnectionMultiplexer.Connect(options);
                     _connection.ConnectionFailed += OnConnectionFailed;
                     _connection.ConnectionRestored += OnConnectionRestored;
@@ -64,9 +73,9 @@ namespace IqraInfrastructure.Repositories.Redis
             }
         }
 
-        public IDatabase GetDatabase(int db = -1)
+        public IDatabase GetDatabase()
         {
-            return GetConnection().GetDatabase(db);
+            return GetConnection().GetDatabase(_defaultDatabase);
         }
 
         private void OnConnectionFailed(object sender, ConnectionFailedEventArgs args)
