@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.TTS;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
@@ -8,11 +9,15 @@ namespace IqraInfrastructure.Repositories.TTS
 {
     public class TTSProviderRepository
     {
+        private readonly ILogger<TTSProviderRepository> _logger;
+
         private readonly string CollectionName = "TTSProvider";
         private readonly IMongoCollection<TTSProviderData> _ttsProviderCollection;
 
-        public TTSProviderRepository(string connectionString, string databaseName)
+        public TTSProviderRepository(ILogger<TTSProviderRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase(databaseName);
             _ttsProviderCollection = database.GetCollection<TTSProviderData>(CollectionName);

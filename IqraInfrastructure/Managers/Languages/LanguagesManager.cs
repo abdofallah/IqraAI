@@ -2,15 +2,20 @@
 using IqraCore.Entities.Languages;
 using IqraInfrastructure.Repositories.Languages;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Languages
 {
     public class LanguagesManager
     {
+        private readonly ILogger<LanguagesManager> _logger;
+
         private readonly LanguagesRepository _languagesRepository;
-        public LanguagesManager(LanguagesRepository languagesRepository)
+        public LanguagesManager(ILogger<LanguagesManager> logger, LanguagesRepository languagesRepository)
         {
+            _logger = logger;
+
             _languagesRepository = languagesRepository;
         }
 

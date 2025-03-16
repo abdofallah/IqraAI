@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.App;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 
@@ -9,6 +10,8 @@ namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessDomainVestaCPRepository
     {  
+        private readonly ILogger<BusinessDomainVestaCPRepository> _logger;
+
         private string _hostname;
         private string _adminUsername;
         private string _businessesUsername;
@@ -29,6 +32,7 @@ namespace IqraInfrastructure.Repositories.Business
         private HttpClient _httpClient;
 
         public BusinessDomainVestaCPRepository(
+            ILogger<BusinessDomainVestaCPRepository> logger,
             string hostname,
             string adminUsername,
             string businessesUsername,
@@ -41,9 +45,7 @@ namespace IqraInfrastructure.Repositories.Business
             AppRepository appRepository
         )
         {
-            Console.ForegroundColor = ConsoleColor.DarkBlue;
-            Console.WriteLine("[BusinessDomainVestaCPRepository] Initializing...");
-            Console.ResetColor();
+            _logger = logger;
 
             _hostname = hostname;
             _adminUsername = adminUsername;
@@ -58,6 +60,8 @@ namespace IqraInfrastructure.Repositories.Business
             _proxyTemplateFTPPassword = proxyTemplateFTPPassword;
 
             _appRepository = appRepository;
+
+            _logger.LogInformation("[BusinessDomainVestaCPRepository] Initializing...");
 
             var httpClientHandler = new HttpClientHandler();
             httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
@@ -88,9 +92,7 @@ namespace IqraInfrastructure.Repositories.Business
                 throw new Exception(rebuildBusinessesResult.Message);
             }
 
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine("[BusinessDomainVestaCPRepository] Initialization Complete");
-            Console.ResetColor();
+            _logger.LogInformation("[BusinessDomainVestaCPRepository] Initialization Complete");
         }
 
         private async Task ValidateVestaCPAccounts()

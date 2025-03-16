@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business.WhiteLabelDomain;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -6,6 +7,8 @@ namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessWhiteLabelDomainRepository
     {
+        private readonly ILogger<BusinessWhiteLabelDomainRepository> _logger;
+
         private static readonly string CollectionName = "BusinessWhiteLabelDomain";
         private static readonly string CounterCollectionName = CollectionName + "Counter";
 
@@ -14,8 +17,10 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly IMongoCollection<BusinessWhiteLabelDomain> _businessWhiteLabelDomainCollection;
         private readonly IMongoCollection<BsonDocument> _businessWhiteLabelDomainCounterCollection;
 
-        public BusinessWhiteLabelDomainRepository(string connectionString, string databaseName)
+        public BusinessWhiteLabelDomainRepository(ILogger<BusinessWhiteLabelDomainRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessWhiteLabelDomainCollection = database.GetCollection<BusinessWhiteLabelDomain>(CollectionName);

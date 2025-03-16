@@ -5,11 +5,14 @@ namespace IqraInfrastructure.Repositories.User
 {
     public class UserSessionRepository
     {
-        private readonly IRedisConnectionFactory _redisFactory;
         private readonly ILogger<UserSessionRepository> _logger;
 
-        public UserSessionRepository(IRedisConnectionFactory redisFactory, ILogger<UserSessionRepository> logger)
+        private readonly IRedisConnectionFactory _redisFactory;     
+
+        public UserSessionRepository(ILogger<UserSessionRepository> logger, IRedisConnectionFactory redisFactory)
         {
+            _logger = logger;
+
             _redisFactory = redisFactory;
         }
 

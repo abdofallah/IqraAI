@@ -3,17 +3,21 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
 using IqraCore.Entities.Telephony.ModemTel;
-using System.Net.Http;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Telephony
 {
     public class ModemTelManager
     {
+        private readonly ILogger<ModemTelManager> _logger;
+
         private readonly IHttpClientFactory _httpClientFactory;      
         private readonly JsonSerializerOptions _jsonOptions;
 
-        public ModemTelManager(IHttpClientFactory httpClientFactory)
+        public ModemTelManager(ILogger<ModemTelManager> logger, IHttpClientFactory httpClientFactory)
         {
+            _logger = logger;
+
             _httpClientFactory = httpClientFactory;
 
             _jsonOptions = new JsonSerializerOptions

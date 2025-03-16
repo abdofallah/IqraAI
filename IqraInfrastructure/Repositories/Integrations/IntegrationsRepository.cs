@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Integrations;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -6,11 +7,15 @@ namespace IqraInfrastructure.Repositories.Integrations
 {
     public class IntegrationsRepository
     {
+        private readonly ILogger<IntegrationsRepository> _logger;
+
         private readonly string CollectionName = "Integrations";
         private readonly IMongoCollection<IntegrationData> _integrationsCollection;
 
-        public IntegrationsRepository(string connectionString, string databaseName)
+        public IntegrationsRepository(ILogger<IntegrationsRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _integrationsCollection = database.GetCollection<IntegrationData>(CollectionName);

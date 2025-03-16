@@ -4,12 +4,15 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Integrations;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Integrations
 {
     public class IntegrationsManager
     {
+        private readonly ILogger<IntegrationsManager> _logger;
+
         private readonly IntegrationsRepository _integrationsRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly IntegrationsLogoRepository _integrationsLogoRepository;
@@ -17,12 +20,15 @@ namespace IqraInfrastructure.Managers.Integrations
         private readonly AES256EncryptionService _integrationFieldEncryptionService;
 
         public IntegrationsManager(
+            ILogger<IntegrationsManager> logger,
             IntegrationsRepository integrationsRepository,
             BusinessAppRepository businessAppRepository,
             IntegrationsLogoRepository logoManager,
             AES256EncryptionService integrationFieldEncryptionService
         )
         {
+            _logger = logger;
+
             _integrationsRepository = integrationsRepository;
             _businessAppRepository = businessAppRepository;
             _integrationsLogoRepository = logoManager;

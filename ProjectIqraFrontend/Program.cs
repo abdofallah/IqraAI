@@ -94,6 +94,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<AppRepository>((sp) =>
             {
                 return new AppRepository(
+                    sp.GetRequiredService<ILogger<AppRepository>>(),
                     appConfig["AppDatabase:ConnectionString"],
                     appConfig["AppDatabase:DatabaseName"]
                 );
@@ -101,6 +102,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
             {
                 return new LanguagesRepository(
+                    sp.GetRequiredService<ILogger<LanguagesRepository>>(),
                     appConfig["LanguagesDatabase:ConnectionString"],
                     appConfig["LanguagesDatabase:DatabaseName"]
                 );
@@ -108,6 +110,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessRepository>((sp) =>
             {
                 return new BusinessRepository(
+                    sp.GetRequiredService<ILogger<BusinessRepository>>(),
                     appConfig["BusinessDatabase:ConnectionString"],
                     appConfig["BusinessDatabase:DatabaseName"]
                 );
@@ -115,12 +118,14 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessAppRepository>((sp) =>
             {
                 return new BusinessAppRepository(
+                    sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
                     appConfig["BusinessAppDatabase:ConnectionString"],
                     appConfig["BusinessAppDatabase:DatabaseName"]
                 );
             });
             builder.Services.AddSingleton<RegionRepository>((sp) => {
                 return new RegionRepository(
+                    sp.GetRequiredService<ILogger<RegionRepository>>(),
                     appConfig["AppDatabase:ConnectionString"],
                     appConfig["AppDatabase:DatabaseName"]
                 );
@@ -128,6 +133,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
             {
                 return new IntegrationsRepository(
+                    sp.GetRequiredService<ILogger<IntegrationsRepository>>(),
                     appConfig["IntegrationsDatabase:ConnectionString"],
                     appConfig["IntegrationsDatabase:DatabaseName"]
                 );
@@ -135,6 +141,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<IntegrationsLogoRepository>((sp) =>
             {
                 return new IntegrationsLogoRepository(
+                    sp.GetRequiredService<ILogger<IntegrationsLogoRepository>>(),
                     appConfig["IntegrationsLogoRepository:Endpoint"],
                     int.Parse(appConfig["IntegrationsLogoRepository:Port"]),
                     appConfig["IntegrationsLogoRepository:AccessKey"],
@@ -146,16 +153,17 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<UserSessionRepository>((sp) =>
             {
                 return new UserSessionRepository(
+                    sp.GetRequiredService<ILogger<UserSessionRepository>>(),
                     new RedisConnectionFactory(
                         appConfig["UserSessionDatabase:ConnectionString"],
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
-                    ),
-                    sp.GetRequiredService<ILogger<UserSessionRepository>>()
+                    )
                 );
             });
             builder.Services.AddSingleton<UserRepository>((sp) =>
             {
                 return new UserRepository(
+                    sp.GetRequiredService<ILogger<UserRepository>>(),
                     appConfig["UserDatabase:ConnectionString"],
                     appConfig["UserDatabase:DatabaseName"]
                 );
@@ -163,6 +171,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessLogoRepository>((sp) =>
             {
                 return new BusinessLogoRepository(
+                    sp.GetRequiredService<ILogger<BusinessLogoRepository>>(),
                     appConfig["BusinessLogoRepository:Endpoint"],
                     int.Parse(appConfig["BusinessLogoRepository:Port"]),
                     appConfig["BusinessLogoRepository:AccessKey"],
@@ -174,6 +183,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessWhiteLabelDomainRepository>((sp) =>
             {
                 return new BusinessWhiteLabelDomainRepository(
+                    sp.GetRequiredService<ILogger<BusinessWhiteLabelDomainRepository>>(),
                     appConfig["BusinessWhiteLabelDomainRepository:ConnectionString"],
                     appConfig["BusinessWhiteLabelDomainRepository:DatabaseName"]
                 );
@@ -181,6 +191,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessDomainVestaCPRepository>((sp) =>
             {
                 return new BusinessDomainVestaCPRepository(
+                    sp.GetRequiredService<ILogger<BusinessDomainVestaCPRepository>>(),
                     appConfig["BusinessDomainHostingRepository:Hostname"],
                     appConfig["BusinessDomainHostingRepository:AdminUsername"],
                     appConfig["BusinessDomainHostingRepository:BusinessesUsername"],
@@ -196,6 +207,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
             {
                 return new BusinessToolAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
                     appConfig["BusinessToolAudioRepository:Endpoint"],
                     int.Parse(appConfig["BusinessToolAudioRepository:Port"]),
                     appConfig["BusinessToolAudioRepository:AccessKey"],
@@ -207,6 +219,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
             {
                 return new BusinessAgentAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
                     appConfig["BusinessAgentAudioRepository:Endpoint"],
                     int.Parse(appConfig["BusinessAgentAudioRepository:Port"]),
                     appConfig["BusinessAgentAudioRepository:AccessKey"],
@@ -218,6 +231,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<LLMProviderRepository>((sp) =>
             {
                 return new LLMProviderRepository(
+                    sp.GetRequiredService<ILogger<LLMProviderRepository>>(),
                     appConfig["LLMProviderDatabase:ConnectionString"],
                     appConfig["LLMProviderDatabase:DatabaseName"]
                 );
@@ -225,6 +239,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<STTProviderRepository>((sp) =>
             {
                 return new STTProviderRepository(
+                    sp.GetRequiredService<ILogger<STTProviderRepository>>(),
                     appConfig["STTProviderDatabase:ConnectionString"],
                     appConfig["STTProviderDatabase:DatabaseName"]
                 );
@@ -232,6 +247,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<TTSProviderRepository>((sp) =>
             {
                 return new TTSProviderRepository(
+                    sp.GetRequiredService<ILogger<TTSProviderRepository>>(),
                     appConfig["TTSProviderDatabase:ConnectionString"],
                     appConfig["TTSProviderDatabase:DatabaseName"]
                 );
@@ -243,12 +259,14 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
             {
                 return new LanguagesManager(
+                    sp.GetRequiredService<ILogger<LanguagesManager>>(),
                     sp.GetRequiredService<LanguagesRepository>()
                 );
             });
             builder.Services.AddSingleton<RegionManager>((sp) =>
             {
                 return new RegionManager(
+                    sp.GetRequiredService<ILogger<RegionManager>>(),
                     sp.GetRequiredService<RegionRepository>()
                 );
             });
@@ -256,6 +274,7 @@ namespace ProjectIqraFrontend
             {
                 AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(appConfig["Integrations:EncryptionKey"]);
                 return new IntegrationsManager(
+                    sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<IntegrationsLogoRepository>(),
@@ -265,12 +284,14 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<ModemTelManager>((sp) =>
             {
                 return new ModemTelManager(
+                    sp.GetRequiredService<ILogger<ModemTelManager>>(),
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
             builder.Services.AddSingleton<UserManager>((sp) =>
             {
                 return new UserManager(
+                    sp.GetRequiredService<ILogger<UserManager>>(),
                     sp.GetRequiredService<UserSessionRepository>(),
                     sp.GetRequiredService<UserRepository>()
                 );
@@ -278,6 +299,7 @@ namespace ProjectIqraFrontend
             builder.Services.AddSingleton<BusinessManager>((sp) =>
             {
                 return new BusinessManager(
+                    sp.GetRequiredService<ILogger<BusinessManager>>(),
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),

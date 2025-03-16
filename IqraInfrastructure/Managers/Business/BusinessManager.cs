@@ -6,14 +6,16 @@ using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
-using Serilog;
 using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Business
 {
     public class BusinessManager
     {
+        private readonly ILogger<BusinessManager> _logger;
+
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
@@ -40,6 +42,7 @@ namespace IqraInfrastructure.Managers.Business
 
 
         public BusinessManager(
+            ILogger<BusinessManager> logger,
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
             BusinessLogoRepository businessLogoRepository,
@@ -51,6 +54,8 @@ namespace IqraInfrastructure.Managers.Business
             IntegrationsManager integrationsManager
         )
         {
+            _logger = logger;
+
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;

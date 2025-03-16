@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraInfrastructure.Repositories.Region;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 using Serilog;
@@ -9,9 +10,13 @@ namespace IqraInfrastructure.Managers.Region
 {
     public class RegionManager
     {
+        private readonly ILogger<RegionManager> _logger;
+
         private readonly RegionRepository _regionRepository;
-        public RegionManager(RegionRepository regionRepository)
+        public RegionManager(ILogger<RegionManager> logger, RegionRepository regionRepository)
         {
+            _logger = logger;
+
             _regionRepository = regionRepository;
         }
 

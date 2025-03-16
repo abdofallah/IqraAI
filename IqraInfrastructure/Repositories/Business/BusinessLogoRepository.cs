@@ -1,16 +1,21 @@
 ﻿using Minio;
 using CommunityToolkit.HighPerformance;
 using Minio.DataModel.Args;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessLogoRepository
     {
+        private readonly ILogger<BusinessLogoRepository> _logger;
+
         private IMinioClient MinioClient;
         public string BucketName;
 
-        public BusinessLogoRepository(string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
+        public BusinessLogoRepository(ILogger<BusinessLogoRepository> logger, string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
         {
+            _logger = logger;
+
             BucketName = bucketName;
 
             MinioClient = new MinioClient()

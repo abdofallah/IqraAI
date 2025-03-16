@@ -1,16 +1,20 @@
 ﻿using IqraCore.Entities.User;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories.User
 {
     public class UserRepository
     {
-        private readonly string CollectionName = "Users";
+        private readonly ILogger<UserRepository> _logger;
 
+        private readonly string CollectionName = "Users";
         private readonly IMongoCollection<UserData> _usersCollection;
 
-        public UserRepository(string connectionString, string databaseName)
+        public UserRepository(ILogger<UserRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _usersCollection = database.GetCollection<UserData>(CollectionName);

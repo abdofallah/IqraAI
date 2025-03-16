@@ -1,16 +1,21 @@
 ﻿using CommunityToolkit.HighPerformance;
 using Minio.DataModel.Args;
 using Minio;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessAgentAudioRepository
     {
+        private readonly ILogger<BusinessAgentAudioRepository> _logger;
+
         private IMinioClient MinioClient;
         public string BucketName;
 
-        public BusinessAgentAudioRepository(string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
+        public BusinessAgentAudioRepository(ILogger<BusinessAgentAudioRepository> logger, string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
         {
+            _logger = logger;
+
             BucketName = bucketName;
 
             MinioClient = new MinioClient()

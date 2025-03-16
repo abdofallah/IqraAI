@@ -1,16 +1,21 @@
 ﻿using IqraCore.Entities.Region;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories.Region
 {
     public class RegionRepository
     {
+        private readonly ILogger<RegionRepository> _logger;
+
         private readonly string CollectionName = "Regions";
 
         private readonly IMongoCollection<RegionData> _regionCollection;
 
-        public RegionRepository(string connectionString, string databaseName)
+        public RegionRepository(ILogger<RegionRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _regionCollection = database.GetCollection<RegionData>(CollectionName);

@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
@@ -8,6 +9,8 @@ namespace IqraInfrastructure.Repositories.Business
 {
     public class BusinessRepository
     {
+        private readonly ILogger<BusinessRepository> _logger;
+
         private static readonly string CollectionName = "Business";
         private static readonly string CounterCollectionName = CollectionName + "Counter";
 
@@ -16,8 +19,10 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly IMongoCollection<BusinessData> _businessCollection;
         private readonly IMongoCollection<BsonDocument> _businessCounterCollection;
 
-        public BusinessRepository(string connectionString, string databaseName)
+        public BusinessRepository(ILogger<BusinessRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);

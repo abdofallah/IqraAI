@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.HighPerformance;
+using Microsoft.Extensions.Logging;
 using Minio;
 using Minio.DataModel.Args;
 
@@ -6,11 +7,15 @@ namespace IqraInfrastructure.Repositories.Integrations
 {
     public class IntegrationsLogoRepository
     {
+        private readonly ILogger<IntegrationsLogoRepository> _logger;
+
         private IMinioClient MinioClient;
         public string BucketName;
 
-        public IntegrationsLogoRepository(string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
+        public IntegrationsLogoRepository(ILogger<IntegrationsLogoRepository> logger, string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
         {
+            _logger = logger;
+
             BucketName = bucketName;
 
             MinioClient = new MinioClient()

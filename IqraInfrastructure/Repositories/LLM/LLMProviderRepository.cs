@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
@@ -7,12 +8,16 @@ namespace IqraInfrastructure.Repositories.LLM
 {
     public class LLMProviderRepository
     {
+        private readonly ILogger<LLMProviderRepository> _logger;
+
         private readonly string CollectionName = "LLMProvider";
 
         private readonly IMongoCollection<LLMProviderData> _llmProviderCollection;
 
-        public LLMProviderRepository(string connectionString, string databaseName)
+        public LLMProviderRepository(ILogger<LLMProviderRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _llmProviderCollection = database.GetCollection<LLMProviderData>(CollectionName);

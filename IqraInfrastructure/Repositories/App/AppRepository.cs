@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.App.Configuration;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -7,12 +8,16 @@ namespace IqraInfrastructure.Repositories.App
 {
     public class AppRepository
     {
+        private readonly ILogger<AppRepository> _logger;
+
         private readonly string CollectionName = "AppConfiguration";
 
         private readonly IMongoCollection<BsonDocument> _applicationConfigurationCollection;
 
-        public AppRepository(string connectionString, string databaseName)
+        public AppRepository(ILogger<AppRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);

@@ -7,18 +7,23 @@ using IqraCore.Entities.Helpers;
 using Serilog;
 using IqraInfrastructure.Repositories.User;
 using IqraCore.Models.Authentication;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.User
 {
     public class UserManager
     {
+        private readonly ILogger<UserManager> _logger;
+
         private readonly UserSessionRepository _userSessionDatabase;
         private readonly UserRepository _userDatabase;
 
         private readonly int _sessionDurationHours = 24;
 
-        public UserManager(UserSessionRepository userSessionRepository, UserRepository userRepository)
+        public UserManager(ILogger<UserManager> logger, UserSessionRepository userSessionRepository, UserRepository userRepository)
         {
+            _logger = logger;
+
             _userDatabase = userRepository;
             _userSessionDatabase = userSessionRepository;
         }

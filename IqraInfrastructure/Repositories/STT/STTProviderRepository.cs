@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
@@ -8,11 +9,15 @@ namespace IqraInfrastructure.Repositories.STT
 {
     public class STTProviderRepository
     {
+        private readonly ILogger<STTProviderRepository> _logger;
+
         private readonly string CollectionName = "STTProvider";
         private readonly IMongoCollection<STTProviderData> _sttProviderCollection;
 
-        public STTProviderRepository(string connectionString, string databaseName)
+        public STTProviderRepository(ILogger<STTProviderRepository> logger, string connectionString, string databaseName)
         {
+            _logger = logger;
+
             IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _sttProviderCollection = database.GetCollection<STTProviderData>(CollectionName);
