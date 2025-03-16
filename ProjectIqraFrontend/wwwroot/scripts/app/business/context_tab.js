@@ -1,4 +1,4 @@
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]; // TODO get directly from server as specification
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]; // TODO get directly from server as specification (IqraCore.Entities.Helper.AllDaysOfWeekEnum)
 
 /** Dynamic Variables **/
 let ContextTabMultiLanguageDropdown = null;
@@ -300,25 +300,11 @@ function CheckContextBrandingTabHasChanges(enableDisableButton = true) {
 		}
 	});
 
-	// Other Information - now checked per language
+	// Other Information
 	changes.otherInformation = {};
 	BusinessFullData.businessData.languages.forEach((language) => {
-		const currentOtherInfo = {};
+		const currentOtherInfo = CurrentContextBrandingOtherInformationMultiLangData[language] || {};
 		const originalOtherInfo = CurrentContextBrandingData.otherInformation[language] || {};
-
-		// Only check current elements if it's the selected language
-		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			brandingOtherInformationList.children().each((idx, element) => {
-				const currentElement = $(element);
-				const key = currentElement.find('[data-type="key"]').val().trim();
-				const value = currentElement.find('[data-type="value"]').val().trim();
-				if (key) {
-					currentOtherInfo[key] = value;
-				}
-			});
-		} else {
-			Object.assign(currentOtherInfo, CurrentContextBrandingOtherInformationMultiLangData[language]);
-		}
 
 		if (JSON.stringify(originalOtherInfo) !== JSON.stringify(currentOtherInfo)) {
 			hasChanges = true;
@@ -507,15 +493,17 @@ function FillContextBrandingTab() {
 		});
 	});
 
+	var currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage().id;
+
 	// Fill default language values
-	brandingBrandNameInput.val(CurrentContextBrandingData.name[BusinessDefaultLanguage]);
-	brandingBrandCountryInput.val(CurrentContextBrandingData.country[BusinessDefaultLanguage]);
-	brandingGlobalContactInput.val(CurrentContextBrandingData.email[BusinessDefaultLanguage]);
-	brandingGlobalPhoneInput.val(CurrentContextBrandingData.phone[BusinessDefaultLanguage]);
-	brandingGlobalWebsiteInput.val(CurrentContextBrandingData.website[BusinessDefaultLanguage]);
+	brandingBrandNameInput.val(CurrentContextBrandingData.name[currentSelectedLanguage]);
+	brandingBrandCountryInput.val(CurrentContextBrandingData.country[currentSelectedLanguage]);
+	brandingGlobalContactInput.val(CurrentContextBrandingData.email[currentSelectedLanguage]);
+	brandingGlobalPhoneInput.val(CurrentContextBrandingData.phone[currentSelectedLanguage]);
+	brandingGlobalWebsiteInput.val(CurrentContextBrandingData.website[currentSelectedLanguage]);
 
 	// Fill other information for default language
-	fillContextBranchOtherInformationForLanguage(BusinessDefaultLanguage);
+	fillContextBrandOtherInformationForLanguage(currentSelectedLanguage);
 
 	validateContextBrandingAllMultilanguageElements();
 	saveContextBrandingButton.prop("disabled", true);
@@ -805,6 +793,7 @@ function CheckContextBranchTabHasChanges(enableDisableButton = true) {
 	checkWorkingHoursTab();
 
 	// Team changes
+	// TODO CHECK Individual and get rid of JSON.stringyfy
 	changes.team = CurrentContextBranchTeamMultiLangData;
 	if (JSON.stringify(CurrentContextBranchData.team) !== JSON.stringify(changes.team)) {
 		hasChanges = true;
@@ -847,15 +836,42 @@ function validateContextBranchAllMultilanguageElements() {
 		}
 
 		// Validate Other Information
-		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			contextBranchInformationList.children().each((idx, element) => {
-				const key = $(element).find("input").val().trim();
-				const value = $(element).find("textarea").val().trim();
-				if (!key || !value) {
+		if (!isAnyFieldIncomplete) {
+			var otherInformationLanguageElement = CurrentContextBranchOtherInformationMultiLangData[language];
+			if (!otherInformationLanguageElement) {
+				isAnyFieldIncomplete = true;
+			}
+			else {
+				Object.keys(otherInformationLanguageElement).forEach((key) => {
+					if (isAnyFieldIncomplete) return;
+					if (otherInformationLanguageElement[key].trim() === "") {
+						isAnyFieldIncomplete = true;
+					}
+				});
+			}
+		}
+
+		// Validate Teams Tab
+		if (!isAnyFieldIncomplete) {
+			CurrentContextBranchTeamMultiLangData.forEach((element) => {
+				if (isAnyFieldIncomplete) return;
+
+				if (
+					!element.name[language] || element.name[language].trim() === ""
+					||
+					!element.role[language] || element.role[language].trim() === ""
+					||
+					!element.email[language] || element.email[language].trim() === ""
+					||
+					!element.phone[language] || element.phone[language].trim() === ""
+					||
+					!element.information[language] || element.information[language].trim() === ""
+				) {
 					isAnyFieldIncomplete = true;
 				}
-			});
+			})
 		}
+		
 
 		// Update language status in dropdown
 		ContextTabMultiLanguageDropdown.setLanguageStatus(currentLanguage.id, isAnyFieldIncomplete ? "incomplete" : "complete");
@@ -973,46 +989,30 @@ function ValidateContextBranchTab(onlyRemove = true) {
 	}
 
 	// Validate Team Members
-	editBranchTeamInputsList.children().each((idx, teamElement) => {
-		const teamMember = $(teamElement);
+	CurrentContextBranchTeamMultiLangData.forEach((teamMember, index) => {
 		BusinessFullData.businessData.languages.forEach((language) => {
-			const nameInput = teamMember.find('[data-field="name"]');
-			const roleInput = teamMember.find('[data-field="role"]');
-			const emailInput = teamMember.find('[data-field="email"]');
-			const phoneInput = teamMember.find('[data-field="phone"]');
+			const nameInput = teamMember.name[language];
+			const roleInput = teamMember.role[language];
+			const emailInput = teamMember.email[language];
 
 			// Required fields validation
-			if (!nameInput.val().trim()) {
+			if (!nameInput || !nameInput.trim()) {
 				validated = false;
 				errors.push(`Team member name is required for language ${language}.`);
-				if (!onlyRemove) {
-					nameInput.addClass("is-invalid");
-				}
-			} else {
-				nameInput.removeClass("is-invalid");
 			}
 
-			if (!roleInput.val().trim()) {
+			if (!roleInput || !roleInput.trim()) {
 				validated = false;
 				errors.push(`Team member role is required for language ${language}.`);
-				if (!onlyRemove) {
-					roleInput.addClass("is-invalid");
-				}
-			} else {
-				roleInput.removeClass("is-invalid");
+				
 			}
 
 			// Email format validation if provided
-			if (emailInput.val().trim()) {
+			if (emailInput && emailInput.trim() !== "") {
 				const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-				if (!emailRegex.test(emailInput.val().trim())) {
+				if (!emailRegex.test(emailInput.trim())) {
 					validated = false;
-					errors.push(`Invalid email format for team member ${nameInput.val() || "unnamed"}.`);
-					if (!onlyRemove) {
-						emailInput.addClass("is-invalid");
-					}
-				} else {
-					emailInput.removeClass("is-invalid");
+					errors.push(`Invalid email format for team member ${nameInput || `at position ${index + 1}` } for language ${language}.`);
 				}
 			}
 		});
@@ -1023,6 +1023,17 @@ function ValidateContextBranchTab(onlyRemove = true) {
 		validated = false;
 		errors.push("Duplicate information types found. Please ensure all information types are unique.");
 	}
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		var otherInformation = CurrentContextBranchOtherInformationMultiLangData[language];
+
+		Object.keys(otherInformation).forEach((key) => {
+			if (otherInformation[key].trim().length === 0) {
+				validated = false;
+				errors.push(`Information value for ${key} is required for language ${language}.`);
+			}
+		});
+	});
 
 	return {
 		validated: validated,
@@ -1059,7 +1070,7 @@ function createDefaultContextBranchesObject() {
 	};
 
 	DAYS.forEach((day, index) => {
-		object.workingHours[day] = {
+		object.workingHours[index] = {
 			isClosed: false,
 			timings: [],
 		};
@@ -1089,11 +1100,14 @@ function fillContextBranchManager(branchData) {
 	});
 
 	// Fill form with default language values
-	editBranchNameInput.val(branchData.general.name[BusinessDefaultLanguage]);
-	editBranchAddressInput.val(branchData.general.address[BusinessDefaultLanguage]);
-	editBranchPhoneInput.val(branchData.general.phone[BusinessDefaultLanguage]);
-	editBranchEmailInput.val(branchData.general.email[BusinessDefaultLanguage]);
-	editBranchWebsiteInput.val(branchData.general.website[BusinessDefaultLanguage]);
+	var currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage().id;
+
+	editBranchNameInput.val(branchData.general.name[currentSelectedLanguage]);
+	editBranchAddressInput.val(branchData.general.address[currentSelectedLanguage]);
+	editBranchPhoneInput.val(branchData.general.phone[currentSelectedLanguage]);
+	editBranchEmailInput.val(branchData.general.email[currentSelectedLanguage]);
+	editBranchWebsiteInput.val(branchData.general.website[currentSelectedLanguage]);
+	fillContextBranchOtherInformationForLanguage(currentSelectedLanguage);
 
 	// Fill working hours
 	DAYS.forEach((day, index) => {
@@ -1114,7 +1128,7 @@ function fillContextBranchManager(branchData) {
 	// Fill team members
 	editBranchTeamInputsList.empty();
 	branchData.team.forEach((teamMember) => {
-		const teamMemberElement = createContextBranchTeamElement(teamMember);
+		const teamMemberElement = createContextBranchTeamElement(teamMember, currentSelectedLanguage);
 		editBranchTeamInputsList.append(teamMemberElement);
 		CurrentContextBranchTeamMultiLangData.push(JSON.parse(JSON.stringify(teamMember)));
 	});
@@ -1123,33 +1137,33 @@ function fillContextBranchManager(branchData) {
 	saveContextBranchesButton.prop("disabled", true);
 }
 
-function createContextBranchTeamElement(teamMember = null) {
+function createContextBranchTeamElement(teamMember = null, langauge = BusinessDefaultLanguage) {
 	const element = $(`
         <div class="col-12 col-md-6 mt-3">
             <div class="editBranchTeamBox">
                 <div class="d-flex flex-row gap-2 mb-2">
                     <div class="w-100">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-control" data-field="name" value="${teamMember?.name[BusinessDefaultLanguage] || ""}" placeholder="Member Name">
+                        <label class="form-label">Name <i class="fa-regular fa-language"></i></label>
+                        <input type="text" class="form-control" data-field="name" value="${teamMember?.name[langauge] || ""}" placeholder="Member Name">
                     </div>
                     <div class="w-100">
-                        <label class="form-label">Role</label>
-                        <input type="text" class="form-control" data-field="role" value="${teamMember?.role[BusinessDefaultLanguage] || ""}" placeholder="Member Role">
+                        <label class="form-label">Role <i class="fa-regular fa-language"></i></label>
+                        <input type="text" class="form-control" data-field="role" value="${teamMember?.role[langauge] || ""}" placeholder="Member Role">
                     </div>
                 </div>
                 <div class="d-flex flex-row gap-2 mb-2">
                     <div class="w-100">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" data-field="email" value="${teamMember?.email[BusinessDefaultLanguage] || ""}" placeholder="Member Email">
+                        <label class="form-label">Email <i class="fa-regular fa-language"></i></label>
+                        <input type="email" class="form-control" data-field="email" value="${teamMember?.email[langauge] || ""}" placeholder="Member Email">
                     </div>
                     <div class="w-100">
-                        <label class="form-label">Phone</label>
-                        <input type="tel" class="form-control" data-field="phone" value="${teamMember?.phone[BusinessDefaultLanguage] || ""}" placeholder="Member Phone">
+                        <label class="form-label">Phone <i class="fa-regular fa-language"></i></label>
+                        <input type="tel" class="form-control" data-field="phone" value="${teamMember?.phone[langauge] || ""}" placeholder="Member Phone">
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">Information</label>
-                    <textarea class="form-control" data-field="information" style="min-height: 70px" placeholder="Member Information">${teamMember?.information[BusinessDefaultLanguage] || ""}</textarea>
+                    <label class="form-label">Information <i class="fa-regular fa-language"></i></label>
+                    <textarea class="form-control" data-field="information" style="min-height: 70px" placeholder="Member Information">${teamMember?.information[langauge] || ""}</textarea>
                 </div>
                 <button class="btn btn-danger w-100" button-type="removeEditBranchTeam">
                     <i class="fa-regular fa-trash"></i>
@@ -1313,6 +1327,7 @@ function resetOrClearContextServiceManager() {
 function ShowContextServicesManagerTab() {
 	contextServicesListTab.removeClass("show");
 	contextTabButtonHeader.removeClass("show");
+	
 	setTimeout(() => {
 		contextServicesListTab.addClass("d-none");
 		contextTabButtonHeader.addClass("d-none");
@@ -1320,10 +1335,12 @@ function ShowContextServicesManagerTab() {
 		contextServicesManagerTab.removeClass("d-none");
 		servicesManageTabHeader.removeClass("d-none");
 		saveContextServicesButton.removeClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.removeClass("d-none");
 		setTimeout(() => {
 			contextServicesManagerTab.addClass("show");
 			servicesManageTabHeader.addClass("show");
 			saveContextServicesButton.addClass("show");
+			ContextTabMultiLanguageDropdown.$container.addClass("show");
 
 			setDynamicBodyHeight();
 		}, 10);
@@ -1333,11 +1350,13 @@ function ShowContextServicesManagerTab() {
 function ShowContextServicesListTab() {
 	contextServicesManagerTab.removeClass("show");
 	servicesManageTabHeader.removeClass("show");
-	saveContextServicesButton.removeClass("d-none");
+	saveContextServicesButton.removeClass("show");
+	ContextTabMultiLanguageDropdown.$container.removeClass("show");
 	setTimeout(() => {
 		contextServicesManagerTab.addClass("d-none");
 		servicesManageTabHeader.addClass("d-none");
 		saveContextServicesButton.addClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.addClass("d-none");
 
 		contextServicesListTab.removeClass("d-none");
 		contextTabButtonHeader.removeClass("d-none");
@@ -1415,10 +1434,13 @@ function fillContextServiceManager(serviceData) {
 		CurrentContextServiceOtherInformationMultiLangData[language] = serviceData.otherInformation[language] || {};
 	});
 
+	var currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage().id;
+
 	// Fill form with default language values
-	inputContextServiceName.val(serviceData.name[BusinessDefaultLanguage]);
-	inputContextServiceShortDescription.val(serviceData.shortDescription[BusinessDefaultLanguage]);
-	inputContextServiceFullDescription.val(serviceData.longDescription[BusinessDefaultLanguage]);
+	inputContextServiceName.val(serviceData.name[currentSelectedLanguage]);
+	inputContextServiceShortDescription.val(serviceData.shortDescription[currentSelectedLanguage]);
+	inputContextServiceFullDescription.val(serviceData.longDescription[currentSelectedLanguage]);
+	fillContextServiceOtherInformationForLanguage(currentSelectedLanguage);
 
 	// Fill branches list
 	linkedContextServiceBranchesList.empty();
@@ -1458,7 +1480,7 @@ function fillContextServiceManager(serviceData) {
 
 	// Fill other information
 	contextServiceInformationList.empty();
-	Object.entries(serviceData.otherInformation[BusinessDefaultLanguage] || {}).forEach(([key, value]) => {
+	Object.entries(serviceData.otherInformation[currentSelectedLanguage] || {}).forEach(([key, value]) => {
 		const infoElement = $(createContextServiceOtherInformationElement());
 		infoElement.find('[data-type="key"]').val(key);
 		infoElement.find('[data-type="value"]').val(value);
@@ -1490,14 +1512,19 @@ function validateContextServiceAllMultilanguageElements() {
 		}
 
 		// Validate Other Information
-		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			contextServiceInformationList.children().each((idx, element) => {
-				const key = $(element).find('[data-type="key"]').val().trim();
-				const value = $(element).find('[data-type="value"]').val().trim();
-				if (!key || !value) {
-					isAnyFieldIncomplete = true;
-				}
-			});
+		if (!isAnyFieldIncomplete) {
+			var otherInformationLanguageElement = CurrentContextServiceOtherInformationMultiLangData[language];
+			if (!otherInformationLanguageElement) {
+				isAnyFieldIncomplete = true;
+			}
+			else {
+				Object.keys(otherInformationLanguageElement).forEach((key) => {
+					if (isAnyFieldIncomplete) return;
+					if (otherInformationLanguageElement[key].trim() === "") {
+						isAnyFieldIncomplete = true;
+					}
+				});
+			}
 		}
 
 		// Update language status in dropdown
@@ -1549,6 +1576,17 @@ function ValidateContextServiceTab(onlyRemove = true) {
 		validated = false;
 		errors.push("Duplicate information types found. Please ensure all information types are unique.");
 	}
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		var otherInformation = CurrentContextServiceOtherInformationMultiLangData[language];
+
+		Object.keys(otherInformation).forEach((key) => {
+			if (otherInformation[key].trim().length === 0) {
+				validated = false;
+				errors.push(`Information value for ${key} is required for language ${language}.`);
+			}
+		});
+	});
 
 	return {
 		validated: validated,
@@ -1642,6 +1680,17 @@ function CheckContextServiceTabHasChanges(enableDisableButton = true) {
 		hasChanges: hasChanges,
 		changes: changes,
 	};
+}
+
+function fillContextServiceOtherInformationForLanguage(language) {
+	contextServiceInformationList.empty();
+	Object.entries(CurrentContextServiceOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
+		const infoBox = $(createContextServiceOtherInformationElement());
+		contextServiceInformationList.append(infoBox);
+
+		infoBox.find('[data-type="key"]').val(key);
+		infoBox.find('[data-type="value"]').val(value);
+	});
 }
 
 function updateContextServiceOtherInformation(languageId) {
@@ -1741,10 +1790,12 @@ function ShowContextProductsManagerTab() {
 		contextProductsManagerTab.removeClass("d-none");
 		productsManageTabHeader.removeClass("d-none");
 		saveContextProductsButton.removeClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.removeClass("d-none");
 		setTimeout(() => {
 			contextProductsManagerTab.addClass("show");
 			productsManageTabHeader.addClass("show");
 			saveContextProductsButton.addClass("show");
+			ContextTabMultiLanguageDropdown.$container.addClass("show");
 
 			setDynamicBodyHeight();
 		}, 10);
@@ -1754,11 +1805,14 @@ function ShowContextProductsManagerTab() {
 function ShowContextProductsListTab() {
 	contextProductsManagerTab.removeClass("show");
 	productsManageTabHeader.removeClass("show");
-	saveContextProductsButton.removeClass("d-none");
+	saveContextProductsButton.removeClass("show");
+	ContextTabMultiLanguageDropdown.$container.removeClass("show");
+
 	setTimeout(() => {
 		contextProductsManagerTab.addClass("d-none");
 		productsManageTabHeader.addClass("d-none");
 		saveContextProductsButton.addClass("d-none");
+		ContextTabMultiLanguageDropdown.$container.addClass("d-none");
 
 		contextProductsListTab.removeClass("d-none");
 		contextTabButtonHeader.removeClass("d-none");
@@ -1835,10 +1889,13 @@ function fillContextProductManager(productData) {
 		CurrentContextProductOtherInformationMultiLangData[language] = productData.otherInformation[language] || {};
 	});
 
+	var currentSelectedLanguage = ContextTabMultiLanguageDropdown.getSelectedLanguage().id;
+
 	// Fill form with default language values
 	inputContextProductName.val(productData.name[BusinessDefaultLanguage]);
 	inputContextProductShortDescription.val(productData.shortDescription[BusinessDefaultLanguage]);
 	inputContextProductFullDescription.val(productData.longDescription[BusinessDefaultLanguage]);
+	fillContextProductOtherInformationForLanguage(currentSelectedLanguage);
 
 	// Fill branches list
 	linkedContextProductBranchesList.empty();
@@ -1905,14 +1962,19 @@ function validateContextProductAllMultilanguageElements() {
 		}
 
 		// Validate Other Information
-		if (language === ContextTabMultiLanguageDropdown.getSelectedLanguage().id) {
-			contextProductInformationList.children().each((idx, element) => {
-				const key = $(element).find('[data-type="key"]').val().trim();
-				const value = $(element).find('[data-type="value"]').val().trim();
-				if (!key || !value) {
-					isAnyFieldIncomplete = true;
-				}
-			});
+		if (!isAnyFieldIncomplete) {
+			var otherInformationLanguageElement = CurrentContextProductOtherInformationMultiLangData[language];
+			if (!otherInformationLanguageElement) {
+				isAnyFieldIncomplete = true;
+			}
+			else {
+				Object.keys(otherInformationLanguageElement).forEach((key) => {
+					if (isAnyFieldIncomplete) return;
+					if (otherInformationLanguageElement[key].trim() === "") {
+						isAnyFieldIncomplete = true;
+					}
+				});
+			}
 		}
 
 		// Update language status in dropdown
@@ -1964,6 +2026,17 @@ function ValidateContextProductTab(onlyRemove = true) {
 		validated = false;
 		errors.push("Duplicate information types found. Please ensure all information types are unique.");
 	}
+
+	BusinessFullData.businessData.languages.forEach((language) => {
+		var otherInformation = CurrentContextProductOtherInformationMultiLangData[language];
+
+		Object.keys(otherInformation).forEach((key) => {
+			if (otherInformation[key].trim().length === 0) {
+				validated = false;
+				errors.push(`Information value for ${key} is required for language ${language}.`);
+			}
+		});
+	});
 
 	return {
 		validated: validated,
@@ -2047,6 +2120,17 @@ function CheckContextProductTabHasChanges(enableDisableButton = true) {
 		hasChanges: hasChanges,
 		changes: changes,
 	};
+}
+
+function fillContextProductOtherInformationForLanguage(language) {
+	contextProductInformationList.empty();
+	Object.entries(CurrentContextProductOtherInformationMultiLangData[language] || {}).forEach(([key, value]) => {
+		const infoBox = $(createContextProductOtherInformationElement());
+		contextProductInformationList.append(infoBox);
+
+		infoBox.find('[data-type="key"]').val(key);
+		infoBox.find('[data-type="value"]').val(value);
+	});
 }
 
 function updateContextProductOtherInformation(languageId) {
@@ -2198,12 +2282,18 @@ function initContextTab() {
 
             // Services Tab
 			if (ManageContextServiceType != null) {
-
+				inputContextServiceName.val(CurrentContextServiceNameMultiLangData[language.id] || "");
+				inputContextServiceShortDescription.val(CurrentContextServiceShortDescriptionMultiLangData[language.id] || "");
+				inputContextServiceFullDescription.val(CurrentContextServiceLongDescriptionMultiLangData[language.id] || "");
+				fillContextServiceOtherInformationForLanguage(language.id);
 			}
 
             // Products Tab
 			if (ManageContextProductType != null) {
-
+				inputContextProductName.val(CurrentContextProductNameMultiLangData[language.id] || "");
+				inputContextProductShortDescription.val(CurrentContextProductShortDescriptionMultiLangData[language.id] || "");
+                inputContextProductFullDescription.val(CurrentContextProductLongDescriptionMultiLangData[language.id] || "");
+				fillContextProductOtherInformationForLanguage(language.id);
 			}
 
 			// Validation
@@ -2211,13 +2301,13 @@ function initContextTab() {
 			if (activeTab === "context-inner-branding-tab") {
 				validateContextBrandingAllMultilanguageElements();
 			}
-			else if (activeTab === "context-inner-branches-tab") {
+			else if (ManageContextBranchType != null) {
 				validateContextBranchAllMultilanguageElements();
 			}
-			else if (activeTab === "context-inner-services-tab") {
+			else if (ManageContextServiceType != null) {
 				validateContextServiceAllMultilanguageElements();
 			}
-			else if (activeTab === "context-inner-products-tab") {
+			else if (ManageContextProductType != null) {
 				validateContextProductAllMultilanguageElements();
 			}
 		});
@@ -2616,6 +2706,9 @@ function initContextTab() {
 			editBranchTeamInputsList.append($(createContextBranchTeamElement(null)));
 
 			CurrentContextBranchTeamMultiLangData.push(createDefaultContextBranchTeamMemberObject());
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges();
 		});
 
 		editBranchTeamInputsList.on("click", '[button-type="removeEditBranchTeam"]', (event) => {
@@ -2627,6 +2720,9 @@ function initContextTab() {
 			CurrentContextBranchTeamMultiLangData.splice(index, 1);
 			
 			elementToRemove.remove();
+
+			validateContextBranchAllMultilanguageElements();
+			CheckContextBranchTabHasChanges();
 		});
 
 		editBranchTeamInputsList.on("input change", "input, textarea", (event) => {
@@ -2640,7 +2736,7 @@ function initContextTab() {
 			updateContextBranchTeamMembersData(currentSelectedLanguage.id, index);
 
 			validateContextBranchAllMultilanguageElements();
-			CheckContextBranchTabHasChanges(true);
+			CheckContextBranchTabHasChanges();
 		});
 
 		// TAB | Services

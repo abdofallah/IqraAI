@@ -11,7 +11,7 @@ namespace IqraCore.Entities.Business
         public BusinessAppContextBranchGeneral General { get; set; } = new BusinessAppContextBranchGeneral();
 
         [BsonDictionaryOptions(DictionaryRepresentation.Document)]
-        public DictionaryStringEnumValue<string, DayOfWeek, BusinessAppContextBranchWorkingHours> WorkingHours { get; set; } = new DictionaryStringEnumValue<string, DayOfWeek, BusinessAppContextBranchWorkingHours>();
+        public DictionaryStringEnumValue<string, AllDaysOfWeekEnum, BusinessAppContextBranchWorkingHours> WorkingHours { get; set; } = new DictionaryStringEnumValue<string, AllDaysOfWeekEnum, BusinessAppContextBranchWorkingHours>();
         public List<BusinessAppContextBranchTeam> Team { get; set; } = new List<BusinessAppContextBranchTeam>();
     }
 

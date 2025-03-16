@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
@@ -322,7 +323,7 @@ namespace IqraInfrastructure.Managers.Business
 
             foreach (var dayElement in workingHoursElement.EnumerateObject())
             {
-                if (!Enum.TryParse<DayOfWeek>(dayElement.Name, out var day))
+                if (!Enum.TryParse<AllDaysOfWeekEnum>(dayElement.Name, out var day))
                 {
                     result.Code = "AddOrUpdateUserBusinessContextBranch:8";
                     result.Message = $"Invalid day value: {dayElement.Name}";
