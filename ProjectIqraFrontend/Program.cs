@@ -30,12 +30,6 @@ namespace ProjectIqraFrontend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            /**
-             * 
-             * Services START
-             * 
-            **/
-
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient("ModemTelClient", client =>
@@ -62,12 +56,7 @@ namespace ProjectIqraFrontend
             // Managers
             SetupManagers(builder, appConfig);
 
-            /** 
-             * 
-             * Services END 
-             * 
-            **/
-
+            // JSON Middleware
             var customJSONMiddleware = new EndpointAwareJsonConverter();
             builder.Services
                 .AddControllersWithViews()
@@ -79,13 +68,19 @@ namespace ProjectIqraFrontend
                 });
 
             var app = builder.Build();
+
+            // Initalize All Singleton Services
             InitializeAllSingletonServices(app.Services);
 
+            // Assign the HttpContextAccessor to JSON Middleware
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
             app.UseStaticFiles();
             app.UseRouting();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.MapControllerRoute(
                 name: "default",

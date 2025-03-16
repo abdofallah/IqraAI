@@ -65,8 +65,8 @@ const HTTPStatusCodeList = [
 
 require.config({
 	paths: {
-		vs: "/libs/monaco-editor-0.48.0/package/min/vs",
-		esprima: "/libs/esprima-4.0.1/dist/esprima.js",
+		vs: "/libs/monaco-editor-0.48.0-dist/package/min/vs",
+		esprima: "/libs/esprima-4.0.1-dist/esprima.js",
 	},
 });
 
