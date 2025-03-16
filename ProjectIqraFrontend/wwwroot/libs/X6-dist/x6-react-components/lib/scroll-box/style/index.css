@@ -1,0 +1,40 @@
+.x6-scrollbar {
+  position: absolute;
+  overflow: hidden;
+  background-color: #e9e9e9;
+  outline: none;
+}
+.x6-scrollbar-thumb {
+  background-color: #333;
+}
+.x6-scrollbar-vertical {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.x6-scrollbar-vertical .x6-scrollbar-thumb {
+  width: 100%;
+}
+.x6-scrollbar-horizontal {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+.x6-scrollbar-horizontal .x6-scrollbar-thumb {
+  height: 100%;
+}
+.x6-scroll-box {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.x6-scroll-box.x6-scroll-box-auto-hide > .x6-scrollbar {
+  opacity: 0;
+  transition: opacity 3.5s cubic-bezier(0.3, 1.2, 0.2, 1);
+}
+.x6-scroll-box.x6-scroll-box-auto-hide:hover > .x6-scrollbar {
+  opacity: 1;
+  transition: opacity 0.8s cubic-bezier(0.3, 1.2, 0.2, 1);
+}

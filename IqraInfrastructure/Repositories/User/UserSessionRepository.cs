@@ -11,7 +11,6 @@ namespace IqraInfrastructure.Repositories.User
         public UserSessionRepository(IRedisConnectionFactory redisFactory, ILogger<UserSessionRepository> logger)
         {
             _redisFactory = redisFactory;
-            _logger = logger;
         }
 
         public async Task<bool> CreateSession(string userId, string sessionId, string authenticationKey, int expireHours)

@@ -3,24 +3,25 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
 using IqraCore.Entities.Telephony.ModemTel;
+using System.Net.Http;
 
 namespace IqraInfrastructure.Managers.Telephony
 {
     public class ModemTelManager
     {
-        private IHttpClientFactory _httpClientFactory;      
+        private readonly IHttpClientFactory _httpClientFactory;      
         private readonly JsonSerializerOptions _jsonOptions;
 
-        public ModemTelManager()
+        public ModemTelManager(IHttpClientFactory httpClientFactory)
         {
+            _httpClientFactory = httpClientFactory;
+
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             };
         }
-
-        public void SetHttpClientFactory(IHttpClientFactory httpClientFactory) => _httpClientFactory = httpClientFactory;
 
         private HttpClient CreateConfiguredHttpClient(string apiKey)
         {

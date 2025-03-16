@@ -30,9 +30,11 @@ namespace IqraInfrastructure.Managers.STT
 
             _sttProviderRepository = sttProviderRepository;
             _integrationsManager = integrationsManager;
+
+            InitializeProvidersAsync().Wait();
         }
 
-        public async Task InitializeProvidersAsync()
+        private async Task InitializeProvidersAsync()
         {
             foreach (InterfaceSTTProviderEnum providerEnum in Enum.GetValues(typeof(InterfaceSTTProviderEnum)))
             {

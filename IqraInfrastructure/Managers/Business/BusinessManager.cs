@@ -1,17 +1,12 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Business.WhiteLabelDomain;
-using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Integrations;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
-using MongoDB.Driver;
 using Serilog;
-using System.Net;
 using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
 

@@ -33,9 +33,11 @@ namespace IqraInfrastructure.Managers.LLM
             _llmProviderRepository = llmProviderRepository;
             _languagesManager = languagesManager;
             _integrationsManager = integrationsManager;
+
+            InitializeProvidersAsync().Wait();
         }
 
-        public async Task InitializeProvidersAsync()
+        private async Task InitializeProvidersAsync()
         {
             foreach (InterfaceLLMProviderEnum providerEnum in Enum.GetValues(typeof(InterfaceLLMProviderEnum)))
             {

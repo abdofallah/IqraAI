@@ -1,8 +1,0 @@
-*.git
-.git
-node_modules
-test
-.gitignore
-.npmrc
-npm-debug.log
-.npmignore

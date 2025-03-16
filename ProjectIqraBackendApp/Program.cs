@@ -103,12 +103,12 @@ namespace ProjectIqraBackendApp
             {
                 var config = builder.Configuration.GetSection("Storage:Minio");
                 return new ConversationAudioRepository(
-                    config["Endpoint"] ?? "localhost",
-                    int.Parse(config["Port"] ?? "9000"),
-                    config["AccessKey"] ?? "minioadmin",
-                    config["SecretKey"] ?? "minioadmin",
-                    config["BucketName"] ?? "conversation-audio",
-                    bool.Parse(config["UseSSL"] ?? "false"),
+                    config["Endpoint"],
+                    int.Parse(config["Port"]),
+                    config["AccessKey"],
+                    config["SecretKey"],
+                    config["BucketName"],
+                    bool.Parse(config["UseSSL"]),
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>()
                 );
             });

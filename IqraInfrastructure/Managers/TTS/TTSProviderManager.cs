@@ -29,9 +29,11 @@ namespace IqraInfrastructure.Managers.TTS
 
             _ttsProviderRepository = ttsProviderRepository;
             _integrationsManager = integrationsManager;
+
+            InitializeProvidersAsync().Wait();
         }
 
-        public async Task InitializeProvidersAsync()
+        private async Task InitializeProvidersAsync()
         {
             foreach (InterfaceTTSProviderEnum providerEnum in Enum.GetValues(typeof(InterfaceTTSProviderEnum)))
             {
