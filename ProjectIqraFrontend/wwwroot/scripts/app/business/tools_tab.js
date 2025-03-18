@@ -637,6 +637,24 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 				const formKeyValData = {};
 				const formKeyValElements = toolBodyKeyValueViewList.children();
 
+				formKeyValElements.each((idx, element) => {
+					const currentElement = $(element);
+
+					const keyInput = currentElement.find('[data-type="key"]');
+					const valueInput = currentElement.find('[data-type="value"]');
+
+					const key = keyInput.val().trim();
+					const value = valueInput.val().trim();
+
+					formKeyValData[key] = value;
+
+					if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
+						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.configuration.bodyData[key] !== value) {
+							hasChanges = true;
+						}
+					}
+				});
+
 				if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
 					const currentFormKeyValCount = formKeyValElements.length;
 					const originalFormKeyValCount = Object.keys(CurrentManageToolData.configuration.bodyData).length;
@@ -650,24 +668,6 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 						}
 					});
 				}
-
-				formKeyValElements.each((idx, element) => {
-					const currentElement = $(element);
-
-					const keyInput = currentElement.find('[data-type="key"]');
-					const valueInput = currentElement.find('[data-type="value"]');
-
-					const key = keyInput.val().trim();
-					const value = valueInput.val().trim();
-
-					formKeyValData[key] = value;
-
-					if (CurrentManageToolData.configuration.bodyType.value === 1 || CurrentManageToolData.configuration.bodyType.value === 2) {
-						if (!CurrentManageToolData.configuration.bodyData.hasOwnProperty(key) || CurrentManageToolData.bodyData[key] !== value) {
-							hasChanges = true;
-						}
-					}
-				});
 
 				changes.configuration.bodyData = formKeyValData;
 			}
@@ -714,18 +714,18 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 					if (previousData.hasStaticResponse !== response[statusType].hasStaticResponse) {
 						hasChanges = true;
 					}
-				}
 
-				if (response[statusType].hasStaticResponse) {
-					BusinessFullData.businessData.languages.forEach((language) => {
-						const value = CurrentManageToolResponseStaticResponse[statusType][language];
-						response[statusType].staticResponse[language] = value;
+					if (response[statusType].hasStaticResponse && previousData.hasStaticResponse) {
+						BusinessFullData.businessData.languages.forEach((language) => {
+							const value = CurrentManageToolResponseStaticResponse[statusType][language];
+							response[statusType].staticResponse[language] = value;
 
-						if (previousData && previousData.staticResponse[language] !== value) {
-							hasChanges = true;
-						}
-					});
-				}
+							if (previousData && previousData.staticResponse[language] !== value) {
+								hasChanges = true;
+							}
+						});
+					}
+				}		
 			});
 
 			return response;
@@ -1127,9 +1127,9 @@ function FillToolsManageTab(toolData) {
 			if (editor) {
 				editor.setValue(responseData.javascript);
 
-				toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked", responseData.hasStaticResponse).change();
+				if (responseData.hasStaticResponse && responseData.staticResponse != null) {
+					toolManagerTab.find(`input[input-type="toolResponseStatusSpeakStaticResponseCheck"][status-type="${statusType}"]`).prop("checked", responseData.hasStaticResponse).change();
 
-				if (responseData.hasStaticResponse && responseData.staticResponse) {
 					CurrentManageToolResponseStaticResponse[statusType] = responseData.staticResponse;
 
 					toolManagerTab

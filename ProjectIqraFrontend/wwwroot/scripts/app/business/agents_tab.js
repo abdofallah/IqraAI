@@ -1108,15 +1108,14 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 function fillIntegrationsFromAgentData() {
 	// Fill integrations for each language from agent data
 	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentIntegrationsSTT[language] = CurrentManageAgentData.integrations.stt[language];
-		fillAgentIntegrationsList("STT");
-
-		CurrentAgentIntegrationsLLM[language] = CurrentManageAgentData.integrations.llm[language];
-		fillAgentIntegrationsList("LLM");
-
-		CurrentAgentIntegrationsTTS[language] = CurrentManageAgentData.integrations.tts[language];
-		fillAgentIntegrationsList("TTS");
+		CurrentAgentIntegrationsSTT[language] = [ ...CurrentManageAgentData.integrations.stt[language] ];
+		CurrentAgentIntegrationsLLM[language] = [ ...CurrentManageAgentData.integrations.llm[language] ];
+		CurrentAgentIntegrationsTTS[language] = [ ...CurrentManageAgentData.integrations.tts[language] ];
 	});
+
+	fillAgentIntegrationsList("STT");
+	fillAgentIntegrationsList("LLM");
+	fillAgentIntegrationsList("TTS");
 }
 
 function createIntegrationSelectElement(type, index) {
@@ -1365,7 +1364,7 @@ function loadAgentIntegrationConfiguration(integrationId, integrationType) {
 
 	if (!currentArray) return;
 
-	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id];
+	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id] ?? [];
 
 	const existingConfig = currentLanguageArray.find((i) => i && i.id === integrationId);
 	if (existingConfig?.fieldValues) {
@@ -1407,10 +1406,10 @@ function validateAgentIntegrationConfiguration(integration, type, languageName, 
 
 	const integrationTypeConfiguration =
 		type === "LLM"
-			? CurrentAgentIntegrationsLLM[languageName].find((i) => i && i.id === integration)
+			? (CurrentAgentIntegrationsLLM[languageName] ?? []).find((i) => i && i.id === integration)
 			: type === "STT"
-				? CurrentAgentIntegrationsSTT[languageName].find((i) => i && i.id === integration)
-				: CurrentAgentIntegrationsTTS[languageName].find((i) => i && i.id === integration);
+				? (CurrentAgentIntegrationsSTT[languageName] ?? []).find((i) => i && i.id === integration)
+				: (CurrentAgentIntegrationsTTS[languageName] ?? []).find((i) => i && i.id === integration);
 
 	provider.userIntegrationFields.forEach((field) => {
 		const lowerCaseFieldId = String(field.id[0]).toLowerCase() + String(field.id).slice(1);
@@ -1793,6 +1792,10 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 	}
 	if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0) {
 		changes.backgroundAudioUrl = CurrentManageAgentData.settings.backgroundAudioUrl;
+	}
+
+	if (backgroundAudioType === "none") {
+		changes.backgroundAudioUrl = null;
 	}
 
 	// Background Audio Volume
@@ -4411,8 +4414,8 @@ function initAgentTab() {
 				const value = currentElement.val();
 				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
 
-				const currentArray =
-					type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage];
+				var currentArray =
+					(type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage]) ?? [];
 
 				if (value) {
 					const alreadyExists = currentArray.some((i) => i.id === value);
@@ -4451,6 +4454,7 @@ function initAgentTab() {
 				}
 
 				CheckAgentTabHasChanges();
+				validateAgentMultiLanguageElements();
 			});
 
 			// Save configuration
@@ -4494,11 +4498,11 @@ function initAgentTab() {
 				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
 
 				const currentIntegrationConfiguration =
-					CurrentAgentConfigurationType === "STT"
+					(CurrentAgentConfigurationType === "STT"
 						? CurrentAgentIntegrationsSTT[currentLanguage]
 						: CurrentAgentConfigurationType === "LLM"
 							? CurrentAgentIntegrationsLLM[currentLanguage]
-							: CurrentAgentIntegrationsTTS[currentLanguage];
+							: CurrentAgentIntegrationsTTS[currentLanguage]) ?? [];
 				currentIntegrationConfiguration.find((i) => i.id === CurrentAgentConfigurationIntegration).fieldValues = changes.changes;
 
 				validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, true);
@@ -5626,6 +5630,10 @@ function initAgentTab() {
 						}
 
 						agentsListTable.prepend($(CreateAgentsTableElement(CurrentManageAgentData)));
+					}
+
+					if (agentBackgroundAudioUploadInput[0].files.length > 0) {
+						agentBackgroundAudioUploadInput.val("");
 					}
 
 					confirmPublishAgentButton.prop("disabled", true);

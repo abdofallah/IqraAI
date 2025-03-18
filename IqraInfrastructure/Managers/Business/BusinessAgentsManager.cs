@@ -291,7 +291,7 @@ namespace IqraInfrastructure.Managers.Business
             else
             {
                 // STT Integration
-                if (integrationsTabElement.TryGetProperty("STT", out var sttElement))
+                if (integrationsTabElement.TryGetProperty("stt", out var sttElement))
                 {
                     foreach (var businessLanguage in businessLanguages)
                     {
@@ -325,7 +325,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // LLM Integration
-                if (integrationsTabElement.TryGetProperty("LLM", out var llmElement))
+                if (integrationsTabElement.TryGetProperty("llm", out var llmElement))
                 {
                     foreach (var businessLanguage in businessLanguages)
                     {
@@ -359,7 +359,7 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 // TTS Integration
-                if (integrationsTabElement.TryGetProperty("TTS", out var ttsElement))
+                if (integrationsTabElement.TryGetProperty("tts", out var ttsElement))
                 {
                     foreach (var businessLanguage in businessLanguages)
                     {
