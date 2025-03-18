@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.Server
                 Type = ServerTypeEnum.Backend,
                 LastUpdated = DateTime.UtcNow,
                 MaintenanceMode = false,
-                MaxConcurrentCallsCount = _serverConfig.MaxConcurrentCalls,
+                MaxConcurrentCallsCount = _serverConfig.ExpectedMaxConcurrentCalls,
                 CurrentActiveCallsCount = 0,
                 QueuedCallsCount = 0
             };

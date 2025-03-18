@@ -31,18 +31,6 @@ namespace ProjectIqraFrontend
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddHttpClient();
-            builder.Services.AddHttpClient("ModemTelClient", client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(30);
-            });
-            builder.Services.AddHttpClient("TwilioClient", client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(30);
-                client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
-            });
-
             // Configuration
             var appConfig = builder.Configuration;
             builder.Services.AddSingleton<ViewLinkConfiguration>((sp) =>
@@ -61,6 +49,19 @@ namespace ProjectIqraFrontend
 
             // Managers
             SetupManagers(builder, appConfig);
+
+            // HTTP Client
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("ModemTelClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddHttpClient("TwilioClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
+            });
 
             // JSON Middleware
             var customJSONMiddleware = new EndpointAwareJsonConverter();

@@ -4,6 +4,6 @@
     {
         public string ServerId { get; set; } = string.Empty;
         public string RegionId { get; set; } = string.Empty;
-        public int MaxConcurrentCalls { get; set; } = 50;
+        public int ExpectedMaxConcurrentCalls { get; set; } = 50;
     }
 }

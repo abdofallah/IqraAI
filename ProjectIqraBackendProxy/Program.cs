@@ -23,7 +23,16 @@ namespace ProjectIqraBackendProxy
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddHttpContextAccessor();
+            // Configuration
+            var appConfig = builder.Configuration;
+
+            // Repositories
+            SetupRepositories(builder, appConfig);
+
+            // Managers
+            SetupManagers(builder, appConfig);
+
+            // HTTP Client
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
@@ -34,15 +43,6 @@ namespace ProjectIqraBackendProxy
                 client.Timeout = TimeSpan.FromSeconds(30);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
-
-            // Configuration
-            var appConfig = builder.Configuration;
-
-            // Repositories
-            SetupRepositories(builder, appConfig);
-
-            // Managers
-            SetupManagers(builder, appConfig);
 
             // Add services to the container
             builder.Services.AddControllers();
