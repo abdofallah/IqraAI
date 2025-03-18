@@ -1,3 +1,4 @@
+using IqraCore.Entities.Configuration;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -5,11 +6,14 @@ using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
+using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Serilog;
+using System.Reflection;
 
 namespace ProjectIqraBackendProxy
 {
@@ -19,71 +23,32 @@ namespace ProjectIqraBackendProxy
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Configure Serilog
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(builder.Configuration)
-                .Enrich.FromLogContext()
-                .CreateLogger();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("ModemTelClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddHttpClient("TwilioClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
+            });
 
-            builder.Host.UseSerilog();
+            // Configuration
+            var appConfig = builder.Configuration;
+
+            // Repositories
+            SetupRepositories(builder, appConfig);
+
+            // Managers
+            SetupManagers(builder, appConfig);
 
             // Add services to the container
             builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
             // Add health checks
             builder.Services.AddHealthChecks();
-
-            // Add health checks
-            builder.Services.AddHealthChecks();
-
-            // Add HttpClient
-            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
-            builder.Services.AddHttpClient();
-
-            // Redis connection
-            builder.Services.AddSingleton<IRedisConnectionFactory>(sp =>
-            {
-                var connectionString = builder.Configuration.GetConnectionString("Redis");
-                var logger = sp.GetRequiredService<ILogger<RedisConnectionFactory>>();
-                return new RedisConnectionFactory(connectionString, logger);
-            });
-
-            // Server status tracking
-            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>();
-            builder.Services.AddSingleton<DistributedLockFactory>();
-
-            // MongoDB repositories
-            builder.Services.AddSingleton<CallQueueRepository>(sp =>
-            {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                var logger = sp.GetRequiredService<ILogger<CallQueueRepository>>();
-                return new CallQueueRepository(connectionString, databaseName, logger);
-            });
-            builder.Services.AddSingleton<ServerStatusRepository>(sp =>
-            {
-                var connectionString = builder.Configuration.GetConnectionString("MongoDB");
-                var databaseName = builder.Configuration["MongoDB:DatabaseName"];
-                var logger = sp.GetRequiredService<ILogger<ServerStatusRepository>>();
-                return new ServerStatusRepository(connectionString, databaseName, logger);
-            });
-
-            // Telephony Providers
-            builder.Services.AddSingleton<ModemTelManager>();
-            builder.Services.AddSingleton<TwilioManager>();
-
-            // Manager services
-            // TODO THEIR DATABASES ARE NOT INITALIZED
-            builder.Services.AddSingleton<BusinessManager>();
-            builder.Services.AddSingleton<RegionManager>();
-            builder.Services.AddSingleton<IntegrationsManager>();
-
-            // Application services
-            builder.Services.AddSingleton<ServerSelectionManager>();
-            builder.Services.AddSingleton<InboundCallManager>();
-            builder.Services.AddSingleton<OutboundCallManager>(); 
 
             // Configure CORS
             builder.Services.AddCors(options =>
@@ -97,14 +62,9 @@ namespace ProjectIqraBackendProxy
 
             var app = builder.Build();
 
-            // Configure middleware pipeline
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            // Initalize All Singleton Services
+            InitializeAllSingletonServices(app.Services);
 
-            app.UseSerilogRequestLogging();
             app.UseCors("AllowedOrigins");
 
             app.UseAuthentication();
@@ -117,6 +77,203 @@ namespace ProjectIqraBackendProxy
             });
 
             app.Run();
+        }
+
+        private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
+        {
+            builder.Services.AddSingleton<CallQueueRepository>(sp =>
+            {
+                return new CallQueueRepository(
+                    appConfig["CallQueueRepository:ConnectionString"],
+                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<CallQueueRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<ServerStatusRepository>(sp =>
+            {
+                return new ServerStatusRepository(
+                    appConfig["ServerStatusRepository:ConnectionString"],
+                    appConfig["ServerStatusRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<ServerStatusRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<ServerLiveStatusChannelRepository>((sp) =>
+            {
+                return new ServerLiveStatusChannelRepository(
+                    new RedisConnectionFactory(
+                        appConfig["ServerLiveStatusChannelRepository:ConnectionString"],
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<DistributedLockRepository>((sp) =>
+            {
+                return new DistributedLockRepository(
+                    new RedisConnectionFactory(
+                        appConfig["DistributedLockRepository:ConnectionString"],
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    ),
+                    sp.GetRequiredService<ILogger<DistributedLockRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<RegionRepository>((sp) => {
+                return new RegionRepository(
+                    sp.GetRequiredService<ILogger<RegionRepository>>(),
+                    appConfig["AppDatabase:ConnectionString"],
+                    appConfig["AppDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
+            {
+                return new IntegrationsRepository(
+                    sp.GetRequiredService<ILogger<IntegrationsRepository>>(),
+                    appConfig["IntegrationsDatabase:ConnectionString"],
+                    appConfig["IntegrationsDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<BusinessRepository>((sp) =>
+            {
+                return new BusinessRepository(
+                    sp.GetRequiredService<ILogger<BusinessRepository>>(),
+                    appConfig["BusinessDatabase:ConnectionString"],
+                    appConfig["BusinessDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<BusinessAppRepository>((sp) =>
+            {
+                return new BusinessAppRepository(
+                    sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
+                    appConfig["BusinessAppDatabase:ConnectionString"],
+                    appConfig["BusinessAppDatabase:DatabaseName"]
+                );
+            });
+        }
+
+        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
+        {
+            builder.Services.AddSingleton<RegionManager>((sp) =>
+            {
+                return new RegionManager(
+                    sp.GetRequiredService<ILogger<RegionManager>>(),
+                    sp.GetRequiredService<RegionRepository>()
+                );
+            });
+            builder.Services.AddSingleton<IntegrationsManager>((sp) =>
+            {
+                AES256EncryptionService integrationFieldsEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["Integrations:EncryptionKey"]
+                );
+                return new IntegrationsManager(
+                    sp.GetRequiredService<ILogger<IntegrationsManager>>(),
+                    sp.GetRequiredService<IntegrationsRepository>(),
+                    null,
+                    integrationFieldsEncryptionService
+                );
+            });
+            builder.Services.AddSingleton<ModemTelManager>((sp) =>
+            {
+                return new ModemTelManager(
+                    sp.GetRequiredService<ILogger<ModemTelManager>>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
+                );
+            });
+            builder.Services.AddSingleton<TwilioManager>((sp) =>
+            {
+                return new TwilioManager(
+                    sp.GetRequiredService<ILogger<TwilioManager>>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
+                );
+            });
+            builder.Services.AddSingleton<BusinessManager>((sp) =>
+            {
+                return new BusinessManager(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    new BusinessManagerInitalizationSettings()
+                    {
+                        InitalizeIntegrationsManager = true,
+                        InitalizeNumberManager = true
+                    },
+                    sp.GetRequiredService<BusinessRepository>(),
+                    sp.GetRequiredService<BusinessAppRepository>(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    sp.GetRequiredService<ModemTelManager>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<ServerSelectionManager>((sp) =>
+            {
+                return new ServerSelectionManager(
+                    sp.GetRequiredService<ILogger<ServerSelectionManager>>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<DistributedLockRepository>()
+                );
+            });
+            builder.Services.AddSingleton<InboundCallManager>((sp) =>
+            {
+                return new InboundCallManager(
+                    sp.GetRequiredService<ILogger<InboundCallManager>>(),
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<ModemTelManager>(),
+                    sp.GetRequiredService<TwilioManager>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<RegionManager>()
+                );
+            });
+            builder.Services.AddSingleton<OutboundCallManager>((sp) =>
+            {
+                return new OutboundCallManager(
+                    sp.GetRequiredService<ILogger<OutboundCallManager>>(),
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ModemTelManager>(),
+                    sp.GetRequiredService<TwilioManager>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<RegionManager>()
+                );
+            });
+        }
+
+        private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Initializing all singleton services from IqraInfrastructure namespace...");
+
+            // Get service descriptors from the service collection
+            var services = GetTypes(serviceProvider)
+                .Where(descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
+                       descriptor.ServiceType.Namespace != null &&
+                       descriptor.ServiceType.Namespace.StartsWith("IqraInfrastructure"))
+                .ToList();
+
+            logger.LogInformation($"Found {services.Count} singleton services to initialize");
+
+            foreach (var service in services)
+            {
+                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
+                serviceProvider.GetService(service.ServiceType);
+            }
+
+            logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
+        }
+
+        private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)
+        {
+            ServiceProvider serviceProvider = provider as ServiceProvider;
+            var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
+            var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
+            return serviceDescriptors.ToList();
         }
     }
 }

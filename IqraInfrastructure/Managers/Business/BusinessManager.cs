@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Http;
 using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
+using IqraCore.Entities.Configuration;
+using IqraInfrastructure.Repositories.Integrations;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -16,45 +18,48 @@ namespace IqraInfrastructure.Managers.Business
     {
         private readonly ILogger<BusinessManager> _logger;
 
+        private readonly BusinessManagerInitalizationSettings _settings;
+
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
-        private readonly BusinessLogoRepository _businessLogoRepository;
-        private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
-        private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
-        private readonly BusinessToolAudioRepository _businessToolAudioRepository;
-        private readonly BusinessAgentAudioRepository _businessAgentAudioRepository;
+        private readonly BusinessLogoRepository? _businessLogoRepository;
+        private readonly BusinessWhiteLabelDomainRepository? _businessWhiteLabelDomainRepository;
+        private readonly BusinessDomainVestaCPRepository? _businessIqraBusinessDomainsVestaCPRepository;
+        private readonly BusinessToolAudioRepository? _businessToolAudioRepository;
+        private readonly BusinessAgentAudioRepository? _businessAgentAudioRepository;
 
         private readonly AudioFileProcessor _audioProcessor;
 
-        private readonly IntegrationsManager _integrationsManager;
-        private readonly ModemTelManager _modemTelManager;
+        private readonly IntegrationsManager? _integrationsManager;
+        private readonly ModemTelManager? _modemTelManager;
 
         // Sub Managers
-        private readonly BusinessSettingsManager _businessSettingsManager;
-        private readonly BusinessToolsManager _businessToolsManager;
-        private readonly BusinessContextManager _businessContextManager;
-        private readonly BusinessCacheManager _businessCacheManager;
-        private readonly BusinessIntegrationsManager _businessIntegrationsManager;
-        private readonly BusinessAgentsManager _businessAgentsManager;
-        private readonly BusinessNumberManager _businessNumberManager;
-        private readonly BusinessRoutesManager _businessRoutesManager;
-
-
+        private readonly BusinessSettingsManager? _businessSettingsManager;
+        private readonly BusinessToolsManager? _businessToolsManager;
+        private readonly BusinessContextManager? _businessContextManager;
+        private readonly BusinessCacheManager? _businessCacheManager;
+        private readonly BusinessIntegrationsManager? _businessIntegrationsManager;
+        private readonly BusinessAgentsManager? _businessAgentsManager;
+        private readonly BusinessNumberManager? _businessNumberManager;
+        private readonly BusinessRoutesManager? _businessRoutesManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
+            BusinessManagerInitalizationSettings settings,
             BusinessRepository businessRepository,
             BusinessAppRepository businessAppRepository,
-            BusinessLogoRepository businessLogoRepository,
-            BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
-            BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository,
-            BusinessToolAudioRepository businessToolAudioRepository,
-            BusinessAgentAudioRepository businessAgentAudioRepository,
-            ModemTelManager modemTelManager,
-            IntegrationsManager integrationsManager
+            BusinessLogoRepository? businessLogoRepository,
+            BusinessWhiteLabelDomainRepository? businessWhiteLabelDomainRepository,
+            BusinessDomainVestaCPRepository? businessIqraBusinessDomainsVestaCPRepository,
+            BusinessToolAudioRepository? businessToolAudioRepository,
+            BusinessAgentAudioRepository? businessAgentAudioRepository,
+            ModemTelManager? modemTelManager,
+            IntegrationsManager? integrationsManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
+
+            _settings = settings;
 
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
@@ -70,14 +75,54 @@ namespace IqraInfrastructure.Managers.Business
             _modemTelManager = modemTelManager;
 
             // Sub Managers
-            _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
-            _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
-            _businessContextManager = new BusinessContextManager(this, businessAppRepository, businessRepository);
-            _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
-            _businessIntegrationsManager = new BusinessIntegrationsManager(this, businessAppRepository);
-            _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
-            _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, integrationsManager);
-            _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository);
+            if (_settings.InitalizeSettingsManager)
+            {
+                if (businessWhiteLabelDomainRepository == null || businessLogoRepository == null || businessIqraBusinessDomainsVestaCPRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessSettingsManager");
+                }
+                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
+            }
+            if (_settings.InitalizeToolsManager)
+            {
+                if (businessToolAudioRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessToolsManager");
+                }
+                _businessToolsManager = new BusinessToolsManager(this, businessAppRepository, businessRepository, businessToolAudioRepository, _audioProcessor);
+            }
+            if (_settings.InitalizeContextManager)
+            {
+                _businessContextManager = new BusinessContextManager(this, businessAppRepository, businessRepository);
+            }
+            if (_settings.InitalizeCacheManager)
+            {
+                _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
+            }
+            if (_settings.InitalizeIntegrationsManager)
+            {
+                _businessIntegrationsManager = new BusinessIntegrationsManager(this, businessAppRepository);
+            }
+            if (_settings.InitalizeAgentsManager)
+            {
+                if (businessAgentAudioRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessAgentsManager");
+                }
+                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
+            }
+            if (_settings.InitalizeNumberManager)
+            {
+                if (modemTelManager == null || integrationsManager == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessNumberManager");
+                }
+                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, integrationsManager);
+            }
+            if (_settings.InitalizeRoutesManager)
+            {
+                _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository);
+            }
         }
 
         /**
@@ -89,6 +134,14 @@ namespace IqraInfrastructure.Managers.Business
         public async Task<FunctionReturnResult<BusinessData?>> AddBusiness(BusinessData businessData, IFormFile? businessLogoFile)
         {
             var result = new FunctionReturnResult<BusinessData?>();
+
+            if (_businessLogoRepository == null || _businessSettingsManager == null)
+            {
+                _logger.LogError("BusinessLogoRepository or BusinessSettingsManager is null but should not be as AddBusiness is being used.");
+                result.Code = "AddBusiness:-1";
+                result.Message = "CRITICAL: Missing Dependency while it should not be.";
+                return result;
+            }
 
             long businessId = await _businessRepository.GetNextBusinessId();
             businessData.Id = businessId;
@@ -299,41 +352,49 @@ namespace IqraInfrastructure.Managers.Business
 
         public BusinessSettingsManager GetSettingsManager()
         {
+            if (!_settings.InitalizeSettingsManager || _businessSettingsManager == null) throw new Exception("Settings manager not initalized");
             return _businessSettingsManager;
         }
 
         public BusinessToolsManager GetToolsManager()
         {
+            if (!_settings.InitalizeToolsManager || _businessToolsManager == null) throw new Exception("Tools manager not initalized");
             return _businessToolsManager;
         }
 
         public BusinessContextManager GetContextManager()
         {
+            if (!_settings.InitalizeContextManager || _businessContextManager == null) throw new Exception("Context manager not initalized");
             return _businessContextManager;
         }
 
         public BusinessCacheManager GetCacheManager()
         {
+            if (!_settings.InitalizeCacheManager || _businessCacheManager == null) throw new Exception("Cache manager not initalized");
             return _businessCacheManager;
         }
 
         public BusinessIntegrationsManager GetIntegrationsManager()
         {
+            if (!_settings.InitalizeIntegrationsManager || _businessIntegrationsManager == null) throw new Exception("Integrations manager not initalized");
             return _businessIntegrationsManager;
         }
 
         public BusinessAgentsManager GetAgentsManager()
         {
+            if (!_settings.InitalizeAgentsManager || _businessAgentsManager == null) throw new Exception("Agents manager not initalized");
             return _businessAgentsManager;
         }
 
         public BusinessNumberManager GetNumberManager()
         {
+            if (!_settings.InitalizeNumberManager || _businessNumberManager == null) throw new Exception("Number manager not initalized");
             return _businessNumberManager;
         }
 
         public BusinessRoutesManager GetRoutesManager()
         {
+            if (!_settings.InitalizeRoutesManager || _businessRoutesManager == null) throw new Exception("Routes manager not initalized");
             return _businessRoutesManager;
         }
     }

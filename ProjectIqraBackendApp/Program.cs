@@ -13,7 +13,7 @@ using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Serilog;
+using System.Reflection;
 
 namespace ProjectIqraBackendApp
 {
@@ -23,25 +23,23 @@ namespace ProjectIqraBackendApp
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Configure Serilog
-            Log.Logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(builder.Configuration)
-                .Enrich.FromLogContext()
-                .CreateLogger();
-
-            builder.Host.UseSerilog();
-
             // Add services to the container
             builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
             // Health checks
             builder.Services.AddHealthChecks();
 
             // HTTP Client
-            // ADD MODEM TEL AND TWILIO IHTTP CLIENTS
             builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("ModemTelClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddHttpClient("TwilioClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
+            });
 
             // Server configuration
             builder.Services.AddSingleton<ServerConfig>(sp =>
@@ -144,14 +142,6 @@ namespace ProjectIqraBackendApp
 
             var app = builder.Build();
 
-            // Configure middleware pipeline
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.UseSerilogRequestLogging();
             app.UseCors("AllowedOrigins");
 
             app.UseAuthentication();
@@ -164,6 +154,37 @@ namespace ProjectIqraBackendApp
             });
 
             app.Run();
+        }
+
+        private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
+        {
+            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            logger.LogInformation("Initializing all singleton services from IqraInfrastructure namespace...");
+
+            // Get service descriptors from the service collection
+            var services = GetTypes(serviceProvider)
+                .Where(descriptor => descriptor.Lifetime == ServiceLifetime.Singleton &&
+                       descriptor.ServiceType.Namespace != null &&
+                       descriptor.ServiceType.Namespace.StartsWith("IqraInfrastructure"))
+                .ToList();
+
+            logger.LogInformation($"Found {services.Count} singleton services to initialize");
+
+            foreach (var service in services)
+            {
+                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
+                serviceProvider.GetService(service.ServiceType);
+            }
+
+            logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");
+        }
+
+        private static List<ServiceDescriptor> GetTypes(IServiceProvider provider)
+        {
+            ServiceProvider serviceProvider = provider as ServiceProvider;
+            var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
+            var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
+            return serviceDescriptors.ToList();
         }
     }
 }

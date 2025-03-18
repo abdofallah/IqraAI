@@ -21,6 +21,7 @@ using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Redis;
 using System.Reflection;
+using IqraCore.Entities.Configuration;
 
 namespace ProjectIqraFrontend
 {
@@ -35,6 +36,11 @@ namespace ProjectIqraFrontend
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
+            });
+            builder.Services.AddHttpClient("TwilioClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+                client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
 
             // Configuration
@@ -279,7 +285,6 @@ namespace ProjectIqraFrontend
                 return new IntegrationsManager(
                     sp.GetRequiredService<ILogger<IntegrationsManager>>(),
                     sp.GetRequiredService<IntegrationsRepository>(),
-                    sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<IntegrationsLogoRepository>(),
                     integrationFieldsEncryptionService
                 );
@@ -288,6 +293,13 @@ namespace ProjectIqraFrontend
             {
                 return new ModemTelManager(
                     sp.GetRequiredService<ILogger<ModemTelManager>>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
+                );
+            });
+            builder.Services.AddSingleton<TwilioManager>((sp) =>
+            {
+                return new TwilioManager(
+                    sp.GetRequiredService<ILogger<TwilioManager>>(),
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
@@ -303,6 +315,17 @@ namespace ProjectIqraFrontend
             {
                 return new BusinessManager(
                     sp.GetRequiredService<ILoggerFactory>(),
+                    new BusinessManagerInitalizationSettings()
+                    { 
+                        InitalizeAgentsManager = true,
+                        InitalizeCacheManager = true,
+                        InitalizeContextManager = true,
+                        InitalizeIntegrationsManager = true,
+                        InitalizeNumberManager = true,
+                        InitalizeRoutesManager = true,
+                        InitalizeSettingsManager = true,
+                        InitalizeToolsManager = true
+                    },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     sp.GetRequiredService<BusinessLogoRepository>(),
@@ -357,15 +380,8 @@ namespace ProjectIqraFrontend
 
             foreach (var service in services)
             {
-                try
-                {
-                    logger.LogInformation($"Initializing service: {service.ServiceType.FullName}");
-                    serviceProvider.GetService(service.ServiceType);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, $"Error initializing service {service.ServiceType.FullName}");
-                }
+                logger.LogInformation($"Initializing service: {service.ServiceType.Name}");
+                serviceProvider.GetService(service.ServiceType);
             }
 
             logger.LogInformation("All IqraInfrastructure singleton services initialized successfully");

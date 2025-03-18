@@ -9,14 +9,16 @@ namespace IqraInfrastructure.Managers.Telephony
 {
     public class TwilioManager
     {
-        private IHttpClientFactory? _httpClientFactory;
-        private readonly JsonSerializerOptions _jsonOptions;
-        private readonly ILogger<TwilioManager>? _logger;
+        private readonly ILogger<TwilioManager> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public TwilioManager(ILogger<TwilioManager>? logger = null)
+        private readonly JsonSerializerOptions _jsonOptions;      
+
+        public TwilioManager(ILogger<TwilioManager> logger, IHttpClientFactory httpClientFactory)
         {
-            _httpClientFactory = null;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+            
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -24,13 +26,8 @@ namespace IqraInfrastructure.Managers.Telephony
             };
         }
 
-        public void SetHttpClientFactory(IHttpClientFactory httpClientFactory) => _httpClientFactory = httpClientFactory;
-
         private HttpClient CreateConfiguredHttpClient(string accountSid, string authToken)
         {
-            if (_httpClientFactory == null)
-                throw new InvalidOperationException("HttpClientFactory not set. Call SetHttpClientFactory first.");
-
             var client = _httpClientFactory.CreateClient("TwilioClient");
             client.DefaultRequestHeaders.Clear();
 
@@ -39,9 +36,6 @@ namespace IqraInfrastructure.Managers.Telephony
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
 
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            // Set base address for Twilio API
-            client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
 
             return client;
         }
@@ -62,7 +56,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "GetPhoneNumberDetails:1";
                         result.Message = $"Error getting phone number details: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -73,7 +67,7 @@ namespace IqraInfrastructure.Managers.Telephony
                     {
                         result.Code = "GetPhoneNumberDetails:2";
                         result.Message = "Failed to deserialize phone number details";
-                        _logger?.LogError("Failed to deserialize Twilio phone number response");
+                        _logger.LogError("Failed to deserialize Twilio phone number response");
                         return result;
                     }
 
@@ -85,7 +79,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "GetPhoneNumberDetails:3";
                 result.Message = $"Error retrieving phone number details: {ex.Message}";
-                _logger?.LogError(ex, "Error retrieving Twilio phone number details");
+                _logger.LogError(ex, "Error retrieving Twilio phone number details");
             }
 
             return result;
@@ -107,7 +101,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "GetPhoneNumbers:1";
                         result.Message = $"Error getting phone numbers: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -118,7 +112,7 @@ namespace IqraInfrastructure.Managers.Telephony
                     {
                         result.Code = "GetPhoneNumbers:2";
                         result.Message = "Failed to deserialize phone numbers list";
-                        _logger?.LogError("Failed to deserialize Twilio phone numbers response");
+                        _logger.LogError("Failed to deserialize Twilio phone numbers response");
                         return result;
                     }
 
@@ -130,7 +124,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "GetPhoneNumbers:3";
                 result.Message = $"Error retrieving phone numbers: {ex.Message}";
-                _logger?.LogError(ex, "Error retrieving Twilio phone numbers");
+                _logger.LogError(ex, "Error retrieving Twilio phone numbers");
             }
 
             return result;
@@ -161,7 +155,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "MakeCall:1";
                         result.Message = $"Error making call: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -172,7 +166,7 @@ namespace IqraInfrastructure.Managers.Telephony
                     {
                         result.Code = "MakeCall:2";
                         result.Message = "Failed to deserialize call details";
-                        _logger?.LogError("Failed to deserialize Twilio call response");
+                        _logger.LogError("Failed to deserialize Twilio call response");
                         return result;
                     }
 
@@ -184,7 +178,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "MakeCall:3";
                 result.Message = $"Error making call: {ex.Message}";
-                _logger?.LogError(ex, "Error making Twilio call");
+                _logger.LogError(ex, "Error making Twilio call");
             }
 
             return result;
@@ -213,7 +207,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "UpdatePhoneNumberWebhook:1";
                         result.Message = $"Error updating phone number webhook: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -225,7 +219,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "UpdatePhoneNumberWebhook:2";
                 result.Message = $"Error updating phone number webhook: {ex.Message}";
-                _logger?.LogError(ex, "Error updating Twilio phone number webhook");
+                _logger.LogError(ex, "Error updating Twilio phone number webhook");
             }
 
             return result;
@@ -247,7 +241,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "GetCallDetails:1";
                         result.Message = $"Error getting call details: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -258,7 +252,7 @@ namespace IqraInfrastructure.Managers.Telephony
                     {
                         result.Code = "GetCallDetails:2";
                         result.Message = "Failed to deserialize call details";
-                        _logger?.LogError("Failed to deserialize Twilio call details response");
+                        _logger.LogError("Failed to deserialize Twilio call details response");
                         return result;
                     }
 
@@ -270,7 +264,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "GetCallDetails:3";
                 result.Message = $"Error getting call details: {ex.Message}";
-                _logger?.LogError(ex, "Error getting Twilio call details");
+                _logger.LogError(ex, "Error getting Twilio call details");
             }
 
             return result;
@@ -298,7 +292,7 @@ namespace IqraInfrastructure.Managers.Telephony
                         var errorContent = await response.Content.ReadAsStringAsync();
                         result.Code = "EndCall:1";
                         result.Message = $"Error ending call: {response.StatusCode}. Details: {errorContent}";
-                        _logger?.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
                         return result;
                     }
 
@@ -310,7 +304,7 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 result.Code = "EndCall:2";
                 result.Message = $"Error ending call: {ex.Message}";
-                _logger?.LogError(ex, "Error ending Twilio call");
+                _logger.LogError(ex, "Error ending Twilio call");
             }
 
             return result;

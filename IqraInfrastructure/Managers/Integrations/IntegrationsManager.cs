@@ -14,23 +14,20 @@ namespace IqraInfrastructure.Managers.Integrations
         private readonly ILogger<IntegrationsManager> _logger;
 
         private readonly IntegrationsRepository _integrationsRepository;
-        private readonly BusinessAppRepository _businessAppRepository;
-        private readonly IntegrationsLogoRepository _integrationsLogoRepository;
+        private readonly IntegrationsLogoRepository? _integrationsLogoRepository;
         private readonly string _logoFolder = "integration.logo";
         private readonly AES256EncryptionService _integrationFieldEncryptionService;
 
         public IntegrationsManager(
             ILogger<IntegrationsManager> logger,
             IntegrationsRepository integrationsRepository,
-            BusinessAppRepository businessAppRepository,
-            IntegrationsLogoRepository logoManager,
+            IntegrationsLogoRepository? logoManager,
             AES256EncryptionService integrationFieldEncryptionService
         )
         {
             _logger = logger;
 
             _integrationsRepository = integrationsRepository;
-            _businessAppRepository = businessAppRepository;
             _integrationsLogoRepository = logoManager;
             _integrationFieldEncryptionService = integrationFieldEncryptionService;
         }
@@ -61,6 +58,14 @@ namespace IqraInfrastructure.Managers.Integrations
             IFormFile? logoFile)
         {
             var result = new FunctionReturnResult<IntegrationData?>();
+
+            if (_integrationsLogoRepository == null)
+            {
+                _logger.LogError("IntegrationsLogoRepository is null but should not be as AddOrUpdateIntegration is being used.");
+                result.Code = "AddOrUpdateIntegration:-1";
+                result.Message = "CRITICAL: Missing Dependency while it should not be.";
+                return result;
+            }
 
             try
             {

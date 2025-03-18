@@ -4,30 +4,23 @@ using StackExchange.Redis;
 
 namespace IqraInfrastructure.Repositories.Server
 {
-    public class DistributedLock : IDisposable
+    public class DistributedLockRepository
     {
         private readonly RedisConnectionFactory _redisFactory;
-        private readonly ILogger<DistributedLock> _logger;
-        private readonly string _lockKey;
-        private readonly string _lockValue;
-        private readonly TimeSpan _expiry;
+        private readonly ILogger<DistributedLockRepository> _logger;
+
         private bool _lockAcquired = false;
         private Timer? _renewalTimer;
 
-        public DistributedLock(
-            string lockKey,
-            TimeSpan expiry,
+        public DistributedLockRepository(
             RedisConnectionFactory redisFactory,
-            ILogger<DistributedLock> logger)
+            ILogger<DistributedLockRepository> logger)
         {
-            _lockKey = $"lock:{lockKey}";
-            _lockValue = Guid.NewGuid().ToString();
-            _expiry = expiry;
             _redisFactory = redisFactory;
             _logger = logger;
         }
 
-        public async Task<bool> AcquireAsync(TimeSpan? timeout = null)
+        public async Task<bool> AcquireAsync(string lockKey, string lockValue, TimeSpan expiry, TimeSpan? timeout = null)
         {
             if (_lockAcquired)
                 return true;
@@ -38,15 +31,15 @@ namespace IqraInfrastructure.Repositories.Server
 
             while (DateTime.UtcNow - startTime < timeout)
             {
-                _lockAcquired = await db.StringSetAsync(_lockKey, _lockValue, _expiry, When.NotExists);
+                _lockAcquired = await db.StringSetAsync(lockKey, lockValue, expiry, When.NotExists);
 
                 if (_lockAcquired)
                 {
-                    _logger.LogDebug("Lock acquired: {LockKey}", _lockKey);
+                    _logger.LogDebug("Lock acquired: {LockKey}", lockKey);
 
                     // Start renewal timer at 1/2 of the expiry time
-                    var renewalInterval = TimeSpan.FromMilliseconds(_expiry.TotalMilliseconds / 2);
-                    _renewalTimer = new Timer(RenewLock, null, renewalInterval, renewalInterval);
+                    var renewalInterval = TimeSpan.FromMilliseconds(expiry.TotalMilliseconds / 2);
+                    _renewalTimer = new Timer(RenewLock, new Dictionary<string, object>() { { "lockKey", lockKey }, { "lockValue", lockValue }, { "expiry", expiry } }, renewalInterval, renewalInterval);
 
                     return true;
                 }
@@ -54,11 +47,11 @@ namespace IqraInfrastructure.Repositories.Server
                 await Task.Delay(100);
             }
 
-            _logger.LogWarning("Failed to acquire lock: {LockKey}", _lockKey);
+            _logger.LogWarning("Failed to acquire lock: {LockKey}", lockKey);
             return false;
         }
 
-        public async Task ReleaseAsync()
+        public async Task ReleaseAsync(string lockKey, string lockValue)
         {
             if (!_lockAcquired)
                 return;
@@ -78,18 +71,30 @@ namespace IqraInfrastructure.Repositories.Server
 
             var result = await db.ScriptEvaluateAsync(
                 script,
-                new RedisKey[] { _lockKey },
-                new RedisValue[] { _lockValue }
+                new RedisKey[] { lockKey },
+                new RedisValue[] { lockValue }
             );
 
             _lockAcquired = false;
-            _logger.LogDebug("Lock released: {LockKey}", _lockKey);
+            _logger.LogDebug("Lock released: {LockKey}", lockKey);
         }
 
         private async void RenewLock(object? state)
         {
             if (!_lockAcquired)
                 return;
+
+            if (state == null)
+            {
+                _logger.LogError("Renew lock state is null");
+                return;
+            }
+
+            Dictionary<string, object> stateDict = (Dictionary<string, object>)state;
+
+            string lockKey = (string)stateDict["lockKey"];
+            string lockValue = (string)stateDict["lockValue"];
+            TimeSpan expiry = (TimeSpan)stateDict["expiry"];
 
             try
             {
@@ -105,17 +110,17 @@ namespace IqraInfrastructure.Repositories.Server
 
                 var result = await db.ScriptEvaluateAsync(
                     script,
-                    new RedisKey[] { _lockKey },
-                    new RedisValue[] { _lockValue, (int)_expiry.TotalMilliseconds }
+                    new RedisKey[] { lockKey },
+                    new RedisValue[] { lockValue, (int)expiry.TotalMilliseconds }
                 );
 
                 if ((int)result == 1)
                 {
-                    _logger.LogDebug("Lock renewed: {LockKey}", _lockKey);
+                    _logger.LogDebug("Lock renewed: {LockKey}", lockKey);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to renew lock: {LockKey}", _lockKey);
+                    _logger.LogWarning("Failed to renew lock: {LockKey}", lockKey);
                     _lockAcquired = false;
                     _renewalTimer?.Dispose();
                     _renewalTimer = null;
@@ -123,18 +128,7 @@ namespace IqraInfrastructure.Repositories.Server
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error renewing lock: {LockKey}", _lockKey);
-            }
-        }
-
-        public void Dispose()
-        {
-            _renewalTimer?.Dispose();
-            _renewalTimer = null;
-
-            if (_lockAcquired)
-            {
-                ReleaseAsync().GetAwaiter().GetResult();
+                _logger.LogError(ex, "Error renewing lock: {LockKey}", lockKey);
             }
         }
     }
