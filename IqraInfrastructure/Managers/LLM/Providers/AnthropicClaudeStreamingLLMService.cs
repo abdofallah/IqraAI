@@ -20,12 +20,12 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public event EventHandler<object> MessageStreamed;
 
-        public AnthropicClaudeStreamingLLMService(string apiKey, int maxOutputToken, decimal temperature, string model)
+        public AnthropicClaudeStreamingLLMService(string apiKey, string model)
         {
             _client = new AnthropicClient(apiKey);
 
-            _maxTokens = maxOutputToken;
-            _temperature = temperature;
+            _maxTokens = 1024; // todo make dynamic
+            _temperature = 1; // todo make dynamic
             _model = model;
 
             _initialMessages = new List<Message>();

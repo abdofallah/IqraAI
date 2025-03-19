@@ -33,7 +33,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
         public void Initialize()
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
-            speechConfig.SpeechRecognitionLanguage = _language;
+            speechConfig.SpeechRecognitionLanguage = "en-US";
             speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "600"); // make it dynamic with some kind of maths
 
             _pushStream = AudioInputStream.CreatePushStream();

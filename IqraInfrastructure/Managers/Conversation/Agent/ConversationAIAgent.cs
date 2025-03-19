@@ -61,17 +61,24 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
         public ConversationAIAgent(
+            ILogger<ConversationAIAgent> logger,
             string agentId,
             BusinessManager businessManager,
             SystemPromptGenerator systemPromptGenerator,
             ScriptExecutionManager scriptExecutionManager,
-            ILogger<ConversationAIAgent> logger)
+            STTProviderManager sttProviderManager,
+            TTSProviderManager ttsProviderManager,
+            LLMProviderManager llmProviderManager
+        )
         {
             _logger = logger;
 
             _businessManager = businessManager;
             _systemPromptGenerator = systemPromptGenerator;
             _scriptExecutionManager = scriptExecutionManager;
+            _sttProviderManager = sttProviderManager;
+            _ttsProviderManager = ttsProviderManager;
+            _llmProviderManager = llmProviderManager;
 
             _agentId = agentId;        
         }
@@ -109,7 +116,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
                 _sttBusinessIntegrationData = sttBusinessIntegrationData.Data;
-                var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(_sttBusinessIntegrationData, new Dictionary<string, string> { { "language", _currentLanguageCode } });
+                var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(_sttBusinessIntegrationData, defaultSTTService, new Dictionary<string, string> { { "language", _currentLanguageCode } });
                 if (!sttServiceResult.Success || sttServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build STT service for agent {AgentId} with error: {ErrorMessage}", _agentId, sttServiceResult.Message);
@@ -124,7 +131,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
                 _ttsBusinessIntegrationData = ttsBusinessIntegrationData.Data;
-                var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_ttsBusinessIntegrationData, new Dictionary<string, string> { { "language", _currentLanguageCode  } });
+                var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_ttsBusinessIntegrationData, defaultTTSService, new Dictionary<string, string> { });
                 if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build TTS service for agent {AgentId} with error: {ErrorMessage}", _agentId, ttsServiceResult.Message);
@@ -141,7 +148,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
                 _llmBusinessIntegrationData = llmBusinessIntegrationData.Data;
-                var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, new Dictionary<string, string> { });
+                var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
                 if (!llmServiceResult.Success || llmServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, llmServiceResult.Message);

@@ -14,7 +14,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         private readonly string _apiKey;
         private readonly string _apiBaseUrl;
         private readonly string _mediaSessionToken;
-        private readonly string _mediaSessionWebSocketUrl;
         private ClientWebSocket? _webSocket;
         private Task? _receiveTask;
         private readonly int _bufferSize = 4096;
@@ -26,10 +25,9 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public ModemTelConversationClient(
             string clientId,
             string callId,
-            string apiKey,
             string apiBaseUrl,
+            string apiKey,       
             string mediaSessionToken,
-            string mediaSessionWebSocketUrl,
             ModemTelManager modemTelManager,
             ILogger<ModemTelConversationClient> logger)
             : base(clientId, logger)
@@ -38,7 +36,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _apiKey = apiKey;
             _apiBaseUrl = apiBaseUrl;
             _mediaSessionToken = mediaSessionToken;
-            _mediaSessionWebSocketUrl = mediaSessionWebSocketUrl;
             _modemTelManager = modemTelManager;
             _clientTelephonyType = TelephonyProviderEnum.ModemTel;
         }
@@ -71,7 +68,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                 _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_mediaSessionToken}");
 
                 // Connect to the WebSocket
-                await _webSocket.ConnectAsync(new Uri(_mediaSessionWebSocketUrl), _connectionCts.Token);
+                var currentBaseUrl = _apiBaseUrl;
+                if (currentBaseUrl.StartsWith("http://") || currentBaseUrl.StartsWith("https://"))
+                {
+                    currentBaseUrl = currentBaseUrl.Replace("http://", "ws://").Replace("https://", "wss://");
+                }
+                var baseUri = new Uri(currentBaseUrl);
+                baseUri = new Uri(baseUri, $"ws/calls/{_callId}");
+                await _webSocket.ConnectAsync(baseUri, _connectionCts.Token);
 
                 _logger.LogInformation("Connected to ModemTel WebSocket for call {CallId}", _callId);
 

@@ -353,7 +353,13 @@ namespace IqraInfrastructure.Managers.Call
                 var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
                 // Send the request to the backend app
-                var response = await client.PostAsync($"{serverEndpoint}/api/call/incoming", content);
+                if (!serverEndpoint.StartsWith("http"))
+                {
+                    serverEndpoint = "http://" + serverEndpoint;
+                }
+                var baseUri = new Uri(serverEndpoint);
+                baseUri = new Uri(baseUri, "/api/call/incoming");
+                var response = await client.PostAsync(baseUri, content);
 
                 if (!response.IsSuccessStatusCode)
                 {

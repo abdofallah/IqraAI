@@ -1,3 +1,4 @@
+/// <reference path="overview_tab.js" />
 /** Dynamic Variables **/
 
 const NumberProviderEnum = {
@@ -465,7 +466,7 @@ function initNumbersTab() {
 			const numberId = currentElement.attr("number-id");
             const numberData = BusinessFullData.businessApp.numbers.find((number) => number.id === numberId);
 
-			const webhookURI = `https://${numberData.regionWebhookEndpoint}/${CurrentBusinessId}/${numberId}`;
+			const webhookURI = `https://${numberData.regionWebhookEndpoint}/api/modemtel/webhook/incoming/${CurrentBusinessId}/${numberId}`;
 
 			const webhookDialog = new BootstrapConfirmDialog({
 				title: `Number (${numberData.countryCode}-${numberData.number})  Webhook`,

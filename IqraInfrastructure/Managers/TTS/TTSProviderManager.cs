@@ -473,7 +473,7 @@ namespace IqraInfrastructure.Managers.TTS
             return result;
         }
 
-        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<ITTSService?>();
 
@@ -489,7 +489,7 @@ namespace IqraInfrastructure.Managers.TTS
             {
                 case InterfaceTTSProviderEnum.AzureSpeechServices:
                     result.Success = true;
-                    result.Data = new AzureSpeechTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["subscription_key"]), integrationData.Fields["region"], metaData["langauge"], integrationData.Fields["speaker"]);
+                    result.Data = new AzureSpeechTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], (string)agentIntegrationData.FieldValues["speaker_language"], (string)agentIntegrationData.FieldValues["speaker"]);
                     return result;
 
                 default:

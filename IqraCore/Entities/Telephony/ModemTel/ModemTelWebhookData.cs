@@ -34,9 +34,6 @@ namespace IqraCore.Entities.Telephony.ModemTel
     }
     public class ModemTelWebhookIncomingCallMediaData
     {
-        [JsonPropertyName("websocket_url")]
-        public string WebSocketURL { get; set; } = string.Empty;
-
         [JsonPropertyName("token")]
         public string Token { get; set; } = string.Empty;
     }

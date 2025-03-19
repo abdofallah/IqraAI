@@ -11,9 +11,12 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -274,7 +277,6 @@ namespace IqraInfrastructure.Managers.Call
                 case TelephonyProviderEnum.ModemTel:
                     // Get required ModemTel data
                     var token = clientData.AdditionalData["mediaSessionToken"];
-                    var wsUrl = clientData.AdditionalData["mediaSessionWebSocketUrl"];
 
                     result.Success = true;
                     result.Data = new ModemTelConversationClient(
@@ -283,7 +285,6 @@ namespace IqraInfrastructure.Managers.Call
                         integrationData.Data.Fields["endpoint"],
                         _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
                         token,
-                        wsUrl,
                         _serviceProvider.GetRequiredService<ModemTelManager>(),
                         _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>());
 
@@ -320,11 +321,15 @@ namespace IqraInfrastructure.Managers.Call
             {
                 // Create the AI agent
                 return new ConversationAIAgent(
+                    _serviceProvider.GetRequiredService<ILogger<ConversationAIAgent>>(),
                     agentId,
                     _businessManager,
                     _serviceProvider.GetRequiredService<SystemPromptGenerator>(),
                     _serviceProvider.GetRequiredService<ScriptExecutionManager>(),
-                    _serviceProvider.GetRequiredService<ILogger<ConversationAIAgent>>());
+                    _serviceProvider.GetRequiredService<STTProviderManager>(),
+                    _serviceProvider.GetRequiredService<TTSProviderManager>(),
+                    _serviceProvider.GetRequiredService<LLMProviderManager>()
+                );
             }
             catch (Exception ex)
             {

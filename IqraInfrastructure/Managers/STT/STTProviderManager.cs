@@ -462,7 +462,7 @@ namespace IqraInfrastructure.Managers.STT
             return result;
         }
     
-        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<ISTTService?>();
 
@@ -478,7 +478,7 @@ namespace IqraInfrastructure.Managers.STT
             {
                 case InterfaceSTTProviderEnum.AzureSpeechServices:
                     result.Success = true;
-                    result.Data = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["subscription_key"]), integrationData.Fields["region"], metaData["langauge"]);
+                    result.Data = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], metaData["language"]);
                     return result;
 
                 default:

@@ -3,6 +3,7 @@ using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ProjectIqraBackendProxy.Controllers
 {
@@ -23,7 +24,7 @@ namespace ProjectIqraBackendProxy.Controllers
         }
 
         [HttpPost("incoming/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleIncomingWebhook([FromBody] ModemTelWebhookData webhookData, [FromQuery] long businessId, [FromQuery] string phoneNumberId)
+        public async Task<IActionResult> HandleIncomingWebhook([FromBody] ModemTelWebhookData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
@@ -44,12 +45,15 @@ namespace ProjectIqraBackendProxy.Controllers
             switch (webhookData.Event?.ToLower())
             {
                 case "call.incoming":
+                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookIncomingCallData>();
                     return await HandleNewCall(webhookData, businessId, phoneNumberId);
 
                 case "call.answered":
+                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookAnsweredCallData>();
                     return await HandleCallAnswered(webhookData, businessId, phoneNumberId);
 
                 case "call.ended":
+                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookEndedCallData>();
                     return await HandleCallEnded(webhookData, businessId, phoneNumberId);
 
                 default:
@@ -62,9 +66,9 @@ namespace ProjectIqraBackendProxy.Controllers
         {
             try
             {
-                var incomingCallData = webhookData.Data as ModemTelWebhookIncomingCallData;
+                var incomingCallData = (ModemTelWebhookIncomingCallData)webhookData.Data;
                 if (incomingCallData == null || incomingCallData.CallId == null || incomingCallData.To == null || incomingCallData.From == null || incomingCallData.Direction == null
-                    || incomingCallData.Media == null || incomingCallData.Media.Token == null || incomingCallData.Media.WebSocketURL == null)
+                    || incomingCallData.Media == null || incomingCallData.Media.Token == null)
                 {
                     _logger.LogWarning("Invalid incoming call webhook data for {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
                     return BadRequest("Invalid incoming call webhook data");
@@ -83,8 +87,7 @@ namespace ProjectIqraBackendProxy.Controllers
                         ["event"] = webhookData.Event,
                         ["direction"] = incomingCallData.Direction,
                         // MediaSession
-                        ["mediaSessionToken"] = incomingCallData.Media.Token,
-                        ["mediaSessionWebSocketUrl"] = incomingCallData.Media.WebSocketURL
+                        ["mediaSessionToken"] = incomingCallData.Media.Token
                     }
                 };
 

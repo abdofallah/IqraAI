@@ -85,7 +85,10 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 using (var client = CreateConfiguredHttpClient(apiKey))
                 {
-                    var response = await client.GetAsync($"{apiBaseUrl}/api/v1/numbers/{phoneNumberId}");
+                    var baseUri = new Uri(apiBaseUrl);
+                    baseUri = new Uri(baseUri, $"/api/v1/numbers/{phoneNumberId}");
+
+                    var response = await client.GetAsync(baseUri);
 
                     if (!response.IsSuccessStatusCode)
                     {
@@ -481,7 +484,9 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 using (var client = CreateConfiguredHttpClient(apiKey))
                 {
-                    var response = await client.PostAsync($"{apiBaseUrl}/api/v1/calls/{callId}/answer", null);
+                    var baseUri = new Uri(apiBaseUrl);
+                    baseUri = new Uri(baseUri, $"/api/v1/calls/{callId}/answer");
+                    var response = await client.PostAsync(baseUri, null);
 
                     if (!response.IsSuccessStatusCode)
                     {

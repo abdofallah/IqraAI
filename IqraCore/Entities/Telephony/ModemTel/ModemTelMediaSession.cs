@@ -9,8 +9,5 @@ namespace IqraCore.Entities.Telephony.ModemTel
 
         [JsonPropertyName("token")]
         public string Token { get; set; }
-
-        [JsonPropertyName("webSocketUrl")]
-        public string WebSocketUrl { get; set; }
     }
 }

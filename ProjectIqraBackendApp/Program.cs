@@ -5,17 +5,25 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.Languages;
+using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
+using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.Telephony;
+using IqraInfrastructure.Repositories.TTS;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Reflection;
 
@@ -98,6 +106,14 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<RegionRepository>>(),
                     appConfig["AppDatabase:ConnectionString"],
                     appConfig["AppDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<LanguagesRepository>((sp) =>
+            {
+                return new LanguagesRepository(
+                    sp.GetRequiredService<ILogger<LanguagesRepository>>(),
+                    appConfig["LanguagesDatabase:ConnectionString"],
+                    appConfig["LanguagesDatabase:DatabaseName"]
                 );
             });
             builder.Services.AddSingleton<CallQueueRepository>(sp =>
@@ -188,10 +204,65 @@ namespace ProjectIqraBackendApp
                     appConfig["BusinessAppDatabase:DatabaseName"]
                 );
             });
+            builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
+            {
+                return new BusinessToolAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
+                    appConfig["BusinessToolAudioRepository:Endpoint"],
+                    int.Parse(appConfig["BusinessToolAudioRepository:Port"]),
+                    appConfig["BusinessToolAudioRepository:AccessKey"],
+                    appConfig["BusinessToolAudioRepository:SecretKey"],
+                    appConfig["BusinessToolAudioRepository:BucketName"],
+                    bool.Parse(appConfig["BusinessToolAudioRepository:IsSecure"])
+                );
+            });
+            builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
+            {
+                return new BusinessAgentAudioRepository(
+                    sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
+                    appConfig["BusinessAgentAudioRepository:Endpoint"],
+                    int.Parse(appConfig["BusinessAgentAudioRepository:Port"]),
+                    appConfig["BusinessAgentAudioRepository:AccessKey"],
+                    appConfig["BusinessAgentAudioRepository:SecretKey"],
+                    appConfig["BusinessAgentAudioRepository:BucketName"],
+                    bool.Parse(appConfig["BusinessAgentAudioRepository:IsSecure"])
+                );
+            });
+            builder.Services.AddSingleton<LLMProviderRepository>((sp) =>
+            {
+                return new LLMProviderRepository(
+                    sp.GetRequiredService<ILogger<LLMProviderRepository>>(),
+                    appConfig["LLMProviderDatabase:ConnectionString"],
+                    appConfig["LLMProviderDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<STTProviderRepository>((sp) =>
+            {
+                return new STTProviderRepository(
+                    sp.GetRequiredService<ILogger<STTProviderRepository>>(),
+                    appConfig["STTProviderDatabase:ConnectionString"],
+                    appConfig["STTProviderDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<TTSProviderRepository>((sp) =>
+            {
+                return new TTSProviderRepository(
+                    sp.GetRequiredService<ILogger<TTSProviderRepository>>(),
+                    appConfig["TTSProviderDatabase:ConnectionString"],
+                    appConfig["TTSProviderDatabase:DatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
         {
+            builder.Services.AddSingleton<LanguagesManager>((sp) =>
+            {
+                return new LanguagesManager(
+                    sp.GetRequiredService<ILogger<LanguagesManager>>(),
+                    sp.GetRequiredService<LanguagesRepository>()
+                );
+            });
             builder.Services.AddSingleton<RegionManager>((sp) =>
             {
                 return new RegionManager(
@@ -219,16 +290,21 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILoggerFactory>(),
                     new BusinessManagerInitalizationSettings()
                     {
+                        InitalizeAgentsManager = true,
+                        InitalizeCacheManager = true,
+                        InitalizeContextManager = true,
                         InitalizeIntegrationsManager = true,
-                        InitalizeNumberManager = true
+                        InitalizeNumberManager = true,
+                        InitalizeRoutesManager = true,
+                        InitalizeToolsManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
                     null,
                     null,
                     null,
-                    null,
-                    null,
+                    sp.GetRequiredService<BusinessToolAudioRepository>(),
+                    sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<IntegrationsManager>()
                 );
@@ -244,6 +320,31 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<IntegrationsRepository>(),
                     null,
                     integrationFieldsEncryptionService
+                );
+            });
+            builder.Services.AddSingleton<LLMProviderManager>((sp) =>
+            {
+                return new LLMProviderManager(
+                    sp.GetRequiredService<ILogger<LLMProviderManager>>(),
+                    sp.GetRequiredService<LLMProviderRepository>(),
+                    sp.GetRequiredService<LanguagesManager>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<STTProviderManager>((sp) =>
+            {
+                return new STTProviderManager(
+                    sp.GetRequiredService<ILogger<STTProviderManager>>(),
+                    sp.GetRequiredService<STTProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<TTSProviderManager>((sp) =>
+            {
+                return new TTSProviderManager(
+                    sp.GetRequiredService<ILogger<TTSProviderManager>>(),
+                    sp.GetRequiredService<TTSProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
                 );
             });
 

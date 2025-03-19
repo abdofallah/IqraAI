@@ -662,7 +662,7 @@ namespace IqraInfrastructure.Managers.LLM
             return result;
         }
 
-        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ILLMService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
         {
             var result = new FunctionReturnResult<ILLMService?>();
 
@@ -678,7 +678,7 @@ namespace IqraInfrastructure.Managers.LLM
             {
                 case InterfaceLLMProviderEnum.AnthropicClaude:
                     result.Success = true;
-                    result.Data = new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), int.Parse(integrationData.Fields["max_output_token"]), decimal.Parse(integrationData.Fields["temperature"]), integrationData.Fields["model"]);
+                    result.Data = new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]);
                     return result;
 
                 case InterfaceLLMProviderEnum.OpenAIGPT:

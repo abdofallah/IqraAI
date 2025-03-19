@@ -189,8 +189,7 @@ namespace ProjectIqraBackendApp.Controllers
 
         private TelephonyWebhookContextModel CreateModemTelClientData(BackendIncomingCallRequest request)
         {
-            if (!request.AdditionalData.TryGetValue("mediaSessionToken", out var token) ||
-                !request.AdditionalData.TryGetValue("mediaSessionWebSocketUrl", out var wsUrl))
+            if (!request.AdditionalData.TryGetValue("mediaSessionToken", out var token))
             {
                 throw new ArgumentException("Missing required ModemTel media session data");
             }
@@ -205,8 +204,7 @@ namespace ProjectIqraBackendApp.Controllers
                 From = request.From,
                 AdditionalData = new Dictionary<string, string>
                 {
-                    ["mediaSessionToken"] = token,
-                    ["mediaSessionWebSocketUrl"] = wsUrl
+                    ["mediaSessionToken"] = token
                 }
             };
         }
