@@ -1,6 +1,11 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
+using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.LLM;
 using Microsoft.Extensions.Logging;
+using Scriban;
+using Scriban.Runtime;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation
@@ -8,301 +13,489 @@ namespace IqraInfrastructure.Managers.Conversation
     public class SystemPromptGenerator
     {
         private readonly ILogger<SystemPromptGenerator> _logger;
+        private readonly LanguagesManager _languagesManager;
+        private readonly LLMProviderManager _llmProviderManager;
 
-        public SystemPromptGenerator(ILogger<SystemPromptGenerator> logger)
+        public SystemPromptGenerator(ILogger<SystemPromptGenerator> logger, LanguagesManager languagesManager, LLMProviderManager llmProviderManager)
         {
             _logger = logger;
+            _languagesManager = languagesManager;
+            _llmProviderManager = llmProviderManager;
         }
 
-        public string GenerateSystemPrompt(
+        public async Task<FunctionReturnResult<string?>> GenerateSystemPrompt(
             BusinessApp businessApp,
             BusinessAppAgent agent,
             BusinessAppRoute route,
-            string languageCode)
+            string languageCode,
+            InterfaceLLMProviderEnum llmProvider,
+            string llmModelId
+        )
         {
+            var result = new FunctionReturnResult<string?>();
+
             try
             {
-                var sb = new StringBuilder();
-
-                // 1. Add agent personality
-                sb.AppendLine(GeneratePersonalitySection(agent, languageCode));
-
-                // 2. Add business context information
-                if (agent.Context.UseBranding)
+                var langaugeDataResult = await _languagesManager.GetLanguageByCode(languageCode);
+                if (!langaugeDataResult.Success)
                 {
-                    sb.AppendLine(GenerateBrandingSection(businessApp.Context.Branding, languageCode));
+                    result.Code = "GenerateSystemPrompt:" + langaugeDataResult.Code;
+                    result.Message = langaugeDataResult.Message;
+                    return result;
                 }
 
-                if (agent.Context.UseBranches)
+                var llmProviderDataResult = await _llmProviderManager.GetProviderData(llmProvider);
+                if (llmProviderDataResult == null)
                 {
-                    sb.AppendLine(GenerateBranchesSection(businessApp.Context.Branches, languageCode));
+                    result.Code = "GenerateSystemPrompt:1";
+                    result.Message = "LLM provider not found";
+                    return result;
                 }
 
-                if (agent.Context.UseServices)
+                var llmModelData = llmProviderDataResult.Models.Find(m => m.Id == llmModelId);
+                if (llmModelData == null)
                 {
-                    sb.AppendLine(GenerateServicesSection(businessApp.Context.Services, languageCode));
+                    result.Code = "GenerateSystemPrompt:2";
+                    result.Message = "LLM model not found";
+                    return result;
                 }
 
-                if (agent.Context.UseProducts)
+                if (!llmModelData.PromptTemplates.TryGetValue(languageCode, out string? systemPromptForLanguage) || string.IsNullOrWhiteSpace(systemPromptForLanguage))
                 {
-                    sb.AppendLine(GenerateProductsSection(businessApp.Context.Products, languageCode));
+                    result.Code = "GenerateSystemPrompt:3";
+                    result.Message = "System prompt not found for language or is empty";
+                    return result;
                 }
 
-                // 3. Add conversation instructions
-                sb.AppendLine(GenerateConversationInstructions(agent, route, languageCode));
+                // Initialize Scriban template
+                var template = Template.Parse(systemPromptForLanguage);
+                
+                if (template.HasErrors)
+                {
+                    result.Code = "GenerateSystemPrompt:4";
+                    result.Message = "Error parsing system prompt template: " + string.Join(", ", template.Messages);
+                    return result;
+                }
 
-                // 4. Add response format instructions
-                sb.AppendLine(GenerateResponseFormatInstructions());
+                // Create template context
+                var templateContext = new TemplateContext();
+                var scriptObject = new ScriptObject();
+                
+                // Setup model with localized data
+                var modelObject = new ScriptObject();
+                
+                // Add Agent data
+                var agentObject = new ScriptObject();
+                agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, languageCode);
+                agentObject["Context"] = CreateAgentContextObject(agent.Context);
+                agentObject["Scripts"] = CreateAgentScriptsObject(new List<BusinessAppAgentScript>(), languageCode); // todo only use the opening script or enabled script
+                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(new List<BusinessAppTool>(), languageCode); // TODO get the tools used by the scripts
+                modelObject["Agent"] = agentObject;
+                
+                // Add Context (company) data
+                var contextObject = new ScriptObject();
+                contextObject["Branding"] = CreateBrandingObject(businessApp.Context.Branding, languageCode);
+                contextObject["Branches"] = CreateBranchesObject(businessApp.Context.Branches, languageCode);
+                contextObject["Services"] = CreateServicesObject(businessApp.Context.Services, languageCode);
+                contextObject["Products"] = CreateProductsObject(businessApp.Context.Products, languageCode);
+                modelObject["Context"] = contextObject;
 
-                _logger.LogInformation("Generated system prompt for language {LanguageCode}", languageCode);
-                return sb.ToString();
+                // Add Route data
+                var routeObject = new ScriptObject();
+                routeObject["Agent"] = CreateRouteAgentObject(route.Agent);
+                modelObject["Route"] = routeObject;
+
+                // Add Session data
+                // TODO
+                var sessionObject = new ScriptObject();
+                var callerObject = new ScriptObject();
+                callerObject["PhoneNumber"] = "Unknown"; // Replace with actual caller number when available
+                sessionObject["Caller"] = callerObject;
+                modelObject["Session"] = sessionObject;
+
+                // Register helper templates
+                RegisterHelperTemplates(scriptObject);
+
+                // Add the model to the context
+                scriptObject.Import(modelObject);
+                templateContext.PushGlobal(scriptObject);
+
+                // Render the template
+                var renderedPrompt = await template.RenderAsync(templateContext);
+                if (string.IsNullOrWhiteSpace(renderedPrompt))
+                {
+                    result.Code = "GenerateSystemPrompt:6";
+                    result.Message = "System prompt is empty after rendering";
+                    return result;
+                }
+
+                result.Success = true;
+                result.Data = renderedPrompt;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generating system prompt for language {LanguageCode}", languageCode);
-                // Return a basic prompt as fallback
-                return "You are a helpful AI assistant for a business. Be polite and provide accurate information.";
+                _logger.LogError(ex, "Error generating system prompt");
+                result.Code = "GenerateSystemPrompt:5";
+                result.Message = "Error generating system prompt: " + ex.Message;
             }
+
+            return result;
         }
 
-        private string GeneratePersonalitySection(BusinessAppAgent agent, string languageCode)
+        #region Template object creation methods
+
+        private ScriptObject CreateAgentPersonalityObject(BusinessAppAgentPersonality personality, string languageCode)
         {
-            var sb = new StringBuilder();
-
-            // Get language-specific personality data
-            var name = GetLocalizedString(agent.Personality.Name, languageCode, "AI Assistant");
-            var role = GetLocalizedString(agent.Personality.Role, languageCode, "Customer Service Representative");
-
-            // Build the personality section
-            sb.AppendLine($"# IDENTITY AND ROLE");
-            sb.AppendLine($"You are {name}, a {role}.");
-            sb.AppendLine();
-
-            // Add capabilities if available
-            var capabilities = GetLocalizedList(agent.Personality.Capabilities, languageCode);
-            if (capabilities.Any())
-            {
-                sb.AppendLine("## Capabilities");
-                foreach (var capability in capabilities)
-                {
-                    sb.AppendLine($"- {capability}");
-                }
-                sb.AppendLine();
-            }
-
-            // Add tone if available
-            var tones = GetLocalizedList(agent.Personality.Tone, languageCode);
-            if (tones.Any())
-            {
-                sb.AppendLine("## Communication Style");
-                sb.AppendLine("You should communicate in the following way:");
-                foreach (var tone in tones)
-                {
-                    sb.AppendLine($"- {tone}");
-                }
-                sb.AppendLine();
-            }
-
-            // Add ethics if available
-            var ethics = GetLocalizedList(agent.Personality.Ethics, languageCode);
-            if (ethics.Any())
-            {
-                sb.AppendLine("## Ethical Guidelines");
-                sb.AppendLine("Follow these ethical guidelines:");
-                foreach (var ethic in ethics)
-                {
-                    sb.AppendLine($"- {ethic}");
-                }
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
+            var personalityObject = new ScriptObject();
+            personalityObject["Name"] = GetLocalizedString(personality.Name, languageCode, "AI Assistant");
+            personalityObject["Role"] = GetLocalizedString(personality.Role, languageCode, "Customer Support Agent");
+            personalityObject["Capabilities"] = GetLocalizedList(personality.Capabilities, languageCode);
+            personalityObject["Ethics"] = GetLocalizedList(personality.Ethics, languageCode);
+            personalityObject["Tone"] = GetLocalizedList(personality.Tone, languageCode);
+            return personalityObject;
         }
 
-        private string GenerateBrandingSection(BusinessAppContextBranding branding, string languageCode)
+        private ScriptObject CreateAgentContextObject(BusinessAppAgentContext context)
         {
-            var sb = new StringBuilder();
+            var contextObject = new ScriptObject();
+            contextObject["UseBranding"] = context.UseBranding;
+            contextObject["UseBranches"] = context.UseBranches;
+            contextObject["UseServices"] = context.UseServices;
+            contextObject["UseProducts"] = context.UseProducts;
+            return contextObject;
+        }
 
-            var name = GetLocalizedString(branding.Name, languageCode, "the company");
-            var country = GetLocalizedString(branding.Country, languageCode, "");
-            var email = GetLocalizedString(branding.Email, languageCode, "");
-            var phone = GetLocalizedString(branding.Phone, languageCode, "");
-            var website = GetLocalizedString(branding.Website, languageCode, "");
+        private ScriptArray CreateAgentScriptsObject(List<BusinessAppAgentScript> scripts, string languageCode)
+        {
+            var scriptsArray = new ScriptArray();
+            if (scripts != null)
+            {
+                foreach (var script in scripts)
+                {
+                    // Add script properties as needed
+                    // For now we'll just add a placeholder
+                    scriptsArray.Add($"TODO SCRIPT {GetLocalizedString(script.General.Name, languageCode, "")}");
+                }
+            }
+            return scriptsArray;
+        }
 
-            sb.AppendLine("# COMPANY INFORMATION");
-            sb.AppendLine($"You represent {name}.");
+        private ScriptArray CreateAgentScriptToolsObject(List<BusinessAppTool> tools, string languageCode)
+        {
+            var toolsArray = new ScriptArray();
+            if (tools != null)
+            {
+                foreach (var tool in tools)
+                {
+                    var toolObject = new ScriptObject();
 
-            if (!string.IsNullOrWhiteSpace(country))
-                sb.AppendLine($"The company is based in {country}.");
+                    // Basic tool information
+                    toolObject["Id"] = tool.Id;
+                    toolObject["Name"] = GetLocalizedString(tool.General.Name, languageCode, "Tool");
+                    toolObject["Description"] = GetLocalizedString(tool.General.ShortDescription, languageCode, "");
 
-            if (!string.IsNullOrWhiteSpace(email))
-                sb.AppendLine($"Contact email: {email}");
+                    // Input schemas
+                    var inputSchemasArray = new ScriptArray();
+                    if (tool.Configuration.InputSchemea != null)
+                    {
+                        foreach (var inputSchema in tool.Configuration.InputSchemea)
+                        {
+                            var schemaObject = new ScriptObject();
+                            schemaObject["Id"] = inputSchema.Id;
+                            schemaObject["Name"] = GetLocalizedString(inputSchema.Name, languageCode, "Input");
+                            schemaObject["Description"] = GetLocalizedString(inputSchema.Description, languageCode, "");
+                            schemaObject["Type"] = inputSchema.Type.ToString();
+                            schemaObject["IsArray"] = inputSchema.IsArray;
+                            schemaObject["IsRequired"] = inputSchema.IsRequired;
 
-            if (!string.IsNullOrWhiteSpace(phone))
-                sb.AppendLine($"Contact phone: {phone}");
+                            inputSchemasArray.Add(schemaObject);
+                        }
+                    }
+                    toolObject["InputSchemeas"] = inputSchemasArray;
 
-            if (!string.IsNullOrWhiteSpace(website))
-                sb.AppendLine($"Website: {website}");
+                    // Response information
+                    var responsesArray = new ScriptArray();
+                    if (tool.Response != null)
+                    {
+                        foreach (var response in tool.Response)
+                        {
+                            var responseObject = new ScriptObject();
+                            responseObject["Type"] = response.Key;
 
-            // Add other information if available
+                            // Add response details
+                            if (response.Value != null)
+                            {
+                                // Static response if available
+                                if (response.Value.HasStaticResponse)
+                                {
+                                    responseObject["StaticResponse"] = GetLocalizedString(response.Value.StaticResponse, languageCode, null);
+                                }
+                                else
+                                {
+                                    responseObject["StaticResponse"] = null;
+                                }
+                            }
+
+                            responsesArray.Add(responseObject);
+                        }
+                    }
+                    toolObject["Responses"] = responsesArray;
+
+                    toolsArray.Add(toolObject);
+                }
+            }
+            return toolsArray;
+        }
+
+        private ScriptObject CreateBrandingObject(BusinessAppContextBranding branding, string languageCode)
+        {
+            var brandingObject = new ScriptObject();
+            brandingObject["Name"] = GetLocalizedString(branding.Name, languageCode, "Company");
+            brandingObject["Country"] = GetLocalizedString(branding.Country, languageCode, "");
+            brandingObject["GlobalContactEmail"] = GetLocalizedString(branding.Email, languageCode, "");
+            brandingObject["GlobalContactPhone"] = GetLocalizedString(branding.Phone, languageCode, "");
+            brandingObject["GlobalWebsite"] = GetLocalizedString(branding.Website, languageCode, "");
+            
+            // Add additional brand information from OtherInformation dictionary
+            var brandInfo = new StringBuilder();
             var otherInfo = GetLocalizedDictionary(branding.OtherInformation, languageCode);
             foreach (var info in otherInfo)
             {
-                sb.AppendLine($"{info.Key}: {info.Value}");
+                brandInfo.AppendLine();
+                brandInfo.AppendLine($"{info.Key}: {info.Value}");
             }
-
-            sb.AppendLine();
-            return sb.ToString();
+            brandingObject["BrandInformation"] = brandInfo.ToString();
+            
+            return brandingObject;
         }
 
-        private string GenerateBranchesSection(List<BusinessAppContextBranch> branches, string languageCode)
+        private ScriptArray CreateBranchesObject(List<BusinessAppContextBranch> branches, string languageCode)
         {
-            if (!branches.Any()) return "";
-
-            var sb = new StringBuilder();
-            sb.AppendLine("# BRANCH LOCATIONS");
-
-            foreach (var branch in branches)
+            var branchesArray = new ScriptArray();
+            if (branches != null)
             {
-                var name = GetLocalizedString(branch.General.Name, languageCode, "Branch");
-                var address = GetLocalizedString(branch.General.Address, languageCode, "");
-                var phone = GetLocalizedString(branch.General.Phone, languageCode, "");
-
-                sb.AppendLine($"## {name}");
-                if (!string.IsNullOrWhiteSpace(address))
-                    sb.AppendLine($"Address: {address}");
-
-                if (!string.IsNullOrWhiteSpace(phone))
-                    sb.AppendLine($"Phone: {phone}");
-
-                // Add working hours
-                sb.AppendLine("Working Hours:");
-                foreach (var hours in branch.WorkingHours)
+                foreach (var branch in branches)
                 {
-                    if (hours.Value.IsClosed)
+                    var branchObject = new ScriptObject();
+                    branchObject["Name"] = GetLocalizedString(branch.General.Name, languageCode, "Branch");
+                    branchObject["Address"] = GetLocalizedString(branch.General.Address, languageCode, "");
+                    branchObject["Phone"] = GetLocalizedString(branch.General.Phone, languageCode, "");
+                    branchObject["Email"] = GetLocalizedString(branch.General.Email, languageCode, "");
+                    branchObject["Website"] = GetLocalizedString(branch.General.Website, languageCode, "");
+                    
+                    // Add additional branch information
+                    var branchInfo = new StringBuilder();
+                    var otherInfo = GetLocalizedDictionary(branch.General.OtherInformation, languageCode);
+                    foreach (var info in otherInfo)
                     {
-                        sb.AppendLine($"- {hours.Key}: Closed");
+                        branchInfo.AppendLine();
+                        branchInfo.AppendLine($"{info.Key}: {info.Value}");
                     }
-                    else
+                    branchObject["BranchInformation"] = branchInfo.ToString();
+                    
+                    // Add working hours
+                    var workingHoursArray = new ScriptArray();
+                    foreach (var workingHourDay in branch.WorkingHours)
                     {
-                        var timeRanges = string.Join(", ", hours.Value.Timings.Select(t => $"{t.Item1} - {t.Item2}"));
-                        sb.AppendLine($"- {hours.Key}: {timeRanges}");
+                        var workingHourObject = new ScriptObject();
+                        workingHourObject["Name"] = workingHourDay.Key;
+                        workingHourObject["IsClosed"] = workingHourDay.Value.IsClosed;
+                        
+                        // Format timings
+                        if (!workingHourDay.Value.IsClosed && workingHourDay.Value.Timings.Count > 0)
+                        {
+                            var timings = new StringBuilder();
+                            foreach (var (start, end) in workingHourDay.Value.Timings)
+                            {
+                                if (timings.Length > 0) timings.Append(", ");
+                                timings.Append($"{start.ToString("HH:mm")} - {end.ToString("HH:mm")}");
+                            }
+                            workingHourObject["Timings"] = timings.ToString();
+                        }
+                        else
+                        {
+                            workingHourObject["Timings"] = "";
+                        }
+                        
+                        workingHoursArray.Add(workingHourObject);
+                    }
+                    branchObject["WorkingHours"] = workingHoursArray;
+                    
+                    // Add team members
+                    var teamArray = new ScriptArray();
+                    if (branch.Team != null)
+                    {
+                        foreach (var member in branch.Team)
+                        {
+                            var memberObject = new ScriptObject();
+                            memberObject["Name"] = GetLocalizedString(member.Name, languageCode, "Team Member");
+                            memberObject["Role"] = GetLocalizedString(member.Role, languageCode, "");
+                            memberObject["Email"] = GetLocalizedString(member.Email, languageCode, null);
+                            memberObject["Phone"] = GetLocalizedString(member.Phone, languageCode, null);
+                            memberObject["Information"] = GetLocalizedString(member.Information, languageCode, null);
+                            teamArray.Add(memberObject);
+                        }
+                    }
+                    branchObject["Team"] = teamArray;
+                    
+                    branchesArray.Add(branchObject);
+                }
+            }
+            return branchesArray;
+        }
+
+        private ScriptArray CreateServicesObject(List<BusinessAppContextService> services, string languageCode)
+        {
+            var servicesArray = new ScriptArray();
+            if (services != null)
+            {
+                foreach (var service in services)
+                {
+                    var serviceObject = new ScriptObject();
+                    serviceObject["Id"] = service.Id;
+                    serviceObject["Name"] = GetLocalizedString(service.Name, languageCode, "Service");
+                    serviceObject["ShortDescription"] = GetLocalizedString(service.ShortDescription, languageCode, "");
+                    serviceObject["LongDescription"] = GetLocalizedString(service.LongDescription, languageCode, "");
+                    serviceObject["AvailableAtBranches"] = service.AvailableAtBranches ?? new List<string>();
+                    serviceObject["RelatedProducts"] = service.RelatedProducts ?? new List<string>();
+                    
+                    // Add other information
+                    var otherInfo = GetLocalizedDictionary(service.OtherInformation, languageCode);
+                    var infoObject = new ScriptObject();
+                    foreach (var info in otherInfo)
+                    {
+                        infoObject[info.Key] = info.Value;
+                    }
+                    serviceObject["OtherInformation"] = infoObject;
+                    
+                    servicesArray.Add(serviceObject);
+                }
+            }
+            return servicesArray;
+        }
+
+        private ScriptArray CreateProductsObject(List<BusinessAppContextProduct> products, string languageCode)
+        {
+            var productsArray = new ScriptArray();
+            if (products != null)
+            {
+                foreach (var product in products)
+                {
+                    var productObject = new ScriptObject();
+                    productObject["Id"] = product.Id;
+                    productObject["Name"] = GetLocalizedString(product.Name, languageCode, "Product");
+                    productObject["ShortDescription"] = GetLocalizedString(product.ShortDescription, languageCode, "");
+                    productObject["LongDescription"] = GetLocalizedString(product.LongDescription, languageCode, "");
+                    productObject["AvailableAtBranches"] = product.AvailableAtBranches ?? new List<string>();
+                    
+                    // Add other information
+                    var otherInfo = GetLocalizedDictionary(product.OtherInformation, languageCode);
+                    var infoObject = new ScriptObject();
+                    foreach (var info in otherInfo)
+                    {
+                        infoObject[info.Key] = info.Value;
+                    }
+                    productObject["OtherInformation"] = infoObject;
+                    
+                    productsArray.Add(productObject);
+                }
+            }
+            return productsArray;
+        }
+
+        private ScriptObject CreateRouteAgentObject(BusinessAppRouteAgent routeAgent)
+        {
+            var routeAgentObject = new ScriptObject();
+            
+            // Add timezone information
+            var timezoneObject = new ScriptObject();
+            timezoneObject["Now"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            routeAgentObject["Timezone"] = timezoneObject;
+            
+            // Add caller number context
+            routeAgentObject["CallerNumberInContext"] = routeAgent.CallerNumberInContext;
+            
+            return routeAgentObject;
+        }
+
+        private void RegisterHelperTemplates(ScriptObject scriptObject)
+        {
+            // Register the service template function
+            scriptObject.Add("services_template", new Func<ScriptObject, string>(service => {
+                var sb = new StringBuilder();
+                sb.AppendLine($"<Service{service["Id"]}>");
+                sb.AppendLine($"Name: {service["Name"]}");
+                sb.AppendLine($"Short Description: {service["ShortDescription"]}");
+                sb.AppendLine($"Long Description: {service["LongDescription"]}");
+                
+                if (service["AvailableAtBranches"] is ScriptArray branches && branches.Count > 0)
+                {
+                    sb.AppendLine("Available at branches:");
+                    foreach (var branch in branches)
+                    {
+                        sb.AppendLine($"- {branch}");
                     }
                 }
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
+                
+                if (service["RelatedProducts"] is ScriptArray products && products.Count > 0)
+                {
+                    sb.AppendLine("Related products:");
+                    foreach (var product in products)
+                    {
+                        sb.AppendLine($"- {product}");
+                    }
+                }
+                
+                if (service["OtherInformation"] is ScriptObject otherInfo)
+                {
+                    sb.AppendLine("Additional information:");
+                    foreach (var key in otherInfo.Keys)
+                    {
+                        sb.AppendLine($"- {key}: {otherInfo[key]}");
+                    }
+                }
+                
+                sb.AppendLine($"</Service{service["Id"]}>");
+                return sb.ToString();
+            }));
+            
+            // Register the product template function
+            scriptObject.Add("products_template", new Func<ScriptObject, string>(product => {
+                var sb = new StringBuilder();
+                sb.AppendLine($"<Product{product["Id"]}>");
+                sb.AppendLine($"Name: {product["Name"]}");
+                sb.AppendLine($"Short Description: {product["ShortDescription"]}");
+                sb.AppendLine($"Long Description: {product["LongDescription"]}");
+                
+                if (product["AvailableAtBranches"] is ScriptArray branches && branches.Count > 0)
+                {
+                    sb.AppendLine("Available at branches:");
+                    foreach (var branch in branches)
+                    {
+                        sb.AppendLine($"- {branch}");
+                    }
+                }
+                
+                if (product["OtherInformation"] is ScriptObject otherInfo)
+                {
+                    sb.AppendLine("Additional information:");
+                    foreach (var key in otherInfo.Keys)
+                    {
+                        sb.AppendLine($"- {key}: {otherInfo[key]}");
+                    }
+                }
+                
+                sb.AppendLine($"</Product{product["Id"]}>");
+                return sb.ToString();
+            }));
+            
+            // Register the agent scripts template function
+            scriptObject.Add("agent_scripts", new Func<ScriptObject, string>(script => {
+                return "TODO SCRIPT";
+            }));
         }
 
-        private string GenerateServicesSection(List<BusinessAppContextService> services, string languageCode)
-        {
-            if (!services.Any()) return "";
-
-            var sb = new StringBuilder();
-            sb.AppendLine("# SERVICES");
-
-            foreach (var service in services)
-            {
-                var name = GetLocalizedString(service.Name, languageCode, "Service");
-                var description = GetLocalizedString(service.LongDescription, languageCode, "");
-
-                sb.AppendLine($"## {name}");
-                if (!string.IsNullOrWhiteSpace(description))
-                    sb.AppendLine(description);
-
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
-        }
-
-        private string GenerateProductsSection(List<BusinessAppContextProduct> products, string languageCode)
-        {
-            if (!products.Any()) return "";
-
-            var sb = new StringBuilder();
-            sb.AppendLine("# PRODUCTS");
-
-            foreach (var product in products)
-            {
-                var name = GetLocalizedString(product.Name, languageCode, "Product");
-                var description = GetLocalizedString(product.LongDescription, languageCode, "");
-
-                sb.AppendLine($"## {name}");
-                if (!string.IsNullOrWhiteSpace(description))
-                    sb.AppendLine(description);
-
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
-        }
-
-        private string GenerateConversationInstructions(BusinessAppAgent agent, BusinessAppRoute route, string languageCode)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("# CONVERSATION GUIDELINES");
-
-            // Add greeting message if available
-            var greeting = GetLocalizedString(agent.Utterances.GreetingMessage, languageCode, "");
-            if (!string.IsNullOrWhiteSpace(greeting))
-            {
-                sb.AppendLine("## Initial Greeting");
-                sb.AppendLine($"Begin the conversation with: \"{greeting}\"");
-                sb.AppendLine();
-            }
-
-            // Add conversation type instructions
-            sb.AppendLine("## Conversation Style");
-            switch (route.Agent.ConversationType)
-            {
-                case AgentConversationTypeENUM.Interruptible:
-                    int words = route.Agent.InterruptibleConversationTypeWords ?? 3;
-                    sb.AppendLine($"Keep your responses concise, ideally {words} sentences or less at a time.");
-                    sb.AppendLine("Pause naturally between points to allow the caller to interject if needed.");
-                    break;
-                case AgentConversationTypeENUM.TurnByTurn:
-                    sb.AppendLine("Provide complete answers in a single response.");
-                    sb.AppendLine("Make sure you cover all relevant information before stopping.");
-                    break;
-                default:
-                    sb.AppendLine("Maintain a natural conversational flow.");
-                    break;
-            }
-            sb.AppendLine();
-
-            // Add caller information instructions
-            sb.AppendLine("## Caller Information");
-            if (route.Agent.CallerNumberInContext)
-            {
-                sb.AppendLine("You will have access to the caller's phone number for identification purposes.");
-            }
-
-            sb.AppendLine();
-
-            return sb.ToString();
-        }
-
-        private string GenerateResponseFormatInstructions()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("# RESPONSE FORMAT");
-            sb.AppendLine("You must prefix all your responses with one of these formats:");
-            sb.AppendLine();
-            sb.AppendLine("1. For normal responses to the customer:");
-            sb.AppendLine("response_to_customer: Your message to the customer");
-            sb.AppendLine();
-            sb.AppendLine("2. To execute a tool or perform an action:");
-            sb.AppendLine("execute_tool: toolName:param1=value1,param2=value2");
-            sb.AppendLine();
-            sb.AppendLine("3. To end the call:");
-            sb.AppendLine("end_call: Reason for ending the call");
-            sb.AppendLine();
-            sb.AppendLine("Always use the appropriate prefix for your responses.");
-
-            return sb.ToString();
-        }
+        #endregion
 
         #region Helper Methods
 

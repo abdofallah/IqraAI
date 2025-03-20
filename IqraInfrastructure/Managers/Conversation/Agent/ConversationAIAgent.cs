@@ -100,6 +100,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (_businessAppAgent == null)
                 {
                     _logger.LogError("Business app agent {AgentId} not found", _businessAppRoute.Agent.SelectedAgentId);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app agent not found"));
                     return;
                 }
 
@@ -113,6 +114,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!sttBusinessIntegrationData.Success || sttBusinessIntegrationData.Data == null)
                 {
                     _logger.LogError("Business app STT integration {IntegrationId} not found", defaultSTTService.Id);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app STT integration not found"));
                     return;
                 }
                 _sttBusinessIntegrationData = sttBusinessIntegrationData.Data;
@@ -120,6 +122,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!sttServiceResult.Success || sttServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build STT service for agent {AgentId} with error: {ErrorMessage}", _agentId, sttServiceResult.Message);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build STT service for agent with error: " + sttServiceResult.Message));
                     return;
                 }
                 _sttService = sttServiceResult.Data;
@@ -128,6 +131,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!ttsBusinessIntegrationData.Success || ttsBusinessIntegrationData.Data == null)
                 {
                     _logger.LogError("Business app TTS integration {IntegrationId} not found", defaultTTSService.Id);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app TTS integration not found"));
                     return;
                 }
                 _ttsBusinessIntegrationData = ttsBusinessIntegrationData.Data;
@@ -135,6 +139,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build TTS service for agent {AgentId} with error: {ErrorMessage}", _agentId, ttsServiceResult.Message);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build TTS service for agent with error: " + ttsServiceResult.Message));
                     return;
                 }
                 _ttsService = ttsServiceResult.Data;
@@ -145,6 +150,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!llmBusinessIntegrationData.Success)
                 {
                     _logger.LogError("Business app LLM integration {IntegrationId} not found", defaultLLMService.Id);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app LLM integration not found"));
                     return;
                 }
                 _llmBusinessIntegrationData = llmBusinessIntegrationData.Data;
@@ -152,6 +158,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (!llmServiceResult.Success || llmServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, llmServiceResult.Message);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build LLM service for agent with error: " + llmServiceResult.Message));
                     return;
                 }
                 _llmService = llmServiceResult.Data;
@@ -320,12 +327,21 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 // Generate system prompt
-                var systemPrompt = _systemPromptGenerator.GenerateSystemPrompt(
+                var systemPromptResult = await _systemPromptGenerator.GenerateSystemPrompt(
                     _businessApp,
                     _businessAppAgent,
                     _businessAppRoute,
-                    _currentLanguageCode
+                    _currentLanguageCode,
+                    _llmService.GetProviderType(),
+                    _llmService.GetModel()
                 );
+
+                if (!systemPromptResult.Success)
+                {
+                    _logger.LogError("Error generating system prompt for AI Agent {AgentId}: {Code} {Message}", _agentId, systemPromptResult.Code, systemPromptResult.Message);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error generating system prompt: " + systemPromptResult.Code + " " + systemPromptResult.Message));
+                    return;
+                }
 
                 // Get script from route
                 await _scriptExecutionManager.LoadScriptAsync(
@@ -335,7 +351,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 );
 
                 // Configure LLM
-                _llmService.SetSystemPrompt(systemPrompt);
+                _llmService.SetSystemPrompt(systemPromptResult.Data);
 
                 // Select LLM model based on configuration
                 var llmConfig = _businessAppAgent.Integrations.LLM.GetValueOrDefault(_currentLanguageCode)?.FirstOrDefault();

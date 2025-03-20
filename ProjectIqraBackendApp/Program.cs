@@ -350,7 +350,13 @@ namespace ProjectIqraBackendApp
 
             // Core server services
             builder.Services.AddSingleton<ServerStatusManager>();
-            builder.Services.AddSingleton<SystemPromptGenerator>();
+            builder.Services.AddSingleton<SystemPromptGenerator>((sp) =>
+            {
+                return new SystemPromptGenerator(
+                    sp.GetRequiredService<ILogger<SystemPromptGenerator>>(),
+                    sp.GetRequiredService<LanguagesManager>()
+                );
+            });
             builder.Services.AddSingleton<ScriptExecutionManager>();
             builder.Services.AddSingleton<CallProcessorManager>();
 
