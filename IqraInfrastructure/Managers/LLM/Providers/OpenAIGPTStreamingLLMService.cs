@@ -120,14 +120,23 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             );
         }
 
+        public string GetModel()
+        {
+            return _model;
+        }
         public string GetProviderFullName()
         {
             return "OpenAI GPT";
         }
 
-        public static InterfaceLLMProviderEnum GetProviderType()
+        public InterfaceLLMProviderEnum GetProviderType()
+        {
+            return GetProviderTypeStatic();
+        }
+
+        public InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
-        }  
+        }
     }
 }

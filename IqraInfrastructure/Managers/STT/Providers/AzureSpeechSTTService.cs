@@ -105,7 +105,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
             return "Azure AI Speech";
         }
 
-        public static InterfaceSTTProviderEnum GetProviderType()
+        public InterfaceSTTProviderEnum GetProviderType()
+        {
+            return GetProviderTypeStatic();
+        }
+
+        public static InterfaceSTTProviderEnum GetProviderTypeStatic()
         {
             return InterfaceSTTProviderEnum.AzureSpeechServices;
         }

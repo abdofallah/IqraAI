@@ -278,7 +278,7 @@ function CheckLLMProviderModelManageTabHasChanges(enableDisableButton = true) {
 	CurrentLanguagesList.forEach((language) => {
 		changes.promptTemplates[language.id] = CurrentManageLLMProviderModelPromptLanguageNewData[language.id];
 
-		if (CurrentManageLLMProviderModelPromptLanguageNewData[language.id] != changes.promptTemplates[language.id]) {
+		if (CurrentManageLLMProviderModelPromptLanguageNewData[language.id] != CurrentManageLLMProviderModelData.promptTemplates[language.id]) {
 			hasChanges = true;
 		}
 	});

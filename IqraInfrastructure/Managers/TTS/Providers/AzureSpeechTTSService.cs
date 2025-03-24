@@ -101,7 +101,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return "MicrosoftAzureSpeech";
         }
 
-        public static InterfaceTTSProviderEnum GetProviderType()
+        public InterfaceTTSProviderEnum GetProviderType()
+        {
+            return GetProviderTypeStatic();
+        }
+
+        public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.AzureSpeechServices;
         }

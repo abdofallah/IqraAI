@@ -16,7 +16,8 @@ namespace IqraCore.Interfaces.AI
 
         string GetModel();
         string GetProviderFullName();
-        InterfaceLLMProviderEnum GetProviderType()
+        InterfaceLLMProviderEnum GetProviderType();
+        static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.Unknown;
         }

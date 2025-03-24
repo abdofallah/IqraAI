@@ -354,7 +354,8 @@ namespace ProjectIqraBackendApp
             {
                 return new SystemPromptGenerator(
                     sp.GetRequiredService<ILogger<SystemPromptGenerator>>(),
-                    sp.GetRequiredService<LanguagesManager>()
+                    sp.GetRequiredService<LanguagesManager>(),
+                    sp.GetRequiredService<LLMProviderManager>()
                 );
             });
             builder.Services.AddSingleton<ScriptExecutionManager>();

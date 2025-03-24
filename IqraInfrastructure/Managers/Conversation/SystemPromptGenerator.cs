@@ -1,4 +1,6 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraInfrastructure.Managers.Languages;
@@ -23,7 +25,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _llmProviderManager = llmProviderManager;
         }
 
-        public async Task<FunctionReturnResult<string?>> GenerateSystemPrompt(
+        public async Task<FunctionReturnResult<string?>> GenerateInitialSystemPrompt(
             BusinessApp businessApp,
             BusinessAppAgent agent,
             BusinessAppRoute route,
@@ -67,12 +69,21 @@ namespace IqraInfrastructure.Managers.Conversation
                     return result;
                 }
 
-                // Initialize Scriban template
-                var template = Template.Parse(systemPromptForLanguage);
-                
-                if (template.HasErrors)
+                BusinessAppAgentScript? openingAgentScript = agent.Scripts.Find(d => d.Id == route.Agent.OpeningScriptId);
+                if (openingAgentScript == null)
                 {
                     result.Code = "GenerateSystemPrompt:4";
+                    result.Message = "Opening agent script not found";
+                    return result;
+                }
+
+                var openingAgentScriptNodesData = GetScriptNodesData(openingAgentScript, businessApp);
+
+                // Initialize Scriban template
+                var template = Template.Parse(systemPromptForLanguage);    
+                if (template.HasErrors)
+                {
+                    result.Code = "GenerateSystemPrompt:5";
                     result.Message = "Error parsing system prompt template: " + string.Join(", ", template.Messages);
                     return result;
                 }
@@ -84,12 +95,15 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Setup model with localized data
                 var modelObject = new ScriptObject();
                 
+                // TODO compile all these objects at once using Task.WhenAll (compare performance with and without)
+
                 // Add Agent data
                 var agentObject = new ScriptObject();
                 agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, languageCode);
                 agentObject["Context"] = CreateAgentContextObject(agent.Context);
-                agentObject["Scripts"] = CreateAgentScriptsObject(new List<BusinessAppAgentScript>(), languageCode); // todo only use the opening script or enabled script
-                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(new List<BusinessAppTool>(), languageCode); // TODO get the tools used by the scripts
+                agentObject["Scripts"] = CreateAgentScriptsObject(new List<BusinessAppAgentScript>() { openingAgentScript }, languageCode);
+                agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingAgentScriptNodesData.tools, languageCode);
+                agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingAgentScriptNodesData.agents, languageCode);
                 modelObject["Agent"] = agentObject;
                 
                 // Add Context (company) data
@@ -106,7 +120,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 modelObject["Route"] = routeObject;
 
                 // Add Session data
-                // TODO
+                // TODO, 
                 var sessionObject = new ScriptObject();
                 var callerObject = new ScriptObject();
                 callerObject["PhoneNumber"] = "Unknown"; // Replace with actual caller number when available
@@ -135,7 +149,7 @@ namespace IqraInfrastructure.Managers.Conversation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating system prompt");
-                result.Code = "GenerateSystemPrompt:5";
+                result.Code = "GenerateSystemPrompt:-1";
                 result.Message = "Error generating system prompt: " + ex.Message;
             }
 
@@ -168,16 +182,280 @@ namespace IqraInfrastructure.Managers.Conversation
         private ScriptArray CreateAgentScriptsObject(List<BusinessAppAgentScript> scripts, string languageCode)
         {
             var scriptsArray = new ScriptArray();
-            if (scripts != null)
+            if (scripts == null || !scripts.Any())
             {
-                foreach (var script in scripts)
+                return scriptsArray;
+            }
+
+            foreach (var script in scripts)
+            {
+                var scriptObject = new ScriptObject();
+                scriptObject["Id"] = script.Id;
+                scriptObject["Name"] = GetLocalizedString(script.General.Name, languageCode, "");
+                scriptObject["Description"] = GetLocalizedString(script.General.Description, languageCode, "");
+
+                // Convert the conversation graph to a human-readable format
+                scriptObject["ConversationFlow"] = ConvertScriptToHumanReadable(script, languageCode);
+
+                scriptsArray.Add(scriptObject);
+            }
+
+            return scriptsArray;
+        }
+
+        private string ConvertScriptToHumanReadable(BusinessAppAgentScript script, string languageCode)
+        {
+            if (script.Nodes == null || !script.Nodes.Any())
+            {
+                return "No conversation flow defined.";
+            }
+
+            var result = new StringBuilder();
+
+            // Build node and edge maps
+            var nodesMap = new Dictionary<string, BusinessAppAgentScriptNode>();
+            var edgesMap = new Dictionary<string, List<ScriptEdge>>();
+
+            foreach (var node in script.Nodes)
+            {
+                nodesMap[node.Id] = node;
+            }
+
+            foreach (var edge in script.Edges)
+            {
+                if (!edgesMap.ContainsKey(edge.SourceNodeId))
                 {
-                    // Add script properties as needed
-                    // For now we'll just add a placeholder
-                    scriptsArray.Add($"TODO SCRIPT {GetLocalizedString(script.General.Name, languageCode, "")}");
+                    edgesMap[edge.SourceNodeId] = new List<ScriptEdge>();
+                }
+                edgesMap[edge.SourceNodeId].Add(new ScriptEdge
+                {
+                    TargetId = edge.TargetNodeId,
+                    SourcePort = edge.SourceNodePortId,
+                    TargetPort = edge.TargetNodePortId
+                });
+            }
+
+            // Find start node
+            var startNode = script.Nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);
+            if (startNode == null)
+            {
+                return "Script has no start node.";
+            }
+
+            // Process child nodes of start node
+            var startNodeChildren = GetNodeChildren(startNode.Id, edgesMap);
+
+            if (startNodeChildren.Count > 1)
+            {
+                for (int i = 0; i < startNodeChildren.Count; i++)
+                {
+                    string scenarioNumber = (i + 1).ToString();
+                    result.AppendLine($"## Main Scenario {scenarioNumber}");
+                    result.Append(ProcessNodeRecursively(startNodeChildren[i].TargetId, nodesMap, edgesMap, scenarioNumber, 0, null, languageCode));
+                    if (i < startNodeChildren.Count - 1)
+                    {
+                        result.AppendLine();
+                    }
                 }
             }
-            return scriptsArray;
+            else if (startNodeChildren.Count == 1)
+            {
+                result.AppendLine("# Conversation Flow");
+                result.AppendLine();
+                result.Append(ProcessNodeRecursively(startNodeChildren[0].TargetId, nodesMap, edgesMap, "1", 0, null, languageCode));
+            }
+
+            return result.ToString();
+        }
+
+        private List<ScriptEdge> GetNodeChildren(string nodeId, Dictionary<string, List<ScriptEdge>> edgesMap)
+        {
+            if (!edgesMap.ContainsKey(nodeId))
+            {
+                return new List<ScriptEdge>();
+            }
+
+            return edgesMap[nodeId];
+        }
+
+        private string ProcessNodeRecursively(
+            string nodeId,
+            Dictionary<string, BusinessAppAgentScriptNode> nodesMap,
+            Dictionary<string, List<ScriptEdge>> edgesMap,
+            string scenarioPath,
+            int depth,
+            string lastNodeType,
+            string languageCode
+        )
+        {
+            if (!nodesMap.ContainsKey(nodeId))
+            {
+                return "";
+            }
+
+            var node = nodesMap[nodeId];
+            var result = new StringBuilder();
+            var indent = new string(' ', depth * 2);
+            var currentNodeType = GetNodeTypeLabel(node);
+
+            // Handle node content based on type
+            if (currentNodeType != lastNodeType || currentNodeType != "customer_query")
+            {
+                switch ((BusinessAppAgentScriptNodeTypeENUM)node.NodeType)
+                {
+                    case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
+                        var userQueryNode = node as BusinessAppAgentScriptUserQueryNode;
+                        if (userQueryNode != null)
+                        {
+                            result.AppendLine($"{indent}customer_query ID={userQueryNode.Id} QUERY={GetLocalizedString(userQueryNode.Query, languageCode, "Customer query")}");
+                        }
+                        break;
+
+                    case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
+                        var aiResponseNode = node as BusinessAppAgentScriptAIResponseNode;
+                        if (aiResponseNode != null)
+                        {
+                            result.AppendLine($"{indent}response_to_customer ID={aiResponseNode.Id} RESPONSE={GetLocalizedString(aiResponseNode.Response, languageCode, "AI response")}");
+                        }
+                        break;
+
+                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
+                        var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
+                        if (systemToolNode != null)
+                        {
+                            string toolTypeName = Enum.GetName(typeof(BusinessAppAgentScriptNodeSystemToolTypeENUM), systemToolNode.ToolType);
+                            result.AppendLine($"{indent}execute_system_function ID={systemToolNode.Id} TYPE={toolTypeName}");
+
+                            // Special handling for DTMF keypad input
+                            if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
+                            {
+                                var dtmfNode = node as BusinessAppAgentScriptDTMFInputToolNode;
+                                var childDTMFEdges = GetNodeChildren(nodeId, edgesMap);
+
+                                if (childDTMFEdges.Any())
+                                {
+                                    result.AppendLine($"{indent}possible tool result scenarios:");
+
+                                    foreach (var edge in childDTMFEdges)
+                                    {
+                                        string outcomeValue = "unknown";
+
+                                        // Handle timeout port
+                                        if (edge.SourcePort == "timeout")
+                                        {
+                                            outcomeValue = "timeout";
+                                        }
+                                        // Handle outcome ports
+                                        else if (edge.SourcePort.StartsWith("outcome-") && dtmfNode?.Outcomes != null)
+                                        {
+                                            // Find the outcome by portId
+                                            var outcome = dtmfNode.Outcomes.FirstOrDefault(o => o.PortId == edge.SourcePort);
+                                            if (outcome != null)
+                                            {
+                                                outcomeValue = GetLocalizedString(outcome.Value, languageCode, edge.SourcePort);
+                                            }
+                                        }
+
+                                        result.AppendLine($"{indent}scenario ({outcomeValue}):");
+                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode));
+                                    }
+
+                                    return result.ToString();
+                                }
+                            }
+                        }
+                        break;
+
+                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
+                        var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
+                        if (customToolNode != null)
+                        {
+                            result.AppendLine($"{indent}execute_custom_function ID={customToolNode.ToolId}");
+
+                            // Special handling for custom tool outcomes
+                            var childCustomEdges = GetNodeChildren(nodeId, edgesMap);
+
+                            if (childCustomEdges.Any())
+                            {
+                                bool hasMultipleOutcomes = childCustomEdges.Count > 1;
+
+                                if (hasMultipleOutcomes)
+                                {
+                                    result.AppendLine($"{indent}possible tool result scenarios:");
+
+                                    foreach (var edge in childCustomEdges)
+                                    {
+                                        string outcomeValue = "unknown";
+
+                                        // Handle default outcome
+                                        if (edge.SourcePort == "outcome-default")
+                                        {
+                                            outcomeValue = "default";
+                                        }
+                                        // Handle specific response outcomes
+                                        else if (edge.SourcePort.StartsWith("outcome-"))
+                                        {
+                                            string responseCode = edge.SourcePort.Replace("outcome-", "");
+                                            outcomeValue = $"Response {responseCode}";
+                                        }
+
+                                        result.AppendLine($"{indent}scenario ({outcomeValue}):");
+                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode));
+                                    }
+
+                                    return result.ToString();
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+
+            // Process child nodes
+            var childEdges = GetNodeChildren(nodeId, edgesMap);
+
+            if (childEdges.Count > 1)
+            {
+                result.AppendLine($"{indent}possible scenarios:");
+
+                for (int i = 0; i < childEdges.Count; i++)
+                {
+                    string subScenarioPath = $"{scenarioPath}.{i + 1}";
+                    result.AppendLine($"{indent}### Scenario {subScenarioPath}");
+                    result.Append(ProcessNodeRecursively(childEdges[i].TargetId, nodesMap, edgesMap, subScenarioPath, depth + 1, null, languageCode));
+                }
+            }
+            else if (childEdges.Count == 1)
+            {
+                result.Append(ProcessNodeRecursively(childEdges[0].TargetId, nodesMap, edgesMap, scenarioPath, depth, currentNodeType, languageCode));
+            }
+
+            return result.ToString();
+        }
+
+        private string GetNodeTypeLabel(BusinessAppAgentScriptNode node)
+        {
+            switch ((BusinessAppAgentScriptNodeTypeENUM)node.NodeType)
+            {
+                case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
+                    return "customer_query";
+                case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
+                    return "response_to_customer";
+                case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
+                    return "execute_system_function";
+                case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
+                    return "execute_custom_function";
+                default:
+                    return node.NodeType.ToString();
+            }
+        }
+
+        // Helper class to represent an edge in the script graph
+        private class ScriptEdge
+        {
+            public string TargetId { get; set; }
+            public string SourcePort { get; set; }
+            public string TargetPort { get; set; }
         }
 
         private ScriptArray CreateAgentScriptToolsObject(List<BusinessAppTool> tools, string languageCode)
@@ -247,6 +525,24 @@ namespace IqraInfrastructure.Managers.Conversation
             return toolsArray;
         }
 
+        private ScriptArray CreateAgentScriptAgentsObject(List<BusinessAppAgent> agents, string languageCode)
+        {
+            var agentsArray = new ScriptArray();
+            if (agents != null)
+            {
+                foreach (var agent in agents)
+                {
+                    var agentObject = new ScriptObject();
+
+                    // Basic tool information
+                    agentObject["Id"] = agent.Id;
+                    agentObject["Name"] = GetLocalizedString(agent.General.Name, languageCode, "Tool");
+                    agentObject["Description"] = GetLocalizedString(agent.General.Description, languageCode, ""); 
+                }
+            }
+            return agentsArray;
+        }
+
         private ScriptObject CreateBrandingObject(BusinessAppContextBranding branding, string languageCode)
         {
             var brandingObject = new ScriptObject();
@@ -298,7 +594,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     foreach (var workingHourDay in branch.WorkingHours)
                     {
                         var workingHourObject = new ScriptObject();
-                        workingHourObject["Name"] = workingHourDay.Key;
+                        workingHourObject["Name"] = Enum.Parse(typeof(AllDaysOfWeekEnum), workingHourDay.Key).ToString();
                         workingHourObject["IsClosed"] = workingHourDay.Value.IsClosed;
                         
                         // Format timings
@@ -356,17 +652,22 @@ namespace IqraInfrastructure.Managers.Conversation
                     serviceObject["Name"] = GetLocalizedString(service.Name, languageCode, "Service");
                     serviceObject["ShortDescription"] = GetLocalizedString(service.ShortDescription, languageCode, "");
                     serviceObject["LongDescription"] = GetLocalizedString(service.LongDescription, languageCode, "");
-                    serviceObject["AvailableAtBranches"] = service.AvailableAtBranches ?? new List<string>();
-                    serviceObject["RelatedProducts"] = service.RelatedProducts ?? new List<string>();
-                    
+                    serviceObject["AvailableAtBranches"] = service.AvailableAtBranches;
+                    serviceObject["RelatedProducts"] = service.RelatedProducts;
+                    serviceObject["OtherInformation"] = null;
+
                     // Add other information
                     var otherInfo = GetLocalizedDictionary(service.OtherInformation, languageCode);
-                    var infoObject = new ScriptObject();
-                    foreach (var info in otherInfo)
+                    if (otherInfo.Count != 0)
                     {
-                        infoObject[info.Key] = info.Value;
+                        var infoObject = new ScriptObject();
+                        foreach (var info in otherInfo)
+                        {
+                            infoObject[info.Key] = info.Value;
+                        }
+                        serviceObject["OtherInformation"] = infoObject;
                     }
-                    serviceObject["OtherInformation"] = infoObject;
+                    
                     
                     servicesArray.Add(serviceObject);
                 }
@@ -498,6 +799,57 @@ namespace IqraInfrastructure.Managers.Conversation
         #endregion
 
         #region Helper Methods
+
+        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents) GetScriptNodesData(BusinessAppAgentScript script, BusinessApp businessApp)
+        {
+            var (tools, agents) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>());
+
+            foreach (var node in script.Nodes)
+            {
+                if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool)
+                {
+                    var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
+                    if (customToolNode != null)
+                    {
+                        var alreadyAddedTool = tools.Find(t => t.Id == customToolNode.ToolId) == null;
+                        if (!alreadyAddedTool)
+                        {
+                            var tool = businessApp.Tools.Find(t => t.Id == customToolNode.ToolId);
+                            if (tool != null)
+                            {
+                                tools.Add(tool);
+                            }
+                        }
+                    }
+                }
+                else if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
+                {
+                    var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
+
+                    if (systemToolNode != null)
+                    {
+                        if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent)
+                        {
+                            var transferToAgentNode = node as BusinessAppAgentScriptTransferToAgentToolNode;
+                            if (transferToAgentNode != null)
+                            {
+                                var alreadyAddedAgent = agents.Find(a => a.Id == transferToAgentNode.AgentId) == null;
+                                if (!alreadyAddedAgent)
+                                {
+                                    var agent = businessApp.Agents.Find(a => a.Id == transferToAgentNode.AgentId);
+                                    if (agent != null)
+                                    {
+                                        agents.Add(agent);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return (tools, agents);
+        }
 
         private string GetLocalizedString(Dictionary<string, string> dictionary, string languageCode, string defaultValue)
         {

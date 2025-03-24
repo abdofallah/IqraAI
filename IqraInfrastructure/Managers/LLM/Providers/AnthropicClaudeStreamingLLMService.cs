@@ -117,12 +117,22 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             );
         }
 
+        public string GetModel()
+        {
+            return _model;
+        }
+
         public string GetProviderFullName()
         {
             return "Anthropic Claude";
         }
 
-        public static InterfaceLLMProviderEnum GetProviderType()
+        public InterfaceLLMProviderEnum GetProviderType()
+        {
+            return GetProviderTypeStatic();
+        }
+
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.AnthropicClaude;
         }

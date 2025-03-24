@@ -13,6 +13,7 @@ using IqraInfrastructure.Managers.TTS;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Linq.Expressions;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
@@ -227,31 +228,27 @@ namespace IqraInfrastructure.Managers.Conversation
 
             try
             {
-                // Set current client context
                 _currentClientId = clientId;
 
                 // Check for special system commands
+                // TODO check this, maybe there is no need for this
                 if (text.StartsWith("<") && text.EndsWith(">"))
                 {
                     await ProcessSystemCommandAsync(text, cancellationToken);
                     return;
                 }
 
-                // Process the text through the LLM
                 _logger.LogInformation("AI Agent {AgentId} processing text: {Text}", _agentId, text);
 
                 if (clientId != null)
                 {
-                    // Store the context for this client if needed
                     _clientContextMap[clientId] = text;
                 }
 
-                // Trigger LLM processing
                 await _llmService.ProcessInputAsync(text, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                // Normal cancellation
             }
             catch (Exception ex)
             {
@@ -327,7 +324,7 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 // Generate system prompt
-                var systemPromptResult = await _systemPromptGenerator.GenerateSystemPrompt(
+                var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
                     _businessApp,
                     _businessAppAgent,
                     _businessAppRoute,
@@ -336,7 +333,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     _llmService.GetModel()
                 );
 
-                if (!systemPromptResult.Success)
+                if (!systemPromptResult.Success || systemPromptResult.Data == null)
                 {
                     _logger.LogError("Error generating system prompt for AI Agent {AgentId}: {Code} {Message}", _agentId, systemPromptResult.Code, systemPromptResult.Message);
                     ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error generating system prompt: " + systemPromptResult.Code + " " + systemPromptResult.Message));
@@ -352,13 +349,6 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 // Configure LLM
                 _llmService.SetSystemPrompt(systemPromptResult.Data);
-
-                // Select LLM model based on configuration
-                var llmConfig = _businessAppAgent.Integrations.LLM.GetValueOrDefault(_currentLanguageCode)?.FirstOrDefault();
-                if (llmConfig != null && llmConfig.FieldValues.TryGetValue("model", out var modelObj))
-                {
-                    _llmService.SetModel(modelObj.ToString() ?? "");
-                }
 
                 // Get opening message if provided
                 var openingMessage = _businessAppAgent.Utterances.GreetingMessage.GetValueOrDefault(_currentLanguageCode);
@@ -433,9 +423,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private void OnRecognizingReceived(object? sender, object e)
         {
-            // Intermediate transcription result - we could use this to show "thinking" indicators
-            // or to implement voice activity detection for barge-in handling
-            //_logger.LogTrace("Recognizing speech...");
+            // do nothing for now
         }
 
         private async void OnTranscriptionResultReceived(object? sender, string text)
@@ -445,8 +433,6 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 _logger.LogInformation("AI Agent {AgentId} received transcription: {Text}", _agentId, text);
-
-                // Process through LLM
                 await ProcessTextAsync(text, _currentClientId, _processingCts?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
@@ -458,12 +444,10 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async void OnLLMMessageStreamed(object? sender, object responseObj)
         {
-            // Handle different LLM provider responses
             try
             {
                 string? deltaText = null;
 
-                // Extract delta text based on the LLM provider
                 if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.AnthropicClaude)
                 {
                     var response = (Anthropic.SDK.Messaging.MessageResponse)responseObj;
@@ -479,9 +463,17 @@ namespace IqraInfrastructure.Managers.Conversation
                         }
                     }
                 }
-                // Add other LLM providers as needed
+                else if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.OpenAIGPT)
+                {
+                    throw new NotImplementedException();
+                    // TODO
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+                // TODO Add other LLM providers as needed
 
-                // Process the delta text if any
                 if (!string.IsNullOrEmpty(deltaText))
                 {
                     await ProcessLLMDeltaTextAsync(deltaText);
@@ -495,17 +487,14 @@ namespace IqraInfrastructure.Managers.Conversation
         }
 
         private StringBuilder _responseBuffer = new StringBuilder();
-        private StringBuilder _currentResponseSection = new StringBuilder();
+        private int _currentResponseBufferRead = 0;
         private string _currentResponseType = "parsing"; // parsing, responding, action, etc.
 
         private async Task ProcessLLMDeltaTextAsync(string deltaText)
         {
             if (string.IsNullOrEmpty(deltaText)) return;
-
-            // Append to overall response
             _responseBuffer.Append(deltaText);
 
-            // Detect response type if we're in parsing phase
             if (_currentResponseType == "parsing" && _responseBuffer.Length > 5)
             {
                 var fullText = _responseBuffer.ToString();
@@ -514,54 +503,93 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (fullText.StartsWith("response_to_customer:"))
                 {
                     _currentResponseType = "responding";
-                    _responseBuffer = new StringBuilder(fullText.Replace("response_to_customer:", ""));
-                    _currentResponseSection = new StringBuilder();
+                    if (_currentResponseBufferRead == 0)
+                    {
+                        _currentResponseBufferRead = 21;
+                    }
                 }
-                else if (fullText.StartsWith("execute_tool:"))
+                else if (fullText.StartsWith("execute_system_function:"))
                 {
-                    _currentResponseType = "executing_tool";
-                    var toolCommand = fullText.Replace("execute_tool:", "");
-                    _responseBuffer = new StringBuilder();
+                    _currentResponseType = "executing_system_tool";
+                    //var toolCommand = fullText.Substring("execute_system_function:".Length);
 
                     // Process tool execution in a separate task
-                    _ = Task.Run(() => ProcessToolExecutionAsync(toolCommand));
+                    //_ = Task.Run(() => ProcessToolExecutionAsync(toolCommand));
                     return;
                 }
-                else if (fullText.StartsWith("end_call:"))
+                else if (fullText.StartsWith("execute_custom_function:"))
                 {
-                    _currentResponseType = "ending_call";
-                    var endReason = fullText.Replace("end_call:", "");
-                    _responseBuffer = new StringBuilder();
+                    _currentResponseType = "executing_custom_tool";
+                    //var toolCommand = fullText.Substring("execute_custom_function:".Length);
 
-                    // Process end call in a separate task
-                    _ = Task.Run(() => ProcessEndCallAsync(endReason));
+                    // Process tool execution in a separate task
+                    //_ = Task.Run(() => ProcessToolExecutionAsync(toolCommand));
                     return;
                 }
-                // Add other command types as needed
+                else
+                {
+                    // TODO
+                    // log and let the ai know that the response is incorrect
+                    return;
+                }
             }
 
-            // If we're responding, process the text through TTS in chunks
             if (_currentResponseType == "responding")
             {
-                _currentResponseSection.Append(deltaText);
+                // Get only the unprocessed text from the buffer
+                string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
 
-                // Simple sentence chunking - look for end of sentences to create natural TTS chunks
-                var sectionText = _currentResponseSection.ToString();
+                if (unprocessedText.Length == 0) return;
 
-                // Check if we have a complete sentence or a large enough chunk
-                bool isCompleteSentence = sectionText.EndsWith(".") || sectionText.EndsWith("!") || sectionText.EndsWith("?");
-                bool isLargeChunk = sectionText.Length > 100;
+                bool isCompleteSentence = unprocessedText.EndsWith(".") || unprocessedText.EndsWith("!") ||
+                                         unprocessedText.EndsWith("?") || unprocessedText.EndsWith(",");
+                bool isLargeChunk = unprocessedText.Length > 100;
 
-                if ((isCompleteSentence && sectionText.Length > 20) || isLargeChunk)
+                if ((isCompleteSentence && unprocessedText.Length > 10) || isLargeChunk)
                 {
-                    // Process this section
-                    await SynthesizeSpeechAsync(sectionText);
+                    string textToSynthesize;
+                    int chunkSize;
 
-                    // Notify about the generated text
-                    TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(sectionText, _currentClientId));
+                    if (!isCompleteSentence && isLargeChunk)
+                    {
+                        // Find the last sentence boundary to create a clean cut
+                        int lastIndex = -1;
+                        foreach (char punctuation in new[] { '.', '!', '?', ',' })
+                        {
+                            int index = unprocessedText.LastIndexOf(punctuation);
+                            if (index > lastIndex)
+                            {
+                                lastIndex = index;
+                            }
+                        }
 
-                    // Reset for the next section
-                    _currentResponseSection.Clear();
+                        if (lastIndex > 0)
+                        {
+                            // Split at the last sentence boundary
+                            textToSynthesize = unprocessedText.Substring(0, lastIndex + 1);
+                            chunkSize = lastIndex + 1;
+                        }
+                        else
+                        {
+                            // No good split point found, use the whole chunk
+                            textToSynthesize = unprocessedText;
+                            chunkSize = unprocessedText.Length;
+                        }
+                    }
+                    else
+                    {
+                        // It's a complete sentence or we're handling a large chunk as-is
+                        textToSynthesize = unprocessedText;
+                        chunkSize = unprocessedText.Length;
+                    }
+
+                    // Synthesize the text and update the read position precisely
+                    await SynthesizeSpeechAsync(textToSynthesize);
+                    TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(textToSynthesize, _currentClientId));
+                    _currentResponseBufferRead += chunkSize;
+
+                    // Log exactly what was synthesized and the new read position for debugging
+                    _logger.LogDebug($"Synthesized text: '{textToSynthesize}', new read position: {_currentResponseBufferRead}");
                 }
             }
         }
@@ -571,20 +599,15 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 // Handle any remaining text in the response section
-                if (_currentResponseType == "responding" && _currentResponseSection.Length > 0)
+                if (_currentResponseType == "responding" && (21 + _currentResponseBufferRead) < _responseBuffer.Length)
                 {
-                    var remainingText = _currentResponseSection.ToString();
-
-                    // Synthesize the remaining text
+                    var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
                     await SynthesizeSpeechAsync(remainingText);
-
-                    // Notify about the generated text
                     TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(remainingText, _currentClientId));
                 }
 
-                // Reset for the next response
                 _responseBuffer.Clear();
-                _currentResponseSection.Clear();
+                _currentResponseBufferRead = 0;
                 _currentResponseType = "parsing";
 
                 _logger.LogInformation("AI Agent {AgentId} completed response generation", _agentId);
@@ -602,12 +625,8 @@ namespace IqraInfrastructure.Managers.Conversation
 
             try
             {
-                _logger.LogDebug("Synthesizing speech for text: {Text}", text);
-
-                // Generate audio using TTS
+                _logger.LogInformation("Synthesizing speech for text: {Text}", text);
                 var audioData = await _ttsService.SynthesizeTextAsync(text, _processingCts?.Token ?? CancellationToken.None);
-
-                // Notify about the generated audio
                 AudioGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(audioData, _currentClientId));
             }
             catch (Exception ex)
@@ -662,26 +681,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Notify LLM about the error
                 await _llmService.ProcessInputAsync($"Error executing tool: {ex.Message}",
                     _processingCts?.Token ?? CancellationToken.None);
-            }
-        }
-
-        private async Task ProcessEndCallAsync(string reason)
-        {
-            try
-            {
-                _logger.LogInformation("AI Agent {AgentId} requesting to end call: {Reason}", _agentId, reason);
-
-                // Synthesize a goodbye message
-                var goodbyeMessage = "Thank you for calling. " + reason;
-                await SynthesizeSpeechAsync(goodbyeMessage);
-
-                // Notify about the end call
-                TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs($"END_CALL: {reason}", _currentClientId));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing end call request");
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error ending call: " + ex.Message, ex));
             }
         }
 

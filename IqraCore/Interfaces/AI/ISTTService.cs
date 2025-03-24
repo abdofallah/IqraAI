@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Interfaces;
-using System;
 
 namespace IqraCore.Interfaces.AI
 {
@@ -13,7 +12,8 @@ namespace IqraCore.Interfaces.AI
         event EventHandler<object> OnRecoginizingRecieved;
 
         string GetProviderFullName();
-        InterfaceSTTProviderEnum GetProviderType()
+        InterfaceSTTProviderEnum GetProviderType();
+        static InterfaceSTTProviderEnum GetProviderTypeStatic()
         {
             return InterfaceSTTProviderEnum.Unknown;
         }

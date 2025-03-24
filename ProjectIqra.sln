@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectIqraBackendProxy", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectIqraBackendApp", "ProjectIqraBackendApp\ProjectIqraBackendApp.csproj", "{4B7C451E-7D62-4E14-86BF-DDA8D67A7171}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testApp", "testApp\testApp.csproj", "{2BBAC927-D5A6-43DB-B878-766D59122D29}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,6 +51,10 @@ Global
 		{4B7C451E-7D62-4E14-86BF-DDA8D67A7171}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B7C451E-7D62-4E14-86BF-DDA8D67A7171}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B7C451E-7D62-4E14-86BF-DDA8D67A7171}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BBAC927-D5A6-43DB-B878-766D59122D29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BBAC927-D5A6-43DB-B878-766D59122D29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BBAC927-D5A6-43DB-B878-766D59122D29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BBAC927-D5A6-43DB-B878-766D59122D29}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -57,6 +63,7 @@ Global
 		{D97DB88C-FC7B-453B-957F-EC84EE08BBC1} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
 		{466797B5-5039-43EE-A03D-22F343F74F65} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
 		{4B7C451E-7D62-4E14-86BF-DDA8D67A7171} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
+		{2BBAC927-D5A6-43DB-B878-766D59122D29} = {7E8723B2-D567-4A90-9EFF-88DEC8E7A35E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {49412E2B-D548-481B-B81A-8731E7BBC656}

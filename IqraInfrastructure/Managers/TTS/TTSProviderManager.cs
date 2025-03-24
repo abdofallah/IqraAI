@@ -70,7 +70,7 @@ namespace IqraInfrastructure.Managers.TTS
 
             foreach (var type in matchingTypes)
             {
-                var getProviderTypeMethod = type.GetMethod("GetProviderType", BindingFlags.Public | BindingFlags.Static);
+                var getProviderTypeMethod = type.GetMethod("GetProviderTypeStatic", BindingFlags.Public | BindingFlags.Static);
                 if (getProviderTypeMethod != null)
                 {
                     var returnedProviderEnum = (InterfaceTTSProviderEnum)getProviderTypeMethod.Invoke(null, null);
