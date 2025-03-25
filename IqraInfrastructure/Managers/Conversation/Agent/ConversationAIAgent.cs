@@ -261,7 +261,7 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             if (!_isInitialized)
             {
-                _logger.LogDebug("AI Agent {AgentId} is already shut down", _agentId);
+                _logger.LogInformation("AI Agent {AgentId} is already shut down", _agentId);
                 return;
             }
 
@@ -442,8 +442,11 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
+        private readonly SemaphoreSlim _responseLock = new SemaphoreSlim(1, 1);
         private async void OnLLMMessageStreamed(object? sender, object responseObj)
         {
+            await _responseLock.WaitAsync();
+
             try
             {
                 string? deltaText = null;
@@ -484,33 +487,37 @@ namespace IqraInfrastructure.Managers.Conversation
                 _logger.LogError(ex, "Error processing LLM streaming response");
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error processing LLM response: " + ex.Message, ex));
             }
+            finally
+            {
+                _responseLock.Release();
+            }
         }
 
         private StringBuilder _responseBuffer = new StringBuilder();
         private int _currentResponseBufferRead = 0;
-        private string _currentResponseType = "parsing"; // parsing, responding, action, etc.
+        private bool isResponding = false;
 
         private async Task ProcessLLMDeltaTextAsync(string deltaText)
         {
             if (string.IsNullOrEmpty(deltaText)) return;
             _responseBuffer.Append(deltaText);
+            _logger.LogInformation("1: Received response delta: {Text}", deltaText);
 
-            if (_currentResponseType == "parsing" && _responseBuffer.Length > 5)
+            if (!isResponding)
             {
                 var fullText = _responseBuffer.ToString();
 
                 // Look for response_to_customer: or other command prefixes
                 if (fullText.StartsWith("response_to_customer:"))
                 {
-                    _currentResponseType = "responding";
-                    if (_currentResponseBufferRead == 0)
-                    {
-                        _currentResponseBufferRead = 21;
-                    }
+                    isResponding = true;
+                    _currentResponseBufferRead = 21;
+                    _logger.LogInformation("Found response_to_customer: {Text}", fullText);
                 }
                 else if (fullText.StartsWith("execute_system_function:"))
                 {
-                    _currentResponseType = "executing_system_tool";
+                    isResponding = true;
+
                     //var toolCommand = fullText.Substring("execute_system_function:".Length);
 
                     // Process tool execution in a separate task
@@ -519,30 +526,21 @@ namespace IqraInfrastructure.Managers.Conversation
                 }
                 else if (fullText.StartsWith("execute_custom_function:"))
                 {
-                    _currentResponseType = "executing_custom_tool";
+                    isResponding = true;
+
                     //var toolCommand = fullText.Substring("execute_custom_function:".Length);
 
                     // Process tool execution in a separate task
                     //_ = Task.Run(() => ProcessToolExecutionAsync(toolCommand));
                     return;
                 }
-                else
-                {
-                    // TODO
-                    // log and let the ai know that the response is incorrect
-                    return;
-                }
             }
-
-            if (_currentResponseType == "responding")
+            else
             {
-                // Get only the unprocessed text from the buffer
                 string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
-
                 if (unprocessedText.Length == 0) return;
 
-                bool isCompleteSentence = unprocessedText.EndsWith(".") || unprocessedText.EndsWith("!") ||
-                                         unprocessedText.EndsWith("?") || unprocessedText.EndsWith(",");
+                bool isCompleteSentence = unprocessedText.EndsWith(".") || unprocessedText.EndsWith("!") || unprocessedText.EndsWith("?") || unprocessedText.EndsWith(",");
                 bool isLargeChunk = unprocessedText.Length > 100;
 
                 if ((isCompleteSentence && unprocessedText.Length > 10) || isLargeChunk)
@@ -586,10 +584,14 @@ namespace IqraInfrastructure.Managers.Conversation
                     // Synthesize the text and update the read position precisely
                     await SynthesizeSpeechAsync(textToSynthesize);
                     TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(textToSynthesize, _currentClientId));
-                    _currentResponseBufferRead += chunkSize;
+                    
+                    _logger.LogInformation("Current response read {read}, new read {newread}", _currentResponseBufferRead, (_currentResponseBufferRead + chunkSize));
 
-                    // Log exactly what was synthesized and the new read position for debugging
-                    _logger.LogDebug($"Synthesized text: '{textToSynthesize}', new read position: {_currentResponseBufferRead}");
+                    _currentResponseBufferRead += chunkSize;
+                }
+                else
+                {
+                    _logger.LogInformation("Waiting for more text received response: {Text}", unprocessedText);
                 }
             }
         }
@@ -599,7 +601,7 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 // Handle any remaining text in the response section
-                if (_currentResponseType == "responding" && (21 + _currentResponseBufferRead) < _responseBuffer.Length)
+                if (isResponding && _currentResponseBufferRead < _responseBuffer.Length)
                 {
                     var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
                     await SynthesizeSpeechAsync(remainingText);
@@ -608,7 +610,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 _responseBuffer.Clear();
                 _currentResponseBufferRead = 0;
-                _currentResponseType = "parsing";
+                isResponding = false;
 
                 _logger.LogInformation("AI Agent {AgentId} completed response generation", _agentId);
             }

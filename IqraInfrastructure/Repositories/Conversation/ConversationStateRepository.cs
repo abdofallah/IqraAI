@@ -223,8 +223,8 @@ namespace IqraInfrastructure.Repositories.Conversation
                 );
 
                 var update = Builders<ConversationState>.Update
-                    .Set(c => c.Clients[-1].LeftAt, leftAt)
-                    .Set(c => c.Clients[-1].LeaveReason, leaveReason)
+                    .Set(c => c.Clients.FirstMatchingElement().LeftAt, leftAt)
+                    .Set(c => c.Clients.FirstMatchingElement().LeaveReason, leaveReason)
                     .Set(c => c.LastActivityTime, DateTime.UtcNow);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
@@ -270,8 +270,8 @@ namespace IqraInfrastructure.Repositories.Conversation
                 );
 
                 var update = Builders<ConversationState>.Update
-                    .Set(c => c.Agents[-1].LeftAt, leftAt)
-                    .Set(c => c.Agents[-1].LeaveReason, leaveReason)
+                    .Set(c => c.Agents.FirstMatchingElement().LeftAt, leftAt)
+                    .Set(c => c.Agents.FirstMatchingElement().LeaveReason, leaveReason)
                     .Set(c => c.LastActivityTime, DateTime.UtcNow);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
