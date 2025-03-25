@@ -18,7 +18,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private string _systemPrompt;
         private List<ChatMessage> _initialMessages;
         private List<ChatMessage> _messagesMemory;
+
         public event EventHandler<object> MessageStreamed;
+        public event EventHandler MessageStreamedCancelled;
 
         public OpenAIGPTStreamingLLMService(string APIKey, int MaxOutputToken, float Temperature, float TopP, string Model)
         {
@@ -66,6 +68,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
+                    MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
                     // TODO IMPLEMENT LOGGER
                     Console.WriteLine("ProcessInputAsync Cancelled");
                 }
@@ -137,6 +140,14 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
+        }
+
+        public void EditMessage(int index, string message)
+        {
+            if (index >= 0 && index < _messagesMemory.Count)
+            {
+                _messagesMemory[index] = ChatMessage.CreateAssistantMessage(message);
+            }
         }
     }
 }

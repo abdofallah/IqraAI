@@ -116,48 +116,6 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task MarkCallAsCompletedAsync(string callId, bool isSuccess)
-        {
-            try
-            {
-                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, callId);
-                var update = Builders<CallQueueData>.Update
-                    .Set(c => c.Status, isSuccess ? CallQueueStatusEnum.Completed : CallQueueStatusEnum.Failed)
-                    .Set(c => c.CompletedAt, DateTime.UtcNow);
-
-                await _callQueueCollection.UpdateOneAsync(filter, update);
-
-                _logger.LogInformation("Call {CallId} marked as {Status}",
-                    callId, isSuccess ? "completed" : "failed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error marking call {CallId} as completed", callId);
-            }
-        }
-
-        public async Task<int> GetActiveCallCountForBusinessAsync(long businessId)
-        {
-            try
-            {
-                var filter = Builders<CallQueueData>.Filter.And(
-                    Builders<CallQueueData>.Filter.Eq(c => c.BusinessId, businessId),
-                    Builders<CallQueueData>.Filter.In(c => c.Status, new[]
-                    {
-                        CallQueueStatusEnum.Queued,
-                        CallQueueStatusEnum.Processing
-                    })
-                );
-
-                return (int)await _callQueueCollection.CountDocumentsAsync(filter);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting active call count for business {BusinessId}", businessId);
-                return 0;
-            }
-        }
-
         public async Task<CallQueueData?> GetCallByIdAsync(string callId)
         {
             try
@@ -194,11 +152,11 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task UpdateCallSessionIdAsync(string callId, string sessionId)
+        public async Task UpdateCallSessionIdAsync(string queueId, string sessionId)
         {
             try
             {
-                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, callId);
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
                 var update = Builders<CallQueueData>.Update
                     .Set(c => c.SessionId, sessionId);
 
@@ -206,7 +164,40 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating session ID for call {CallId}", callId);
+                _logger.LogError(ex, "Error updating session ID for queue {QueueId}", queueId);
+            }
+        }
+
+        public async Task UpdateCallSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status)
+        {
+            try
+            {
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<CallQueueData>.Update
+                    .Set(c => c.SessionId, sessionId)
+                    .Set(c => c.Status, status);
+
+                await _callQueueCollection.UpdateOneAsync(filter, update);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating session ID and status for queue {QueueId}", queueId);
+            }
+        }
+
+        public async Task UpdateStatusAsync(string queueId, CallQueueStatusEnum status)
+        {
+            try
+            {
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<CallQueueData>.Update
+                    .Set(c => c.Status, status);
+
+                await _callQueueCollection.UpdateOneAsync(filter, update);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating status for queue {QueueId}", queueId);
             }
         }
 

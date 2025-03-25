@@ -1,9 +1,9 @@
 ﻿using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Helper.Telephony;
-using IqraCore.Entities.Server;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Server.Call;
 using IqraCore.Models.Server;
 using IqraCore.Models.Telephony;
-using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,31 +15,30 @@ namespace ProjectIqraBackendApp.Controllers
     {
         private readonly ILogger<CallController> _logger;
         private readonly CallProcessorManager _callProcessorManager;
-        private readonly BusinessManager _businessManager;
         private readonly IConfiguration _configuration;
-        private readonly ServerConfig _serverConfig;
 
         public CallController(
             ILogger<CallController> logger,
             CallProcessorManager callProcessorManager,
-            BusinessManager businessManager,
-            IConfiguration configuration,
-            ServerConfig serverConfig)
+            IConfiguration configuration
+        )
         {
             _logger = logger;
             _callProcessorManager = callProcessorManager;
-            _businessManager = businessManager;
             _configuration = configuration;
-            _serverConfig = serverConfig;
         }
 
         [HttpPost("incoming")]
-        public async Task<IActionResult> HandleIncomingCall([FromBody] BackendIncomingCallRequest request)
+        public async Task<FunctionReturnResult> HandleIncomingCall([FromBody] BackendIncomingCallRequest request)
         {
+            var result = new FunctionReturnResult();
+
             // Validate API key
             if (!ValidateApiKey())
             {
-                return Unauthorized(new { success = false, message = "Invalid API key" });
+                result.Code = "HandleIncomingCall:1";
+                result.Message = "Invalid API key";
+                return result;
             }
 
             _logger.LogInformation("Received incoming call request for provider {Provider}, call ID {CallId}, queue ID {QueueId}",
@@ -50,7 +49,9 @@ namespace ProjectIqraBackendApp.Controllers
                 // Validate the request
                 if (string.IsNullOrEmpty(request.QueueId) || string.IsNullOrEmpty(request.CallId) || request.BusinessId <= 0)
                 {
-                    return BadRequest(new { success = false, message = "Invalid request parameters" });
+                    result.Code = "HandleIncomingCall:2";
+                    result.Message = "Invalid request parameters";
+                    return result;
                 }
 
                 // Create the conversation configuration
@@ -73,7 +74,9 @@ namespace ProjectIqraBackendApp.Controllers
                         clientData = CreateTwilioClientData(request);
                         break;
                     default:
-                        return BadRequest(new { success = false, message = $"Unsupported provider: {request.Provider}" });
+                        result.Code = "HandleIncomingCall:3";
+                        result.Message = "Unsupported telephony provider";
+                        return result;
                 }
 
                 // Start the conversation session
@@ -85,21 +88,21 @@ namespace ProjectIqraBackendApp.Controllers
 
                 if (string.IsNullOrEmpty(sessionId))
                 {
-                    return StatusCode(500, new { success = false, message = "Failed to create conversation session" });
+                    result.Code = "HandleIncomingCall:4";
+                    result.Message = "Failed to create conversation session";
+                    return result;
                 }
 
                 // Return success with session ID
-                return Ok(new
-                    {
-                        success = true,
-                        sessionId = sessionId
-                    }
-                );
+                result.Success = true;
+                return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling incoming call");
-                return StatusCode(500, new { success = false, message = "Internal server error" });
+                result.Code = "HandleIncomingCall:-1";
+                result.Message = "Internal server error";
+                return result;
             }
         }
 
@@ -153,26 +156,43 @@ namespace ProjectIqraBackendApp.Controllers
         }
 
         [HttpPost("{sessionId}/ended")]
-        public async Task<IActionResult> HandleCallEnded(string sessionId)
+        public async Task<FunctionReturnResult> HandleCallEnded(string sessionId, [FromBody] CallEndNotifyBackendData request)
         {
+            var result = new FunctionReturnResult();
+
             // Validate API key
             if (!ValidateApiKey())
             {
-                return Unauthorized(new { success = false, message = "Invalid API key" });
+                result.Code = "HandleCallEnded:1";
+                result.Message = "Invalid API key";
+                return result;
             }
 
             _logger.LogInformation("Received call ended notification for session {SessionId}", sessionId);
 
             try
             {
+                // Validate the request
+                if (string.IsNullOrWhiteSpace(sessionId) || request.Provider == TelephonyProviderEnum.Unknown || string.IsNullOrWhiteSpace(request.PhoneNumberId))
+                {
+                    result.Code = "HandleCallEnded:2";
+                    result.Message = "Invalid request parameters";
+                    return result;
+                }
+
                 // End the conversation session
-                await _callProcessorManager.EndConversationSessionAsync(sessionId, "Call ended by provider");
-                return Ok(new { success = true });
+                await _callProcessorManager.EndClientConnectionFromConversation(sessionId, "Call ended by provider", request.Provider, request.PhoneNumberId);
+
+                result.Success = true;
+                return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error handling call ended notification");
-                return StatusCode(500, new { success = false, message = "Internal server error" });
+
+                result.Code = "HandleCallEnded:-1";
+                result.Message = "Internal server error";
+                return result;
             }
         }
 

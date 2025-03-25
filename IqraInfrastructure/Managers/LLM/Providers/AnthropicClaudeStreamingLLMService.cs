@@ -19,6 +19,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private string _systemPrompt;
 
         public event EventHandler<object> MessageStreamed;
+        public event EventHandler MessageStreamedCancelled;
 
         public AnthropicClaudeStreamingLLMService(string apiKey, string model)
         {
@@ -36,13 +37,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
         {
-            var finalMessages = _initialMessages
+            List<Message> finalMessages = _initialMessages
                 .Concat(_messagesMemory)
-                .Concat(
-                    new List<Message> {
-                        new Message(RoleType.User, input)
-                    }
-            ).ToList();
+                .ToList();
+            finalMessages.Add(new Message(RoleType.User, input));
 
             var parameters = new MessageParameters
             {
@@ -65,7 +63,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 if (!(ex is TaskCanceledException || ex is OperationCanceledException))
                 {
-                    Console.WriteLine("ProcessInputAsync Cancelled");
+                    MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
@@ -115,6 +113,14 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _messagesMemory.Add(
                 new Message(RoleType.Assistant, message)
             );
+        }
+
+        public void EditMessage(int index, string message)
+        {
+            if (index >= 0 && index < _messagesMemory.Count)
+            {
+                _messagesMemory[index] = new Message(RoleType.Assistant, message);
+            }
         }
 
         public string GetModel()

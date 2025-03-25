@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Region;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Region;
@@ -27,9 +28,9 @@ namespace IqraInfrastructure.Managers.Server
             _serverLock = lockFactory;
         }
 
-        public async Task<ServerSelectionResultModel> SelectOptimalServerAsync(string regionId)
+        public async Task<FunctionReturnResult<ServerSelectionResultModel?>> SelectOptimalServerAsync(string regionId)
         {
-            var result = new ServerSelectionResultModel();
+            var result = new FunctionReturnResult<ServerSelectionResultModel?>();
 
             try
             {
@@ -37,6 +38,7 @@ namespace IqraInfrastructure.Managers.Server
                 var regionData = await _regionManager.GetRegionById(regionId);
                 if (regionData == null || regionData.DisabledAt != null)
                 {
+                    result.Code = "SelectOptimalServerAsync:1";
                     result.Message = $"Region not available: {regionId}";
                     _logger.LogWarning("Region not available: {RegionId}", regionId);
                     return result;
@@ -50,6 +52,7 @@ namespace IqraInfrastructure.Managers.Server
 
                 if (!backendServers.Any())
                 {
+                    result.Code = "SelectOptimalServerAsync:2";
                     result.Message = $"No active backend servers in region: {regionId}";
                     _logger.LogWarning("No active backend servers in region: {RegionId}", regionId);
                     return result;
@@ -68,6 +71,7 @@ namespace IqraInfrastructure.Managers.Server
 
                 if (!serverStatuses.Any())
                 {
+                    result.Code = "SelectOptimalServerAsync:3";
                     result.Message = "No server status data available";
                     _logger.LogWarning("No server status data available for region: {RegionId}", regionId);
                     return result;
@@ -77,6 +81,7 @@ namespace IqraInfrastructure.Managers.Server
                 serverStatuses = serverStatuses.Where(s => !s.MaintenanceMode).ToList();
                 if (!serverStatuses.Any())
                 {
+                    result.Code = "SelectOptimalServerAsync:4";
                     result.Message = "All servers are in maintenance mode";
                     _logger.LogWarning("All servers in region {RegionId} are in maintenance mode", regionId);
                     return result;
@@ -91,6 +96,7 @@ namespace IqraInfrastructure.Managers.Server
 
                 if (!scoredServers.Any())
                 {
+                    result.Code = "SelectOptimalServerAsync:5";
                     result.Message = "All servers are at capacity";
                     _logger.LogWarning("All servers in region {RegionId} are at capacity", regionId);
                     return result;
@@ -112,21 +118,26 @@ namespace IqraInfrastructure.Managers.Server
                         if (freshStatus.CurrentActiveCallsCount < freshStatus.MaxConcurrentCallsCount && !freshStatus.MaintenanceMode)
                         {
                             result.Success = true;
-                            result.ServerId = selectedServer.ServerId;
-                            result.ServerEndpoint = selectedServer.ServerId; // Currently Server id is the server endpoint, in case server id is different than endpoint, edit here CAUTION
-                            result.Score = scoredServers.First().Score;
+                            result.Data = new ServerSelectionResultModel()
+                            {
+                                ServerId = selectedServer.ServerId,
+                                ServerEndpoint = selectedServer.ServerId, // Currently Server id is the server endpoint, in case server id is different than endpoint, edit here CAUTION
+                                Score = scoredServers.First().Score
+                            };
 
                             _logger.LogInformation("Selected server {ServerId} with score {Score} for region {RegionId}",
-                                result.ServerId, result.Score, regionId);
+                                result.Data.ServerId, result.Data.Score, regionId);
                         }
                         else
                         {
+                            result.Code = "SelectOptimalServerAsync:6";
                             result.Message = "Selected server no longer has capacity";
                             _logger.LogInformation("Selected server {ServerId} no longer has capacity", selectedServer.ServerId);
                         }
                     }
                     else
                     {
+                        result.Code = "SelectOptimalServerAsync:7";
                         result.Message = "Selected server status is no longer available";
                         _logger.LogWarning("Selected server {ServerId} status is no longer available", selectedServer.ServerId);
                     }
@@ -135,12 +146,14 @@ namespace IqraInfrastructure.Managers.Server
                 }
                 else
                 {
+                    result.Code = "SelectOptimalServerAsync:8";
                     result.Message = "Failed to acquire lock for server selection";
                     _logger.LogWarning("Failed to acquire lock for server selection: {ServerId}", selectedServer.ServerId);
                 }
             }
             catch (Exception ex)
             {
+                result.Code = "SelectOptimalServerAsync:9";
                 result.Message = $"Error selecting server: {ex.Message}";
                 _logger.LogError(ex, "Error selecting server for region {RegionId}", regionId);
             }

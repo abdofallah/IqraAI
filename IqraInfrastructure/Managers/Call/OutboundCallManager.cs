@@ -122,11 +122,11 @@ namespace IqraInfrastructure.Managers.Call
                     _logger.LogWarning("Unable to get region data for region {RegionId}", numberValidation.Data.RegionId);
                     return result;
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.ServerEndpoint);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.Data.ServerEndpoint);
                 if (regionServerData == null)
                 {
                     result.Message = "Unable to get region server data";
-                    _logger.LogWarning("Unable to get region server data for region {RegionId} and endpoint {Endpoint}", numberValidation.Data.RegionId, serverSelection.ServerEndpoint);
+                    _logger.LogWarning("Unable to get region server data for region {RegionId} and endpoint {Endpoint}", numberValidation.Data.RegionId, serverSelection.Data.ServerEndpoint);
                     return result;
                 }
                 var serverApiKey = regionServerData.APIKey;
@@ -142,7 +142,7 @@ namespace IqraInfrastructure.Managers.Call
                     CallerNumber = numberValidation.Data.Number,
                     Priority = 1, // Normal priority for outbound calls
                     IsOutbound = true,
-                    ProcessingServerId = serverSelection.ServerId,
+                    ProcessingServerId = serverSelection.Data.ServerId,
                     ProviderMetadata = request.Metadata ?? new Dictionary<string, string>()
                 };
 
@@ -150,7 +150,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 // 6. Initiate the outbound call through the backend app
                 var initiateResult = await InitiateCallThroughBackendAsync(
-                    serverSelection.ServerEndpoint,
+                    serverSelection.Data.ServerEndpoint,
                     serverApiKey,
                     callQueue,
                     request.ToNumber);
@@ -158,7 +158,7 @@ namespace IqraInfrastructure.Managers.Call
                 if (!initiateResult.Success)
                 {
                     // Mark queue entry as failed
-                    await _callQueueRepository.MarkCallAsCompletedAsync(queueId, false);
+                    await _callQueueRepository.UpdateStatusAsync(queueId, CallQueueStatusEnum.Failed);
 
                     result.Message = initiateResult.Message;
                     _logger.LogError("Call initiation failed: {Message}", initiateResult.Message);

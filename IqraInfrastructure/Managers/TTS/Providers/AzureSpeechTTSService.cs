@@ -44,16 +44,21 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _synthesizer.BookmarkReached += OnBookmarkReached;
         }
 
-        public async Task<byte[]?> SynthesizeTextAsync(string text, CancellationToken cancellationToken)
+        public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken)
         {
             var result = await _synthesizer.SpeakTextAsync(text);
 
             if (result.Reason == ResultReason.SynthesizingAudioCompleted)
             {
-                return result.AudioData;
+                return (result.AudioData, result.AudioDuration);
             }
 
-            return new byte[] { };
+            return (new byte[] { }, TimeSpan.Zero);
+        }
+
+        public async Task StopTextSynthesisAsync()
+        {
+            await _synthesizer.StopSpeakingAsync();
         }
 
         private void OnSynthesisStarted(object? sender, SpeechSynthesisEventArgs e)

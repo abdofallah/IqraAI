@@ -4,6 +4,8 @@ namespace IqraCore.Interfaces.AI
 {
     public interface ILLMService
     {
+        event EventHandler<object> MessageStreamed;
+        event EventHandler MessageStreamedCancelled;
         Task ProcessInputAsync(string input, CancellationToken cancellationToken);
         void SetModel(string model);
         void SetTemperature(decimal temperature);
@@ -12,8 +14,7 @@ namespace IqraCore.Interfaces.AI
         void SetInitialMessage(string initialMessage);
         void AddUserMessage(string message);
         void AddAssistantMessage(string message);
-        event EventHandler<object> MessageStreamed;
-
+        void EditMessage(int index, string message);
         string GetModel();
         string GetProviderFullName();
         InterfaceLLMProviderEnum GetProviderType();

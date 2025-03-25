@@ -21,8 +21,9 @@ namespace IqraInfrastructure.Managers.STT.Providers
             add { _transcriptionResultReceived += value; }
             remove { _transcriptionResultReceived -= value; }
         }
-        public event EventHandler<object> OnRecoginizingRecieved;
 
+        public event EventHandler<object> OnRecoginizingRecieved;
+        public event EventHandler<object> OnRecoginizingCancelled;
         public AzureSpeechSTTService(string subscriptionKey, string region, string language)
         {
             _subscriptionKey = subscriptionKey;
@@ -33,8 +34,18 @@ namespace IqraInfrastructure.Managers.STT.Providers
         public void Initialize()
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
-            speechConfig.SpeechRecognitionLanguage = "en-US";
-            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "600"); // make it dynamic with some kind of maths
+
+            // TODO MAKE THIS DYNAMICI IN STT PROVIDER TO MANUALLY SET LANGAUGES IDS FOR EACH LANGUAGE
+            if (_language == "en")
+            {
+                speechConfig.SpeechRecognitionLanguage = "en-US";
+            }
+            else if (_language == "ar")
+            {
+                speechConfig.SpeechRecognitionLanguage = "ar-SA";
+            }
+
+            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300"); // make it dynamic with some kind of maths
 
             _pushStream = AudioInputStream.CreatePushStream();
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);
@@ -49,12 +60,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public void StartTranscription()
         {
-            _recognizer.StartContinuousRecognitionAsync().Wait();
+            _recognizer.StartContinuousRecognitionAsync().Wait(100);
         }
 
         public void StopTranscription()
         {
-            _recognizer.StopContinuousRecognitionAsync().Wait();
+            _recognizer.StopContinuousRecognitionAsync().Wait(100);
         }
 
         public void WriteTranscriptionAudioData(byte[] data)
@@ -86,8 +97,11 @@ namespace IqraInfrastructure.Managers.STT.Providers
             Console.WriteLine($"Recognition canceled. Reason: {e.Reason}");
             if (e.Reason == CancellationReason.Error)
             {
+                // TODO here notify the conversation manager that there is an error...
                 Console.WriteLine($"Error details: {e.ErrorDetails}");
             }
+
+            OnRecoginizingCancelled?.Invoke(this, e);
         }
 
         private void OnSessionStarted(object? sender, SessionEventArgs e)

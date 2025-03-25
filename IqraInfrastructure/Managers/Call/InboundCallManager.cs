@@ -13,6 +13,7 @@ using IqraInfrastructure.Managers.Region;
 using IqraCore.Entities.Business;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
+using IqraCore.Entities.Server.Call;
 
 namespace IqraInfrastructure.Managers.Call
 {
@@ -28,6 +29,8 @@ namespace IqraInfrastructure.Managers.Call
         private readonly TwilioManager _twilioManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
+
+        private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         public InboundCallManager(
             ILogger<InboundCallManager> logger,
@@ -64,6 +67,7 @@ namespace IqraInfrastructure.Managers.Call
                 var phoneNumberInfo = await GetPhoneNumberInfo(webhookContext);
                 if (phoneNumberInfo == null)
                 {
+                    result.Code = "DistributeIncomingCall:1";
                     result.Message = "Unable to identify phone number";
                     _logger.LogWarning("Unable to identify phone number for call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId);
                     return result;
@@ -77,6 +81,7 @@ namespace IqraInfrastructure.Managers.Call
                 // TODO in future if phone number has options of what to do in case of no route, set it here
                 if (string.IsNullOrWhiteSpace(numberRouteId))
                 {
+                    result.Code = "DistributeIncomingCall:2";
                     result.Message = "Business number has no route set";
                     _logger.LogWarning("Business {BusinessId} phone number {PhoneNumberId} has no route set", businessId, phoneNumberInfo.NumberId);
                     return result;
@@ -97,6 +102,7 @@ namespace IqraInfrastructure.Managers.Call
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
+                    result.Code = "DistributeIncomingCall:" + serverSelection.Code;
                     result.Message = serverSelection.Message;
                     _logger.LogWarning("Server selection failed for call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: {Message}",
                         webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, serverSelection.Message);
@@ -107,15 +113,17 @@ namespace IqraInfrastructure.Managers.Call
                 var regionData = await _regionManager.GetRegionById(regionId);
                 if (regionData == null)
                 {
+                    result.Code = "DistributeIncomingCall:3";
                     result.Message = $"Region not found: {regionId}";
                     _logger.LogWarning("Region not found: {RegionId}", regionId);
                     return result;
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.ServerEndpoint);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.Data.ServerEndpoint);
                 if (regionServerData == null)
                 {
-                    result.Message = $"Region server not found: {serverSelection.ServerEndpoint}";
-                    _logger.LogWarning("Region server not found: {ServerEndpoint}", serverSelection.ServerEndpoint);
+                    result.Code = "DistributeIncomingCall:4";
+                    result.Message = $"Region server not found: {serverSelection.Data.ServerEndpoint}";
+                    _logger.LogWarning("Region server not found: {ServerEndpoint}", serverSelection.Data.ServerEndpoint);
                     return result;
                 }
                 var regionServerApiKey = regionServerData.APIKey;
@@ -132,20 +140,20 @@ namespace IqraInfrastructure.Managers.Call
                     CallerNumber = webhookContext.From,
                     Priority = 2, // High priority for incoming calls
                     IsOutbound = false,
-                    ProcessingServerId = serverSelection.ServerId,
+                    ProcessingServerId = serverSelection.Data.ServerId,
                     ProviderMetadata = webhookContext.AdditionalData
                 };
 
                 string queueId = await _callQueueRepository.EnqueueCallAsync(callQueue);
 
                 // 5. Forward call to selected backend server
-                var forwardResult = await ForwardCallToBackendAsync(serverSelection.ServerEndpoint, regionServerApiKey, webhookContext, callQueue);
-
+                var forwardResult = await ForwardCallToBackendAsync(serverSelection.Data.ServerEndpoint, regionServerApiKey, webhookContext, callQueue);
                 if (!forwardResult.Success)
                 {
                     // If forwarding fails, mark the queue entry as failed
-                    await _callQueueRepository.MarkCallAsCompletedAsync(queueId, false);
+                    await _callQueueRepository.UpdateStatusAsync(queueId, CallQueueStatusEnum.Failed);
                     
+                    result.Code = "DistributeIncomingCall:5";
                     result.Message = forwardResult.Message;
                     _logger.LogError("Call forwarding failed for call {CallId} with queue {queueId}: {Message}",
                         webhookContext.CallId, queueId, forwardResult.Message);
@@ -157,11 +165,11 @@ namespace IqraInfrastructure.Managers.Call
                 result.Data = new DistributionResultModel()
                 {
                     QueueId = queueId,
-                    BackendServerId = serverSelection.ServerId
+                    BackendServerId = serverSelection.Data.ServerId
                 };
 
                 _logger.LogInformation("Call {CallId} distributed to server {ServerId} with queue ID {QueueId}",
-                    webhookContext.CallId, serverSelection.ServerId, queueId);
+                    webhookContext.CallId, serverSelection.Data.ServerId, queueId);
 
                 return result;
             }
@@ -185,9 +193,6 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                // Mark the call as completed
-                await _callQueueRepository.MarkCallAsCompletedAsync(callQueue.Id, true);
-
                 // If the call has a session ID, notify the backend app
                 if (!string.IsNullOrEmpty(callQueue.SessionId) && !string.IsNullOrEmpty(callQueue.ProcessingServerId))
                 {
@@ -206,7 +211,8 @@ namespace IqraInfrastructure.Managers.Call
                     }
                     var regionServerApiKey = regionServerData.APIKey;
 
-                    await NotifyBackendCallEndedAsync(callQueue.ProcessingServerId, regionServerApiKey, callQueue.SessionId);
+                    await NotifyBackendCallEndedAsync(callQueue.ProcessingServerId, regionServerApiKey, callQueue.SessionId, provider, phoneNumberId);
+                    // todo notify backend and get success response to try again
                 }
 
                 _logger.LogInformation("Call {CallId} marked as ended", callQueue.Id);
@@ -322,9 +328,9 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<ForwardResult> ForwardCallToBackendAsync(string serverEndpoint, string apiKey, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
+        private async Task<FunctionReturnResult> ForwardCallToBackendAsync(string serverEndpoint, string apiKey, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
         {
-            var result = new ForwardResult();
+            var result = new FunctionReturnResult();
 
             try
             {
@@ -364,37 +370,44 @@ namespace IqraInfrastructure.Managers.Call
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    result.Message = $"Backend server returned {response.StatusCode}: {errorContent}";
-                    _logger.LogError("Backend server error: {StatusCode} - {Error}",
-                        response.StatusCode, errorContent);
+                    result.Code = "ForwardCallToBackendAsync:1";
+                    result.Message = "Error forwarding call to backend server";
+                    _logger.LogError("Error forwarding call to backend server {StatusCode} - {Error}", response.StatusCode, errorContent);
                     return result;
                 }
 
                 // Parse the response
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var responseData = JsonSerializer.Deserialize<ForwardResponse>(responseContent);
-
-                if (responseData == null || string.IsNullOrEmpty(responseData.MediaUrl))
+                var responseData = JsonSerializer.Deserialize<FunctionReturnResult>(responseContent, _seralizationOptionCamelCase);
+                if (responseData == null)
                 {
+                    result.Code = "ForwardCallToBackendAsync:2";
                     result.Message = "Invalid response from backend server";
                     _logger.LogError("Invalid response from backend server");
                     return result;
                 }
 
+                if (!responseData.Success)
+                {
+                    result.Code = "ForwardCallToBackendAsync:" + responseData.Code;
+                    result.Message = responseData.Message;
+                    _logger.LogError("Error forwarding call to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
+                    return result;
+                }
+
                 result.Success = true;
-                result.SessionId = responseData.SessionId;
-                result.MediaUrl = responseData.MediaUrl;
                 return result;
             }
             catch (Exception ex)
             {
+                result.Code = "ForwardCallToBackendAsync:-1";
                 result.Message = $"Error forwarding call to backend: {ex.Message}";
                 _logger.LogError(ex, "Error forwarding call to backend server");
                 return result;
             }
         }
 
-        private async Task NotifyBackendCallEndedAsync(string serverEndpoint, string apiKey,  string sessionId)
+        private async Task NotifyBackendCallEndedAsync(string serverEndpoint, string apiKey,  string sessionId, TelephonyProviderEnum provider, string phoneNumberId)
         {
             try
             {
@@ -404,16 +417,45 @@ namespace IqraInfrastructure.Managers.Call
                 // Set headers
                 client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
 
+                // Prepare the request body
+                var requestBody = new CallEndNotifyBackendData()
+                {
+                    Provider = provider,
+                    PhoneNumberId = phoneNumberId
+                };
+
+                var jsonContent = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
                 // Send the notification
-                var response = await client.PostAsync(
-                    $"{serverEndpoint}/api/call/{sessionId}/ended",
-                    null);
+                if (!serverEndpoint.StartsWith("http"))
+                {
+                    serverEndpoint = "http://" + serverEndpoint;
+                }
+                var baseUri = new Uri(serverEndpoint);
+                baseUri = new Uri(baseUri, $"/api/call/{sessionId}/ended");
+                var response = await client.PostAsync(baseUri, content);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError("Failed to notify backend of call end: {StatusCode} - {Error}",
                         response.StatusCode, errorContent);
+                    return;
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseData = JsonSerializer.Deserialize<FunctionReturnResult>(responseContent, _seralizationOptionCamelCase);
+                if (responseData == null)
+                {
+                    _logger.LogError("Invalid response from backend server {ResponseContent}", responseContent);
+                    return;
+                }
+
+                if (!responseData.Success)
+                {
+                    _logger.LogError("Error forwarding call ended notificaiton to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
+                    return;
                 }
             }
             catch (Exception ex)
@@ -428,20 +470,6 @@ namespace IqraInfrastructure.Managers.Call
             public string NumberId { get; set; } = string.Empty;
             public string? RouteId { get; set; } = string.Empty;
             public string RegionId { get; set; } = string.Empty;
-        }
-
-        private class ForwardResult
-        {
-            public bool Success { get; set; }
-            public string Message { get; set; } = string.Empty;
-            public string SessionId { get; set; } = string.Empty;
-            public string MediaUrl { get; set; } = string.Empty;
-        }
-
-        private class ForwardResponse
-        {
-            public string MediaUrl { get; set; } = string.Empty;
-            public string SessionId { get; set; } = string.Empty;
         }
     }
 }

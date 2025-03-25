@@ -2,8 +2,6 @@
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Server;
-using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraCore.Models.Telephony;
@@ -18,6 +16,7 @@ using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -29,6 +28,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ILogger<CallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ServerStatusManager _serverStatusManager;
+        private readonly CallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
@@ -41,6 +41,7 @@ namespace IqraInfrastructure.Managers.Call
             ILogger<CallProcessorManager> logger,
             IServiceProvider serviceProvider,
             ServerStatusManager serverStatusService,
+            CallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager)
@@ -48,6 +49,7 @@ namespace IqraInfrastructure.Managers.Call
             _logger = logger;
             _serviceProvider = serviceProvider;
             _serverStatusManager = serverStatusService;
+            _callQueueRepository = callQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
@@ -70,7 +72,8 @@ namespace IqraInfrastructure.Managers.Call
 
             try
             {
-                await _sessionCreationLock.WaitAsync(cancellationToken);
+                await _sessionCreationLock.WaitAsync(cancellationToken);    
+                await _callQueueRepository.UpdateCallSessionIdAndStatusAsync(config.QueueId, sessionId, CallQueueStatusEnum.Processing);
 
                 // Double check capacity after acquiring lock
                 if (!_serverStatusManager.HasCapacity())
@@ -105,7 +108,7 @@ namespace IqraInfrastructure.Managers.Call
                 await conversationSession.AddClientAsync(telephonyClient.Data);
 
                 // Create and add AI agent
-                var agent = await CreateAIAgentAsync(sessionId, config);
+                var agent = await CreateAIAgentAsync(sessionId, config, conversationSession);
                 if (agent != null)
                 {
                     await conversationSession.AddAgentAsync(agent, new ConversationAgentConfiguration
@@ -122,6 +125,7 @@ namespace IqraInfrastructure.Managers.Call
                 _activeSessions[sessionId] = conversationSession;
 
                 // Update server status
+                await _callQueueRepository.UpdateStatusAsync(config.QueueId, CallQueueStatusEnum.Completed);
                 _serverStatusManager.IncrementActiveCalls();
 
                 _logger.LogInformation("Created conversation session {SessionId} for business {BusinessId}",
@@ -133,6 +137,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError(ex, "Error creating conversation session");
                 await CleanupSessionAsync(sessionId);
+                // todo make sure conversation session is completely disposed
                 return string.Empty;
             }
             finally
@@ -230,6 +235,31 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
+        public async Task EndClientConnectionFromConversation(string sessionId, string reason, TelephonyProviderEnum provider, string phoneNumberId)
+        {
+            if (_activeSessions.TryGetValue(sessionId, out var session))
+            {
+                try
+                {
+                    string clientId = $"{provider}_{phoneNumberId}";
+                    await session.RemoveClientAsync(clientId, reason);
+
+                    _logger.LogInformation("Ended client connection conversation session {SessionId}: {Reason}", sessionId, reason);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error ending client connection conversation session {SessionId}", sessionId);
+                }
+                finally
+                {
+                    await CleanupSessionAsync(sessionId);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Session {SessionId} not found for ending client connection", sessionId);
+            }
+        }
         private async Task CleanupSessionAsync(string sessionId)
         {
             // Remove from active sessions
@@ -255,7 +285,7 @@ namespace IqraInfrastructure.Managers.Call
             var result = new FunctionReturnResult<IConversationClient?>();
 
             // Create a client ID from session ID and provider
-            string clientId = $"{clientData.Provider}_{sessionId}";
+            string clientId = $"{clientData.Provider}_{clientData.PhoneNumberId}";
 
             var businessNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(clientData.BusinessId, clientData.PhoneNumberId);
             if (businessNumberData == null)
@@ -312,7 +342,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<IConversationAgent> CreateAIAgentAsync(string sessionId, ConversationSessionConfiguration config)
+        private async Task<IConversationAgent> CreateAIAgentAsync(string sessionId, ConversationSessionConfiguration config, ConversationSessionManager sessionManager)
         {
             // Create agent ID
             string agentId = $"ai_{sessionId}";
@@ -322,6 +352,7 @@ namespace IqraInfrastructure.Managers.Call
                 // Create the AI agent
                 return new ConversationAIAgent(
                     _serviceProvider.GetRequiredService<ILogger<ConversationAIAgent>>(),
+                    sessionManager,
                     agentId,
                     _businessManager,
                     _serviceProvider.GetRequiredService<SystemPromptGenerator>(),
