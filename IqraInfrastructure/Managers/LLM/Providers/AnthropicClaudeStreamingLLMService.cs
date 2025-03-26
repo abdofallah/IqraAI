@@ -35,12 +35,11 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
         }
 
-        public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
             List<Message> finalMessages = _initialMessages
                 .Concat(_messagesMemory)
                 .ToList();
-            finalMessages.Add(new Message(RoleType.User, input));
 
             var parameters = new MessageParameters
             {

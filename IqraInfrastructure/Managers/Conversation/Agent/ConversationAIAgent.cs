@@ -280,7 +280,37 @@ namespace IqraInfrastructure.Managers.Conversation
             }
 
             try
-            {              
+            {
+                bool isFillerWord = WordsNotToCancelCurrentProcessing.Contains(text.Trim().ToLower());
+                if (_isExecutingSystemTool || _isExecutingCustomTool)
+                {
+                    if (isFillerWord) return; // we can ignore the filler word as it makes no sense for now
+
+                    // AI is busy executing the tool so we will ask the user to wait
+                    // Add some kind of either ai processing that allows ai to take the text
+                    // and tell if we should force cancel the tool execution or ignore user query for now
+
+                    // OR for now let user speak (A moment as I finish this task)
+                    return;
+                }
+
+                if (_isResponding)
+                {
+                    if (isFillerWord) return; // we can ignore this filler word if the ai is still responding
+
+                    await CancelOnGoingAgentProcessingTask();
+
+                    if (_responseBuffer.Length > 0)
+                    {
+                        var responseReadSoFar = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
+                        _llmService.AddAssistantMessage(responseReadSoFar + "...");
+                    }
+
+                    _isResponding = false;
+                    _responseBuffer.Clear();
+                    _currentResponseBufferRead = 0;
+                }
+
                 var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _conversationCTS.Token, cancellationToken).Token;
 
                 _currentClientId = clientId;
@@ -289,7 +319,8 @@ namespace IqraInfrastructure.Managers.Conversation
                     _clientContextMap[clientId] = text;
                 }
 
-                LLMTask = _llmService.ProcessInputAsync(text, combinedCancellationToken);
+                _llmService.AddUserMessage($"customer_query: {text}");
+                LLMTask = _llmService.ProcessInputAsync(combinedCancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -355,25 +386,6 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 _logger.LogInformation("AI Agent {AgentId} received transcription: {Text}", _agentId, text);
-
-
-                if (_isExecutingSystemTool || _isExecutingCustomTool)
-                {
-                    // TODO add the transaciption to the result
-
-                    return;
-                }
-
-                bool isFillerWord = WordsNotToCancelCurrentProcessing.Contains(text.Trim().ToLower());
-                if (_isResponding && isFillerWord)
-                {
-                    // TODO add the transaciption to the result
-
-                    return;
-                }
-
-                await CancelOnGoingAgentProcessingTask();
-
                 await ProcessTextAsync(text, _currentClientId, (new CancellationTokenSource()).Token);
             }
             catch (Exception ex)
@@ -426,9 +438,9 @@ namespace IqraInfrastructure.Managers.Conversation
                         isEndOfResponse = true;
                     }
                 }
-                else if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.GoogleGemini)
+                else if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.GoogleAIGemini)
                 {
-                    var response = (Google.Cloud.AIPlatform.V1.GenerateContentResponse)responseObj;
+                    var response = (GenerativeAI.Types.GenerateContentResponse)responseObj;
 
                     var candidate = response.Candidates.FirstOrDefault(); // Usually only one candidate
                     if (candidate?.Content?.Parts?.FirstOrDefault() != null)
@@ -437,7 +449,8 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
 
                     if (candidate != null &&
-                        candidate.FinishReason != Google.Cloud.AIPlatform.V1.Candidate.Types.FinishReason.Unspecified
+                        candidate.FinishReason != null &&
+                        candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
                     )
                     {
                         isEndOfResponse = true;
@@ -449,11 +462,15 @@ namespace IqraInfrastructure.Managers.Conversation
                     throw new NotImplementedException($"LLM provider type {_llmService.GetProviderType()} not implemented in OnLLMMessageStreamed");
                 }
 
+                if (!string.IsNullOrEmpty(deltaText))
+                {
+                    _responseBuffer.Append(deltaText);
+                }      
+
                 // Figure out what kind of response this is
                 if (!_isResponding && !_isExecutingSystemTool && !_isExecutingCustomTool)
                 {
                     var fullText = _responseBuffer.ToString();
-
                     if (fullText.StartsWith("response_to_customer:"))
                     {
                         _isResponding = true;
@@ -495,7 +512,8 @@ namespace IqraInfrastructure.Managers.Conversation
                     else
                     {
                         _logger.LogError("Agent {AgentId} Unhandled LLM response: {Response}", _agentId, fullAggregatedMessage);
-                        await _llmService.ProcessInputAsync($"response_from_system: Invalid response type recieved from the agent, allowed response types by the agent response_to_customer or execute_system_function or execute_custom_function.", _conversationCTS?.Token ?? CancellationToken.None);
+                        _llmService.AddUserMessage("response_from_system: Invalid response type recieved from the agent, allowed response types by the agent response_to_customer or execute_system_function or execute_custom_function.");
+                        await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
                     }
                 }
             }
@@ -521,8 +539,6 @@ namespace IqraInfrastructure.Managers.Conversation
         private async Task HandleLLMResponseProcessingAsync(string deltaText)
         {
             if (string.IsNullOrEmpty(deltaText)) return;
-
-            _responseBuffer.Append(deltaText);
 
             string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
             if (unprocessedText.Length == 0) return;
@@ -578,13 +594,17 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             try
             {
+                var completeText = _responseBuffer.ToString();
+
                 // Handle any remaining text in the response section
                 if (_isResponding && _currentResponseBufferRead < _responseBuffer.Length)
                 {
-                    var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
+                    var remainingText = completeText.Substring(_currentResponseBufferRead);
                     await SynthesizeSpeechAsync(remainingText);
                     TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(remainingText, _currentClientId));
                 }
+
+                _llmService.AddAssistantMessage(completeText);
             }
             catch (Exception ex)
             {
@@ -611,22 +631,44 @@ namespace IqraInfrastructure.Managers.Conversation
                 int endCallIndex = llmResponseFull.IndexOf("end_call(", startFunctionIndex);
                 if (endCallIndex != -1)
                 {
-                    // parse end_call("reason for ending", "message to speak")
-                    string reasonForEnding;
+                    // Extract everything between the parentheses
+                    int openParenIndex = endCallIndex + "end_call(".Length;
+                    int closeParenIndex = llmResponseFull.IndexOf(")", openParenIndex);
+
+                    if (closeParenIndex == -1)
+                    {
+                        _logger.LogError("Malformed end_call function, missing closing parenthesis");
+                        return;
+                    }
+
+                    string argsString = llmResponseFull.Substring(openParenIndex, closeParenIndex - openParenIndex);
+
+                    // Parse the arguments using regex to handle quoted strings properly
+                    var regex = new System.Text.RegularExpressions.Regex("\"([^\"]*)\"|null|\"\"");
+                    var matches = regex.Matches(argsString);
+
+                    string reasonForEnding = "";
                     string? messageToSpeak = null;
 
-                    int reasonForEndingStartIndex = endCallIndex + "end_call(".Length;
-                    int reasonForEndingEndIndex = llmResponseFull.IndexOf(",", reasonForEndingStartIndex);
-                    if (reasonForEndingEndIndex != -1)
+                    if (matches.Count >= 1)
                     {
-                        reasonForEnding = llmResponseFull.Substring(reasonForEndingStartIndex, reasonForEndingEndIndex - reasonForEndingStartIndex);
-                    }
-                    else
-                    {
-                        reasonForEnding = llmResponseFull.Substring(reasonForEndingStartIndex);
+                        // First argument is the reason
+                        var reasonMatch = matches[0].Value;
+                        reasonForEnding = reasonMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                         reasonMatch.Trim('"');
+
+                        // Second argument is the optional message
+                        if (matches.Count >= 2)
+                        {
+                            var messageMatch = matches[1].Value;
+                            messageToSpeak = messageMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+                                             messageMatch == "\"\"" ?
+                                             null : messageMatch.Trim('"');
+                        }
                     }
 
-                    _logger.LogInformation("AI Agent {AgentId} received end_call: {ReasonForEnding} and {MessageToSpeak}", _agentId, reasonForEnding, messageToSpeak);
+                    _logger.LogInformation("AI Agent {AgentId} received end_call: {ReasonForEnding} and {MessageToSpeak}",
+                                          _agentId, reasonForEnding, messageToSpeak);
 
                     if (!string.IsNullOrWhiteSpace(messageToSpeak))
                     {
@@ -642,8 +684,9 @@ namespace IqraInfrastructure.Managers.Conversation
                         }
                     }
 
-                    await _conversationSessionManager.EndAsync(reasonForEnding);
+                    _llmService.AddAssistantMessage(llmResponseFull);
 
+                    await _conversationSessionManager.EndAsync(reasonForEnding);
                     return;
                 }
 
@@ -661,13 +704,15 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
 
-                await _llmService.ProcessInputAsync($"response_from_system: Invalid system tool response recieved, The system is only expecting end_call or transfer_to_agent or receive_dtmf_input system tool in the format of [execute_system_function: toolName(toolparms)]", _conversationCTS?.Token ?? CancellationToken.None);
+                _llmService.AddUserMessage("response_from_system: Invalid system tool response recieved, The system is only expecting end_call or transfer_to_agent or receive_dtmf_input system tool in the format of [execute_system_function: toolName(toolparms)]");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error executing system function, {Response}", llmResponseFull);
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error executing system function: " + ex.Message, ex));
-                await _llmService.ProcessInputAsync($"response_from_system: There was an internal system error when trying to run the system tool...", _conversationCTS?.Token ?? CancellationToken.None);
+                _llmService.AddUserMessage("response_from_system: There was an internal system error when trying to run the system tool...");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             finally
             {
@@ -731,8 +776,8 @@ namespace IqraInfrastructure.Managers.Conversation
                 var result = await _scriptExecutionManager.ExecuteToolAsync(toolName, parameters);
 
                 // Send the result back to the LLM
-                await _llmService.ProcessInputAsync($"Tool {toolName} execution result: {result}",
-                    _conversationCTS?.Token ?? CancellationToken.None);
+                _llmService.AddUserMessage($"Tool {toolName} execution result: {result}");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -740,8 +785,8 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error executing tool: " + ex.Message, ex));
 
                 // Notify LLM about the error
-                await _llmService.ProcessInputAsync($"Error executing tool: {ex.Message}",
-                    _conversationCTS?.Token ?? CancellationToken.None);
+                _llmService.AddUserMessage($"Error executing tool: {ex.Message}");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
         }
 
@@ -772,6 +817,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private async Task CancelOnGoingAgentProcessingTask()
         {
             _isAcceptingSTTAudio = false;
+            _sttService.StopTranscription();
             await _ttsService.StopTextSynthesisAsync();
 
             _currentTTSProcessingTaskCTS.Cancel();

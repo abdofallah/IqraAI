@@ -65,7 +65,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public void StopTranscription()
         {
-            _recognizer.StopContinuousRecognitionAsync().Wait(100);
+            StopTranscriptionAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task StopTranscriptionAsync()
+        {
+            await _recognizer.StopContinuousRecognitionAsync();
         }
 
         public void WriteTranscriptionAudioData(byte[] data)

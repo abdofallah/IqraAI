@@ -6,7 +6,7 @@ namespace IqraCore.Interfaces.AI
     {
         event EventHandler<object> MessageStreamed;
         event EventHandler MessageStreamedCancelled;
-        Task ProcessInputAsync(string input, CancellationToken cancellationToken);
+        Task ProcessInputAsync(CancellationToken cancellationToken);
         void SetModel(string model);
         void SetTemperature(decimal temperature);
         void SetMaxTokens(int maxTokens);

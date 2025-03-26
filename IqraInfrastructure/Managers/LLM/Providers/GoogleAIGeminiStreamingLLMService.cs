@@ -1,25 +1,26 @@
-﻿using Google.Api.Gax.Grpc;
-using Google.Cloud.AIPlatform.V1;
-using Grpc.Core;
+﻿using DnsClient.Internal;
+using GenerativeAI;
+using GenerativeAI.Types;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
-    public class GoogleGeminiStreamingLLMService : ILLMService
+    public class GoogleAIGeminiStreamingLLMService : ILLMService
     {
-        private readonly PredictionServiceClient _client;
-        private readonly string _projectId;
-        private readonly string _locationId;
-        private readonly string _publisher = "google";
+        private readonly ILogger<GoogleAIGeminiStreamingLLMService> _logger;
+
+        private readonly GoogleAi _client;
 
         // Config
         private int _maxTokens;
         private string _modelId;
         private float _temperature;
-        private float _topP;
 
         // Session Data
+        private GenerativeModel _googleModel;
+
         private Content _systemInstruction;
         private List<Content> _initialMessages;
         private List<Content> _messagesMemory;
@@ -27,22 +28,17 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public event EventHandler<object> MessageStreamed;
         public event EventHandler MessageStreamedCancelled;
     
-        public GoogleGeminiStreamingLLMService(string projectId, string locationId, string modelId, int maxOutputTokens, float Temperature, float TopP, string apiKey)
+        public GoogleAIGeminiStreamingLLMService(string apiKey, string modelId)
         {
-            _projectId = projectId;
-            _locationId = locationId;
+            _logger = null; // todo
+
             _modelId = modelId;
 
-            var clientBuilder = new PredictionServiceClientBuilder
-            {
-                Endpoint = $"{_locationId}-aiplatform.googleapis.com",
-                ApiKey = apiKey
-            };
-            _client = clientBuilder.Build();
+            _maxTokens = 1024; // todo make dynamic
+            _temperature = 1; // todo make dyanmic
 
-            _maxTokens = maxOutputTokens;
-            _temperature = Temperature;
-            _topP = TopP;
+            _client = new GoogleAi(apiKey);
+            _googleModel = _client.CreateGenerativeModel(_modelId);
 
             _initialMessages = new List<Content>();
             _messagesMemory = new List<Content>();
@@ -50,40 +46,34 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             SetSystemPrompt("You are Iqra. A helpful AI Assitant.");
         }
 
-        public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
-            finalMessages.Add(MakeContent("user", input));
+
+            foreach (var msges in finalMessages)
+            {
+                Console.WriteLine($"Message: {msges.Parts.FirstOrDefault()?.Text}");
+            }
 
             var generationConfig = new GenerationConfig
             {
                 Temperature = _temperature,
                 MaxOutputTokens = _maxTokens,
-                TopP = _topP,
             };
 
             var request = new GenerateContentRequest
             {
-                Model = GetFullModelName(),
-                Contents = { finalMessages },
+                Contents = finalMessages,
                 GenerationConfig = generationConfig,
                 SystemInstruction = _systemInstruction
             };
 
-            var callSettings = CallSettings.FromCancellationToken(cancellationToken);
-
             try
             {
-                using var responseStream = _client.StreamGenerateContent(request, callSettings);
-                var asyncResponseStream = responseStream.GetResponseStream();
-                await foreach (var response in asyncResponseStream.WithCancellation(cancellationToken))
+                await foreach (var response in _googleModel.StreamContentAsync(request, cancellationToken))
                 {
                     MessageStreamed?.Invoke(this, response);
                 }
-            }
-            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
-            {
-                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
             }
             catch (OperationCanceledException ex)
             {
@@ -173,14 +163,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
-            return InterfaceLLMProviderEnum.GoogleGemini;
+            return InterfaceLLMProviderEnum.GoogleAIGemini;
         }
 
         // HELPERS
-        private string GetFullModelName()
-        {
-            return $"projects/{_projectId}/locations/{_locationId}/publishers/{_publisher}/models/{_modelId}";
-        }
         private static Part MakeTextPart(string text) => new Part { Text = text };
         private static Content MakeContent(string role, string text) => new Content { Role = role, Parts = { MakeTextPart(text) } };
     }

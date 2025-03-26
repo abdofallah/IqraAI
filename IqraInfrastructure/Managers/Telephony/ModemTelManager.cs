@@ -416,7 +416,9 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 using (var client = CreateConfiguredHttpClient(apiKey))
                 {
-                    var response = await client.PostAsync($"{apiBaseUrl}/api/v1/calls/{callId}/hangup", null);
+                    Uri baseURI = new Uri(apiBaseUrl);
+                    baseURI = new Uri(baseURI, $"/api/v1/calls/{callId}/hangup");
+                    var response = await client.PostAsync(baseURI, null);
 
                     if (!response.IsSuccessStatusCode)
                     {

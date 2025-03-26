@@ -22,30 +22,27 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public event EventHandler<object> MessageStreamed;
         public event EventHandler MessageStreamedCancelled;
 
-        public OpenAIGPTStreamingLLMService(string APIKey, int MaxOutputToken, float Temperature, float TopP, string Model)
+        public OpenAIGPTStreamingLLMService(string APIKey, string Model)
         {
             _client = new ChatClient(Model, APIKey);
 
-            _maxTokens = MaxOutputToken;
-            _temperature = Temperature;
+            _maxTokens = 1024; // todo make dynamic
+            _temperature = 1; // todo make dynamic
+            _topP = 1; // todo make dynamic
+
             _model = Model;
-            _topP = TopP;
 
             _initialMessages = new List<ChatMessage>();
             _messagesMemory = new List<ChatMessage>();
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
         }
 
-        public async Task ProcessInputAsync(string input, CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
             var finalMessages = _initialMessages
                 .Concat(_messagesMemory)
-                .Concat(
-                    new List<ChatMessage> {
-                        ChatMessage.CreateUserMessage(input)
-                    }
-                .Prepend(ChatMessage.CreateSystemMessage(_systemPrompt))
-            ).ToList();
+                .ToList();
+            finalMessages.Prepend(ChatMessage.CreateSystemMessage(_systemPrompt));
 
             var parameters = new ChatCompletionOptions()
             {

@@ -346,14 +346,15 @@ namespace IqraInfrastructure.Managers.Conversation
                 {
                     foreach (var agent in _agents)
                     {
-                        agent.ProcessTextAsync($"<silence duration=\"{silenceDuration.TotalSeconds:F1}s\">", null, CancellationToken.None)
-                            .ContinueWith(t =>
-                            {
-                                if (t.IsFaulted)
-                                {
-                                    _logger.LogError(t.Exception, "Error notifying agent about silence");
-                                }
-                            });
+                        // TODO disabled for now
+                        //agent.ProcessTextAsync($"<silence duration=\"{silenceDuration.TotalSeconds:F1}s\">", null, CancellationToken.None)
+                        //    .ContinueWith(t =>
+                        //    {
+                        //        if (t.IsFaulted)
+                        //        {
+                        //            _logger.LogError(t.Exception, "Error notifying agent about silence");
+                        //        }
+                        //    });
                     }
                 }
             }

@@ -10,7 +10,7 @@
     <PackageReference Include="Anthropic.SDK" Version="5.0.0" />
     <PackageReference Include="ComputerInfo" Version="0.2.0" />
     <PackageReference Include="FluentFTP" Version="52.1.0" />
-    <PackageReference Include="Google.Cloud.AIPlatform.V1" Version="3.24.0" />
+    <PackageReference Include="Google_GenerativeAI" Version="2.4.6" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
     <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.43.0" />
