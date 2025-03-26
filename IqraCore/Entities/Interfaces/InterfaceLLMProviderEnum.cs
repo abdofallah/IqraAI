@@ -5,5 +5,6 @@
         Unknown = 0,
         OpenAIGPT = 1,
         AnthropicClaude = 2,
+        GoogleGemini = 3
     }
 }

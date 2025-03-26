@@ -686,6 +686,11 @@ namespace IqraInfrastructure.Managers.LLM
                     result.Data = new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), int.Parse(integrationData.Fields["max_output_token"]), float.Parse(integrationData.Fields["temperature"]), float.Parse(integrationData.Fields["top_p"]), integrationData.Fields["model"]);
                     return result;
 
+                case InterfaceLLMProviderEnum.GoogleGemini:
+                    result.Success = true;
+                    result.Data = new GoogleGeminiStreamingLLMService(integrationData.Fields["project_id"], integrationData.Fields["location_id"], (string)agentIntegrationData.FieldValues["model_id"], int.Parse(integrationData.Fields["max_output_token"]), float.Parse(integrationData.Fields["temperature"]), float.Parse(integrationData.Fields["top_p"]), _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]));
+                    return result;
+
                 default:
                     _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
                     return result;
