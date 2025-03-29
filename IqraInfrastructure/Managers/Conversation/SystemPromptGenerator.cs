@@ -31,7 +31,8 @@ namespace IqraInfrastructure.Managers.Conversation
             BusinessAppRoute route,
             string languageCode,
             InterfaceLLMProviderEnum llmProvider,
-            string llmModelId
+            string llmModelId,
+            string clientIdentifier
         )
         {
             var result = new FunctionReturnResult<string?>();
@@ -123,7 +124,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 // TODO, 
                 var sessionObject = new ScriptObject();
                 var callerObject = new ScriptObject();
-                callerObject["PhoneNumber"] = "Unknown"; // Replace with actual caller number when available
+                callerObject["PhoneNumber"] = clientIdentifier;
                 sessionObject["Caller"] = callerObject;
                 modelObject["Session"] = sessionObject;
 

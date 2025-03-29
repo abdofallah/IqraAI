@@ -1,9 +1,23 @@
 ﻿using IqraCore.Attributes;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
+    [BsonKnownTypes(typeof(BusinessAppToolConfigurationInputSchemeaDateTime))]
     public class BusinessAppToolConfigurationInputSchemea
     {
+        public BusinessAppToolConfigurationInputSchemea() { }
+
+        public BusinessAppToolConfigurationInputSchemea(BusinessAppToolConfigurationInputSchemea data)
+        {
+            Id = data.Id;
+            Name = data.Name;
+            Description = data.Description;
+            Type = data.Type;
+            IsArray = data.IsArray;
+            IsRequired = data.IsRequired;
+        }
+
         public string Id { get; set; }
 
         [MultiLanguageProperty]

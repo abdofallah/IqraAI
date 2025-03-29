@@ -93,7 +93,9 @@ namespace IqraInfrastructure.Managers.Call
                     config,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
-                    _serviceProvider.GetRequiredService<ILogger<ConversationSessionManager>>());
+                    _serviceProvider.GetRequiredService<ILogger<ConversationSessionManager>>(),
+                    "call"
+                );
 
                 // Create telephony client based on provider
                 var telephonyClient = await CreateTelephonyClient(clientData, sessionId);
@@ -106,6 +108,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 // Add client to session
                 await conversationSession.AddClientAsync(telephonyClient.Data);
+                conversationSession.SetPrimaryClient(telephonyClient.Data.ClientId);
 
                 // Create and add AI agent
                 var agent = await CreateAIAgentAsync(sessionId, config, conversationSession);
@@ -116,6 +119,7 @@ namespace IqraInfrastructure.Managers.Call
                         BusinessId = config.BusinessId,
                         RouteId = config.RouteId
                     });
+                    conversationSession.SetPrimaryAgent(agent.AgentId);
                 }
 
                 // Start the session
@@ -302,6 +306,8 @@ namespace IqraInfrastructure.Managers.Call
                 return result;
             }
 
+            string phoneNumberData = businessNumberData.CountryCode + businessNumberData.Number; // todo this is alphabet country code not number
+
             switch (clientData.Provider)
             {
                 case TelephonyProviderEnum.ModemTel:
@@ -311,6 +317,7 @@ namespace IqraInfrastructure.Managers.Call
                     result.Success = true;
                     result.Data = new ModemTelConversationClient(
                         clientId,
+                        phoneNumberData,
                         clientData.CallId,
                         integrationData.Data.Fields["endpoint"],
                         _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
@@ -328,6 +335,7 @@ namespace IqraInfrastructure.Managers.Call
                     result.Success = true;
                     result.Data = new TwilioConversationClient(
                         clientId,
+                        phoneNumberData,
                         clientData.CallId,
                         accountSid,
                         _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
@@ -351,12 +359,11 @@ namespace IqraInfrastructure.Managers.Call
             {
                 // Create the AI agent
                 return new ConversationAIAgent(
-                    _serviceProvider.GetRequiredService<ILogger<ConversationAIAgent>>(),
+                    _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     sessionManager,
                     agentId,
                     _businessManager,
                     _serviceProvider.GetRequiredService<SystemPromptGenerator>(),
-                    _serviceProvider.GetRequiredService<ScriptExecutionManager>(),
                     _serviceProvider.GetRequiredService<STTProviderManager>(),
                     _serviceProvider.GetRequiredService<TTSProviderManager>(),
                     _serviceProvider.GetRequiredService<LLMProviderManager>()

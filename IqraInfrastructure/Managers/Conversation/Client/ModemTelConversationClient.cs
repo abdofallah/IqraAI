@@ -24,13 +24,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
         public ModemTelConversationClient(
             string clientId,
+            string phoneNumber,
             string callId,
             string apiBaseUrl,
             string apiKey,       
             string mediaSessionToken,
             ModemTelManager modemTelManager,
             ILogger<ModemTelConversationClient> logger)
-            : base(clientId, logger)
+            : base(clientId, phoneNumber, logger)
         {
             _callId = callId;
             _apiKey = apiKey;

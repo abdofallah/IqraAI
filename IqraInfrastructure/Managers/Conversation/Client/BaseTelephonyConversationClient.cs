@@ -9,12 +9,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
     public abstract class BaseTelephonyConversationClient : IConversationClient
     {
         protected readonly string _clientId;
+        protected readonly string _clientPhoneNumber;
         protected readonly ILogger _logger;
         protected bool _isConnected;
         protected CancellationTokenSource? _connectionCts;
         protected TelephonyProviderEnum _clientTelephonyType;
 
         public string ClientId => _clientId;
+        public string ClientPhoneNumber => _clientPhoneNumber;
         public ConversationClientType ClientType => ConversationClientType.Telephony;
         public TelephonyProviderEnum ClientTelephonyType => _clientTelephonyType;
 
@@ -22,9 +24,10 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public event EventHandler<ConversationTextReceivedEventArgs>? TextReceived;
         public event EventHandler<ConversationClientDisconnectedEventArgs>? Disconnected;
 
-        protected BaseTelephonyConversationClient(string clientId, ILogger logger)
+        protected BaseTelephonyConversationClient(string clientId, string phoneNumber, ILogger logger)
         {
             _clientId = clientId;
+            _clientPhoneNumber = phoneNumber;
             _logger = logger;
             _isConnected = false;
             _clientTelephonyType = TelephonyProviderEnum.Unknown;

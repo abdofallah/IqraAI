@@ -540,6 +540,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 
 				const index = parseInt(currentElement.attr("data-index"));
 				const argumentData = {
+					id: currentElement.find('[data-type="id"]').val(),
 					name: {},
 					description: {},
 					type: parseInt(currentElement.find('[data-type="typeSelect"]').val()),
@@ -551,32 +552,42 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 					).checked,
 				};
 
+				if (argumentData.type == 4) {
+					argumentData.dateTimeFormat = currentElement.find('[data-type="datetime-format"]').val();
+				}
+
+				const previousData = CurrentManageToolData.configuration.inputSchemea[index];
+				if (!previousData) {
+					hasChanges = true;
+				}
+
+				if (previousData) {
+					if (argumentData.id !== previousData.id || previousData.type.value !== argumentData.type || previousData.isArray !== argumentData.isArray || previousData.isRequired !== argumentData.isRequired) {
+						hasChanges = true;
+					}
+
+					if (argumentData.type == 4) {
+						if (previousData.dateTimeFormat !== argumentData.dateTimeFormat) {
+                            hasChanges = true;
+                        }
+					}
+				} else {
+					hasChanges = true;
+				}
+
 				BusinessFullData.businessData.languages.forEach((language) => {
 					argumentData.name[language] = CurrentManageToolInputSchemeaMultiLangData[index].name[language];
 					argumentData.description[language] = CurrentManageToolInputSchemeaMultiLangData[index].description[language];
 
-					const previousData = CurrentManageToolData.configuration.inputSchemea[index];
-					if (!previousData) {
-						hasChanges = true;
-					} else {
+					if (previousData) {
 						if (previousData.name[language] !== argumentData.name[language] || previousData.description[language] !== argumentData.description[language]) {
 							hasChanges = true;
 						}
 					}
 				});
 
-				if (index < CurrentManageToolData.configuration.inputSchemea.length) {
-					const originalArgument = CurrentManageToolData.configuration.inputSchemea[index];
-
-					if (originalArgument.type.value !== argumentData.type || originalArgument.isArray !== argumentData.isArray || originalArgument.isRequired !== argumentData.isRequired) {
-						hasChanges = true;
-					}
-				} else {
-					hasChanges = true;
-				}
-
 				inputArgumentsList.push(argumentData);
-			});
+			});	
 
 			return inputArgumentsList;
 		}
@@ -778,13 +789,14 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 }
 
 function CreateToolsConfigurationInputSchemeaElement(index) {
-	const dateTimeNow = Date.now();
+	const dateTimeNow = Date.now().toString() + index;
 
 	const element = `
                 <div class="toolInputArguementBox input-group mt-1" data-index="${index}">
                     <div style="width: calc(100% - 50px)">
+						<input type="text" class="form-control" data-type="id" placeholder="Argument ID" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-top-right-radius: 0; border-bottom: none;">
                         <div class="input-group">
-                                <input type="text" class="form-control" data-type="name" placeholder="Argument Name &#xf1ab;" style="max-width: 250px; border-bottom-left-radius: 0; border-bottom: none;font-family: Roboto, 'Font Awesome 6 Pro'">
+                                <input type="text" class="form-control" data-type="name" placeholder="Argument Name &#xf1ab;" style="max-width: 250px; border-bottom-left-radius: 0; border-top-left-radius: 0; border-top-right-radius: 0; border-bottom: none;font-family: Roboto, 'Font Awesome 6 Pro'">
                                 <input type="text" class="form-control" data-type="description" placeholder="Description &#xf1ab;" style="border-bottom-right-radius: 0; border-top-right-radius: 0; border-bottom: none;font-family: Roboto, 'Font Awesome 6 Pro'">
                         </div>
                         <div class="input-group">
@@ -1083,8 +1095,13 @@ function FillToolsManageTab(toolData) {
 				description: schema.description,
 			};
 
+			argumentBox.find('[data-type="id"]').val(schema.id);
 			argumentBox.find('[data-type="name"]').val(schema.name[BusinessDefaultLanguage]);
 			argumentBox.find('[data-type="description"]').val(schema.description[BusinessDefaultLanguage]);
+
+			if (schema.type.value == 4) {
+				argumentBox.find('[data-type="datetime-format"]').val(schema.dateTimeFormat);
+			}
 		});
 
 		Object.entries(toolData.configuration.headers).forEach(([key, value]) => {
@@ -1240,6 +1257,47 @@ function ValidateToolsManageTab(onlyRemove = true) {
 			const index = parseInt(currentElement.attr("data-index"));
 			const typeSelect = currentElement.find('[data-type="typeSelect"]');
 
+			let IdElement = currentElement.find('[data-type="id"]');
+			let IdValue = IdElement.val();
+			if (!IdValue || IdValue === null || IdValue.trim() === "") {
+				validated = false;
+				errors.push(`Input argument #${idx + 1} ID is required.`);
+
+				if (!onlyRemove) {
+					IdElement.addClass("is-invalid");
+				}
+			}
+			else {
+				IdElement.removeClass("is-invalid");
+
+				let foundAnyDuplicate = false;
+				argumentElements.each((subIndex, subElement) => {
+					const currentSubElement = $(subElement);
+					const currentSubIdValue = currentSubElement.find('[data-type="id"]').val();
+					const currentSubIndex = parseInt(currentSubElement.attr("data-index"));
+
+					if (currentSubIndex === index) {
+						return false;
+					}
+
+					if (currentSubIdValue === IdValue) {
+						validated = false;
+						errors.push(`Input argument #${idx + 1} ID must be unique.`);
+
+						foundAnyDuplicate = true;
+					}
+				});
+
+				if (foundAnyDuplicate) {
+					if (!onlyRemove) {
+						IdElement.addClass("is-invalid");
+					}
+				}
+				else {
+					IdElement.removeClass("is-invalid");
+				}
+			}
+
 			BusinessFullData.businessData.languages.forEach((language) => {
 				if (!CurrentManageToolInputSchemeaMultiLangData[index]?.name[language] || CurrentManageToolInputSchemeaMultiLangData[index].name[language].trim().length === 0) {
 					validated = false;
@@ -1262,7 +1320,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 				} else {
 					currentElement.find('[data-type="description"]').removeClass("is-invalid");
 				}
-			});
+			});	
 
 			const typeSelectValue = typeSelect.val();
 			if (!typeSelectValue || typeSelectValue == null) {
@@ -1564,6 +1622,37 @@ function initToolsTab() {
 
 				parentElement.remove();
 
+				validateToolsAllMultilanguageElements();
+				CheckToolsManageTabHasChanges(true);
+			});
+
+			toolInputArguementsList.on("input", '[data-type="id"]', (event) => {
+				event.stopPropagation();
+
+				let currentElement = $(event.currentTarget);
+				let currentValue = currentElement.val();
+
+				if (!currentValue) return;
+
+				if (currentValue.trim() == "") {
+					currentElement.val("");
+					return;
+				}
+
+				currentValue = currentValue.toLowerCase();
+
+				let regexCheck = /\s+/g;
+				if (regexCheck.test(currentValue)) {
+					currentValue = currentValue.replace(regexCheck, "_");
+				}
+
+				currentElement.val(currentValue);
+
+				validateToolsAllMultilanguageElements();
+				CheckToolsManageTabHasChanges(true);
+			})
+
+			toolInputArguementsList.on("change", '[data-type="required"], [data-type="isArray"]', (event) => {
 				validateToolsAllMultilanguageElements();
 				CheckToolsManageTabHasChanges(true);
 			});

@@ -5,6 +5,7 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 
@@ -17,10 +18,16 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
 
-        private readonly string _sessionId;   
+        private readonly string _sessionId;
+
+        private readonly string _callOrWebInitiated;
 
         private readonly List<IConversationClient> _clients = new();
+        private IConversationClient? _primaryClient = null;
+
         private readonly List<IConversationAgent> _agents = new();
+        private IConversationAgent? _primaryAgent = null;
+
         private readonly List<ConversationMessage> _messages = new();
 
         private readonly ConversationSessionConfiguration _configuration;
@@ -47,6 +54,13 @@ namespace IqraInfrastructure.Managers.Conversation
 
         public string SessionId => _sessionId;
         public ConversationSessionConfiguration Configuration => _configuration;
+        public bool IsCallInitiated => _callOrWebInitiated == "call";
+        public bool IsWebInitiated => _callOrWebInitiated == "web";
+        public string PrimaryClientIdentifier()
+        {
+            if (_primaryClient != null && _primaryClient.ClientType == ConversationClientType.Telephony) return ((BaseTelephonyConversationClient)_primaryClient).ClientPhoneNumber;
+            return "UNKNOWN";
+        }
 
         public ConversationSessionManager(
             string sessionId,
@@ -54,9 +68,12 @@ namespace IqraInfrastructure.Managers.Conversation
             ConversationSessionConfiguration configuration,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
-            ILogger<ConversationSessionManager> logger)
+            ILogger<ConversationSessionManager> logger,
+            string callOrWebInitiated
+            )
         {
             _sessionId = sessionId;
+            _callOrWebInitiated = callOrWebInitiated;
             _businessManager = businessManager;
             _configuration = configuration;
             _conversationStateRepository = conversationStateRepository;
@@ -192,6 +209,15 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
+        public bool SetPrimaryClient(string clientId)
+        {
+            lock (_clientsLock)
+            {
+                _primaryClient = _clients.FirstOrDefault(c => c.ClientId == clientId);
+                return _primaryClient != null;
+            }
+        }
+
         public async Task<bool> AddAgentAsync(IConversationAgent agent, ConversationAgentConfiguration configuration)
         {
             if (agent == null)
@@ -271,6 +297,15 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _logger.LogInformation("Removed agent {AgentId} from session {SessionId}: {Reason}", agentId, _sessionId, reason);
             return true;
+        }
+
+        public bool SetPrimaryAgent(string agentId)
+        {
+            lock (_agentsLock)
+            {
+                _primaryAgent = _agents.FirstOrDefault(a => a.AgentId == agentId);
+                return _primaryAgent != null;
+            }
         }
 
         public IReadOnlyList<IConversationAgent> GetAgents()

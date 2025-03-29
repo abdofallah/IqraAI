@@ -13,18 +13,19 @@ using IqraInfrastructure.Managers.TTS;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
     public class ConversationAIAgent : IConversationAgent
     {  
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgent> _logger;
 
         private readonly ConversationSessionManager _conversationSessionManager;
 
         private readonly BusinessManager _businessManager;
-        private readonly SystemPromptGenerator _systemPromptGenerator;
-        private readonly ScriptExecutionManager _scriptExecutionManager;
+        private readonly SystemPromptGenerator _systemPromptGenerator;   
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
@@ -33,9 +34,11 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private ConversationAgentConfiguration _agentConfiguration;
         private BusinessApp _businessApp;
-        private BusinessAppRoute _businessAppRoute;
+        private BusinessAppRoute _currentSessionRoute;
         private BusinessAppAgent _businessAppAgent;
         private string _currentLanguageCode;
+
+        private ScriptExecutionManager _scriptExecutionManager;
 
         private BusinessAppIntegration _sttBusinessIntegrationData;
         private ISTTService _sttService;
@@ -70,24 +73,23 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
         public ConversationAIAgent(
-            ILogger<ConversationAIAgent> logger,
+            ILoggerFactory loggerFactory,
             ConversationSessionManager sessionManager,
             string agentId,
             BusinessManager businessManager,
             SystemPromptGenerator systemPromptGenerator,
-            ScriptExecutionManager scriptExecutionManager,
             STTProviderManager sttProviderManager,
             TTSProviderManager ttsProviderManager,
             LLMProviderManager llmProviderManager
         )
         {
-            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<ConversationAIAgent>();
 
             _conversationSessionManager = sessionManager;
 
             _businessManager = businessManager;
             _systemPromptGenerator = systemPromptGenerator;
-            _scriptExecutionManager = scriptExecutionManager;
             _sttProviderManager = sttProviderManager;
             _ttsProviderManager = ttsProviderManager;
             _llmProviderManager = llmProviderManager;
@@ -107,17 +109,17 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 _agentConfiguration = config;
                 _businessApp = businessAppData;
-                _businessAppRoute = businessRouteData;   
+                _currentSessionRoute = businessRouteData;   
 
-                _businessAppAgent = await _businessManager.GetAgentsManager().GetAgentById(_agentConfiguration.BusinessId, _businessAppRoute.Agent.SelectedAgentId);
+                _businessAppAgent = await _businessManager.GetAgentsManager().GetAgentById(_agentConfiguration.BusinessId, _currentSessionRoute.Agent.SelectedAgentId);
                 if (_businessAppAgent == null)
                 {
-                    _logger.LogError("Business app agent {AgentId} not found", _businessAppRoute.Agent.SelectedAgentId);
+                    _logger.LogError("Business app agent {AgentId} not found", _currentSessionRoute.Agent.SelectedAgentId);
                     ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app agent not found"));
                     return;
                 }
 
-                _currentLanguageCode = _businessAppRoute.Language.DefaultLanguageCode;
+                _currentLanguageCode = _currentSessionRoute.Language.DefaultLanguageCode;
 
                 var defaultSTTService = _businessAppAgent.Integrations.STT[_currentLanguageCode][0];
                 var defaultTTSService = _businessAppAgent.Integrations.TTS[_currentLanguageCode][0];
@@ -186,7 +188,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 _ttsService.Initialize();
 
                 // Set up LLM with system prompt
-                await InitalizePromptAsync();
+                await InitalizePromptAndScriptAsync();
 
                 // Start audio processing task
                 _isProcessingAudio = true;
@@ -202,7 +204,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 throw;
             }
         }
-        private async Task InitalizePromptAsync()
+        private async Task InitalizePromptAndScriptAsync()
         {
             try
             {
@@ -210,10 +212,11 @@ namespace IqraInfrastructure.Managers.Conversation
                 var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
                     _businessApp,
                     _businessAppAgent,
-                    _businessAppRoute,
+                    _currentSessionRoute,
                     _currentLanguageCode,
                     _llmService.GetProviderType(),
-                    _llmService.GetModel()
+                    _llmService.GetModel(),
+                    _conversationSessionManager.PrimaryClientIdentifier()
                 );
 
                 if (!systemPromptResult.Success || systemPromptResult.Data == null)
@@ -227,10 +230,12 @@ namespace IqraInfrastructure.Managers.Conversation
                 _llmService.SetSystemPrompt(systemPromptResult.Data);
 
                 // Get script from route
-                // TODO
+                _scriptExecutionManager = new ScriptExecutionManager(
+                    _loggerFactory.CreateLogger<ScriptExecutionManager>()
+                );
                 await _scriptExecutionManager.LoadScriptAsync(
-                    _agentConfiguration.BusinessId,
-                    _businessAppRoute.Agent.OpeningScriptId,
+                    _businessApp,
+                    _currentSessionRoute,
                     _currentLanguageCode
                 );     
 
@@ -304,6 +309,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     {
                         var responseReadSoFar = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
                         _llmService.AddAssistantMessage(responseReadSoFar + "...");
+
                     }
 
                     _isResponding = false;
@@ -675,7 +681,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         var durationToWait = await SynthesizeSpeechAsync(messageToSpeak);
                         if (durationToWait != TimeSpan.Zero)
                         {
-                            await Task.Delay(durationToWait.Milliseconds + 300);
+                            await Task.Delay(durationToWait.Milliseconds + 100);
                         }
                         else
                         {
@@ -725,68 +731,92 @@ namespace IqraInfrastructure.Managers.Conversation
         // Handle Agent Custom Tool Response
         private async Task HandleLLMCustomToolResponseCompletedAsync()
         {
+            var llmResponseFull = _responseBuffer.ToString();
+
             try
             {
+                int startFunctionIndex = llmResponseFull.IndexOf("execute_custom_function(");
+                if (startFunctionIndex != -1)
+                {
+                    // Extract everything between the parentheses
+                    int openParenIndex = "execute_custom_function(".Length;
+                    int closeParenIndex = llmResponseFull.IndexOf(")", openParenIndex);
 
+                    if (closeParenIndex == -1)
+                    {
+                        _logger.LogError("Malformed end_call function, missing closing parenthesis");
+                        return;
+                    }
+
+                    string argsString = llmResponseFull.Substring(openParenIndex, closeParenIndex - openParenIndex);
+
+                    // Parse the arguments using regex to handle quoted strings properly
+                    var regex = new System.Text.RegularExpressions.Regex("\"([^\"]*)\"|null|\"\"");
+                    var matches = regex.Matches(argsString);
+
+                    string reasonForExecuting = "";
+                    string nodeIdToExecute = "";
+                    string? nodeVariableValues = null;
+
+                    if (matches.Count >= 1)
+                    {
+                        // First argument is the reason
+                        var reasonMatch = matches[0].Value;
+                        reasonForExecuting = reasonMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                         reasonMatch.Trim('"');
+
+                        // Second argument is the node id to execute
+                        if (matches.Count >= 2)
+                        {
+                            var nodeIdMatch = matches[1].Value;
+                            nodeIdToExecute = nodeIdMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                             nodeIdMatch.Trim('"');
+
+                            // third arguement is the node variables and values
+                            if (matches.Count >= 3)
+                            {
+                                var nodeVariableValuesMatch = matches[2].Value;
+                                nodeVariableValues = nodeVariableValuesMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+                                                     nodeVariableValuesMatch == "\"\"" ?
+                                                     null : nodeVariableValuesMatch.Trim('"');
+                            }
+                        }
+                    }
+
+                    Dictionary<string, JsonElement>? nodeVariables = null;
+                    if (!string.IsNullOrEmpty(nodeVariableValues))
+                    {
+                        try
+                        {
+                            nodeVariables = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(nodeVariableValues);
+                        }
+                        catch (Exception ex)
+                        {
+                            _llmService.AddUserMessage("response_from_system: Invalid custom tool response recieved, The system could not parse the json variables values for the custom tool provided. The custom tool extracted variables values must be in string json object format: [execute_custom_function(\"node id\", \"/*json tool variables values*/ {'var1': variablevalue}\")]");
+                            return;
+                        }
+                    }
+
+                    var executeCustomToolResult = _scriptExecutionManager.ExecuteCustomToolAsync(nodeIdToExecute, nodeVariables ?? new Dictionary<string, JsonElement>());
+
+                    return;
+                }
+
+                _llmService.AddUserMessage("response_from_system: Invalid custom tool response recieved, The system is only expecting custom tool in the format of [execute_custom_function(\"node id\", \"/*json tool variables values*/ {'var1': variablevalue}\")]");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
             {
-
+                _logger.LogError(ex, "Error executing system function, {Response}", llmResponseFull);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error executing system function: " + ex.Message, ex));
+                _llmService.AddUserMessage("response_from_system: There was an internal system error when trying to run the system tool...");
+                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             finally
             {
                 _responseBuffer.Clear();
                 _currentResponseBufferRead = 0;
                 _isExecutingCustomTool = false;
-            }
-            // TODO
-        }
-
-        private async Task ProcessToolExecutionAsync(string toolCommand)
-        {
-            try
-            {
-                _logger.LogInformation("Executing tool: {ToolCommand}", toolCommand);
-
-                Thinking?.Invoke(this, new ConversationAgentThinkingEventArgs($"Executing tool: {toolCommand}"));
-
-                // Parse the tool command
-                // Format is expected to be: toolName:param1=value1,param2=value2
-                var parts = toolCommand.Split(':', 2);
-                if (parts.Length != 2)
-                {
-                    throw new FormatException("Invalid tool command format");
-                }
-
-                var toolName = parts[0].Trim();
-                var paramString = parts[1].Trim();
-
-                // Parse parameters
-                var parameters = new Dictionary<string, string>();
-                foreach (var param in paramString.Split(','))
-                {
-                    var keyValue = param.Split('=', 2);
-                    if (keyValue.Length == 2)
-                    {
-                        parameters[keyValue[0].Trim()] = keyValue[1].Trim();
-                    }
-                }
-
-                // Execute the tool
-                var result = await _scriptExecutionManager.ExecuteToolAsync(toolName, parameters);
-
-                // Send the result back to the LLM
-                _llmService.AddUserMessage($"Tool {toolName} execution result: {result}");
-                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing tool: {ToolCommand}", toolCommand);
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error executing tool: " + ex.Message, ex));
-
-                // Notify LLM about the error
-                _llmService.AddUserMessage($"Error executing tool: {ex.Message}");
-                await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
         }
 

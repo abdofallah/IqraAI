@@ -358,7 +358,6 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<LLMProviderManager>()
                 );
             });
-            builder.Services.AddSingleton<ScriptExecutionManager>();
             builder.Services.AddSingleton<CallProcessorManager>();
 
             // Background services

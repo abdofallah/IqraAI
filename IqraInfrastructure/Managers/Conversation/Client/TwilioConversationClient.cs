@@ -23,13 +23,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
         public TwilioConversationClient(
             string clientId,
+            string phoneNumber,
             string callSid,
             string accountSid,
             string authToken,
             string twimlCallbackUrl,
             TwilioManager twilioManager,
             ILogger<TwilioConversationClient> logger)
-            : base(clientId, logger)
+            : base(clientId, phoneNumber, logger)
         {
             _callSid = callSid;
             _accountSid = accountSid;

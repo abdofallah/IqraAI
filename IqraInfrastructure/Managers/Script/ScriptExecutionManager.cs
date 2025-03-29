@@ -1,107 +1,381 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Agent;
-using IqraInfrastructure.Managers.Business;
+using IqraCore.Entities.Helpers;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Script
 {
     public class ScriptExecutionManager
     {
         private readonly ILogger<ScriptExecutionManager> _logger;
-        private readonly BusinessManager _businessManager;
-        private readonly Dictionary<string, Func<Dictionary<string, string>, Task<string>>> _toolHandlers;
 
-        private long _businessId;
-        private string _scriptId;
-        private string _languageCode;
-        private BusinessAppAgentScript? _currentScript;
-        private BusinessAppAgentScriptNode? _currentNode;
-        private Dictionary<string, object> _scriptContext = new();
+        private BusinessApp _businessApp;
+        private BusinessAppRoute _currentSessionRoute;
+
+        private BusinessAppAgent? _currentRouteAgent;
+        private BusinessAppAgentScript? _curentAgentActiveScript;
+
+        private string _currentSessionlanguageCode;
+
         private bool _isScriptInitialized;
 
-        public bool IsScriptActive => _isScriptInitialized && _currentScript != null && _currentNode != null;
+        public bool IsScriptActive => _isScriptInitialized && _curentAgentActiveScript != null;
 
         public ScriptExecutionManager(
-            BusinessManager businessManager, 
-            ILogger<ScriptExecutionManager> logger)
+            ILogger<ScriptExecutionManager> logger
+        )
         {
-            _businessManager = businessManager;
             _logger = logger;
-            _toolHandlers = new Dictionary<string, Func<Dictionary<string, string>, Task<string>>>();
-            
-            // Register built-in tools
-            RegisterDefaultTools();
         }
 
-        public async Task LoadScriptAsync(long businessId, string scriptId, string languageCode)
+        public async Task LoadScriptAsync(BusinessApp businessApp, BusinessAppRoute currentSessionRoute, string languageCode)
         {
-            _businessId = businessId;
-            _scriptId = scriptId;
-            _languageCode = languageCode;
-            _scriptContext.Clear();
+            _businessApp = businessApp;
+            _currentSessionRoute = currentSessionRoute;
+
+            _currentSessionlanguageCode = languageCode;
+
             _isScriptInitialized = false;
+
+            var currentRouteAgentId = _currentSessionRoute.Agent.SelectedAgentId;
+            var routeAgentScriptId = _currentSessionRoute.Agent.OpeningScriptId;
 
             try
             {
-                // Get the business app
-                var businessApp = await _businessManager.GetUserBusinessAppById(businessId, "LoadScriptAsync");
-                if (!businessApp.Success || businessApp.Data == null)
+                _currentRouteAgent = _businessApp.Agents.FirstOrDefault(a => a.Id == currentRouteAgentId);
+                if (_currentRouteAgent == null)
                 {
-                    throw new InvalidOperationException($"Business app not found for ID {businessId}");
+                    throw new InvalidOperationException($"Agent not found with ID {currentRouteAgentId} in business {businessApp.Id}");
                 }
 
-                // Find the script
-                _currentScript = businessApp.Data.Agents.SelectMany(a => a.Scripts).FirstOrDefault(s => s.Id == scriptId);
-                if (_currentScript == null)
+                _curentAgentActiveScript = _currentRouteAgent.Scripts.FirstOrDefault(s => s.Id == routeAgentScriptId);
+                if (_curentAgentActiveScript == null)
                 {
-                    throw new InvalidOperationException($"Script not found with ID {scriptId} in business {businessId}");
-                }
-
-                // Find the start node
-                _currentNode = _currentScript.Nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);
-                if (_currentNode == null)
-                {
-                    throw new InvalidOperationException($"Start node not found in script {scriptId}");
+                    throw new InvalidOperationException($"Script not found with ID {routeAgentScriptId} for agent {currentRouteAgentId} in business {businessApp.Id}");
                 }
 
                 _isScriptInitialized = true;
-                _logger.LogInformation("Loaded script {ScriptId} for business {BusinessId}", scriptId, businessId);
-
-                // Execute the start node
-                await ExecuteNodeAsync(_currentNode);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading script {ScriptId} for business {BusinessId}", scriptId, businessId);
+                _logger.LogError(ex, "Error loading route {RouteId} agent {AgentId} script {ScriptId} for business {BusinessId}", _currentSessionRoute.Id, currentRouteAgentId, routeAgentScriptId, _businessApp.Id);
                 throw;
             }
         }
 
-        public async Task<string> ExecuteToolAsync(string toolName, Dictionary<string, string> parameters)
+        // Handle Custom Tool Nodes Execution
+        public async Task<FunctionReturnResult<string?>> ExecuteCustomToolAsync(string nodeId, Dictionary<string, JsonElement> parameters)
         {
+            var result = new FunctionReturnResult<string?>();
+
             try
             {
-                if (_toolHandlers.TryGetValue(toolName, out var handler))
+                BusinessAppAgentScriptCustomToolNode? nodeData = (BusinessAppAgentScriptCustomToolNode?)_curentAgentActiveScript!.Nodes.Find(n => n.Id == nodeId && n.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool);
+                if (nodeData == null)
                 {
-                    var result = await handler(parameters);
-                    _logger.LogInformation("Executed tool {ToolName} with result: {Result}", toolName, result);
+                    result.Code = "ExecuteToolAsync:1";
+                    result.Message = $"Custom tool node with id {nodeId} not found in script";
                     return result;
                 }
-                else
+
+                BusinessAppTool? toolData = _businessApp.Tools.Find(t => t.Id == nodeData.ToolId);
+                if (toolData == null)
                 {
-                    var errorMessage = $"Tool {toolName} not found";
-                    _logger.LogWarning(errorMessage);
-                    return $"Error: {errorMessage}";
+                    result.Code = "ExecuteToolAsync:2";
+                    result.Message = $"Tool with id {nodeData.ToolId} not found in business for node {nodeId}";
+                    return result;
                 }
+
+                var baseUri = new Uri(toolData.Configuration.Endpoint);
+                using (var toolHttpClient = new HttpClient())
+                {
+                    HttpResponseMessage httpResponseMessage;
+                    HttpContent? requestContent = null;
+
+                    var convertedParametersResult = BuildAndValidateCustomToolVariables(toolData, parameters);
+                    if (!convertedParametersResult.Success)
+                    {
+                        result.Code = "ExecuteToolAsync:3";
+                        result.Message = $"Error building and validating custom tool variables for node {nodeId}:\n\n```{convertedParametersResult.Message}```";
+                        return result;
+                    }
+
+                    foreach (var header in toolData.Configuration.Headers)
+                    {
+                        toolData.Configuration.Headers.Add(header.Key, ResolveContextVariables(header.Value, convertedParametersResult.Data));
+                    }
+
+                    if (toolData.Configuration.BodyType == HttpBodyEnum.FormData)
+                    {
+                        requestContent = new MultipartFormDataContent();
+
+                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
+                        {
+                            var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
+
+                            foreach (var field in formBodyFields)
+                            {
+                                HttpContent fieldHttpContentData = new StringContent(ResolveContextVariables(field.Value, convertedParametersResult.Data));
+                                ((MultipartFormDataContent)requestContent).Add(fieldHttpContentData, field.Key);
+                            }
+                        } 
+                    }
+                    else if (toolData.Configuration.BodyType == HttpBodyEnum.XWWWFormUrlencoded)
+                    {
+                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
+                        {
+                            var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
+
+                            foreach (var field in formBodyFields)
+                            {
+                                formBodyFields[field.Key] = ResolveContextVariables(field.Value, convertedParametersResult.Data);
+                            }
+
+                            requestContent = new FormUrlEncodedContent(formBodyFields);
+                        }
+                        else
+                        {
+                            requestContent = new FormUrlEncodedContent(new Dictionary<string, string>());
+                        }
+                    }
+                    else if (toolData.Configuration.BodyType == HttpBodyEnum.Raw)
+                    {
+                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is string)
+                        {
+                            requestContent = new StringContent(ResolveContextVariables(toolData.Configuration.BodyData.ToString(), convertedParametersResult.Data));
+                            requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                        }
+                        else
+                        {
+                            requestContent = new StringContent("");
+                            requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                        }
+                    }
+
+                    toolHttpClient.BaseAddress = baseUri;
+                    switch (toolData.Configuration.RequestType)
+                    {
+                        case HttpMethodEnum.Get:
+                            httpResponseMessage = await toolHttpClient.GetAsync(toolData.Configuration.Endpoint);
+                            break;
+
+                        case HttpMethodEnum.Post:
+                            httpResponseMessage = await toolHttpClient.PostAsync(toolData.Configuration.Endpoint, requestContent);
+                            break;
+
+                        case HttpMethodEnum.Put:
+                            httpResponseMessage = await toolHttpClient.PutAsync(toolData.Configuration.Endpoint, requestContent);
+                            break;
+
+                        case HttpMethodEnum.Patch:
+                            httpResponseMessage = await toolHttpClient.PatchAsync(toolData.Configuration.Endpoint, requestContent);
+                            break;
+
+                        case HttpMethodEnum.Delete:
+                            httpResponseMessage = await toolHttpClient.DeleteAsync(toolData.Configuration.Endpoint);
+                            break;
+
+                        default:
+                            result.Code = "ExecuteToolAsync:3";
+                            result.Message = $"Unsupported http method {toolData.Configuration.RequestType} in tool {toolData.Id} for node {nodeId}";
+                            return result;
+                    }
+
+                    var responseStatusCode = httpResponseMessage.StatusCode;
+                    var responseData = await httpResponseMessage.Content.ReadAsStringAsync();
+
+                    if (!toolData.Response.TryGetValue(((int)httpResponseMessage.StatusCode).ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
+                    {
+                        result.Success = true;
+                        result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```\n\nWhile the business never defined how to handle this type of response.";
+                        return result;
+                    }
+
+                    // todo perforn the tool javascript logic
+                    // responseToolConfiguration.Javascript
+                    // for now return result as is
+
+                    if (responseToolConfiguration.HasStaticResponse && responseToolConfiguration.StaticResponse.TryGetValue(_currentSessionlanguageCode, out string? staticResponse) && !string.IsNullOrEmpty(staticResponse))
+                    {
+                        result.Success = true;
+                        result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```\n\nThe business provided the following static response you must convery the result in:\n\n```{staticResponse}```";
+                        return result;
+                    }
+
+                    result.Success = true;
+                    result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```";
+                    return result;
+                }
+
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing tool {ToolName}", toolName);
-                return $"Error: {ex.Message}";
+                _logger.LogError(ex, "Error executing tool {ToolName}", nodeId);
+                result.Code = "ExecuteToolAsync:-1";
+                result.Message = "Error: " + ex.Message;
+                return result;
             }
         }
+        private FunctionReturnResult<Dictionary<string, object>> BuildAndValidateCustomToolVariables(BusinessAppTool toolData, Dictionary<string, JsonElement> parameters)
+        {
+            var result = new FunctionReturnResult<Dictionary<string, object>>();
+            result.Data = new Dictionary<string, object>();
 
-        public async Task ProcessDTMFInputAsync(string digits)
+            var errors = new List<string>();
+
+            foreach (var toolInputProperty in toolData.Configuration.InputSchemea)
+            {
+                bool foundValue = parameters.TryGetValue(toolInputProperty.Id, out JsonElement parameterValue);
+
+                if (toolInputProperty.IsRequired)
+                {
+                    if (foundValue == false)
+                    {
+                        errors.Add($"Parameter with id {toolInputProperty.Id} is required but no value found.");
+                        continue;
+                    }
+                    
+                    if (parameterValue.ValueKind == JsonValueKind.Null || parameterValue.ValueKind == JsonValueKind.Undefined)
+                    {
+                        // todo in future allow/ask whether null is allowed
+                        errors.Add($"Parameter with id {toolInputProperty.Id} cannot be null/undefined.");
+                        continue;
+                    }
+                }
+
+                if (foundValue == false)
+                {
+                    // todo if default value is defined or if keep empty or null in case of no result is defined, do it here
+                    continue;
+                }
+
+                if (toolInputProperty.IsArray)
+                {
+                    if (parameterValue.ValueKind != JsonValueKind.Array)
+                    {
+                        errors.Add($"Parameter with id {toolInputProperty.Id} must be an array but found {parameterValue.ValueKind}.");
+                        continue;
+                    }
+
+                    List<object> paramsValuesList = new List<object>();
+                    foreach (var item in parameterValue.EnumerateArray())
+                    {
+                        var itemResult = ParseJsonElementAsType(toolInputProperty, item);
+                        if (!itemResult.Success)
+                        {
+                            errors.Add(itemResult.Message);
+                            continue;
+                        }
+
+                        paramsValuesList.Add(itemResult.Data);
+                    }
+
+                    result.Data.Add(toolInputProperty.Id, paramsValuesList);
+                }
+                else
+                {
+                    var itemResult = ParseJsonElementAsType(toolInputProperty, parameterValue);
+                    if (!itemResult.Success)
+                    {
+                        errors.Add(itemResult.Message);
+                        continue;
+                    }
+
+                    result.Data.Add(toolInputProperty.Id, itemResult.Data);
+                }
+            }
+
+            return result;
+        }
+        private FunctionReturnResult<object?> ParseJsonElementAsType(BusinessAppToolConfigurationInputSchemea toolInputProperty, JsonElement parameterValue)
+        {
+            var result = new FunctionReturnResult<object?>();
+
+            if (toolInputProperty.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.String)
+            {
+                if (parameterValue.ValueKind == JsonValueKind.String)
+                {
+                    result.Success = true;
+                    result.Data = parameterValue.GetString();
+                    return result;
+                }
+
+                result.Message = $"Parameter with id {toolInputProperty.Id} must be a string but found {parameterValue.ValueKind}.";
+                return result;
+            }
+            
+            if (toolInputProperty.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.Number)
+            {
+                if (parameterValue.ValueKind == JsonValueKind.Number)
+                {
+                    // todo for now we get double but we need better handling to know exactly if int is needed or double
+
+                    double doubleValue = parameterValue.GetDouble();
+                    bool isValueInt = Math.Abs(doubleValue - (int)doubleValue) < double.Epsilon;
+
+                    result.Success = true;
+                    result.Data = isValueInt ? (int)doubleValue : doubleValue;
+                    return result;
+                }
+                else if (parameterValue.ValueKind == JsonValueKind.String)
+                {
+                    // try parse string to double
+                    if (!double.TryParse(parameterValue.GetString(), out double doubleValue))
+                    {
+                        result.Message = $"Parameter with id {toolInputProperty.Id} must be a number but found {parameterValue.GetString()}.";
+                        return result;
+                    }
+
+                    bool isValueInt = Math.Abs(doubleValue - (int)doubleValue) < double.Epsilon;
+
+                    result.Success = true;
+                    result.Data = isValueInt ? (int)doubleValue : doubleValue;
+                    return result;
+                }
+
+                result.Message = $"Parameter with id {toolInputProperty.Id} must be a number but found {parameterValue.ValueKind}.";
+                return result;
+            }
+            
+            if (toolInputProperty.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.Boolean)
+            {
+                if (parameterValue.ValueKind == JsonValueKind.True || parameterValue.ValueKind == JsonValueKind.False)
+                {
+                    result.Success = true;
+                    result.Data = parameterValue.GetBoolean();
+                    return result;
+                }
+
+                result.Message = $"Parameter with id {toolInputProperty.Id} must be a boolean but found {parameterValue.ValueKind}.";
+                return result;
+            }
+            
+            if (toolInputProperty.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime)
+            {
+                if (parameterValue.ValueKind == JsonValueKind.String)
+                {
+                    if (DateTime.TryParse(parameterValue.GetString(), out DateTime dateTime))
+                    {
+                        result.Success = true;
+                        result.Data = dateTime;
+                        return result;
+                    }
+
+                    result.Message = $"Parameter with id {toolInputProperty.Id} is datetime and found string but unable to parse {parameterValue.GetString()} as datetime.";
+                    return result;
+                }
+
+                result.Message = $"Parameter with id {toolInputProperty.Id} must be a datetime string but found {parameterValue.ValueKind}.";
+                return result;
+            }
+
+            result.Message = $"Parameter with id {toolInputProperty.Id} Unsupported input type: {toolInputProperty.Type}";
+            return result;
+        }
+
+        public async Task ProcessDTMFInputAsync(string nodeId, string digits)
         {
             if (!IsScriptActive)
             {
@@ -109,12 +383,14 @@ namespace IqraInfrastructure.Managers.Script
                 return;
             }
 
+            var currentNode = _curentAgentActiveScript.Nodes.Find(n => n.Id == nodeId);
+
             try
             {
                 // Find the current node
-                if (_currentNode?.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
+                if (currentNode?.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool)
                 {
-                    var systemTool = _currentNode as BusinessAppAgentScriptSystemToolNode;
+                    var systemTool = currentNode as BusinessAppAgentScriptSystemToolNode;
                     if (systemTool?.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
                     {
                         var dtmfNode = systemTool as BusinessAppAgentScriptDTMFInputToolNode;
@@ -123,7 +399,8 @@ namespace IqraInfrastructure.Managers.Script
                             // Store DTMF input in context if variable name is provided
                             if (!string.IsNullOrEmpty(dtmfNode.VariableName))
                             {
-                                _scriptContext[dtmfNode.VariableName] = digits;
+                                //_scriptContext[dtmfNode.VariableName] = digits;
+                                // TODO NOT YET IMPLEMENTED
                             }
 
                             // Find matching outcome
@@ -131,17 +408,17 @@ namespace IqraInfrastructure.Managers.Script
                             if (outcome != null && !string.IsNullOrEmpty(outcome.PortId))
                             {
                                 // Find the next node
-                                var edge = _currentScript!.Edges.FirstOrDefault(e => 
-                                    e.SourceNodeId == _currentNode!.Id && 
+                                var edge = _curentAgentActiveScript!.Edges.FirstOrDefault(e => 
+                                    e.SourceNodeId == currentNode!.Id && 
                                     e.SourceNodePortId == outcome.PortId);
 
                                 if (edge != null)
                                 {
-                                    var nextNode = _currentScript.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
+                                    var nextNode = _curentAgentActiveScript.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
                                     if (nextNode != null)
                                     {
-                                        _currentNode = nextNode;
-                                        await ExecuteNodeAsync(nextNode);
+                                        currentNode = nextNode;
+                                        //await ExecuteNodeAsync(nextNode);
                                         return;
                                     }
                                 }
@@ -159,265 +436,17 @@ namespace IqraInfrastructure.Managers.Script
             }
         }
 
-        public async Task AdvanceToNextNodeAsync(string portId)
-        {
-            if (!IsScriptActive)
-            {
-                _logger.LogWarning("Cannot advance script - no active script");
-                return;
-            }
-
-            try
-            {
-                // Find the edge from the current node with the given port ID
-                var edge = _currentScript!.Edges.FirstOrDefault(e => 
-                    e.SourceNodeId == _currentNode!.Id && 
-                    e.SourceNodePortId == portId);
-
-                if (edge != null)
-                {
-                    // Find the target node
-                    var nextNode = _currentScript.Nodes.FirstOrDefault(n => n.Id == edge.TargetNodeId);
-                    if (nextNode != null)
-                    {
-                        _currentNode = nextNode;
-                        await ExecuteNodeAsync(nextNode);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Target node {NodeId} not found in script", edge.TargetNodeId);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("No edge found from node {NodeId} with port {PortId}", _currentNode!.Id, portId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error advancing to next node with port {PortId}", portId);
-            }
-        }
-
-        private async Task ExecuteNodeAsync(BusinessAppAgentScriptNode node)
-        {
-            try
-            {
-                _logger.LogInformation("Executing script node {NodeId} of type {NodeType}", node.Id, node.NodeType);
-
-                switch (node.NodeType)
-                {
-                    case BusinessAppAgentScriptNodeTypeENUM.Start:
-                        // Find the first connected node
-                        var startEdge = _currentScript!.Edges.FirstOrDefault(e => e.SourceNodeId == node.Id);
-                        if (startEdge != null)
-                        {
-                            var nextNode = _currentScript.Nodes.FirstOrDefault(n => n.Id == startEdge.TargetNodeId);
-                            if (nextNode != null)
-                            {
-                                _currentNode = nextNode;
-                                await ExecuteNodeAsync(nextNode);
-                            }
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
-                        var aiNode = node as BusinessAppAgentScriptAIResponseNode;
-                        if (aiNode != null)
-                        {
-                            // Get localized response
-                            var response = GetLocalizedString(aiNode.Response, _languageCode, "");
-                            
-                            // TODO: Emit this response through event mechanism
-                            _logger.LogInformation("AI Response: {Response}", response);
-                            
-                            // Auto-advance to the next node if there's only one connection
-                            AutoAdvanceToNextNode(node);
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
-                        var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
-                        if (systemToolNode != null)
-                        {
-                            await ExecuteSystemToolNodeAsync(systemToolNode);
-                            // Note: System tool nodes handle their own navigation
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
-                        var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
-                        if (customToolNode != null)
-                        {
-                            // Convert tool configuration to parameters
-                            var parameters = customToolNode.ToolConfiguration.ToDictionary(
-                                kvp => kvp.Key,
-                                kvp => ResolveContextVariables(kvp.Value));
-                            
-                            // Execute the tool
-                            var result = await ExecuteToolAsync(customToolNode.ToolId, parameters);
-                            
-                            // Store result in context
-                            _scriptContext["lastToolResult"] = result;
-                            
-                            // Auto-advance to the next node if there's only one connection
-                            AutoAdvanceToNextNode(node);
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
-                        // User query nodes don't execute automatically - they wait for user input
-                        _logger.LogInformation("Waiting for user input at node {NodeId}", node.Id);
-                        break;
-
-                    default:
-                        _logger.LogWarning("Unsupported node type: {NodeType}", node.NodeType);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing node {NodeId}", node.Id);
-            }
-        }
-
-        private async Task ExecuteSystemToolNodeAsync(BusinessAppAgentScriptSystemToolNode node)
-        {
-            try
-            {
-                switch (node.ToolType)
-                {
-                    case BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall:
-                        var endCallNode = node as BusinessAppAgentScriptEndCallToolNode;
-                        if (endCallNode != null)
-                        {
-                            var message = GetLocalizedString(endCallNode.Messages, _languageCode, "Thank you for calling.");
-                            
-                            // TODO: Emit an event to end the call
-                            _logger.LogInformation("End call triggered with message: {Message}", message);
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput:
-                        // DTMF input nodes don't execute automatically - they wait for DTMF input
-                        _logger.LogInformation("Waiting for DTMF input at node {NodeId}", node.Id);
-                        break;
-
-                    case BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent:
-                        var transferNode = node as BusinessAppAgentScriptTransferToAgentToolNode;
-                        if (transferNode != null)
-                        {
-                            // TODO: Emit an event to transfer the call
-                            _logger.LogInformation("Transfer to agent: {AgentId}", transferNode.AgentId);
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext:
-                        var scriptNode = node as BusinessAppAgentScriptAddScriptToContextToolNode;
-                        if (scriptNode != null)
-                        {
-                            // Load the referenced script
-                            await LoadScriptAsync(_businessId, scriptNode.ScriptId, _languageCode);
-                        }
-                        break;
-
-                    default:
-                        _logger.LogWarning("Unsupported system tool type: {ToolType}", node.ToolType);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error executing system tool node {NodeId}", node.Id);
-            }
-        }
-
-        private void AutoAdvanceToNextNode(BusinessAppAgentScriptNode node)
-        {
-            // Count outgoing edges
-            var edges = _currentScript!.Edges.Where(e => e.SourceNodeId == node.Id).ToList();
-            
-            // If there's exactly one edge, auto-advance
-            if (edges.Count == 1)
-            {
-                AdvanceToNextNodeAsync(edges[0].SourceNodePortId).ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        _logger.LogError(t.Exception, "Error auto-advancing to next node");
-                    }
-                });
-            }
-        }
-
-        private string ResolveContextVariables(string text)
+        private string ResolveContextVariables(string text, Dictionary<string, object> context)
         {
             if (string.IsNullOrEmpty(text)) return text;
 
             // Replace {{variableName}} with value from context
-            foreach (var key in _scriptContext.Keys)
+            foreach (var key in context.Keys)
             {
-                text = text.Replace($"{{{{{key}}}}}", _scriptContext[key]?.ToString() ?? "");
+                text = text.Replace($"{{{{{key}}}}}", context[key]?.ToString() ?? "");
             }
 
             return text;
-        }
-
-        private void RegisterDefaultTools()
-        {
-            // Example built-in tool handlers
-            _toolHandlers["getCurrentTime"] = async (parameters) =>
-            {
-                var format = parameters.GetValueOrDefault("format", "g");
-                return DateTime.Now.ToString(format);
-            };
-
-            _toolHandlers["calculateValue"] = async (parameters) =>
-            {
-                if (!parameters.TryGetValue("expression", out var expression))
-                {
-                    return "Error: Missing expression parameter";
-                }
-
-                try
-                {
-                    // Simple evaluation using DataTable (for production use a proper expression evaluator)
-                    var table = new System.Data.DataTable();
-                    var result = table.Compute(expression, "");
-                    return result.ToString() ?? "Error";
-                }
-                catch (Exception ex)
-                {
-                    return $"Error calculating: {ex.Message}";
-                }
-            };
-
-            // Additional tools would be registered here or via a separate method
-        }
-
-        private string GetLocalizedString(Dictionary<string, string>? dictionary, string languageCode, string defaultValue)
-        {
-            if (dictionary == null || !dictionary.Any()) return defaultValue;
-
-            // Try exact match
-            if (dictionary.TryGetValue(languageCode, out var value) && !string.IsNullOrWhiteSpace(value))
-                return value;
-
-            // Try language without region
-            var baseLanguage = languageCode.Split('-')[0];
-            foreach (var key in dictionary.Keys)
-            {
-                if (key.StartsWith(baseLanguage) && !string.IsNullOrWhiteSpace(dictionary[key]))
-                    return dictionary[key];
-            }
-
-            // Try English as fallback
-            if (dictionary.TryGetValue("en", out var enValue) && !string.IsNullOrWhiteSpace(enValue))
-                return enValue;
-
-            // Return any available value
-            var firstNonEmpty = dictionary.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
-            return firstNonEmpty ?? defaultValue;
         }
     }
 }

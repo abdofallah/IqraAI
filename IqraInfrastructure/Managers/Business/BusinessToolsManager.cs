@@ -6,6 +6,8 @@ using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text.RegularExpressions;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -121,6 +123,30 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     BusinessAppToolConfigurationInputSchemea newInputSchemeaData = new BusinessAppToolConfigurationInputSchemea();
 
+                    if (!inputScheme.TryGetProperty("id", out var inputSchemeIdProperty))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:6";
+                        result.Message = "Configuration tab input scheme id property not found.";
+                        return result;
+                    }
+
+                    var inputSchemeId = inputSchemeIdProperty.GetString();
+                    if (string.IsNullOrWhiteSpace(inputSchemeId))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:7";
+                        result.Message = "Configuration tab input scheme id is null.";
+                        return result;
+                    }
+                    newInputSchemeaData.Id = Regex.Replace(inputSchemeId.ToLower(), @"\s+", "_"); // remove all spaces, tabs, etc to _ to turn into id
+
+                    int inputScehemaIdExistsIndex = NewBusinessAppToolData.Configuration.InputSchemea.FindIndex(d => d.Id == newInputSchemeaData.Id);
+                    if (inputScehemaIdExistsIndex != -1)
+                    {
+                        result.Code = "AddOrUpdateUserBusinessTools:8";
+                        result.Message = $"Configuration tab input scheme id {newInputSchemeaData.Id} already exists/is duplicated.";
+                        return result;
+                    }
+
                     var inputSchemeNameValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                         businessLanguages,
                         inputScheme,
@@ -181,9 +207,28 @@ namespace IqraInfrastructure.Managers.Business
                         result.Message = "Configuration tab input scheme isRequired property not found.";
                         return result;
                     }
-                    newInputSchemeaData.IsRequired = isRequiredProperty.GetBoolean();
+                    newInputSchemeaData.IsRequired = isRequiredProperty.GetBoolean(); 
 
-                    newInputSchemeaData.Id = Guid.NewGuid().ToString(); // todo make more name friendly
+                    if (newInputSchemeaData.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime)
+                    {
+                        if (!inputScheme.TryGetProperty("dateTimeFormat", out var dateTimeFormatProperty))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:9";
+                            result.Message = "Configuration tab input scheme datetime format property not found.";
+                            return result;
+                        }
+
+                        var dateTimeFormatString = dateTimeFormatProperty.GetString();
+                        if (string.IsNullOrWhiteSpace(dateTimeFormatString))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:9";
+                            result.Message = "Configuration tab input scheme datetime format is empty.";
+                            return result;
+                        }
+
+                        newInputSchemeaData = new BusinessAppToolConfigurationInputSchemeaDateTime(newInputSchemeaData);
+                        ((BusinessAppToolConfigurationInputSchemeaDateTime)newInputSchemeaData).DateTimeFormat = dateTimeFormatString;
+                    }
 
                     NewBusinessAppToolData.Configuration.InputSchemea.Add(newInputSchemeaData);
                 }
