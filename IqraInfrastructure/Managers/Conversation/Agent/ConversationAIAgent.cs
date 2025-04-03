@@ -717,7 +717,7 @@ namespace IqraInfrastructure.Managers.Conversation
                             var durationToWait = await SynthesizeSpeechAsync(messageToSpeak);
                             if (durationToWait != TimeSpan.Zero)
                             {
-                                await Task.Delay(((int)durationToWait.Milliseconds) + 1000);
+                                await Task.Delay((int)durationToWait.TotalMilliseconds);
                             }
                             else
                             {
