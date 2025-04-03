@@ -203,7 +203,7 @@ Here is the response format you must always follow:
 	- To retrieve full details about the products, you must always use the system function "retrieve_product_information".
 	{{~ end ~}
 	
-	Remember, you respond may only include response_to_customer, or execute_system_function or execute_custom_function at once as you do not have the ability to respond and perform a task at once. If you wish to respond before executing the system or custom tool, your response must include the confirmation from the customer to perform the task.
+	Remember, you respond may only include response_to_customer, or execute_system_function{{~ if Agent.ScriptTools.size > 0 ~}} or execute_custom_function{{~ end ~}} at once as you do not have the ability to respond and perform a task at once. If you wish to respond before executing the system or custom tool, your response must include the confirmation from the customer to perform the task.
 
 	Here is the format you follow when you are replying directly to a customer:
 	response_to_customer: <response to customer query>
