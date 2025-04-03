@@ -743,6 +743,18 @@ namespace IqraInfrastructure.Managers.Conversation
                         // Implement similar parsing logic as above
                         return;
                     }
+                    else if (functionContent.StartsWith("retrieve_product_information:"))
+                    {
+                        // Handle retrieve_product_information
+                        // Implement similar parsing logic as above
+                        return;
+                    }
+                    else if (functionContent.StartsWith("execute_custom_function:"))
+                    {
+                        // Handle execute_custom_function
+                        // Implement similar parsing logic as above
+                        return;
+                    }
 
                     else
                     {

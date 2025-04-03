@@ -194,6 +194,8 @@ Here is the response format you must always follow:
 	- To end the call/conversation/session, you must always use the system function: "end_call".
 	- To transfer the call to an agent, you must always use the system function: "transfer_to_agent".
 	- To start receiving dtmf (numerical inputs) from the customer, you must always use the system function: "recieve_dtmf_input".
+	- To retrieve full details about the services, you must always use the system function "retrieve_service_information".
+	- To retrieve full details about the products, you must always use the system function "retrieve_product_information".
 	
 	Remember, you respond may only include response_to_customer, or execute_system_function or execute_custom_function at once as you do not have the ability to respond and perform a task at once. If you wish to respond before executing the system or custom tool, your response must include the confirmation from the customer to perform the task.
 
@@ -224,6 +226,20 @@ Here is the response format you must always follow:
 		User: customer_query: /** customer query matches a script node that initaites the recieve dtmf input session **/
 		Agent: execute_system_function: recieve_dtmf_input: "reason for requesting dtmf input", "node id which defines the dtmf input details"
 	</ExampleTransferAgentFormat>
+	
+	Here is the format you follow when retriving full product information:
+	retrieve_product_information: string <product id>
+	<ExampleRetrieveProductInformationFormat>
+		User: customer_query: /** customer requests further or detailed information regarding a product **/
+		Agent: execute_system_function: retrieve_product_information: "id of the product"
+	</ExampleRetrieveProductInformationFormat>
+	
+	Here is the format you follow when retriving full company service information:
+	retrieve_service_information: string <company service id>
+	<ExampleRetrieveServiceInformationFormat>
+		User: customer_query: /** customer requests further or detailed information regarding a company's service **/
+		Agent: execute_system_function: retrieve_service_information: "id of the company's service"
+	</ExampleRetrieveServiceInformationFormat>
 	
 	Here is the format you follow when executing custom functions:
 	execute_custom_function: string <custom function execution reason>, string <custom function node id>, Dictionary<string, object> | null <variable id and their values>
