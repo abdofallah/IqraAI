@@ -80,7 +80,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         private void OnRecognizing(object? sender, SpeechRecognitionEventArgs e)
         {
-            Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
+            //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}"); todo logger
             OnRecoginizingRecieved?.Invoke(this, e);
         }
 
@@ -88,21 +88,24 @@ namespace IqraInfrastructure.Managers.STT.Providers
         {
             if (e.Result.Reason == ResultReason.RecognizedSpeech)
             {
-                Console.WriteLine($"Recognized: {e.Result.Text}");
+                //Console.WriteLine($"Recognized: {e.Result.Text}");  todo logger
                 _transcriptionResultReceived?.Invoke(this, e.Result.Text);
             }
             else if (e.Result.Reason == ResultReason.NoMatch)
             {
+                // todo logger
                 Console.WriteLine($"No speech could be recognized.");
             }
         }
 
         private void OnCanceled(object? sender, SpeechRecognitionCanceledEventArgs e)
         {
+            // todo logger
             Console.WriteLine($"Recognition canceled. Reason: {e.Reason}");
             if (e.Reason == CancellationReason.Error)
             {
                 // TODO here notify the conversation manager that there is an error...
+                // todo logger
                 Console.WriteLine($"Error details: {e.ErrorDetails}");
             }
 
@@ -111,11 +114,13 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         private void OnSessionStarted(object? sender, SessionEventArgs e)
         {
+            // todo logger
             Console.WriteLine($"Session started. Session ID: {e.SessionId}");
         }
 
         private void OnSessionStopped(object? sender, SessionEventArgs e)
         {
+            // todo logger
             Console.WriteLine($"Session stopped. Session ID: {e.SessionId}");
         }
 

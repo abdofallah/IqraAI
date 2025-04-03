@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
+using Jint;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -88,93 +89,95 @@ namespace IqraInfrastructure.Managers.Script
                     return result;
                 }
 
-                var baseUri = new Uri(toolData.Configuration.Endpoint);
+                var convertedParametersResult = BuildAndValidateCustomToolVariables(toolData, parameters);
+                if (!convertedParametersResult.Success)
+                {
+                    result.Code = "ExecuteToolAsync:3";
+                    result.Message = $"Error building and validating custom tool variables for node {nodeId}:\n\n```{convertedParametersResult.Message}```";
+                    return result;
+                }
+                var baseUri = ResolveEndpointQueryStrings(toolData.Configuration.Endpoint, convertedParametersResult.Data);
+
                 using (var toolHttpClient = new HttpClient())
                 {
                     HttpResponseMessage httpResponseMessage;
                     HttpContent? requestContent = null;
 
-                    var convertedParametersResult = BuildAndValidateCustomToolVariables(toolData, parameters);
-                    if (!convertedParametersResult.Success)
+                    if (toolData.Configuration.RequestType != HttpMethodEnum.Get && toolData.Configuration.RequestType != HttpMethodEnum.Delete)
                     {
-                        result.Code = "ExecuteToolAsync:3";
-                        result.Message = $"Error building and validating custom tool variables for node {nodeId}:\n\n```{convertedParametersResult.Message}```";
-                        return result;
-                    }
+                        if (toolData.Configuration.BodyType == HttpBodyEnum.FormData)
+                        {
+                            requestContent = new MultipartFormDataContent();
+
+                            if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
+                            {
+                                var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
+
+                                foreach (var field in formBodyFields)
+                                {
+                                    HttpContent fieldHttpContentData = new StringContent(ResolveContextVariables(field.Value, convertedParametersResult.Data));
+                                    ((MultipartFormDataContent)requestContent).Add(fieldHttpContentData, field.Key);
+                                }
+                            }
+                        }
+                        else if (toolData.Configuration.BodyType == HttpBodyEnum.XWWWFormUrlencoded)
+                        {
+                            if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
+                            {
+                                var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
+
+                                foreach (var field in formBodyFields)
+                                {
+                                    formBodyFields[field.Key] = ResolveContextVariables(field.Value, convertedParametersResult.Data);
+                                }
+
+                                requestContent = new FormUrlEncodedContent(formBodyFields);
+                            }
+                            else
+                            {
+                                requestContent = new FormUrlEncodedContent(new Dictionary<string, string>());
+                            }
+                        }
+                        else if (toolData.Configuration.BodyType == HttpBodyEnum.Raw)
+                        {
+                            if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is string)
+                            {
+                                requestContent = new StringContent(ResolveContextVariables(toolData.Configuration.BodyData.ToString(), convertedParametersResult.Data));
+                                requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                            }
+                            else
+                            {
+                                requestContent = new StringContent("");
+                                requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+                            }
+                        }
+                    }    
 
                     foreach (var header in toolData.Configuration.Headers)
                     {
-                        toolData.Configuration.Headers.Add(header.Key, ResolveContextVariables(header.Value, convertedParametersResult.Data));
+                        toolHttpClient.DefaultRequestHeaders.Add(header.Key, ResolveContextVariables(header.Value, convertedParametersResult.Data));
                     }
 
-                    if (toolData.Configuration.BodyType == HttpBodyEnum.FormData)
-                    {
-                        requestContent = new MultipartFormDataContent();
-
-                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
-                        {
-                            var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
-
-                            foreach (var field in formBodyFields)
-                            {
-                                HttpContent fieldHttpContentData = new StringContent(ResolveContextVariables(field.Value, convertedParametersResult.Data));
-                                ((MultipartFormDataContent)requestContent).Add(fieldHttpContentData, field.Key);
-                            }
-                        } 
-                    }
-                    else if (toolData.Configuration.BodyType == HttpBodyEnum.XWWWFormUrlencoded)
-                    {
-                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is Dictionary<string, string>)
-                        {
-                            var formBodyFields = toolData.Configuration.BodyData as Dictionary<string, string>;
-
-                            foreach (var field in formBodyFields)
-                            {
-                                formBodyFields[field.Key] = ResolveContextVariables(field.Value, convertedParametersResult.Data);
-                            }
-
-                            requestContent = new FormUrlEncodedContent(formBodyFields);
-                        }
-                        else
-                        {
-                            requestContent = new FormUrlEncodedContent(new Dictionary<string, string>());
-                        }
-                    }
-                    else if (toolData.Configuration.BodyType == HttpBodyEnum.Raw)
-                    {
-                        if (toolData.Configuration.BodyData != null && toolData.Configuration.BodyData is string)
-                        {
-                            requestContent = new StringContent(ResolveContextVariables(toolData.Configuration.BodyData.ToString(), convertedParametersResult.Data));
-                            requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                        }
-                        else
-                        {
-                            requestContent = new StringContent("");
-                            requestContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                        }
-                    }
-
-                    toolHttpClient.BaseAddress = baseUri;
                     switch (toolData.Configuration.RequestType)
                     {
                         case HttpMethodEnum.Get:
-                            httpResponseMessage = await toolHttpClient.GetAsync(toolData.Configuration.Endpoint);
+                            httpResponseMessage = await toolHttpClient.GetAsync(baseUri);
                             break;
 
                         case HttpMethodEnum.Post:
-                            httpResponseMessage = await toolHttpClient.PostAsync(toolData.Configuration.Endpoint, requestContent);
+                            httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent);
                             break;
 
                         case HttpMethodEnum.Put:
-                            httpResponseMessage = await toolHttpClient.PutAsync(toolData.Configuration.Endpoint, requestContent);
+                            httpResponseMessage = await toolHttpClient.PutAsync(baseUri, requestContent);
                             break;
 
                         case HttpMethodEnum.Patch:
-                            httpResponseMessage = await toolHttpClient.PatchAsync(toolData.Configuration.Endpoint, requestContent);
+                            httpResponseMessage = await toolHttpClient.PatchAsync(baseUri, requestContent);
                             break;
 
                         case HttpMethodEnum.Delete:
-                            httpResponseMessage = await toolHttpClient.DeleteAsync(toolData.Configuration.Endpoint);
+                            httpResponseMessage = await toolHttpClient.DeleteAsync(baseUri);
                             break;
 
                         default:
@@ -186,26 +189,30 @@ namespace IqraInfrastructure.Managers.Script
                     var responseStatusCode = httpResponseMessage.StatusCode;
                     var responseData = await httpResponseMessage.Content.ReadAsStringAsync();
 
-                    if (!toolData.Response.TryGetValue(((int)httpResponseMessage.StatusCode).ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
+                    if (!toolData.Response.TryGetValue(httpResponseMessage.StatusCode.ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
                     {
                         result.Success = true;
                         result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```\n\nWhile the business never defined how to handle this type of response.";
                         return result;
                     }
 
-                    // todo perforn the tool javascript logic
-                    // responseToolConfiguration.Javascript
-                    // for now return result as is
+                    var javascriptExecutedResult = ExecuteJavaScriptProcessor(responseData, responseToolConfiguration.Javascript);
+                    if (!javascriptExecutedResult.Success)
+                    {
+                        result.Code = "ExecuteToolAsync:" + javascriptExecutedResult.Code;
+                        result.Message = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} but failed to execute the tool javascript code."; // todo should provide the responseData in case of failure or no? ask user
+                        return result;
+                    }
 
                     if (responseToolConfiguration.HasStaticResponse && responseToolConfiguration.StaticResponse.TryGetValue(_currentSessionlanguageCode, out string? staticResponse) && !string.IsNullOrEmpty(staticResponse))
                     {
                         result.Success = true;
-                        result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```\n\nThe business provided the following static response you must convery the result in:\n\n```{staticResponse}```";
+                        result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{javascriptExecutedResult.Data}```\n\nThe business provided the following static response you must convery the result in:\n\n```{staticResponse}```";
                         return result;
                     }
 
                     result.Success = true;
-                    result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{responseData}```";
+                    result.Data = $"The custom tool associated with node {nodeId} returned status code {responseStatusCode} and response data:\n\n```{javascriptExecutedResult.Data}```";
                     return result;
                 }
 
@@ -217,6 +224,108 @@ namespace IqraInfrastructure.Managers.Script
                 result.Message = "Error: " + ex.Message;
                 return result;
             }
+        }
+        private FunctionReturnResult<string?> ExecuteJavaScriptProcessor(string responseData, string javascriptCode)
+        {
+            var result = new FunctionReturnResult<string?>();
+
+            // Create engine with comprehensive security restrictions
+            var engine = new Engine(options => {
+                options.TimeoutInterval(TimeSpan.FromSeconds(5));
+                options.LimitMemory(5_000_000);
+                options.LimitRecursion(64);
+                options.MaxStatements(1000);
+                options.AllowClrWrite(false);
+                options.AllowOperatorOverloading(false);
+                options.Strict();
+                options.MaxArraySize(10000);
+                options.MaxJsonParseDepth(100);
+                options.RegexTimeoutInterval(TimeSpan.FromSeconds(1));
+                options.DisableStringCompilation();
+            });
+
+            try
+            {
+                engine.SetValue("responseData", responseData);
+                var executionResult = engine.Evaluate(javascriptCode);
+                var executionObject = executionResult.ToObject();
+
+                if (executionObject == null)
+                {
+                    result.Data = ""; // what to do about this??
+                }
+                else if (executionObject.GetType() != typeof(string))
+                {
+                    result.Data = JsonSerializer.Serialize(executionObject);
+                }
+                else
+                {
+                    result.Data = executionObject.ToString();
+                }
+
+                result.Success = true;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Code = "ExecuteJavaScriptProcessor:-1";
+                result.Message = "Error: " + ex.Message;
+                return result;
+            }
+        }
+        private string ResolveEndpointQueryStrings(string endpoint, Dictionary<string, object> parameters)
+        {
+            // First resolve any variables in the endpoint string
+            string fullUri = ResolveContextVariables(endpoint, parameters);
+
+            // Parse the URL manually to avoid automatic + to space conversion
+            int queryStartIndex = fullUri.IndexOf('?');
+            if (queryStartIndex == -1)
+            {
+                // No query parameters, return as is
+                return fullUri;
+            }
+
+            string baseUrlPart = fullUri.Substring(0, queryStartIndex);
+            string queryPart = fullUri.Substring(queryStartIndex + 1);
+
+            // Split the query string into key-value pairs
+            var queryPairs = queryPart.Split('&');
+            var processedPairs = new List<string>();
+
+            foreach (var pair in queryPairs)
+            {
+                int equalsIndex = pair.IndexOf('=');
+                if (equalsIndex > 0)
+                {
+                    string key = pair.Substring(0, equalsIndex);
+                    string value = pair.Substring(equalsIndex + 1);
+
+                    // Decode the value first (in case it's already URL encoded)
+                    string decodedValue = Uri.UnescapeDataString(value);
+
+                    // Now encode it properly, handling + signs specially
+                    // First replace + with a placeholder that won't be affected by encoding
+                    string processedValue = decodedValue.Replace("+", "___PLUS___");
+
+                    // Encode the value
+                    string encodedValue = Uri.EscapeDataString(processedValue);
+
+                    // Replace the placeholder with %2B
+                    encodedValue = encodedValue.Replace("___PLUS___", "%2B");
+
+                    // Add to our processed pairs
+                    processedPairs.Add($"{Uri.EscapeDataString(key)}={encodedValue}");
+                }
+                else
+                {
+                    // Handle cases where there might be no value
+                    processedPairs.Add(Uri.EscapeDataString(pair));
+                }
+            }
+
+            // Build the final URI
+            return $"{baseUrlPart}?{string.Join("&", processedPairs)}";
         }
         private FunctionReturnResult<Dictionary<string, object>> BuildAndValidateCustomToolVariables(BusinessAppTool toolData, Dictionary<string, JsonElement> parameters)
         {
@@ -287,6 +396,7 @@ namespace IqraInfrastructure.Managers.Script
                 }
             }
 
+            result.Success = true;
             return result;
         }
         private FunctionReturnResult<object?> ParseJsonElementAsType(BusinessAppToolConfigurationInputSchemea toolInputProperty, JsonElement parameterValue)
@@ -356,10 +466,11 @@ namespace IqraInfrastructure.Managers.Script
             {
                 if (parameterValue.ValueKind == JsonValueKind.String)
                 {
-                    if (DateTime.TryParse(parameterValue.GetString(), out DateTime dateTime))
+                    string stringDateTime = parameterValue.GetString();
+                    if (DateTime.TryParse(stringDateTime, out _))
                     {
                         result.Success = true;
-                        result.Data = dateTime;
+                        result.Data = stringDateTime;
                         return result;
                     }
 

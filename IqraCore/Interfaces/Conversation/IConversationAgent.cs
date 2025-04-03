@@ -10,6 +10,8 @@ namespace IqraCore.Interfaces.Conversation
         string AgentId { get; }
         ConversationAgentType AgentType { get; }
 
+        Task NotifyConversationStarted();
+        Task NotifyMaxDurationReached();
         Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken);
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
         Task InitializeAsync(ConversationAgentConfiguration config, BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken);

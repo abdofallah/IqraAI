@@ -308,7 +308,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         var userQueryNode = node as BusinessAppAgentScriptUserQueryNode;
                         if (userQueryNode != null)
                         {
-                            result.AppendLine($"{indent}customer_query ID={userQueryNode.Id} QUERY={GetLocalizedString(userQueryNode.Query, languageCode, "Customer query")}");
+                            result.AppendLine($"{indent}customer_query: NodeId={nodeId} CustomerQuery=\"{GetLocalizedString(userQueryNode.Query, languageCode, "Customer query")}\"");
                         }
                         break;
 
@@ -316,7 +316,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         var aiResponseNode = node as BusinessAppAgentScriptAIResponseNode;
                         if (aiResponseNode != null)
                         {
-                            result.AppendLine($"{indent}response_to_customer ID={aiResponseNode.Id} RESPONSE={GetLocalizedString(aiResponseNode.Response, languageCode, "AI response")}");
+                            result.AppendLine($"{indent}response_to_customer: NodeId={nodeId} AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, languageCode, "AI response")}\"");
                         }
                         break;
 
@@ -325,7 +325,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         if (systemToolNode != null)
                         {
                             string toolTypeName = Enum.GetName(typeof(BusinessAppAgentScriptNodeSystemToolTypeENUM), systemToolNode.ToolType);
-                            result.AppendLine($"{indent}execute_system_function ID={systemToolNode.Id} TYPE={toolTypeName}");
+                            result.AppendLine($"{indent}execute_system_function: NodeID={nodeId} ToolType={toolTypeName}");
 
                             // Special handling for DTMF keypad input
                             if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
@@ -371,7 +371,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
                         if (customToolNode != null)
                         {
-                            result.AppendLine($"{indent}execute_custom_function ID={customToolNode.ToolId}");
+                            result.AppendLine($"{indent}execute_custom_function: NodeId={nodeId} ToolId={customToolNode.ToolId}");
 
                             // Special handling for custom tool outcomes
                             var childCustomEdges = GetNodeChildren(nodeId, edgesMap);
@@ -486,6 +486,11 @@ namespace IqraInfrastructure.Managers.Conversation
                             schemaObject["Type"] = inputSchema.Type.ToString();
                             schemaObject["IsArray"] = inputSchema.IsArray;
                             schemaObject["IsRequired"] = inputSchema.IsRequired;
+
+                            if (inputSchema.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime)
+                            {
+                                schemaObject["DateTimeFormat"] = ((BusinessAppToolConfigurationInputSchemeaDateTime)inputSchema).DateTimeFormat;
+                            }
 
                             inputSchemasArray.Add(schemaObject);
                         }
@@ -812,7 +817,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
                     if (customToolNode != null)
                     {
-                        var alreadyAddedTool = tools.Find(t => t.Id == customToolNode.ToolId) == null;
+                        var alreadyAddedTool = tools.Find(t => t.Id == customToolNode.ToolId) != null;
                         if (!alreadyAddedTool)
                         {
                             var tool = businessApp.Tools.Find(t => t.Id == customToolNode.ToolId);
@@ -834,7 +839,7 @@ namespace IqraInfrastructure.Managers.Conversation
                             var transferToAgentNode = node as BusinessAppAgentScriptTransferToAgentToolNode;
                             if (transferToAgentNode != null)
                             {
-                                var alreadyAddedAgent = agents.Find(a => a.Id == transferToAgentNode.AgentId) == null;
+                                var alreadyAddedAgent = agents.Find(a => a.Id == transferToAgentNode.AgentId) != null;
                                 if (!alreadyAddedAgent)
                                 {
                                     var agent = businessApp.Agents.Find(a => a.Id == transferToAgentNode.AgentId);

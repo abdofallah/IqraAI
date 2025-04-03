@@ -123,7 +123,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 // Start the session
-                await conversationSession.StartAsync(sessionCts.Token);
+                _ = conversationSession.StartAsync(sessionCts.Token);
 
                 // Store in active sessions
                 _activeSessions[sessionId] = conversationSession;

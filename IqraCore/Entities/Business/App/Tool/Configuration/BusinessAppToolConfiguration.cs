@@ -6,7 +6,7 @@ namespace IqraCore.Entities.Business
     public class BusinessAppToolConfiguration
     {
         public List<BusinessAppToolConfigurationInputSchemea> InputSchemea { get; set; } = new List<BusinessAppToolConfigurationInputSchemea>();
-        public HttpMethodEnum RequestType { get; set; }
+        public HttpMethodEnum RequestType { get; set; } = HttpMethodEnum.Get;
         public string Endpoint { get; set; } = string.Empty;
 
         [KeepOriginalDictionaryKeyCase]

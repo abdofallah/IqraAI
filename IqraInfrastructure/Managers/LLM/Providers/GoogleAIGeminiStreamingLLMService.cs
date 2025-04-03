@@ -50,11 +50,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         {
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
 
-            foreach (var msges in finalMessages)
-            {
-                Console.WriteLine($"Message: {msges.Parts.FirstOrDefault()?.Text}");
-            }
-
             var generationConfig = new GenerationConfig
             {
                 Temperature = _temperature,
@@ -111,17 +106,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 _systemInstruction = null;
             }
-        }
-
-        public void SetInitialMessage(string initialAssistantMessage)
-        {
-            _initialMessages = new List<Content>()
-            {
-                 MakeContent("user", "Start of conversation."),
-                 MakeContent("model", initialAssistantMessage)
-            };
-
-             _messagesMemory.Clear();
         }
 
          public void AddUserMessage(string message)

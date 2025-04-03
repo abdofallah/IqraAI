@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
@@ -331,18 +332,33 @@ namespace IqraInfrastructure.Managers.Conversation
             await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
             // Initialize clients
-            var clientTasks = _clients.Select((client) =>
-                {
-                    return client.ConnectAsync(_sessionCts.Token);
-                }
-            );
-            await Task.WhenAll(clientTasks);
+            var tasks = new List<Task>();
+            foreach (var client in _clients)
+            {
+                tasks.Add(
+                    Task.Run(
+                        async () =>
+                        {
+                            await Task.Delay(_sessionBusinessRouteData.Configuration.PickUpDelayMS, _sessionCts.Token);
+                            await client.ConnectAsync(_sessionCts.Token);
+                        }
+                    )
+                );
+            }
+            await Task.WhenAll(tasks);
 
-            // Start silence detection timer
+            // Start silence and max duration detection timer
             StartTimers();
 
             // Update state
             await UpdateStateAsync(ConversationSessionState.Active, "Session active");
+
+            var agentsNotify = _agents.Select(async (agent) =>
+                {
+                    return agent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                }
+            );
+            await Task.WhenAll(agentsNotify);
 
             _logger.LogInformation("Session {SessionId} started", _sessionId);
         }
@@ -354,7 +370,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
             // Start session duration timer
             var maxDurationMs = _sessionBusinessRouteData.Configuration.MaxCallTimeS * 1000;
-            _sessionDurationTimer = new Timer(EndSessionOnMaxDuration, null, maxDurationMs, Timeout.Infinite);
+            _sessionDurationTimer = new Timer(async (state) => { await EndSessionOnMaxDuration(state); }, null, maxDurationMs, Timeout.Infinite);
         }
 
         private void CheckSilence(object? state)
@@ -395,10 +411,33 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
-        private void EndSessionOnMaxDuration(object? state)
+        private async Task EndSessionOnMaxDuration(object? state)
         {
             _logger.LogInformation("Ending session {SessionId} due to max duration", _sessionId);
-            EndAsync("Maximum session duration reached").ContinueWith(t =>
+
+            bool isAnyAIAgentToEndCall = false;
+            foreach (var agent in _agents)
+            {
+                if (agent.GetType() == typeof(ConversationAIAgent))
+                {
+                    isAnyAIAgentToEndCall = true;
+                }
+
+                _ = agent.NotifyMaxDurationReached();
+            }
+
+            if (isAnyAIAgentToEndCall)
+            {
+                await Task.Delay(5000, _sessionCts.Token);
+                // if session still not ended after 5 seconds, force end it
+
+                if (_sessionCts.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
+
+            await EndAsync("Maximum session duration reached").ContinueWith(t =>
             {
                 if (t.IsFaulted)
                 {

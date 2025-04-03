@@ -91,15 +91,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _systemPrompt = systemPrompt;
         }
 
-        public void SetInitialMessage(string initialMessage)
-        {
-            _initialMessages = new List<Message>()
-            {
-                new Message(RoleType.User, "call_started"),
-                new Message(RoleType.Assistant, $"response_to_customer: {initialMessage}")
-            };
-        }
-
         public void AddUserMessage(string message)
         {
             _messagesMemory.Add(

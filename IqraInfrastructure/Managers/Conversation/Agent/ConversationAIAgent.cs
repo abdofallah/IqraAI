@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
@@ -53,7 +54,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private bool _isInitialized;
 
         private bool _isProcessingAudio;
-        private bool _isAcceptingSTTAudio = true;
+        private bool _isAcceptingSTTAudio = false;
         private readonly BlockingCollection<byte[]> _audioQueue = new();
         private Task? _audioProcessingTask;
         private readonly Dictionary<string, string> _clientContextMap = new();
@@ -107,6 +108,8 @@ namespace IqraInfrastructure.Managers.Conversation
             }
             try
             {
+                _conversationCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
                 _agentConfiguration = config;
                 _businessApp = businessAppData;
                 _currentSessionRoute = businessRouteData;   
@@ -177,9 +180,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
                 _llmService = llmServiceResult.Data;
-                _llmService.MessageStreamed += OnLLMMessageStreamed;
-
-                _conversationCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                _llmService.MessageStreamed += OnLLMMessageStreamed;  
 
                 // Initialize services
                 _sttService.Initialize();
@@ -247,6 +248,37 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error configuring agent: " + ex.Message, ex));
                 throw;
             }
+        }
+
+        // Notifications
+        public async Task NotifyConversationStarted()
+        {
+            _llmService.AddUserMessage("response_from_system: Call has started.");
+
+            if (_businessAppAgent.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
+            {
+                string openingMessage = _businessAppAgent.Utterances.GreetingMessage[_currentLanguageCode];
+
+                _llmService.AddAssistantMessage(openingMessage);
+                var speakSpan = await SynthesizeSpeechAsync(openingMessage);
+
+                await Task.Delay((int)speakSpan.TotalMilliseconds);
+            }
+            else
+            {
+                _llmService.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
+            }
+
+            _isAcceptingSTTAudio = true;
+        }
+
+        public async Task NotifyMaxDurationReached()
+        {
+            await CancelOnGoingAgentProcessingTask();
+            _isAcceptingSTTAudio = false;
+
+            _llmService.AddUserMessage($"response_from_system: Perform execute_system_function: end_call(...) right away while notifying the user taht maximum duration of {_currentSessionRoute.Configuration.MaxCallTimeS} seconds has been reached for the call.");
+            await _llmService.ProcessInputAsync(_conversationCTS.Token);
         }
 
         // Take Audio and Text Input from Conversation Manager
@@ -369,7 +401,7 @@ namespace IqraInfrastructure.Managers.Conversation
             // do nothing for now
         }
         private static List<string> WordsNotToCancelCurrentProcessing = new List<string>
-        { // TODO this is temporary
+        { // TODO this is temporary add this into the agent settings or routing
             "alright",
             "right",
             "mm hmm",
@@ -518,7 +550,13 @@ namespace IqraInfrastructure.Managers.Conversation
                     else
                     {
                         _logger.LogError("Agent {AgentId} Unhandled LLM response: {Response}", _agentId, fullAggregatedMessage);
-                        _llmService.AddUserMessage("response_from_system: Invalid response type recieved from the agent, allowed response types by the agent response_to_customer or execute_system_function or execute_custom_function.");
+                        _llmService.AddUserMessage("response_from_system: Invalid response type recieved from the agent, the agent must always begin their response with response_to_customer or execute_system_function or execute_custom_function.");
+
+                        _responseBuffer.Clear();
+                        _isResponding = false;
+                        _isExecutingCustomTool = false;
+                        _isExecutingSystemTool = false;
+
                         await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
                     }
                 }
@@ -630,87 +668,91 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             var llmResponseFull = _responseBuffer.ToString();
 
+            _logger.LogInformation("AI Agent {AgentId} received system tool response: {Response}", _agentId, llmResponseFull);
+
             try
             {
                 int startFunctionIndex = llmResponseFull.IndexOf("execute_system_function:");
-
-                int endCallIndex = llmResponseFull.IndexOf("end_call(", startFunctionIndex);
-                if (endCallIndex != -1)
+                if (startFunctionIndex != -1)
                 {
-                    // Extract everything between the parentheses
-                    int openParenIndex = endCallIndex + "end_call(".Length;
-                    int closeParenIndex = llmResponseFull.IndexOf(")", openParenIndex);
+                    _llmService.AddAssistantMessage(llmResponseFull);
 
-                    if (closeParenIndex == -1)
+                    // Extract content after execute_system_function:
+                    int startContentIndex = startFunctionIndex + "execute_system_function:".Length;
+                    string functionContent = llmResponseFull.Substring(startContentIndex).Trim();
+
+                    // Check which system tool is being called
+                    if (functionContent.StartsWith("end_call:"))
                     {
-                        _logger.LogError("Malformed end_call function, missing closing parenthesis");
+                        string argsContent = functionContent.Substring("end_call:".Length).Trim();
+
+                        // Parse arguments using our CSV-like approach
+                        List<string> arguments = ParseArguments(argsContent);
+
+                        string reasonForEnding = "";
+                        string? messageToSpeak = null;
+
+                        if (arguments.Count >= 1)
+                        {
+                            // First argument is the reason
+                            var reasonArg = arguments[0];
+                            reasonForEnding = reasonArg.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                             reasonArg.Trim().Trim('"');
+
+                            // Second argument is the optional message
+                            if (arguments.Count >= 2)
+                            {
+                                var messageArg = arguments[1];
+                                messageToSpeak = messageArg.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+                                                 messageArg.Trim() == "\"\"" ?
+                                                 null : messageArg.Trim().Trim('"');
+                            }
+                        }
+
+                        _logger.LogInformation("AI Agent {AgentId} received end_call: {ReasonForEnding} and {MessageToSpeak}",
+                                              _agentId, reasonForEnding, messageToSpeak);
+
+                        if (!string.IsNullOrWhiteSpace(messageToSpeak))
+                        {
+                            var durationToWait = await SynthesizeSpeechAsync(messageToSpeak);
+                            if (durationToWait != TimeSpan.Zero)
+                            {
+                                await Task.Delay(((int)durationToWait.Milliseconds) + 1000);
+                            }
+                            else
+                            {
+                                // CRITICAL SHOULD NOT HAPPEN
+                                _logger.LogError("Ending call but the audio did not have any duration to wait for");
+                            }
+                        }
+
+                        await _conversationSessionManager.EndAsync(reasonForEnding);
                         return;
                     }
 
-                    string argsString = llmResponseFull.Substring(openParenIndex, closeParenIndex - openParenIndex);
-
-                    // Parse the arguments using regex to handle quoted strings properly
-                    var regex = new System.Text.RegularExpressions.Regex("\"([^\"]*)\"|null|\"\"");
-                    var matches = regex.Matches(argsString);
-
-                    string reasonForEnding = "";
-                    string? messageToSpeak = null;
-
-                    if (matches.Count >= 1)
+                    else if (functionContent.StartsWith("transfer_to_agent:"))
                     {
-                        // First argument is the reason
-                        var reasonMatch = matches[0].Value;
-                        reasonForEnding = reasonMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
-                                         reasonMatch.Trim('"');
-
-                        // Second argument is the optional message
-                        if (matches.Count >= 2)
-                        {
-                            var messageMatch = matches[1].Value;
-                            messageToSpeak = messageMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                                             messageMatch == "\"\"" ?
-                                             null : messageMatch.Trim('"');
-                        }
+                        // Handle transfer_to_agent
+                        // Implement similar parsing logic as above
+                        return;
                     }
 
-                    _logger.LogInformation("AI Agent {AgentId} received end_call: {ReasonForEnding} and {MessageToSpeak}",
-                                          _agentId, reasonForEnding, messageToSpeak);
-
-                    if (!string.IsNullOrWhiteSpace(messageToSpeak))
+                    else if (functionContent.StartsWith("receive_dtmf_input:"))
                     {
-                        var durationToWait = await SynthesizeSpeechAsync(messageToSpeak);
-                        if (durationToWait != TimeSpan.Zero)
-                        {
-                            await Task.Delay(durationToWait.Milliseconds + 100);
-                        }
-                        else
-                        {
-                            // CRITICAL SHOULD NOT HAPPEN
-                            _logger.LogError("Ending call but the audio did not have any duration to wait for");
-                        }
+                        // Handle receive_dtmf_input
+                        // Implement similar parsing logic as above
+                        return;
                     }
 
-                    _llmService.AddAssistantMessage(llmResponseFull);
-
-                    await _conversationSessionManager.EndAsync(reasonForEnding);
-                    return;
+                    else
+                    {
+                        _llmService.AddUserMessage("response_from_system: Invalid system tool response received. Unknown tool name. The system is only expecting end_call, transfer_to_agent, or receive_dtmf_input system tool in the format of [execute_system_function: toolName: arg1, arg2, ...]");
+                        await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
+                        return;
+                    }
                 }
 
-                int transferToAgentIndex = llmResponseFull.IndexOf("transfer_to_agent(", startFunctionIndex);
-                if (transferToAgentIndex != -1)
-                {
-
-                    return;
-                }
-
-                int recieveDTMFInputIndex = llmResponseFull.IndexOf("receive_dtmf_input(", startFunctionIndex);
-                if (recieveDTMFInputIndex != -1)
-                {
-
-                    return;
-                }
-
-                _llmService.AddUserMessage("response_from_system: Invalid system tool response recieved, The system is only expecting end_call or transfer_to_agent or receive_dtmf_input system tool in the format of [execute_system_function: toolName(toolparms)]");
+                _llmService.AddUserMessage("response_from_system: Invalid system tool response received. The system is only expecting end_call, transfer_to_agent, or receive_dtmf_input system tool in the format of [execute_system_function: toolName: arg1, arg2, ...]");
                 await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
@@ -733,52 +775,49 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             var llmResponseFull = _responseBuffer.ToString();
 
+            _logger.LogInformation("AI Agent {AgentId} received custom tool response: {Response}", _agentId, llmResponseFull);
+
             try
             {
-                int startFunctionIndex = llmResponseFull.IndexOf("execute_custom_function(");
+                int startFunctionIndex = llmResponseFull.IndexOf("execute_custom_function:");
                 if (startFunctionIndex != -1)
                 {
-                    // Extract everything between the parentheses
-                    int openParenIndex = "execute_custom_function(".Length;
-                    int closeParenIndex = llmResponseFull.IndexOf(")", openParenIndex);
+                    _llmService.AddAssistantMessage(llmResponseFull);
 
-                    if (closeParenIndex == -1)
-                    {
-                        _logger.LogError("Malformed end_call function, missing closing parenthesis");
-                        return;
-                    }
+                    // Extract everything after the colon
+                    int startContentIndex = startFunctionIndex + "execute_custom_function:".Length;
+                    string functionContent = llmResponseFull.Substring(startContentIndex).Trim();
 
-                    string argsString = llmResponseFull.Substring(openParenIndex, closeParenIndex - openParenIndex);
-
-                    // Parse the arguments using regex to handle quoted strings properly
-                    var regex = new System.Text.RegularExpressions.Regex("\"([^\"]*)\"|null|\"\"");
-                    var matches = regex.Matches(argsString);
+                    // Use the shared ParseArguments method
+                    List<string> arguments = ParseArguments(functionContent);
 
                     string reasonForExecuting = "";
                     string nodeIdToExecute = "";
                     string? nodeVariableValues = null;
 
-                    if (matches.Count >= 1)
+                    if (arguments.Count >= 1)
                     {
                         // First argument is the reason
-                        var reasonMatch = matches[0].Value;
-                        reasonForExecuting = reasonMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
-                                         reasonMatch.Trim('"');
+                        string reasonArg = arguments[0];
+                        reasonForExecuting = reasonArg.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                            reasonArg.Trim().Trim('"');
 
                         // Second argument is the node id to execute
-                        if (matches.Count >= 2)
+                        if (arguments.Count >= 2)
                         {
-                            var nodeIdMatch = matches[1].Value;
-                            nodeIdToExecute = nodeIdMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
-                                             nodeIdMatch.Trim('"');
+                            string nodeIdArg = arguments[1];
+                            nodeIdToExecute = nodeIdArg.Equals("null", StringComparison.OrdinalIgnoreCase) ? "" :
+                                             nodeIdArg.Trim().Trim('"');
 
-                            // third arguement is the node variables and values
-                            if (matches.Count >= 3)
+                            // Third argument is the node variables (JSON object)
+                            if (arguments.Count >= 3)
                             {
-                                var nodeVariableValuesMatch = matches[2].Value;
-                                nodeVariableValues = nodeVariableValuesMatch.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                                                     nodeVariableValuesMatch == "\"\"" ?
-                                                     null : nodeVariableValuesMatch.Trim('"');
+                                string nodeVarsArg = arguments[2];
+                                if (!nodeVarsArg.Equals("null", StringComparison.OrdinalIgnoreCase) &&
+                                    nodeVarsArg.Trim().StartsWith("{") && nodeVarsArg.Trim().EndsWith("}"))
+                                {
+                                    nodeVariableValues = nodeVarsArg.Trim();
+                                }
                             }
                         }
                     }
@@ -792,17 +831,30 @@ namespace IqraInfrastructure.Managers.Conversation
                         }
                         catch (Exception ex)
                         {
-                            _llmService.AddUserMessage("response_from_system: Invalid custom tool response recieved, The system could not parse the json variables values for the custom tool provided. The custom tool extracted variables values must be in string json object format: [execute_custom_function(\"node id\", \"/*json tool variables values*/ {'var1': variablevalue}\")]");
+                            _logger.LogError(ex, "Error parsing custom tool response, Invalid custom tool response received, {Response}", llmResponseFull);
+                            _llmService.AddUserMessage("response_from_system: Invalid custom tool response received. The system could not parse the JSON variables values for the custom tool provided. The custom tool extracted variables values must be in string JSON object format: [execute_custom_function: \"reason\", \"node id\", { \"var1\": variablevalue }]");
+                            await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
                             return;
                         }
                     }
 
-                    var executeCustomToolResult = _scriptExecutionManager.ExecuteCustomToolAsync(nodeIdToExecute, nodeVariables ?? new Dictionary<string, JsonElement>());
+                    var executeCustomToolResult = await _scriptExecutionManager.ExecuteCustomToolAsync(nodeIdToExecute, nodeVariables ?? new Dictionary<string, JsonElement>());
+                    if (!executeCustomToolResult.Success)
+                    {
+                        _logger.LogError("Error executing custom tool, Failed to execute custom tool, {Response}", executeCustomToolResult.Data);
+                        _llmService.AddUserMessage("response_from_system: Failed to execute custom tool: " + executeCustomToolResult.Message);
+                        await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
+                        return;
+                    }
 
+                    _logger.LogInformation("Agent {AgentId} executed successfully custom tool with response: {Response}", _agentId, executeCustomToolResult.Data);
+                    _llmService.AddUserMessage("response_from_system: Successfully executed custom tool: Response: " + executeCustomToolResult.Data);
+                    await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
                     return;
                 }
 
-                _llmService.AddUserMessage("response_from_system: Invalid custom tool response recieved, The system is only expecting custom tool in the format of [execute_custom_function(\"node id\", \"/*json tool variables values*/ {'var1': variablevalue}\")]");
+                _logger.LogError("Error executing custom tool, Invalid custom tool response received, {Response}", llmResponseFull);
+                _llmService.AddUserMessage("response_from_system: Invalid custom tool response received. The system is only expecting custom tool in the format of [execute_custom_function: \"reason\", \"node id\", { \"var1\": variablevalue }]");
                 await _llmService.ProcessInputAsync(_conversationCTS?.Token ?? CancellationToken.None);
             }
             catch (Exception ex)
@@ -920,6 +972,58 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 _logger.LogError(ex, "Error shutting down AI Agent {AgentId}", _agentId);
             }
+        }
+
+        // Helper
+        // Shared helper method for parsing arguments with proper handling of quotes and JSON objects
+        private List<string> ParseArguments(string input)
+        {
+            List<string> arguments = new List<string>();
+            int currentPos = 0;
+            int depth = 0;
+            StringBuilder currentArg = new StringBuilder();
+            bool inQuotes = false;
+
+            while (currentPos < input.Length)
+            {
+                char c = input[currentPos];
+
+                if (c == '"' && (currentPos == 0 || input[currentPos - 1] != '\\'))
+                {
+                    inQuotes = !inQuotes;
+                    currentArg.Append(c);
+                }
+                else if (c == '{' && !inQuotes)
+                {
+                    depth++;
+                    currentArg.Append(c);
+                }
+                else if (c == '}' && !inQuotes)
+                {
+                    depth--;
+                    currentArg.Append(c);
+                }
+                else if (c == ',' && !inQuotes && depth == 0)
+                {
+                    // End of argument
+                    arguments.Add(currentArg.ToString().Trim());
+                    currentArg.Clear();
+                }
+                else
+                {
+                    currentArg.Append(c);
+                }
+
+                currentPos++;
+            }
+
+            // Add the last argument if there's anything
+            if (currentArg.Length > 0)
+            {
+                arguments.Add(currentArg.ToString().Trim());
+            }
+
+            return arguments;
         }
     }
 }

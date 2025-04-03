@@ -97,15 +97,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _systemPrompt = systemPrompt;
         }
 
-        public void SetInitialMessage(string initialMessage)
-        {
-            _initialMessages = new List<ChatMessage>()
-            {
-                ChatMessage.CreateUserMessage("call_started"),
-                ChatMessage.CreateAssistantMessage($"response_to_customer: {initialMessage}")
-            };
-        }
-
         public void AddUserMessage(string message)
         {
             _messagesMemory.Add(
