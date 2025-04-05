@@ -11,6 +11,7 @@
     <PackageReference Include="ComputerInfo" Version="0.2.0" />
     <PackageReference Include="FluentFTP" Version="52.1.0" />
     <PackageReference Include="Google_GenerativeAI" Version="2.4.6" />
+    <PackageReference Include="Humanizer" Version="2.14.1" />
     <PackageReference Include="Jint" Version="4.2.1" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />

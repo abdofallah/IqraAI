@@ -18,7 +18,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         private string _systemPrompt;
 
-        public event EventHandler<object> MessageStreamed;
+        public event EventHandler<object>? MessageStreamed;
+        public void ClearMessageStreamed() => MessageStreamed = null;
+
         public event EventHandler MessageStreamedCancelled;
 
         public AnthropicClaudeStreamingLLMService(string apiKey, string model)
@@ -111,6 +113,11 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 _messagesMemory[index] = new Message(RoleType.Assistant, message);
             }
+        }
+
+        public void ClearMessages()
+        {
+            _messagesMemory.Clear();
         }
 
         public string GetModel()

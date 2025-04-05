@@ -25,7 +25,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private List<Content> _initialMessages;
         private List<Content> _messagesMemory;
 
-        public event EventHandler<object> MessageStreamed;
+        public event EventHandler<object>? MessageStreamed;
+        public void ClearMessageStreamed() => MessageStreamed = null;
+
         public event EventHandler MessageStreamedCancelled;
     
         public GoogleAIGeminiStreamingLLMService(string apiKey, string modelId)
@@ -130,6 +132,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             }
         }
 
+        public void ClearMessages()
+        {
+            _messagesMemory.Clear();
+        }
         public string GetModel()
         {
             return _modelId;

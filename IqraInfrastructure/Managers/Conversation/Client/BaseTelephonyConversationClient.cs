@@ -23,6 +23,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public event EventHandler<ConversationAudioReceivedEventArgs>? AudioReceived;
         public event EventHandler<ConversationTextReceivedEventArgs>? TextReceived;
         public event EventHandler<ConversationClientDisconnectedEventArgs>? Disconnected;
+        public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFReceived;
 
         protected BaseTelephonyConversationClient(string clientId, string phoneNumber, ILogger logger)
         {
@@ -46,6 +47,11 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected void OnTextReceived(string text)
         {
             TextReceived?.Invoke(this, new ConversationTextReceivedEventArgs(text));
+        }
+
+        protected void OnDTMFRecieved(string digit)
+        {
+            DTMFReceived?.Invoke(this, new ConversationDTMFReceivedEventArgs(digit));
         }
 
         protected void OnDisconnected(string reason)

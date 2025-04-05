@@ -2,19 +2,23 @@
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
@@ -26,20 +30,22 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ConversationSessionManager _conversationSessionManager;
 
         private readonly BusinessManager _businessManager;
-        private readonly SystemPromptGenerator _systemPromptGenerator;   
+        private readonly SystemPromptGenerator _systemPromptGenerator;
+        private readonly LanguagesManager _langaugesManager;
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
+        private ScriptExecutionManager _scriptExecutionManager;
+        private readonly BusinessAgentAudioRepository _audioRepository;
 
-        private readonly string _agentId;  
+        private readonly string _agentId;
 
         private ConversationAgentConfiguration _agentConfiguration;
         private BusinessApp _businessApp;
         private BusinessAppRoute _currentSessionRoute;
         private BusinessAppAgent _businessAppAgent;
         private string _currentLanguageCode;
-
-        private ScriptExecutionManager _scriptExecutionManager;
+        private AgentConversationTypeENUM _currentConversationType;
 
         private BusinessAppIntegration _sttBusinessIntegrationData;
         private ISTTService _sttService;
@@ -49,6 +55,9 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private BusinessAppIntegration _llmBusinessIntegrationData;
         private ILLMService _llmService;
+        private string _llmBaseSystemPrompt;
+
+        private ILLMService _interruptingLLMService;
 
         private CancellationTokenSource _conversationCTS;
         private bool _isInitialized;
@@ -60,8 +69,43 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly Dictionary<string, string> _clientContextMap = new();
         private string? _currentClientId;
 
-        private CancellationTokenSource _currentTTSProcessingTaskCTS = new();
-        private Task<(byte[]?, TimeSpan?)>? TTSTask = null;
+        // --- Audio Processing & Buffering Members ---
+        private const int SampleRate = 16000; // Hz
+        private const int BitsPerSample = 16; // bits
+        private const int Channels = 1; // mono
+        private const int BytesPerSample = BitsPerSample / 8;
+        private const int ChunkDurationMs = 300; // Desired chunk duration in milliseconds
+        private const int BytesPerChunk = (SampleRate * BytesPerSample * Channels * ChunkDurationMs) / 1000;
+
+        // Queue for fully synthesized speech segments waiting to be sent chunk by chunk
+        private readonly BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
+        private Task? _audioSendingTask; // Task for the sending loop (speech + background)
+        private CancellationTokenSource _audioSendingCTS = new(); // CTS specifically for the audio sending loop (interruptible)
+
+        // Background Audio
+        private ReadOnlyMemory<byte> _backgroundAudioData = ReadOnlyMemory<byte>.Empty;
+        private int _backgroundAudioPosition = 0;
+        private bool _isBackgroundMusicEnabled = false;
+        private bool _isBackgroundMusicLoaded = false;
+        private float _backgroundMusicVolume = 0.3f; // Example volume factor (0.0 to 1.0)
+
+        // State for the current speech segment being sent
+        private ReadOnlyMemory<byte> _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+        private int _currentSpeechPosition = 0;
+
+        // LLM Tasks
+        private StringBuilder _responseBuffer = new StringBuilder();
+        private int _currentResponseBufferRead = 0;
+        private DateTime? _currentResponseDurationSpeakingStarted = null;
+        private TimeSpan _currentResponseDuration = TimeSpan.Zero;
+
+        private StringBuilder _interruptResponseBuffer = new StringBuilder();
+
+        private bool _isResponding = false;
+        private bool _isExecutingSystemTool = false;
+        private bool _isExecutingCustomTool = false;
+
+        private readonly SemaphoreSlim _llmResponseLock = new SemaphoreSlim(1, 1);
 
         private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
         private Task? LLMTask = null;
@@ -73,6 +117,10 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentThinkingEventArgs>? Thinking;
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
 
+        // DTMF Processing
+        private event EventHandler<string>? OnDTMFRecieved;
+        private bool IsProcessingDTMFAlready = false;
+
         public ConversationAIAgent(
             ILoggerFactory loggerFactory,
             ConversationSessionManager sessionManager,
@@ -81,7 +129,9 @@ namespace IqraInfrastructure.Managers.Conversation
             SystemPromptGenerator systemPromptGenerator,
             STTProviderManager sttProviderManager,
             TTSProviderManager ttsProviderManager,
-            LLMProviderManager llmProviderManager
+            LLMProviderManager llmProviderManager,
+            LanguagesManager languagesManager,
+            BusinessAgentAudioRepository audioRepository
         )
         {
             _loggerFactory = loggerFactory;
@@ -94,6 +144,8 @@ namespace IqraInfrastructure.Managers.Conversation
             _sttProviderManager = sttProviderManager;
             _ttsProviderManager = ttsProviderManager;
             _llmProviderManager = llmProviderManager;
+            _langaugesManager = languagesManager;
+            _audioRepository = audioRepository;
 
             _agentId = agentId;        
         }
@@ -112,7 +164,8 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 _agentConfiguration = config;
                 _businessApp = businessAppData;
-                _currentSessionRoute = businessRouteData;   
+                _currentSessionRoute = businessRouteData;
+                _currentConversationType = businessRouteData.Agent.ConversationType;
 
                 _businessAppAgent = await _businessManager.GetAgentsManager().GetAgentById(_agentConfiguration.BusinessId, _currentSessionRoute.Agent.SelectedAgentId);
                 if (_businessAppAgent == null)
@@ -124,76 +177,19 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 _currentLanguageCode = _currentSessionRoute.Language.DefaultLanguageCode;
 
-                var defaultSTTService = _businessAppAgent.Integrations.STT[_currentLanguageCode][0];
-                var defaultTTSService = _businessAppAgent.Integrations.TTS[_currentLanguageCode][0];
-                var defaultLLMService = _businessAppAgent.Integrations.LLM[_currentLanguageCode][0];
+                await InitalizeTTSForLangauge();
+                await InitalizeLLMForLangauge();
+                await InitalizeSTTForLangauge();
 
-                var sttBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultSTTService.Id);
-                if (!sttBusinessIntegrationData.Success || sttBusinessIntegrationData.Data == null)
-                {
-                    _logger.LogError("Business app STT integration {IntegrationId} not found", defaultSTTService.Id);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app STT integration not found"));
-                    return;
-                }
-                _sttBusinessIntegrationData = sttBusinessIntegrationData.Data;
-                var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(_sttBusinessIntegrationData, defaultSTTService, new Dictionary<string, string> { { "language", _currentLanguageCode } });
-                if (!sttServiceResult.Success || sttServiceResult.Data == null)
-                {
-                    _logger.LogError("Failed to build STT service for agent {AgentId} with error: {ErrorMessage}", _agentId, sttServiceResult.Message);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build STT service for agent with error: " + sttServiceResult.Message));
-                    return;
-                }
-                _sttService = sttServiceResult.Data;
-
-                var ttsBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultTTSService.Id);
-                if (!ttsBusinessIntegrationData.Success || ttsBusinessIntegrationData.Data == null)
-                {
-                    _logger.LogError("Business app TTS integration {IntegrationId} not found", defaultTTSService.Id);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app TTS integration not found"));
-                    return;
-                }
-                _ttsBusinessIntegrationData = ttsBusinessIntegrationData.Data;
-                var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_ttsBusinessIntegrationData, defaultTTSService, new Dictionary<string, string> { });
-                if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
-                {
-                    _logger.LogError("Failed to build TTS service for agent {AgentId} with error: {ErrorMessage}", _agentId, ttsServiceResult.Message);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build TTS service for agent with error: " + ttsServiceResult.Message));
-                    return;
-                }
-                _ttsService = ttsServiceResult.Data;
-                _sttService.TranscriptionResultReceived += OnTranscriptionResultReceived;
-                _sttService.OnRecoginizingRecieved += OnRecognizingReceived;
-
-                var llmBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultLLMService.Id);
-                if (!llmBusinessIntegrationData.Success)
-                {
-                    _logger.LogError("Business app LLM integration {IntegrationId} not found", defaultLLMService.Id);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app LLM integration not found"));
-                    return;
-                }
-                _llmBusinessIntegrationData = llmBusinessIntegrationData.Data;
-                var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
-                if (!llmServiceResult.Success || llmServiceResult.Data == null)
-                {
-                    _logger.LogError("Failed to build LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, llmServiceResult.Message);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build LLM service for agent with error: " + llmServiceResult.Message));
-                    return;
-                }
-                _llmService = llmServiceResult.Data;
-                _llmService.MessageStreamed += OnLLMMessageStreamed;  
-
-                // Initialize services
-                _sttService.Initialize();
-                _sttService.StartTranscription();
-
-                _ttsService.Initialize();
-
-                // Set up LLM with system prompt
-                await InitalizePromptAndScriptAsync();
+                // Start background music loading 
+                // _ = LoadBackgroundMusicAsync(); TODO
 
                 // Start audio processing task
                 _isProcessingAudio = true;
                 _audioProcessingTask = Task.Run(ProcessAudioQueueAsync, _conversationCTS.Token);
+
+                // Start audio sending task
+                _audioSendingTask = Task.Run(ProcessAudioSpeakingQueueAsync, _conversationCTS.Token);
 
                 _isInitialized = true;
                 _logger.LogInformation("AI Agent {AgentId} initialized with business ID {BusinessId}, route {RouteId}", _agentId, _agentConfiguration.BusinessId, _agentConfiguration.RouteId);
@@ -202,74 +198,249 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 _logger.LogError(ex, "Error initializing AI Agent {AgentId}", _agentId);
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error initializing agent: " + ex.Message, ex));
+                await ShutdownAsync("Initialization failed");
                 throw;
             }
         }
-        private async Task InitalizePromptAndScriptAsync()
+        private async Task InitalizeLLMForLangauge()
         {
-            try
-            {
-                // Generate system prompt
-                var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
-                    _businessApp,
-                    _businessAppAgent,
-                    _currentSessionRoute,
-                    _currentLanguageCode,
-                    _llmService.GetProviderType(),
-                    _llmService.GetModel(),
-                    _conversationSessionManager.PrimaryClientIdentifier()
-                );
+            var defaultLLMService = _businessAppAgent.Integrations.LLM[_currentLanguageCode][0];
 
-                if (!systemPromptResult.Success || systemPromptResult.Data == null)
+            var llmBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultLLMService.Id);
+            if (!llmBusinessIntegrationData.Success)
+            {
+                _logger.LogError("Business app LLM integration {IntegrationId} not found", defaultLLMService.Id);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app LLM integration not found"));
+                return;
+            }
+            _llmBusinessIntegrationData = llmBusinessIntegrationData.Data;
+            var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
+            if (!llmServiceResult.Success || llmServiceResult.Data == null)
+            {
+                _logger.LogError("Failed to build LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, llmServiceResult.Message);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build LLM service for agent with error: " + llmServiceResult.Message));
+                return;
+            }
+            _llmService = llmServiceResult.Data;
+
+            if (_currentConversationType == AgentConversationTypeENUM.Interruptible)
+            {
+                var interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
+                if (!interuptibleLLMServiceResult.Success || interuptibleLLMServiceResult.Data == null)
                 {
-                    _logger.LogError("Error generating system prompt for AI Agent {AgentId}: {Code} {Message}", _agentId, systemPromptResult.Code, systemPromptResult.Message);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error generating system prompt: " + systemPromptResult.Code + " " + systemPromptResult.Message));
+                    _logger.LogError("Failed to build interuptible LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, interuptibleLLMServiceResult.Message);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build interuptible LLM service for agent with error: " + interuptibleLLMServiceResult.Message));
                     return;
                 }
 
-                // Configure LLM
-                _llmService.SetSystemPrompt(systemPromptResult.Data);
+                _interruptingLLMService = interuptibleLLMServiceResult.Data;
+                _interruptingLLMService.SetSystemPrompt("Here are the guidelines for thinking before a response (for the thoughts of the model)\r\n<ThinkingGuidelines>\r\n\t- Only use thinking when required else give response directly.\r\n\t- The thinking text should always be summarized and not exceed more than 1 to 3 sentences.\r\n\t- The thinking text should always be less than maximum of 100 characters.\r\n</ThinkingGuidelines>\r\n\r\nYou will be given response of a customer support agent and the current spoken words/sentence by the customer. Decide whether the customer support agent should keep speaking their current sentence or be inntrupted by the customer to let the customer speak.\r\n\r\nIf we should let the customer speak, respond back with: \"allow_interrupt\".\r\nIf we should let the customer support agent speak, respond back with: \"continue_speaking\".");
+            }
 
-                // Get script from route
-                _scriptExecutionManager = new ScriptExecutionManager(
-                    _loggerFactory.CreateLogger<ScriptExecutionManager>()
-                );
-                await _scriptExecutionManager.LoadScriptAsync(
-                    _businessApp,
-                    _currentSessionRoute,
-                    _currentLanguageCode
-                );     
+            // Warmup LLM
+            _llmService.AddUserMessage("response_from_system: Call has started.");
+            _llmService.SetSystemPrompt("RESPOND WITH ```execute_system_function: acknowledge(\"Call Start\")``` if call has started.");
+            await _llmService.ProcessInputAsync(CancellationToken.None);
+            _llmService.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
 
-                _logger.LogInformation("Configured LLM for AI Agent {AgentId} with business data", _agentId);
+            var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
+                _businessApp,
+                _businessAppAgent,
+                _currentSessionRoute,
+                _currentLanguageCode,
+                _llmService.GetProviderType(),
+                _llmService.GetModel()
+            );
+            if (!systemPromptResult.Success || systemPromptResult.Data == null)
+            {
+                _logger.LogError("Error generating system prompt for AI Agent {AgentId}: {Code} {Message}", _agentId, systemPromptResult.Code, systemPromptResult.Message);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error generating system prompt: " + systemPromptResult.Code + " " + systemPromptResult.Message));
+                return;
+            }
+            _llmBaseSystemPrompt = systemPromptResult.Data;
+
+            // Configure LLM
+            _llmService.SetSystemPrompt(_llmBaseSystemPrompt);
+
+            // Get script from route
+            _scriptExecutionManager = new ScriptExecutionManager(
+                _loggerFactory.CreateLogger<ScriptExecutionManager>()
+            );
+            await _scriptExecutionManager.LoadScriptAsync(
+                _businessApp,
+                _currentSessionRoute,
+                _currentLanguageCode
+            );
+
+            // Set Handlers
+            _llmService.MessageStreamed += OnLLMMessageStreamed;
+        }
+        private async Task InitalizeTTSForLangauge()
+        {
+            var defaultTTSService = _businessAppAgent.Integrations.TTS[_currentLanguageCode][0];
+
+            var ttsBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultTTSService.Id);
+            if (!ttsBusinessIntegrationData.Success || ttsBusinessIntegrationData.Data == null)
+            {
+                _logger.LogError("Business app TTS integration {IntegrationId} not found", defaultTTSService.Id);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app TTS integration not found"));
+                return;
+            }
+            _ttsBusinessIntegrationData = ttsBusinessIntegrationData.Data;
+            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_ttsBusinessIntegrationData, defaultTTSService, new Dictionary<string, string> { });
+            if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
+            {
+                _logger.LogError("Failed to build TTS service for agent {AgentId} with error: {ErrorMessage}", _agentId, ttsServiceResult.Message);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build TTS service for agent with error: " + ttsServiceResult.Message));
+                return;
+            }
+            _ttsService = ttsServiceResult.Data;
+
+            // Init
+            _ttsService.Initialize();
+        }
+        private async Task InitalizeSTTForLangauge()
+        {
+            var defaultSTTService = _businessAppAgent.Integrations.STT[_currentLanguageCode][0];
+
+            var sttBusinessIntegrationData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentConfiguration.BusinessId, defaultSTTService.Id);
+            if (!sttBusinessIntegrationData.Success || sttBusinessIntegrationData.Data == null)
+            {
+                _logger.LogError("Business app STT integration {IntegrationId} not found", defaultSTTService.Id);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Business app STT integration not found"));
+                return;
+            }
+            _sttBusinessIntegrationData = sttBusinessIntegrationData.Data;
+            var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(_sttBusinessIntegrationData, defaultSTTService, new Dictionary<string, string> { { "language", _currentLanguageCode } });
+            if (!sttServiceResult.Success || sttServiceResult.Data == null)
+            {
+                _logger.LogError("Failed to build STT service for agent {AgentId} with error: {ErrorMessage}", _agentId, sttServiceResult.Message);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Failed to build STT service for agent with error: " + sttServiceResult.Message));
+                return;
+            }
+            _sttService = sttServiceResult.Data;
+
+            _sttService.TranscriptionResultReceived += OnTranscriptionResultReceived;
+            _sttService.OnRecoginizingRecieved += OnRecognizingReceived;
+
+            // Initialize services
+            _sttService.Initialize();
+            _sttService.StartTranscription();
+        }
+        private async Task LoadBackgroundMusicAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_businessAppAgent.Settings?.BackgroundAudioUrl))
+            {
+                _logger.LogInformation("Agent {AgentId}: No background audio URL configured.", _agentId);
+                _isBackgroundMusicEnabled = false;
+                return;
+            }
+
+            string audioUrl = _businessAppAgent.Settings.BackgroundAudioUrl;
+            _logger.LogInformation("Agent {AgentId}: Attempting to load background audio from {Url}", _agentId, audioUrl);
+
+            try
+            {
+                // Assuming the URL is the Minio file ID/path
+                bool exists = await _audioRepository.FileExists(audioUrl);
+                if (!exists)
+                {
+                    _logger.LogWarning("Agent {AgentId}: Background audio file not found at {Url}", _agentId, audioUrl);
+                    _isBackgroundMusicEnabled = false;
+                    return;
+                }
+
+                _backgroundAudioData = await _audioRepository.GetFileAsByteArray(audioUrl);
+
+                // Optional: Validate audio format (basic check for non-empty)
+                if (_backgroundAudioData.Length == 0 || _backgroundAudioData.Length % BytesPerSample != 0)
+                {
+                    _logger.LogWarning("Agent {AgentId}: Background audio from {Url} is empty or has invalid length.", _agentId, audioUrl);
+                    _backgroundAudioData = ReadOnlyMemory<byte>.Empty;
+                    _isBackgroundMusicEnabled = false;
+                    return;
+                }
+
+                _logger.LogInformation("Agent {AgentId}: Background audio loaded successfully ({Length} bytes).", _agentId, _backgroundAudioData.Length);
+                _isBackgroundMusicEnabled = true;
+                _isBackgroundMusicLoaded = true;
+                _backgroundAudioPosition = 0; // Start from the beginning
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error configuring LLM with business data for AI Agent {AgentId}", _agentId);
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error configuring agent: " + ex.Message, ex));
-                throw;
+                _logger.LogError(ex, "Agent {AgentId}: Error loading background audio from {Url}", _agentId, audioUrl);
+                _backgroundAudioData = ReadOnlyMemory<byte>.Empty;
+                _isBackgroundMusicEnabled = false;
             }
         }
 
         // Notifications
         public async Task NotifyConversationStarted()
         {
-            _llmService.AddUserMessage("response_from_system: Call has started.");
-
-            if (_businessAppAgent.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
+            string multiLanguageText = "";
+            // Check for multi-language before beginning conversation
+            if (_currentSessionRoute.Language.MultiLanguageEnabled && _currentSessionRoute.Language.EnabledMultiLanguages.Count > 1)
             {
-                string openingMessage = _businessAppAgent.Utterances.GreetingMessage[_currentLanguageCode];
+                for (int i = 0; i < _currentSessionRoute.Language.EnabledMultiLanguages.Count; i++)
+                {
+                    var language = _currentSessionRoute.Language.EnabledMultiLanguages[i];
+                    var languageData = await _langaugesManager.GetLanguageByCode(language.LanguageCode);
 
-                _llmService.AddAssistantMessage(openingMessage);
-                var speakSpan = await SynthesizeSpeechAsync(openingMessage);
+                    var languageLocale = language.LanguageCode;
+                    if (languageData.Success)
+                    {
+                        languageLocale = languageData.Data.Name;
+                    }
 
-                await Task.Delay((int)speakSpan.TotalMilliseconds);
+                    string builtMessage = language.MessageToPlay.ToLower().Replace("{number}", Humanizer.NumberToWordsExtension.ToWords((i + 1)).ToString()).Replace("{name}", languageLocale);
+                    multiLanguageText += "\n" + builtMessage;
+                }
+
+                await SynthesizeAndPlaySpeechAsync(multiLanguageText, _conversationCTS.Token);
+
+                OnDTMFRecieved += async (object? sender, string digit) =>
+                {
+                    if (IsProcessingDTMFAlready) return;
+
+                    IsProcessingDTMFAlready = true;
+                    if (int.TryParse(digit, out int languageIndex))
+                    {
+                        if (languageIndex > 0 && languageIndex <= _currentSessionRoute.Language.EnabledMultiLanguages.Count)
+                        {
+                            var language = _currentSessionRoute.Language.EnabledMultiLanguages[languageIndex - 1];
+
+                            if (language.LanguageCode != _currentLanguageCode)
+                            {
+                                _currentLanguageCode = language.LanguageCode;
+                                
+                                await InitalizeTTSForLangauge();
+                                await InitalizeLLMForLangauge();
+                                await InitalizeSTTForLangauge();
+                            }
+
+                            // todo ask user maybe play some sound or wait a bit before starting convo
+
+                            OnDTMFRecieved = null;
+
+                            await BeginAgentConversation();
+                        }
+                        else
+                        {
+                            await SynthesizeAndPlaySpeechAsync($"Invalid language selection. {multiLanguageText}", _conversationCTS.Token);
+                        }     
+                    }
+                    else
+                    {
+                        await SynthesizeAndPlaySpeechAsync($"Invalid input. {multiLanguageText}", _conversationCTS.Token);
+                    }
+
+                    IsProcessingDTMFAlready = false;
+                };
             }
             else
             {
-                _llmService.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
+                await BeginAgentConversation();
             }
-
-            _isAcceptingSTTAudio = true;
         }
 
         public async Task NotifyMaxDurationReached()
@@ -279,6 +450,24 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _llmService.AddUserMessage($"response_from_system: Perform execute_system_function: end_call(...) right away while notifying the user taht maximum duration of {_currentSessionRoute.Configuration.MaxCallTimeS} seconds has been reached for the call.");
             await _llmService.ProcessInputAsync(_conversationCTS.Token);
+        }
+
+        // On Begin Conversation
+        private async Task BeginAgentConversation()
+        {
+            if (_businessAppAgent.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
+            {
+                string openingMessage = _businessAppAgent.Utterances.GreetingMessage[_currentLanguageCode];
+
+                _llmService.AddAssistantMessage(openingMessage);
+                await SynthesizeAndPlaySpeechAsync(openingMessage, _conversationCTS.Token);
+            }
+            else
+            {
+                _llmService.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
+            }
+
+            _isAcceptingSTTAudio = true;
         }
 
         // Take Audio and Text Input from Conversation Manager
@@ -318,10 +507,9 @@ namespace IqraInfrastructure.Managers.Conversation
 
             try
             {
-                bool isFillerWord = WordsNotToCancelCurrentProcessing.Contains(text.Trim().ToLower());
                 if (_isExecutingSystemTool || _isExecutingCustomTool)
                 {
-                    if (isFillerWord) return; // we can ignore the filler word as it makes no sense for now
+                    if (_currentConversationType == AgentConversationTypeENUM.TurnByTurn) return;
 
                     // AI is busy executing the tool so we will ask the user to wait
                     // Add some kind of either ai processing that allows ai to take the text
@@ -333,20 +521,26 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 if (_isResponding)
                 {
-                    if (isFillerWord) return; // we can ignore this filler word if the ai is still responding
+                    if (_currentConversationType == AgentConversationTypeENUM.TurnByTurn) return;
 
-                    await CancelOnGoingAgentProcessingTask();
+                    if (_currentResponseDurationSpeakingStarted == null || _responseBuffer.Length == 0) return;
+                    _interruptingLLMService.ClearMessages();
 
-                    if (_responseBuffer.Length > 0)
+                    string textSentToTTS = _responseBuffer.ToString(0, Math.Min(_currentResponseBufferRead, _responseBuffer.Length));
+                    TimeSpan elapsedTime = DateTime.UtcNow - _currentResponseDurationSpeakingStarted.Value;
+                    double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _currentResponseDuration.TotalSeconds, 0.0, 1.0);
+                    int spokenLength = (int)(textSentToTTS.Length * proportionSpoken);
+                    var currentSpokenResponse = textSentToTTS.Substring(0, spokenLength);
+
+                    _logger.LogInformation("Current Spoken Response: {CurrentSpokenResponse}", currentSpokenResponse);
+
+                    _interruptingLLMService.AddUserMessage($"current agent response: {currentSpokenResponse}\ncurrent overlaping customer response: {text}");
+                    _interruptingLLMService.MessageStreamed += async (sender, responseObj) =>
                     {
-                        var responseReadSoFar = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
-                        _llmService.AddAssistantMessage(responseReadSoFar + "...");
-
-                    }
-
-                    _isResponding = false;
-                    _responseBuffer.Clear();
-                    _currentResponseBufferRead = 0;
+                        await CheckIfInterruptible(sender, responseObj, currentSpokenResponse, text, clientId, cancellationToken);
+                    };
+                    await _interruptingLLMService.ProcessInputAsync(_conversationCTS.Token);
+                    return;
                 }
 
                 var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _conversationCTS.Token, cancellationToken).Token;
@@ -358,6 +552,20 @@ namespace IqraInfrastructure.Managers.Conversation
                 }
 
                 _llmService.AddUserMessage($"customer_query: {text}");
+
+                var sessionFilledPrompt = await _systemPromptGenerator.FillSessionInformationInPrompt(_llmBaseSystemPrompt, _conversationSessionManager.PrimaryClientIdentifier(), _currentSessionRoute, _businessAppAgent, _currentLanguageCode);
+                if (!sessionFilledPrompt.Success)
+                {
+                    _logger.LogError(sessionFilledPrompt.Message, "Error filling session information in prompt for AI Agent {AgentId}", _agentId);
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs(sessionFilledPrompt.Message, new Exception(sessionFilledPrompt.Message)));
+
+                    _llmService.SetSystemPrompt(_llmBaseSystemPrompt);
+                }
+                else
+                {
+                    _llmService.SetSystemPrompt(sessionFilledPrompt.Data);
+                }                 
+
                 LLMTask = _llmService.ProcessInputAsync(combinedCancellationToken);
             }
             catch (OperationCanceledException)
@@ -369,24 +577,385 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error processing text: " + ex.Message, ex));
             }
         }
+        private async Task CheckIfInterruptible(object? sender, object responseObj, string spokenSoFar, string customerOverlapText, string? clientId, CancellationToken cancellationToken)
+        {
+            string deltaText = "";
+            bool isEndOfResponse = false;
+
+            if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.AnthropicClaude)
+            {
+                var response = (Anthropic.SDK.Messaging.MessageResponse)responseObj;
+                if (response.Delta != null)
+                {
+                    deltaText = response.Delta.Text;
+
+                    if (
+                        response.Delta != null &&
+                        response.Delta.StopReason != null &&
+                        (response.Delta.StopReason == "max_tokens" || response.Delta.StopReason != "end_turn")
+                    )
+                    {
+                        isEndOfResponse = true;
+                    }
+                }
+            }
+            else if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.OpenAIGPT)
+            {
+                var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObj;
+
+                deltaText = response.ContentUpdate.ToString();
+
+                if (
+                    response.FinishReason != null &&
+                    (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
+                )
+                {
+                    isEndOfResponse = true;
+                }
+            }
+            else if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.GoogleAIGemini)
+            {
+                var response = (GenerativeAI.Types.GenerateContentResponse)responseObj;
+
+                var candidate = response.Candidates.FirstOrDefault(); // Usually only one candidate
+                if (candidate?.Content?.Parts?.FirstOrDefault() != null)
+                {
+                    deltaText = candidate.Content.Parts.First().Text;
+                }
+
+                if (candidate != null &&
+                    candidate.FinishReason != null &&
+                    candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
+                )
+                {
+                    isEndOfResponse = true;
+                }
+            }
+            else
+            {
+                _logger.LogError("Unhandled interrupt LLM provider type: {ProviderType}", _interruptingLLMService.GetProviderType());
+                throw new NotImplementedException($"LLM interrupt provider type {_interruptingLLMService.GetProviderType()} not implemented in CheckIfInterruptible");
+            }
+
+            if (!string.IsNullOrEmpty(deltaText))
+            {
+                _interruptResponseBuffer.Append(deltaText);
+            }
+
+            if (isEndOfResponse)
+            {
+                _interruptingLLMService.ClearMessageStreamed();
+
+                string result = _interruptResponseBuffer.ToString().ToLower();
+
+                _logger.LogInformation("AI Agent {AgentId} interrupted result: {Result}", _agentId, result);
+
+                if (result.Contains("allow_interrupt"))
+                {
+                    _logger.LogInformation("AI Agent {AgentId} interrupted by customer", _agentId);
+
+                    var completeResponse = _responseBuffer.ToString(); // must be before cancel ongoing agent tasks
+
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
+                    await CancelOnGoingAgentProcessingTask();
+                    stopwatch.Stop();
+                    _logger.LogInformation("CancelOnGoingAgentProcessingTask took {Milliseconds} ms {secodns}s", stopwatch.ElapsedMilliseconds, stopwatch.Elapsed.TotalSeconds);
+                  
+                    int useLength = Math.Min((spokenSoFar.Length - 1), completeResponse.Length);
+                    var modifiedResponse = spokenSoFar + "......(interrupted by customer at this point but expected to speak) " + completeResponse.Substring(useLength);
+                    _logger.LogInformation("AI Agent {AgentId} interrupted response: {Response}", _agentId, modifiedResponse);
+                    _llmService.AddAssistantMessage(modifiedResponse);
+
+                    _isResponding = false;
+                    _responseBuffer.Clear();
+                    _currentResponseBufferRead = 0;
+                    _interruptResponseBuffer.Clear();
+
+                    await ProcessTextAsync(customerOverlapText, clientId, cancellationToken);
+                }
+                else
+                {
+                    _interruptResponseBuffer.Clear();
+                }
+            }
+        }
+        public async Task ProcessDTMFAsync(string text, string? clientId, CancellationToken cancellationToken)
+        {
+            OnDTMFRecieved?.Invoke(this, text);
+        }
+
+        // Agent Speak Audio Process
+        private async Task ProcessAudioSpeakingQueueAsync()
+        {
+            try
+            {
+                while (!_conversationCTS.Token.IsCancellationRequested)
+                {
+                    byte[]? chunkToSend = null;
+                    bool isSpeechChunk = false;
+
+                    if (!_currentSpeechSegment.IsEmpty)
+                    {
+                        // Calculate remaining bytes in the current speech segment
+                        int remainingSpeechBytes = _currentSpeechSegment.Length - _currentSpeechPosition;
+                        int speechChunkSize = Math.Min(BytesPerChunk, remainingSpeechBytes);
+
+                        if (speechChunkSize > 0)
+                        {
+                            // Get the speech chunk
+                            var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
+
+                            // Get corresponding background music chunk (if enabled)
+                            var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
+
+                            // Mix
+                            chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+
+                            // Update position
+                            _currentSpeechPosition += speechChunkSize;
+                            isSpeechChunk = true;
+
+                            // Check if segment finished
+                            if (_currentSpeechPosition >= _currentSpeechSegment.Length)
+                            {
+                                _logger.LogDebug("Agent {AgentId}: Finished sending speech segment.", _agentId);
+                                _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                                _currentSpeechPosition = 0;
+                                // Signal that the logical response is finished *speaking*? Maybe not needed.
+                            }
+                        }
+                        else
+                        {
+                            // Should not happen if logic is correct, but reset just in case
+                            _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                            _currentSpeechPosition = 0;
+                        }
+                    }
+
+                    // --- If no speech chunk, check for next segment or background music ---
+                    if (chunkToSend == null)
+                    {
+                        // Try to get the next speech segment from the queue *if* no speech is currently playing
+                        if (_currentSpeechSegment.IsEmpty && _speechAudioQueue.TryTake(out var nextSegment))
+                        {
+                            _logger.LogDebug("Agent {AgentId}: Starting new speech segment ({Duration}).", _agentId, nextSegment.Duration);
+                            _currentSpeechSegment = nextSegment.AudioData;
+                            _currentSpeechPosition = 0;
+
+
+                            // Immediately process the first chunk of the new segment
+                            int speechChunkSize = Math.Min(BytesPerChunk, _currentSpeechSegment.Length);
+                            if (speechChunkSize > 0)
+                            {
+                                var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
+                                var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
+                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                                _currentSpeechPosition += speechChunkSize;
+                                isSpeechChunk = true;
+
+
+                                if (_currentSpeechPosition >= _currentSpeechSegment.Length) // Handle very short segments
+                                {
+                                    _logger.LogDebug("Agent {AgentId}: Finished sending short speech segment immediately.", _agentId);
+                                    _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                                    _currentSpeechPosition = 0;
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Agent {AgentId}: Dequeued speech segment has zero length.", _agentId);
+                                _currentSpeechSegment = ReadOnlyMemory<byte>.Empty; // Discard empty segment
+                            }
+                        }
+                        else
+                        {
+                            // No speech playing and queue is empty, play background music only (if enabled)
+                            var backgroundChunk = GetNextBackgroundChunk(BytesPerChunk);
+                            if (!backgroundChunk.IsEmpty)
+                            {
+                                chunkToSend = MixAudioChunks(ReadOnlyMemory<byte>.Empty, backgroundChunk); // Mix with silence
+                                // _logger.LogTrace("Agent {AgentId}: Sending background-only chunk.", _agentId);
+                            }
+                        }
+                    }
+
+
+                    // --- Send the chunk (if any) and wait ---
+                    if (chunkToSend != null && chunkToSend.Length > 0)
+                    {
+                        // Check for cancellation one last time before sending/delaying
+                        if (_audioSendingCTS.Token.IsCancellationRequested)
+                        {
+                            _logger.LogInformation("Agent {AgentId}: Audio sending cancelled before sending chunk.", _agentId);
+                            _audioSendingCTS = new CancellationTokenSource(); // Reset CTS for next operation
+                            continue; // Skip sending and delay, re-evaluate state
+                        }
+
+
+                        try
+                        {
+                            // ** TODO: Consider if ReadOnlyMemory<byte> can be sent directly **
+                            // If AudioGenerated expects byte[], we need ToArray(). This allocates.
+                            // If the event handler can take ReadOnlyMemory<byte>, it's more efficient.
+                            // Assuming byte[] for now based on original event args.
+                            AudioGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(chunkToSend.ToArray(), _currentClientId));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Agent {AgentId}: Error invoking AudioGenerated event.", _agentId);
+                            // Decide how to handle this - stop sending? Log and continue?
+                        }
+
+
+                        // Delay for the chunk duration
+                        await Task.Delay(ChunkDurationMs, _audioSendingCTS.Token);
+                    }
+                    else
+                    {
+                        // No audio to send (no speech, no background), wait briefly to avoid busy-looping
+                        await Task.Delay(50, _conversationCTS.Token); // Use the main CTS here
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (_conversationCTS.IsCancellationRequested || _audioSendingCTS.IsCancellationRequested)
+            {
+                _logger.LogInformation("Agent {AgentId}: Audio sending task cancelled.", _agentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in audio sending task for AI Agent {AgentId}", _agentId);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error in audio sending loop: " + ex.Message, ex));
+            }
+            finally
+            {
+                _logger.LogInformation("Agent {AgentId}: Audio sending task finished.", _agentId);
+            }
+        }
+        private ReadOnlyMemory<byte> GetNextBackgroundChunk(int desiredChunkSize)
+        {
+            if (!_isBackgroundMusicEnabled || !_isBackgroundMusicLoaded || _backgroundAudioData.IsEmpty)
+            {
+                return ReadOnlyMemory<byte>.Empty;
+            }
+
+
+            int remainingBackgroundBytes = _backgroundAudioData.Length - _backgroundAudioPosition;
+            int bytesToTake = Math.Min(desiredChunkSize, remainingBackgroundBytes);
+
+
+            ReadOnlyMemory<byte> chunk;
+
+
+            if (bytesToTake < desiredChunkSize)
+            {
+                // Need to loop: take remaining, then take from start
+                var remainingChunk = _backgroundAudioData.Slice(_backgroundAudioPosition, bytesToTake);
+                _backgroundAudioPosition = 0; // Reset position
+                int neededFromStart = desiredChunkSize - bytesToTake;
+                neededFromStart = Math.Min(neededFromStart, _backgroundAudioData.Length); // Handle case where total data < chunk size
+
+
+                if (neededFromStart > 0)
+                {
+                    var startChunk = _backgroundAudioData.Slice(0, neededFromStart);
+                    // Combine remainingChunk and startChunk - requires allocation!
+                    var combined = new byte[bytesToTake + neededFromStart];
+                    remainingChunk.CopyTo(combined.AsMemory().Slice(0, bytesToTake));
+                    startChunk.CopyTo(combined.AsMemory().Slice(bytesToTake, neededFromStart));
+                    chunk = combined;
+                    _backgroundAudioPosition = neededFromStart; // Update position
+                }
+                else // Only remainingChunk was needed (and it was less than desired size)
+                {
+                    chunk = remainingChunk;
+                    // Position is already reset
+                }
+            }
+            else
+            {
+                // Take a simple chunk
+                chunk = _backgroundAudioData.Slice(_backgroundAudioPosition, bytesToTake);
+                _backgroundAudioPosition += bytesToTake;
+            }
+
+
+            // Ensure position loops correctly if exactly at the end
+            if (_backgroundAudioPosition >= _backgroundAudioData.Length)
+            {
+                _backgroundAudioPosition = 0;
+            }
+
+
+            return chunk;
+        }
+        private byte[] MixAudioChunks(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
+        {
+            // Determine the length of the output chunk (max of inputs)
+            int outputLength = Math.Max(speechChunk.Length, backgroundChunk.Length);
+            if (outputLength == 0) return Array.Empty<byte>(); // Nothing to mix
+
+            // Ensure output length is even for 16-bit samples
+            if (outputLength % 2 != 0) outputLength++;
+
+            byte[] mixedOutput = new byte[outputLength];
+            var mixedSpan = mixedOutput.AsSpan();
+
+            // Get spans for input chunks
+            var speechSpan = speechChunk.Span;
+            var backgroundSpan = backgroundChunk.Span;
+
+            // Convert spans to short spans for easier mixing (assumes LittleEndian)
+            var speechShortSpan = MemoryMarshal.Cast<byte, short>(speechSpan);
+            var backgroundShortSpan = MemoryMarshal.Cast<byte, short>(backgroundSpan);
+            var mixedShortSpan = MemoryMarshal.Cast<byte, short>(mixedSpan);
+
+            for (int i = 0; i < mixedShortSpan.Length; i++)
+            {
+                short speechSample = (i < speechShortSpan.Length) ? speechShortSpan[i] : (short)0;
+                short backgroundSample = (i < backgroundShortSpan.Length) ? (short)(backgroundShortSpan[i] * _backgroundMusicVolume) : (short)0;
+
+
+                // Simple averaging mixing (can clip)
+                int mixedSample = (speechSample / 2) + (backgroundSample / 2);
+
+
+                // Additive mixing with clipping (prevents excessive volume reduction)
+                // int mixedSample = speechSample + backgroundSample;
+
+
+                // Clamp the mixed sample to short range to prevent overflow/clipping artifacts
+                mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
+            }
+
+            return mixedOutput;
+        }
 
         // Inner Agent Processing
         private async Task ProcessAudioQueueAsync()
         {
             try
             {
-                while (_isProcessingAudio && !_conversationCTS!.Token.IsCancellationRequested)
+                foreach (var audioData in _audioQueue.GetConsumingEnumerable(_conversationCTS.Token))
                 {
-                    if (_audioQueue.TryTake(out var audioData, 10, _conversationCTS.Token))
+                    if (_isAcceptingSTTAudio && _sttService != null)
                     {
-                        if (_isAcceptingSTTAudio)
+                        try
                         {
                             _sttService.WriteTranscriptionAudioData(audioData);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Agent {AgentId}: Error writing audio data to STT service.", _agentId);
                         }
                     }
                 }
             }
             catch (OperationCanceledException) when (_conversationCTS!.Token.IsCancellationRequested)
+            {
+                // Normal cancellation
+            }
+            catch (InvalidOperationException)
             {
                 // Normal cancellation
             }
@@ -400,23 +969,6 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             // do nothing for now
         }
-        private static List<string> WordsNotToCancelCurrentProcessing = new List<string>
-        { // TODO this is temporary add this into the agent settings or routing
-            "alright",
-            "right",
-            "mm hmm",
-            "mm",
-            "huh",
-            "hmm",
-            "ok",
-            "okay",
-            "aha",
-            "ahan",
-            "really",
-            "wow",
-            "great",
-            "good"
-        };
         private async void OnTranscriptionResultReceived(object? sender, string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
@@ -432,8 +984,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error handling transcription: " + ex.Message, ex));
             }
         }
-
-        private readonly SemaphoreSlim _llmResponseLock = new SemaphoreSlim(1, 1);
         private async void OnLLMMessageStreamed(object? sender, object responseObj)
         {
             await _llmResponseLock.WaitAsync();
@@ -568,16 +1118,24 @@ namespace IqraInfrastructure.Managers.Conversation
             }
             finally
             {
-                _llmResponseLock.Release();
+                try
+                {
+                    _llmResponseLock?.Release();
+                }
+                catch (ObjectDisposedException) {
+                    if (_isInitialized == true)
+                    {
+                        _logger.LogError("Error releasing LLM response lock");
+                        ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error releasing LLM response lock: ObjectDisposedException", null));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error releasing LLM response lock");
+                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error releasing LLM response lock: " + ex.Message, ex));
+                }
             }
-        }
-
-        private StringBuilder _responseBuffer = new StringBuilder();
-        private int _currentResponseBufferRead = 0;
-
-        private bool _isResponding = false;
-        private bool _isExecutingSystemTool = false;
-        private bool _isExecutingCustomTool = false;
+        } 
 
         // Handle Agent Normal Response
         private async Task HandleLLMResponseProcessingAsync(string deltaText)
@@ -628,8 +1186,15 @@ namespace IqraInfrastructure.Managers.Conversation
                     chunkSize = unprocessedText.Length;
                 }
 
+                if (_currentResponseDurationSpeakingStarted == null)
+                {
+                    _currentResponseDurationSpeakingStarted = DateTime.UtcNow;
+                }
+
                 // Synthesize the text and update the read position precisely
-                await SynthesizeSpeechAsync(textToSynthesize);
+                var (success, speakSpan) = await SynthesizeSpeechAsync(textToSynthesize);
+                _currentResponseDuration = _currentResponseDuration.Add(speakSpan);
+
                 TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(textToSynthesize, _currentClientId));
                 _currentResponseBufferRead += chunkSize;
             }
@@ -644,11 +1209,24 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (_isResponding && _currentResponseBufferRead < _responseBuffer.Length)
                 {
                     var remainingText = completeText.Substring(_currentResponseBufferRead);
-                    await SynthesizeSpeechAsync(remainingText);
+                    var (success, speakSpan) = await SynthesizeSpeechAsync(remainingText);
+                    _currentResponseDuration = _currentResponseDuration.Add(speakSpan);
+
                     TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(remainingText, _currentClientId));
                 }
 
+                var expectedSpeakEnd = _currentResponseDurationSpeakingStarted.Value.Add(_currentResponseDuration);
+                var milisecondLeftToSpeak = (expectedSpeakEnd - DateTime.UtcNow).TotalMilliseconds;
+                if (milisecondLeftToSpeak > 0)
+                {
+                    await Task.Delay((int)milisecondLeftToSpeak);
+                }
+
                 _llmService.AddAssistantMessage(completeText);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore
             }
             catch (Exception ex)
             {
@@ -660,6 +1238,8 @@ namespace IqraInfrastructure.Managers.Conversation
                 _responseBuffer.Clear();
                 _currentResponseBufferRead = 0;
                 _isResponding = false;
+                _currentResponseDurationSpeakingStarted = null;
+                _currentResponseDuration = TimeSpan.Zero;
             }
         }
 
@@ -714,16 +1294,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
                         if (!string.IsNullOrWhiteSpace(messageToSpeak))
                         {
-                            var durationToWait = await SynthesizeSpeechAsync(messageToSpeak);
-                            if (durationToWait != TimeSpan.Zero)
-                            {
-                                await Task.Delay((int)durationToWait.TotalMilliseconds);
-                            }
-                            else
-                            {
-                                // CRITICAL SHOULD NOT HAPPEN
-                                _logger.LogError("Ending call but the audio did not have any duration to wait for");
-                            }
+                            await SynthesizeAndPlaySpeechAsync(messageToSpeak, _conversationCTS.Token);
                         }
 
                         await _conversationSessionManager.EndAsync(reasonForEnding);
@@ -885,51 +1456,132 @@ namespace IqraInfrastructure.Managers.Conversation
         }
 
         // Agent Speaking Functions
-        private async Task<TimeSpan> SynthesizeSpeechAsync(string text)
+        private async Task<(bool Success, TimeSpan Duration)> SynthesizeSpeechAsync(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return TimeSpan.Zero;
+            if (string.IsNullOrWhiteSpace(text) || _ttsService == null)
+            {
+                _logger.LogWarning("Agent {AgentId}: Cannot synthesize empty text or TTS service is null.", _agentId);
+                return (false, TimeSpan.Zero);
+            }
+
+            using var ttsCts = CancellationTokenSource.CreateLinkedTokenSource(_conversationCTS.Token);
 
             try
             {
-                var combinedCancellatinToken = CancellationTokenSource.CreateLinkedTokenSource(_conversationCTS.Token, _currentTTSProcessingTaskCTS.Token).Token;
+                var (audioData, audioDuration) = await _ttsService.SynthesizeTextAsync(text, ttsCts.Token);
+                if (audioData == null || audioData.Length == 0 || audioDuration == null || audioDuration.Value <= TimeSpan.Zero)
+                {
+                    _logger.LogWarning("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                    return (false, TimeSpan.Zero);
+                }
 
-                TTSTask = _ttsService.SynthesizeTextAsync(text, combinedCancellatinToken);
-                var (audioData, audioDuration) = await TTSTask;
-                AudioGenerated?.Invoke(this, new ConversationAudioGeneratedEventArgs(audioData, _currentClientId));
-                return audioDuration ?? TimeSpan.Zero;
+                var segment = new SpeechSegment(audioData, audioDuration.Value);
+                _speechAudioQueue.Add(segment, _conversationCTS.Token);
+
+                return (true, segment.Duration);
+            }
+            catch (OperationCanceledException) when (ttsCts.IsCancellationRequested)
+            {
+                _logger.LogInformation("Agent {AgentId}: TTS synthesis cancelled for text: \"{Text}\"", _agentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
+                return (false, TimeSpan.Zero);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error synthesizing speech for text: {Text}", text);
+                _logger.LogError(ex, "Agent {AgentId}: Error synthesizing speech for text: {Text}", _agentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error synthesizing speech: " + ex.Message, ex));
+                return (false, TimeSpan.Zero);
+            }
+        }
 
-                return TimeSpan.Zero;
+        private async Task SynthesizeAndPlaySpeechAsync(string text, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+
+            // 1. Cancel any currently playing speech first
+            await CancelCurrentSpeechPlaybackAsync();
+
+
+            // 2. Synthesize and queue the new speech
+            var (success, duration) = await SynthesizeSpeechAsync(text);
+
+
+            // 3. Wait for the estimated duration if synthesis was successful
+            if (success && duration > TimeSpan.Zero)
+            {
+                _logger.LogDebug("Agent {AgentId}: Waiting for speech playback: {Duration}", _agentId, duration);
+                try
+                {
+                    // Wait for the duration, but allow cancellation
+                    await Task.Delay(duration, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Agent {AgentId}: Wait for speech playback cancelled.", _agentId);
+                    // If cancelled, ensure any remaining part of *this specific* speech is also cancelled.
+                    await CancelCurrentSpeechPlaybackAsync();
+                }
+            }
+            else if (!success)
+            {
+                _logger.LogError("Agent {AgentId}: Failed to synthesize speech for critical message: {Text}", _agentId, text);
+                // Handle error - maybe log, maybe try fallback?
             }
         }
 
         // Agent Response Cancellation
+        private async Task CancelCurrentSpeechPlaybackAsync()
+        {
+            _logger.LogDebug("Agent {AgentId}: Cancelling current speech playback.", _agentId);
+
+            _audioSendingCTS.Cancel();
+
+            while (_speechAudioQueue.TryTake(out _)) { }
+
+            _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+            _currentSpeechPosition = 0;
+
+            await Task.Delay(50);
+            if (_audioSendingCTS.IsCancellationRequested)
+            {
+                _audioSendingCTS.Dispose();
+                _audioSendingCTS = new CancellationTokenSource();
+            }
+        }
         private async Task CancelOnGoingAgentProcessingTask()
         {
-            _isAcceptingSTTAudio = false;
-            _sttService.StopTranscription();
+            _isAcceptingSTTAudio = false; 
+            _sttService?.StopTranscription();
+
             await _ttsService.StopTextSynthesisAsync();
 
-            _currentTTSProcessingTaskCTS.Cancel();
+            _audioSendingCTS.Cancel();
             _currentLLMProcessingTaskCTS.Cancel();
-            if (LLMTask != null)
-            {
-                LLMTask.Wait(1000);
-            }
-            if (TTSTask != null)
-            {
-                TTSTask.Wait(1000);
-            }
-            _currentTTSProcessingTaskCTS = new CancellationTokenSource();
+
+            while (_speechAudioQueue.TryTake(out _)) { }
+            _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+            _currentSpeechPosition = 0;
+            _responseBuffer.Clear();
+
+            var tasksToWait = new List<Task>();
+            if (LLMTask != null && !LLMTask.IsCompleted) tasksToWait.Add(Task.WhenAny(LLMTask, Task.Delay(500)));
+            if (_audioSendingTask != null && !_audioSendingTask.IsCompleted) tasksToWait.Add(Task.WhenAny(_audioSendingTask, Task.Delay(500)));
+
+            if (tasksToWait.Any()) await Task.WhenAll(tasksToWait);
+
             _currentLLMProcessingTaskCTS = new CancellationTokenSource();
+            _audioSendingCTS = new CancellationTokenSource();
+
+            _isResponding = false;
+            _isExecutingSystemTool = false;
+            _isExecutingCustomTool = false;
 
             _audioQueue.TryTake(out _);
 
             _isAcceptingSTTAudio = true;
+            _sttService?.StartTranscription();
+
+            _audioSendingTask = Task.Run(ProcessAudioSpeakingQueueAsync, _audioSendingCTS.Token);
         }
 
         // Controls To End Agent Life
@@ -944,40 +1596,103 @@ namespace IqraInfrastructure.Managers.Conversation
             try
             {
                 // Stop processing
+                _isInitialized = false;
                 _isProcessingAudio = false;
-                _conversationCTS?.Cancel();
-                _currentTTSProcessingTaskCTS?.Cancel();
-                _currentLLMProcessingTaskCTS?.Cancel();
+                _isAcceptingSTTAudio = false;
+
+                try
+                {
+                    _conversationCTS?.Cancel();
+                    _audioSendingCTS?.Cancel();
+                    _currentLLMProcessingTaskCTS?.Cancel();
+                }
+                catch (ObjectDisposedException) {}
+                catch (Exception ex) { _logger.LogError(ex, "Agent {AgentId}: Error cancelling tokens during shutdown.", _agentId); }
 
                 // Clean up resources
-                _sttService.StopTranscription();
-                _sttService.TranscriptionResultReceived -= OnTranscriptionResultReceived;
-                _sttService.OnRecoginizingRecieved -= OnRecognizingReceived;
-                _llmService.MessageStreamed -= OnLLMMessageStreamed;
+                try { _sttService?.StopTranscription(); }
+                catch (Exception ex) { _logger.LogError(ex, "Agent {AgentId}: Error stopping STT service during shutdown.", _agentId); }
 
-                _audioQueue.CompleteAdding();
+                if (_sttService != null)
+                {
+                    try
+                    {
+                        _sttService.TranscriptionResultReceived -= OnTranscriptionResultReceived;
+                        _sttService.OnRecoginizingRecieved -= OnRecognizingReceived;
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing STT events.", _agentId); }
+                }
+
+                if (_llmService != null)
+                {
+                    try
+                    {
+                        _llmService.MessageStreamed -= OnLLMMessageStreamed;
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing LLM events.", _agentId); }
+                }
+
+                if (_interruptingLLMService != null)
+                {
+                    try
+                    {
+                        _interruptingLLMService.ClearMessageStreamed();
+                    }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing Interrupt LLM events.", _agentId); }
+                }
+
+                OnDTMFRecieved = null;
+
+                try { _audioQueue?.CompleteAdding(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception completing input audio queue.", _agentId); }
+                try { _speechAudioQueue?.CompleteAdding(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception completing speech audio queue.", _agentId); }
 
                 // Wait for tasks to complete
-                var tasksToWait = new List<Task>();
-                if (_audioProcessingTask != null)
-                {
-                    tasksToWait.Add(Task.WhenAny(_audioProcessingTask, Task.Delay(1000)));
-                }
-                if (LLMTask != null)
-                {
-                    tasksToWait.Add(Task.WhenAny(LLMTask, Task.Delay(1000)));
-                }
-                if (TTSTask != null)
-                {
-                    tasksToWait.Add(Task.WhenAny(TTSTask, Task.Delay(1000)));
-                }
-                await Task.WhenAll(tasksToWait);
+                var tasksToWaitFor = new List<Task>();
+                if (_audioProcessingTask != null && !_audioProcessingTask.IsCompleted) tasksToWaitFor.Add(_audioProcessingTask);
+                if (_audioSendingTask != null && !_audioSendingTask.IsCompleted) tasksToWaitFor.Add(_audioSendingTask);
+                if (LLMTask != null && !LLMTask.IsCompleted) tasksToWaitFor.Add(LLMTask);
 
-                _conversationCTS?.Dispose();
-                _currentTTSProcessingTaskCTS?.Dispose();
-                _currentLLMProcessingTaskCTS?.Dispose();
+                if (tasksToWaitFor.Any())
+                {
+                    try
+                    {
+                        _logger.LogDebug("Agent {AgentId}: Waiting for background tasks to complete...", _agentId);
+                        // Wait for all tasks or a timeout (e.g., 5 seconds)
+                        var allTasks = Task.WhenAll(tasksToWaitFor);
+                        await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10))); // Timeout grace period
 
-                _isInitialized = false;
+
+                        if (!allTasks.IsCompleted)
+                        {
+                            _logger.LogWarning("Agent {AgentId}: Not all background tasks completed within the shutdown timeout.", _agentId);
+                            // Log which tasks didn't complete (optional)
+                            foreach (var task in tasksToWaitFor)
+                            {
+                                if (!task.IsCompleted) _logger.LogWarning("Agent {AgentId}: Task {TaskId} ({TaskStatus}) did not complete.", _agentId, task.Id, task.Status);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Agent {AgentId}: Background tasks completed.", _agentId);
+                        }
+                    }
+                    catch (Exception ex) // Catch potential exceptions from Task.WhenAll if tasks faulted
+                    {
+                        _logger.LogError(ex, "Agent {AgentId}: Exception occurred while waiting for tasks during shutdown.", _agentId);
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("Agent {AgentId}: No active background tasks to wait for.", _agentId);
+                }
+
+                try { _conversationCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing conversation CTS.", _agentId); }
+                try { _audioSendingCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing audio sending CTS.", _agentId); }
+                try { _currentLLMProcessingTaskCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing LLM CTS.", _agentId); }
+                _audioQueue?.Dispose();
+                _speechAudioQueue?.Dispose();
+                _llmResponseLock?.Dispose();
+
                 _logger.LogInformation("AI Agent {AgentId} shut down: {Reason}", _agentId, reason);
             }
             catch (Exception ex)
@@ -1036,6 +1751,23 @@ namespace IqraInfrastructure.Managers.Conversation
             }
 
             return arguments;
+        }
+    }
+
+    internal readonly struct SpeechSegment
+    {
+        // Stores the raw PCM audio bytes.
+        // ReadOnlyMemory<byte> is used for efficient memory handling without unnecessary copying.
+        public ReadOnlyMemory<byte> AudioData { get; }
+
+        // Stores the calculated duration of the audio data.
+        public TimeSpan Duration { get; }
+
+        // Constructor to initialize the immutable struct.
+        public SpeechSegment(ReadOnlyMemory<byte> audioData, TimeSpan duration)
+        {
+            AudioData = audioData;
+            Duration = duration;
         }
     }
 }

@@ -9,12 +9,14 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.Extensions.DependencyInjection;
@@ -366,7 +368,9 @@ namespace IqraInfrastructure.Managers.Call
                     _serviceProvider.GetRequiredService<SystemPromptGenerator>(),
                     _serviceProvider.GetRequiredService<STTProviderManager>(),
                     _serviceProvider.GetRequiredService<TTSProviderManager>(),
-                    _serviceProvider.GetRequiredService<LLMProviderManager>()
+                    _serviceProvider.GetRequiredService<LLMProviderManager>(),
+                    _serviceProvider.GetRequiredService<LanguagesManager>(),
+                    _serviceProvider.GetRequiredService<BusinessAgentAudioRepository>()
                 );
             }
             catch (Exception ex)

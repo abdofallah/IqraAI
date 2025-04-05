@@ -19,7 +19,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private List<ChatMessage> _initialMessages;
         private List<ChatMessage> _messagesMemory;
 
-        public event EventHandler<object> MessageStreamed;
+        public event EventHandler<object>? MessageStreamed;
+        public void ClearMessageStreamed() => MessageStreamed = null;
+
         public event EventHandler MessageStreamedCancelled;
 
         public OpenAIGPTStreamingLLMService(string APIKey, string Model)
@@ -111,6 +113,18 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             );
         }
 
+        public void EditMessage(int index, string message)
+        {
+            if (index >= 0 && index < _messagesMemory.Count)
+            {
+                _messagesMemory[index] = ChatMessage.CreateAssistantMessage(message);
+            }
+        }
+        public void ClearMessages()
+        {
+            _messagesMemory.Clear();
+        }
+
         public string GetModel()
         {
             return _model;
@@ -128,14 +142,6 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
-        }
-
-        public void EditMessage(int index, string message)
-        {
-            if (index >= 0 && index < _messagesMemory.Count)
-            {
-                _messagesMemory[index] = ChatMessage.CreateAssistantMessage(message);
-            }
         }
     }
 }

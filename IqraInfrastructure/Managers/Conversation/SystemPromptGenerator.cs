@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.LLM;
 using Microsoft.Extensions.Logging;
 using Scriban;
 using Scriban.Runtime;
+using System.Globalization;
 using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation
@@ -31,8 +32,7 @@ namespace IqraInfrastructure.Managers.Conversation
             BusinessAppRoute route,
             string languageCode,
             InterfaceLLMProviderEnum llmProvider,
-            string llmModelId,
-            string clientIdentifier
+            string llmModelId
         )
         {
             var result = new FunctionReturnResult<string?>();
@@ -115,19 +115,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 contextObject["Products"] = CreateProductsObject(businessApp.Context.Products, languageCode);
                 modelObject["Context"] = contextObject;
 
-                // Add Route data
-                var routeObject = new ScriptObject();
-                routeObject["Agent"] = CreateRouteAgentObject(route.Agent);
-                modelObject["Route"] = routeObject;
-
-                // Add Session data
-                // TODO, 
-                var sessionObject = new ScriptObject();
-                var callerObject = new ScriptObject();
-                callerObject["PhoneNumber"] = clientIdentifier;
-                sessionObject["Caller"] = callerObject;
-                modelObject["Session"] = sessionObject;
-
                 // Register helper templates
                 RegisterHelperTemplates(scriptObject);
 
@@ -153,6 +140,66 @@ namespace IqraInfrastructure.Managers.Conversation
                 result.Code = "GenerateSystemPrompt:-1";
                 result.Message = "Error generating system prompt: " + ex.Message;
             }
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<string?>> FillSessionInformationInPrompt(string prompt, string clientIdentifier, BusinessAppRoute sessionRoute, BusinessAppAgent routeAgent, string languageCode)
+        {
+            var result = new FunctionReturnResult<string?>();
+
+            prompt += Environment.NewLine + @"
+Here is the session information that will be helpful for your context:
+<SessionInformation>
+	Date and Time right now for timezone ({{Session.Route.Agent.Timezone.Name}}) is: {{Session.Route.Agent.Timezone.Time}}
+	{{~ if Session.Route.Agent.CallerNumberInContext ~}}
+	Caller phone Number is: {{Session.Caller.PhoneNumber}}
+	{{~ end ~}}
+</SessionInformation>";
+
+            // Initialize Scriban template
+            var template = Template.Parse(prompt);
+            if (template.HasErrors)
+            {
+                result.Code = "FillSessionInformationInPrompt:1";
+                result.Message = "Error parsing system prompt template: " + string.Join(", ", template.Messages);
+                return result;
+            }
+
+            // Create template context
+            var templateContext = new TemplateContext();
+            var modelObject = new ScriptObject();
+
+            // Add Session data
+            var sessionObject = new ScriptObject();
+            var callerObject = new ScriptObject();
+            callerObject["PhoneNumber"] = clientIdentifier;
+            sessionObject["Caller"] = callerObject;
+            modelObject["Session"] = sessionObject;
+
+            // Add Route data
+            var routeObject = new ScriptObject();
+            routeObject["Agent"] = CreateRouteAgentObject(sessionRoute.Agent);
+            sessionObject["Route"] = routeObject;
+
+            // Register helper templates
+            RegisterHelperTemplates(modelObject);
+
+            // Add the model to the context
+            modelObject.Import(modelObject);
+            templateContext.PushGlobal(modelObject);
+
+            // Render the template
+            var renderedPrompt = await template.RenderAsync(templateContext);
+            if (string.IsNullOrWhiteSpace(renderedPrompt))
+            {
+                result.Code = "FillSessionInformationInPrompt:2";
+                result.Message = "System prompt is empty after rendering";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = renderedPrompt;
 
             return result;
         }
@@ -713,16 +760,68 @@ namespace IqraInfrastructure.Managers.Conversation
         private ScriptObject CreateRouteAgentObject(BusinessAppRouteAgent routeAgent)
         {
             var routeAgentObject = new ScriptObject();
-            
-            // Add timezone information
-            var timezoneObject = new ScriptObject();
-            timezoneObject["Now"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            ScriptObject timezoneObject = new ScriptObject();
+            if (routeAgent.Timezones != null && routeAgent.Timezones.Count > 0)
+            {
+                var timeZoneOffsetString = routeAgent.Timezones[0];
+
+                TimeSpan? offset = ParseOffsetString(timeZoneOffsetString);
+                DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+                DateTimeOffset targetTime;
+
+                if (offset != null)
+                {
+                    targetTime = utcNow.ToOffset(offset.Value);
+                }
+                else
+                {
+                    targetTime = utcNow;
+                    timeZoneOffsetString = "00:00";
+                }
+
+                string formattedTime = targetTime.ToString("h:mm:ss tt, dddd, MMMM d, yyyy");
+
+                timezoneObject = new ScriptObject();
+                timezoneObject["Time"] = formattedTime;
+                timezoneObject["Name"] = timeZoneOffsetString;
+            }
             routeAgentObject["Timezone"] = timezoneObject;
-            
+
             // Add caller number context
             routeAgentObject["CallerNumberInContext"] = routeAgent.CallerNumberInContext;
-            
+
             return routeAgentObject;
+        }
+        private TimeSpan? ParseOffsetString(string offsetString)
+        {
+            if (string.IsNullOrEmpty(offsetString) || offsetString.Length < 6)
+                return null;
+
+            char signChar = offsetString[0];
+            if (signChar != '+' && signChar != '-')
+                return null;
+
+            if (offsetString[3] != ':')
+                return null;
+
+            if (int.TryParse(offsetString.Substring(1, 2), NumberStyles.None, CultureInfo.InvariantCulture, out int hours) &&
+                int.TryParse(offsetString.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out int minutes))
+            {
+                if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59)
+                {
+                    if (signChar == '-')
+                    {
+                        return new TimeSpan(hours, minutes, 0).Negate();
+                    }
+                    else
+                    {
+                        return new TimeSpan(hours, minutes, 0);
+                    }
+                }
+            }
+
+            return null;
         }
 
         private void RegisterHelperTemplates(ScriptObject scriptObject)

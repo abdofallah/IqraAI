@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using Pipelines.Sockets.Unofficial.Arenas;
 using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Conversation
@@ -48,6 +49,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
         public event EventHandler<ConversationMessageAddedEventArgs>? MessageAdded;
+        public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFRecieved;
         public event EventHandler<ConversationClientAddedEventArgs>? ClientAdded;
         public event EventHandler<ConversationClientRemovedEventArgs>? ClientRemoved;
         public event EventHandler<ConversationAgentAddedEventArgs>? AgentAdded;
@@ -138,6 +140,10 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Register event handlers
                 client.AudioReceived += OnClientAudioReceived;
                 client.TextReceived += OnClientTextReceived;
+                if (client.ClientType == ConversationClientType.Telephony)
+                {
+                    ((BaseTelephonyConversationClient)client).DTMFReceived += OnClientDTMFReceived;
+                }
                 client.Disconnected += OnClientDisconnected;
 
                 _clients.Add(client);
@@ -180,6 +186,10 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Unregister event handlers
                 client.AudioReceived -= OnClientAudioReceived;
                 client.TextReceived -= OnClientTextReceived;
+                if (client.ClientType == ConversationClientType.Telephony)
+                {
+                    ((BaseTelephonyConversationClient)client).DTMFReceived -= OnClientDTMFReceived;
+                }
                 client.Disconnected -= OnClientDisconnected;
 
                 _clients.Remove(client);
@@ -355,7 +365,14 @@ namespace IqraInfrastructure.Managers.Conversation
 
             var agentsNotify = _agents.Select(async (agent) =>
                 {
-                    return agent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                    try
+                    {
+                        return agent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        return Task.CompletedTask;
+                    }
                 }
             );
             await Task.WhenAll(agentsNotify);
@@ -628,6 +645,20 @@ namespace IqraInfrastructure.Managers.Conversation
             // Update last activity time for silence detection
             _lastUserActivityTime = DateTime.UtcNow;
 
+            // Store audio if recording is enabled
+            if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
+            {
+                try
+                {
+                    string audioReference = $"{_sessionId}/{client.ClientId}/{Guid.NewGuid()}";
+                    _ = _audioStorageManager.StoreAudioAsync(audioReference, e.AudioData);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error storing audio from client {ClientId}", client.ClientId);
+                }
+            }
+
             // If target agent is specified, send only to that agent
             if (!string.IsNullOrEmpty(e.TargetAgentId))
             {
@@ -719,6 +750,47 @@ namespace IqraInfrastructure.Managers.Conversation
 
         }
 
+        private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
+        {
+            if (sender is not IConversationClient client)
+                return;
+
+            _logger.LogInformation("Received digit from client {ClientId}: {Text}", client.ClientId, e.Digit);
+
+            // Update last activity time for silence detection
+            _lastUserActivityTime = DateTime.UtcNow;
+
+            // Notify event subscribers
+            DTMFRecieved?.Invoke(this, new ConversationDTMFReceivedEventArgs(client.ClientId, e.Digit));
+
+            // if target agent is specified, send only to that agent
+            if (!string.IsNullOrEmpty(e.TargetAgentId))
+            {
+                var agent = GetAgents().FirstOrDefault(a => a.AgentId == e.TargetAgentId);
+                if (agent != null)
+                {
+                    await agent.ProcessDTMFAsync(e.Digit, client.ClientId, CancellationToken.None);
+                }
+                else
+                {
+                    _logger.LogWarning("Target agent {TargetAgentId} not found", e.TargetAgentId);
+                }
+                return;
+            }
+
+            // Otherwise Forward the text to all agents
+            foreach (var agent in GetAgents())
+            {
+                try
+                {
+                    await agent.ProcessDTMFAsync(e.Digit, client.ClientId, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error sending digit to agent {AgentId}", agent.AgentId);
+                }
+            }
+        }
         private async void OnClientDisconnected(object? sender, ConversationClientDisconnectedEventArgs e)
         {
             if (sender is not IConversationClient client)
@@ -737,15 +809,13 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _logger.LogDebug("Agent {AgentId} generated audio", agent.AgentId);
 
-            string? audioReference = null;
-
             // Store audio if recording is enabled
             if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
             {
                 try
                 {
-                    audioReference = $"{_sessionId}/{agent.AgentId}/{Guid.NewGuid()}";
-                    await _audioStorageManager.StoreAudioAsync(audioReference, e.AudioData);
+                    string audioReference = $"{_sessionId}/{agent.AgentId}/{Guid.NewGuid()}";
+                    _ = _audioStorageManager.StoreAudioAsync(audioReference, e.AudioData);
                 }
                 catch (Exception ex)
                 {

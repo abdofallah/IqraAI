@@ -270,40 +270,35 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         {
             try
             {
-                var controlMessage = JsonSerializer.Deserialize<ModemTelControlMessage>(message);
-                if (controlMessage == null)
+                var firstColumnIndex = message.IndexOf(":");
+                if (firstColumnIndex == -1)
                 {
-                    _logger.LogWarning("Invalid control message for call {CallId}: {Message}", _callId, message);
+                    _logger.LogWarning("Invalid control message: {Message} for call {CallId}", message, _callId);
                     return;
                 }
 
-                _logger.LogDebug("Received control message: {Type} for call {CallId}", controlMessage.Type, _callId);
+                var messageType = message.Substring(0, firstColumnIndex).Trim();
 
-                switch (controlMessage.Type)
+                _logger.LogDebug("Received control message: {Type} for call {CallId}", messageType, _callId);
+
+                switch (messageType)
                 {
                     case "call.ended":
                         _logger.LogInformation("Call {CallId} ended by provider", _callId);
                         await DisconnectAsync("Call ended by provider");
                         break;
 
-                    case "dtmf":
-                        if (!string.IsNullOrEmpty(controlMessage.Digit))
+                    case "DTMF":
+                        var dtmfData = message.Substring(firstColumnIndex + 1).Trim();
+                        if (!string.IsNullOrEmpty(dtmfData))
                         {
-                            _logger.LogInformation("DTMF received: {Digit} for call {CallId}", controlMessage.Digit, _callId);
-                            OnTextReceived($"<dtmf>{controlMessage.Digit}</dtmf>");
-                        }
-                        break;
-
-                    case "message":
-                        if (!string.IsNullOrEmpty(controlMessage.Text))
-                        {
-                            _logger.LogInformation("Text message received for call {CallId}: {Text}", _callId, controlMessage.Text);
-                            OnTextReceived(controlMessage.Text);
+                            _logger.LogInformation("DTMF received: {Digit} for call {CallId}", dtmfData, _callId);
+                            OnDTMFRecieved(dtmfData);
                         }
                         break;
 
                     default:
-                        _logger.LogDebug("Unhandled control message type: {Type} for call {CallId}", controlMessage.Type, _callId);
+                        _logger.LogDebug("Unhandled control message type: {Type} for call {CallId}", messageType, _callId);
                         break;
                 }
             }

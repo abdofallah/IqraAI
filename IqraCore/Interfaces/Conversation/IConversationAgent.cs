@@ -14,6 +14,7 @@ namespace IqraCore.Interfaces.Conversation
         Task NotifyMaxDurationReached();
         Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken);
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
+        Task ProcessDTMFAsync(string digit, string clientId, CancellationToken cancellationToken);
         Task InitializeAsync(ConversationAgentConfiguration config, BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken);
         Task ShutdownAsync(string reason);
 
