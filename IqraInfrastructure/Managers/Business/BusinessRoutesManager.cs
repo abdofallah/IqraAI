@@ -387,19 +387,23 @@ namespace IqraInfrastructure.Managers.Business
 
             if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.InterruptibleViaVAD)
             {
-                if (!agentTabRootElement.TryGetProperty("interruptibleConversationTypeWords", out var interruptibleWordsProperty))
+                if (!agentTabRootElement.TryGetProperty("InterruptibleConversationAudioActivityDurationMS", out var interruptibleAudioActivityDurationProperty))
                 {
                     result.Code = "AddOrUpdateUserBusinessRoute:38";
                     result.Message = "Interruptible conversation type words not found.";
                     return result;
                 }
-                if (!interruptibleWordsProperty.TryGetInt32(out var interruptibleWords) || interruptibleWords < 1)
+                if (!interruptibleAudioActivityDurationProperty.TryGetInt32(out var interruptibleAudioActivityDuration) || interruptibleAudioActivityDuration < 1)
                 {
                     result.Code = "AddOrUpdateUserBusinessRoute:39";
                     result.Message = "Invalid interruptible conversation type words value. (min 1)";
                     return result;
                 }
-                newBusinessAppRouteData.Agent.InterruptibleConversationTypeWords = interruptibleWords;
+                newBusinessAppRouteData.Agent.InterruptibleConversationAudioActivityDurationMS = interruptibleAudioActivityDuration;
+            }
+            else if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
+            {
+                // TODO implement via AI bool and integration data
             }
 
             if (!agentTabRootElement.TryGetProperty("timezones", out var timezonesProperty))
