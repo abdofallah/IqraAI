@@ -3,12 +3,14 @@ using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
@@ -579,63 +581,13 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private async Task CheckIfInterruptible(object? sender, object responseObj, string spokenSoFar, string customerOverlapText, string? clientId, CancellationToken cancellationToken)
         {
-            string deltaText = "";
-            bool isEndOfResponse = false;
-
-            if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.AnthropicClaude)
+            FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _llmService.GetProviderType());
+            if (!chunkExtractResult.Success)
             {
-                var response = (Anthropic.SDK.Messaging.MessageResponse)responseObj;
-                if (response.Delta != null)
-                {
-                    deltaText = response.Delta.Text;
-
-                    if (
-                        response.Delta != null &&
-                        response.Delta.StopReason != null &&
-                        (response.Delta.StopReason == "max_tokens" || response.Delta.StopReason != "end_turn")
-                    )
-                    {
-                        isEndOfResponse = true;
-                    }
-                }
+                _logger.LogError("Error extracting LLM chunk, {Reason}", chunkExtractResult.Message);
+                return;
             }
-            else if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.OpenAIGPT)
-            {
-                var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObj;
-
-                deltaText = response.ContentUpdate.ToString();
-
-                if (
-                    response.FinishReason != null &&
-                    (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
-                )
-                {
-                    isEndOfResponse = true;
-                }
-            }
-            else if (_interruptingLLMService.GetProviderType() == InterfaceLLMProviderEnum.GoogleAIGemini)
-            {
-                var response = (GenerativeAI.Types.GenerateContentResponse)responseObj;
-
-                var candidate = response.Candidates.FirstOrDefault(); // Usually only one candidate
-                if (candidate?.Content?.Parts?.FirstOrDefault() != null)
-                {
-                    deltaText = candidate.Content.Parts.First().Text;
-                }
-
-                if (candidate != null &&
-                    candidate.FinishReason != null &&
-                    candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
-                )
-                {
-                    isEndOfResponse = true;
-                }
-            }
-            else
-            {
-                _logger.LogError("Unhandled interrupt LLM provider type: {ProviderType}", _interruptingLLMService.GetProviderType());
-                throw new NotImplementedException($"LLM interrupt provider type {_interruptingLLMService.GetProviderType()} not implemented in CheckIfInterruptible");
-            }
+            (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
 
             if (!string.IsNullOrEmpty(deltaText))
             {
@@ -990,65 +942,13 @@ namespace IqraInfrastructure.Managers.Conversation
 
             try
             {
-                string? deltaText = null;
-                bool isEndOfResponse = false;
-                string fullAggregatedMessage = "";
-
-                if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.AnthropicClaude)
+                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _llmService.GetProviderType());
+                if (!chunkExtractResult.Success)
                 {
-                    var response = (Anthropic.SDK.Messaging.MessageResponse)responseObj;
-                    if (response.Delta != null)
-                    {
-                        deltaText = response.Delta.Text;
-                        fullAggregatedMessage = deltaText;
-
-                        if (
-                            response.Delta != null &&
-                            response.Delta.StopReason != null &&
-                            (response.Delta.StopReason == "max_tokens" || response.Delta.StopReason != "end_turn")
-                        )
-                        {
-                            isEndOfResponse = true;
-                        }
-                    }
+                    _logger.LogError("Error extracting LLM chunk, {Reason}", chunkExtractResult.Message);
+                    return;
                 }
-                else if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.OpenAIGPT)
-                {
-                    var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObj;
-
-                    deltaText = response.ContentUpdate.ToString();
-
-                    if (
-                        response.FinishReason != null &&
-                        (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
-                    )
-                    {
-                        isEndOfResponse = true;
-                    }
-                }
-                else if (_llmService.GetProviderType() == InterfaceLLMProviderEnum.GoogleAIGemini)
-                {
-                    var response = (GenerativeAI.Types.GenerateContentResponse)responseObj;
-
-                    var candidate = response.Candidates.FirstOrDefault(); // Usually only one candidate
-                    if (candidate?.Content?.Parts?.FirstOrDefault() != null)
-                    {
-                        deltaText = candidate.Content.Parts.First().Text;
-                    }
-
-                    if (candidate != null &&
-                        candidate.FinishReason != null &&
-                        candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
-                    )
-                    {
-                        isEndOfResponse = true;
-                    }
-                }
-                else
-                {
-                    _logger.LogError("Unhandled LLM provider type: {ProviderType}", _llmService.GetProviderType());
-                    throw new NotImplementedException($"LLM provider type {_llmService.GetProviderType()} not implemented in OnLLMMessageStreamed");
-                }
+                (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
 
                 if (!string.IsNullOrEmpty(deltaText))
                 {
@@ -1099,7 +999,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                     else
                     {
-                        _logger.LogError("Agent {AgentId} Unhandled LLM response: {Response}", _agentId, fullAggregatedMessage);
+                        _logger.LogError("Agent {AgentId} Unhandled LLM response: {Response}", _agentId, deltaText);
                         _llmService.AddUserMessage("response_from_system: Invalid response type recieved from the agent, the agent must always begin their response with response_to_customer or execute_system_function or execute_custom_function.");
 
                         _responseBuffer.Clear();

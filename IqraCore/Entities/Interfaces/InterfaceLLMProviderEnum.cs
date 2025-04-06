@@ -5,6 +5,7 @@
         Unknown = 0,
         OpenAIGPT = 1,
         AnthropicClaude = 2,
-        GoogleAIGemini = 3
+        GoogleAIGemini = 3,
+        GroqCloud = 4,
     }
 }

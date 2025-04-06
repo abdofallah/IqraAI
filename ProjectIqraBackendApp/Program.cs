@@ -325,7 +325,7 @@ namespace ProjectIqraBackendApp
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
             {
                 return new LLMProviderManager(
-                    sp.GetRequiredService<ILogger<LLMProviderManager>>(),
+                    sp.GetRequiredService<ILoggerFactory>(),
                     sp.GetRequiredService<LLMProviderRepository>(),
                     sp.GetRequiredService<LanguagesManager>(),
                     sp.GetRequiredService<IntegrationsManager>()

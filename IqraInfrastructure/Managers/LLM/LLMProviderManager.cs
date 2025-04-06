@@ -18,6 +18,7 @@ namespace IqraInfrastructure.Managers.LLM
 {
     public class LLMProviderManager
     {
+        private ILoggerFactory _loggerFactory;
         private ILogger<LLMProviderManager> _logger;
 
         private readonly LLMProviderRepository _llmProviderRepository;
@@ -26,9 +27,10 @@ namespace IqraInfrastructure.Managers.LLM
 
         private Dictionary<InterfaceLLMProviderEnum, Type> _llmProviderClasses = new Dictionary<InterfaceLLMProviderEnum, Type>();
 
-        public LLMProviderManager(ILogger<LLMProviderManager> logger, LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager, IntegrationsManager integrationsManager)
+        public LLMProviderManager(ILoggerFactory loggerFactory, LLMProviderRepository llmProviderRepository, LanguagesManager languagesManager, IntegrationsManager integrationsManager)
         {
-            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<LLMProviderManager>();
 
             _llmProviderRepository = llmProviderRepository;
             _languagesManager = languagesManager;
