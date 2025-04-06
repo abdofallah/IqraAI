@@ -102,6 +102,8 @@ namespace IqraInfrastructure.Managers.Conversation
         private TimeSpan _currentResponseDuration = TimeSpan.Zero;
 
         private StringBuilder _interruptResponseBuffer = new StringBuilder();
+        private Task? _interruptLLMTask = null;
+        private bool _isProcessingInterruption = false;
 
         private bool _isResponding = false;
         private bool _isExecutingSystemTool = false;
@@ -227,8 +229,17 @@ namespace IqraInfrastructure.Managers.Conversation
 
             if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
             {
-                // TODO
-                var interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
+                FunctionReturnResult<ILLMService?> interuptibleLLMServiceResult;
+                if (_currentSessionRoute.Agent.UseCurrentAgentLLMForInterrupting == true)
+                {
+                    interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });         
+                }
+                else
+                {
+                    // todo use integration data to build it
+                    throw new NotImplementedException("TODO");
+                }
+
                 if (!interuptibleLLMServiceResult.Success || interuptibleLLMServiceResult.Data == null)
                 {
                     _logger.LogError("Failed to build interuptible LLM service for agent {AgentId} with error: {ErrorMessage}", _agentId, interuptibleLLMServiceResult.Message);
@@ -525,8 +536,15 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (_isResponding)
                 {
                     if (_currentConversationType == AgentConversationTypeENUM.TurnByTurn) return;
-
                     if (_currentResponseDurationSpeakingStarted == null || _responseBuffer.Length == 0) return;
+                    if (_isProcessingInterruption)
+                    {
+                        // todo what to do about this text that caused interurption
+                        return;
+                    }
+
+                    _isProcessingInterruption = true;
+
                     _interruptingLLMService.ClearMessages();
 
                     string textSentToTTS = _responseBuffer.ToString(0, Math.Min(_currentResponseBufferRead, _responseBuffer.Length));
@@ -542,7 +560,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     {
                         await CheckIfInterruptible(sender, responseObj, currentSpokenResponse, text, clientId, cancellationToken);
                     };
-                    await _interruptingLLMService.ProcessInputAsync(_conversationCTS.Token);
+                    _interruptLLMTask = _interruptingLLMService.ProcessInputAsync(_conversationCTS.Token);
                     return;
                 }
 
@@ -582,6 +600,28 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private async Task CheckIfInterruptible(object? sender, object responseObj, string spokenSoFar, string customerOverlapText, string? clientId, CancellationToken cancellationToken)
         {
+            // TODO this could be problematic if more than one interruption is called, fix this
+            // solution, assign ids to each request/response and check if the interruption is for that one
+            if (!_currentResponseDurationSpeakingStarted.HasValue)
+            {
+                _logger.LogInformation("Interruption result came after the text was spoken, so we are ignoring it");
+
+                // todo cancel the task and stop
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken).Cancel();
+                _interruptingLLMService.ClearMessageStreamed();
+
+                if (_interruptLLMTask != null)
+                {
+                    _interruptLLMTask.Wait();
+                    _interruptLLMTask = null;
+                }
+
+                _isProcessingInterruption = false;
+                _interruptResponseBuffer.Clear();
+
+                return;
+            }
+
             FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _llmService.GetProviderType());
             if (!chunkExtractResult.Success)
             {
@@ -620,6 +660,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     _logger.LogInformation("AI Agent {AgentId} interrupted response: {Response}", _agentId, modifiedResponse);
                     _llmService.AddAssistantMessage(modifiedResponse);
 
+                    _isProcessingInterruption = false;
                     _isResponding = false;
                     _responseBuffer.Clear();
                     _currentResponseBufferRead = 0;
@@ -920,7 +961,8 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private void OnRecognizingReceived(object? sender, object e)
         {
-            // do nothing for now
+            Console.WriteLine("Recoginization recieved");
+            // lower the volume of the agent speaking if it is by clamping
         }
         private async void OnTranscriptionResultReceived(object? sender, string text)
         {
