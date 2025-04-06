@@ -2,7 +2,8 @@
 {
     public enum AgentConversationTypeENUM
     {
-        Interruptible = 0,
-        TurnByTurn = 1
+        TurnByTurn = 0,
+        InterruptibleViaVAD = 1,
+        InterruptibleViaAI = 2
     }
 }

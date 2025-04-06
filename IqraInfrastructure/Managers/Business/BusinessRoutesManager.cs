@@ -385,7 +385,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             newBusinessAppRouteData.Agent.ConversationType = (AgentConversationTypeENUM)conversationType;
 
-            if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.Interruptible)
+            if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.InterruptibleViaVAD)
             {
                 if (!agentTabRootElement.TryGetProperty("interruptibleConversationTypeWords", out var interruptibleWordsProperty))
                 {

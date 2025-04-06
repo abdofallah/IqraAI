@@ -191,7 +191,7 @@ Here is the response format you must always follow:
 	- To execute a custom function in the system provided to you, you must always start your response with: "execute_custom_function".
 	
 	Here is the rules you must always follow related to response abilities:
-	- When responding with response_to_customer, you may not use execute_custom_function in the same response/message.
+	- When responding with response_to_customer, you may not use execute_custom_function or execute_system_function in the same response/message.
 	
 	You have access to the following system functions:
 	- To end the call/conversation/session, you must always use the system function: "end_call".

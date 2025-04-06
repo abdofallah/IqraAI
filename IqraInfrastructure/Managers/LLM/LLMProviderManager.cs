@@ -671,31 +671,26 @@ namespace IqraInfrastructure.Managers.LLM
             var llmProviderData = await GetProviderDataByIntegration(integrationData.Type);
             if (!llmProviderData.Success)
             {
-                result.Code = "BuildProviderServiceByIntegration:1";
-                result.Message = "Provider not find by integration type";
-                return result;
+                return result.SetFailureResult("BuildProviderServiceByIntegration:1", $"Provider not find by integration type");
             }
 
             switch (llmProviderData.Data.Id)
             {
                 case InterfaceLLMProviderEnum.AnthropicClaude:
-                    result.Success = true;
-                    result.Data = new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]);
-                    return result;
+                    return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
                 case InterfaceLLMProviderEnum.OpenAIGPT:
-                    result.Success = true;
-                    result.Data = new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), integrationData.Fields["model"]);
-                    return result;
+                    return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), integrationData.Fields["model"]));
 
                 case InterfaceLLMProviderEnum.GoogleAIGemini:
-                    result.Success = true;
-                    result.Data = new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]);
-                    return result;
+                    return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));                 
+
+                case InterfaceLLMProviderEnum.GroqCloud:
+                    return result.SetSuccessResult(new GroqCloudStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
                 default:
                     _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
-                    return result;
+                    return result.SetFailureResult("BuildProviderServiceByIntegration:2", $"Business app LLM provider {llmProviderData.Data.Id} not supported");
             }
         }
     }

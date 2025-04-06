@@ -225,8 +225,9 @@ namespace IqraInfrastructure.Managers.Conversation
             }
             _llmService = llmServiceResult.Data;
 
-            if (_currentConversationType == AgentConversationTypeENUM.Interruptible)
+            if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
             {
+                // TODO
                 var interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_llmBusinessIntegrationData, defaultLLMService, new Dictionary<string, string> { });
                 if (!interuptibleLLMServiceResult.Success || interuptibleLLMServiceResult.Data == null)
                 {
