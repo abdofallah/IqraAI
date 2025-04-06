@@ -76,7 +76,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
             }
             else
             {
-                result.Code = "";
+                result.Code = "GetChunkData:1";
                 result.Message = "LLM provider type {providerType} not implemented in GetChunkData";
                 return result;
             }
