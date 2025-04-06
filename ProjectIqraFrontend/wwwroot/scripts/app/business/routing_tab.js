@@ -241,7 +241,7 @@ function createDefaultRouteObject() {
 			conversationType: {
 				value: 0,
 			},
-			InterruptibleConversationAudioActivityDurationMS: null,
+			interruptibleConversationAudioActivityDurationMS: null,
 			UseCurrentAgentLLMForInterrupting: null,
 			LLMIntegrationToUseForCheckingInterruption: null,
 			timezones: [],
@@ -492,7 +492,7 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		};
 
 		if (changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaVAD) {
-			changes.agent.InterruptibleConversationAudioActivityDurationMS = parseInt(editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val());
+			changes.agent.interruptibleConversationAudioActivityDurationMS = parseInt(editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val());
 		}
 		else if (changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaAI) {
 			// todo via ai bool and integration data
@@ -512,7 +512,7 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 
 		if (
 			changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaVAD &&
-			changes.agent.InterruptibleConversationAudioActivityDurationMS !== ManageCurrentRouteData.agent.InterruptibleConversationAudioActivityDurationMS
+			changes.agent.interruptibleConversationAudioActivityDurationMS !== ManageCurrentRouteData.agent.interruptibleConversationAudioActivityDurationMS
 		) {
 			hasChanges = true;
 			return;
@@ -1015,7 +1015,7 @@ function fillRoutingManagerTab() {
 	if (conversationType === AgentConversationTypeENUM.InterruptibleViaVAD)
 	{
 		routeAgentInterruptViaVadBox.removeClass("d-none");
-		editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val(ManageCurrentRouteData.agent.InterruptibleConversationAudioActivityDurationMS);
+		editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val(ManageCurrentRouteData.agent.interruptibleConversationAudioActivityDurationMS);
 	}
 	else if (conversationType === AgentConversationTypeENUM.InterruptibleViaAI)
 	{
