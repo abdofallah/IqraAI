@@ -382,7 +382,18 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
             finally
             {
-                _llmResponseLock.Release();
+                try
+                {
+                    _llmResponseLock.Release();
+                }
+                catch(ObjectDisposedException)
+                {
+                    // ignore, should not have been disposed tho check why TODO
+                }
+                catch
+                {
+                    throw;
+                }
             }
         }
 

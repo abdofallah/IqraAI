@@ -23,6 +23,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         // Agent State
         public bool IsAwaitingLanguageSelection = false;
+        public bool HasChoosenLanguage = false;
 
         // Integration & Service Instances (Managed possibly by handlers, but accessible here)
         public BusinessAppIntegration? STTBusinessIntegrationData { get; internal set; }

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Conversation.Events; // For ConversationAudioGeneratedEventArgs
 using IqraCore.Interfaces.Conversation; // For ITTSService
+using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS; // For TTSProviderManager
 using IqraInfrastructure.Repositories.Business; // For BusinessAgentAudioRepository
@@ -139,55 +140,111 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private async Task LoadBackgroundMusicAsync()
         {
-            // --- Move logic from original LoadBackgroundMusicAsync here ---
-            // Use _agentState.BusinessAppAgent.Settings?.BackgroundAudioUrl
-            // Use _audioRepository
-            // Store result in _agentState.BackgroundAudioData, _agentState.IsBackgroundMusicEnabled, etc.
-
             if (string.IsNullOrWhiteSpace(_agentState.BusinessAppAgent?.Settings?.BackgroundAudioUrl))
             {
                 _logger.LogInformation("Agent {AgentId}: No background audio URL configured.", _agentState.AgentId);
                 _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
-                _agentState.BackgroundAudioData = ReadOnlyMemory<byte>.Empty;
                 return;
             }
 
             string audioUrl = _agentState.BusinessAppAgent.Settings.BackgroundAudioUrl;
-            _logger.LogInformation("Agent {AgentId}: Attempting to load background audio from {Url}", _agentState.AgentId, audioUrl);
+            _logger.LogInformation("Agent {AgentId}: Attempting to load background audio (ID: {FileId})", _agentState.AgentId, audioUrl);
 
             try
             {
-                bool exists = await _audioRepository.FileExists(audioUrl);
-                if (!exists)
-                {
-                    _logger.LogWarning("Agent {AgentId}: Background audio file not found at {Url}", _agentState.AgentId, audioUrl);
-                    _agentState.IsBackgroundMusicEnabled = false;
-                    _agentState.IsBackgroundMusicLoaded = false;
-                    _agentState.BackgroundAudioData = ReadOnlyMemory<byte>.Empty;
-                    return;
-                }
+                AudioFileResult? fileResult = await _audioRepository.GetFileWithMetadataAsync(audioUrl);
 
-                _agentState.BackgroundAudioData = await _audioRepository.GetFileAsByteArray(audioUrl);
-
-                if (_agentState.BackgroundAudioData.Length == 0 || _agentState.BackgroundAudioData.Length % BytesPerSample != 0)
+                if (fileResult == null || fileResult.Data.IsEmpty)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Background audio from {Url} is empty or has invalid length.", _agentState.AgentId, audioUrl);
-                    _agentState.BackgroundAudioData = ReadOnlyMemory<byte>.Empty;
+                    _logger.LogWarning("Agent {AgentId}: Background audio file not found or is empty (ID: {FileId})", _agentState.AgentId, audioUrl);
                     _agentState.IsBackgroundMusicEnabled = false;
                     _agentState.IsBackgroundMusicLoaded = false;
                     return;
                 }
 
-                _logger.LogInformation("Agent {AgentId}: Background audio loaded successfully ({Length} bytes).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
-                _agentState.IsBackgroundMusicEnabled = true;
+                // Determine Format and Convert
+                ReadOnlyMemory<byte> rawPcmData;
+                string? contentType = null;
+                if (fileResult.Metadata.TryGetValue("fileContentType", out contentType) && !string.IsNullOrWhiteSpace(contentType))
+                {
+                    _logger.LogInformation("Agent {AgentId}: Original file Content-Type is {ContentType}.", _agentState.AgentId, contentType);
+                    rawPcmData = await AudioToRAWPCMConverter.ConvertToRawPcmAsync(
+                        fileResult.Data,
+                        contentType,
+                        audioUrl,
+                        _logger,
+                        _agentState.AgentId,
+                        SampleRate,
+                        BitsPerSample,
+                        Channels
+                    );
+                }
+                else
+                {
+                    _logger.LogWarning("Agent {AgentId}: Background audio file (ID: {FileId}) is missing 'fileContentType' metadata. Cannot determine format.", _agentState.AgentId, audioUrl);
+                    rawPcmData = ReadOnlyMemory<byte>.Empty; // Indicate failure
+                }
+
+
+                // Validate Conversion Result
+                if (rawPcmData.IsEmpty) // Conversion failed or format was unsupported
+                {
+                    _logger.LogWarning("Agent {AgentId}: Failed to convert background audio (ID: {FileId}) to required PCM format.", _agentState.AgentId, audioUrl);
+                    _agentState.IsBackgroundMusicEnabled = false;
+                    _agentState.IsBackgroundMusicLoaded = false;
+                    return;
+                }
+
+                // Check alignment for the *converted* PCM data
+                if (rawPcmData.Length % BytesPerSample != 0)
+                {
+                    _logger.LogError("Agent {AgentId}: Converted background audio (ID: {FileId}) has invalid length ({Length} bytes). This should not happen after successful PCM conversion.",
+                        _agentState.AgentId, audioUrl, rawPcmData.Length);
+                    _agentState.IsBackgroundMusicEnabled = false;
+                    _agentState.IsBackgroundMusicLoaded = false;
+                    return;
+                }
+
+#if DEBUG
+                try
+                {
+                    // Define a path - C:\temp\ is common, adjust as needed
+                    // Make sure the directory exists!
+                    string debugDir = @"C:\temp\AudioDebug"; // Or use Path.GetTempPath()
+                    Directory.CreateDirectory(debugDir); // Ensure the directory exists
+
+                    // Create a descriptive filename
+                    string safeFileName = $"{_agentState.AgentId}_{audioUrl.Replace(":", "_").Replace("/", "_")}.raw"; // Sanitize fileId a bit
+                    string debugFilePath = Path.Combine(debugDir, safeFileName);
+
+                    _logger.LogWarning("DEBUG: Saving converted raw PCM data for Agent {AgentId}, File ID {FileId} to: {DebugFilePath}",
+                        _agentState.AgentId, audioUrl, debugFilePath);
+
+                    // Write the raw bytes using FileStream for efficiency with ReadOnlyMemory<byte>
+                    using var fileStream = new FileStream(debugFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
+                    await fileStream.WriteAsync(rawPcmData);
+
+                    _logger.LogWarning("DEBUG: Successfully saved raw PCM data to {DebugFilePath}", debugFilePath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "DEBUG: Failed to save raw PCM debug file for Agent {AgentId}, File ID {FileId}", _agentState.AgentId, audioUrl);
+                    // Don't stop the main process, just log the debug saving error
+                }
+#endif
+                // --- End DEBUG section ---
+
+                // Success
+                _agentState.BackgroundAudioData = rawPcmData;
+                _logger.LogInformation("Agent {AgentId}: Background audio loaded and converted successfully ({Length} bytes of raw PCM).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
+                // enable bkg audio in begin conversation
                 _agentState.IsBackgroundMusicLoaded = true;
-                _backgroundAudioPosition = 0; // Reset position
+                _backgroundAudioPosition = 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Agent {AgentId}: Error loading background audio from {Url}", _agentState.AgentId, audioUrl);
-                _agentState.BackgroundAudioData = ReadOnlyMemory<byte>.Empty;
+                _logger.LogError(ex, "Agent {AgentId}: Error loading or converting background audio (ID: {FileId})", _agentState.AgentId, audioUrl);
                 _agentState.IsBackgroundMusicEnabled = false;
                 _agentState.IsBackgroundMusicLoaded = false;
             }

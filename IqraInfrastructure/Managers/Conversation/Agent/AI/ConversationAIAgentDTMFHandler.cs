@@ -1,10 +1,5 @@
-﻿using IqraCore.Entities.Business; // For language config access
-using IqraInfrastructure.Managers.Languages; // For LanguagesManager
+﻿using IqraInfrastructure.Managers.Languages;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Humanizer;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
@@ -16,17 +11,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private readonly ConversationAIAgentState _agentState;
         private readonly LanguagesManager _languagesManager;
 
-        // References to other modules/orchestrator needed for actions
         private readonly ConversationAIAgentAudioOutput _audioOutput;
-        // Need a way to trigger re-initialization (e.g., callback to Orchestrator)
-        private readonly Func<string, Task> _onLanguageChangeRequestAsync; // Orchestrator provides this
+        private readonly Func<string, Task> _onLanguageChangeRequestAsync;
 
         public ConversationAIAgentDTMFHandler(
             ILoggerFactory loggerFactory,
             ConversationAIAgentState agentState,
             LanguagesManager languagesManager,
             ConversationAIAgentAudioOutput audioOutput,
-            Func<string, Task> onLanguageChangeRequestAsync // Callback to Orchestrator
+            Func<string, Task> onLanguageChangeRequestAsync
         )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentDTMFHandler>();
@@ -45,8 +38,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             return Task.CompletedTask;
         }
 
-
-        // Called by Orchestrator during NotifyConversationStarted if multi-language is enabled
         public async Task SetupLanguageSelectionAsync(CancellationToken cancellationToken)
         {
             if (_agentState.CurrentSessionRoute?.Language.MultiLanguageEnabled == true &&
@@ -77,6 +68,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 {
                     await _audioOutput.SynthesizeAndPlayBlockingAsync(multiLanguageText.Trim(), cancellationToken);
                     _agentState.IsAwaitingLanguageSelection = true;
+                    _agentState.HasChoosenLanguage = false;
                 }
                 else
                 {
@@ -106,6 +98,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return;
             }
 
+            if (_agentState.HasChoosenLanguage)
+            {
+                _logger.LogWarning("Agent {AgentId}: Ignoring DTMF digit '{Digit}' as language has already been selected.", _agentState.AgentId, digit);
+                return;
+            }
 
             if (_agentState.IsProcessingDTMFAlready)
             {
@@ -137,7 +134,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             // Maybe play a confirmation? "Continuing in [Language]."
                             // await _audioOutput.SynthesizeAndPlayBlockingAsync($"Continuing in {selectedLanguage.LanguageCode}", cancellationToken); // Example
                         }
-                        _agentState.IsAwaitingLanguageSelection = false; // Language selected, stop listening for it
+                        _agentState.HasChoosenLanguage = true;
+                        
+                        // todo begin conversation but we cant really do it can we??
                     }
                     else
                     {

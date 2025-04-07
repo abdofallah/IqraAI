@@ -2,6 +2,7 @@
 using Minio.DataModel.Args;
 using Minio;
 using Microsoft.Extensions.Logging;
+using Minio.DataModel;
 
 namespace IqraInfrastructure.Repositories.Business
 {
@@ -103,5 +104,68 @@ namespace IqraInfrastructure.Repositories.Business
         {
             return new ReadOnlyMemory<byte>((await GetFileAsMemoryStream(fileId)).ToArray());
         }
+
+        public async Task<AudioFileResult?> GetFileWithMetadataAsync(string fileId)
+        {
+            try
+            {
+                // 1. Get Metadata first using StatObject
+                ObjectStat? objectStat = null;
+                try
+                {
+                    var statArgs = new StatObjectArgs()
+                       .WithBucket(BucketName)
+                       .WithObject(fileId);
+                    objectStat = await MinioClient.StatObjectAsync(statArgs).ConfigureAwait(false);
+                }
+                catch (Minio.Exceptions.ObjectNotFoundException)
+                {
+                    _logger.LogWarning("File {FileId} not found in bucket {BucketName} when attempting to get metadata.", fileId, BucketName);
+                    return null; // File doesn't exist
+                }
+
+
+                // 2. Get the actual file data
+                using var memoryStream = new MemoryStream();
+                var getArgs = new GetObjectArgs()
+                    .WithBucket(BucketName)
+                    .WithObject(fileId)
+                    .WithCallbackStream(async (stream, cancellationToken) =>
+                    {
+                        await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+                    });
+
+                await MinioClient.GetObjectAsync(getArgs).ConfigureAwait(false);
+
+                memoryStream.Position = 0; // Rewind stream
+
+                // Prepare the result
+                var metadata = objectStat?.MetaData?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase) // Ensure case-insensitive keys
+                               ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                return new AudioFileResult
+                {
+                    Data = new ReadOnlyMemory<byte>(memoryStream.ToArray()),
+                    Metadata = metadata
+                };
+            }
+            catch (Minio.Exceptions.ObjectNotFoundException)
+            {
+                // Should have been caught by StatObject, but belt-and-suspenders
+                _logger.LogWarning("File {FileId} not found in bucket {BucketName} when attempting to get data.", fileId, BucketName);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting file {FileId} with metadata from bucket {BucketName}", fileId, BucketName);
+                return null; // Or re-throw, depending on desired error handling
+            }
+        }
+    }
+
+    public class AudioFileResult
+    {
+        public ReadOnlyMemory<byte> Data { get; init; }
+        public IReadOnlyDictionary<string, string> Metadata { get; init; }
     }
 }

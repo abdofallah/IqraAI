@@ -165,7 +165,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 {
                     throw new InvalidOperationException($"Business app agent {businessRouteData.Agent.SelectedAgentId} not found");
                 }
-                _agentState.BackgroundMusicVolume = _agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 0.3f; // Get from config
+                _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30)/100); // Get from config
 
                 // Initialize Modules
                 await _llmHandler.InitializeAsync(); // todo Cts not needed?
@@ -213,6 +213,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private async Task BeginAgentConversationFlowAsync()
         {
             _logger.LogInformation("Agent {AgentId}: Beginning main conversation flow.", AgentId);
+
+            _agentState.IsBackgroundMusicEnabled = true;
+
             if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
             {
                 string openingMessage = _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
@@ -224,7 +227,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             {
                 _logger.LogDebug("Agent {AgentId}: Waiting for user to speak first.", AgentId);
             }
-
+       
             _agentState.IsAcceptingSTTAudio = true;
             // TODO enable vad here rather than in interruption
 
@@ -356,7 +359,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
 
             // if (_agentState.IsProcessingDTMFAlready) todo check if dtmf handler is actually waiting for dtmf inputs
-            return _dtmfHandler.ProcessDigitAsync(digit, cancellationToken);
+            _dtmfHandler.ProcessDigitAsync(digit, cancellationToken).GetAwaiter().GetResult();
+
+            // temporary
+            if (_agentState.IsAwaitingLanguageSelection && _agentState.HasChoosenLanguage)
+            {
+                _agentState.IsAwaitingLanguageSelection = false;
+                _audioOutputHandler.CancelCurrentSpeechPlaybackAsync().GetAwaiter().GetResult();
+                BeginAgentConversationFlowAsync().GetAwaiter().GetResult();
+            }
+
+            return Task.CompletedTask;
         }
 
 
