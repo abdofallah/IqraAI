@@ -11,6 +11,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="8.0.13" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.2.1" />
     <PackageReference Include="RJCP.SerialPortStream" Version="3.0.1" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />

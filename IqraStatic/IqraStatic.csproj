@@ -7,6 +7,18 @@
   </PropertyGroup>
 
 	<ItemGroup>
+	  <None Update="VadModels\silero_vad.jit">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="VadModels\silero_vad.onnx">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="VadModels\silero_vad_16k_op15.onnx">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
+	  <None Update="VadModels\silero_vad_half.onnx">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-https.stpl">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
@@ -19,5 +31,9 @@
 	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-maintenance.tpl">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 	  </None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="VadModels\" />
 	</ItemGroup>
 </Project>

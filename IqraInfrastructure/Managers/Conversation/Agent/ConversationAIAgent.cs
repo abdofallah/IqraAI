@@ -4,9 +4,9 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -14,6 +14,7 @@ using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.VAD;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -61,6 +62,9 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private ILLMService _interruptingLLMService;
 
+        private IVadService _vadService; // Inject this
+        private VadOptions _vadOptions; // Configure this
+
         private CancellationTokenSource _conversationCTS;
         private bool _isInitialized;
 
@@ -94,6 +98,18 @@ namespace IqraInfrastructure.Managers.Conversation
         // State for the current speech segment being sent
         private ReadOnlyMemory<byte> _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
         private int _currentSpeechPosition = 0;
+
+        // Volume Fading State
+        private volatile float _currentAgentVolumeFactor = 1.0f; // Current volume (0.0 to 1.0)
+        private CancellationTokenSource? _volumeFadeCTS = null;
+        private Task? _volumeFadeTask = null;
+        private bool _isUserSpeakingVAD = false; // Track VAD state
+        private string? _currentIgnoredInterruptMessage = null;
+
+        // VAD Interruption Timer State
+        private CancellationTokenSource? _vadInterruptTimerCTS = null;
+        private Task? _vadInterruptTimerTask = null;
+        private DateTime? _userSpeechStartTime = null;
 
         // LLM Tasks
         private StringBuilder _responseBuffer = new StringBuilder();
@@ -187,6 +203,12 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 // Start background music loading 
                 // _ = LoadBackgroundMusicAsync(); TODO
+
+                // Initalize VAD
+                if (_currentConversationType != AgentConversationTypeENUM.TurnByTurn)
+                {
+                    await InitalizeVAD();
+                }
 
                 // Start audio processing task
                 _isProcessingAudio = true;
@@ -341,6 +363,15 @@ namespace IqraInfrastructure.Managers.Conversation
             _sttService.Initialize();
             _sttService.StartTranscription();
         }
+        private async Task InitalizeVAD()
+        {
+            _vadOptions = new VadOptions { SampleRate = SampleRate };
+            // get current app running directory
+            
+            string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VadModels\\silero_vad.onnx"); // todo remove this from here
+            _vadService = new SileroVadService(_loggerFactory.CreateLogger<SileroVadService>());
+            _vadService.Initialize(modelPath, _vadOptions);
+        }
         private async Task LoadBackgroundMusicAsync()
         {
             if (string.IsNullOrWhiteSpace(_businessAppAgent.Settings?.BackgroundAudioUrl))
@@ -482,6 +513,7 @@ namespace IqraInfrastructure.Managers.Conversation
             }
 
             _isAcceptingSTTAudio = true;
+            _vadService.VoiceActivityChanged += OnVoiceActivityChanged;
         }
 
         // Take Audio and Text Input from Conversation Manager
@@ -536,58 +568,56 @@ namespace IqraInfrastructure.Managers.Conversation
                 if (_isResponding)
                 {
                     if (_currentConversationType == AgentConversationTypeENUM.TurnByTurn) return;
-                    if (_currentResponseDurationSpeakingStarted == null || _responseBuffer.Length == 0) return;
-                    if (_isProcessingInterruption)
+                    if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
                     {
-                        // todo what to do about this text that caused interurption
+                        if (_isProcessingInterruption)
+                        {
+                            // todo what to do about this text that caused interurption
+                            return;
+                        }
+                        if (_currentResponseDurationSpeakingStarted == null || _responseBuffer.Length == 0) return;
+
+                        _isProcessingInterruption = true;
+
+                        _interruptingLLMService.ClearMessages();
+
+                        string textSentToTTS = _responseBuffer.ToString(0, Math.Min(_currentResponseBufferRead, _responseBuffer.Length));
+                        TimeSpan elapsedTime = DateTime.UtcNow - _currentResponseDurationSpeakingStarted.Value;
+                        double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _currentResponseDuration.TotalSeconds, 0.0, 1.0);
+                        int spokenLength = (int)(textSentToTTS.Length * proportionSpoken);
+                        var currentSpokenResponse = textSentToTTS.Substring(0, spokenLength);
+
+                        _logger.LogInformation("Current Spoken Response: {CurrentSpokenResponse}", currentSpokenResponse);
+
+                        _interruptingLLMService.AddUserMessage($"current agent response: {currentSpokenResponse}\ncurrent overlaping customer response: {text}");
+                        _interruptingLLMService.MessageStreamed += async (sender, responseObj) =>
+                        {
+                            await CheckIfInterruptible(sender, responseObj, currentSpokenResponse, text, clientId, cancellationToken);
+                        };
+                        _interruptLLMTask = _interruptingLLMService.ProcessInputAsync(_conversationCTS.Token);
                         return;
                     }
-
-                    _isProcessingInterruption = true;
-
-                    _interruptingLLMService.ClearMessages();
-
-                    string textSentToTTS = _responseBuffer.ToString(0, Math.Min(_currentResponseBufferRead, _responseBuffer.Length));
-                    TimeSpan elapsedTime = DateTime.UtcNow - _currentResponseDurationSpeakingStarted.Value;
-                    double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _currentResponseDuration.TotalSeconds, 0.0, 1.0);
-                    int spokenLength = (int)(textSentToTTS.Length * proportionSpoken);
-                    var currentSpokenResponse = textSentToTTS.Substring(0, spokenLength);
-
-                    _logger.LogInformation("Current Spoken Response: {CurrentSpokenResponse}", currentSpokenResponse);
-
-                    _interruptingLLMService.AddUserMessage($"current agent response: {currentSpokenResponse}\ncurrent overlaping customer response: {text}");
-                    _interruptingLLMService.MessageStreamed += async (sender, responseObj) =>
+                    else if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaVAD)
                     {
-                        await CheckIfInterruptible(sender, responseObj, currentSpokenResponse, text, clientId, cancellationToken);
-                    };
-                    _interruptLLMTask = _interruptingLLMService.ProcessInputAsync(_conversationCTS.Token);
-                    return;
+                        if (_currentIgnoredInterruptMessage != null)
+                        {
+                            _currentIgnoredInterruptMessage = text;
+                        }
+                        else
+                        {
+                            _currentIgnoredInterruptMessage += text;
+                        }
+
+                        if (_isUserSpeakingVAD)
+                        {
+                            return;
+                        }
+                    }
                 }
 
+                _currentIgnoredInterruptMessage = null;
                 var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _conversationCTS.Token, cancellationToken).Token;
-
-                _currentClientId = clientId;
-                if (clientId != null)
-                {
-                    _clientContextMap[clientId] = text;
-                }
-
-                _llmService.AddUserMessage($"customer_query: {text}");
-
-                var sessionFilledPrompt = await _systemPromptGenerator.FillSessionInformationInPrompt(_llmBaseSystemPrompt, _conversationSessionManager.PrimaryClientIdentifier(), _currentSessionRoute, _businessAppAgent, _currentLanguageCode);
-                if (!sessionFilledPrompt.Success)
-                {
-                    _logger.LogError(sessionFilledPrompt.Message, "Error filling session information in prompt for AI Agent {AgentId}", _agentId);
-                    ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs(sessionFilledPrompt.Message, new Exception(sessionFilledPrompt.Message)));
-
-                    _llmService.SetSystemPrompt(_llmBaseSystemPrompt);
-                }
-                else
-                {
-                    _llmService.SetSystemPrompt(sessionFilledPrompt.Data);
-                }                 
-
-                LLMTask = _llmService.ProcessInputAsync(combinedCancellationToken);
+                await SendLLMMessage(text, clientId, combinedCancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -598,11 +628,36 @@ namespace IqraInfrastructure.Managers.Conversation
                 ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs("Error processing text: " + ex.Message, ex));
             }
         }
+        private async Task SendLLMMessage(string text, string? clientId, CancellationToken cancellationToken)
+        {
+            _currentClientId = clientId;
+            if (clientId != null)
+            {
+                _clientContextMap[clientId] = text;
+            }
+
+            _llmService.AddUserMessage($"customer_query: {text}");
+
+            var sessionFilledPrompt = await _systemPromptGenerator.FillSessionInformationInPrompt(_llmBaseSystemPrompt, _conversationSessionManager.PrimaryClientIdentifier(), _currentSessionRoute, _businessAppAgent, _currentLanguageCode);
+            if (!sessionFilledPrompt.Success)
+            {
+                _logger.LogError(sessionFilledPrompt.Message, "Error filling session information in prompt for AI Agent {AgentId}", _agentId);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs(sessionFilledPrompt.Message, new Exception(sessionFilledPrompt.Message)));
+
+                _llmService.SetSystemPrompt(_llmBaseSystemPrompt);
+            }
+            else
+            {
+                _llmService.SetSystemPrompt(sessionFilledPrompt.Data);
+            }
+
+            LLMTask = _llmService.ProcessInputAsync(cancellationToken);
+        }
         private async Task CheckIfInterruptible(object? sender, object responseObj, string spokenSoFar, string customerOverlapText, string? clientId, CancellationToken cancellationToken)
         {
             // TODO this could be problematic if more than one interruption is called, fix this
             // solution, assign ids to each request/response and check if the interruption is for that one
-            if (!_currentResponseDurationSpeakingStarted.HasValue)
+            if (!_currentResponseDurationSpeakingStarted.HasValue || _currentResponseDurationSpeakingStarted.Value.Add(_currentResponseDuration) >= DateTime.UtcNow)
             {
                 _logger.LogInformation("Interruption result came after the text was spoken, so we are ignoring it");
 
@@ -649,28 +704,30 @@ namespace IqraInfrastructure.Managers.Conversation
 
                     var completeResponse = _responseBuffer.ToString(); // must be before cancel ongoing agent tasks
 
-                    Stopwatch stopwatch = new Stopwatch();
-                    stopwatch.Start();
                     await CancelOnGoingAgentProcessingTask();
-                    stopwatch.Stop();
-                    _logger.LogInformation("CancelOnGoingAgentProcessingTask took {Milliseconds} ms {secodns}s", stopwatch.ElapsedMilliseconds, stopwatch.Elapsed.TotalSeconds);
                   
                     int useLength = Math.Min((spokenSoFar.Length - 1), completeResponse.Length);
                     var modifiedResponse = spokenSoFar + "......(interrupted by customer at this point but expected to speak) " + completeResponse.Substring(useLength);
                     _logger.LogInformation("AI Agent {AgentId} interrupted response: {Response}", _agentId, modifiedResponse);
                     _llmService.AddAssistantMessage(modifiedResponse);
 
-                    _isProcessingInterruption = false;
                     _isResponding = false;
                     _responseBuffer.Clear();
                     _currentResponseBufferRead = 0;
                     _interruptResponseBuffer.Clear();
+                    _isProcessingInterruption = false;
+
+                    // Ensure VAD state doesn't trigger immediate fade-in if user stops right after
+                    _isUserSpeakingVAD = false;
 
                     await ProcessTextAsync(customerOverlapText, clientId, cancellationToken);
                 }
                 else
                 {
+                    await StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(200));
+         
                     _interruptResponseBuffer.Clear();
+                    _isProcessingInterruption = false;
                 }
             }
         }
@@ -904,19 +961,16 @@ namespace IqraInfrastructure.Managers.Conversation
             var backgroundShortSpan = MemoryMarshal.Cast<byte, short>(backgroundSpan);
             var mixedShortSpan = MemoryMarshal.Cast<byte, short>(mixedSpan);
 
+            // Get the CURRENT volume factor
+            float agentVolume = _currentAgentVolumeFactor; // Read the volatile field
+
             for (int i = 0; i < mixedShortSpan.Length; i++)
             {
-                short speechSample = (i < speechShortSpan.Length) ? speechShortSpan[i] : (short)0;
+                short speechSample = (i < speechShortSpan.Length) ? (short)(speechShortSpan[i] * agentVolume) : (short)0;
                 short backgroundSample = (i < backgroundShortSpan.Length) ? (short)(backgroundShortSpan[i] * _backgroundMusicVolume) : (short)0;
 
-
                 // Simple averaging mixing (can clip)
-                int mixedSample = (speechSample / 2) + (backgroundSample / 2);
-
-
-                // Additive mixing with clipping (prevents excessive volume reduction)
-                // int mixedSample = speechSample + backgroundSample;
-
+                int mixedSample = speechSample + backgroundSample;
 
                 // Clamp the mixed sample to short range to prevent overflow/clipping artifacts
                 mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
@@ -943,6 +997,17 @@ namespace IqraInfrastructure.Managers.Conversation
                             _logger.LogError(ex, "Agent {AgentId}: Error writing audio data to STT service.", _agentId);
                         }
                     }
+                    if (_vadService != null)
+                    {
+                        try
+                        {
+                            _vadService.ProcessAudio(audioData.AsMemory());
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Agent {AgentId}: Error processing audio in VAD service.", _agentId);
+                        }
+                    }
                 }
             }
             catch (OperationCanceledException) when (_conversationCTS!.Token.IsCancellationRequested)
@@ -961,8 +1026,132 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private void OnRecognizingReceived(object? sender, object e)
         {
-            Console.WriteLine("Recoginization recieved");
-            // lower the volume of the agent speaking if it is by clamping
+            // do nothing
+        }
+        private async void OnVoiceActivityChanged(object? sender, VadEventArgs e)
+        {
+            _logger.LogInformation("Agent {AgentId}: VAD detected {State}", _agentId, e.IsSpeechDetected ? "Speech" : "Silence");
+            _isUserSpeakingVAD = e.IsSpeechDetected;
+
+            if (!_isResponding)
+            {
+                // If user stops speaking while agent wasn't responding, ensure volume is normal
+                if (!_isUserSpeakingVAD && _currentAgentVolumeFactor < 1.0f)
+                {
+                    await StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(100)); // Fast fade back to normal
+                }
+                _userSpeechStartTime = null;
+                CancelVADInterruptTimer();
+                return;
+            }
+
+            // if Agent IS responding
+            if (e.IsSpeechDetected) // User started speaking
+            {
+                _userSpeechStartTime = DateTime.UtcNow;
+                if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
+                {
+                    // Start fade out (e.g., to 10% volume over 1 second)
+                    await StartVolumeFadeAsync(0.1f, TimeSpan.FromSeconds(1));
+                    // todo so if the given seconds above has passed, we will just pause the audio being sent to the client
+                    // while also taking this break time and adding it to _currentResponseDuration, but remember, LLMCOMPLETEHandler will set isResponding as false and most of the places we check first is respond and then check how much left to speak
+                    // in that case, we will always get the result from checkifinterruptible, maybe we can check if the timer has passed completely 
+                    _logger.LogInformation("Agent {AgentId}: User started speaking (VAD), fading out agent and preparing for AI interrupt check.", _agentId);
+                }
+                else if (_currentConversationType == AgentConversationTypeENUM.InterruptibleViaVAD)
+                {
+                    int interruptMs = _currentSessionRoute.Agent.InterruptibleConversationAudioActivityDurationMS.Value;
+                    await StartVolumeFadeAsync(0.1f, TimeSpan.FromMilliseconds(interruptMs));
+
+                    StartVADInterruptTimer(TimeSpan.FromMilliseconds(interruptMs));
+                    _logger.LogInformation("Agent {AgentId}: User started speaking (VAD), fading out agent over {ms}ms and starting VAD interrupt timer.", _agentId, interruptMs);
+                }
+            }
+            else // User stopped speaking
+            {
+                _userSpeechStartTime = null;
+                CancelVADInterruptTimer();
+
+                if (_currentAgentVolumeFactor < 1.0f && !_isProcessingInterruption) 
+                {
+                    _logger.LogInformation("Agent {AgentId}: User stopped speaking (VAD), fading agent back in.", _agentId);
+                    await StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(200)); // Quick fade in
+                }
+            }
+        }
+        private void StartVADInterruptTimer(TimeSpan interruptDelay)
+        {
+            CancelVADInterruptTimer();
+
+            _vadInterruptTimerCTS = new CancellationTokenSource();
+            var token = _vadInterruptTimerCTS.Token;
+
+            _logger.LogDebug("Agent {AgentId}: Starting VAD interrupt timer for {Delay}.", _agentId, interruptDelay);
+
+            _vadInterruptTimerTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(interruptDelay, token);
+
+                    // Timer completed without cancellation
+                    if (!token.IsCancellationRequested && _isUserSpeakingVAD && _isResponding)
+                    {
+                        _logger.LogInformation("Agent {AgentId}: VAD interrupt timer expired while user speaking. Interrupting agent.", _agentId);
+
+                        // Fade out completely and cancel speech
+                        await StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(50));
+
+                        // Get Current Response Before Cancellation
+                        string textSentToTTS = _responseBuffer.ToString(0, Math.Min(_currentResponseBufferRead, _responseBuffer.Length));
+                        TimeSpan elapsedTime = DateTime.UtcNow - _currentResponseDurationSpeakingStarted.Value;
+                        double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _currentResponseDuration.TotalSeconds, 0.0, 1.0);
+                        int spokenLength = (int)(textSentToTTS.Length * proportionSpoken);
+                        var currentSpokenResponse = textSentToTTS.Substring(0, spokenLength);
+                        int useLength = Math.Min((currentSpokenResponse.Length - 1), textSentToTTS.Length);
+
+                        await CancelOnGoingAgentProcessingTask();
+                        await CancelCurrentSpeechPlaybackAsync();
+
+                        // Log interruption
+                        var modifiedResponse = currentSpokenResponse + "......(interrupted by customer at this point but expected to speak) " + textSentToTTS.Substring(useLength);
+                        _logger.LogInformation("AI Agent {AgentId} interrupted response: {Response}", _agentId, modifiedResponse);
+                        _llmService.AddAssistantMessage(modifiedResponse);
+
+                        // Reset state
+                        _isResponding = false;
+                        _responseBuffer.Clear();
+                        _currentResponseBufferRead = 0;
+                        _interruptResponseBuffer.Clear();
+                        _isUserSpeakingVAD = false;
+
+                        await Task.Delay(100);
+                        if (_currentIgnoredInterruptMessage != null)
+                        {
+                            var dupeText = _currentIgnoredInterruptMessage.ToString();
+                            _currentIgnoredInterruptMessage = null;
+                            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _conversationCTS.Token).Token;
+                            await SendLLMMessage(dupeText, null, combinedCancellationToken);// todo wrong clientid
+                        }
+                    }
+                    else if (token.IsCancellationRequested)
+                    {
+                        _logger.LogDebug("Agent {AgentId}: VAD interrupt timer cancelled before expiry.", _agentId);
+                    }
+                    else if (!_isUserSpeakingVAD)
+                    {
+                        _logger.LogDebug("Agent {AgentId}: VAD interrupt timer expired, but user stopped speaking.", _agentId);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogDebug("Agent {AgentId}: VAD interrupt timer task cancelled.", _agentId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Agent {AgentId}: Error in VAD interrupt timer task.", _agentId);
+                }
+            }, token);
         }
         private async void OnTranscriptionResultReceived(object? sender, string text)
         {
@@ -1435,7 +1624,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 return (false, TimeSpan.Zero);
             }
         }
-
         private async Task SynthesizeAndPlaySpeechAsync(string text, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
@@ -1471,12 +1659,54 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Handle error - maybe log, maybe try fallback?
             }
         }
+        private async Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration)
+        {
+            _volumeFadeCTS?.Cancel(); // Cancel any existing fade
+            _volumeFadeCTS?.Dispose();
+            _volumeFadeCTS = new CancellationTokenSource();
+            var token = _volumeFadeCTS.Token;
+
+            float startFactor = _currentAgentVolumeFactor;
+            float target = Math.Clamp(targetFactor, 0.0f, 1.0f);
+            var fadeStartTime = DateTime.UtcNow;
+
+            _logger.LogDebug("Agent {AgentId}: Starting volume fade from {StartFactor} to {TargetFactor} over {Duration}", _agentId, startFactor, target, duration);
+
+            _volumeFadeTask = Task.Run(async () =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    var elapsed = DateTime.UtcNow - fadeStartTime;
+                    float progress = (float)Math.Clamp(elapsed.TotalMilliseconds / duration.TotalMilliseconds, 0.0, 1.0);
+
+                    // Linear interpolation (Lerp)
+                    _currentAgentVolumeFactor = startFactor + (target - startFactor) * progress;
+
+                    if (progress >= 1.0f)
+                    {
+                        _currentAgentVolumeFactor = target; // Ensure exact target
+                        _logger.LogDebug("Agent {AgentId}: Volume fade completed at {TargetFactor}", _agentId, target);
+                        break; // Exit loop
+                    }
+
+                    // Adjust delay for smoother animation, prevent busy loop
+                    await Task.Delay(20, token); // Check ~50 times per second
+                }
+                // Ensure factor is set even if cancelled mid-fade (optional, could leave it part-way)
+                // if (token.IsCancellationRequested) { _logger.LogDebug("Volume fade cancelled."); }
+
+            }, token);
+
+            // Optional: Wait briefly for the task to start setting the value? Maybe not needed.
+            // await Task.Yield();
+        }
 
         // Agent Response Cancellation
         private async Task CancelCurrentSpeechPlaybackAsync()
         {
             _logger.LogDebug("Agent {AgentId}: Cancelling current speech playback.", _agentId);
 
+            _volumeFadeCTS?.Cancel();
             _audioSendingCTS.Cancel();
 
             while (_speechAudioQueue.TryTake(out _)) { }
@@ -1484,12 +1714,14 @@ namespace IqraInfrastructure.Managers.Conversation
             _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
             _currentSpeechPosition = 0;
 
-            await Task.Delay(50);
+            await Task.Delay(20);
             if (_audioSendingCTS.IsCancellationRequested)
             {
                 _audioSendingCTS.Dispose();
                 _audioSendingCTS = new CancellationTokenSource();
             }
+
+            CancelVADInterruptTimer();
         }
         private async Task CancelOnGoingAgentProcessingTask()
         {
@@ -1526,7 +1758,16 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _audioSendingTask = Task.Run(ProcessAudioSpeakingQueueAsync, _audioSendingCTS.Token);
         }
-
+        private void CancelVADInterruptTimer()
+        {
+            if (_vadInterruptTimerCTS != null && !_vadInterruptTimerCTS.IsCancellationRequested)
+            {
+                _logger.LogDebug("Agent {AgentId}: Cancelling VAD interrupt timer.", _agentId);
+                _vadInterruptTimerCTS.Cancel();
+                _vadInterruptTimerCTS.Dispose();
+                _vadInterruptTimerCTS = null;
+            }
+        }
         // Controls To End Agent Life
         public async Task ShutdownAsync(string reason)
         {
@@ -1548,6 +1789,8 @@ namespace IqraInfrastructure.Managers.Conversation
                     _conversationCTS?.Cancel();
                     _audioSendingCTS?.Cancel();
                     _currentLLMProcessingTaskCTS?.Cancel();
+                    _volumeFadeCTS?.Cancel();
+                    _vadInterruptTimerCTS?.Cancel();
                 }
                 catch (ObjectDisposedException) {}
                 catch (Exception ex) { _logger.LogError(ex, "Agent {AgentId}: Error cancelling tokens during shutdown.", _agentId); }
@@ -1582,6 +1825,14 @@ namespace IqraInfrastructure.Managers.Conversation
                         _interruptingLLMService.ClearMessageStreamed();
                     }
                     catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing Interrupt LLM events.", _agentId); }
+                }
+
+                if (_vadService != null)
+                {
+                    try { _vadService.VoiceActivityChanged -= OnVoiceActivityChanged; }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing VAD events.", _agentId); }
+                    try { _vadService.Dispose(); }
+                    catch (Exception ex) { _logger.LogError(ex, "Agent {AgentId}: Error disposing VAD service during shutdown.", _agentId); }
                 }
 
                 OnDTMFRecieved = null;
@@ -1631,7 +1882,10 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 try { _conversationCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing conversation CTS.", _agentId); }
                 try { _audioSendingCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing audio sending CTS.", _agentId); }
-                try { _currentLLMProcessingTaskCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing LLM CTS.", _agentId); }
+                try { _currentLLMProcessingTaskCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing LLM CTS.", _agentId); }               
+                try { _volumeFadeCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing volume fade CTS.", _agentId); }          
+                try { _vadInterruptTimerCTS?.Dispose(); } catch (Exception ex) { _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing vad interrupting timer CTS.", _agentId); }
+
                 _audioQueue?.Dispose();
                 _speechAudioQueue?.Dispose();
                 _llmResponseLock?.Dispose();
