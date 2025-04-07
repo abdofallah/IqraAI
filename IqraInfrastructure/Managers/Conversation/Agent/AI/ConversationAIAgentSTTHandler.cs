@@ -8,6 +8,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
     {
         public event Func<string, Task>? TranscriptionReceived;
 
+
         private readonly ILogger<ConversationAIAgentSTTHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly STTProviderManager _sttProviderManager;
@@ -82,8 +83,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private void OnRecognizingReceived(object? sender, object e)
         {
-            // Handle recognizing if needed (e.g., raise a specific event)
-            // _logger.LogTrace("Agent {AgentId}: STT recognizing: {Data}", _agentState.AgentId, e?.ToString());
+            _agentState.IsSTTRecognizing = true;
         }
 
         private async void OnTranscriptionResultReceived(object? sender, string text)

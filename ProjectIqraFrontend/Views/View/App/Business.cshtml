@@ -419,17 +419,21 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label btn-ic-span-align" for="editRouteAgentConversationTypeSelect">
-                                    <span>Conversation Type </span>
+                                    <span>Interruption Type </span>
 
                                     <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation type of the agent.<br><strong>Interruptible</strong>, Agent is interruptible by user.<br><strong>Turn by Turn</strong>, User and agent speak turn by turn.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <select class="form-select" id="editRouteAgentConversationTypeSelect">
+                                <select class="form-select" id="editRouteAgentInterruptionTypeSelect">
                                     <option value="0" selected>Turn by Turn</option>
                                     <option value="1">Interruptible via VAD (Voice Activity Detection)</option>
                                     <option value="2">Interruptible via AI (LLM decides)</option>
+                                    <option value="3">Interruptible via Response (STT transcription)</option>
                                 </select>
+                                <div class="w-100 route-conversation-type-box" box-type="turnbyturn">
+                                    // TODO
+                                </div>
                                 <div class="w-100 route-conversation-type-box" box-type="interruptibleviavad">
                                     <div class="">
                                         <label class="form-label btn-ic-span-align" for="editRouteAgentConversationTypeInterruptibleAudioActivityDuration">

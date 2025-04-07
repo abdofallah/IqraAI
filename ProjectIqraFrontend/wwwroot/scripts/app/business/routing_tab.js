@@ -1,8 +1,9 @@
 /** Global Variables **/
-const AgentConversationTypeENUM = {
+const AgentInterruptionTypeENUM = {
 	TurnByTurn: 0,
 	InterruptibleViaVAD: 1,
-	InterruptibleViaAI: 2
+	InterruptibleViaAI: 2,
+	InterruptibleViaResponse: 3
 }
 
 /** Dynamic Variables **/
@@ -93,8 +94,9 @@ const editSelectedRouteAgentName = routingTab.find("#editSelectedRouteAgentName"
 
 const editRouteAgentDefaultScriptSelect = routingTab.find("#editRouteAgentDefaultScriptSelect");
 
-const editRouteAgentConversationTypeSelect = routingTab.find("#editRouteAgentConversationTypeSelect");
+const editRouteAgentInterruptionTypeSelect = routingTab.find("#editRouteAgentInterruptionTypeSelect");
 
+const routeAgentInterruptTurnByTurnBox = routingTab.find('.route-conversation-type-box[box-type="turnbyturn"]');
 const routeAgentInterruptViaVadBox = routingTab.find('.route-conversation-type-box[box-type="interruptibleviavad"]');
 const routeAgentInterruptViaAIBox = routingTab.find('.route-conversation-type-box[box-type="interruptibleviaai"]');
 
@@ -238,8 +240,10 @@ function createDefaultRouteObject() {
 		agent: {
 			selectedAgentId: "",
 			openingScriptId: "",
-			conversationType: {
-				value: 0,
+			interrupton: {
+				type: {
+					value: 0,
+				}
 			},
 			interruptibleConversationAudioActivityDurationMS: null,
 			UseCurrentAgentLLMForInterrupting: null,
@@ -311,7 +315,7 @@ function resetAndEmptyRouteManagerTab() {
 	editRouteAgentDefaultScriptSelect.empty();
 	editRouteAgentDefaultScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
 	editRouteAgentDefaultScriptSelect.prop("disabled", true);
-	editRouteAgentConversationTypeSelect.val(AgentConversationTypeENUM.TurnByTurn).change();
+	editRouteAgentInterruptionTypeSelect.val(AgentInterruptionTypeENUM.TurnByTurn).change();
 	routeAgentInterruptViaVadBox.addClass("d-none");
 	routeAgentInterruptViaAIBox.addClass("d-none");
 	editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val(300);
@@ -485,16 +489,21 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		changes.agent = {
 			selectedAgentId: currentRouteAgentSelectedId,
 			openingScriptId: editRouteAgentDefaultScriptSelect.find("option:selected").val(),
-			conversationType: parseInt(editRouteAgentConversationTypeSelect.val()),
+			interruption: {
+				type: parseInt(editRouteAgentInterruptionTypeSelect.val())
+			},
 			timezones: editRouteNumberTimezoneSelect.val() ? [editRouteNumberTimezoneSelect.val()] : [],
 			callerNumberInContext: editRouteAgentCallerNumberInContextCheck.is(":checked"),
 			routeNumberInContext: editRouteAgentRouteNumberInContextCheck.is(":checked"),
 		};
 
-		if (changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaVAD) {
+		if (changes.agent.interruption.type == AgentInterruptionTypeENUM.TurnByTurn) {
+			// todo 
+		}
+		else if (changes.agent.interruption.type == AgentInterruptionTypeENUM.InterruptibleViaVAD) {
 			changes.agent.interruptibleConversationAudioActivityDurationMS = parseInt(editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val());
 		}
-		else if (changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaAI) {
+		else if (changes.agent.interruption.type == AgentInterruptionTypeENUM.InterruptibleViaAI) {
 			// todo via ai bool and integration data
 		}
 
@@ -502,7 +511,7 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		if (
 			changes.agent.selectedAgentId !== ManageCurrentRouteData.agent.selectedAgentId ||
 			changes.agent.openingScriptId !== ManageCurrentRouteData.agent.openingScriptId ||
-			changes.agent.conversationType !== ManageCurrentRouteData.agent.conversationType.value ||
+			changes.agent.interruption.type !== ManageCurrentRouteData.agent.interruption.type.value ||
 			changes.agent.callerNumberInContext !== ManageCurrentRouteData.agent.callerNumberInContext ||
 			changes.agent.routeNumberInContext !== ManageCurrentRouteData.agent.routeNumberInContext
 		) {
@@ -511,14 +520,21 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 		}
 
 		if (
-			changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaVAD &&
+			changes.agent.interruption.type == AgentInterruptionTypeENUM.TurnByTurn &&
+			false // todo
+		) {
+			hasChanges = true;
+			return;
+		}
+		else if (
+			changes.agent.interruption.type == AgentInterruptionTypeENUM.InterruptibleViaVAD &&
 			changes.agent.interruptibleConversationAudioActivityDurationMS !== ManageCurrentRouteData.agent.interruptibleConversationAudioActivityDurationMS
 		) {
 			hasChanges = true;
 			return;
 		}
 		else if (
-			changes.agent.conversationType == AgentConversationTypeENUM.InterruptibleViaAI
+			changes.agent.interruption.type == AgentInterruptionTypeENUM.InterruptibleViaAI
 			&&
 			false // todo via ai bool and integration data
 		) {
@@ -831,8 +847,8 @@ function validateRoutingTab(onlyRemove = true) {
 			editRouteAgentDefaultScriptSelect.removeClass("is-invalid");
 		}
 
-		let selectedConversationType = parseInt(editRouteAgentConversationTypeSelect.val());
-		if (selectedConversationType === AgentConversationTypeENUM.InterruptibleViaVAD) {
+		let selectedConversationType = parseInt(editRouteAgentInterruptionTypeSelect.val());
+		if (selectedConversationType === AgentInterruptionTypeENUM.InterruptibleViaVAD) {
 			const durationValue = parseInt(editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val());
 			if (isNaN(durationValue) || durationValue < 1) {
 				validated = false;
@@ -845,7 +861,7 @@ function validateRoutingTab(onlyRemove = true) {
 				editRouteAgentConversationTypeInterruptibleAudioActivityDuration.removeClass("is-invalid");
 			}
 		}
-		else if (selectedConversationType === AgentConversationTypeENUM.InterruptibleViaAI) {
+		else if (selectedConversationType === AgentInterruptionTypeENUM.InterruptibleViaAI) {
 			// todo via ai bool check and integration data check
 		}
 
@@ -1009,15 +1025,19 @@ function fillRoutingManagerTab() {
 	}
 
 	// Set conversation type
-	const conversationType = ManageCurrentRouteData.agent.conversationType.value;
-	editRouteAgentConversationTypeSelect.val(conversationType);
+	const conversationType = ManageCurrentRouteData.agent.interruption.type.value;
+	editRouteAgentInterruptionTypeSelect.val(conversationType);
 
-	if (conversationType === AgentConversationTypeENUM.InterruptibleViaVAD)
+	if (conversationType === AgentInterruptionTypeENUM.TurnByTurn) {
+		routeAgentInterruptTurnByTurnBox.removeClass("d-none");
+		// todo bool
+	}
+	else if (conversationType === AgentInterruptionTypeENUM.InterruptibleViaVAD)
 	{
 		routeAgentInterruptViaVadBox.removeClass("d-none");
 		editRouteAgentConversationTypeInterruptibleAudioActivityDuration.val(ManageCurrentRouteData.agent.interruptibleConversationAudioActivityDurationMS);
 	}
-	else if (conversationType === AgentConversationTypeENUM.InterruptibleViaAI)
+	else if (conversationType === AgentInterruptionTypeENUM.InterruptibleViaAI)
 	{
 		routeAgentInterruptViaAIBox.removeClass("d-none");
 		// TODO bool and via ai integration
@@ -1552,25 +1572,33 @@ function initRoutingTab() {
 				validateRoutingTab(true);
 			});
 
-			editRouteAgentConversationTypeSelect.on("change", (event) => {
-				let selectedValue = editRouteAgentConversationTypeSelect.val();
+			editRouteAgentInterruptionTypeSelect.on("change", (event) => {
+				let selectedValue = editRouteAgentInterruptionTypeSelect.val();
 
 				if (!selectedValue) return;
 
 				selectedValue = parseInt(selectedValue);
 
-				if (selectedValue == AgentConversationTypeENUM.TurnByTurn) {
+				if (selectedValue == AgentInterruptionTypeENUM.TurnByTurn) {
+					routeAgentInterruptTurnByTurnBox.removeClass("d-none");
 					routeAgentInterruptViaVadBox.addClass("d-none");
 					routeAgentInterruptViaAIBox.addClass("d-none");
 				}
-				else if (selectedValue === AgentConversationTypeENUM.InterruptibleViaVAD) {
+				else if (selectedValue === AgentInterruptionTypeENUM.InterruptibleViaVAD) {
 					routeAgentInterruptViaVadBox.removeClass("d-none");
 					routeAgentInterruptViaAIBox.addClass("d-none");
+					routeAgentInterruptTurnByTurnBox.addClass("d-none");
 				}
-				else if (selectedValue === AgentConversationTypeENUM.InterruptibleViaAI) {
+				else if (selectedValue === AgentInterruptionTypeENUM.InterruptibleViaAI) {
 					routeAgentInterruptViaVadBox.addClass("d-none");
 					routeAgentInterruptViaAIBox.removeClass("d-none");
+					routeAgentInterruptTurnByTurnBox.addClass("d-none");
 				}
+				else if (selectedValue === AgentInterruptionTypeENUM.InterruptibleViaResponse) {
+					routeAgentInterruptViaVadBox.addClass("d-none");
+					routeAgentInterruptViaAIBox.addClass("d-none");
+					routeAgentInterruptTurnByTurnBox.addClass("d-none");
+				} 
 
 				checkRoutingTabHasChanges();
 				validateRoutingTab(true);

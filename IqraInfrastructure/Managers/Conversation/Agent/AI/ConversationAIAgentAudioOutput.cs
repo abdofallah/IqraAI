@@ -1,16 +1,11 @@
 ﻿using IqraCore.Entities.Conversation.Events; // For ConversationAudioGeneratedEventArgs
-using IqraCore.Interfaces.Conversation; // For ITTSService
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS; // For TTSProviderManager
 using IqraInfrastructure.Repositories.Business; // For BusinessAgentAudioRepository
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic; // For List<T>
 using System.Runtime.InteropServices; // For MemoryMarshal
-using System.Threading;
-using System.Threading.Tasks;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
@@ -56,16 +51,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         // Background Audio State
         private int _backgroundAudioPosition = 0;
-        // BackgroundAudioData now lives in _agentState
 
         // Current Speech Playback State
         private ReadOnlyMemory<byte> _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+        private TimeSpan _currentSpeechDuration = TimeSpan.Zero;
         private int _currentSpeechPosition = 0;
 
         // Volume Fading State (managed here, affects _agentState.CurrentAgentVolumeFactor)
         private CancellationTokenSource? _volumeFadeCTS = null;
         private Task? _volumeFadeTask = null;
-
 
         // TTS Specific Task Management
         private CancellationTokenSource? _currentTtsTaskCTS = null;
@@ -98,7 +92,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
             _logger.LogInformation("AudioOutput module initialized for Agent {AgentId}.", _agentState.AgentId);
         }
-
         public async Task ReInitializeForLanguageAsync(CancellationToken agentCTS) // Pass token if needed
         {
             _logger.LogInformation("Agent {AgentId}: Re-initializing Audio Output Handler for new language.", _agentState.AgentId);
@@ -106,7 +99,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             await InitializeTTSAsync(); // Re-initialize TTS service
                                         // Background music usually doesn't need reloading on language change
         }
-
         private async Task InitializeTTSAsync()
         {
             if (_agentState.BusinessAppAgent == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode) || _agentState.AgentConfiguration == null)
@@ -206,35 +198,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     return;
                 }
 
-#if DEBUG
-                try
-                {
-                    // Define a path - C:\temp\ is common, adjust as needed
-                    // Make sure the directory exists!
-                    string debugDir = @"C:\temp\AudioDebug"; // Or use Path.GetTempPath()
-                    Directory.CreateDirectory(debugDir); // Ensure the directory exists
-
-                    // Create a descriptive filename
-                    string safeFileName = $"{_agentState.AgentId}_{audioUrl.Replace(":", "_").Replace("/", "_")}.raw"; // Sanitize fileId a bit
-                    string debugFilePath = Path.Combine(debugDir, safeFileName);
-
-                    _logger.LogWarning("DEBUG: Saving converted raw PCM data for Agent {AgentId}, File ID {FileId} to: {DebugFilePath}",
-                        _agentState.AgentId, audioUrl, debugFilePath);
-
-                    // Write the raw bytes using FileStream for efficiency with ReadOnlyMemory<byte>
-                    using var fileStream = new FileStream(debugFilePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
-                    await fileStream.WriteAsync(rawPcmData);
-
-                    _logger.LogWarning("DEBUG: Successfully saved raw PCM data to {DebugFilePath}", debugFilePath);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "DEBUG: Failed to save raw PCM debug file for Agent {AgentId}, File ID {FileId}", _agentState.AgentId, audioUrl);
-                    // Don't stop the main process, just log the debug saving error
-                }
-#endif
-                // --- End DEBUG section ---
-
                 // Success
                 _agentState.BackgroundAudioData = rawPcmData;
                 _logger.LogInformation("Agent {AgentId}: Background audio loaded and converted successfully ({Length} bytes of raw PCM).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
@@ -252,10 +215,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task<(bool Success, TimeSpan Duration)> SynthesizeAndQueueSpeechAsync(string text, CancellationToken externalToken) // Called by LLM Handler
         {
-            // --- Move logic from original SynthesizeSpeechAsync here ---
-            // Use _agentState.TTSService
-            // Create SpeechSegment
-            // Add to _speechAudioQueue
             if (string.IsNullOrWhiteSpace(text) || _agentState.TTSService == null)
             {
                 _logger.LogWarning("Agent {AgentId}: Cannot synthesize empty text or TTS service is null.", _agentState.AgentId);
@@ -284,6 +243,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     _logger.LogWarning("Agent {AgentId}: TTS service returned null or empty audio/duration for text: \"{Text}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                     return (false, TimeSpan.Zero);
                 }
+
+                _agentState.CurrentResponseDuration = _agentState.CurrentResponseDuration.Add(audioDuration.Value);
 
                 var segment = new SpeechSegment(audioData, audioDuration.Value);
 
@@ -373,6 +334,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 bool playbackWasComplete = true; // Assume initially complete
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    _agentState.AudioDurationLeftToPlay = CurrentlyLeftToPlay();
+
                     byte[]? chunkToSend = null;
                     bool isSpeechChunk = false;
                     bool segmentFinished = false;
@@ -396,6 +359,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             {
                                 _logger.LogTrace("Agent {AgentId}: Finished sending speech segment.", _agentState.AgentId);
                                 _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                                _currentSpeechDuration = TimeSpan.Zero;
                                 _currentSpeechPosition = 0;
                                 segmentFinished = true; // Mark that a segment just finished
                             }
@@ -403,6 +367,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         else // Should not happen if logic is correct
                         {
                             _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                            _currentSpeechDuration = TimeSpan.Zero;
                             _currentSpeechPosition = 0;
                             segmentFinished = true; // Treat as finished
                         }
@@ -416,6 +381,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             playbackWasComplete = false; // Starting new speech
                             _logger.LogTrace("Agent {AgentId}: Starting new speech segment ({Duration}).", _agentState.AgentId, nextSegment.Duration);
                             _currentSpeechSegment = nextSegment.AudioData;
+                            _currentSpeechDuration = nextSegment.Duration;
                             _currentSpeechPosition = 0;
 
                             // Immediately process the first chunk of the new segment
@@ -432,6 +398,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                                 {
                                     _logger.LogTrace("Agent {AgentId}: Finished sending short speech segment immediately.", _agentState.AgentId);
                                     _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                                    _currentSpeechDuration = TimeSpan.Zero;
                                     _currentSpeechPosition = 0;
                                     segmentFinished = true;
                                 }
@@ -440,6 +407,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             {
                                 _logger.LogWarning("Agent {AgentId}: Dequeued speech segment has zero length.", _agentState.AgentId);
                                 _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
+                                _currentSpeechDuration = TimeSpan.Zero;
                                 segmentFinished = true;
                             }
                         }
@@ -510,10 +478,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private ReadOnlyMemory<byte> GetNextBackgroundChunk(int desiredChunkSize)
         {
-            // --- Move logic from original GetNextBackgroundChunk here ---
-            // Use _agentState.IsBackgroundMusicEnabled, _agentState.BackgroundAudioData
-            // Use _backgroundAudioPosition (local state for this module)
-
             if (!_agentState.IsBackgroundMusicEnabled || !_agentState.IsBackgroundMusicLoaded || _agentState.BackgroundAudioData.IsEmpty)
             {
                 return ReadOnlyMemory<byte>.Empty;
@@ -586,13 +550,13 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             var mixedShortSpan = MemoryMarshal.Cast<byte, short>(mixedSpan);
 
-            float agentVolume = _agentState.CurrentAgentVolumeFactor; // Read volatile state
-            float backgroundVolume = _agentState.BackgroundMusicVolume;
+            float agentVolume = (float)_agentState.CurrentAgentVolumeFactor; // Read volatile state
+            float backgroundVolume = (float)_agentState.BackgroundMusicVolume;
 
             for (int i = 0; i < mixedShortSpan.Length; i++)
             {
-                short speechSample = i < speechShortSpan.Length ? (short)(speechShortSpan[i] * agentVolume) : (short)0;
-                short backgroundSample = i < backgroundShortSpan.Length ? (short)(backgroundShortSpan[i] * backgroundVolume) : (short)0;
+                short speechSample = i < speechShortSpan.Length ? (short)((float)speechShortSpan[i] * (float)agentVolume) : (short)0;
+                short backgroundSample = i < backgroundShortSpan.Length ? (short)((float)backgroundShortSpan[i] * (float)backgroundVolume) : (short)0;
 
                 int mixedSample = speechSample + backgroundSample;
                 mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
@@ -603,13 +567,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration)
         {
-            // --- Move logic from original StartVolumeFadeAsync here ---
-            // Manages _volumeFadeCTS, _volumeFadeTask
-            // Updates _agentState.CurrentAgentVolumeFactor
-
             _volumeFadeCTS?.Cancel(); // Cancel existing fade
             _volumeFadeCTS?.Dispose();
-            // Link to the audio sending CTS so fade stops if sending stops
+            if (_volumeFadeTask != null)
+            {
+                _volumeFadeTask?.Wait(500);
+            }
             _volumeFadeCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token);
             var token = _volumeFadeCTS.Token;
 
@@ -630,7 +593,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         float progress = (float)Math.Clamp(elapsed.TotalMilliseconds / duration.TotalMilliseconds, 0.0, 1.0);
 
                         // Linear interpolation (Lerp)
-                        _agentState.CurrentAgentVolumeFactor = startFactor + (target - startFactor) * progress;
+                        var currentCalcualted = (startFactor + (target - startFactor)) * progress;
+                        _agentState.CurrentAgentVolumeFactor = currentCalcualted;
 
                         if (progress >= 1.0f)
                         {
@@ -638,7 +602,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             _logger.LogTrace("Agent {AgentId}: Volume fade completed at {TargetFactor:F2}", _agentState.AgentId, target);
                             break;
                         }
-                        await Task.Delay(20, token); // Check ~50 times per second
+                        await Task.Delay(10, token); // Check ~50 times per second
                     }
                 }
                 catch (OperationCanceledException)
@@ -716,6 +680,23 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 }
                 _agentState.TTSService = null;
             }
+        }
+
+        public TimeSpan CurrentlyLeftToPlay()
+        {
+            TimeSpan totalDuration = TimeSpan.Zero;
+            foreach (var segment in _speechAudioQueue)
+            {
+                totalDuration += segment.Duration;
+            }
+
+            if (_currentSpeechSegment.Length != 0 && _currentSpeechDuration != TimeSpan.Zero)
+            {
+                int currentSegmentDurationLeft = (int)((int)_currentSpeechDuration.TotalMilliseconds * (int)_currentSpeechPosition) / (int)_currentSpeechSegment.Length;
+                totalDuration = totalDuration.Add(TimeSpan.FromMilliseconds((int)currentSegmentDurationLeft));
+            }     
+
+            return totalDuration;
         }
 
         public void Dispose()

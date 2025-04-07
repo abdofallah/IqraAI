@@ -11,12 +11,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
     {
         // Configuration & Identification
         public string AgentId { get; internal set; } = string.Empty;
-        public CancellationToken MasterCTS { get; internal set; } = CancellationToken.None;
+        public CancellationToken MasterCancellationToken { get; internal set; } = CancellationToken.None;
         public ConversationAgentConfiguration? AgentConfiguration { get; internal set; }
         public BusinessApp? BusinessApp { get; internal set; }
         public BusinessAppRoute? CurrentSessionRoute { get; internal set; }
         public BusinessAppAgent? BusinessAppAgent { get; internal set; }
-        public AgentConversationTypeENUM CurrentConversationType { get; internal set; }
+        public AgentInterruptionTypeENUM CurrentConversationType { get; internal set; }
 
         // Language
         public string CurrentLanguageCode { get; internal set; } = string.Empty;
@@ -28,6 +28,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         // Integration & Service Instances (Managed possibly by handlers, but accessible here)
         public BusinessAppIntegration? STTBusinessIntegrationData { get; internal set; }
         public ISTTService? STTService { get; internal set; }
+        public bool IsSTTRecognizing { get; set; } = false;
 
         public BusinessAppIntegration? TTSBusinessIntegrationData { get; internal set; }
         public ITTSService? TTSService { get; internal set; }
@@ -39,17 +40,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public bool IsVadEnabled { get; set; } = false;
         public IVadService? VadService { get; internal set; }
-        public VadOptions? VadOptions { get; internal set; } // VAD config might be needed by Input/Interruption
+        public VadOptions? VadOptions { get; internal set; } 
 
         // Runtime State Flags & Variables
-        public bool IsInitialized { get; internal set; } = false; // Overall agent init state
-        public bool IsResponding { get; set; } = false; // LLM is generating 'response_to_customer'
-        public bool IsExecutingSystemTool { get; set; } = false; // LLM is generating 'execute_system_function'
-        public bool IsExecutingCustomTool { get; set; } = false; // LLM is generating 'execute_custom_function'
-        public bool IsProcessingInterruption { get; set; } = false; // Interruption LLM is running
-        public bool IsUserSpeakingVAD { get; set; } = false; // VAD detection state
-        public bool IsAcceptingSTTAudio { get; set; } = false; // Should input audio go to STT?
-        public bool IsProcessingDTMFAlready { get; set; } = false; // DTMF Handling lock
+        public bool IsInitialized { get; internal set; } = false;
+        public bool IsResponding { get; set; } = false;
+        public bool IsExecutingSystemTool { get; set; } = false;
+        public bool IsRespondingSystemToolRespone { get; set; } = false;
+        public bool IsExecutingCustomTool { get; set; } = false;
+        public bool IsRespondingCustomToolRespone { get; set; } = false;
+        public bool IsProcessingInterruption { get; set; } = false;
+        public bool IsUserSpeakingVAD { get; set; } = false;
+        public bool IsAcceptingSTTAudio { get; set; } = false;
+        public bool IsProcessingDTMFAlready { get; set; } = false;
 
         // Audio Output State
         public float CurrentAgentVolumeFactor { get; set; } = 1.0f; // Volume for mixing
@@ -57,6 +60,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public bool IsBackgroundMusicLoaded { get; internal set; } = false;
         public float BackgroundMusicVolume { get; internal set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
+        public TimeSpan AudioDurationLeftToPlay { get; set; } = TimeSpan.Zero;
 
         // Client Context
         public string? CurrentClientId { get; set; }
@@ -74,8 +78,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public ConversationAIAgentState(string agentId, CancellationToken masterCTS)
         {
+
             AgentId = agentId;
-            MasterCTS = masterCTS;
+            MasterCancellationToken = masterCTS;
         }
     }
 }

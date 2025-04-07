@@ -365,28 +365,53 @@ namespace IqraInfrastructure.Managers.Business
             }
             newBusinessAppRouteData.Agent.OpeningScriptId = openingScriptId;
 
-            if (!agentTabRootElement.TryGetProperty("conversationType", out var conversationTypeProperty))
+            if (!agentTabRootElement.TryGetProperty("interruption", out var interruptionProperty))
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:35";
-                result.Message = "Conversation type not found.";
+                result.Message = "Interruption not found.";
                 return result;
             }
-            if (!conversationTypeProperty.TryGetInt32(out var conversationType))
+            if (!interruptionProperty.TryGetProperty("type", out var interruptionTypeProperty))
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:36";
-                result.Message = "Invalid conversation type value.";
+                result.Message = "Interruption type not found.";
                 return result;
             }
-            if (!Enum.IsDefined(typeof(AgentConversationTypeENUM), conversationType))
+            if (!interruptionTypeProperty.TryGetInt32(out var interruptionType))
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:37";
+                result.Message = "Invalid Interruption type value.";
+                return result;
+            }
+            if (!Enum.IsDefined(typeof(AgentInterruptionTypeENUM), interruptionType))
+            {
+                result.Code = "AddOrUpdateUserBusinessRoute:38";
                 result.Message = "Conversation type not found in enum.";
                 return result;
             }
-            newBusinessAppRouteData.Agent.ConversationType = (AgentConversationTypeENUM)conversationType;
-
-            if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.InterruptibleViaVAD)
+            var interruptionTypeEnum = (AgentInterruptionTypeENUM)interruptionType;
+            if (interruptionTypeEnum == AgentInterruptionTypeENUM.TurnByTurn)
             {
+                if (!interruptionProperty.TryGetProperty("useInterruptedResponseInNextTurn", out var interruptionUseInterruptedResponseInNextTurnProperty))
+                {
+                    result.Code = "AddOrUpdateUserBusinessRoute:36";
+                    result.Message = "UseInterruptedResponseInNextTurn not found.";
+                    return result;
+                }
+                if (interruptionUseInterruptedResponseInNextTurnProperty.ValueKind != JsonValueKind.True && interruptionUseInterruptedResponseInNextTurnProperty.ValueKind != JsonValueKind.False)
+                {
+                    result.Code = "AddOrUpdateUserBusinessRoute:37";
+                    result.Message = "Invalid UseInterruptedResponseInNextTurn value.";
+                    return result;
+                }
+
+                newBusinessAppRouteData.Agent.Interruption = new BusinessAppRouteAgentInterruptionTurnByTurn()
+                {
+                    UseInterruptedResponseInNextTurn = interruptionUseInterruptedResponseInNextTurnProperty.GetBoolean()
+                };
+            }
+            else if (interruptionTypeEnum == AgentInterruptionTypeENUM.InterruptibleViaVAD)
+            { 
                 if (!agentTabRootElement.TryGetProperty("InterruptibleConversationAudioActivityDurationMS", out var interruptibleAudioActivityDurationProperty))
                 {
                     result.Code = "AddOrUpdateUserBusinessRoute:38";
@@ -399,11 +424,44 @@ namespace IqraInfrastructure.Managers.Business
                     result.Message = "Invalid interruptible conversation type words value. (min 1)";
                     return result;
                 }
-                newBusinessAppRouteData.Agent.InterruptibleConversationAudioActivityDurationMS = interruptibleAudioActivityDuration;
+                newBusinessAppRouteData.Agent.Interruption = new BusinessAppRouteAgentInterruptionViaVAD()
+                {
+                    InterruptibleConversationAudioActivityDurationMS = interruptibleAudioActivityDuration
+                };
             }
-            else if (newBusinessAppRouteData.Agent.ConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
+            else if (interruptionTypeEnum == AgentInterruptionTypeENUM.InterruptibleViaAI)
             {
-                // TODO implement via AI bool and integration data
+                if (!interruptionProperty.TryGetProperty("useCurrentAgentLLMForInterrupting", out var interruptionUseCurrentAgentLLMForInterruptingProperty))
+                {
+                    result.Code = "AddOrUpdateUserBusinessRoute:36";
+                    result.Message = "useCurrentAgentLLMForInterrupting not found.";
+                    return result;
+                }
+                if (interruptionUseCurrentAgentLLMForInterruptingProperty.ValueKind != JsonValueKind.True && interruptionUseCurrentAgentLLMForInterruptingProperty.ValueKind != JsonValueKind.False)
+                {
+                    result.Code = "AddOrUpdateUserBusinessRoute:37";
+                    result.Message = "Invalid useCurrentAgentLLMForInterrupting value.";
+                    return result;
+                }
+
+                var viaAIInterruption = new BusinessAppRouteAgentInterruptionViaAI()
+                {
+                    UseCurrentAgentLLMForInterrupting = interruptionUseCurrentAgentLLMForInterruptingProperty.GetBoolean()
+                };
+
+                if (!viaAIInterruption.UseCurrentAgentLLMForInterrupting)
+                {
+                    // TODO get custom integration data and verify
+                    result.Code = "AddOrUpdateUserBusinessRoute:37";
+                    result.Message = "UseCurrentAgentLLMForInterrupting for interruption not implemented yet";
+                    return result;
+                }
+
+                newBusinessAppRouteData.Agent.Interruption = viaAIInterruption;
+            }
+            else if (interruptionTypeEnum == AgentInterruptionTypeENUM.InterruptibleViaResponse)
+            {
+                newBusinessAppRouteData.Agent.Interruption = new BusinessAppRouteAgentInterruptionViaResponse();
             }
 
             if (!agentTabRootElement.TryGetProperty("timezones", out var timezonesProperty))

@@ -98,10 +98,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     {
                         _logger.LogDebug("Agent {AgentId}: Requesting to play end call message.", _agentState.AgentId);
                         await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
-                        // Wait for speech to finish? The orchestrator might need to coordinate this.
-                        // Adding a small delay might be pragmatic but not robust.
-                        // TODO WE NEED TO AWAIT FOR TEXT TO BE SPOKEN not use delay
-                        await Task.Delay(200, cancellationToken); // Small delay, adjust as needed
                     }
 
                     if (EndConversationRequested != null)

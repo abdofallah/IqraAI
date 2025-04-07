@@ -158,7 +158,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
                 _agentState.CurrentSessionRoute = businessRouteData;
-                _agentState.CurrentConversationType = businessRouteData.Agent.ConversationType;
+                _agentState.CurrentConversationType = businessRouteData.Agent.Interruption.Type;
                 _agentState.CurrentLanguageCode = businessRouteData.Language.DefaultLanguageCode; // Initial language
                 _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == businessRouteData.Agent.SelectedAgentId);
                 if (_agentState.BusinessAppAgent == null)
@@ -214,7 +214,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             _logger.LogInformation("Agent {AgentId}: Beginning main conversation flow.", AgentId);
 
-            _agentState.IsBackgroundMusicEnabled = true;
+            if (_agentState.IsBackgroundMusicLoaded)
+            {
+                _agentState.IsBackgroundMusicEnabled = true;
+            }   
 
             if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
             {
@@ -226,6 +229,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             else if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.UserFirst)
             {
                 _logger.LogDebug("Agent {AgentId}: Waiting for user to speak first.", AgentId);
+                _agentState.LLMService?.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
             }
        
             _agentState.IsAcceptingSTTAudio = true;
@@ -308,25 +312,24 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
             _logger.LogDebug("Agent {AgentId}: Orchestrator received transcription: '{Text}'", AgentId, text);
 
+            _agentState.IsSTTRecognizing = false;
+
             try
             {
-                if (_agentState.IsResponding)
+                bool canInterruptAgent = await _interruptionManager.CheckCanInterruptAgentAsync(text, _agentState.CurrentClientId, _conversationCTS.Token);
+                if (canInterruptAgent)
                 {
-                    _logger.LogTrace("Agent {AgentId}: Checking for potential interruption due to incoming text.", AgentId);
-                    //bool handledByInterrupt = await _interruptionManager.HandlePotentialInterruptionAsync(text, _agentState.CurrentClientId, _conversationCTS.Token);
-                    if (true) // TODO forcing interruption for now
-                    {
-                        _logger.LogDebug("Agent {AgentId}: Text handled by interruption manager, stopping for user to speak.", AgentId);
-                        return;
-                    }
-                    else
-                    {
-                        _logger.LogDebug("Agent {AgentId}: Text not handled by interruption manager, proceeding.", AgentId);
-                    }
+                    _logger.LogInformation("Agent {AgentId}: Text handled by interruption manager, stopping for user to speak.", AgentId);
+                    return;
+                }
+
+                if (_agentState.InterruptResponseBuffer.Length > 0)
+                {
+                    text = _agentState.InterruptResponseBuffer.ToString() + " | current response: " + text;
+                    _agentState.InterruptResponseBuffer.Clear();
                 }
 
                 await _llmHandler.ProcessUserTextAsync(text, _agentState.CurrentClientId, _conversationCTS.Token);
-
             }
             catch (OperationCanceledException)
             {
