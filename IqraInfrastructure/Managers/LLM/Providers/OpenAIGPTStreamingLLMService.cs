@@ -1,12 +1,16 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
     public class OpenAIGPTStreamingLLMService : ILLMService
     {
+        private readonly ILogger<OpenAIGPTStreamingLLMService> _logger;
+
         private readonly ChatClient _client;
+        private readonly CancellationTokenSource _cts;
 
         // Config
         private int _maxTokens;
@@ -26,6 +30,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public OpenAIGPTStreamingLLMService(string APIKey, string Model)
         {
+            _logger = null; // todo
+            _cts = new();
+
             _client = new ChatClient(Model, APIKey);
 
             _maxTokens = 1024; // todo make dynamic
@@ -41,6 +48,8 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
+
             var finalMessages = _initialMessages
                 .Concat(_messagesMemory)
                 .ToList();
@@ -56,7 +65,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             try
             {
-                var completionResult = _client.CompleteChatStreamingAsync(finalMessages, parameters, cancellationToken);
+                var completionResult = _client.CompleteChatStreamingAsync(finalMessages, parameters, combinedCancellationToken);
 
                 await foreach (var completion in completionResult)
                 {
@@ -142,6 +151,17 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
+        }
+
+        public void Dispose()
+        {
+            ClearMessageStreamed();
+
+            _cts?.Cancel();
+
+            // todo check if task ProcessInputAsync ended
+
+            _cts?.Dispose();
         }
     }
 }

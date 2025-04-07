@@ -1,28 +1,24 @@
-﻿using IqraCore.Interfaces.Conversation; // For ISTTService
-using IqraInfrastructure.Managers.STT; // For STTProviderManager
-using IqraInfrastructure.Managers.Business; // For BusinessManager (if needed for re-init)
+﻿using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.Business;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentSTTHandler : IDisposable
     {
-        // Event to notify Orchestrator about transcription results
-        public event Func<string, Task>? TranscriptionReceived; // Orchestrator subscribes
+        public event Func<string, Task>? TranscriptionReceived;
 
         private readonly ILogger<ConversationAIAgentSTTHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly STTProviderManager _sttProviderManager;
-        private readonly BusinessManager _businessManager; // Needed to get integration details
+        private readonly BusinessManager _businessManager;
 
         public ConversationAIAgentSTTHandler(
             ILoggerFactory loggerFactory,
             ConversationAIAgentState agentState,
             STTProviderManager sttProviderManager,
-            BusinessManager businessManager)
+            BusinessManager businessManager
+        )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentSTTHandler>();
             _agentState = agentState;
@@ -32,13 +28,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         public async Task InitializeAsync()
         {
-            // --- Move logic from original InitalizeSTTForLangauge here ---
-            // Access _agentState for config (_agentState.BusinessAppAgent, _agentState.CurrentLanguageCode, etc.)
-            // Use _sttProviderManager to build the service
-            // Store the service instance in _agentState.STTService
-            // Store integration data in _agentState.STTBusinessIntegrationData
-            // Subscribe to STTService events (_sttService.TranscriptionResultReceived += OnTranscriptionResultReceived)
-
             if (_agentState.BusinessAppAgent == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode))
             {
                 _logger.LogError("Agent {AgentId}: Cannot initialize STT Handler - BusinessAppAgent or LanguageCode missing.", _agentState.AgentId);
@@ -72,23 +61,23 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             // Unsubscribe from old service if exists
             DisposeCurrentService();
 
+            // Set new service
             _agentState.STTService = sttServiceResult.Data;
             _agentState.STTService.TranscriptionResultReceived += OnTranscriptionResultReceived;
-            _agentState.STTService.OnRecoginizingRecieved += OnRecognizingReceived; // Keep if needed
+            _agentState.STTService.OnRecoginizingRecieved += OnRecognizingReceived;
 
             _agentState.STTService.Initialize();
-            _agentState.STTService.StartTranscription(); // Start immediately? Or based on state?
+            _agentState.STTService.StartTranscription();
 
             _logger.LogInformation("STT Handler initialized for Agent {AgentId} with language {Language}.", _agentState.AgentId, _agentState.CurrentLanguageCode);
-            // --- End of moved logic ---
         }
 
         public async Task ReInitializeForLanguageAsync()
         {
-            _logger.LogInformation("Agent {AgentId}: Re-initializing STT Handler for new language.", _agentState.AgentId);
-            // Stop existing transcription before re-init
+            _logger.LogInformation("Agent {AgentId}: Re-initializing STT Handler.", _agentState.AgentId);
+
             _agentState.STTService?.StopTranscription();
-            await InitializeAsync(); // Re-run init logic with new language in state
+            await InitializeAsync();
         }
 
         private void OnRecognizingReceived(object? sender, object e)
@@ -112,6 +101,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 {
                     _logger.LogError(ex, "Agent {AgentId}: Error invoking TranscriptionReceived event handler.", _agentState.AgentId);
                     // TODO: Raise main error event?
+                    // todo check why it happened so we can use fallback stt
                 }
             }
         }
@@ -127,12 +117,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             _agentState.STTService?.StopTranscription();
             _logger.LogDebug("Agent {AgentId}: STT Transcription explicitly stopped.", _agentState.AgentId);
         }
-
-        // This might not be needed if AudioInput accesses service via state
-        // public void WriteAudioData(byte[] data)
-        // {
-        //     _agentState.STTService?.WriteTranscriptionAudioData(data);
-        // }
 
         private void DisposeCurrentService()
         {

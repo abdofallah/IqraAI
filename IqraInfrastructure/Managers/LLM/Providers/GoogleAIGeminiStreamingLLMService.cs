@@ -12,6 +12,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private readonly ILogger<GoogleAIGeminiStreamingLLMService> _logger;
 
         private readonly GoogleAi _client;
+        private readonly CancellationTokenSource _cts;
 
         // Config
         private int _maxTokens;
@@ -33,6 +34,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public GoogleAIGeminiStreamingLLMService(string apiKey, string modelId)
         {
             _logger = null; // todo
+            _cts = new();
 
             _modelId = modelId;
 
@@ -50,6 +52,8 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
+
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
 
             var generationConfig = new GenerationConfig
@@ -67,7 +71,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             try
             {
-                await foreach (var response in _googleModel.StreamContentAsync(request, cancellationToken))
+                await foreach (var response in _googleModel.StreamContentAsync(request, combinedCancellationToken))
                 {
                     MessageStreamed?.Invoke(this, response);
                 }
@@ -159,5 +163,16 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         // HELPERS
         private static Part MakeTextPart(string text) => new Part { Text = text };
         private static Content MakeContent(string role, string text) => new Content { Role = role, Parts = { MakeTextPart(text) } };
+
+        public void Dispose()
+        {
+            ClearMessageStreamed();
+
+            _cts?.Cancel();
+
+            // todo check if task ProcessInputAsync ended
+
+            _cts?.Dispose();
+        }
     }
 }

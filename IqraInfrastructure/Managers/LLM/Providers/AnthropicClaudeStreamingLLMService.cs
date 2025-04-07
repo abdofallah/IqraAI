@@ -2,12 +2,16 @@
 using Anthropic.SDK.Messaging;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
     public class AnthropicClaudeStreamingLLMService : ILLMService
     {
+        private readonly ILogger<AnthropicClaudeStreamingLLMService> _logger;
+
         private readonly AnthropicClient _client;
+        private readonly CancellationTokenSource _cts;
 
         private int _maxTokens;
         private string _model;
@@ -25,7 +29,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public AnthropicClaudeStreamingLLMService(string apiKey, string model)
         {
+            _logger = null; // todo
+
             _client = new AnthropicClient(apiKey);
+            _cts = new();
 
             _maxTokens = 1024; // todo make dynamic
             _temperature = 1; // todo make dynamic
@@ -39,6 +46,8 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
+
             List<Message> finalMessages = _initialMessages
                 .Concat(_messagesMemory)
                 .ToList();
@@ -55,21 +64,22 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             try
             {
-                await foreach (var res in _client.Messages.StreamClaudeMessageAsync(parameters, cancellationToken))
+                await foreach (var res in _client.Messages.StreamClaudeMessageAsync(parameters, combinedCancellationToken))
                 {
                     MessageStreamed?.Invoke(this, res);
                 }
             }
+            catch (TaskCanceledException ex)
+            {
+                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
+            }
+            catch (OperationCanceledException ex)
+            {
+                MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
+            }
             catch (Exception ex)
             {
-                if (!(ex is TaskCanceledException || ex is OperationCanceledException))
-                {
-                    MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
-                }
-                else
-                {
-                    Console.WriteLine(ex.Message);
-                }
+                Console.WriteLine(ex.Message);
             }
         }
 
@@ -138,6 +148,19 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.AnthropicClaude;
+        }
+
+        public void Dispose()
+        {
+            ClearMessageStreamed();
+
+            _cts?.Cancel();
+
+            // todo check if task ProcessInputAsync ended
+
+            _client.Dispose();
+
+            _cts?.Dispose();
         }
     }
 }

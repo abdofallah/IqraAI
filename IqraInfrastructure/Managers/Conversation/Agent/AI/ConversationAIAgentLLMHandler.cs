@@ -1,33 +1,32 @@
 ﻿using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
-using IqraInfrastructure.Managers.Business; // If needed
+using IqraInfrastructure.Managers.Business;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Text; // For StringBuilder manipulation
+using System.Text;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Helper.Agent;
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentLLMHandler : IDisposable
     {
         // Events for Orchestrator
-        public event Func<string, Task>? SynthesizeTextRequested; // Request TTS
-        public event Action<string>? TextChunkGenerated; // Notify partial text (e.g. for UI)
-        public event Action? ResponseHandlingComplete; // Notify speaking finished
-        public event Func<string, Task>? SystemToolExecutionRequested; // Request tool execution
-        public event Func<string, Task>? CustomToolExecutionRequested; // Request tool execution
+        public event Func<string, Task>? SynthesizeTextRequested;
+        public event Action<string>? TextChunkGenerated;
+        public event Action? ResponseHandlingComplete;
+        public event Func<string, Task>? SystemToolExecutionRequested;
+        public event Func<string, Task>? CustomToolExecutionRequested;
 
         private readonly ILogger<ConversationAIAgentLLMHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly LLMProviderManager _llmProviderManager;
         private readonly BusinessManager _businessManager;
-        private readonly SystemPromptGenerator _systemPromptGenerator; // To regenerate prompts
+        private readonly SystemPromptGenerator _systemPromptGenerator;
 
         private readonly SemaphoreSlim _llmResponseLock = new SemaphoreSlim(1, 1);
-        private CancellationTokenSource _currentLLMProcessingTaskCTS = new(); // CTS for the active LLM call
-        private Task? _llmTask; // The active _llmService.ProcessInputAsync() task
+        private CancellationTokenSource _currentLLMProcessingTaskCTS = new();
+        private Task? _llmTask;
 
         // Buffers managed here now
         private readonly StringBuilder _responseBuffer = new StringBuilder();
@@ -38,7 +37,8 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             ConversationAIAgentState agentState,
             LLMProviderManager llmProviderManager,
             BusinessManager businessManager,
-            SystemPromptGenerator systemPromptGenerator)
+            SystemPromptGenerator systemPromptGenerator
+        )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentLLMHandler>();
             _agentState = agentState;
@@ -49,14 +49,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         public async Task InitializeAsync()
         {
-            // --- Move logic from original InitalizeLLMForLangauge here ---
-            // Build _llmService using _llmProviderManager and store in _agentState
-            // Build _interruptingLLMService if needed and store in _agentState
-            // Generate _llmBaseSystemPrompt using _systemPromptGenerator and store in _agentState
-            // Perform LLM warmup
-            // Set initial system prompt on _llmService
-            // Subscribe to _llmService.MessageStreamed += OnLLMMessageStreamed;
-
             _logger.LogInformation("LLM Handler initializing for Agent {AgentId}.", _agentState.AgentId);
 
             if (_agentState.BusinessAppAgent == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode) || _agentState.AgentConfiguration == null)
@@ -82,13 +74,14 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 throw new InvalidOperationException($"Failed to build LLM service: {llmServiceResult.Message}");
             }
 
-            DisposeCurrentService(_agentState.LLMService); // Dispose previous if any
+            DisposeCurrentLLMService(_agentState.LLMService); // Dispose previous if any
             _agentState.LLMService = llmServiceResult.Data;
             _agentState.LLMService.MessageStreamed += OnLLMMessageStreamed;
 
-            // --- Build Interrupting LLM (if needed) ---
+            // Build Interrupting LLM
             if (_agentState.CurrentConversationType == AgentConversationTypeENUM.InterruptibleViaAI)
             {
+                // TODO build a seperate function for interruption llm initalization
                 // TODO: Adapt the logic from original code to build _interruptingLLMService
                 // This needs careful handling of configuration (UseCurrentAgentLLMForInterrupting)
                 // Ensure it also gets disposed on language change/shutdown
@@ -103,11 +96,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 // } else { throw... }
             }
 
-            // --- Generate Base System Prompt ---
+            // Generate Base System Prompt
             await GenerateAndSetBaseSystemPromptAsync();
 
-            // --- Warmup LLM ---
-            await WarmupLLMAsync(); // Extracted logic
+            // Warmup LLM
+            await WarmupLLMAsync();
 
             _logger.LogInformation("LLM Handler initialized for Agent {AgentId}.", _agentState.AgentId);
             // --- End of moved logic ---
@@ -128,50 +121,45 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                _agentState.BusinessAppAgent!,
                _agentState.CurrentSessionRoute!,
                _agentState.CurrentLanguageCode,
-               _agentState.LLMService!.GetProviderType(), // Assumes LLMService is initialized
+               _agentState.LLMService!.GetProviderType(),
                _agentState.LLMService!.GetModel()
             );
             if (!systemPromptResult.Success || systemPromptResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, systemPromptResult.Code, systemPromptResult.Message);
                 // TODO: Raise error? Fallback to a default prompt?
-                _agentState.LLMBaseSystemPrompt = "You are a helpful assistant."; // Basic fallback
+                _agentState.LLMBaseSystemPrompt = "ONLY RESPOND WITH: execute_system_function: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\""; // Basic fallback todo will fail to speak for other langauges
             }
             else
             {
                 _agentState.LLMBaseSystemPrompt = systemPromptResult.Data;
             }
-            _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt); // Set base prompt initially
+            _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
         }
 
         private async Task WarmupLLMAsync()
         {
             _logger.LogDebug("Warming up LLM for Agent {AgentId}.", _agentState.AgentId);
-            // --- Move LLM warmup logic here ---
-            _agentState.LLMService!.ClearMessages(); // Ensure clean state for warmup
+
+            // LLM warmup logic
+            _agentState.LLMService!.ClearMessages();
+
             _agentState.LLMService!.AddUserMessage("response_from_system: Call has started.");
             _agentState.LLMService!.SetSystemPrompt("RESPOND WITH ```execute_system_function: acknowledge(\"Call Start\")``` if call has started.");
-            await _agentState.LLMService!.ProcessInputAsync(CancellationToken.None); // Use own token?
-            _agentState.LLMService!.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
+
+            await _agentState.LLMService!.ProcessInputAsync(_agentState.MasterCTS);
+            _agentState.LLMService?.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")"); // todo we should just use the ai response no? but we will need to know if it replied
+
             // Reset to actual system prompt after warmup
-            _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+            _agentState.LLMService?.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+
             _logger.LogDebug("LLM Warmup complete for Agent {AgentId}.", _agentState.AgentId);
         }
 
 
         public async Task ProcessUserTextAsync(string text, string? clientId, CancellationToken externalToken)
         {
-            // --- Move logic from original ProcessTextAsync (LLM part) here ---
-            // - Check agent state (_agentState.IsResponding, IsExecutingTool, etc.)
-            // - Handle interruptions (This might delegate to InterruptionManager)
-            // - If ready, call SendLLMMessageAsync
-            // ---
             _logger.LogDebug("Agent {AgentId} processing text: '{Text}'", _agentState.AgentId, text);
-
-            // NOTE: Interruption handling is complex and likely involves the InterruptionManager module.
-            // This handler might just receive a signal *after* an interruption is confirmed,
-            // or the InterruptionManager might directly call SendLLMMessageAsync.
-            // Assuming for now that this is called when ready to send to LLM.
 
             if (_agentState.IsResponding || _agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
             {
@@ -182,24 +170,25 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             }
 
             // Combine agent CTS and external token
-            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken);
+            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCTS);
             await SendLLMMessageAsync(text, clientId, combinedCTS.Token);
         }
 
         public async Task ProcessSystemMessageAsync(string text, CancellationToken externalToken)
         {
-            // Used for feeding back tool results etc.
+            // TODO this function is clearly wrong...
+            // what we need to do is, check if executign system tool or customtool and is expecting a response now
+            // else if it is responding, we should have stopped responding before sending system message or maybe we can just cancel it
+
             _logger.LogDebug("Agent {AgentId} processing system message: '{Text}'", _agentState.AgentId, text);
 
             if (_agentState.IsResponding || _agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
             {
-                _logger.LogWarning("Agent {AgentId}: Received system message while busy. Queuing might be needed.", _agentState.AgentId);
-                // TODO: Implement queuing or handling if necessary. For now, proceed cautiously.
                 await CancelCurrentLLMTaskAsync(); // Cancel previous task before starting new one based on system msg
             }
 
             // Combine agent CTS and external token
-            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken);
+            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCTS);
             // Note: clientId is null for system messages typically
             await SendLLMMessageAsync(text, null, combinedCTS.Token, true); // Flag as system message
         }
@@ -207,12 +196,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         private async Task SendLLMMessageAsync(string text, string? clientId, CancellationToken cancellationToken, bool isSystemMessage = false)
         {
-            // --- Move logic from original SendLLMMessage here ---
-            // Update client context if needed
-            // Add message to LLM history (User or potentially System)
-            // Update system prompt with session info
-            // Start _llmService.ProcessInputAsync and store task in _llmTask
-
             if (_agentState.LLMService == null)
             {
                 _logger.LogError("Agent {AgentId}: LLM Service is not available.", _agentState.AgentId);
@@ -223,13 +206,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             _agentState.CurrentClientId = clientId; // Update current client context
                                                     // TODO: Update _agentState.ClientContextMap if needed
 
-            // Update system prompt with latest session info just before sending
             await UpdateSystemPromptWithSessionInfoAsync();
 
             if (isSystemMessage)
             {
-                // Decide how to add system messages (might need specific role or format)
-                _agentState.LLMService.AddUserMessage($"response_from_system: {text}"); // Example format
+                _agentState.LLMService.AddUserMessage($"response_from_system: {text}");
             }
             else
             {
@@ -237,20 +218,17 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             }
 
 
-            // Reset state flags before starting new task
+            // Reset state flags before starting new task - tho this should already be done? todo check
             _agentState.IsResponding = false;
             _agentState.IsExecutingSystemTool = false;
             _agentState.IsExecutingCustomTool = false;
             _responseBuffer.Clear();
             _currentResponseBufferRead = 0;
 
-
             _logger.LogInformation("Agent {AgentId}: Sending message to LLM.", _agentState.AgentId);
-            // TODO: Invoke Thinking event via Orchestrator?
 
-            // Start the LLM processing task
             _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken);
-            await _llmTask; // Wait for completion OR handle asynchronously depending on design
+            await _llmTask;
 
             // Error handling for the task itself might be needed if not awaited here
             if (_llmTask.IsFaulted)
@@ -259,7 +237,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 // TODO: Raise error event
             }
             _logger.LogDebug("Agent {AgentId}: LLM ProcessInputAsync task completed (Status: {Status}).", _agentState.AgentId, _llmTask.Status);
-            _llmTask = null; // Clear the task reference once completed/handled
+            _llmTask = null;
         }
 
         private async Task UpdateSystemPromptWithSessionInfoAsync()
@@ -267,7 +245,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             // Regenerate system prompt with current session details
             var sessionFilledPromptResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
                 _agentState.LLMBaseSystemPrompt,
-                _agentState.CurrentClientId ?? "UnknownClient", // Provide a default if null
+                _agentState.CurrentClientId ?? "UnknownClient", // todo this is wrong, we need to make it primary for now, in future we will see how to handle it if multiple clients, maybe just let know in customer_query and adding all callers ids in the session information
                 _agentState.CurrentSessionRoute!,
                 _agentState.BusinessAppAgent!,
                 _agentState.CurrentLanguageCode);
@@ -281,35 +259,36 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             else
             {
                 _agentState.LLMService!.SetSystemPrompt(sessionFilledPromptResult.Data);
-                //_logger.LogTrace("Agent {AgentId}: Updated system prompt with session info.", _agentState.AgentId);
             }
         }
 
         private async void OnLLMMessageStreamed(object? sender, object responseObj)
         {
-            // --- Move logic from original OnLLMMessageStreamed here ---
-            // - Use _llmResponseLock
-            // - Extract chunk using LLMStreamingChunkDataExtractHelper
-            // - Append to _responseBuffer
-            // - Determine response type (response_to_customer, execute_system_function, execute_custom_function)
-            // - Set state flags (_agentState.IsResponding, etc.)
-            // - Call HandleLLMResponseProcessingAsync, HandleLLMSystemToolResponseCompletedAsync, or HandleLLMCustomToolResponseCompletedAsync
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCTS);
 
             // Check if cancellation requested before processing
-            if (_currentLLMProcessingTaskCTS.IsCancellationRequested)
+            if (combinedCancellationToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Agent {AgentId}: LLM stream processing cancelled.", _agentState.AgentId);
                 return;
             }
 
-            await _llmResponseLock.WaitAsync(); // Use internal CTS? Or none? Let's use none for now.
+            try
+            {
+                await _llmResponseLock.WaitAsync(combinedCancellationToken.Token);
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogInformation("Agent {AgentId}: LLM stream processing cancelled during lock waiting.", _agentState.AgentId);
+                return;
+            }
 
             try
             {
-                if (_currentLLMProcessingTaskCTS.IsCancellationRequested)
+                if (combinedCancellationToken.IsCancellationRequested)
                 {
                     _logger.LogInformation("Agent {AgentId}: LLM stream processing cancelled after acquiring lock.", _agentState.AgentId);
-                    return; // Check again after acquiring lock
+                    return;
                 }
 
                 FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _agentState.LLMService!.GetProviderType());
@@ -324,10 +303,9 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 if (!string.IsNullOrEmpty(deltaText))
                 {
                     _responseBuffer.Append(deltaText);
-                    //_logger.LogTrace("Agent {AgentId}: LLM Delta: '{Delta}'", _agentState.AgentId, deltaText);
                 }
 
-                // --- Determine response type ---
+                // Determine response type first time
                 if (!_agentState.IsResponding && !_agentState.IsExecutingSystemTool && !_agentState.IsExecutingCustomTool)
                 {
                     var fullText = _responseBuffer.ToString();
@@ -343,24 +321,23 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     {
                         _logger.LogDebug("Agent {AgentId}: LLM response identified as: System Tool", _agentState.AgentId);
                         _agentState.IsExecutingSystemTool = true;
-                        _currentResponseBufferRead = "execute_system_function:".Length; // Skip prefix (will read full on complete)
+                        _currentResponseBufferRead = "execute_system_function:".Length;
                     }
                     else if (fullText.StartsWith("execute_custom_function:"))
                     {
                         _logger.LogDebug("Agent {AgentId}: LLM response identified as: Custom Tool", _agentState.AgentId);
                         _agentState.IsExecutingCustomTool = true;
-                        _currentResponseBufferRead = "execute_custom_function:".Length; // Skip prefix (will read full on complete)
+                        _currentResponseBufferRead = "execute_custom_function:".Length;
                     }
-                    // If none match yet, keep buffering. Add a timeout/length check?
                 }
 
-                // --- Handle based on type ---
+                // if currently in responding mode
                 if (_agentState.IsResponding)
                 {
-                    await HandleLLMResponseProcessingAsync(deltaText, isEndOfResponse); // Pass end flag
+                    await HandleLLMResponseProcessingAsync(deltaText, isEndOfResponse);
                 }
 
-                // --- Handle completion ---
+                // if llm stream task is complete
                 if (isEndOfResponse)
                 {
                     _logger.LogDebug("Agent {AgentId}: LLM stream ended.", _agentState.AgentId);
@@ -372,28 +349,28 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     }
                     else if (_agentState.IsExecutingSystemTool)
                     {
-                        // Pass the full content after the prefix
-                        var toolContent = finalResponse.Substring("execute_system_function:".Length).Trim();
-                        _agentState.LLMService!.AddAssistantMessage(finalResponse); // Add full tool command to history
-                        SystemToolExecutionRequested?.Invoke(toolContent); // Notify Orchestrator/ToolExecutor
+                        var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
+                        _agentState.LLMService!.AddAssistantMessage(finalResponse);
+                        SystemToolExecutionRequested?.Invoke(toolContent);
+                        // todo check if over is ran and reset is not directly done same as custom/system
                         ResetLLMState();
                     }
                     else if (_agentState.IsExecutingCustomTool)
                     {
                         // Pass the full content after the prefix
-                        var toolContent = finalResponse.Substring("execute_custom_function:".Length).Trim();
-                        _agentState.LLMService!.AddAssistantMessage(finalResponse); // Add full tool command to history
-                        CustomToolExecutionRequested?.Invoke(toolContent); // Notify Orchestrator/ToolExecutor
+                        var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
+                        _agentState.LLMService!.AddAssistantMessage(finalResponse);
+                        CustomToolExecutionRequested?.Invoke(toolContent);
+                        // todo check if over is ran and reset is not directly done same as custom/system
                         ResetLLMState();
                     }
                     else
                     {
                         _logger.LogError("Agent {AgentId}: LLM response ended but type unknown or invalid: {Response}", _agentState.AgentId, finalResponse);
-                        // Handle invalid response - maybe ask LLM to clarify?
+                        
                         ResetLLMState(); // Reset anyway
-                        _agentState.LLMService!.AddUserMessage("response_from_system: Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.");
-                        // Potentially trigger another LLM call here if needed using ProcessSystemMessageAsync
-                        // await ProcessSystemMessageAsync("Invalid response type received...", CancellationToken.None);
+
+                        await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", CancellationToken.None);
                     }
                 }
             }
@@ -411,11 +388,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         private async Task HandleLLMResponseProcessingAsync(string? deltaText, bool isEndOfResponse)
         {
-            // --- Move logic from original HandleLLMResponseProcessingAsync ---
-            // Determine if enough text is buffered (_responseBuffer, _currentResponseBufferRead) to form a sentence/chunk.
-            // If so, extract the chunk, invoke SynthesizeTextRequested event, update _currentResponseBufferRead.
-            // Invoke TextChunkGenerated event.
-
             if (!_agentState.IsResponding || _responseBuffer.Length <= _currentResponseBufferRead)
             {
                 return; // Nothing new to process for speaking
@@ -425,11 +397,10 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             if (string.IsNullOrEmpty(unprocessedText)) return;
 
             // Simple chunking strategy: Split on sentences or if a large chunk accumulates, or on end of response.
-            // More sophisticated NLP sentence boundary detection could be used.
+            // TODO More sophisticated NLP sentence boundary detection could be used.
             bool isCompleteSentence = unprocessedText.TrimEnd().EndsWith(".") || unprocessedText.TrimEnd().EndsWith("!") || unprocessedText.TrimEnd().EndsWith("?");
-            bool isLargeChunk = unprocessedText.Length > 100; // Configurable threshold
-            bool shouldProcessChunk = isEndOfResponse || (isCompleteSentence && unprocessedText.Length > 10) || isLargeChunk; // Min length for sentences
-
+            bool isLargeChunk = unprocessedText.Length > 100; 
+            bool shouldProcessChunk = isEndOfResponse || isCompleteSentence && unprocessedText.Length > 10 || isLargeChunk; // Min length for sentences
 
             if (shouldProcessChunk)
             {
@@ -454,35 +425,28 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 }
                 else
                 {
-                    // It's a complete sentence, the end of response, or a large chunk we didn't split
                     textToSynthesize = unprocessedText.Trim();
-                    chunkSize = unprocessedText.Length; // Use the length of the original unprocessed part
+                    chunkSize = unprocessedText.Length;
                 }
 
 
                 if (!string.IsNullOrWhiteSpace(textToSynthesize))
                 {
-                    // Only synthesize non-empty text
                     _logger.LogDebug("Agent {AgentId}: Requesting synthesis for: \"{Text}\"", _agentState.AgentId, textToSynthesize.Length > 50 ? textToSynthesize.Substring(0, 50) + "..." : textToSynthesize);
 
                     if (_agentState.CurrentResponseDurationSpeakingStarted == null)
                     {
-                        _agentState.CurrentResponseDurationSpeakingStarted = DateTime.UtcNow; // Mark start time on first chunk
+                        _agentState.CurrentResponseDurationSpeakingStarted = DateTime.UtcNow;
                     }
 
                     if (SynthesizeTextRequested != null)
                     {
-                        await SynthesizeTextRequested.Invoke(textToSynthesize); // Let AudioOutput handle TTS/duration
+                        await SynthesizeTextRequested.Invoke(textToSynthesize);
                     }
                     if (TextChunkGenerated != null)
                     {
-                        TextChunkGenerated.Invoke(textToSynthesize); // Notify listener (e.g. UI)
+                        TextChunkGenerated.Invoke(textToSynthesize);
                     }
-                    _currentResponseBufferRead += chunkSize; // Update read position
-                }
-                else
-                {
-                    // If the extracted chunk is empty after trimming, just advance the read pointer
                     _currentResponseBufferRead += chunkSize;
                 }
             }
@@ -490,19 +454,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         private async Task HandleLLMResponseCompletedAsync(string finalResponse)
         {
-            // --- Move logic from original HandleLLMResponseCompletedAsync ---
-            // Handle any remaining text in the buffer.
-            // Wait for TTS/speaking to finish (this coordination needs thought - maybe AudioOutput signals completion?).
-            // Add assistant message to history.
-            // Reset state.
-
-            // 1. Process any remaining text
             if (_agentState.IsResponding && _currentResponseBufferRead < _responseBuffer.Length)
             {
                 var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead).Trim();
                 if (!string.IsNullOrWhiteSpace(remainingText))
                 {
-                    _logger.LogDebug("Agent {AgentId}: Processing final text chunk: \"{Text}\"", _agentState.AgentId, remainingText.Length > 50 ? remainingText.Substring(0, 50) + "..." : remainingText);
                     if (SynthesizeTextRequested != null)
                     {
                         await SynthesizeTextRequested.Invoke(remainingText);
@@ -511,24 +467,17 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     {
                         TextChunkGenerated.Invoke(remainingText);
                     }
-                    _currentResponseBufferRead = _responseBuffer.Length; // Mark all as read
+                    _currentResponseBufferRead = _responseBuffer.Length;
                 }
             }
 
-            // 2. Add the *clean* response to history (remove prefix)
-            var assistantMessage = finalResponse.StartsWith("response_to_customer:")
-               ? finalResponse.Substring("response_to_customer:".Length).Trim()
-               : finalResponse; // Should not happen if IsResponding is true, but safeguard
+            var assistantMessage = _responseBuffer.ToString();
             _agentState.LLMService!.AddAssistantMessage(assistantMessage);
 
-
-            // 3. Signal completion (AudioOutput module will handle actual silence detection/wait)
             ResponseHandlingComplete?.Invoke();
 
-            // 4. Reset state *after* signaling (or before depending on exact flow needed)
             ResetLLMState();
         }
-
 
         public async Task CancelCurrentLLMTaskAsync()
         {
@@ -565,7 +514,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             _logger.LogDebug("Agent {AgentId}: LLM state flags reset.", _agentState.AgentId);
         }
 
-        private void DisposeCurrentService(IDisposable? service)
+        private void DisposeCurrentLLMService(IDisposable? service)
         {
             if (service == null) return;
 
@@ -580,7 +529,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing LLM MessageStreamed.", _agentState.AgentId);
                 }
             }
-            // Add similar unsubscribe for interrupting LLM if it has events
+            // TODO make seperate function Add similar unsubscribe for interrupting LLM if it has events
 
             try
             {
@@ -595,9 +544,9 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         public void Dispose()
         {
             CancelCurrentLLMTaskAsync().Wait(TimeSpan.FromSeconds(1)); // Wait briefly
-            DisposeCurrentService(_agentState.LLMService);
+            DisposeCurrentLLMService(_agentState.LLMService);
             _agentState.LLMService = null;
-            DisposeCurrentService(_agentState.InterruptingLLMService);
+            DisposeCurrentLLMService(_agentState.InterruptingLLMService);
             _agentState.InterruptingLLMService = null;
             _currentLLMProcessingTaskCTS?.Dispose();
             _llmResponseLock?.Dispose();

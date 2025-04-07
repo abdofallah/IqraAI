@@ -5,9 +5,9 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Humanizer; // For NumberToWords
+using Humanizer;
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentDTMFHandler
     {
@@ -21,16 +21,13 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         // Need a way to trigger re-initialization (e.g., callback to Orchestrator)
         private readonly Func<string, Task> _onLanguageChangeRequestAsync; // Orchestrator provides this
 
-        // Internal state for specific DTMF handling flows
-        private bool _isAwaitingLanguageSelection = false;
-
         public ConversationAIAgentDTMFHandler(
             ILoggerFactory loggerFactory,
             ConversationAIAgentState agentState,
             LanguagesManager languagesManager,
             ConversationAIAgentAudioOutput audioOutput,
             Func<string, Task> onLanguageChangeRequestAsync // Callback to Orchestrator
-            )
+        )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentDTMFHandler>();
             _agentState = agentState;
@@ -42,8 +39,8 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         public Task InitializeAsync()
         {
             // Reset state on init
-            _isAwaitingLanguageSelection = false;
-            _agentState.IsProcessingDTMFAlready = false; // Reset lock in state
+            _agentState.IsAwaitingLanguageSelection = false;
+            _agentState.IsProcessingDTMFAlready = false;
             _logger.LogInformation("DTMF Handler initialized for Agent {AgentId}.", _agentState.AgentId);
             return Task.CompletedTask;
         }
@@ -52,7 +49,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         // Called by Orchestrator during NotifyConversationStarted if multi-language is enabled
         public async Task SetupLanguageSelectionAsync(CancellationToken cancellationToken)
         {
-            // --- Move multi-language prompt logic from NotifyConversationStarted here ---
             if (_agentState.CurrentSessionRoute?.Language.MultiLanguageEnabled == true &&
                 _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages?.Count > 1)
             {
@@ -79,20 +75,14 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
                 if (!string.IsNullOrWhiteSpace(multiLanguageText))
                 {
-                    _logger.LogDebug("Agent {AgentId}: Playing multi-language prompt: {Prompt}", _agentState.AgentId, multiLanguageText);
-                    // Use AudioOutput to play the prompt (blocking)
                     await _audioOutput.SynthesizeAndPlayBlockingAsync(multiLanguageText.Trim(), cancellationToken);
-                    _isAwaitingLanguageSelection = true; // Set flag to expect DTMF for language
+                    _agentState.IsAwaitingLanguageSelection = true;
                 }
                 else
                 {
                     _logger.LogWarning("Agent {AgentId}: Multi-language enabled, but prompt text generation failed.", _agentState.AgentId);
-                    _isAwaitingLanguageSelection = false;
+                    _agentState.IsAwaitingLanguageSelection = false;
                 }
-            }
-            else
-            {
-                _isAwaitingLanguageSelection = false; // Not needed
             }
         }
 
@@ -109,7 +99,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             // If invalid:
             //    - Play error prompt via _audioOutput
 
-            if (!_isAwaitingLanguageSelection)
+            if (!_agentState.IsAwaitingLanguageSelection)
             {
                 _logger.LogDebug("Agent {AgentId}: Ignoring DTMF digit '{Digit}' as language selection is not active.", _agentState.AgentId, digit);
                 // TODO: Implement handling for other DTMF scenarios if needed later
@@ -147,7 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                             // Maybe play a confirmation? "Continuing in [Language]."
                             // await _audioOutput.SynthesizeAndPlayBlockingAsync($"Continuing in {selectedLanguage.LanguageCode}", cancellationToken); // Example
                         }
-                        _isAwaitingLanguageSelection = false; // Language selected, stop listening for it
+                        _agentState.IsAwaitingLanguageSelection = false; // Language selected, stop listening for it
                     }
                     else
                     {
@@ -199,7 +189,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         public void Reset()
         {
-            _isAwaitingLanguageSelection = false;
+            _agentState.IsAwaitingLanguageSelection = false;
             _agentState.IsProcessingDTMFAlready = false;
             _logger.LogDebug("DTMF Handler state reset for Agent {AgentId}.", _agentState.AgentId);
         }

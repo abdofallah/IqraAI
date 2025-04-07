@@ -12,7 +12,10 @@ namespace IqraInfrastructure.Managers.LLM.Providers
     public class GroqCloudStreamingLLMService : ILLMService
     {
         private readonly ILogger<GroqCloudStreamingLLMService> _logger;
+
         private readonly HttpClient _httpClient;
+        private readonly CancellationTokenSource _cts;
+
         private readonly string _apiKey;
 
         // Configuration
@@ -40,7 +43,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         // Consider using IHttpClientFactory in a real application
         public GroqCloudStreamingLLMService(string apiKey, string model)
         {
-            // _logger = null; // todo: Inject ILogger if needed
+            _logger = null; // todo
+            _cts = new();
+
             _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
             _model = model ?? throw new ArgumentNullException(nameof(model));
 
@@ -60,6 +65,8 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public async Task ProcessInputAsync(CancellationToken cancellationToken)
         {
+            var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
+
             var finalMessages = new List<GroqCloudMessage>();
             if (!string.IsNullOrWhiteSpace(_systemPrompt))
             {
@@ -94,13 +101,13 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
             try
             {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, combinedCancellationToken);
                 response.EnsureSuccessStatusCode(); // Throw if API returned an error, todo
 
-                using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var responseStream = await response.Content.ReadAsStreamAsync(combinedCancellationToken);
                 using var reader = new StreamReader(responseStream);
 
-                while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+                while (!reader.EndOfStream && !combinedCancellationToken.IsCancellationRequested)
                 {
                     var line = await reader.ReadLineAsync() ?? string.Empty;
 
@@ -131,7 +138,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                     // Ignore empty lines or lines not starting with "data: " (like comments ':') / TODO CHECK IF NEEDED
                 }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (combinedCancellationToken.IsCancellationRequested)
             {
                 MessageStreamedCancelled?.Invoke(this, EventArgs.Empty);
             }
@@ -218,6 +225,19 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.GroqCloud;
+        }
+
+        public void Dispose()
+        {
+            ClearMessageStreamed();
+
+            _cts?.Cancel();
+
+            // todo check if task ProcessInputAsync ended
+
+            _httpClient.Dispose();
+
+            _cts?.Dispose();
         }
     }
 }

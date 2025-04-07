@@ -1,12 +1,7 @@
-﻿using IqraCore.Interfaces.VAD;
-using IqraCore.Interfaces.Conversation; // For ISTTService if needed directly
-using Microsoft.Extensions.Logging;
-using System;
+﻿using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentAudioInput : IDisposable
     {
@@ -14,11 +9,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         private readonly ConversationAIAgentState _agentState;
         private readonly BlockingCollection<byte[]> _audioQueue = new();
         private Task? _audioProcessingTask;
-        private CancellationTokenSource? _moduleCTS; // Linked to the main agent CTS
-
-        // Dependencies if needed directly (alternative to accessing via _agentState)
-        // private readonly ISTTService _sttService;
-        // private readonly IVadService _vadService;
+        private CancellationTokenSource? _moduleCTS;
 
         public ConversationAIAgentAudioInput(ILoggerFactory loggerFactory, ConversationAIAgentState agentState)
         {
@@ -60,18 +51,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             {
                 foreach (var audioData in _audioQueue.GetConsumingEnumerable(cancellationToken))
                 {
-                    // --- Move logic from original ProcessAudioQueueAsync here ---
-                    // Access _agentState.IsAcceptingSTTAudio, _agentState.STTService, _agentState.VadService
-
                     if (_agentState.IsAcceptingSTTAudio && _agentState.STTService != null)
                     {
                         try
                         {
-                            // Assuming STT Handler provides a method or STTService is directly usable
-                            // Option 1: Access service via state
                             _agentState.STTService.WriteTranscriptionAudioData(audioData);
-                            // Option 2: Call method on STT Handler (if passed in constructor)
-                            // _sttHandler.WriteAudioData(audioData);
                         }
                         catch (Exception ex)
                         {
@@ -79,15 +63,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                             // TODO: Raise error event via orchestrator?
                         }
                     }
-                    if (_agentState.VadService != null)
+                    if (_agentState.IsVadEnabled && _agentState.VadService != null)
                     {
                         try
                         {
-                            // Assuming VAD Handler provides method or VADService is directly usable
-                            // Option 1: Access service via state
                             _agentState.VadService.ProcessAudio(audioData.AsMemory());
-                            // Option 2: Call method on VAD/Interruption Handler
-                            // _interruptionManager.ProcessVadAudio(audioData.AsMemory());
                         }
                         catch (Exception ex)
                         {
@@ -95,7 +75,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                             // TODO: Raise error event via orchestrator?
                         }
                     }
-                    // --- End of moved logic ---
                 }
             }
             catch (OperationCanceledException) { /* Expected */ }
@@ -105,16 +84,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 _logger.LogError(ex, "Agent {AgentId}: Unhandled error in audio processing task.", _agentState.AgentId);
                 // TODO: Raise error event via orchestrator?
             }
-            finally
-            {
-                _logger.LogInformation("Agent {AgentId}: Audio processing task finished.", _agentState.AgentId);
-            }
         }
 
-        public void StopProcessing() // Called during shutdown
+        public void StopProcessing()
         {
             _audioQueue.CompleteAdding();
-            // Cancellation should handle stopping the task loop
         }
 
         public void Dispose()

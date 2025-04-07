@@ -1,31 +1,20 @@
 ﻿using IqraInfrastructure.Managers.Script;
-using IqraInfrastructure.Managers.Business; // For session manager (if needed for EndAsync)
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text; // For ParseArguments
-using System.Text.Json; // For JSON parsing
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text;
+using System.Text.Json;
 
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentToolExecutor
     {
-        // Event to notify Orchestrator/LLMHandler about the result
-        public event Func<string, Task>? ToolResultAvailable; // Sends result message back to LLM
-                                                              // Event to request speaking (e.g., message before ending call)
-        public event Func<string, CancellationToken, Task>? PlaySpeechRequested; // Requests AudioOutput to speak
-                                                                                 // Event to end the conversation session
-        public event Func<string, Task>? EndConversationRequested; // Requests Orchestrator/SessionManager to end
-
+        public event Func<string, Task>? ToolResultAvailable;
+        public event Func<string, CancellationToken, Task>? PlaySpeechRequested;
+        public event Func<string, Task>? EndConversationRequested;
 
         private readonly ILogger<ConversationAIAgentToolExecutor> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly ScriptExecutionManager _scriptExecutionManager;
-        // Avoid direct dependency on SessionManager if possible, use event instead
-        // private readonly ConversationSessionManager _conversationSessionManager;
 
         public ConversationAIAgentToolExecutor(
             ILoggerFactory loggerFactory,
@@ -37,9 +26,8 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             _scriptExecutionManager = scriptExecutionManager;
         }
 
-        public async Task InitializeAsync(CancellationToken agentToken) // Added token
+        public async Task InitializeAsync()
         {
-            // --- Move ScriptExecutionManager loading logic here if not done elsewhere ---
             _logger.LogInformation("Agent {AgentId}: Initializing ScriptExecutionManager...", _agentState.AgentId);
             if (_agentState.BusinessApp == null || _agentState.CurrentSessionRoute == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode))
             {
@@ -47,29 +35,23 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 throw new InvalidOperationException("ScriptExecutionManager requires BusinessApp, Route, and LanguageCode.");
             }
 
-            // Cancelled operation is not expected here unless the agentToken is cancelled during init
             await _scriptExecutionManager.LoadScriptAsync(
                _agentState.BusinessApp,
                _agentState.CurrentSessionRoute,
-               _agentState.CurrentLanguageCode,
-               agentToken); // Pass token if LoadScriptAsync supports it
+               _agentState.CurrentLanguageCode
+            );
 
             _logger.LogInformation("Tool Executor initialized for Agent {AgentId}.", _agentState.AgentId);
         }
 
-        public async Task ReInitializeForLanguageAsync(CancellationToken agentToken) // Added token
+        public async Task ReInitializeForLanguageAsync()
         {
             _logger.LogInformation("Agent {AgentId}: Re-initializing ScriptExecutionManager for new language.", _agentState.AgentId);
-            await InitializeAsync(agentToken); // Re-run full init logic
+            await InitializeAsync();
         }
 
         public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken)
         {
-            // --- Move logic from HandleLLMSystemToolResponseCompletedAsync here ---
-            // Parse functionContent using ParseArguments
-            // Handle "end_call", "transfer_to_agent", "receive_dtmf_input", etc.
-            // Raise events like PlaySpeechRequested or EndConversationRequested
-
             _logger.LogInformation("Agent {AgentId}: Handling system tool: {FunctionContent}", _agentState.AgentId, functionContent);
             try
             {
@@ -118,6 +100,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                         await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
                         // Wait for speech to finish? The orchestrator might need to coordinate this.
                         // Adding a small delay might be pragmatic but not robust.
+                        // TODO WE NEED TO AWAIT FOR TEXT TO BE SPOKEN not use delay
                         await Task.Delay(200, cancellationToken); // Small delay, adjust as needed
                     }
 
@@ -146,7 +129,18 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     _logger.LogDebug("Agent {AgentId}: System tool 'acknowledge' received: {Message}", _agentState.AgentId, ackMessage);
                     // No result needs to be sent back to LLM usually for simple ack
                 }
-                // Add other system tools here...
+                else if (toolName.Equals("retrieve_product_information", StringComparison.OrdinalIgnoreCase))
+                {
+                    // TODO: Implement
+                    _logger.LogWarning("Agent {AgentId}: 'retrieve_product_information' system tool not fully implemented.", _agentState.AgentId);
+                    await NotifyToolResultAsync("System tool 'retrieve_product_information' acknowledged but not fully implemented.");
+                }
+                else if (toolName.Equals("retrieve_service_information", StringComparison.OrdinalIgnoreCase))
+                {
+                    // TODO: Implement
+                    _logger.LogWarning("Agent {AgentId}: 'retrieve_service_information' system tool not fully implemented.", _agentState.AgentId);
+                    await NotifyToolResultAsync("System tool 'retrieve_service_information' acknowledged but not fully implemented.");
+                }
                 else
                 {
                     _logger.LogWarning("Agent {AgentId}: Received unknown system tool: {ToolName}", _agentState.AgentId, toolName);
@@ -163,12 +157,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         public async Task HandleCustomToolAsync(string functionContent, CancellationToken cancellationToken)
         {
-            // --- Move logic from HandleLLMCustomToolResponseCompletedAsync here ---
-            // Parse functionContent using ParseArguments
-            // Extract node ID and variables
-            // Call _scriptExecutionManager.ExecuteCustomToolAsync
-            // Raise ToolResultAvailable event with the outcome
-
             _logger.LogInformation("Agent {AgentId}: Handling custom tool: {FunctionContent}", _agentState.AgentId, functionContent);
 
             try
@@ -183,7 +171,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 if (arguments.Count >= 2) nodeIdToExecute = UnescapeArgument(arguments[1]);
                 if (arguments.Count >= 3) nodeVariableValuesJson = arguments[2]; // Keep raw JSON string
 
-
                 if (string.IsNullOrWhiteSpace(nodeIdToExecute))
                 {
                     _logger.LogError("Agent {AgentId}: Invalid custom tool call - Node ID is missing. Content: {Content}", _agentState.AgentId, functionContent);
@@ -193,7 +180,6 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
                 _logger.LogDebug("Agent {AgentId}: Parsed Custom Tool. Reason: '{Reason}', NodeID: '{NodeId}', Vars: '{Vars}'",
                     _agentState.AgentId, reasonForExecuting, nodeIdToExecute, nodeVariableValuesJson ?? "None");
-
 
                 Dictionary<string, JsonElement>? nodeVariables = null;
                 if (!string.IsNullOrEmpty(nodeVariableValuesJson) && nodeVariableValuesJson != "null")
@@ -220,7 +206,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     catch (JsonException jsonEx)
                     {
                         _logger.LogError(jsonEx, "Agent {AgentId}: Error parsing custom tool JSON variables: {JsonString}", _agentState.AgentId, nodeVariableValuesJson);
-                        await NotifyToolResultAsync($"Error: Could not parse JSON variables for custom tool '{nodeIdToExecute}'.");
+                        await NotifyToolResultAsync($"Error: Could not parse JSON variables for custom tool with node id '{nodeIdToExecute}'.");
                         return;
                     }
                 }
@@ -234,13 +220,13 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
                 if (!executeResult.Success)
                 {
-                    _logger.LogError("Agent {AgentId}: Failed to execute custom tool '{NodeId}'. Reason: {Message}, Data: {Data}", _agentState.AgentId, nodeIdToExecute, executeResult.Message, executeResult.Data);
-                    await NotifyToolResultAsync($"Failed to execute custom tool '{nodeIdToExecute}': {executeResult.Message} - {executeResult.Data}");
+                    _logger.LogError("Agent {AgentId}: Failed to execute custom tool with node id '{NodeId}'. Reason: {Message}, Data: {Data}", _agentState.AgentId, nodeIdToExecute, executeResult.Message, executeResult.Data);
+                    await NotifyToolResultAsync($"Failed to execute custom tool with node id '{nodeIdToExecute}': {executeResult.Message} - {executeResult.Data}");
                 }
                 else
                 {
-                    _logger.LogInformation("Agent {AgentId}: Successfully executed custom tool '{NodeId}'. Response: {Response}", _agentState.AgentId, nodeIdToExecute, executeResult.Data);
-                    await NotifyToolResultAsync($"Successfully executed custom tool '{nodeIdToExecute}'. Response: {executeResult.Data}");
+                    _logger.LogInformation("Agent {AgentId}: Successfully executed custom tool with node id '{NodeId}'. Response: {Response}", _agentState.AgentId, nodeIdToExecute, executeResult.Data);
+                    await NotifyToolResultAsync($"Successfully executed custom tool with node id '{nodeIdToExecute}'. Response: {executeResult.Data}");
                 }
 
             }

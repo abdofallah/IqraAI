@@ -2,7 +2,7 @@
 
 namespace IqraCore.Interfaces.AI
 {
-    public interface ILLMService
+    public interface ILLMService : IDisposable
     {
         event EventHandler<object>? MessageStreamed;
         void ClearMessageStreamed();

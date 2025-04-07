@@ -8,6 +8,7 @@ using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
@@ -141,7 +142,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private event EventHandler<string>? OnDTMFRecieved;
         private bool IsProcessingDTMFAlready = false;
 
-        public ConversationAIAgent(
+        public ConversationAIAgentOld(
             ILoggerFactory loggerFactory,
             ConversationSessionManager sessionManager,
             string agentId,
@@ -1553,7 +1554,7 @@ namespace IqraInfrastructure.Managers.Conversation
                         }
                     }
 
-                    var executeCustomToolResult = await _scriptExecutionManager.ExecuteCustomToolAsync(nodeIdToExecute, nodeVariables ?? new Dictionary<string, JsonElement>());
+                    var executeCustomToolResult = await _scriptExecutionManager.ExecuteCustomToolAsync(nodeIdToExecute, nodeVariables ?? new Dictionary<string, JsonElement>(), CancellationToken.None);
                     if (!executeCustomToolResult.Success)
                     {
                         _logger.LogError("Error executing custom tool, Failed to execute custom tool, {Response}", executeCustomToolResult.Data);

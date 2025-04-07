@@ -67,7 +67,7 @@ namespace IqraInfrastructure.Managers.Script
         }
 
         // Handle Custom Tool Nodes Execution
-        public async Task<FunctionReturnResult<string?>> ExecuteCustomToolAsync(string nodeId, Dictionary<string, JsonElement> parameters)
+        public async Task<FunctionReturnResult<string?>> ExecuteCustomToolAsync(string nodeId, Dictionary<string, JsonElement> parameters, CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult<string?>();
 
@@ -77,7 +77,7 @@ namespace IqraInfrastructure.Managers.Script
                 if (nodeData == null)
                 {
                     result.Code = "ExecuteToolAsync:1";
-                    result.Message = $"Custom tool node with id {nodeId} not found in script";
+                    result.Message = $"Custom tool node with id {nodeId} not found in script, did you maybe use tool id instead of node id?";
                     return result;
                 }
 
@@ -161,23 +161,23 @@ namespace IqraInfrastructure.Managers.Script
                     switch (toolData.Configuration.RequestType)
                     {
                         case HttpMethodEnum.Get:
-                            httpResponseMessage = await toolHttpClient.GetAsync(baseUri);
+                            httpResponseMessage = await toolHttpClient.GetAsync(baseUri, cancellationToken);
                             break;
 
                         case HttpMethodEnum.Post:
-                            httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent);
+                            httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent, cancellationToken);
                             break;
 
                         case HttpMethodEnum.Put:
-                            httpResponseMessage = await toolHttpClient.PutAsync(baseUri, requestContent);
+                            httpResponseMessage = await toolHttpClient.PutAsync(baseUri, requestContent, cancellationToken);
                             break;
 
                         case HttpMethodEnum.Patch:
-                            httpResponseMessage = await toolHttpClient.PatchAsync(baseUri, requestContent);
+                            httpResponseMessage = await toolHttpClient.PatchAsync(baseUri, requestContent, cancellationToken);
                             break;
 
                         case HttpMethodEnum.Delete:
-                            httpResponseMessage = await toolHttpClient.DeleteAsync(baseUri);
+                            httpResponseMessage = await toolHttpClient.DeleteAsync(baseUri, cancellationToken);
                             break;
 
                         default:
@@ -187,7 +187,7 @@ namespace IqraInfrastructure.Managers.Script
                     }
 
                     var responseStatusCode = httpResponseMessage.StatusCode;
-                    var responseData = await httpResponseMessage.Content.ReadAsStringAsync();
+                    var responseData = await httpResponseMessage.Content.ReadAsStringAsync(cancellationToken);
 
                     if (!toolData.Response.TryGetValue(httpResponseMessage.StatusCode.ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
                     {

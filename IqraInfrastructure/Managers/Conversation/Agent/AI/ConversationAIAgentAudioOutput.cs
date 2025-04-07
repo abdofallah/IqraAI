@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     // Define SpeechSegment struct here or in a shared location
     internal readonly struct SpeechSegment
@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
         private const int Channels = 1; // mono
         private const int BytesPerSample = BitsPerSample / 8;
         private const int ChunkDurationMs = 300; // Desired chunk duration
-        private const int BytesPerChunk = (SampleRate * BytesPerSample * Channels * ChunkDurationMs) / 1000;
+        private const int BytesPerChunk = SampleRate * BytesPerSample * Channels * ChunkDurationMs / 1000;
 
         // Queues & Tasks
         private readonly BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
@@ -428,7 +428,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     }
 
                     // Check if playback became complete *after* sending the last chunk of a segment
-                    if (segmentFinished && _currentSpeechSegment.IsEmpty && _speechAudioQueue.IsEmpty && !playbackWasComplete)
+                    if (segmentFinished && _currentSpeechSegment.IsEmpty && _speechAudioQueue.IsCompleted && !playbackWasComplete)
                     {
                         _logger.LogDebug("Agent {AgentId}: Speech queue empty immediately after finishing segment.", _agentState.AgentId);
                         SpeechPlaybackComplete?.Invoke();
@@ -520,10 +520,10 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             var backgroundSpan = backgroundChunk.Span;
 
             // Ensure spans are valid before casting (non-empty and even length)
-            var speechShortSpan = (speechSpan.Length >= 2 && speechSpan.Length % 2 == 0)
+            var speechShortSpan = speechSpan.Length >= 2 && speechSpan.Length % 2 == 0
                ? MemoryMarshal.Cast<byte, short>(speechSpan)
                : ReadOnlySpan<short>.Empty;
-            var backgroundShortSpan = (backgroundSpan.Length >= 2 && backgroundSpan.Length % 2 == 0)
+            var backgroundShortSpan = backgroundSpan.Length >= 2 && backgroundSpan.Length % 2 == 0
                ? MemoryMarshal.Cast<byte, short>(backgroundSpan)
                : ReadOnlySpan<short>.Empty;
 
@@ -534,8 +534,8 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
             for (int i = 0; i < mixedShortSpan.Length; i++)
             {
-                short speechSample = (i < speechShortSpan.Length) ? (short)(speechShortSpan[i] * agentVolume) : (short)0;
-                short backgroundSample = (i < backgroundShortSpan.Length) ? (short)(backgroundShortSpan[i] * backgroundVolume) : (short)0;
+                short speechSample = i < speechShortSpan.Length ? (short)(speechShortSpan[i] * agentVolume) : (short)0;
+                short backgroundSample = i < backgroundShortSpan.Length ? (short)(backgroundShortSpan[i] * backgroundVolume) : (short)0;
 
                 int mixedSample = speechSample + backgroundSample;
                 mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);

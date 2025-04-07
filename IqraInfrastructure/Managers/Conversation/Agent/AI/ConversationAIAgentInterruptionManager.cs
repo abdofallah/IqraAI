@@ -1,20 +1,21 @@
-﻿using IqraCore.Interfaces.AI; // For ILLMService
+﻿using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.VAD;
-using IqraInfrastructure.Managers.LLM; // For LLMProviderManager
-using IqraInfrastructure.Managers.LLM.Providers.Helpers; // For chunk helper
+using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Text; // For StringBuilder
-using System.Threading;
-using System.Threading.Tasks;
-using IqraInfrastructure.Managers.VAD; // For SileroVadService concrete type if needed
+using System.Text;
+using IqraInfrastructure.Managers.VAD;
+using IqraInfrastructure.Managers.Business;
+using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helpers;
 
 
-namespace IqraInfrastructure.Managers.Conversation.Modules
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
     public class ConversationAIAgentInterruptionManager : IDisposable
     {
         // Dependencies
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgentInterruptionManager> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly LLMProviderManager _llmProviderManager; // To build interrupting LLM if needed
@@ -50,6 +51,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
             ConversationAIAgentAudioOutput audioOutput, // Inject refs to modules needed
             ConversationAIAgentLLMHandler llmHandler)
         {
+            _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationAIAgentInterruptionManager>();
             _agentState = agentState;
             _llmProviderManager = llmProviderManager;
@@ -60,6 +62,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
         public async Task InitializeAsync(CancellationToken agentCTS)
         {
+            return; // todo disabled for now
             // --- Move VAD initialization logic from InitalizeVAD ---
             if (_agentState.CurrentConversationType != AgentConversationTypeENUM.TurnByTurn)
             {
@@ -78,7 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 {
                     DisposeCurrentVadService(); // Dispose previous if any
                                                 // Use concrete type if Initialize requires specific params not on interface
-                    _vadService = new SileroVadService(LoggerFactory.Create(b => b.AddConsole()).CreateLogger<SileroVadService>()); // Provide logger properly
+                    _vadService = new SileroVadService(_loggerFactory.CreateLogger<SileroVadService>()); // Provide logger properly
                     _vadService.Initialize(modelPath, _vadOptions);
                     _vadService.VoiceActivityChanged += OnVoiceActivityChanged;
                     _agentState.VadService = _vadService; // Store in state if needed by AudioInput
@@ -274,7 +277,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 if (_agentState.CurrentResponseDurationSpeakingStarted.HasValue && _agentState.CurrentResponseDuration > TimeSpan.Zero)
                 {
                     TimeSpan elapsedTime = DateTime.UtcNow - _agentState.CurrentResponseDurationSpeakingStarted.Value;
-                    string fullResponseText = _llmHandler.GetCurrentResponseText(); // Need method in LLMHandler
+                    string fullResponseText = "";//_llmHandler.GetCurrentResponseText(); // Need method in LLMHandler
                     double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _agentState.CurrentResponseDuration.TotalSeconds, 0.0, 1.0);
                     int spokenLength = (int)(fullResponseText.Length * proportionSpoken);
                     spokenSoFar = fullResponseText.Substring(0, Math.Min(spokenLength, fullResponseText.Length));
@@ -296,11 +299,11 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 streamHandler = async (sender, responseObj) => {
                     await CheckIfInterruptibleStreamHandlerAsync(sender, responseObj, spokenSoFar, text, clientId, externalToken, streamHandler);
                 };
-                _agentState.InterruptingLLMService.MessageStreamed += streamHandler;
+                //_agentState.InterruptingLLMService?.MessageStreamed += streamHandler; TODO REMOVED
 
 
                 // Combine CTS: agent shutdown, external call token
-                using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(_agentState.AgentConfiguration!.GetMasterCancellationToken(), externalToken); // Need agent master CTS access
+                using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCTS, externalToken); // Need agent master CTS access
 
                 _interruptLLMTask = _agentState.InterruptingLLMService.ProcessInputAsync(combinedCts.Token);
                 // Don't await here, let the stream handler manage completion
@@ -355,7 +358,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                     // --- Critical: Unsubscribe from the event ---
                     if (sender is ILLMService service)
                     {
-                        service.MessageStreamed -= selfHandler;
+                        //service.MessageStreamed -= selfHandler; TODO removed
                         _logger.LogTrace("Agent {AgentId}: Unsubscribed from interrupting LLM stream.", _agentState.AgentId);
                     }
                     else
@@ -402,7 +405,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
                 _agentState.InterruptResponseBuffer.Clear();
                 _interruptLLMTask = null;
                 // Try to unsubscribe just in case
-                if (sender is ILLMService service) { service.MessageStreamed -= selfHandler; }
+                //if (sender is ILLMService service) { service.MessageStreamed -= selfHandler; } TODO REMOVED
             }
         }
 
@@ -498,7 +501,7 @@ namespace IqraInfrastructure.Managers.Conversation.Modules
 
             // 3. Log the interrupted response in LLM history (optional but good practice)
             // Need to get the *intended* full response text from LLMHandler
-            string fullResponseText = _llmHandler.GetCurrentResponseText(); // Requires method in LLMHandler
+            string fullResponseText = ""; //_llmHandler.GetCurrentResponseText(); // Requires method in LLMHandler TODO REMOVED
             if (!string.IsNullOrEmpty(fullResponseText))
             {
                 var modifiedResponse = spokenSoFar + $"......(interrupted by customer via {reason} at this point but expected to speak) " + fullResponseText.Substring(Math.Min(spokenSoFar.Length, fullResponseText.Length));
