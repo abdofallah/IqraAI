@@ -93,12 +93,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _audioSendingTask = Task.Run(() => ProcessAudioSpeakingQueueAsync(_audioSendingCTS.Token), _audioSendingCTS.Token);
             _logger.LogInformation("AudioOutput module initialized for Agent {AgentId}.", _agentState.AgentId);
         }
-        public async Task ReInitializeForLanguageAsync(CancellationToken agentCTS) // Pass token if needed
+        public async Task ReInitializeForLanguageAsync()
         {
             _logger.LogInformation("Agent {AgentId}: Re-initializing Audio Output Handler for new language.", _agentState.AgentId);
-            await CancelCurrentSpeechPlaybackAsync(); // Stop current playback/TTS
-            await InitializeTTSAsync(); // Re-initialize TTS service
-                                        // Background music usually doesn't need reloading on language change
+            await CancelCurrentSpeechPlaybackAsync();
+            await InitializeTTSAsync();
         }
         private async Task InitializeTTSAsync()
         {

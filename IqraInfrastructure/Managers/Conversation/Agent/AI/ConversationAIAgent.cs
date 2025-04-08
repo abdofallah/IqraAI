@@ -258,9 +258,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 
                 await _llmHandler.ReInitializeForLanguageAsync();
                 await _sttHandler.ReInitializeForLanguageAsync();
-                await _audioOutputHandler.ReInitializeForLanguageAsync(_conversationCTS.Token);
+                await _audioOutputHandler.ReInitializeForLanguageAsync();
                 await _toolExecutor.ReInitializeForLanguageAsync();
-                await _interruptionManager.ReInitializeForLanguageAsync(_conversationCTS.Token); // Re-init interrupting LLM if needed
+                await _interruptionManager.ReInitializeForLanguageAsync();
 
                 _logger.LogInformation("Agent {AgentId}: Language successfully changed to {LanguageCode}.", AgentId, newLanguageCode);
 
@@ -316,7 +316,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             try
             {
-                bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentContinue(text, _agentState.CurrentClientId, _conversationCTS.Token);
+                bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentBeInterrupted(text, _agentState.CurrentClientId, _conversationCTS.Token);
                 if (canAgentContinue)
                 {
                     _logger.LogInformation("Agent {AgentId}: Text handled by interruption manager, leting agent to continue sppeaking.", AgentId);

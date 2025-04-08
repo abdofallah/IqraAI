@@ -33,7 +33,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private Task? _vadInterruptTimerTask = null;
 
         // Interrupting LLM State
+        public BusinessAppIntegration? _interruptionLLMIntegration { get; internal set; }
         private Task? _interruptLLMTask = null;
+        private StringBuilder _interruptViAILLMBuilder = new StringBuilder();
 
         private readonly SemaphoreSlim _vadActivityStatusLock = new SemaphoreSlim(1, 1);
 
@@ -96,7 +98,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     }
                 }
 
-                if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaAI && false)
+                if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaAI)
                 {
                     await InitializeInterruptingLLMAsync();
                 }
@@ -111,8 +113,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             _logger.LogDebug("Agent {AgentId}: Setting up interrupting LLM.", _agentState.AgentId);
 
+            BusinessAppRouteAgentInterruptionViaAI interruptionData = ((BusinessAppRouteAgentInterruptionViaAI)_agentState.CurrentSessionRoute?.Agent.Interruption);
+
             FunctionReturnResult<ILLMService?> interuptibleLLMServiceResult;
-            if (((BusinessAppRouteAgentInterruptionViaAI)_agentState.CurrentSessionRoute?.Agent.Interruption).UseCurrentAgentLLMForInterrupting)
+            if (interruptionData.UseCurrentAgentLLMForInterrupting)
             {
                 // Ensure primary LLM and its integration data are available
                 if (_agentState.LLMService == null || _agentState.LLMBusinessIntegrationData == null || _agentState.BusinessAppAgent == null)
@@ -121,33 +125,39 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     throw new InvalidOperationException("Primary LLM required for reuse in interruption.");
                 }
                 var defaultLLMServiceInfo = _agentState.BusinessAppAgent.Integrations.LLM[_agentState.CurrentLanguageCode][0];
-                // TODO: Pass correct options if needed (e.g., lower latency settings?)
                 interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(
                    _agentState.LLMBusinessIntegrationData,
                    defaultLLMServiceInfo,
-                   new Dictionary<string, string> { } /* Add specific options? */
+                   new Dictionary<string, string> { }
                  );
             }
             else
             {
-                // TODO: Implement logic to build from a *different* configured integration
-                _logger.LogError("Agent {AgentId}: Using a separate interrupting LLM is not yet implemented.", _agentState.AgentId);
-                throw new NotImplementedException("Separate interrupting LLM configuration not implemented.");
+                var interruptionLLMIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.AgentConfiguration.BusinessId, interruptionData.LLMIntegrationToUseForCheckingInterruption.Id);
+                if (!interruptionLLMIntegrationResult.Success || interruptionLLMIntegrationResult.Data == null)
+                {
+                    _logger.LogError("Agent {AgentId}: Interruption LLM integration {IntegrationId} not found", _agentState.AgentId, interruptionData.LLMIntegrationToUseForCheckingInterruption.Id);
+                    throw new InvalidOperationException($"Interruption LLM integration {interruptionData.LLMIntegrationToUseForCheckingInterruption.Id} not found");
+                }
+                _interruptionLLMIntegration = interruptionLLMIntegrationResult.Data;
+
+                interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_agentState.LLMBusinessIntegrationData, interruptionData.LLMIntegrationToUseForCheckingInterruption, new Dictionary<string, string> { });  
             }
 
             if (!interuptibleLLMServiceResult.Success || interuptibleLLMServiceResult.Data == null)
             {
-                _logger.LogError("Agent {AgentId}: Failed to build interrupting LLM service: {ErrorMessage}", _agentState.AgentId, interuptibleLLMServiceResult.Message);
-                throw new InvalidOperationException($"Failed to build interrupting LLM service: {interuptibleLLMServiceResult.Message}");
+                _logger.LogError("Agent {AgentId}: Failed to build Interruption LLM service with error: {ErrorMessage}", _agentState.AgentId, interuptibleLLMServiceResult.Message);
+                throw new InvalidOperationException($"Failed to build Interruption LLM service: {interuptibleLLMServiceResult.Message}");
             }
 
-            DisposeCurrentService(_agentState.InterruptingLLMService); // Dispose old one
+            DisposeCurrentInterruptionLLMService(_agentState.InterruptingLLMService);
             _agentState.InterruptingLLMService = interuptibleLLMServiceResult.Data;
-            // Set the specific system prompt for interruption decisions
-            _agentState.InterruptingLLMService.SetSystemPrompt("Here are the guidelines for thinking before a response (for the thoughts of the model)\r\n<ThinkingGuidelines>\r\n\t- Only use thinking when required else give response directly.\r\n\t- The thinking text should always be summarized and not exceed more than 1 to 3 sentences.\r\n\t- The thinking text should always be less than maximum of 100 characters.\r\n</ThinkingGuidelines>\r\n\r\nYou will be given response of a customer support agent and the current spoken words/sentence by the customer. Decide whether the customer support agent should keep speaking their current sentence or be inntrupted by the customer to let the customer speak.\r\n\r\nIf we should let the customer speak, respond back with: \"allow_interrupt\".\r\nIf we should let the customer support agent speak, respond back with: \"continue_speaking\".");
+
+            // todo - move the prompt to the backend prompt management system
+            _agentState.InterruptingLLMService.SetSystemPrompt("You are a neural pathway inside a brain of a customer support agent. Your task is to decide that when the customer on call interrupts you whether you should keep speaking or allow the user to interrupt.\n\nYou must always think first and provide your think to why you think the customer response should interrupt you mid response.\n\nHere are the guidelines for thinking before a response (for the thoughts of the model)\n<ThinkingGuidelines>\n\t- The thinking text should always be summarized and not exceed more than 1 to 2 sentences.\n\t- The thinking text should always be less than maximum of 100 characters.\n</ThinkingGuidelines>\n\nYou must follow the following format to reply back:\n```\nthinking: <your rapid thoughts>\nresult: <allow_interrupt or continue_speaking>\n```\nHere are the results format:\nIf we should let the customer speak, respond back with: \"allow_interrupt\".\nIf we should let the customer support agent speak, respond back with: \"continue_speaking\".");
             _logger.LogInformation("Agent {AgentId}: Interrupting LLM Initialized.", _agentState.AgentId);
         }
-        public async Task ReInitializeForLanguageAsync(CancellationToken agentCTS) // Added token
+        public async Task ReInitializeForLanguageAsync()
         {
             _logger.LogInformation("Agent {AgentId}: Re-initializing Interruption Manager for new language.", _agentState.AgentId);
 
@@ -158,7 +168,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         }
 
         // Called by Orchestrator's ProcessTextAsync when text arrives WHILE agent is speaking
-        public async Task<bool> CheckShouldLetAgentContinue(string text, string? clientId, CancellationToken externalToken)
+        public async Task<bool> CheckShouldLetAgentBeInterrupted(string text, string? clientId, CancellationToken externalToken)
         {
             if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.TurnByTurn)
             {
@@ -202,10 +212,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return false;
             }
 
-            // Agent is responding and user starts speaking, we will go ahead and buffer the text
-            // we will let OnVoiceActivityChanged decide what to do
             if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaVAD)
             {
+                // Agent is responding and user starts speaking, we will go ahead and buffer the text
+                // we will let OnVoiceActivityChanged decide what to do
+
                 if (!_agentState.IsResponding)
                 {
                     await _llmHandler.CancelCurrentLLMTaskAsync();
@@ -216,35 +227,39 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _agentState.InterruptResponseBuffer.Append(text + " ");
                 return true;
             }
-  
-            // todo check
+
             if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaAI)
             {
-                if (_agentState.IsProcessingInterruption || _agentState.InterruptingLLMService == null)
+                if (!_agentState.IsResponding) return false;
+
+                if (_interruptLLMTask != null)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Ignoring text for AI interrupt - already processing or service unavailable.", _agentState.AgentId);
+                    _logger.LogWarning("Agent {AgentId}: Ignoring text for AI interrupt - already processing.", _agentState.AgentId);
                     _agentState.InterruptResponseBuffer.Append(text + " ");
+                    // todo check this how the response really looks like
                     return true;
                 }
 
                 // --- Start AI Interruption Check ---
                 _logger.LogInformation("Agent {AgentId}: Starting AI interruption check for text: '{Text}'", _agentState.AgentId, text);
-                _agentState.IsProcessingInterruption = true;
-                _agentState.InterruptResponseBuffer.Clear(); // Clear buffer for this check
+                _agentState.InterruptResponseBuffer.Clear();
 
-
-                // TODO: Determine the 'spokenSoFar' accurately. This is hard!
-                // Need coordination with AudioOutput timing. For now, use a rough estimate or simplified logic.
-                // Original code used timing estimation. Let's try that.
-                string spokenSoFar = "Estimating spoken part..."; // Placeholder - requires better implementation
+                string fullText = _llmHandler.GetCurrentResponseText().Substring("response_to_customer:".Length);
+                string spokenSoFar = fullText;
+                string unspokenSoFar = "UNKNOWN";
                 if (_agentState.CurrentResponseDurationSpeakingStarted.HasValue && _agentState.CurrentResponseDuration > TimeSpan.Zero)
                 {
                     TimeSpan elapsedTime = DateTime.UtcNow - _agentState.CurrentResponseDurationSpeakingStarted.Value;
-                    string fullResponseText = "";//_llmHandler.GetCurrentResponseText(); // Need method in LLMHandler
                     double proportionSpoken = Math.Clamp(elapsedTime.TotalSeconds / _agentState.CurrentResponseDuration.TotalSeconds, 0.0, 1.0);
-                    int spokenLength = (int)(fullResponseText.Length * proportionSpoken);
-                    spokenSoFar = fullResponseText.Substring(0, Math.Min(spokenLength, fullResponseText.Length));
-                    _logger.LogDebug("Agent {AgentId}: Estimated spoken so far ({Proportion:P1}): {Text}", _agentState.AgentId, proportionSpoken, spokenSoFar);
+                    int spokenLength = (int)((fullText.Length) * proportionSpoken);
+                    spokenSoFar = spokenSoFar.Substring(0, Math.Min(spokenLength, fullText.Length));
+                    int unspokenLength = spokenLength - fullText.Length;
+                    if (unspokenLength > 0)
+                    {
+                        unspokenSoFar = text.Substring(0, unspokenLength);
+                    }
+                    
+                    _logger.LogInformation("Agent {AgentId}: Estimated spoken so far ({Proportion:P1}): {Text}", _agentState.AgentId, proportionSpoken, spokenSoFar);
                 }
                 else
                 {
@@ -253,31 +268,24 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
 
                 _agentState.InterruptingLLMService.ClearMessages();
-                _agentState.InterruptingLLMService.AddUserMessage($"current agent response: {spokenSoFar}\ncurrent overlaping customer response: {text}");
+                string builtMessage = $"Here is the current response spoken by you (customer agent):\n```\n{spokenSoFar}\n```\n\nFurther unfinished response:\n```\n{unspokenSoFar}\n```\n\nHere is the respone of the customer:\n```\n{text}\n```";
+                _agentState.InterruptingLLMService.AddUserMessage(builtMessage);
 
-                // Subscribe to the interrupting LLM stream locally
-                // TODO: This assumes the interrupting LLM also streams. Adjust if not.
-                // Need to handle unsubscribing carefully.
-                Action<object?, object> streamHandler = null!; // Declare variable first
-                streamHandler = async (sender, responseObj) => {
-                    await CheckIfInterruptibleViaAIMessageStreamHandlerAsync(sender, responseObj, spokenSoFar, text, clientId, externalToken, streamHandler);
+                _agentState.InterruptingLLMService.MessageStreamed += async (sender, responseObj) => {
+                    await CheckIfInterruptibleViaAIMessageStreamHandlerAsync(sender, responseObj, spokenSoFar, text, clientId, externalToken);
                 };
-                //_agentState.InterruptingLLMService?.MessageStreamed += streamHandler; TODO REMOVED
 
-
-                // Combine CTS: agent shutdown, external call token
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken, externalToken); // Need agent master CTS access
-
                 _interruptLLMTask = _agentState.InterruptingLLMService.ProcessInputAsync(combinedCts.Token);
-                // Don't await here, let the stream handler manage completion
 
-                return true; // Indicate text is being handled by interruption logic
+                return true;
             }
 
-            return true; // Should not reach here
+            // Should not reach here
+            return true; 
         }
 
-        // Called by Orchestrator/AudioInput when VAD event occurs
+        // Via VAD Interruption
         private async void OnVoiceActivityChanged(object? sender, VadEventArgs e)
         {
             try
@@ -346,7 +354,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _vadActivityStatusLock.Release();
             }
         }
-
         private void StartVADInterruptTimer(TimeSpan interruptDelay)
         {
             _vadInterruptTimerCTS = new CancellationTokenSource();
@@ -498,100 +505,76 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
         }
 
-        // TODO check
+        // Via AI Interruption
         private async Task CheckIfInterruptibleViaAIMessageStreamHandlerAsync(
             object? sender,
             object responseObj,
-            string spokenSoFarSnapshot, // Pass snapshot
-            string customerOverlapText,
+            string spokenSoFar,
+            string text,
             string? clientId,
-            CancellationToken callerToken,
-            Action<object?, object> selfHandler // Pass handler to allow unsubscribing
-            )
+            CancellationToken cancellationToken
+        )
         {
-            //// --- Move logic from original CheckIfInterruptible here ---
-            //// Extract chunk, append to _agentState.InterruptResponseBuffer
-            //// On end of stream:
-            ////   - Unsubscribe selfHandler
-            ////   - Check result ("allow_interrupt" or "continue_speaking")
-            ////   - If allow_interrupt:
-            ////      - Call TriggerImmediateInterruptAsync
-            ////      - Process customerOverlapText via _llmHandler
-            ////   - If continue_speaking:
-            ////      - Fade back in via _audioOutput.StartVolumeFadeAsync
-            ////   - Reset _agentState.IsProcessingInterruption
+            if (_agentState.InterruptingLLMService == null) return; // Guard
 
-            //if (_agentState.InterruptingLLMService == null) return; // Guard
+            try
+            {
+                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _agentState.InterruptingLLMService.GetProviderType());
+                if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
+                {
+                    _logger.LogError("Agent {AgentId}: Error extracting interrupting LLM chunk: {Reason}", _agentState.AgentId, chunkExtractResult.Message);
+                    return;
+                }
+                (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
 
-            //try
-            //{
-            //    FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _agentState.InterruptingLLMService.GetProviderType());
-            //    if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
-            //    {
-            //        _logger.LogError("Agent {AgentId}: Error extracting interrupting LLM chunk: {Reason}", _agentState.AgentId, chunkExtractResult.Message);
-            //        return;
-            //    }
-            //    (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
+                if (!string.IsNullOrEmpty(deltaText))
+                {
+                    _interruptViAILLMBuilder.Append(deltaText);
+                }
 
-            //    if (!string.IsNullOrEmpty(deltaText))
-            //    {
-            //        _agentState.InterruptResponseBuffer.Append(deltaText);
-            //    }
+                string result = _interruptViAILLMBuilder.ToString().ToLower().Trim();
 
-            //    if (isEndOfResponse)
-            //    {
-            //        // --- Critical: Unsubscribe from the event ---
-            //        if (sender is ILLMService service)
-            //        {
-            //            //service.MessageStreamed -= selfHandler; TODO removed
-            //            _logger.LogTrace("Agent {AgentId}: Unsubscribed from interrupting LLM stream.", _agentState.AgentId);
-            //        }
-            //        else
-            //        {
-            //            _logger.LogWarning("Agent {AgentId}: Could not unsubscribe from interrupting LLM stream - sender mismatch.", _agentState.AgentId);
-            //        }
+                if (result.Contains("allow_interrupt"))
+                {
+                    _agentState.InterruptingLLMService.ClearMessageStreamed();          
 
+                    _logger.LogInformation("Agent {AgentId}: AI decided to allow interrupt. {text}", _agentState.AgentId, result);
 
-            //        string result = _agentState.InterruptResponseBuffer.ToString().ToLower().Trim();
-            //        _logger.LogInformation("Agent {AgentId}: AI Interrupt check result: '{Result}'", _agentState.AgentId, result);
+                    await _llmHandler.CancelCurrentLLMTaskAsync();
 
-            //        if (result.Contains("allow_interrupt"))
-            //        {
-            //            _logger.LogInformation("Agent {AgentId}: AI decided to allow interrupt.", _agentState.AgentId);
-            //            // 1. Trigger the interruption actions (stop speech, etc.)
-            //            await TriggerImmediateInterruptAsync(spokenSoFarSnapshot, "AI Decision"); // Pass snapshot
+                    var currentlyLeftToPlay = _audioOutput.CurrentlyLeftToPlay();
+                    if (currentlyLeftToPlay > TimeSpan.Zero)
+                    {
+                        // todo can make 100 configurable by user maybe?
+                        var amountToWait = 100;
+                        await _audioOutput.StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(amountToWait), cancellationToken);
+                        await Task.Delay(amountToWait);
+                        await _audioOutput.CancelCurrentSpeechPlaybackAsync();
+                    }
 
-            //            // 2. Process the text that caused the interruption
-            //            _logger.LogDebug("Agent {AgentId}: Processing customer text after AI allowed interrupt.", _agentState.AgentId);
-            //            // Use CancellationToken.None or link appropriately? None is safer.
-            //            await _llmHandler.ProcessUserTextAsync(customerOverlapText, clientId, CancellationToken.None);
-            //        }
-            //        else // continue_speaking or unexpected result
-            //        {
-            //            if (!result.Contains("continue_speaking"))
-            //            {
-            //                _logger.LogWarning("Agent {AgentId}: Unexpected result from interrupting LLM: {Result}", _agentState.AgentId, result);
-            //            }
-            //            _logger.LogInformation("Agent {AgentId}: AI decided to continue speaking. Fading back in.", _agentState.AgentId);
-            //            await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(200)); // Quick fade in
-            //        }
+                    _interruptViAILLMBuilder.Clear();
+                    _interruptLLMTask = null;
 
-            //        // Reset interruption state
-            //        _agentState.IsProcessingInterruption = false;
-            //        _agentState.InterruptResponseBuffer.Clear();
-            //        _interruptLLMTask = null;
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogError(ex, "Agent {AgentId}: Error processing interrupting LLM stream.", _agentState.AgentId);
-            //    // Ensure state is reset even on error
-            //    _agentState.IsProcessingInterruption = false;
-            //    _agentState.InterruptResponseBuffer.Clear();
-            //    _interruptLLMTask = null;
-            //    // Try to unsubscribe just in case
-            //    //if (sender is ILLMService service) { service.MessageStreamed -= selfHandler; } TODO REMOVED
-            //}
+                    // send the text to orchestrator instead try to todo
+                    await _audioOutput.StartVolumeFadeAsync(1f, TimeSpan.FromMilliseconds(10), cancellationToken);
+                    await _llmHandler.ProcessSystemMessageAsync($"Your response was interrupted by the customer.\n\nYou spoke the following:\n\n```\n{spokenSoFar}\n```\n\nTo which the customer replied:\n\n```\n{text}\n```", cancellationToken);
+                    return;
+                }
+
+                if (isEndOfResponse)
+                {
+                    _agentState.InterruptingLLMService.ClearMessageStreamed();
+                    _interruptViAILLMBuilder.Clear();
+                    _interruptLLMTask = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Error processing interrupting LLM stream.", _agentState.AgentId);
+                _agentState.InterruptingLLMService.ClearMessageStreamed();
+                _interruptViAILLMBuilder.Clear();
+                _interruptLLMTask = null;
+            }
         }
 
         // Disposing
@@ -606,28 +589,39 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _agentState.VadService = null;
             }
         }
-        private void DisposeCurrentService(IDisposable? service)
+        private void DisposeCurrentInterruptionLLMService(IDisposable? service)
         {
-            // Copied from LLM Handler - make a shared utility?
             if (service == null) return;
-            // Unsubscribe specific events if needed
+
+            if (service is ILLMService llmService)
+            {
+                try
+                {
+                    llmService.ClearMessageStreamed();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Agent {AgentId}: Exception unsubscribing Interruption LLM CheckIfInterruptibleViaAIMessageStreamHandlerAsync.", _agentState.AgentId);
+                }
+            }
+
             try
             {
                 service.Dispose();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing service object.", _agentState.AgentId);
+                _logger.LogWarning(ex, "Agent {AgentId}: Exception disposing Interruption LLM service object.", _agentState.AgentId);
             }
         }
         public void Dispose()
         {
             CancelVADInterruptTimer();
-            // Cancel interrupting LLM task?
-            // _interruptLLMTask?.Wait(TimeSpan.FromSeconds(1)); // Careful with waiting on dispose
+            // TODO Cancel interrupting LLM task?
+            _interruptLLMTask?.Wait(500);
 
             DisposeCurrentVadService();
-            DisposeCurrentService(_agentState.InterruptingLLMService);
+            DisposeCurrentInterruptionLLMService(_agentState.InterruptingLLMService);
             _agentState.InterruptingLLMService = null;
 
             _vadInterruptTimerCTS?.Dispose();

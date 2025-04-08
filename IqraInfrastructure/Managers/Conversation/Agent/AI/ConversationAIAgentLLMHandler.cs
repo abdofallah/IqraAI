@@ -79,34 +79,13 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             DisposeCurrentLLMService(_agentState.LLMService); // Dispose previous if any
             _agentState.LLMService = llmServiceResult.Data;           
 
-            // Build Interrupting LLM
-            if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaAI)
-            {
-                // TODO build a seperate function for interruption llm initalization
-                // TODO: Adapt the logic from original code to build _interruptingLLMService
-                // This needs careful handling of configuration (UseCurrentAgentLLMForInterrupting)
-                // Ensure it also gets disposed on language change/shutdown
-                _logger.LogWarning("Agent {AgentId}: Interrupting LLM setup logic needs to be fully implemented.", _agentState.AgentId);
-                // Example placeholder:
-                // var interruptingLLMResult = await BuildInterruptingLLMServiceAsync();
-                // if (interruptingLLMResult.Success && interruptingLLMResult.Data != null)
-                // {
-                //     DisposeCurrentService(_agentState.InterruptingLLMService);
-                //     _agentState.InterruptingLLMService = interruptingLLMResult.Data;
-                //      SetupInterruptingLLMPrompt(); // Helper method
-                // } else { throw... }
-            }
-
             // Generate Base System Prompt
             await GenerateAndSetBaseSystemPromptAsync();
 
             // Warmup LLM
             await WarmupLLMAsync();
 
-            
-
             _logger.LogInformation("LLM Handler initialized for Agent {AgentId}.", _agentState.AgentId);
-            // --- End of moved logic ---
         }
 
         public async Task ReInitializeForLanguageAsync()

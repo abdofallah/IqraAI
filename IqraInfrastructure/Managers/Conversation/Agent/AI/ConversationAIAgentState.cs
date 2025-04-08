@@ -49,7 +49,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public bool IsRespondingSystemToolRespone { get; set; } = false;
         public bool IsExecutingCustomTool { get; set; } = false;
         public bool IsRespondingCustomToolRespone { get; set; } = false;
-        public bool IsProcessingInterruption { get; set; } = false;
         public bool IsUserSpeakingVAD { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
         public bool IsProcessingDTMFAlready { get; set; } = false;
