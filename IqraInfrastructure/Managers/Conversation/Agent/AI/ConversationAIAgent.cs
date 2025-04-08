@@ -129,7 +129,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private void OnSpeechPlaybackComplete()
         {
             // This is signaled by AudioOutput when the speech queue is empty and the last segment finished playing.
-            _logger.LogDebug("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
+            _logger.LogInformation("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
             // If LLM was waiting for speech, it can now proceed (if necessary)
             // This helps decouple LLM completion from actual audio finishing.
         }
@@ -137,7 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private void OnLLMResponseHandlingComplete()
         {
             // This is signaled by LLMHandler when it finishes processing a 'response_to_customer' stream.
-            _logger.LogDebug("Agent {AgentId}: Received signal that LLM response handling is complete.", AgentId);
+            _logger.LogInformation("Agent {AgentId}: Received signal that LLM response handling is complete.", AgentId);
             // Usually followed by waiting for OnSpeechPlaybackComplete.
         }
 
@@ -316,20 +316,28 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             try
             {
-                bool canInterruptAgent = await _interruptionManager.CheckCanInterruptAgentAsync(text, _agentState.CurrentClientId, _conversationCTS.Token);
-                if (canInterruptAgent)
+                bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentContinue(text, _agentState.CurrentClientId, _conversationCTS.Token);
+                if (canAgentContinue)
                 {
-                    _logger.LogInformation("Agent {AgentId}: Text handled by interruption manager, stopping for user to speak.", AgentId);
+                    _logger.LogInformation("Agent {AgentId}: Text handled by interruption manager, leting agent to continue sppeaking.", AgentId);
                     return;
                 }
 
+                string modifiedText = "";
                 if (_agentState.InterruptResponseBuffer.Length > 0)
                 {
-                    text = _agentState.InterruptResponseBuffer.ToString() + " | current response: " + text;
+                    modifiedText += _agentState.InterruptResponseBuffer.ToString();
                     _agentState.InterruptResponseBuffer.Clear();
                 }
+                if (!string.IsNullOrEmpty(_llmHandler.CurrentlyProcessingMessage))
+                {
+                    if (modifiedText.Length > 0) modifiedText += " ";
+                    modifiedText += _llmHandler.CurrentlyProcessingMessage;
+                }
+                if (modifiedText.Length > 0) modifiedText += " ";
+                modifiedText += text;
 
-                await _llmHandler.ProcessUserTextAsync(text, _agentState.CurrentClientId, _conversationCTS.Token);
+                await _llmHandler.ProcessUserTextAsync(modifiedText, _agentState.CurrentClientId, _conversationCTS.Token);
             }
             catch (OperationCanceledException)
             {
@@ -374,7 +382,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             return Task.CompletedTask;
         }
-
 
         public async Task ShutdownAsync(string reason)
         {

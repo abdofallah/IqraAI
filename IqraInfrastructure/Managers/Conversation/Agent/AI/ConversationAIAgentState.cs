@@ -61,6 +61,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public float BackgroundMusicVolume { get; internal set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
         public TimeSpan AudioDurationLeftToPlay { get; set; } = TimeSpan.Zero;
+        public bool IsAudioPlayingPaused { get; set; } = false;
 
         // Client Context
         public string? CurrentClientId { get; set; }

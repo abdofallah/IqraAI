@@ -30,6 +30,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private Task? _llmTask;
 
         // Buffers managed here now
+        public string? CurrentlyProcessingMessage = null;
         private readonly StringBuilder _responseBuffer = new StringBuilder();
         private int _currentResponseBufferRead = 0;
 
@@ -198,7 +199,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task ProcessUserTextAsync(string text, string? clientId, CancellationToken externalToken)
         {
-            _logger.LogDebug("Agent {AgentId} processing text: '{Text}'", _agentState.AgentId, text);
+            _logger.LogInformation("Agent {AgentId} processing text: '{Text}'", _agentState.AgentId, text);
 
             if (_agentState.IsResponding || _agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
             {
@@ -238,8 +239,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return;
             }
 
-            _agentState.CurrentClientId = clientId; // Update current client context
-                                                    // TODO: Update _agentState.ClientContextMap if needed
+            CurrentlyProcessingMessage = text;
+            _agentState.CurrentClientId = clientId;
+
+            // Update current client context
+            // TODO: Update _agentState.ClientContextMap if needed
 
             await UpdateSystemPromptWithSessionInfoAsync();
 
@@ -251,7 +255,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             {
                 _agentState.LLMService.AddUserMessage($"customer_query: {text}");
             }
-
 
             // Reset state flags before starting new task - tho this should already be done? todo check
             _agentState.IsResponding = false;
@@ -378,6 +381,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
                         _agentState.LLMService!.AddAssistantMessage(finalResponse);
                         SystemToolExecutionRequested?.Invoke(toolContent);
+                        _logger.LogInformation("Agent {AgentId}: System tool execution completed.", _agentState.AgentId);
+                        CurrentlyProcessingMessage = null;
                     }
                     else if (_agentState.IsExecutingCustomTool)
                     {
@@ -385,7 +390,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
                         _agentState.LLMService!.AddAssistantMessage(finalResponse);
                         CustomToolExecutionRequested?.Invoke(toolContent);
-                   }
+                        _logger.LogInformation("Agent {AgentId}: Custom tool execution completed.", _agentState.AgentId);
+                        CurrentlyProcessingMessage = null;
+                    }
                     else
                     {
                         _logger.LogError("Agent {AgentId}: LLM response ended but type unknown or invalid: {Response}", _agentState.AgentId, finalResponse);
@@ -395,6 +402,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", CancellationToken.None);
                     }
                 }
+            }
+            catch (OperationCanceledException ex)
+            {
+                // expected
             }
             catch (Exception ex)
             {
@@ -443,7 +454,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 if (!isEndOfResponse && !isCompleteSentence && isLargeChunk)
                 {
                     // Find the last sensible place to split (e.g., punctuation or whitespace)
-                    int splitPoint = unprocessedText.LastIndexOfAny(new[] { '.', '!', '?', ',', ';', ' ' }, unprocessedText.Length - 2); // Look backwards from near the end
+                    int splitPoint = unprocessedText.LastIndexOfAny(new[] { '.', '!', '?', ',', ';' }, unprocessedText.Length - 2); // Look backwards from near the end
                     if (splitPoint > 0)
                     {
                         textToSynthesize = unprocessedText.Substring(0, splitPoint + 1).Trim();
@@ -487,34 +498,46 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private async Task HandleLLMResponseCompletedAsync(string finalResponse)
         {
-            if (_agentState.IsResponding && _currentResponseBufferRead < _responseBuffer.Length)
+            try
             {
-                var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead).Trim();
-                if (!string.IsNullOrWhiteSpace(remainingText))
+                if (_agentState.IsResponding && _currentResponseBufferRead < _responseBuffer.Length)
                 {
-                    if (SynthesizeTextRequested != null)
+                    var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead).Trim();
+                    if (!string.IsNullOrWhiteSpace(remainingText))
                     {
-                        await SynthesizeTextRequested.Invoke(remainingText);
+                        if (SynthesizeTextRequested != null)
+                        {
+                            await SynthesizeTextRequested.Invoke(remainingText);
+                        }
+                        if (TextChunkGenerated != null)
+                        {
+                            TextChunkGenerated.Invoke(remainingText);
+                        }
+                        _currentResponseBufferRead = _responseBuffer.Length;
                     }
-                    if (TextChunkGenerated != null)
-                    {
-                        TextChunkGenerated.Invoke(remainingText);
-                    }
-                    _currentResponseBufferRead = _responseBuffer.Length;
                 }
+
+                var assistantMessage = _responseBuffer.ToString();
+                _agentState.LLMService!.AddAssistantMessage(assistantMessage);
+
+                using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
+                while (_agentState.AudioDurationLeftToPlay > TimeSpan.Zero)
+                {
+                    await Task.Delay(10, combinedCTS.Token);
+                }
+
+                CurrentlyProcessingMessage = null;
+                ResponseHandlingComplete?.Invoke();
+                ResetLLMState();
             }
-
-            var assistantMessage = _responseBuffer.ToString();
-            _agentState.LLMService!.AddAssistantMessage(assistantMessage);
-
-            using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
-            while (_agentState.AudioDurationLeftToPlay > TimeSpan.Zero)
+            catch (OperationCanceledException ex)
             {
-                await Task.Delay(10, combinedCTS.Token);
+                // expected
             }
-
-            ResponseHandlingComplete?.Invoke();
-            ResetLLMState();
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         public async Task CancelCurrentLLMTaskAsync()

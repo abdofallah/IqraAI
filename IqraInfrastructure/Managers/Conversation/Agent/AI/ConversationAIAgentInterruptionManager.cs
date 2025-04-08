@@ -35,6 +35,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         // Interrupting LLM State
         private Task? _interruptLLMTask = null;
 
+        private readonly SemaphoreSlim _vadActivityStatusLock = new SemaphoreSlim(1, 1);
+
         // VAD service managed here
         private IVadService? _vadService;
         private VadOptions? _vadOptions;
@@ -156,7 +158,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         }
 
         // Called by Orchestrator's ProcessTextAsync when text arrives WHILE agent is speaking
-        public async Task<bool> CheckCanInterruptAgentAsync(string text, string? clientId, CancellationToken externalToken)
+        public async Task<bool> CheckShouldLetAgentContinue(string text, string? clientId, CancellationToken externalToken)
         {
             if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.TurnByTurn)
             {
@@ -186,22 +188,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 await _llmHandler.CancelCurrentLLMTaskAsync();
 
                 // todo can make 100 configurable by user maybe?
-                var amountToWait = Math.Min(200, (int)_agentState.CurrentResponseDurationSpeakingStarted.Value.Add(_audioOutput.CurrentlyLeftToPlay()).Subtract(DateTime.UtcNow).TotalMilliseconds); 
-                await _audioOutput.StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(amountToWait));
-                await Task.Delay(amountToWait);
-                await _audioOutput.CancelCurrentSpeechPlaybackAsync();
+                var audioLeftToPlay = _audioOutput.CurrentlyLeftToPlay();
+                if (audioLeftToPlay > TimeSpan.Zero)
+                {
+                    var amountToWait = Math.Min(200, (int)_agentState.CurrentResponseDurationSpeakingStarted.Value.Add(audioLeftToPlay).Subtract(DateTime.UtcNow).TotalMilliseconds);
+                    await _audioOutput.StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(amountToWait), externalToken);
+                    await Task.Delay(amountToWait);
+                    await _audioOutput.CancelCurrentSpeechPlaybackAsync();
+                }       
 
-                await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(1));
+                await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(1), externalToken);
 
-                return false;
-            }
-
-
-            if (!_agentState.IsResponding
-                &&
-                (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaVAD || _agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaAI)
-            )
-            {
                 return false;
             }
 
@@ -209,6 +206,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // we will let OnVoiceActivityChanged decide what to do
             if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaVAD)
             {
+                if (!_agentState.IsResponding)
+                {
+                    await _llmHandler.CancelCurrentLLMTaskAsync();
+                    return false;
+                }
+
                 _logger.LogDebug("Agent {AgentId}: Buffering text during VAD interrupt check: '{Text}'", _agentState.AgentId, text);
                 _agentState.InterruptResponseBuffer.Append(text + " ");
                 return true;
@@ -271,57 +274,81 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return true; // Indicate text is being handled by interruption logic
             }
 
-            return false; // Should not reach here
+            return true; // Should not reach here
         }
 
         // Called by Orchestrator/AudioInput when VAD event occurs
         private async void OnVoiceActivityChanged(object? sender, VadEventArgs e)
         {
-            _logger.LogInformation("Agent {AgentId}: VAD activity changed: SpeechDetected={IsSpeechDetected}", _agentState.AgentId, e.IsSpeechDetected);
-            _agentState.IsUserSpeakingVAD = e.IsSpeechDetected;
-
-            if (!_agentState.IsResponding)
+            try
             {
-                _agentState.UserSpeechStartTime = null;
-                CancelVADInterruptTimer();
-                _agentState.InterruptResponseBuffer.Clear();
+                await _vadActivityStatusLock.WaitAsync();
 
-                return;
-            }
+                _logger.LogDebug("Agent {AgentId}: VAD activity changed: SpeechDetected={IsSpeechDetected}", _agentState.AgentId, e.IsSpeechDetected);
+                _agentState.IsUserSpeakingVAD = e.IsSpeechDetected;
 
-            // Agent is responding and user starts speaking
-            if (e.IsSpeechDetected) 
-            {
-                _agentState.UserSpeechStartTime = DateTime.UtcNow;
-                _agentState.InterruptResponseBuffer.Clear();
-
-                if (_agentState.CurrentConversationType == AgentInterruptionTypeENUM.InterruptibleViaVAD)
+                // agent is speaking
+                if (_agentState.IsResponding)
                 {
-                    int interruptMs = ((BusinessAppRouteAgentInterruptionViaVAD)_agentState.CurrentSessionRoute?.Agent.Interruption).InterruptibleConversationAudioActivityDurationMS;
-                    _logger.LogInformation("Agent {AgentId}: VAD Speech Start (VAD Interrupt) - Fading out agent over {ms}ms and starting timer.", _agentState.AgentId, interruptMs);
-                    await _audioOutput.StartVolumeFadeAsync(0.1f, TimeSpan.FromMilliseconds(interruptMs));
-                    StartVADInterruptTimer(TimeSpan.FromMilliseconds(interruptMs));
+                    // user starts speaking
+                    if (e.IsSpeechDetected)
+                    {
+                        // vad timer not running
+                        if (_vadInterruptTimerTask == null)
+                        {
+                            int interruptMs = ((BusinessAppRouteAgentInterruptionViaVAD)_agentState.CurrentSessionRoute?.Agent.Interruption).InterruptibleConversationAudioActivityDurationMS;
+
+                            _logger.LogDebug("Agent {AgentId}: VAD Speech Start (VAD Interrupt) - Fading out agent over {ms}ms and starting timer.", _agentState.AgentId, interruptMs);
+
+                            await _audioOutput.StartVolumeFadeAsync(0, TimeSpan.FromMilliseconds(interruptMs), _vadInterruptTimerCTS?.Token ?? CancellationToken.None);
+                            StartVADInterruptTimer(TimeSpan.FromMilliseconds(interruptMs));
+                        }
+                        // vad timer running
+                        else
+                        {
+                            // this should not happen
+                            _logger.LogDebug("Agent {AgentId}: Agent is responding/user is speaking/timer already started = not doing anything", _agentState.AgentId);
+                            return;
+                        }
+                    }
+                    // user stops speaking
+                    else
+                    {
+                        // vad timer not running
+                        if (_vadInterruptTimerTask == null)
+                        {
+                            await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(100), _vadInterruptTimerCTS?.Token ?? CancellationToken.None);
+                            _logger.LogDebug("Agent {AgentId}: Agent is responding/user is not speaking/timer not started = just fade audio back in", _agentState.AgentId);
+                            return;
+                        }
+                        // vad timer running
+                        else
+                        {
+                            await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(100), _vadInterruptTimerCTS?.Token ?? CancellationToken.None);
+                            _logger.LogDebug("Agent {AgentId}: Agent is responding/user is not speaking/timer is running = just fade audio back in", _agentState.AgentId);
+                            return;
+                        }
+                    }
+                }
+                // agent is not speaking
+                else
+                {
+                    await _audioOutput.StartVolumeFadeAsync(1f, TimeSpan.FromMilliseconds(10), _vadInterruptTimerCTS?.Token ?? CancellationToken.None);
+                    _logger.LogDebug("Agent {AgentId}: Agent is not responding = rapid fade back in", _agentState.AgentId);
                 }
             }
-            // Agent is responding and user stopped speaking
-            else 
+            catch (OperationCanceledException ex)
             {
-                _agentState.UserSpeechStartTime = null;
-                CancelVADInterruptTimer(); // Stop timer if user stops talking
-
-                // todo check if _agentState.IsProcessingInterruption is needed here
-                if (_agentState.CurrentAgentVolumeFactor < 1.0f && !_agentState.IsProcessingInterruption)
-                {
-                    _logger.LogInformation("Agent {AgentId}: VAD Silence - Fading agent back in.", _agentState.AgentId);
-                    await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(200));
-                }
+                // expected
+            }
+            finally
+            {
+                _vadActivityStatusLock.Release();
             }
         }
 
         private void StartVADInterruptTimer(TimeSpan interruptDelay)
         {
-            CancelVADInterruptTimer();
-
             _vadInterruptTimerCTS = new CancellationTokenSource();
             var token = _vadInterruptTimerCTS.Token;
 
@@ -348,37 +375,14 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         await Task.Delay(10, token);
                     }
 
-                    if (token.IsCancellationRequested)
+                    if (!token.IsCancellationRequested)
                     {
-                        return;
-                    }
-
-                    // User is still speaking after the given interrupt delay but remember agent is still responding as well
-                    if (_agentState.IsUserSpeakingVAD && _agentState.IsResponding)
-                    {
-                        _logger.LogInformation("Agent {AgentId}: VAD interrupt timer expired while user speaking while agent is speaking. Triggering interrupt.", _agentState.AgentId);
-
-                        await _llmHandler.CancelCurrentLLMTaskAsync();
-
-                        // todo can make 50 configurable by user maybe?
-                        var amountToWait = Math.Min(200, (int)_agentState.CurrentResponseDurationSpeakingStarted.Value.Add(_audioOutput.CurrentlyLeftToPlay()).Subtract(DateTime.UtcNow).TotalMilliseconds);
-                        await _audioOutput.StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(amountToWait));
-                        await Task.Delay(amountToWait);
-                        await _audioOutput.CancelCurrentSpeechPlaybackAsync();
-
-                        await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(50));
-
-                        if (!_agentState.IsSTTRecognizing && _agentState.InterruptResponseBuffer.Length > 0)
-                        {
-                            string text = _agentState.InterruptResponseBuffer.ToString();
-                            _agentState.InterruptResponseBuffer.Clear();
-                            await _llmHandler.ProcessUserTextAsync(text, _agentState.CurrentClientId, _agentState.MasterCancellationToken);
-                        }
-                    }
+                        await ProcessVadInterruptAsync(token);
+                    } 
                 }
                 catch (OperationCanceledException)
                 {
-                    _logger.LogTrace("Agent {AgentId}: VAD interrupt timer task cancelled.", _agentState.AgentId);
+                    // expected
                 }
                 catch (Exception ex)
                 {
@@ -389,8 +393,95 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     _vadInterruptTimerCTS?.Dispose(); // Dispose CTS when task finishes
                     _vadInterruptTimerCTS = null;
                     _vadInterruptTimerTask = null;
+                    _logger.LogDebug("Agent {AgentId}: VAD interrupt timer task finished.", _agentState.AgentId);
                 }
             }, token);
+        }
+        private async Task ProcessVadInterruptAsync(CancellationToken token)
+        {
+            bool shouldCancelCurrentLLMAndSpeaking = false;
+            bool shouldProcessInterruptionBuffer = false;
+
+            // User is speaking
+            if (_agentState.IsUserSpeakingVAD)
+            {
+                // agent is responding
+                if (_agentState.IsResponding)
+                {
+                    shouldCancelCurrentLLMAndSpeaking = true;
+                    _logger.LogDebug("Agent {AgentId}: vad result = user is speaking/agent is responding = cancelling current LLM task.", _agentState.AgentId);
+                }
+                else // agent is not responding
+                {
+                    // do nothing wait for stt result
+                    _logger.LogDebug("Agent {AgentId}: vad result = user is speaking/agent is not responding = doing nothing.", _agentState.AgentId);
+                    return;
+                }
+            }
+            // User no longer speaking
+            else
+            {
+                // agent responding
+                if (_agentState.IsResponding)
+                {
+                    // user decides to stop mid way so do nothing
+                    _logger.LogDebug("Agent {AgentId}: vad result = user is not speaking/agent is responding = doing nothing.", _agentState.AgentId);
+                    return;
+                }
+                else // agent is not responding
+                {
+                    // if stt is processing more data
+                    if (_agentState.IsSTTRecognizing)
+                    {
+                        _logger.LogDebug("Agent {AgentId}: vad result = user is not speaking/agent is not responding/stt is processing = doing nothing.", _agentState.AgentId);
+                        return;
+                    }
+                    // stt does not seem to be processing any data
+                    else
+                    {
+                        // some vad ignored interruption data exists
+                        if (_agentState.InterruptResponseBuffer.Length > 0)
+                        {
+                            _logger.LogDebug("Agent {AgentId}: vad result = user is not speaking/agent is not responding/stt is not processing/interruption buffer exists = processing interruption buffer.", _agentState.AgentId);
+                            shouldProcessInterruptionBuffer = true;
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Agent {AgentId}: vad result = user is not speaking/agent is not responding/stt is not processing/interruption buffer does not exist = doing nothing.", _agentState.AgentId);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            if (shouldCancelCurrentLLMAndSpeaking)
+            {
+                await _llmHandler.CancelCurrentLLMTaskAsync();            
+
+                var currentlyLeftToPlay = _audioOutput.CurrentlyLeftToPlay();
+                if (currentlyLeftToPlay > TimeSpan.Zero)
+                {
+                    // todo can make 100 configurable by user maybe?
+                    var amountToWait = 100;
+                    await _audioOutput.StartVolumeFadeAsync(0.0f, TimeSpan.FromMilliseconds(amountToWait), token);
+                    await Task.Delay(amountToWait);
+                    await _audioOutput.CancelCurrentSpeechPlaybackAsync();
+                }
+
+                if (!_agentState.IsSTTRecognizing && _agentState.InterruptResponseBuffer.Length > 0)
+                {
+                    shouldProcessInterruptionBuffer = true;
+                }
+            }
+
+            if (shouldProcessInterruptionBuffer)
+            {
+                await _audioOutput.StartVolumeFadeAsync(1.0f, TimeSpan.FromMilliseconds(50), token);
+
+                string text = _agentState.InterruptResponseBuffer.ToString();
+                _agentState.InterruptResponseBuffer.Clear();
+                await _llmHandler.ProcessUserTextAsync(text, _agentState.CurrentClientId, _agentState.MasterCancellationToken);
+            }
         }
         private void CancelVADInterruptTimer()
         {

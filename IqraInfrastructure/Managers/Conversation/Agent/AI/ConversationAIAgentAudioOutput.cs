@@ -60,6 +60,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         // Volume Fading State (managed here, affects _agentState.CurrentAgentVolumeFactor)
         private CancellationTokenSource? _volumeFadeCTS = null;
         private Task? _volumeFadeTask = null;
+        private DateTime? _volumeFadeStartTime = null;
 
         // TTS Specific Task Management
         private CancellationTokenSource? _currentTtsTaskCTS = null;
@@ -277,7 +278,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _currentTtsTaskCTS = null;
             }
         }
-
+        
         public async Task SynthesizeAndPlayBlockingAsync(string text, CancellationToken cancellationToken)
         {
             // --- Move logic from original SynthesizeAndPlaySpeechAsync here ---
@@ -318,16 +319,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
         }
 
-
         private async Task ProcessAudioSpeakingQueueAsync(CancellationToken cancellationToken)
         {
-            // --- Move logic from original ProcessAudioSpeakingQueueAsync here ---
-            // Loop while !cancellationToken.IsCancellationRequested
-            // Check _currentSpeechSegment, take from _speechAudioQueue if empty
-            // Get background chunk using GetNextBackgroundChunk
-            // Mix using MixAudioChunks (reads _agentState.CurrentAgentVolumeFactor)
-            // Raise AudioChunkGenerated event
-            // Task.Delay(ChunkDurationMs, cancellationToken)
             _logger.LogInformation("Agent {AgentId}: Audio sending task started.", _agentState.AgentId);
             try
             {
@@ -565,20 +558,37 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             return mixedOutput;
         }
 
-        public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration)
+        public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration, CancellationToken cancellationToken)
         {
+            float target = Math.Clamp(targetFactor, 0.0f, 1.0f);
+
+            if (duration <= TimeSpan.Zero)
+            {
+                _logger.LogDebug("Agent {AgentId}: Duration is zero or negative. Setting volume instantly to {TargetFactor:F2}", _agentState.AgentId, target);
+                _agentState.CurrentAgentVolumeFactor = target;
+                _volumeFadeCTS.Dispose(); // Dispose the unused CTS
+                _volumeFadeCTS = null;
+                return Task.CompletedTask; // Return an already completed task
+            }
+
             _volumeFadeCTS?.Cancel(); // Cancel existing fade
             _volumeFadeCTS?.Dispose();
             if (_volumeFadeTask != null)
             {
-                _volumeFadeTask?.Wait(500);
+                try {
+                    _volumeFadeTask?.Wait(500);
+                }
+                catch (TaskCanceledException ex)
+                {
+                    //expected
+                }
             }
-            _volumeFadeCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token);
+            _volumeFadeStartTime = DateTime.UtcNow;
+            _volumeFadeCTS = CancellationTokenSource.CreateLinkedTokenSource(_audioSendingCTS.Token, cancellationToken);
             var token = _volumeFadeCTS.Token;
 
             float startFactor = _agentState.CurrentAgentVolumeFactor; // Read current volatile value
-            float target = Math.Clamp(targetFactor, 0.0f, 1.0f);
-            var fadeStartTime = DateTime.UtcNow;
+            
 
             _logger.LogDebug("Agent {AgentId}: Starting volume fade from {StartFactor:F2} to {TargetFactor:F2} over {Duration}",
                             _agentState.AgentId, startFactor, target, duration);
@@ -589,12 +599,22 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 {
                     while (!token.IsCancellationRequested)
                     {
-                        var elapsed = DateTime.UtcNow - fadeStartTime;
-                        float progress = (float)Math.Clamp(elapsed.TotalMilliseconds / duration.TotalMilliseconds, 0.0, 1.0);
+                        var elapsed = DateTime.UtcNow - _volumeFadeStartTime.Value;
+                        float progress;
+                        double totalDurationMs = duration.TotalMilliseconds;
+                        if (totalDurationMs <= 0)
+                        { 
+                            progress = 1.0f;
+                        }
+                        else
+                        {
+                            progress = (float)Math.Clamp(elapsed.TotalMilliseconds / totalDurationMs, 0.0, 1.0);
+                        }
+
 
                         // Linear interpolation (Lerp)
-                        var currentCalcualted = (startFactor + (target - startFactor)) * progress;
-                        _agentState.CurrentAgentVolumeFactor = currentCalcualted;
+                        float currentCalculated = startFactor + (target - startFactor) * progress;
+                        _agentState.CurrentAgentVolumeFactor = currentCalculated;
 
                         if (progress >= 1.0f)
                         {
@@ -622,20 +642,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task CancelCurrentSpeechPlaybackAsync()
         {
-            // --- Move logic from original CancelCurrentSpeechPlaybackAsync here ---
-            // Clear _speechAudioQueue
-            // Reset _currentSpeechSegment, _currentSpeechPosition
-            // Cancel _volumeFadeCTS
-            // Cancel TTS task (_currentTtsTaskCTS)
-            // Stop TTS service (_agentState.TTSService.Stop...)
-
             _logger.LogDebug("Agent {AgentId}: Cancelling current speech playback and synthesis.", _agentState.AgentId);
 
             // 1. Stop any ongoing TTS generation for this module
             _currentTtsTaskCTS?.Cancel();
             // Call the TTS service's stop method
             await (_agentState.TTSService?.StopTextSynthesisAsync() ?? Task.CompletedTask);
-
 
             // 2. Cancel any ongoing volume fade
             _volumeFadeCTS?.Cancel();
@@ -646,6 +658,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // 4. Reset current segment playback state
             _currentSpeechSegment = ReadOnlyMemory<byte>.Empty;
             _currentSpeechPosition = 0;
+            _currentSpeechDuration = TimeSpan.Zero;
 
             // 5. Signal playback is complete (as we just cleared everything)
             SpeechPlaybackComplete?.Invoke();
