@@ -11,7 +11,7 @@ using Scriban.Runtime;
 using System.Globalization;
 using System.Text;
 
-namespace IqraInfrastructure.Managers.Conversation
+namespace IqraInfrastructure.Managers.Conversation.Helpers
 {
     public class SystemPromptGenerator
     {
@@ -349,7 +349,7 @@ Here is the session information that will be helpful for your context:
             // Handle node content based on type
             if (currentNodeType != lastNodeType || currentNodeType != "customer_query")
             {
-                switch ((BusinessAppAgentScriptNodeTypeENUM)node.NodeType)
+                switch (node.NodeType)
                 {
                     case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
                         var userQueryNode = node as BusinessAppAgentScriptUserQueryNode;
@@ -483,7 +483,7 @@ Here is the session information that will be helpful for your context:
 
         private string GetNodeTypeLabel(BusinessAppAgentScriptNode node)
         {
-            switch ((BusinessAppAgentScriptNodeTypeENUM)node.NodeType)
+            switch (node.NodeType)
             {
                 case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
                     return "customer_query";

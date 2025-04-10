@@ -3,7 +3,7 @@ using IqraCore.Entities.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
-using IqraInfrastructure.Managers.Conversation;
+using IqraInfrastructure.Managers.Conversation.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -152,14 +152,6 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
             });
-            builder.Services.AddSingleton<CallSessionRepository>(sp =>
-            {
-                return new CallSessionRepository(
-                    appConfig["CallSessionRepository:ConnectionString"],
-                    appConfig["CallSessionRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<CallSessionRepository>>()
-                );
-            });
             builder.Services.AddSingleton<ConversationStateRepository>(sp =>
             {
                 return new ConversationStateRepository(
@@ -306,7 +298,11 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessToolAudioRepository>(),
                     sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
-                    sp.GetRequiredService<IntegrationsManager>()
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    null,
+                    null,
+                    null,
+                    null
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>

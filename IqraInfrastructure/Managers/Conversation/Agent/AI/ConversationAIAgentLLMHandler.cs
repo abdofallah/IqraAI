@@ -5,8 +5,7 @@ using IqraInfrastructure.Managers.Business;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Helper.Agent;
-using MongoDB.Driver.Linq;
+using IqraInfrastructure.Managers.Conversation.Helpers;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
@@ -14,7 +13,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
     {
         // Events for Orchestrator
         public event Func<string, Task>? SynthesizeTextRequested;
-        public event Action<string>? TextChunkGenerated;
+
+        public event Action<string, string?>? TextRecievedForLLMToProcess;
+        public event Action<string>? AIAgentResponseCompleted;
+
         public event Action? ResponseHandlingComplete;
         public event Func<string, Task>? SystemToolExecutionRequested;
         public event Func<string, Task>? CustomToolExecutionRequested;
@@ -126,7 +128,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // LLM warmup logic
             _agentState.LLMService!.ClearMessages();
 
-            _agentState.LLMService!.AddUserMessage("response_from_system: Call has started.");
+            string openingMessage = "response_from_system: Call has started.";
+            _agentState.LLMService!.AddUserMessage(openingMessage);
+            TextRecievedForLLMToProcess?.Invoke(openingMessage, "system");
             _agentState.LLMService!.SetSystemPrompt("RESPOND WITH ```execute_system_function: acknowledge(\"Call Start\")``` if call has started.");
 
             bool hasFinishedWarmingUp = false;
@@ -175,7 +179,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _logger.LogDebug("LLM Warmup complete for Agent {AgentId}.", _agentState.AgentId);
         }
 
-
         public async Task ProcessUserTextAsync(string text, string? clientId, CancellationToken externalToken)
         {
             _logger.LogInformation("Agent {AgentId} processing text: '{Text}'", _agentState.AgentId, text);
@@ -193,7 +196,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             await SendLLMMessageAsync(text, clientId, combinedCTS.Token);
         }
 
-        public async Task ProcessSystemMessageAsync(string text, CancellationToken externalToken)
+        public async Task ProcessSystemMessageAsync(string text, string? clientId, CancellationToken externalToken)
         {
             _logger.LogDebug("Agent {AgentId} processing system message: '{Text}'", _agentState.AgentId, text);
 
@@ -205,7 +208,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Combine agent CTS and external token
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
             // Note: clientId is null for system messages typically
-            await SendLLMMessageAsync(text, null, combinedCTS.Token, true); // Flag as system message
+            await SendLLMMessageAsync(text, clientId, combinedCTS.Token, true); // Flag as system message
         }
 
 
@@ -221,19 +224,20 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             CurrentlyProcessingMessage = text;
             _agentState.CurrentClientId = clientId;
 
-            // Update current client context
-            // TODO: Update _agentState.ClientContextMap if needed
-
             await UpdateSystemPromptWithSessionInfoAsync();
 
+            string messageToSend = string.Empty;
             if (isSystemMessage)
             {
-                _agentState.LLMService.AddUserMessage($"response_from_system: {text}");
+                messageToSend = $"response_from_system: {text}";
             }
             else
             {
-                _agentState.LLMService.AddUserMessage($"customer_query: {text}");
+                messageToSend = $"customer_query: {text}";
             }
+
+            TextRecievedForLLMToProcess?.Invoke(messageToSend, clientId);
+            _agentState.LLMService.AddUserMessage(messageToSend);
 
             // Reset state flags before starting new task - tho this should already be done? todo check
             _agentState.IsResponding = false;
@@ -359,6 +363,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     {
                         var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
                         _agentState.LLMService!.AddAssistantMessage(finalResponse);
+                        AIAgentResponseCompleted?.Invoke(finalResponse);
+
+                        // todo this execution is not awaited
                         SystemToolExecutionRequested?.Invoke(toolContent);
                         _logger.LogInformation("Agent {AgentId}: System tool execution completed.", _agentState.AgentId);
                         CurrentlyProcessingMessage = null;
@@ -368,6 +375,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         // Pass the full content after the prefix
                         var toolContent = finalResponse.Substring(_currentResponseBufferRead).Trim();
                         _agentState.LLMService!.AddAssistantMessage(finalResponse);
+                        AIAgentResponseCompleted?.Invoke(finalResponse);
+
+                        // todo this execution is not awaited
                         CustomToolExecutionRequested?.Invoke(toolContent);
                         _logger.LogInformation("Agent {AgentId}: Custom tool execution completed.", _agentState.AgentId);
                         CurrentlyProcessingMessage = null;
@@ -378,7 +388,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         
                         ResetLLMState(); // Reset anyway
 
-                        await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", CancellationToken.None);
+                        await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
                     }
                 }
             }
@@ -466,10 +476,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     {
                         await SynthesizeTextRequested.Invoke(textToSynthesize);
                     }
-                    if (TextChunkGenerated != null)
-                    {
-                        TextChunkGenerated.Invoke(textToSynthesize);
-                    }
                     _currentResponseBufferRead += chunkSize;
                 }
             }
@@ -488,22 +494,20 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         {
                             await SynthesizeTextRequested.Invoke(remainingText);
                         }
-                        if (TextChunkGenerated != null)
-                        {
-                            TextChunkGenerated.Invoke(remainingText);
-                        }
                         _currentResponseBufferRead = _responseBuffer.Length;
                     }
                 }
 
                 var assistantMessage = _responseBuffer.ToString();
-                _agentState.LLMService!.AddAssistantMessage(assistantMessage);
+                AIAgentResponseCompleted?.Invoke(assistantMessage);
 
                 using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
                 while (_agentState.AudioDurationLeftToPlay > TimeSpan.Zero)
                 {
                     await Task.Delay(10, combinedCTS.Token);
                 }
+       
+                _agentState.LLMService!.AddAssistantMessage(assistantMessage);
 
                 CurrentlyProcessingMessage = null;
                 ResponseHandlingComplete?.Invoke();

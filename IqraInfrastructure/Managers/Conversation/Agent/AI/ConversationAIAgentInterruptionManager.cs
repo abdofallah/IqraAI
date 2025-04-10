@@ -10,7 +10,6 @@ using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Business;
 using System.Diagnostics;
-using static System.Net.Mime.MediaTypeNames;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
@@ -516,6 +515,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         )
         {
             if (_agentState.InterruptingLLMService == null) return; // Guard
+            if (!_agentState.IsResponding) return;
 
             try
             {
@@ -557,7 +557,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     // send the text to orchestrator instead try to todo
                     await _audioOutput.StartVolumeFadeAsync(1f, TimeSpan.FromMilliseconds(10), cancellationToken);
-                    await _llmHandler.ProcessSystemMessageAsync($"Your response was interrupted by the customer.\n\nYou spoke the following:\n\n```\n{spokenSoFar}\n```\n\nTo which the customer replied:\n\n```\n{text}\n```", cancellationToken);
+                    await _llmHandler.ProcessSystemMessageAsync($"Your response was interrupted by the customer.\n\nYou spoke the following:\n\n```\n{spokenSoFar}\n```\n\nTo which the customer replied:\n\n```\n{text}\n```", clientId, cancellationToken);
                     return;
                 }
 

@@ -22,6 +22,9 @@ using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Redis;
 using System.Reflection;
 using IqraCore.Entities.Configuration;
+using IqraInfrastructure.Repositories.Telephony;
+using IqraInfrastructure.Repositories.Conversation;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ProjectIqraFrontend
 {
@@ -259,6 +262,34 @@ namespace ProjectIqraFrontend
                     appConfig["TTSProviderDatabase:DatabaseName"]
                 );
             });
+            builder.Services.AddSingleton<CallQueueRepository>((sp) =>
+            {
+                return new CallQueueRepository(
+                    appConfig["CallQueueRepository:ConnectionString"],
+                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<CallQueueRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<ConversationStateRepository>((sp) =>
+            {
+                return new ConversationStateRepository(
+                    appConfig["ConversationStateRepository:ConnectionString"],
+                    appConfig["ConversationStateRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<ConversationStateRepository>>()
+                );
+            });
+            builder.Services.AddSingleton<ConversationAudioRepository>((sp) =>
+            {
+                return new ConversationAudioRepository(
+                    appConfig["ConversationAudioRepository:Endpoint"],
+                    int.Parse(appConfig["ConversationAudioRepository:Port"]),
+                    appConfig["ConversationAudioRepository:AccessKey"],
+                    appConfig["ConversationAudioRepository:SecretKey"],
+                    appConfig["ConversationAudioRepository:BucketName"],
+                    bool.Parse(appConfig["ConversationAudioRepository:IsSecure"]),
+                    sp.GetRequiredService<ILogger<ConversationAudioRepository>>()
+                );
+            });
         }
     
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -325,7 +356,8 @@ namespace ProjectIqraFrontend
                         InitalizeNumberManager = true,
                         InitalizeRoutesManager = true,
                         InitalizeSettingsManager = true,
-                        InitalizeToolsManager = true
+                        InitalizeToolsManager = true,
+                        InitalizeConversationsManager = true,
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
@@ -335,7 +367,11 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<BusinessToolAudioRepository>(),
                     sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
-                    sp.GetRequiredService<IntegrationsManager>()
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<LanguagesManager>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ConversationAudioRepository>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

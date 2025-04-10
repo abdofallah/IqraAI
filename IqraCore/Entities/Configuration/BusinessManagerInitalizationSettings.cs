@@ -10,5 +10,6 @@
         public bool InitalizeAgentsManager { get; set; } = false;
         public bool InitalizeNumberManager { get; set; } = false;
         public bool InitalizeRoutesManager { get; set; } = false;
+        public bool InitalizeConversationsManager { get; set; } = false;
     }
 }

@@ -1,16 +1,16 @@
-﻿using IqraCore.Entities.Conversation.Events; // For ConversationAudioGeneratedEventArgs
+﻿using IqraCore.Entities.Conversation.Events;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.TTS; // For TTSProviderManager
-using IqraInfrastructure.Repositories.Business; // For BusinessAgentAudioRepository
+using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices; // For MemoryMarshal
+using System.Runtime.InteropServices;
+using System.Threading.Channels;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
-    // Define SpeechSegment struct here or in a shared location
     internal readonly struct SpeechSegment
     {
         public ReadOnlyMemory<byte> AudioData { get; }
@@ -24,25 +24,21 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
     public class ConversationAIAgentAudioOutput : IDisposable
     {
-        // Event for Orchestrator to send audio chunks out
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioChunkGenerated;
-        // Event to signal when the speech queue is empty and the last chunk is sent
         public event Action? SpeechPlaybackComplete;
 
         private readonly ILogger<ConversationAIAgentAudioOutput> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly BusinessAgentAudioRepository _audioRepository;
-        private readonly BusinessManager _businessManager; // For TTS Integration data
+        private readonly BusinessManager _businessManager;
 
-
-        // --- Audio Processing & Buffering Members ---
-        private const int SampleRate = 16000; // Hz TODO: Make configurable?
-        private const int BitsPerSample = 16; // bits
-        private const int Channels = 1; // mono
-        private const int BytesPerSample = BitsPerSample / 8;
-        private const int ChunkDurationMs = 300; // Desired chunk duration
-        private const int BytesPerChunk = SampleRate * BytesPerSample * Channels * ChunkDurationMs / 1000;
+        private int SampleRate;
+        private int BitsPerSample;
+        private int Channels;
+        private int BytesPerSample;
+        private int ChunkDurationMs;
+        private int BytesPerChunk;
 
         // Queues & Tasks
         private readonly BlockingCollection<SpeechSegment> _speechAudioQueue = new(new ConcurrentQueue<SpeechSegment>());
@@ -76,12 +72,20 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _agentState = agentState;
             _ttsProviderManager = ttsProviderManager;
             _audioRepository = audioRepository;
-            _businessManager = businessManager; // Store businessManager
+            _businessManager = businessManager;
         }
 
         public async Task InitializeAsync(CancellationToken agentCTS)
         {
             _audioSendingCTS = CancellationTokenSource.CreateLinkedTokenSource(agentCTS); // Link to agent shutdown
+
+            SampleRate = _agentState.AgentConfiguration.SampleRate;
+            BitsPerSample = _agentState.AgentConfiguration.BitsPerSample;
+            Channels = _agentState.AgentConfiguration.Channels;
+
+            BytesPerSample = BitsPerSample / 8;
+            ChunkDurationMs = 300;
+            BytesPerChunk = SampleRate * BytesPerSample * Channels * ChunkDurationMs / 1000;
 
             // --- Move logic from InitalizeTTSForLangauge here ---
             await InitializeTTSAsync(); // Extracted TTS setup
@@ -229,12 +233,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             try
             {
-                _logger.LogDebug("Agent {AgentId}: Starting TTS synthesis for text: \"{snippet}\"", _agentState.AgentId, text.Length > 50 ? text.Substring(0, 50) + "..." : text);
                 var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken);
 
                 if (ttsToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation("Agent {AgentId}: TTS synthesis was cancelled during generation.", _agentState.AgentId);
                     return (false, TimeSpan.Zero);
                 }
 
@@ -251,7 +253,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 // Add to queue, respecting cancellation
                 _speechAudioQueue.Add(segment, _audioSendingCTS.Token); // Use audio sending CTS for queue add
 
-                _logger.LogDebug("Agent {AgentId}: TTS synthesis complete, duration: {Duration}, queued.", _agentState.AgentId, segment.Duration);
                 return (true, segment.Duration);
             }
             catch (OperationCanceledException) when (ttsToken.IsCancellationRequested || _audioSendingCTS.Token.IsCancellationRequested)

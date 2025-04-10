@@ -268,17 +268,19 @@ function ValidateSettingsGeneralTabFields(onlyRemove = true) {
 	};
 }
 
-function CreateSettingsAddedLanguagesElement(data) {
+function CreateSettingsAddedLanguagesElement(data, isDefault = false) {
 	const element = $(`
         <tr language-code="${data.id}">
             <td>${data.id}</td>	
             <td>${data.name}</td>
+			<td>
+				<input type="radio" name="businessDefaultLanguage" value="${data.id}" ${isDefault ? "checked" : ""}>
+			</td>
             <td>
-                <button language-code="${data.id}" class="btn btn-danger" button-type="settingsLanguageRemove" type="button">
+                <button language-code="${data.id}" class="btn btn-danger" button-type="settingsLanguageRemove" type="button" ${isDefault ? "disabled" : ""}>
                     <i class="fa-regular fa-trash"></i>
                 </button>
             </td>
-			${data.disabledAt != null ? "<td class='disabled-language'><i class='fa-regular fa-triangle-exclamation'></i> <span>This Language is no longer available and has been disabled. Please delete this language.</span></td>" : "<td></td>"}
         </tr>
     `);
 
@@ -321,52 +323,52 @@ function CheckSettingsGeneralTabHasChanges() {
 }
 
 function CheckSettingsLanguagesTabHasChanges() {
-	const currentAddedLanguages = GetSettingsCurrentAddedLanguages();
-	const businessLanguages = BusinessFullData.businessData.languages;
+	let hasChanges = false;
+	let changes = {
+		languages: GetSettingsCurrentAddedLanguages(),
+        defaultLanguage: settingsAddedLanguagesList.find("input[name=businessDefaultLanguage]:checked").val(),
+	};
 
-	if (currentAddedLanguages.length !== businessLanguages.length) {
-		return {
-			hasChanges: true,
-			changes: {
-				languages: currentAddedLanguages,
-			},
-		};
+	if (changes.languages.length !== BusinessFullData.businessData.languages.length) {
+		hasChanges = true;
 	}
 
-	let addedCount = 0;
-	let removedCount = 0;
-	let remainedCount = 0;
+	if (changes.defaultLanguage !== BusinessDefaultLanguage) {
+		hasChanges = true;
+    }
 
-	for (let i = 0; i < businessLanguages.length; i++) {
-		const oldLanguage = businessLanguages[i];
+	if (hasChanges === true)
+	{
+		let addedCount = 0;
+		let removedCount = 0;
+		let remainedCount = 0;
 
-		if (currentAddedLanguages.includes(oldLanguage)) {
-			remainedCount++;
-		} else {
-			removedCount++;
+		for (let i = 0; i < BusinessFullData.businessData.languages.length; i++) {
+			const oldLanguage = BusinessFullData.businessData.languages[i];
+
+			if (changes.languages.includes(oldLanguage)) {
+				remainedCount++;
+			} else {
+				removedCount++;
+			}
 		}
-	}
 
-	for (let i = 0; i < currentAddedLanguages.length; i++) {
-		const newLanguage = currentAddedLanguages[i];
+		for (let i = 0; i < changes.languages.length; i++) {
+			const newLanguage = changes.languages[i];
 
-		if (!businessLanguages.includes(newLanguage)) {
-			addedCount++;
+			if (!BusinessFullData.businessData.languages.includes(newLanguage)) {
+				addedCount++;
+			}
 		}
-	}
 
-	if (addedCount > 0 || removedCount > 0) {
-		return {
-			hasChanges: true,
-			changes: {
-				languages: currentAddedLanguages,
-			},
-		};
-	}
+		if (addedCount > 0 || removedCount > 0) {
+			hasChanges = true;
+		}
+	}	
 
 	return {
-		hasChanges: false,
-		changes: null,
+		hasChanges,
+		changes
 	};
 }
 
@@ -488,7 +490,7 @@ function FillSettingsTab() {
 					return data.id === value;
 				});
 
-				const element = CreateSettingsAddedLanguagesElement(countryCodeLanguage);
+				const element = CreateSettingsAddedLanguagesElement(countryCodeLanguage, (countryCodeLanguage.id === BusinessDefaultLanguage));
 				settingsAddedLanguagesList.append(element);
 
 				settingsLanguageAddSelect.find(`option[value="${value}"]`).remove();
@@ -1752,8 +1754,7 @@ function initSettingsTab() {
 			});
 
 			const noNoticeTr = settingsAddedLanguagesList.find("tbody").find("tr[tr-type=none-notice]");
-			// biome-ignore lint/suspicious/noDoubleEquals: <explanation>
-			if (noNoticeTr.length != 0) {
+			if (noNoticeTr.length !== 0) {
 				noNoticeTr.remove();
 			}
 
@@ -1767,7 +1768,23 @@ function initSettingsTab() {
 			CheckIfSettingsHasChanges();
 		});
 
-		$(document).on("click", '#settingsAddedLanguagesList button[button-type="settingsLanguageRemove"]', async (event) => {
+		settingsAddedLanguagesList.on("change", "input[name=businessDefaultLanguage]", (event) => {
+			const selectedValue = $(event.currentTarget).val();
+
+			var alreadyDisabledButton = settingsAddedLanguagesList.find(`[button-type="settingsLanguageRemove"]:disabled`);
+            if (alreadyDisabledButton.length > 0) {
+                alreadyDisabledButton.prop("disabled", false);
+            }
+
+			var selectedRemoveButton = settingsAddedLanguagesList.find(`[button-type="settingsLanguageRemove"][language-code="${selectedValue}"]`);
+            if (selectedRemoveButton.length > 0) {
+                selectedRemoveButton.prop("disabled", true);
+			}
+
+			CheckIfSettingsHasChanges();
+		});
+
+		settingsAddedLanguagesList.on("click", 'button[button-type="settingsLanguageRemove"]', async (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 
@@ -1820,7 +1837,6 @@ function initSettingsTab() {
 			}
 
 			const changes = CheckIfSettingsHasChanges(false).changes;
-
 			if (changes.languages?.languages) {
 				if (changes.languages.languages.length === 0) {
 					AlertManager.createAlert({
@@ -1845,9 +1861,7 @@ function initSettingsTab() {
 			}
 
 			if (changes.languages) {
-				if (changes.languages.languages) {
-					formData.append("languages", changes.languages.languages);
-				}
+				formData.append("languagesTab", JSON.stringify(changes.languages));
 			}
 
 			if (settingsAddedLanguagesList.find("tbody").find("tr").length === 0) {
@@ -1881,7 +1895,7 @@ function initSettingsTab() {
 						timeout: 6000,
 					});
 
-					console.log("Error occured while saving business settings data: ", saveError);
+					console.error("Error occured while saving business settings data: ", saveError);
 
 					settingsSaveButton.prop("disabled", false);
 					settingsSaveButtonSpinner.addClass("d-none");

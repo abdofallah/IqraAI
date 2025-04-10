@@ -8,14 +8,14 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Services;
 using Microsoft.Extensions.Logging;
-using Pipelines.Sockets.Unofficial.Arenas;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
     public class ConversationSessionManager
     {
+        private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSessionManager> _logger;
         private readonly BusinessManager _businessManager;
         private readonly ConversationStateRepository _conversationStateRepository;
@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Managers.Conversation
             ConversationSessionConfiguration configuration,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
-            ILogger<ConversationSessionManager> logger,
+            ILoggerFactory loggerFactory,
             string callOrWebInitiated
             )
         {
@@ -82,7 +82,8 @@ namespace IqraInfrastructure.Managers.Conversation
             _configuration = configuration;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
-            _logger = logger;
+            _loggerFactory = loggerFactory;
+            _logger = loggerFactory.CreateLogger<ConversationSessionManager>();
 
             // Create initial conversation state in the repository
             InitalizeConversationConfigurationAsync().Wait();
@@ -125,7 +126,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _logger.LogInformation("Initialized conversation state with ID {SessionId}", _sessionId);
         }
 
-        public async Task<bool> AddClientAsync(IConversationClient client)
+        public async Task<bool> AddClientAsync(IConversationClient client, int SampleRate, int Channels, int bitsPerSample)
         {
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
@@ -156,6 +157,12 @@ namespace IqraInfrastructure.Managers.Conversation
                 ClientId = client.ClientId,
                 ClientType = client.ClientType,
                 JoinedAt = DateTime.UtcNow,
+                AudioInfo = new ConversationMemberAudioInfo()
+                { 
+                    SampleRate = SampleRate,
+                    Channels = Channels,
+                    BitsPerSample = 16,
+                },
                 Metadata = new Dictionary<string, string>
                 {
                     ["Type"] = client.GetType().Name
@@ -245,7 +252,10 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 // Register event handlers
                 agent.AudioGenerated += OnAgentAudioGenerated;
-                agent.TextGenerated += OnAgentTextGenerated;
+
+                agent.AgentTextResponse += OnAgentTextResponse;
+                agent.ClientTextQuery += OnClientTextReceived;
+
                 agent.Thinking += OnAgentThinking;
                 agent.ErrorOccurred += OnAgentErrorOccurred;
 
@@ -261,6 +271,12 @@ namespace IqraInfrastructure.Managers.Conversation
                 AgentId = agent.AgentId,
                 AgentType = agent.AgentType,
                 JoinedAt = DateTime.UtcNow,
+                AudioInfo = new ConversationMemberAudioInfo()
+                {
+                    SampleRate = configuration.SampleRate,
+                    Channels = configuration.Channels,
+                    BitsPerSample = configuration.BitsPerSample,
+                },
                 Metadata = new Dictionary<string, string>
                 {
                     ["Type"] = agent.GetType().Name
@@ -291,7 +307,10 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 // Unregister event handlers
                 agent.AudioGenerated -= OnAgentAudioGenerated;
-                agent.TextGenerated -= OnAgentTextGenerated;
+
+                agent.AgentTextResponse -= OnAgentTextResponse;
+                agent.ClientTextQuery -= OnClientTextReceived;
+
                 agent.Thinking -= OnAgentThinking;
                 agent.ErrorOccurred -= OnAgentErrorOccurred;
 
@@ -553,6 +572,9 @@ namespace IqraInfrastructure.Managers.Conversation
             // Calculate final metrics
             await UpdateFinalMetricsAsync();
 
+            // Run Audio Compilation in the background
+            RunAudioCompilationAsync();
+
             _logger.LogInformation("Session {SessionId} ended: {Reason}", _sessionId, reason);
         }
 
@@ -578,6 +600,22 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 _logger.LogError(ex, "Error updating final metrics for session {SessionId}", _sessionId);
             }
+        }
+        private void RunAudioCompilationAsync()
+        {
+            _logger.LogInformation("Queueing audio compilation background task for session {SessionId}", _sessionId);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var compileService = new SessionAudioCompilationService(_loggerFactory.CreateLogger<SessionAudioCompilationService>(), _conversationStateRepository, _audioStorageManager);
+                    await compileService.CompileConversationAudioAsync(_sessionId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error executing audio compilation background task for session {SessionId}", _sessionId);
+                }
+            });
         }
 
         public IReadOnlyList<ConversationMessage> GetHistory()
@@ -638,6 +676,11 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private void OnClientAudioReceived(object? sender, ConversationAudioReceivedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _clients.Find(c => c.ClientId == (string)sender);
+            }
+
             if (sender is not IConversationClient client)
                 return;
 
@@ -689,6 +732,11 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private async void OnClientTextReceived(object? sender, ConversationTextReceivedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _clients.Find(c => c.ClientId == (string)sender);
+            }
+
             if (sender is not IConversationClient client)
                 return;
 
@@ -720,6 +768,8 @@ namespace IqraInfrastructure.Managers.Conversation
 
             // Notify event subscribers
             MessageAdded?.Invoke(this, new ConversationMessageAddedEventArgs(message));
+
+            if (e.OnlySave) return;
 
             // if target agent is specified, send only to that agent
             if (!string.IsNullOrEmpty(e.TargetAgentId))
@@ -753,6 +803,11 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async void OnClientDTMFReceived(object? sender, ConversationDTMFReceivedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _clients.Find(c => c.ClientId == (string)sender);
+            }
+
             if (sender is not IConversationClient client)
                 return;
 
@@ -794,6 +849,11 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private async void OnClientDisconnected(object? sender, ConversationClientDisconnectedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _clients.Find(c => c.ClientId == (string)sender);
+            }
+
             if (sender is not IConversationClient client)
                 return;
 
@@ -805,6 +865,11 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async void OnAgentAudioGenerated(object? sender, ConversationAudioGeneratedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _agents.Find(a => a.AgentId == (string)sender);
+            }
+
             if (sender is not IConversationAgent agent)
                 return;
 
@@ -852,8 +917,13 @@ namespace IqraInfrastructure.Managers.Conversation
                 }
             }
         }
-        private async void OnAgentTextGenerated(object? sender, ConversationTextGeneratedEventArgs e)
+        private async void OnAgentTextResponse(object? sender, ConversationTextGeneratedEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _agents.Find(a => a.AgentId == (string)sender);
+            }
+
             if (sender is not IConversationAgent agent)
                 return;
 
@@ -882,6 +952,8 @@ namespace IqraInfrastructure.Managers.Conversation
 
             // Notify event subscribers
             MessageAdded?.Invoke(this, new ConversationMessageAddedEventArgs(message));
+
+            if (e.OnlySave) return;
 
             // If target client is specified, send only to that client
             if (!string.IsNullOrEmpty(e.TargetClientId))
@@ -914,6 +986,11 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private void OnAgentThinking(object? sender, ConversationAgentThinkingEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _agents.Find(a => a.AgentId == (string)sender);
+            }
+
             if (sender is not IConversationAgent agent)
                 return;
 
@@ -924,6 +1001,11 @@ namespace IqraInfrastructure.Managers.Conversation
         }
         private void OnAgentErrorOccurred(object? sender, ConversationAgentErrorEventArgs e)
         {
+            if (sender is string)
+            {
+                sender = _agents.Find(a => a.AgentId == (string)sender);
+            }
+
             if (sender is not IConversationAgent agent)
                 return;
 

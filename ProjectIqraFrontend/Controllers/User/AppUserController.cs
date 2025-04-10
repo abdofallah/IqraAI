@@ -6,6 +6,7 @@ using IqraCore.Entities.User;
 using IqraCore.Models.User;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -17,15 +18,15 @@ namespace ProjectIqraFrontend.Controllers.User
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
-        private readonly RegionManager _regionManager;
+        private readonly LanguagesManager _languageManager;
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager)
+        public AppUserController(UserManager userManager, BusinessManager businessManager, LanguagesManager languageManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
-            _regionManager = regionManager;
+            _languageManager = languageManager;
         }
 
         /**
@@ -508,7 +509,7 @@ namespace ProjectIqraFrontend.Controllers.User
             }
 
             string? businessName = formData["BusinessName"];
-            string? businessType = formData["BusinessType"];
+            string? businessDefaultLanguage = formData["BusinessDefaultLanguage"];
             IFormFile? businessLogo = formData.Files.GetFile("BusinessLogo");
 
             if (string.IsNullOrWhiteSpace(businessName) || businessName.Length > 64)
@@ -518,48 +519,48 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            if (string.IsNullOrWhiteSpace(businessType))
+            // Valdiate Langauge
+            if (string.IsNullOrWhiteSpace(businessDefaultLanguage))
             {
                 result.Code = "AddUserBusiness:6";
-                result.Message = "Missing business type";
+                result.Message = "Missing business default language.";
                 return result;
             }
-
-            if (!int.TryParse(businessType, out int businessTypeInt) || !Enum.IsDefined(typeof(BusinessTypeEnum), businessTypeInt))
+            var langaugeData = await _languageManager.GetLanguageByCode(businessDefaultLanguage);
+            if (!langaugeData.Success)
+            {
+                result.Code = "AddUserBusiness:" + langaugeData.Code;
+                result.Message = langaugeData.Message;
+                return result;
+            }
+            if (langaugeData.Data.DisabledAt != null)
             {
                 result.Code = "AddUserBusiness:7";
-                result.Message = "Invalid business type";
+                result.Message = "Business default language is disabled.";
                 return result;
             }
 
-            BusinessTypeEnum businessTypeEnum = (BusinessTypeEnum)businessTypeInt;
-            if (businessTypeEnum != BusinessTypeEnum.NoCode)
-            {
-                result.Code = "AddUserBusiness:8";
-                result.Message = "Business type not supported";
-                return result;
-            }
-
+            // Valdiate Business Logo if exists
             if (businessLogo != null)
             {
                 int imageResult = ImageHelper.ValidateBusinessLogoFile(businessLogo);
                 if (imageResult == 0)
                 {
-                    result.Code = "AddUserBusiness:9";
+                    result.Code = "AddUserBusiness:8";
                     result.Message = "Business logo too large. Allowed file size is 5MB.";
                     return result;
                 }
 
                 if (imageResult == 1)
                 {
-                    result.Code = "AddUserBusiness:10";
+                    result.Code = "AddUserBusiness:9";
                     result.Message = "Invalid business logo file. Allowed file types are: png, jpg, jpeg, webp, gif.";
                     return result;
                 }
 
                 if (imageResult != 200)
                 {
-                    result.Code = "AddUserBusiness:11";
+                    result.Code = "AddUserBusiness:10";
                     result.Message = "Failed to validate business logo.";
                     return result;
                 }
@@ -570,7 +571,8 @@ namespace ProjectIqraFrontend.Controllers.User
                 {
                     Name = businessName,
                     MasterUserEmail = userEmail,
-                    Type = businessTypeEnum,
+                    DefaultLanguage = businessDefaultLanguage,
+                    Languages = new List<string> { businessDefaultLanguage },
                     Tutorials = new Dictionary<string, object>()
                     {
                         { "NewBusinessTutorial", true}

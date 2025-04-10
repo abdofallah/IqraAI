@@ -307,6 +307,60 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<bool> SetClientAudioStatusAsync(string conversationId, string clientId, ConversationMemberAudioCompilationStatus status, string? failedReason = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId),
+                    Builders<ConversationState>.Filter.ElemMatch(c => c.Clients, client => client.ClientId == clientId)
+                );
+
+                var update = Builders<ConversationState>.Update
+                    .Set(c => c.Clients.FirstMatchingElement().AudioInfo.AudioCompilationStatus, status);
+                if (failedReason != null && status == ConversationMemberAudioCompilationStatus.Failed)
+                {
+                    update = update.Set(c => c.Clients.FirstMatchingElement().AudioInfo.FailedReason, failedReason);
+                }
+
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating client {ClientId} audio compilation status in conversation {Id}", clientId, conversationId);
+                throw;
+            }
+        }
+
+        public async Task<bool> SetAgentAudioStatusAsync(string conversationId, string agentId, ConversationMemberAudioCompilationStatus status, string? failedReason = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId),
+                    Builders<ConversationState>.Filter.ElemMatch(c => c.Agents, agent => agent.AgentId == agentId)
+                );
+
+                var update = Builders<ConversationState>.Update
+                    .Set(c => c.Agents.FirstMatchingElement().AudioInfo.AudioCompilationStatus, status);
+                if (failedReason != null && status == ConversationMemberAudioCompilationStatus.Failed)
+                {
+                    update = update.Set(c => c.Agents.FirstMatchingElement().AudioInfo.FailedReason, failedReason);
+                }
+
+                var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
+
+                return result.ModifiedCount > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating agent {AgentId} audio compilation status in conversation {Id}", agentId, conversationId);
+                throw;
+            }
+        }
+
         public async Task<List<ConversationState>> GetRecentForBusinessAsync(long businessId, int limit = 100, CancellationToken cancellationToken = default)
         {
             try

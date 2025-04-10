@@ -11,6 +11,9 @@ using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using IqraCore.Entities.Configuration;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Telephony;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -42,6 +45,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessAgentsManager? _businessAgentsManager;
         private readonly BusinessNumberManager? _businessNumberManager;
         private readonly BusinessRoutesManager? _businessRoutesManager;
+        private readonly BusinessConversationsManager? _businessConversationsManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -54,7 +58,11 @@ namespace IqraInfrastructure.Managers.Business
             BusinessToolAudioRepository? businessToolAudioRepository,
             BusinessAgentAudioRepository? businessAgentAudioRepository,
             ModemTelManager? modemTelManager,
-            IntegrationsManager? integrationsManager
+            IntegrationsManager? integrationsManager,
+            LanguagesManager? langaugesManager,
+            CallQueueRepository? callQueueRepository,
+            ConversationStateRepository? conversationStateRepository,
+            ConversationAudioRepository? conversationAudioRepository
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -77,11 +85,11 @@ namespace IqraInfrastructure.Managers.Business
             // Sub Managers
             if (_settings.InitalizeSettingsManager)
             {
-                if (businessWhiteLabelDomainRepository == null || businessLogoRepository == null || businessIqraBusinessDomainsVestaCPRepository == null)
+                if (businessWhiteLabelDomainRepository == null || businessLogoRepository == null || businessIqraBusinessDomainsVestaCPRepository == null || langaugesManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessSettingsManager");
                 }
-                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository);
+                _businessSettingsManager = new BusinessSettingsManager(loggerFactory.CreateLogger<BusinessSettingsManager>(), this, businessRepository, businessAppRepository, businessWhiteLabelDomainRepository, businessLogoRepository, businessIqraBusinessDomainsVestaCPRepository, langaugesManager);
             }
             if (_settings.InitalizeToolsManager)
             {
@@ -123,6 +131,14 @@ namespace IqraInfrastructure.Managers.Business
             {
                 _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository);
             }
+            if (_settings.InitalizeConversationsManager)
+            {
+                if (conversationStateRepository == null || conversationAudioRepository == null || callQueueRepository == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessConversationsManager");
+                }
+                _businessConversationsManager = new BusinessConversationsManager(this, callQueueRepository, conversationStateRepository, conversationAudioRepository);
+            }
         }
 
         /**
@@ -163,8 +179,8 @@ namespace IqraInfrastructure.Managers.Business
                 Id = businessId,
             };
 
+            /** TODO this takes too long so we disable it for now, enable it to run in background, requires overhauling the subdomain system
             string subDomainHash = SubdomainHashGenerator.GenerateSubdomainHash(businessId);
-
             var addDefaultDomainResult = await _businessSettingsManager.AddOrUpdateUserBusinessDomain(
                 businessId,
                 new FormCollection(
@@ -193,6 +209,7 @@ namespace IqraInfrastructure.Managers.Business
 
             long businessWhiteLabelId = addDefaultDomainResult.Data.Id;
             businessData.WhiteLabelDomainIds.Add(businessWhiteLabelId);
+            **/
 
             await _businessAppRepository.AddBusinessAppAsync(businessApp);
             await _businessRepository.AddBusinessAsync(businessData);
@@ -396,6 +413,11 @@ namespace IqraInfrastructure.Managers.Business
         {
             if (!_settings.InitalizeRoutesManager || _businessRoutesManager == null) throw new Exception("Routes manager not initalized");
             return _businessRoutesManager;
+        }
+    
+        public BusinessConversationsManager GetConversationsManager() {
+            if (!_settings.InitalizeConversationsManager || _businessConversationsManager == null) throw new Exception("Conversations manager not initalized");
+            return _businessConversationsManager;
         }
     }
 }

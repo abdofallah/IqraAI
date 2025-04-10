@@ -9,6 +9,7 @@ using MongoDB.Driver;
 using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using IqraInfrastructure.Managers.Languages;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -23,6 +24,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessWhiteLabelDomainRepository _businessWhiteLabelDomainRepository;
         private readonly BusinessLogoRepository _businessLogoRepository;
         private readonly BusinessDomainVestaCPRepository _businessIqraBusinessDomainsVestaCPRepository;
+        private readonly LanguagesManager _languagesManager;
 
         private readonly List<Task> _sslFailedRetryTasks = new List<Task>();
 
@@ -33,7 +35,8 @@ namespace IqraInfrastructure.Managers.Business
             BusinessAppRepository businessAppRepository,
             BusinessWhiteLabelDomainRepository businessWhiteLabelDomainRepository,
             BusinessLogoRepository businessLogoRepository,
-            BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository
+            BusinessDomainVestaCPRepository businessIqraBusinessDomainsVestaCPRepository,
+            LanguagesManager languagesManager
         )
         {
             _logger = logger;
@@ -45,6 +48,7 @@ namespace IqraInfrastructure.Managers.Business
             _businessWhiteLabelDomainRepository = businessWhiteLabelDomainRepository;
             _businessLogoRepository = businessLogoRepository;
             _businessIqraBusinessDomainsVestaCPRepository = businessIqraBusinessDomainsVestaCPRepository;
+            _languagesManager = languagesManager;
         }
 
         /**
@@ -100,29 +104,110 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Languages
-            string? businessLanguagesString = formData["languages"].ToString();
-            if (!string.IsNullOrWhiteSpace(businessLanguagesString))
+            string? businessSettingLanguageTabChangesString = formData["languagesTab"].ToString();
+            if (!string.IsNullOrWhiteSpace(businessSettingLanguageTabChangesString))
             {
-                List<string>? businessLanguages = businessLanguagesString.Split(',').ToList();
-                if (businessLanguages == null || businessLanguages.Count == 0)
+                JsonElement langaugeTabRootJson;
+                try
+                {
+                    langaugeTabRootJson = JsonSerializer.Deserialize<JsonElement>(businessSettingLanguageTabChangesString);
+                }
+                catch
                 {
                     result.Code = "UpdateUserBusinessSettings:5";
-                    result.Message = "Must have at least one language selected.";
+                    result.Message = "Unable to parse languages tab changes data.";
                     return result;
                 }
 
-                // todo validate languages - create a language repo or list taht iqra allows somewhere
+                if (!langaugeTabRootJson.TryGetProperty("defaultLanguage", out var businessDefaultLanguage))
+                {
+                    result.Code = "UpdateUserBusinessSettings:6";
+                    result.Message = "Business default language property not found.";
+                    return result;
+                }
+                if (businessDefaultLanguage.ValueKind != JsonValueKind.String)
+                {
+                    result.Code = "UpdateUserBusinessSettings:7";
+                    result.Message = "Business default language is not a string.";
+                    return result;
+                }
+                var businessDefaultLanguageString = businessDefaultLanguage.GetString();
+                if (string.IsNullOrWhiteSpace(businessDefaultLanguageString))
+                {
+                    result.Code = "UpdateUserBusinessSettings:8";
+                    result.Message = "Business default language is empty.";
+                    return result;
+                }
+
+                if (!langaugeTabRootJson.TryGetProperty("languages", out var businessLangauges))
+                {
+                    result.Code = "UpdateUserBusinessSettings:9";
+                    result.Message = "Business languages property not found.";
+                    return result;
+                }
+                var businessLanguagesJsonList = businessLangauges.EnumerateArray().ToList();
+                if (businessLanguagesJsonList == null || businessLanguagesJsonList.Count == 0)
+                {
+                    result.Code = "UpdateUserBusinessSettings:10";
+                    result.Message = "Must have at least one language selected.";
+                    return result;
+                }              
+
+                List<string> builtLangaugesList = new List<string>();
+                for (int i = 0; i < businessLanguagesJsonList.Count; i++)
+                {
+                    var languageCode = businessLanguagesJsonList[i];
+
+                    if (languageCode.ValueKind != JsonValueKind.String)
+                    {
+                        result.Code = "UpdateUserBusinessSettings:11";
+                        result.Message = $"Language code at index {i} is not a string";
+                        return result;
+                    }
+
+                    var langaugeCodeString = languageCode.GetString();
+                    if (string.IsNullOrWhiteSpace(langaugeCodeString))
+                    {
+                        result.Code = "UpdateUserBusinessSettings:12";
+                        result.Message = $"Language code at index {i} is empty.";
+                        return result;
+                    }
+
+                    var langaugeDataResult = await _languagesManager.GetLanguageByCode(langaugeCodeString);
+                    if (!langaugeDataResult.Success)
+                    {
+                        result.Code = "UpdateUserBusinessSettings:" + langaugeDataResult.Code;
+                        result.Message = langaugeDataResult.Message;
+                        return result;
+                    }
+
+                    if (langaugeDataResult.Data.DisabledAt != null)
+                    {
+                        result.Code = "UpdateUserBusinessSettings:13";
+                        result.Message = $"Selected language {langaugeCodeString} is disabled.";
+                        return result;
+                    }
+
+                    builtLangaugesList.Add(langaugeCodeString);
+                }
+
+                if (!builtLangaugesList.Contains(businessDefaultLanguageString))
+                {
+                    result.Code = "UpdateUserBusinessSettings:14";
+                    result.Message = "Default language must be selected.";
+                    return result;
+                }
 
                 int addedCount = 0;
                 int remainedCount = 0;
                 foreach (string oldLanguage in businessData.Languages)
                 {
-                    if (businessLanguages.Contains(oldLanguage))
+                    if (builtLangaugesList.Contains(oldLanguage))
                     {
                         remainedCount++;
                     }
                 }
-                foreach (string newLanguage in businessLanguages)
+                foreach (string newLanguage in builtLangaugesList)
                 {
                     if (!businessData.Languages.Contains(newLanguage))
                     {
@@ -130,23 +215,19 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (remainedCount + addedCount == 0)
+                if (remainedCount != businessData.Languages.Count || addedCount > 0)
                 {
-                    result.Code = "UpdateUserBusinessSettings:6";
-                    result.Message = "Must have at least one language selected.";
-                    result.Data = false;
-                    return result;
+                    var businessLanguagesUpdateResult = MultiLanguageHelper.UpdateObjectMultiLanguages(businessApp, builtLangaugesList, businessData.Languages);
+                    if (!businessLanguagesUpdateResult.Success)
+                    {
+                        result.Code = businessLanguagesUpdateResult.Code;
+                        result.Message = businessLanguagesUpdateResult.Message;
+                        return result;
+                    }
                 }
 
-                var businessLanguagesUpdateResult = MultiLanguageHelper.UpdateObjectMultiLanguages(businessApp, businessLanguages, businessData.Languages);
-                if (!businessLanguagesUpdateResult.Success)
-                {
-                    result.Code = businessLanguagesUpdateResult.Code;
-                    result.Message = businessLanguagesUpdateResult.Message;
-                    return result;
-                }
-
-                updateDefinitions.Add(Builders<BusinessData>.Update.Set(d => d.Languages, businessLanguages));
+                updateDefinitions.Add(Builders<BusinessData>.Update.Set(d => d.Languages, builtLangaugesList));
+                updateDefinitions.Add(Builders<BusinessData>.Update.Set(d => d.DefaultLanguage, businessDefaultLanguageString));
 
                 // todo unpublish the business, calls etc if languages are different than saved ones
 
@@ -168,7 +249,7 @@ namespace IqraInfrastructure.Managers.Business
 
             if (updateDefinitions.Count == 0)
             {
-                result.Code = "UpdateUserBusinessSettings:8";
+                result.Code = "UpdateUserBusinessSettings:15";
                 result.Message = "Nothing to update.";
                 return result;
             }
@@ -177,8 +258,8 @@ namespace IqraInfrastructure.Managers.Business
             var updateBusinessResult = await _businessRepository.UpdateBusinessAsync(businessData.Id, Builders<BusinessData>.Update.Combine(updateDefinitions));
             if (!updateBusinessResult)
             {
-                result.Code = "UpdateUserBusinessSettings:9";
-                result.Message = "Failed to update business.";
+                result.Code = "UpdateUserBusinessSettings:16";
+                result.Message = "Failed to update business data.";
                 return result;
             }
 
@@ -187,11 +268,10 @@ namespace IqraInfrastructure.Managers.Business
                 var updateBusinessAppResult = await _businessAppRepository.ReplaceBusinessAppAsync(businessApp);
                 if (!updateBusinessAppResult)
                 {
-                    // revert back business data if app fails
                     await _businessRepository.ReplaceBusinessAsync(businessDataBackup);
 
-                    result.Code = "UpdateUserBusinessSettings:10";
-                    result.Message = "Failed to update business app.";
+                    result.Code = "UpdateUserBusinessSettings:17";
+                    result.Message = "Failed to update business app so reverted business data changes.";
                     return result;
                 }
             }

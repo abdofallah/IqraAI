@@ -19,7 +19,10 @@ namespace IqraCore.Interfaces.Conversation
         Task ShutdownAsync(string reason);
 
         event EventHandler<ConversationAudioGeneratedEventArgs> AudioGenerated;
-        event EventHandler<ConversationTextGeneratedEventArgs> TextGenerated;
+
+        event EventHandler<ConversationTextGeneratedEventArgs> AgentTextResponse;
+        event EventHandler<ConversationTextReceivedEventArgs>? ClientTextQuery;
+
         event EventHandler<ConversationAgentThinkingEventArgs> Thinking;
         event EventHandler<ConversationAgentErrorEventArgs> ErrorOccurred;
     }

@@ -83,7 +83,7 @@
                         <span class="nav_name">Make Calls</span>
                     </a>
                     <span class="mt-4 nav-category-label">Analytics</span>
-                    <a class="nav_link disabled" for="conversations-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="conversations-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-messages nav_icon'></i>
                         <span class="nav_name">Conversations</span>
                     </a>
@@ -4045,8 +4045,8 @@
                                 <tr>
                                     <th scope="col">Code</th>
                                     <th scope="col">Language</th>
+                                    <th scope="col">Is Default?</th>
                                     <th scope="col">Action</th>
-                                    <th scope="col"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -5323,7 +5323,7 @@
                                                         BusinessFullLanguagesData.push(countryCodeLanguage);
                                                     }
                                                 });
-                                                BusinessDefaultLanguage = BusinessFullData.businessData.languages[0];
+                                                BusinessDefaultLanguage = BusinessFullData.businessData.defaultLanguage;
 
                                                 initSettingsTab();
                                                 initToolsTab();

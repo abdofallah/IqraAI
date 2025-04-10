@@ -203,7 +203,11 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<ModemTelManager>(),
-                    sp.GetRequiredService<IntegrationsManager>()
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    null,
+                    null,
+                    null,
+                    null
                 );
             });
             builder.Services.AddSingleton<ServerSelectionManager>((sp) =>

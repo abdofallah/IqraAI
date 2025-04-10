@@ -31,6 +31,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
             speechConfig.SpeechSynthesisLanguage = _langauge;
             speechConfig.SpeechSynthesisVoiceName = _speakerName;
+
+            // ai agent is forced in call processor manager . CreateConversationSessionAsync to use 16k 16bit mono
             speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
 
             _pullStream = AudioOutputStream.CreatePullStream();

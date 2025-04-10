@@ -4,6 +4,7 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Helpers;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Script;
@@ -49,10 +50,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioGenerated;
-        public event EventHandler<ConversationTextGeneratedEventArgs>? TextGenerated;
+
+        public event EventHandler<ConversationTextGeneratedEventArgs>? AgentTextResponse;
+        public event EventHandler<ConversationTextReceivedEventArgs>? ClientTextQuery;
+
         public event EventHandler<ConversationAgentThinkingEventArgs>? Thinking; // TODO: Wire this up if needed
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
-
 
         public ConversationAIAgent(
             ILoggerFactory loggerFactory,
@@ -112,13 +115,16 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // LLM Handler -> Orchestrator/Other Modules
             _llmHandler.SynthesizeTextRequested += (text) => _audioOutputHandler.SynthesizeAndQueueSpeechAsync(text, CancellationToken.None); // TODO Use appropriate token
-            _llmHandler.TextChunkGenerated += (text) => TextGenerated?.Invoke(this, new ConversationTextGeneratedEventArgs(text, _agentState.CurrentClientId));
+
+            _llmHandler.AIAgentResponseCompleted += (text) => AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(text, _agentState.CurrentClientId, true));
+            _llmHandler.TextRecievedForLLMToProcess += (text, clientId) => ClientTextQuery?.Invoke(clientId, new ConversationTextReceivedEventArgs(text, _agentState.AgentId, true));
+
             _llmHandler.ResponseHandlingComplete += OnLLMResponseHandlingComplete; // May not be needed if SpeechPlaybackComplete is used
             _llmHandler.SystemToolExecutionRequested += (content) => _toolExecutor.HandleSystemToolAsync(content, _conversationCTS.Token); // Use agent token
             _llmHandler.CustomToolExecutionRequested += (content) => _toolExecutor.HandleCustomToolAsync(content, _conversationCTS.Token); // Use agent token
 
             // Tool Executor -> Orchestrator/Other Modules
-            _toolExecutor.ToolResultAvailable += (result) => _llmHandler.ProcessSystemMessageAsync(result, CancellationToken.None); // Feed result back to LLM
+            _toolExecutor.ToolResultAvailable += (result) => _llmHandler.ProcessSystemMessageAsync(result, _agentState.CurrentClientId, CancellationToken.None); // Feed result back to LLM
             _toolExecutor.PlaySpeechRequested += (text, token) => _audioOutputHandler.SynthesizeAndPlayBlockingAsync(text, token); // Request blocking speech
             _toolExecutor.EndConversationRequested += (reason) => {
                 _logger.LogInformation("Agent {AgentId} requested conversation end via tool. Reason: {Reason}", AgentId, reason);
@@ -221,15 +227,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
             {
-                string openingMessage = _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
-                _logger.LogDebug("Agent {AgentId}: Playing opening greeting: {Message}", AgentId, openingMessage);
+                string openingMessage = "respond_to_customer: " + _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
                 _agentState.LLMService?.AddAssistantMessage(openingMessage);
-                await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage, _conversationCTS.Token);
+                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage));
+                await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage.Substring("respond_to_customer: ".Length), _conversationCTS.Token);
             }
             else if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.UserFirst)
             {
                 _logger.LogDebug("Agent {AgentId}: Waiting for user to speak first.", AgentId);
-                _agentState.LLMService?.AddAssistantMessage("execute_system_function: acknowledge(\"Call Start\")");
+                string openingMessage = "respond_to_customer: " + _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
+                _agentState.LLMService?.AddAssistantMessage(openingMessage);
+                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage));
             }
        
             _agentState.IsAcceptingSTTAudio = true;
@@ -291,7 +299,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // Instruct LLM to end the call immediately
             string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionRoute?.Configuration.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";      
-            await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _conversationCTS.Token); // todo this is problematic
+            await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _agentState.CurrentClientId, _conversationCTS.Token); // todo this is problematic
         }
 
         public Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
@@ -358,7 +366,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
             return ProcessTranscriptionResultAsync(text);
         }
-
 
         public Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
         {
@@ -429,7 +436,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private void UnwireEvents()
         {
             AudioGenerated = null;
-            TextGenerated = null;
+            AgentTextResponse = null;
             Thinking = null;
             ErrorOccurred = null;
         }

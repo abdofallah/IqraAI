@@ -9,6 +9,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Client;
+using IqraInfrastructure.Managers.Conversation.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -95,7 +96,7 @@ namespace IqraInfrastructure.Managers.Call
                     config,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
-                    _serviceProvider.GetRequiredService<ILogger<ConversationSessionManager>>(),
+                    _serviceProvider.GetRequiredService<ILoggerFactory>(),
                     "call"
                 );
 
@@ -109,18 +110,29 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 // Add client to session
-                await conversationSession.AddClientAsync(telephonyClient.Data);
+                await conversationSession.AddClientAsync(
+                    telephonyClient.Data,
+                    // todo make configurable
+                    16000,
+                    1,
+                    8
+                );
                 conversationSession.SetPrimaryClient(telephonyClient.Data.ClientId);
 
                 // Create and add AI agent
                 var agent = await CreateAIAgentAsync(sessionId, config, conversationSession);
                 if (agent != null)
                 {
-                    await conversationSession.AddAgentAsync(agent, new ConversationAgentConfiguration
-                    {
-                        BusinessId = config.BusinessId,
-                        RouteId = config.RouteId
-                    });
+                    await conversationSession.AddAgentAsync(
+                        agent, new ConversationAgentConfiguration
+                        {
+                            BusinessId = config.BusinessId,
+                            RouteId = config.RouteId,
+                            SampleRate = 16000,
+                            BitsPerSample = 16,
+                            Channels = 1
+                        }
+                    );
                     conversationSession.SetPrimaryAgent(agent.AgentId);
                 }
 

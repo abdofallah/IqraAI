@@ -43,21 +43,21 @@ namespace IqraInfrastructure.Repositories.Business
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var result = await _businessAppCollection.DeleteOneAsync(filter);
-            return result.DeletedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> UpdateBusinessAppAsync(long businessId, UpdateDefinition<BusinessApp> updateDefinition)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
             var result = await _businessAppCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<bool> ReplaceBusinessAppAsync(BusinessApp? businessApp)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessApp.Id);
             var result = await _businessAppCollection.ReplaceOneAsync(filter, businessApp);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string selectedToolId)

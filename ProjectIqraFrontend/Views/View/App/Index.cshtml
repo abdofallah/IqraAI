@@ -226,40 +226,21 @@
                             <input type="file" class="form-control d-none" id="addNewBusinessLogoInput" accept="image/png, image/gif, image/jpeg, image/webp">
                         </div>
                         <div>
-                            <label class="form-label">Type</label>
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="new-business-type-card active" business-type="NoCode">
-                                        <div class="d-flex flex-row align-items-center justify-content-center">
-                                            <div>
-                                                <i class="fa-solid fa-gear-complex-code"></i>
-                                            </div>
-                                            <div>
-                                                <h4>No-Code</h4>
-                                                <p>Setup the business agents without prompting, using the context menu.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="new-business-type-card disabled" business-type="Advanced">
-                                        <span class="badge bg-primary position-absolute" style="top: -5px; right: -5px">Coming soon!</span>
-                                        <div class="d-flex flex-row align-items-center justify-content-center">
-                                            <div>
-                                                <i class="fa-solid fa-terminal"></i>
-                                            </div>
-                                            <div>
-                                                <h4>Advanced</h4>
-                                                <p>Setup the business agents with full access to creating a custom prompt.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <label for="addNewBusinessDefaultLanguageSelect" class="form-label">Default Language</label>
+                            <select class="form-select" id="addNewBusinessDefaultLanguageSelect">
+                                <option value="none" selected disabled>Select Language</option>
+                                <!-- Dynamically Generated -->
+                            </select>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" id="addNewBusinessButton" disabled>Add Business</button>
+                        <button type="button" class="btn btn-primary btn-ic-span-align" id="addNewBusinessButton" disabled>
+                            <i class="fa-regular fa-plus"></i>
+                            <span>Add</span>
+                            <div class="spinner-border save-button-spinner d-none" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -289,11 +270,31 @@
         <script>
             var AlertManager = new BootstrapAlertManager();
 
+            var SpecificationLanguagesListData = null;
+
             var CurrentUserBusinessPermission = null;
 
             var CurrentBusinessesList = null;
 
             // API Related Calls
+            function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/specification/languages/',
+                    type: 'POST',
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
+                        }
+
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
+                    }
+                });
+            }
+
             function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback) {
                 $.ajax({
                     url: '/app/user/permissions/business',
@@ -363,6 +364,8 @@
                 () => {
                     if (
                         CurrentBusinessesList != null
+                        &&
+                        SpecificationLanguagesListData != null
                     ) {
                         clearInterval(PageLoaderInterval);
 
@@ -392,7 +395,131 @@
         <!-- Init -->
         <script>
             $(document).ready(() => {
-                InitBusinessesTab();
+
+                FetchSpecificationLanguagesDataFromAPI(
+                    (specLanguagesDataResult) => {
+                        SpecificationLanguagesListData = specLanguagesDataResult;
+
+                        FetchUserBusinessPermissionsFromAPI(
+                            (userBusinessPermission) => {
+
+                                CurrentUserBusinessPermission = userBusinessPermission;
+
+                                if (userBusinessPermission.disableBusinessesAt == null) {
+                                    searchBusinessInput.prop("disabled", false);
+                                    searchBusinessButton.prop("disabled", false);
+
+                                    FetchUserBusinessesFromAPI(
+                                        (userBusinesses) => {
+                                            CurrentBusinessesList = userBusinesses;
+
+                                            // Init The business Tab
+                                            InitBusinessesTab();
+                                        },
+                                        (userBusinessesError) => {
+                                            AlertManager.createAlert({
+                                                type: "danger",
+                                                message: "Error occured while fetching user businesses. Check browser console for logs.",
+                                                enableDismiss: false,
+                                            });
+
+                                            console.error("Error occured while fetching user businesses: ", userBusinessesError);
+                                        },
+                                    );
+                                } else {
+                                    CurrentBusinessesList = [];
+
+                                    let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
+                                    if (userBusinessPermission.disableBusinessesReason != null) {
+                                        alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.disableBusinessesReason}`;
+                                    } else {
+                                        alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                    }
+
+                                    AlertManager.createAlert({
+                                        type: "danger",
+                                        message: alertMessage,
+                                        enableDismiss: false,
+                                    });
+                                }
+
+                                if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                        let alertMessage = "Bussiness Adding is disabled for your account.";
+
+                                        if (userBusinessPermission.addBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.addBusinessDisableReason}`;
+                                        } else {
+                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                        }
+
+                                        AlertManager.createAlert({
+                                            type: "danger",
+                                            message: alertMessage,
+                                            enableDismiss: false,
+                                        });
+                                    }
+                                } else {
+                                    AddNewBusinessButton.prop("disabled", false);
+                                }
+
+                                if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                        let alertMessage = "Bussiness Editing is disabled for your account.";
+
+                                        if (userBusinessPermission.editBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.editBusinessDisableReason}`;
+                                        } else {
+                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                        }
+
+                                        AlertManager.createAlert({
+                                            type: "danger",
+                                            message: alertMessage,
+                                            enableDismiss: false,
+                                        });
+                                    }
+                                }
+
+                                if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null) {
+                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                        let alertMessage = "Bussiness Deleting is disabled for your account.";
+
+                                        if (userBusinessPermission.deleteBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.deleteBusinessDisableReason}`;
+                                        } else {
+                                            alertMessage = `${alertMessage}<br>Please contact support for more information.`;
+                                        }
+
+                                        AlertManager.createAlert({
+                                            type: "danger",
+                                            message: alertMessage,
+                                            enableDismiss: false,
+                                        });
+                                    }
+                                }
+                            },
+                            (userBusinessPermissionError) => {
+                                AlertManager.createAlert({
+                                    type: "danger",
+                                    message: "Error occured while fetching user businesses. Check browser console for logs.",
+                                    enableDismiss: false,
+                                });
+
+                                console.error("Error occured while fetching user businesses: ", userBusinessPermissionError);
+                            },
+                        );
+                    },
+                    (specLanguagesListError) => {
+                        AlertManager.createAlert({
+                            type: "danger",
+                            message: "Error occured while fetching specification languages. Check browser console for logs.",
+                            enableDismiss: false,
+                        });
+
+                        console.error("Error occured while fetching specification languages: ", specLanguagesListError);
+                    }
+                ); 
             });
         </script>
 </body>

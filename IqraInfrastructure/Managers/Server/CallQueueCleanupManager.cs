@@ -8,7 +8,6 @@ namespace IqraInfrastructure.Managers.Server
     {
         private readonly ILogger<CallQueueCleanupManager> _logger;
         private readonly CallQueueRepository _callQueueRepository;
-        private readonly CallSessionRepository _callSessionRepository;
 
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(15);
         private readonly TimeSpan _orphanedCallThreshold = TimeSpan.FromMinutes(30);
@@ -16,12 +15,11 @@ namespace IqraInfrastructure.Managers.Server
 
         public CallQueueCleanupManager(
             ILogger<CallQueueCleanupManager> logger,
-            CallQueueRepository callQueueRepository,
-            CallSessionRepository callSessionRepository)
+            CallQueueRepository callQueueRepository
+        )
         {
             _logger = logger;
             _callQueueRepository = callQueueRepository;
-            _callSessionRepository = callSessionRepository;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -40,7 +38,7 @@ namespace IqraInfrastructure.Managers.Server
                     }
 
                     // Clean up orphaned sessions
-                    await _callSessionRepository.CleanupOrphanedSessionsAsync(_orphanedSessionThreshold);
+                    // TODO
                 }
                 catch (Exception ex)
                 {

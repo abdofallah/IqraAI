@@ -9,6 +9,7 @@ namespace IqraCore.Entities.Conversation
         public DateTime JoinedAt { get; set; }
         public DateTime? LeftAt { get; set; }
         public string LeaveReason { get; set; }
+        public ConversationMemberAudioInfo AudioInfo { get; set; } = new ConversationMemberAudioInfo();
         public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
     }
 }

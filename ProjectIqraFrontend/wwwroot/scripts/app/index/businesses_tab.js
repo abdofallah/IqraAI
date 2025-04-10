@@ -1,9 +1,6 @@
-const BusinessTypeEnum = {
-	Unknown: 0,
-	NoCode: 1,
-	Advanced: 2,
-};
+/** Global Variables */
 
+/** Element Varables **/
 const businessTab = $("#business-tab");
 
 const AddNewBusinessButton = businessTab.find("#AddNewBusinessButton");
@@ -15,8 +12,12 @@ const addNewBusinessModal = $("#addNewBusinessModal");
 const addNewBusinessNameInput = addNewBusinessModal.find("#addNewBusinessNameInput");
 const addNewBusinessLogoInput = addNewBusinessModal.find("#addNewBusinessLogoInput");
 const addNewBusinessLogoPreview = addNewBusinessModal.find("#addNewBusinessLogoPreview");
-const addNewBusinessButton = addNewBusinessModal.find("#addNewBusinessButton");
+const addNewBusinessDefaultLanguageSelect = addNewBusinessModal.find("#addNewBusinessDefaultLanguageSelect");
 
+const addNewBusinessButton = addNewBusinessModal.find("#addNewBusinessButton");
+const addNewBusinessButtonSpinner = addNewBusinessButton.find(".save-button-spinner");
+
+/** Functions **/
 function MoveToBusinessPage(BusinessId) {
 	window.location.href = "/app/business/" + BusinessId;
 }
@@ -43,12 +44,8 @@ function ValidateAddNewBusinessModal(enableDisableButton = false) {
 		isValid = false;
 	}
 
-	let activeBusinessType = addNewBusinessModal.find(".new-business-type-card.active");
-	if (activeBusinessType.length == 0) {
-		isValid = false;
-	}
-	let activeBusinessTypeAttr = activeBusinessType.attr("business-type");
-	if (!activeBusinessTypeAttr || !activeBusinessTypeAttr.length) {
+	const selectedLanguage = addNewBusinessDefaultLanguageSelect.find("option:selected").val();
+	if (!selectedLanguage || selectedLanguage == null || selectedLanguage.length == 0 || selectedLanguage == "none") {
 		isValid = false;
 	}
 
@@ -63,250 +60,146 @@ function ValidateAddNewBusinessModal(enableDisableButton = false) {
 	return isValid;
 }
 
+function FillBusinessList() {
+	CurrentBusinessesList.forEach((businessData) => {
+		const businessCardElement = CreateUserBusinessCard(businessData);
+
+		BusinessesList.append(businessCardElement);
+	});
+}
+
+function FillAddNewBusinessModalDefaults() {
+	SpecificationLanguagesListData.forEach((languageData) => {
+		if (languageData.disabledAt != null) return;
+
+		let optionElement = `<option value="${languageData.id}">${languageData.name} | ${languageData.id}</option>`;
+
+        addNewBusinessDefaultLanguageSelect.append(optionElement);
+	});
+}
+
 /** INIT **/
 function InitBusinessesTab() {
-	$(document).ready(() => {
-		$(document).on("click", ".business-card", (event) => {
-			event.preventDefault();
+	// Init
+	FillBusinessList();
+	FillAddNewBusinessModalDefaults();
 
-			let currentCardElement = $(event.currentTarget);
-			let businessDataId = currentCardElement.attr("data-business-id");
+	// Event Handlers
+	$(document).on("click", ".business-card", (event) => {
+		event.preventDefault();
 
-			if (!businessDataId || !businessDataId.length) {
-				return;
-			}
+		let currentCardElement = $(event.currentTarget);
+		let businessDataId = currentCardElement.attr("data-business-id");
 
-			if (isBusinessAnimationEnabled) {
-				$("body").css("overflow", "hidden");
+		if (!businessDataId || !businessDataId.length) {
+			return;
+		}
 
-				let transitionTimeMS = 1000;
+		if (isBusinessAnimationEnabled) {
+			$("body").css("overflow", "hidden");
 
-				currentCardElement.css("transition", `all ${transitionTimeMS}ms ease`);
-				currentCardElement.css("transform", "scale(40)");
-				currentCardElement.css("background-color", "#1a1a1a");
-				currentCardElement.css("color", "#1a1a1a");
-				currentCardElement.css("z-index", "99999");
+			let transitionTimeMS = 1000;
 
-				currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS / 4)}ms ease`);
-				currentCardElement.find("h4").css("opacity", "0");
+			currentCardElement.css("transition", `all ${transitionTimeMS}ms ease`);
+			currentCardElement.css("transform", "scale(40)");
+			currentCardElement.css("background-color", "#1a1a1a");
+			currentCardElement.css("color", "#1a1a1a");
+			currentCardElement.css("z-index", "99999");
 
-				setTimeout(() => {
-					MoveToBusinessPage(businessDataId);
-				}, transitionTimeMS / 1.1);
-			} else {
+			currentCardElement.find("h4").css("transition", `all ${parseInt(transitionTimeMS / 4)}ms ease`);
+			currentCardElement.find("h4").css("opacity", "0");
+
+			setTimeout(() => {
 				MoveToBusinessPage(businessDataId);
-			}
-		});
+			}, transitionTimeMS / 1.1);
+		} else {
+			MoveToBusinessPage(businessDataId);
+		}
+	});
 
-		$(document).on("click", "#addNewBusinessModal .new-business-type-card", (event) => {
-			event.preventDefault();
-			event.stopPropagation();
+	addNewBusinessNameInput.on("input", (event) => {
+		ValidateAddNewBusinessModal(true);
+	});
 
-			let current = $(event.currentTarget);
+	addNewBusinessLogoPreview.on("click", (event) => {
+		addNewBusinessLogoInput.trigger("click");
+	});
 
-			if (current.hasClass("disabled")) {
-				return;
-			}
+	addNewBusinessLogoInput.on("change", (event) => {
+		let file = event.currentTarget.files[0];
 
-			let currentActive = $("#addNewBusinessModal .new-business-type-card.active");
+		if (!file) {
+			return;
+		}
 
-			let businessType = current.attr("business-type");
-			let activeBusinessType = currentActive.attr("business-type");
+		let reader = new FileReader();
 
-			if (businessType == activeBusinessType) {
-				return;
-			}
+		reader.onload = (event) => {
+			addNewBusinessLogoPreview.attr("src", event.target.result);
+		};
 
-			currentActive.removeClass("active");
-			current.addClass("active");
+		reader.readAsDataURL(file);
 
-			ValidateAddNewBusinessModal(true);
-		});
+		ValidateAddNewBusinessModal(true);
+	});
 
-		addNewBusinessNameInput.on("input", (event) => {
-			ValidateAddNewBusinessModal(true);
-		});
+	addNewBusinessDefaultLanguageSelect.on("change", (event) => {
+		ValidateAddNewBusinessModal(true);
+	})
 
-		addNewBusinessLogoPreview.on("click", (event) => {
-			addNewBusinessLogoInput.trigger("click");
-		});
+	addNewBusinessModal.on("hidden.bs.modal", (event) => {
+		addNewBusinessNameInput.val("");
+		addNewBusinessLogoInput.val("");
+		addNewBusinessLogoPreview.attr("src", "/img/picture_placeholder_light.png");
 
-		addNewBusinessLogoInput.on("change", (event) => {
-			let file = event.currentTarget.files[0];
+		ValidateAddNewBusinessModal(true);
+	});
 
-			if (!file) {
-				return;
-			}
+	addNewBusinessButton.on("click", (event) => {
+		event.preventDefault();
 
-			let reader = new FileReader();
+		const name = addNewBusinessNameInput.val().trim();
+		const logoFile = addNewBusinessLogoInput[0].files[0];
+		const selectedLanguage = addNewBusinessDefaultLanguageSelect.find("option:selected").val();
 
-			reader.onload = (event) => {
-				addNewBusinessLogoPreview.attr("src", event.target.result);
-			};
+		addNewBusinessButton.prop("disabled", true);
+		addNewBusinessButtonSpinner.removeClass("d-none");
 
-			reader.readAsDataURL(file);
+		const formData = new FormData();
+		formData.append("BusinessName", name);
+		if (logoFile) {
+			formData.append("BusinessLogo", logoFile, logoFile.name);
+		}
+		formData.append("BusinessDefaultLanguage", selectedLanguage);
 
-			ValidateAddNewBusinessModal(true);
-		});
-
-		addNewBusinessModal.on("hidden.bs.modal", (event) => {
-			addNewBusinessNameInput.val("");
-			addNewBusinessLogoInput.val("");
-			addNewBusinessLogoPreview.attr("src", "/img/picture_placeholder_light.png");
-
-			ValidateAddNewBusinessModal(true);
-		});
-
-		addNewBusinessButton.on("click", (event) => {
-			event.preventDefault();
-
-			const name = addNewBusinessNameInput.val().trim();
-			const logoFile = addNewBusinessLogoInput[0].files[0];
-			const type = BusinessTypeEnum[addNewBusinessModal.find(".new-business-type-card.active").attr("business-type")];
-
-			addNewBusinessButton.prop("disabled", true);
-
-			const formData = new FormData();
-			formData.append("BusinessName", name);
-			if (logoFile) {
-				formData.append("BusinessLogo", logoFile, logoFile.name);
-			}
-			formData.append("BusinessType", type);
-
-			AddNewUserBusinessToAPI(
-				formData,
-				(businessData) => {
-					let businessCardElement = CreateUserBusinessCard(businessData);
-
-					BusinessesList.append(businessCardElement);
-
-					addNewBusinessButton.prop("disabled", false);
-					addNewBusinessModal.modal("hide");
-				},
-				(businessError) => {
-					AlertManager.createAlert({
-						type: "danger",
-						message: "Error occured while adding new user business. Check browser console for logs.",
-						timeout: 5000,
-					});
-
-					console.log("Error occured while adding new user business: ", businessError);
-
-					addNewBusinessButton.prop("disabled", false);
-				},
-			);
-		});
-
-		// Init
-		FetchUserBusinessPermissionsFromAPI(
-			(userBusinessPermission) => {
-				CurrentUserBusinessPermission = userBusinessPermission;
-
-				if (userBusinessPermission.disableBusinessesAt == null) {
-					searchBusinessInput.prop("disabled", false);
-					searchBusinessButton.prop("disabled", false);
-
-					FetchUserBusinessesFromAPI(
-						(userBusinesses) => {
-							CurrentBusinessesList = userBusinesses;
-
-							userBusinesses.forEach((businessData) => {
-								const businessCardElement = CreateUserBusinessCard(businessData);
-
-								BusinessesList.append(businessCardElement);
-							});
-						},
-						(userBusinessesError) => {
-							AlertManager.createAlert({
-								type: "danger",
-								message: "Error occured while fetching user businesses. Check browser console for logs.",
-								enableDismiss: false,
-							});
-
-							console.log("Error occured while fetching user businesses: ", userBusinessesError);
-						},
-					);
-				} else {
-					CurrentBusinessesList = [];
-
-					let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
-					if (userBusinessPermission.disableBusinessesReason != null) {
-						alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.disableBusinessesReason}`;
-					} else {
-						alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-					}
-
-					AlertManager.createAlert({
-						type: "danger",
-						message: alertMessage,
-						enableDismiss: false,
-					});
-				}
-
-				if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-					if (userBusinessPermission.disableBusinessesAt == null) {
-						let alertMessage = "Bussiness Adding is disabled for your account.";
-
-						if (userBusinessPermission.addBusinessDisableReason != null) {
-							alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.addBusinessDisableReason}`;
-						} else {
-							alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-						}
-
-						AlertManager.createAlert({
-							type: "danger",
-							message: alertMessage,
-							enableDismiss: false,
-						});
-					}
-				} else {
-					AddNewBusinessButton.prop("disabled", false);
-				}
-
-				if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-					if (userBusinessPermission.disableBusinessesAt == null) {
-						let alertMessage = "Bussiness Editing is disabled for your account.";
-
-						if (userBusinessPermission.editBusinessDisableReason != null) {
-							alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.editBusinessDisableReason}`;
-						} else {
-							alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-						}
-
-						AlertManager.createAlert({
-							type: "danger",
-							message: alertMessage,
-							enableDismiss: false,
-						});
-					}
-				}
-
-				if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null) {
-					if (userBusinessPermission.disableBusinessesAt == null) {
-						let alertMessage = "Bussiness Deleting is disabled for your account.";
-
-						if (userBusinessPermission.deleteBusinessDisableReason != null) {
-							alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.deleteBusinessDisableReason}`;
-						} else {
-							alertMessage = `${alertMessage}<br>Please contact support for more information.`;
-						}
-
-						AlertManager.createAlert({
-							type: "danger",
-							message: alertMessage,
-							enableDismiss: false,
-						});
-					}
-				}
-			},
-			(userBusinessPermissionError) => {
+		AddNewUserBusinessToAPI(
+			formData,
+			(businessData) => {
 				AlertManager.createAlert({
-					type: "danger",
-					message: "Error occured while fetching user businesses. Check browser console for logs.",
-					enableDismiss: false,
+					type: "success",
+					message: `Business "${name}" added successfully!`,
+					timeout: 3000,
 				});
 
-				console.log("Error occured while fetching user businesses: ", userBusinessPermissionError);
+				let businessCardElement = CreateUserBusinessCard(businessData);
+
+				BusinessesList.append(businessCardElement);
+
+				addNewBusinessButton.prop("disabled", false);
+				addNewBusinessButtonSpinner.addClass("d-none");
+				addNewBusinessModal.modal("hide");
+			},
+			(businessError) => {
+				AlertManager.createAlert({
+					type: "danger",
+					message: "Error occured while adding new user business. Check browser console for logs.",
+					timeout: 5000,
+				});
+
+				console.error("Error occured while adding new user business: ", businessError);
+
+				addNewBusinessButton.prop("disabled", false);
+				addNewBusinessButtonSpinner.addClass("d-none");
 			},
 		);
 	});
