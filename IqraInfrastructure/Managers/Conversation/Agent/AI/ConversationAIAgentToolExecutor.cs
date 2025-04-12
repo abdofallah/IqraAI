@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
@@ -13,12 +14,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public event Func<string, Task>? EndConversationRequested;
         public event Func<string, string?, Task>? TransferToAIAgentRequested; // (reason, nodeId)
         public event Func<string, string?, Task>? TransferToHumanAgentRequested; // (reason, nodeId)
+        public event Func<string, Task>? SendDTMFRequested;
+        public event Func<string, Task>? AddContextRequested;
+        public event Func<string, Task>? ChangeLanguageRequested;
+        public event Func<Task>? InitiateLanguageSelectionRequested;
 
         private readonly ILogger<ConversationAIAgentToolExecutor> _logger;
         private readonly ConversationAIAgentState _agentState;
         private readonly ScriptExecutionManager _scriptAccessor;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
+
+        // Static Regex for basic DTMF validation (0-9, *, #, A-D, W - W for pause if needed)
+        private static readonly Regex ValidDtmfCharsRegex = new Regex("^[0-9*#A-DW]+$", RegexOptions.Compiled);
 
         public ConversationAIAgentToolExecutor(
             ILoggerFactory loggerFactory,
@@ -61,7 +69,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Agent {AgentId}: Handling system tool: {FunctionContent}", _agentState.AgentId, functionContent);
+            // Removed excessive logging as requested
             try
             {
                 string toolName;
@@ -75,155 +83,304 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 }
                 else
                 {
-                    toolName = functionContent.Trim();
+                    // Log only error case
+                    _logger.LogError("Agent {AgentId}: Invalid system tool format (missing colon): {FunctionContent}", _agentState.AgentId, functionContent);
                     await ToolResultAvailable?.Invoke($"Error: Invalid system tool format '{functionContent}'. Expected 'tool_name: args'.");
                     return;
                 }
 
-                // Use the robust parser
                 List<string> arguments = ParseArguments(argsRaw);
-
-                // Standard arguments often: reason, messageToSpeak, nodeId (optional for some)
-                string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "No reason provided";
-                string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
-                string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null; // Node ID is often the 3rd arg
-
-                // Play message *before* executing the core logic (if provided)
-                if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
-                {
-                    // todo we need to set is responding system tool here
-                    await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
-                    // Check for cancellation after potentially long speech
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        await ToolResultAvailable?.Invoke($"Custom tool execution cancelled after playing message.");
-                        return;
-                    }
-                }
 
                 // Tool Specific Logic
                 if (toolName.Equals("end_call", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: end_call: string <reason>, string | null <message>, string | null <node_id>
+                    string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "No reason provided";
+                    string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+                    // string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null; // NodeId not used directly for ending
+
+                    if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
+                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
                     if (EndConversationRequested != null)
-                    {
                         await EndConversationRequested.Invoke(reason);
+                    else
+                        _logger.LogWarning("Agent {AgentId}: EndConversationRequested event has no subscribers.", _agentState.AgentId);
+
+                }
+                else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: change_language: string <reason>, boolean <play list>, string | null <language code>
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Language change requested"; // Reason not directly used?
+                    bool playList = false;
+                    string? targetLanguageCode = null;
+
+                    if (arguments.Count < 2)
+                    {
+                        _logger.LogError("Agent {AgentId}: change_language tool called with insufficient arguments: {ArgsRaw}", _agentState.AgentId, argsRaw);
+                        await ToolResultAvailable?.Invoke("Error: change_language requires at least reason and playList flag.");
+                        return;
+                    }
+
+                    if (!bool.TryParse(UnescapeArgument(arguments[1]), out playList))
+                    {
+                        _logger.LogError("Agent {AgentId}: change_language tool called with invalid boolean flag: {Arg}", _agentState.AgentId, arguments[1]);
+                        await ToolResultAvailable?.Invoke($"Error: change_language expects a boolean (true/false) for the second argument, got '{arguments[1]}'.");
+                        return;
+                    }
+
+                    targetLanguageCode = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null;
+
+                    if (playList)
+                    {
+                        // Initiate the language selection flow (e.g., DTMF prompt)
+                        if (InitiateLanguageSelectionRequested != null)
+                            await InitiateLanguageSelectionRequested.Invoke();
+                        else
+                            _logger.LogWarning("Agent {AgentId}: InitiateLanguageSelectionRequested event has no subscribers.", _agentState.AgentId);
+                        // Notify LLM? Result comes when selection is done.
+                        // await ToolResultAvailable?.Invoke("Initiating language selection process."); // Maybe not needed
+                    }
+                    else if (!string.IsNullOrWhiteSpace(targetLanguageCode))
+                    {
+                        // Request direct language change
+                        if (ChangeLanguageRequested != null)
+                            await ChangeLanguageRequested.Invoke(targetLanguageCode);
+                        else
+                            _logger.LogWarning("Agent {AgentId}: ChangeLanguageRequested event has no subscribers.", _agentState.AgentId);
+                        // Notify LLM? Result comes after change attempt.
+                        // await ToolResultAvailable?.Invoke($"Requesting language change to {targetLanguageCode}."); // Maybe not needed
+                    }
+                    else
+                    {
+                        _logger.LogError("Agent {AgentId}: change_language called with playList=false but no target language code.", _agentState.AgentId);
+                        await ToolResultAvailable?.Invoke("Error: change_language called with playList=false requires a target language code.");
                     }
                 }
                 else if (toolName.Equals("transfer_to_ai_agent", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: transfer_to_ai_agent: string <reason>, string | null <message>, string <node_id>
+                    string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "AI Agent transfer requested";
+                    string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+                    string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null;
+
                     if (string.IsNullOrWhiteSpace(nodeId))
                     {
+                        _logger.LogError("Agent {AgentId}: Transfer to AI agent requested but Node ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Transfer to AI agent requires a Node ID.");
+                        return;
                     }
-                    else if (TransferToAIAgentRequested != null)
-                    {
+
+                    if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
+                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    if (TransferToAIAgentRequested != null)
                         await TransferToAIAgentRequested.Invoke(reason, nodeId);
-                    }
+                    else
+                        _logger.LogWarning("Agent {AgentId}: TransferToAIAgentRequested event has no subscribers.", _agentState.AgentId);
                 }
                 else if (toolName.Equals("transfer_to_human_agent", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: transfer_to_human_agent: string <reason>, string | null <message>, string <node_id>
+                    string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Human Agent transfer requested";
+                    string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+                    string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null;
+
                     if (string.IsNullOrWhiteSpace(nodeId))
                     {
+                        _logger.LogError("Agent {AgentId}: Transfer to Human agent requested but Node ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Transfer to human agent requires a Node ID.");
+                        return;
                     }
-                    else if (TransferToHumanAgentRequested != null)
-                    {
+
+                    if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
+                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    if (TransferToHumanAgentRequested != null)
                         await TransferToHumanAgentRequested.Invoke(reason, nodeId);
-                    }
+                    else
+                        _logger.LogWarning("Agent {AgentId}: TransferToHumanAgentRequested event has no subscribers.", _agentState.AgentId);
                 }
-                else if (toolName.Equals("recieve_dtmf_input", StringComparison.OrdinalIgnoreCase)) // Renamed in prompt? Check consistency. Assuming 'recieve_dtmf_input'
+                else if (toolName.Equals("recieve_dtmf_input", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: recieve_dtmf_input: string <reason>, string | null <message>, string <node_id>
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "DTMF input requested";
+                    string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+                    string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null;
+
                     if (string.IsNullOrWhiteSpace(nodeId))
                     {
+                        _logger.LogError("Agent {AgentId}: Receive DTMF input requested but Node ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Receive DTMF input requires a Node ID.");
+                        return;
+                    }
+
+                    // Play message *before* starting the session
+                    if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
+                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    var dtmfNodeResult = _scriptAccessor.GetDTMFNodeDetails(nodeId);
+                    if (!dtmfNodeResult.Success || dtmfNodeResult.Data == null)
+                    {
+                        _logger.LogError("Agent {AgentId}: Failed to get DTMF node details for Node ID '{NodeId}'. Error: {Error}", _agentState.AgentId, nodeId, dtmfNodeResult.Message);
+                        await ToolResultAvailable?.Invoke($"Error: Could not find or parse DTMF configuration for node '{nodeId}'. {dtmfNodeResult.Message}");
                     }
                     else
                     {
-                        // Get DTMF configuration from the script node using ScriptAccessor
-                        var dtmfNodeResult = _scriptAccessor.GetDTMFNodeDetails(nodeId); // Need to add this method to ScriptExecutionManager
-                        if (!dtmfNodeResult.Success || dtmfNodeResult.Data == null)
+                        var dtmfConfig = dtmfNodeResult.Data;
+                        bool started = _dtmfSessionManager.StartSession(dtmfConfig);
+                        if (!started)
                         {
-                            await ToolResultAvailable?.Invoke($"Error: Could not find node with id '{nodeId}' to request DTMF input. {dtmfNodeResult.Message}");
+                            _logger.LogWarning("Agent {AgentId}: Failed to start DTMF session for node {NodeId} (already active?).", _agentState.AgentId, nodeId);
+                            await ToolResultAvailable?.Invoke($"Error: Could not start DTMF session for node '{nodeId}', another session seems to be active.");
                         }
-                        else
-                        {
-                            var dtmfConfig = dtmfNodeResult.Data;
-                            bool started = _dtmfSessionManager.StartSession(dtmfConfig);
-                            if (!started)
-                            {
-                                await ToolResultAvailable?.Invoke($"Error: Could not start DTMF session for node '{nodeId}', another session seems to already be active.");
-                            }
-                            else
-                            {
-                                // todo maybe do nothing here and wait for session to complete/fail/cancel etc
-                                //await ToolResultAvailable?.Invoke($"System tool 'recieve_dtmf_input' for node '{nodeId}' initiated. Awaiting user input.");
-                            }
-                        }
+                        // No immediate result sent back; result comes via DTMFSessionManager event handler
+                    }
+                }
+                else if (toolName.Equals("press_dtmf_keypad", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: press_dtmf_keypad: string <reason>, array of char <digits to press> -> interpreted as string
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Sending DTMF";
+                    string? digitsToPress = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+
+                    if (string.IsNullOrWhiteSpace(digitsToPress))
+                    {
+                        _logger.LogError("Agent {AgentId}: press_dtmf_keypad called without digits.", _agentState.AgentId);
+                        await ToolResultAvailable?.Invoke("Error: press_dtmf_keypad requires the digits to press as the second argument.");
+                        return;
+                    }
+
+                    // Validate digits
+                    if (!ValidDtmfCharsRegex.IsMatch(digitsToPress))
+                    {
+                        _logger.LogError("Agent {AgentId}: press_dtmf_keypad called with invalid characters: {Digits}", _agentState.AgentId, digitsToPress);
+                        await ToolResultAvailable?.Invoke($"Error: press_dtmf_keypad received invalid characters. Only 0-9, *, #, A-D, W are allowed. Got: '{digitsToPress}'.");
+                        return;
+                    }
+
+                    if (SendDTMFRequested != null)
+                    {
+                        await SendDTMFRequested.Invoke(digitsToPress);
+                        // Acknowledge the request was sent
+                        await ToolResultAvailable?.Invoke($"System instruction to press DTMF digits '{digitsToPress}' was sent.");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Agent {AgentId}: SendDTMFRequested event has no subscribers.", _agentState.AgentId);
+                        await ToolResultAvailable?.Invoke($"System tool 'press_dtmf_keypad' acknowledged but no handler is configured to send DTMF.");
+                    }
+                }
+                else if (toolName.Equals("add_script_to_context", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Format: add_script_to_context: string <reason>, string | null <message>, string <node id>
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Adding context";
+                    string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
+                    string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null;
+
+                    if (string.IsNullOrWhiteSpace(nodeId))
+                    {
+                        _logger.LogError("Agent {AgentId}: Add script to context requested but Node ID is missing.", _agentState.AgentId);
+                        await ToolResultAvailable?.Invoke("Error: Add script to context requires a Node ID.");
+                        return;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
+                        await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    // TODO: Need a method in ScriptAccessor to get the actual script text/content based on the node ID.
+                    // var scriptContentResult = _scriptAccessor.GetScriptContextFromNode(nodeId);
+                    string? scriptContent = $"[Content for Script Node {nodeId} - Implementation Pending]"; // Placeholder
+
+                    // if (!scriptContentResult.Success || string.IsNullOrWhiteSpace(scriptContentResult.Data))
+                    // {
+                    //     _logger.LogError("Agent {AgentId}: Failed to retrieve script content for node {NodeId}. Error: {Error}", _agentState.AgentId, nodeId, scriptContentResult.Message);
+                    //     await ToolResultAvailable?.Invoke($"Error: Failed to retrieve script content for node '{nodeId}'. {scriptContentResult.Message}");
+                    // }
+                    // else
+                    // {
+                    //     string scriptContent = scriptContentResult.Data;
+                    //     if (AddContextRequested != null)
+                    //     {
+                    //         await AddContextRequested.Invoke(scriptContent); // Pass content to Orchestrator/LLMHandler
+                    //         await ToolResultAvailable?.Invoke($"Successfully added context from script node '{nodeId}'.");
+                    //     } else {
+                    //         _logger.LogWarning("Agent {AgentId}: AddContextRequested event has no subscribers.", _agentState.AgentId);
+                    //          await ToolResultAvailable?.Invoke($"System tool 'add_script_to_context' acknowledged but no handler is configured.");
+                    //     }
+                    // }
+
+                    // Using Placeholder for now:
+                    if (AddContextRequested != null)
+                    {
+                        await AddContextRequested.Invoke(scriptContent);
+                        await ToolResultAvailable?.Invoke($"Successfully added context from script node '{nodeId}'. (Placeholder Content)");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Agent {AgentId}: AddContextRequested event has no subscribers.", _agentState.AgentId);
+                        await ToolResultAvailable?.Invoke($"System tool 'add_script_to_context' acknowledged but no handler is configured.");
                     }
                 }
                 else if (toolName.Equals("retrieve_product_information", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: retrieve_product_information: string <reason>, string <product_id>
-                    string productId = arguments.Count > 1 ? UnescapeArgument(arguments[1]) : ""; // Product ID is 2nd arg
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Retrieving product info";
+                    string productId = arguments.Count > 1 ? UnescapeArgument(arguments[1]) : "";
+
                     if (string.IsNullOrWhiteSpace(productId))
                     {
+                        _logger.LogError("Agent {AgentId}: Retrieve product info requested but Product ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Retrieve product information requires a Product ID.");
+                        return;
                     }
-                    else
-                    {
-                        // TODO: Implement actual retrieval logic (e.g., call a business service)
 
-                        await ToolResultAvailable?.Invoke($"System tool 'retrieve_product_information' for product '{productId}' acknowledged but backend retrieval is not implemented.");
-                    }
+                    // TODO: Implement actual retrieval logic
+                    _logger.LogWarning("Agent {AgentId}: 'retrieve_product_information' system tool not fully implemented (Product ID: {ProductId}).", _agentState.AgentId, productId);
+                    await ToolResultAvailable?.Invoke($"System tool 'retrieve_product_information' for product '{productId}' acknowledged but backend retrieval is not implemented.");
+
                 }
                 else if (toolName.Equals("retrieve_service_information", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: retrieve_service_information: string <reason>, string <service_id>
-                    string serviceId = arguments.Count > 1 ? UnescapeArgument(arguments[1]) : ""; // Service ID is 2nd arg
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Retrieving service info";
+                    string serviceId = arguments.Count > 1 ? UnescapeArgument(arguments[1]) : "";
+
                     if (string.IsNullOrWhiteSpace(serviceId))
                     {
+                        _logger.LogError("Agent {AgentId}: Retrieve service info requested but Service ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Retrieve service information requires a Service ID.");
+                        return;
                     }
-                    else
-                    {
-                        // TODO: Implement actual retrieval logic
 
-                        await ToolResultAvailable?.Invoke($"System tool 'retrieve_service_information' for service '{serviceId}' acknowledged but backend retrieval is not implemented.");
-                    }
+                    // TODO: Implement actual retrieval logic
+                    _logger.LogWarning("Agent {AgentId}: 'retrieve_service_information' system tool not fully implemented (Service ID: {ServiceId}).", _agentState.AgentId, serviceId);
+                    await ToolResultAvailable?.Invoke($"System tool 'retrieve_service_information' for service '{serviceId}' acknowledged but backend retrieval is not implemented.");
                 }
-                // --- Other potential system tools from prompt (no format examples given) ---
-                else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))
+                else if (toolName.Equals("acknowledge", StringComparison.OrdinalIgnoreCase))
                 {
-                    // TODO: Parse language code argument? Trigger language change flow.
-
-                    await ToolResultAvailable?.Invoke("System tool 'change_language' acknowledged but not implemented.");
-                }
-                else if (toolName.Equals("press_dtmf_keypad", StringComparison.OrdinalIgnoreCase))
-                {
-                    // TODO: Parse keys to press argument? Trigger DTMF sending mechanism. Add to LLM context.
-
-                    await ToolResultAvailable?.Invoke("System tool 'press_dtmf_keypad' acknowledged but not implemented.");
-                }
-                else if (toolName.Equals("add_script_to_context", StringComparison.OrdinalIgnoreCase))
-                {
-                    // TODO: Parse script content/ID argument? Add to LLM context.
-
-                    await ToolResultAvailable?.Invoke("System tool 'add_script_to_context' acknowledged but not implemented.");
-                }
-                else if (toolName.Equals("acknowledge", StringComparison.OrdinalIgnoreCase)) // Keep internal acknowledge
-                {
-                    var ackMessage = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Acknowledged";
-                    // todo is this even needed?
+                    // No action needed, internal ack.
                 }
                 else
                 {
                     _logger.LogWarning("Agent {AgentId}: Received unknown system tool: {ToolName}", _agentState.AgentId, toolName);
                     await ToolResultAvailable?.Invoke($"Error: Unknown system tool '{toolName}'.");
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Don't log cancellation as error, it's expected during shutdown or interruption
+                // _logger.LogInformation("Agent {AgentId}: System tool execution cancelled.", _agentState.AgentId);
+                await ToolResultAvailable?.Invoke($"System tool execution cancelled."); // Optionally notify LLM
             }
             catch (Exception ex)
             {
