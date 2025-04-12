@@ -5,7 +5,7 @@ using IqraInfrastructure.Managers.Business;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Managers.Conversation.Helpers;
+using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {

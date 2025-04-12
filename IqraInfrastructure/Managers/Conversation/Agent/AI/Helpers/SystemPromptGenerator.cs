@@ -11,7 +11,7 @@ using Scriban.Runtime;
 using System.Globalization;
 using System.Text;
 
-namespace IqraInfrastructure.Managers.Conversation.Helpers
+namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 {
     public class SystemPromptGenerator
     {

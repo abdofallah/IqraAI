@@ -97,6 +97,30 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<Dictionary<string, ConversationState>> GetByQueueIdsAsync(IEnumerable<string> queueIds, CancellationToken cancellationToken = default)
+        {
+            if (queueIds == null || !queueIds.Any())
+            {
+                return new Dictionary<string, ConversationState>();
+            }
+
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.In(c => c.QueueId, queueIds);
+                var states = await _conversationStateCollection.Find(filter).ToListAsync(cancellationToken);
+
+                // Ensure QueueId is unique per state if that's the design, otherwise handle potential duplicates if needed.
+                // Assuming QueueId uniquely identifies a conversation state here.
+                return states.ToDictionary(s => s.QueueId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation states by queue IDs");
+                // Depending on requirements, you might return an empty dictionary or throw
+                return new Dictionary<string, ConversationState>();
+            }
+        }
+
         public async Task<bool> UpdateAsync(ConversationState conversationState, CancellationToken cancellationToken = default)
         {
             try

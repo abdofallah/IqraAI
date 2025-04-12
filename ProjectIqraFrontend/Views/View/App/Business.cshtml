@@ -3169,10 +3169,10 @@
                         <button class="nav-link active" id="conversations-inbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-inbound" type="button" role="tab" aria-controls="conversations-inbound" aria-selected="true">Inbound Call</button>
                     </li>
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="conversations-outbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-outbound" type="button" role="tab" aria-controls="conversations-outbound" aria-selected="true">Outbound Call</button>
+                        <button class="nav-link" id="conversations-outbound-tab" data-bs-toggle="pill" data-bs-target="#conversations-outbound" type="button" role="tab" aria-controls="conversations-outbound" aria-selected="false">Outbound Call</button>
                     </li>
                     <li class="nav-item me-2" role="presentation">
-                        <button class="nav-link" id="conversations-websocket-tab" data-bs-toggle="pill" data-bs-target="#conversations-websocket" type="button" role="tab" aria-controls="conversations-websocket" aria-selected="true">Websocket</button>
+                        <button class="nav-link" id="conversations-websocket-tab" data-bs-toggle="pill" data-bs-target="#conversations-websocket" type="button" role="tab" aria-controls="conversations-websocket" aria-selected="false">Websocket</button>
                     </li>
                 </ul>
             </div>
@@ -3183,7 +3183,7 @@
 
                     <div class="tab-content w-100" id="conversations-tabContent">
                         <!-- Inbound Tab -->
-                        <div class="tab-pane fade show active w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-tab" tabindex="0">
+                        <div class="tab-pane fade show active w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-nav-tab" tabindex="0">
                             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                                 <div style="min-width: 200px" class="me-4">
                                     <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterInboundCallButton">
@@ -3198,70 +3198,42 @@
                                     </button>
                                 </div>
                             </div>
-                            <div>
+                            <div class="table-responsive"> <!-- Added for potential horizontal scroll on small screens -->
                                 <table id="conversationInboundTable" class="table w-100">
                                     <thead>
                                         <tr>
-                                            <th scope="col" style="width: 50px;"></th>
+                                            <th scope="col">Queue ID</th>
+                                            <th scope="col">Queued At</th>
+                                            <th scope="col" class="text-center">Queue Status</th> <!-- Centered Header -->
                                             <th scope="col">Routing</th>
                                             <th scope="col">From</th>
                                             <th scope="col">To</th>
-                                            <th scope="col">Datetime</th>
-                                            <th scope="col">Session</th>
+                                            <th scope="col">Session ID</th>
+                                            <th scope="col" class="text-center">Session Status</th> <!-- Centered Header -->
                                             <th scope="col">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <th scope="row" style="text-align: center;">
-                                                <span class="in-progress">
-                                                    <i class="fa-regular fa-loader fa-spin"></i>
-                                                </span>
-                                            </th>
-                                            <th scope="row">
-                                                📞 Public Support
-                                            </th>
-                                            <td>
-                                                <b>+968 91257744</b>
-                                            </td>
-                                            <td>+968 72233384</td>
-                                            <td>6/16/2024 11:51 PM</td>
-                                            <td>12-31511212</td>
-                                            <td>
-                                                <button class="btn btn-info btn-sm">
-                                                    <i class="fa-regular fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row" style="text-align: center;">
-                                                <span class="complete">
-                                                    <i class="fa-regular fa-check"></i>
-                                                </span>
-                                            </th>
-                                            <th scope="row">
-                                                📞 Public Support
-                                            </th>
-                                            <td>
-                                                <b>+968 91257744</b>
-                                            </td>
-                                            <td>+968 72233384</td>
-                                            <td>6/16/2024 11:51 PM</td>
-                                            <td>13-52352352</td>
-                                            <td>
-                                                <button class="btn btn-info btn-sm">
-                                                    <i class="fa-regular fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-danger btn-sm">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
+                                        <!-- Dynamically Generated -->
+                                        <tr class="loading-row">
+                                            <td colspan="7" class="text-center p-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                                <!-- Pagination Controls -->
+                            <div class="d-flex justify-content-center align-items-center mt-3" id="inboundPaginationControls">
+                                <button class="btn btn-primary me-2" id="inboundPrevButton" disabled>
+                                    <i class="fa-regular fa-arrow-left me-1"></i>
+                                </button>
+                                <span class="text-muted mx-2" id="inboundPageInfo">Page 1</span>
+                                <button class="btn btn-primary ms-2" id="inboundNextButton" disabled>
+                                    <i class="fa-regular fa-arrow-right ms-1"></i>
+                                </button>
                             </div>
                         </div>
 
@@ -3474,456 +3446,201 @@
 
                 <!-- Conversations Manage Tab -->
                 <div class="fade d-none w-100" id="conversationManageTab">
+                    <!-- Breadcrumb -->
                     <nav class="mb-3" aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item"><a href="#" id="switchBackToConversationsListTab">Conversations</a></li>
                             <li class="breadcrumb-item">
-                                <span id="currentConversationTypeName">
-                                    Outbound
-                                    Calls
-                                </span>
+                                <span id="currentConversationTypeName">Inbound Call</span>
                             </li>
-                            <li class="breadcrumb-item active" aria-current="page"><span id="currentConversationName">Ramadan Marketing</span></li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentConversationName">Details</span></li>
                         </ol>
                     </nav>
+
+                    <!-- Loading Overlay (Optional but recommended) -->
+                    <div id="manageViewLoader" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-light bg-opacity-75 d-none" style="z-index: 10;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading Details...</span>
+                        </div>
+                    </div>
+
+                    <!-- Tabs Navigation -->
                     <ul class="nav mb-3" id="conversationsManage-tab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link active" id="conversationsManage-general-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-general" type="button" role="tab" aria-controls="conversationsManage-general" aria-selected="true">General</button>
                         </li>
+                        <li class="nav-item me-2 d-none" role="presentation" id="conversationsManage-metrics-tab-item">
+                            <!-- Hide initially -->
+                            <button class="nav-link" id="conversationsManage-metrics-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-metrics" type="button" role="tab" aria-controls="conversationsManage-metrics" aria-selected="false">Metrics</button>
+                        </li>
                         <li class="nav-item me-2" role="presentation">
                             <button class="nav-link" id="conversationsManage-conversation-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-conversation" type="button" role="tab" aria-controls="conversationsManage-conversation" aria-selected="false">Conversation</button>
                         </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-number-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-number" type="button" role="tab" aria-controls="conversationsManage-number" aria-selected="false">Number</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-configuration-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-configuration" type="button" role="tab" aria-controls="conversationsManage-configuration" aria-selected="false">Configuration</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-agent-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-agent" type="button" role="tab" aria-controls="conversationsManage-agent" aria-selected="false">Agent</button>
-                        </li>
-                        <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="conversationsManage-actions-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-actions" type="button" role="tab" aria-controls="conversationsManage-actions" aria-selected="false">Actions</button>
-                        </li>
+                        <!-- Removed Number, Configuration, Agent, Actions Tabs -->
                     </ul>
+
+                    <!-- Tab Content -->
                     <div class="tab-content w-100" id="conversationsManage-tabContent">
                         <!-- General Tab -->
                         <div class="tab-pane fade show active w-100" id="conversationsManage-general" role="tabpanel" aria-labelledby="conversationsManage-general-tab" tabindex="0">
                             <div class="mb-3">
-                                <label class="form-label" for="conversationMessageSession">Session</label>
-                                <input type="text" class="form-control" id="conversationMessageSession" value="14989498498" disabled>
+                                <label class="form-label" for="manageViewQueueId">Queue ID</label>
+                                <input type="text" class="form-control" id="manageViewQueueId" readonly>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="conversationMessageDatetime">Datetime</label>
-                                <input type="text" class="form-control" id="conversationMessageDatetime" value="6/16/2024 11:51 PM" disabled>
+                                <label class="form-label">Queue Status</label>
+                                <!-- Status displayed as badge below label -->
+                                <div id="manageViewQueueStatus" class="mt-1">N/A</div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="conversationMessageTotalTimespan">
-                                    Total
-                                    Timespan
-                                </label>
-                                <input type="text" class="form-control" id="conversationMessageTotalTimespan" value="00:01:30" disabled>
+                                <label class="form-label" for="manageViewEnqueuedAt">Queued At</label>
+                                <input type="text" class="form-control" id="manageViewEnqueuedAt" readonly>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="conversationMessageEndedByUser">
-                                    Ended by
-                                    user
-                                </label>
-                                <input type="text" class="form-control" id="conversationMessageEndedByUser" value="Yes" disabled>
+                                <label class="form-label" for="manageViewRouting">Routing</label>
+                                <input type="text" class="form-control" id="manageViewRouting" readonly>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="conversationMessageRouting">Routing</label>
-                                <input type="text" class="form-control" id="conversationMessageRouting" value="📞 Public Support" disabled>
+                                <label class="form-label" for="manageViewFromNumber">From Number</label>
+                                <input type="text" class="form-control" id="manageViewFromNumber" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageViewToNumber">To Number</label>
+                                <input type="text" class="form-control" id="manageViewToNumber" readonly>
+                            </div>
+                            <hr> <!-- Separator -->
+                            <div class="mb-3">
+                                <label class="form-label" for="manageViewSessionId">Session ID</label>
+                                <input type="text" class="form-control" id="manageViewSessionId" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Session Status</label>
+                                <!-- Status displayed as badge below label -->
+                                <div id="manageViewSessionStatus" class="mt-1">N/A</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageViewStartTime">Session Start Time</label>
+                                <input type="text" class="form-control" id="manageViewStartTime" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="manageViewEndTime">Session End Time</label>
+                                <input type="text" class="form-control" id="manageViewEndTime" readonly>
                             </div>
                         </div>
+
+                        <!-- Metrics Tab -->
+                        <div class="tab-pane fade w-100 d-none" id="conversationsManage-metrics" role="tabpanel" aria-labelledby="conversationsManage-metrics-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label" for="metricDurationSeconds">Duration (Seconds)</label>
+                                <input type="text" class="form-control" id="metricDurationSeconds" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricClientMessageCount">Client Message Count</label>
+                                <input type="text" class="form-control" id="metricClientMessageCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricAgentMessageCount">Agent Message Count</label>
+                                <input type="text" class="form-control" id="metricAgentMessageCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricAverageAgentResponseTimeMs">Avg. Agent Response (ms)</label>
+                                <input type="text" class="form-control" id="metricAverageAgentResponseTimeMs" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricClientWordCount">Client Word Count</label>
+                                <input type="text" class="form-control" id="metricClientWordCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricAgentWordCount">Agent Word Count</label>
+                                <input type="text" class="form-control" id="metricAgentWordCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricClientInterruptionCount">Client Interruptions</label>
+                                <input type="text" class="form-control" id="metricClientInterruptionCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricAgentInterruptionCount">Agent Interruptions</label>
+                                <input type="text" class="form-control" id="metricAgentInterruptionCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricSilenceCount">Silence Count</label>
+                                <input type="text" class="form-control" id="metricSilenceCount" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricTotalSilenceDurationSeconds">Total Silence (Seconds)</label>
+                                <input type="text" class="form-control" id="metricTotalSilenceDurationSeconds" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricSttAverageLatencyMs">Avg. STT Latency (ms)</label>
+                                <input type="text" class="form-control" id="metricSttAverageLatencyMs" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricLlmAverageLatencyMs">Avg. LLM Latency (ms)</label>
+                                <input type="text" class="form-control" id="metricLlmAverageLatencyMs" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="metricTtsAverageLatencyMs">Avg. TTS Latency (ms)</label>
+                                <input type="text" class="form-control" id="metricTtsAverageLatencyMs" readonly>
+                            </div>
+
+                            <!-- Placeholder for additional metrics (will be populated by JS) -->
+                            <div id="metricAdditionalMetricsContainer">
+                                <!-- JS will add label/input pairs here if needed -->
+                            </div>
+                        </div>
+
                         <!-- Conversation Tab -->
                         <div class="tab-pane fade w-100" id="conversationsManage-conversation" role="tabpanel" aria-labelledby="conversationsManage-conversation-tab" tabindex="0">
+                            <!-- Audio Players -->
                             <div class="conversation-recording mb-4">
-                                <div class="recording-container ai-recording mb-2">
-                                    <i class="typeofconvo fa-regular fa-microchip-ai"></i>
-                                    <div class="recording-container-waveform" id="waveform-conversation-ai">
-                                    </div>
-                                    <div class="audio-controller">
-                                        <div class="speed-controller me-5">
-                                            <label for="slider-conversation-ai">
-                                                <i class="fa-regular fa-gauge"></i>
-                                            </label>
-                                            <input class="mx-1" type="slider" id="range-conversation-ai" min="0.1" max="4" value="1" step="0.1">
+                                <!-- Agent Audio -->
+                                <div id="agentAudioContainer" class="mb-2 d-none">
+                                    <!-- Hide initially -->
+                                    <h5>Agent Audio</h5>
+                                    <div class="recording-container agent-recording">
+                                        <i class="typeofconvo fa-regular fa-headset"></i> <!-- Agent Icon -->
+                                        <div class="recording-container-waveform" id="waveform-agent-audio">
+                                            <!-- Loader -->
+                                            <div class="audio-loader position-absolute top-50 start-50 translate-middle d-none">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                            </div>
                                         </div>
-                                        <div class="volume-controller me-5">
-                                            <label for="slider-conversation-ai">
-                                                <i class="fa-regular fa-volume"></i>
-                                            </label>
-                                            <input type="range" id="slider-conversation-ai" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                        <div class="audio-controller">
+                                            <!-- Controls for Agent Audio -->
+                                            <button class="btn btn-sm btn-light me-2 agent-audio-play" disabled><i class="fa-regular fa-play"></i></button>
+                                            <button class="btn btn-sm btn-light agent-audio-download" disabled><i class="fa-regular fa-circle-down"></i></button>
+                                            <!-- Add volume/speed later if needed -->
                                         </div>
-                                        <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
-                                            <i class="fa-regular fa-play"></i>
-                                        </button>
-                                        <button button-type="download" disabled>
-                                            <i class="fa-regular fa-circle-down"></i>
-                                        </button>
                                     </div>
+                                    <div class="text-danger small mt-1 agent-audio-error d-none">Failed to load audio.</div>
                                 </div>
-                                <div class="recording-container user-recording">
-                                    <i class="typeofconvo fa-regular fa-user"></i>
-                                    <div class="recording-container-waveform" id="waveform-conversation-user">
-                                    </div>
-                                    <div class="audio-controller">
-                                        <div class="speed-controller me-5">
-                                            <label for="slider-conversation-ai">
-                                                <i class="fa-regular fa-gauge"></i>
-                                            </label>
-                                            <input class="mx-1" type="slider" id="range-conversation-ai" min="0.1" max="4" value="1" step="0.1">
+
+                                <!-- Client Audio -->
+                                <div id="clientAudioContainer" class="mb-2 d-none">
+                                    <!-- Hide initially -->
+                                    <h5>Client Audio</h5>
+                                    <div class="recording-container client-recording">
+                                        <i class="typeofconvo fa-regular fa-user"></i> <!-- Client Icon -->
+                                        <div class="recording-container-waveform" id="waveform-client-audio">
+                                            <!-- Loader -->
+                                            <div class="audio-loader position-absolute top-50 start-50 translate-middle d-none">
+                                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                            </div>
                                         </div>
-                                        <div class="volume-controller me-5">
-                                            <label for="slider-conversation-ai">
-                                                <i class="fa-regular fa-volume"></i>
-                                            </label>
-                                            <input type="range" id="slider-conversation-ai" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                        <div class="audio-controller">
+                                            <!-- Controls for Client Audio -->
+                                            <button class="btn btn-sm btn-light me-2 client-audio-play" disabled><i class="fa-regular fa-play"></i></button>
+                                            <button class="btn btn-sm btn-light client-audio-download" disabled><i class="fa-regular fa-circle-down"></i></button>
                                         </div>
-                                        <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
-                                            <i class="fa-regular fa-play"></i>
-                                        </button>
-                                        <button button-type="download" disabled>
-                                            <i class="fa-regular fa-circle-down"></i>
-                                        </button>
                                     </div>
+                                    <div class="text-danger small mt-1 client-audio-error d-none">Failed to load audio.</div>
                                 </div>
                             </div>
+
+                            <!-- Messages -->
                             <div class="conversation-messages">
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:00</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span>Hello! Welcome to Badal Technologies.</span>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>Hey.. I need some information</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:10</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span>For sure! What can I help you with?</span>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>I need to book a consultation appointment</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:20</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span>
-                                                For sure! Under what name, and at what time do you want to
-                                                book it?
-                                            </span>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>Under name Abdullah bin Amir, at Saturday 5pm</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:30</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span class="tool-name">MakeAppointment</span>
-                                            <span class="tool-result">Result 200</span>
-                                            <button class="btn btn-outline-light btn-sm" type="button">
-                                                More
-                                                Information
-                                            </button>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>Awesome thank you. sounds good, yes i need more help</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:40</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span>For sure! what can I help you with?</span>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>test message i can ask you</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:00:50</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span>sure you can ask me anything.</span>
-                                        </div>
-                                        <div class="this-conversation-message user-message">
-                                            <span>that should be it for today! have a nice day</span>
-                                            <i class="fa-regular fa-user"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="each-conversation-message">
-                                    <label class="timeline-span">00:01:10</label>
-                                    <div class="this-conversation-container">
-                                        <div class="this-conversation-message ai-message mb-1">
-                                            <i class="fa-regular fa-microchip-ai"></i>
-                                            <span class="tool-name">EndCall</span>
-                                            <button class="btn btn-outline-light btn-sm" type="button">
-                                                More
-                                                Information
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Number Tab -->
-                        <div class="tab-pane fade w-100" id="conversationsManage-number" role="tabpanel" aria-labelledby="conversationsManage-number-tab" tabindex="0">
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewNumberFrom">From</label>
-                                <input type="text" class="form-control" id="conversationViewNumberFrom" value="+968 7854 2558" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewNumberTo">To</label>
-                                <input type="text" class="form-control" id="conversationViewNumberTo" value="+968 8956 4896" disabled>
-                            </div>
-                        </div>
-                        <!-- Configuration -->
-                        <div class="tab-pane fade w-100" id="conversationsManage-configuration" role="tabpanel" aria-labelledby="conversationsManage-configuration-tab" tabindex="0">
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <label class="form-check-label" for="conversationViewNumberRetryOnDeclineCheck">
-                                        Retry on
-                                        decline
-                                    </label>
-                                    <input type="checkbox" role="switch" class="form-check-input" id="conversationViewNumberRetryOnDeclineCheck" disabled>
-                                </div>
-                                <div class="makeCallRetryBox d-none fade">
-                                    <div class="mb-3">
-                                        <label class="form-label" for="conversationViewNumberRetryOnDeclineCount">
-                                            Retry
-                                            count
-                                        </label>
-                                        <input type="number" class="form-control" id="conversationViewNumberRetryOnDeclineCount" value="3" disabled>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label" for="conversationViewNumberRetryOnDeclineDelay">
-                                            Retry delay
-                                            (ms)
-                                        </label>
-                                        <input type="number" class="form-control" id="conversationViewNumberRetryOnDeclineDelay" value="10000" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <label class="form-check-label" for="conversationViewNumberRetryOnMisscallCheck">
-                                        Retry on
-                                        misscall
-                                    </label>
-                                    <input type="checkbox" role="switch" class="form-check-input" id="conversationViewNumberRetryOnMisscallCheck" disabled>
-                                </div>
-                                <div class="makeCallRetryBox d-none fade">
-                                    <div class="mb-3">
-                                        <label class="form-label" for="conversationViewNumberRetryOnMisscallCount">
-                                            Retry
-                                            count
-                                        </label>
-                                        <input type="number" class="form-control" id="conversationViewNumberRetryOnMisscallCount" value="3" disabled>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label" for="conversationViewNumberRetryOnMisscallDelay">
-                                            Retry delay
-                                            (ms)
-                                        </label>
-                                        <input type="number" class="form-control" id="conversationViewNumberRetryOnMisscallDelay" value="10000" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewNumberNumberSilenceNotify">
-                                    Notify
-                                    on silence (ms)
-                                </label>
-                                <input type="number" class="form-control" id="conversationViewNumberNumberSilenceNotify" value="1000" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewNumberNumberSilenceEnd">
-                                    End call
-                                    on silence (ms)
-                                </label>
-                                <input type="number" class="form-control" id="conversationViewNumberNumberSilenceEnd" value="1000" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewNumberNumberTotalCallTime">
-                                    Max
-                                    call time (s)
-                                </label>
-                                <input type="number" class="form-control" id="conversationViewNumber+NumberTotalCallTime" value="120" disabled>
-                            </div>
-                        </div>
-                        <!-- Agent Tab -->
-                        <div class="tab-pane fade w-100" id="conversationsManage-agent" role="tabpanel" aria-labelledby="conversationsManage-agent-tab" tabindex="0">
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewAgentName">Selected Agent</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">🤖</span>
-                                    <input type="text" class="form-control" id="conversationViewAgentName" value="Opening Agent" disabled>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewAgentScript">
-                                    Selected
-                                    Script
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewAgentScript" value="Opening Script" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewAgentConvoType">
-                                    Conversation
-                                    Type
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewAgentConvoType" value="Turn by Turn" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewAgentTimezone">Timezone</label>
-                                <input type="text" class="form-control" id="conversationViewAgentTimezone" value="(GMT 0/UTC) Western Europe Time, London, Lisbon, Casablanca" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <div style="display: inline-block; vertical-align: middle;">
-                                        <input type="checkbox" role="switch" class="form-check-input" id="conversationViewAgentCallerNumberInContextCheck" checked disabled>
-                                        <label class="form-label mb-0" for="conversationViewAgentCallerNumberInContextCheck">
-                                            <span>Caller Number in Context</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <div class="form-check form-switch">
-                                    <div style="display: inline-block; vertical-align: middle;">
-                                        <input type="checkbox" role="switch" class="form-check-input" id="conversationViewAgentCallingNumberInContextCheck" checked disabled>
-                                        <label class="form-label mb-0" for="conversationViewAgentCallingNumberInContextCheck">
-                                            <span>Calling Number in Context</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Actions Tab -->
-                        <div class="tab-pane fade w-100" id="conversationsManage-actions" role="tabpanel" aria-labelledby="conversationsManage-actions-tab" tabindex="0">
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewActionsDeclined">
-                                    Declined
-                                    Action
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewActionsDeclined" value="None" disabled>
-                                <div class="custom-tool-input-arguments">
-                                    <div class="mb-3">
-                                        <label class="form-label d-block">Input Arguments</label>
-                                        <div class="mt-1" id="conversationViewActionsDeclinedInputArgumentsList">
-                                            <div class="input-group">
-                                                <span class="input-group-text">Appointment Time</span>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label d-block" for="conversationViewActionsDeclinedResult">Result</label>
-                                        <input type="text" class="form-control" id="conversationViewActionsDeclinedResult" value="200" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewActionsMisscall">
-                                    Misscall
-                                    Action
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewActionsMisscall" value="None" disabled>
-                                <div class="custom-tool-input-arguments">
-                                    <div class="mb-3">
-                                        <label class="form-label d-block">Input Arguments</label>
-                                        <div class="mt-1" id="conversationViewActionsMisscallInputArgumentsList">
-                                            <div class="input-group">
-                                                <span class="input-group-text">Appointment Time</span>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label d-block" for="conversationViewActionsMisscallResult">Result</label>
-                                        <input type="text" class="form-control" id="conversationViewActionsMisscallResult" value="200" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewActionsPickedup">
-                                    Pickedup
-                                    Action
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewActionsPickedup" value="None" disabled>
-                                <div class="custom-tool-input-arguments">
-                                    <div class="mb-3">
-                                        <label class="form-label d-block">Input Arguments</label>
-                                        <div class="mt-1" id="conversationViewActionsPickedupInputArgumentsList">
-                                            <div class="input-group">
-                                                <span class="input-group-text">Appointment Time</span>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label d-block" for="conversationViewActionsPickedupResult">Result</label>
-                                        <input type="text" class="form-control" id="conversationViewActionsPickedupResult" value="200" disabled>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="conversationViewActionsEnded">
-                                    Ended
-                                    Action
-                                </label>
-                                <input type="text" class="form-control" id="conversationViewActionsEnded" value="None" disabled>
-                                <div class="custom-tool-input-arguments">
-                                    <div class="mb-3">
-                                        <label class="form-label d-block">Input Arguments</label>
-                                        <div class="mt-1" id="conversationViewActionsEndedInputArgumentsList">
-                                            <div class="input-group">
-                                                <span class="input-group-text">Appointment Time</span>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}" disabled>
-                                                <input type="text" class="form-control" input_arguement="appointment_time" value="11:47 PM 6/24/2024" disabled>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="">
-                                        <label class="form-label d-block" for="conversationViewActionsEndedResult">Result</label>
-                                        <input type="text" class="form-control" id="conversationViewActionsEndedResult" value="200" disabled>
-                                    </div>
-                                </div>
+                                <!-- Dynamically populated -->
+                                <div class="text-center p-3 text-muted messages-placeholder">No messages found or session not loaded.</div>
                             </div>
                         </div>
                     </div>
@@ -5333,6 +5050,7 @@
                                                 initAgentTab();
                                                 initRoutingTab();
                                                 initNumbersTab();
+                                                initConversationsTab();
 
                                                 let businessTutorials = BusinessFullData.businessData.tutorials;
                                                 if (businessTutorials) {

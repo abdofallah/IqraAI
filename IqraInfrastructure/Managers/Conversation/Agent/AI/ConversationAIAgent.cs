@@ -1,13 +1,13 @@
-﻿using IqraCore.Entities.Business;
+﻿using Humanizer;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Conversation.Helpers;
+using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
-using IqraInfrastructure.Managers.Script;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Business;
@@ -28,7 +28,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
-        private readonly ScriptExecutionManager _scriptExecutionManager; // ToolExecutor needs this
+        private readonly ScriptExecutionManager _scriptAccessor; // ToolExecutor needs this
         private readonly BusinessAgentAudioRepository _audioRepository; // AudioOutput needs this
 
         // Agent State & Modules
@@ -39,7 +39,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private readonly ConversationAIAgentToolExecutor _toolExecutor;
         private readonly ConversationAIAgentAudioOutput _audioOutputHandler;
         private readonly ConversationAIAgentInterruptionManager _interruptionManager;
-        private readonly ConversationAIAgentDTMFHandler _dtmfHandler;
+        private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
+        private readonly CustomToolExecutionHelper _customToolHelper;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
@@ -86,17 +87,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Create shared state
             _agentState = new ConversationAIAgentState(agentId, _conversationCTS.Token);
 
-            // Create ScriptExecutionManager
-            _scriptExecutionManager = new ScriptExecutionManager(loggerFactory.CreateLogger<ScriptExecutionManager>());
+            // Instantiate Helper Modules
+            _scriptAccessor = new ScriptExecutionManager(loggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
+            _customToolHelper = new CustomToolExecutionHelper(loggerFactory); // New helper for tool execution
 
-            // Instantiate Modules
+            // Instantiate Core Modules
+            _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
-            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _agentState, _scriptExecutionManager /*, _conversationSessionManager */); // Pass session manager if needed, or use event
+            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             _interruptionManager = new ConversationAIAgentInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _audioOutputHandler, _llmHandler);
-            _dtmfHandler = new ConversationAIAgentDTMFHandler(_loggerFactory, _agentState, _langaugesManager, _audioOutputHandler, HandleLanguageChangeRequestAsync); // TODO DTMF handler should be like a session system
+            
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
@@ -123,13 +126,29 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _llmHandler.SystemToolExecutionRequested += (content) => _toolExecutor.HandleSystemToolAsync(content, _conversationCTS.Token); // Use agent token
             _llmHandler.CustomToolExecutionRequested += (content) => _toolExecutor.HandleCustomToolAsync(content, _conversationCTS.Token); // Use agent token
 
-            // Tool Executor -> Orchestrator/Other Modules
-            _toolExecutor.ToolResultAvailable += (result) => _llmHandler.ProcessSystemMessageAsync(result, _agentState.CurrentClientId, CancellationToken.None); // Feed result back to LLM
+            // Tool Executor -> LLM / Audio / Orchestrator
+            _toolExecutor.ToolResultAvailable += (result) => _llmHandler.ProcessSystemMessageAsync(result, _agentState.CurrentClientId ?? "System", _conversationCTS.Token); // Feed result back
             _toolExecutor.PlaySpeechRequested += (text, token) => _audioOutputHandler.SynthesizeAndPlayBlockingAsync(text, token); // Request blocking speech
-            _toolExecutor.EndConversationRequested += (reason) => {
-                _logger.LogInformation("Agent {AgentId} requested conversation end via tool. Reason: {Reason}", AgentId, reason);
-                return _conversationSessionManager.EndAsync(reason);
+            _toolExecutor.EndConversationRequested += async (reason) => {
+                 _logger.LogInformation("Agent {AgentId} requested conversation end via tool. Reason: {Reason}", AgentId, reason);
+                 // Raise event instead of directly calling session manager? Consistent pattern.
+                 // Optionally still call shutdown locally? No, let SessionManager handle it.
+                 // await ShutdownAsync(reason);
+                 await _conversationSessionManager.EndAsync(reason);
             };
+             // NEW: Handle transfer requests from Tool Executor
+             _toolExecutor.TransferToAIAgentRequested += async (reason, nodeId) => {
+                 _logger.LogInformation("Agent {AgentId} requested transfer to AI Agent via tool. Reason: {Reason}, Node: {NodeId}", AgentId, reason, nodeId);
+                 // TODO: Need a way to map nodeId/reason to specific target agent/context if needed.
+                 // For now, just signal the end with a transfer reason.
+             };
+             _toolExecutor.TransferToHumanAgentRequested += async (reason, nodeId) => {
+                 _logger.LogInformation("Agent {AgentId} requested transfer to Human Agent via tool. Reason: {Reason}, Node: {NodeId}", AgentId, reason, nodeId);
+             };
+
+
+             // NEW: DTMF Session Manager Events -> Orchestrator/LLM
+             _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
         }
 
         private void OnSpeechPlaybackComplete()
@@ -138,6 +157,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _logger.LogInformation("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
             // If LLM was waiting for speech, it can now proceed (if necessary)
             // This helps decouple LLM completion from actual audio finishing.
+
+            // Potentially signal LLM handler if it needs to wait for speech before continuing?
+            // Or use to re-enable STT input after agent speaks?
+            // If (! _agentState.IsExecutingTool && !_dtmfSessionManager.IsSessionActive) {
+            //    _agentState.IsAcceptingSTTAudio = true; // Re-enable listening? Context dependent.
+            // }
         }
 
         private void OnLLMResponseHandlingComplete()
@@ -174,13 +199,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30)/100); // Get from config
 
                 // Initialize Modules
-                await _llmHandler.InitializeAsync(); // todo Cts not needed?
+                await _llmHandler.InitializeAsync();
                 await _audioOutputHandler.InitializeAsync(_conversationCTS.Token);
-                await _sttHandler.InitializeAsync(); // todo Cts not needed?
-                await _toolExecutor.InitializeAsync(); 
-                await _interruptionManager.InitializeAsync(_conversationCTS.Token); // todo Cts not needed?
-                await _dtmfHandler.InitializeAsync(); // todo Cts not needed?
-                await _audioInputHandler.InitializeAsync(_conversationCTS.Token); // Start processing queue last
+                await _sttHandler.InitializeAsync();
+                await _scriptAccessor.LoadScriptAsync(
+                    _agentState.BusinessApp,
+                    _agentState.CurrentSessionRoute,
+                    _agentState.CurrentLanguageCode
+                );
+                await _toolExecutor.InitializeAsync();
+                await _interruptionManager.InitializeAsync(_conversationCTS.Token);
+                await _audioInputHandler.InitializeAsync(_conversationCTS.Token);
 
                 _agentState.IsInitialized = true;
                 _logger.LogInformation("AI Agent {AgentId} initialized successfully. Route: {RouteId}, Lang: {Lang}, Type: {Type}",
@@ -198,50 +227,138 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task NotifyConversationStarted()
         {
-            if (!_agentState.IsInitialized)
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested)
             {
-                // todo maybe wait for it to intalize? check if this can ever happen
-                _logger.LogWarning("Agent {AgentId}: Cannot notify start - not initialized.", AgentId);
+                _logger.LogWarning("Agent {AgentId}: Cannot notify start - not initialized or shutting down.", AgentId);
                 return;
             }
             _logger.LogInformation("Agent {AgentId}: Conversation started notification received.", AgentId);
 
-            // Handle multi-language selection via DTMF handler
-            await _dtmfHandler.SetupLanguageSelectionAsync(_conversationCTS.Token);
+            // --- Language Selection Logic (Moved from DTMF Handler) ---
+            bool requiresLanguageSelection = _agentState.CurrentSessionRoute?.Language.MultiLanguageEnabled == true &&
+                                            _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages?.Count > 1;
 
-            // If not awaiting language selection, begin the conversation flow
-            if (!_agentState.IsAwaitingLanguageSelection)
+            if (requiresLanguageSelection)
             {
+                _logger.LogInformation("Agent {AgentId}: Multi-language selection required.", _agentState.AgentId);
+                await SetupLanguageSelectionViaDTMFAsync(_conversationCTS.Token);
+                // Conversation flow will begin after DTMF selection completes (handled in OnDtmfSessionEnded)
+            }
+            else
+            {
+                // No language selection needed, begin directly
+                await BeginAgentConversationFlowAsync();
+            }
+        }
+
+        private async Task SetupLanguageSelectionViaDTMFAsync(CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Agent {AgentId}: Setting up multi-language selection via DTMF.", _agentState.AgentId);
+            string multiLanguagePrompt = "";
+            var availableLangs = _agentState.CurrentSessionRoute!.Language.EnabledMultiLanguages!;
+            int langCount = availableLangs.Count;
+
+            try
+            {
+                for (int i = 0; i < langCount; i++)
+                {
+                    var languageInfo = availableLangs[i];
+                    var languageDataResult = await _langaugesManager.GetLanguageByCode(languageInfo.LanguageCode);
+                    var languageLocaleName = languageDataResult.Success ? languageDataResult.Data!.Name : languageInfo.LanguageCode;
+
+                    // Consider culture for number words if needed: .ToWords(new System.Globalization.CultureInfo("en-US"))
+                    string numberWord = (i + 1).ToWords();
+
+                    string builtMessage = languageInfo.MessageToPlay
+                       .Replace("{number}", numberWord, StringComparison.OrdinalIgnoreCase)
+                       .Replace("{name}", languageLocaleName, StringComparison.OrdinalIgnoreCase);
+
+                    multiLanguagePrompt += $"\n{builtMessage}";
+                }
+
+                multiLanguagePrompt = multiLanguagePrompt.Trim();
+
+                if (!string.IsNullOrWhiteSpace(multiLanguagePrompt))
+                {
+                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(multiLanguagePrompt, cancellationToken);
+
+                    // Start a specific DTMF session for language selection
+                    var dtmfConfig = new DTMFSessionConfig
+                    {
+                        AssociatedNodeId = "internal::language_selection", // Special identifier
+                        MaxLength = 1, // Expect single digit
+                        TerminatorChar = null, // No terminator needed
+                        InterDigitTimeoutSeconds = 10, // Generous timeout for selection
+                        MaxSessionDurationSeconds = 20
+                    };
+
+                    bool started = _dtmfSessionManager.StartSession(dtmfConfig);
+                    if (started)
+                    {
+                        _agentState.IsAwaitingLanguageSelectionInput = true; // Set flag
+                        _logger.LogInformation("Agent {AgentId}: Awaiting DTMF input for language selection.", _agentState.AgentId);
+                    }
+                    else
+                    {
+                        _logger.LogError("Agent {AgentId}: Failed to start DTMF session for language selection (already active?).", _agentState.AgentId);
+                        // Fallback? Maybe proceed with default language?
+                        await BeginAgentConversationFlowAsync();
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Agent {AgentId}: Multi-language enabled, but prompt text generation failed. Proceeding with default.", _agentState.AgentId);
+                    await BeginAgentConversationFlowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Error during language selection setup. Proceeding with default.", _agentState.AgentId);
                 await BeginAgentConversationFlowAsync();
             }
         }
 
         private async Task BeginAgentConversationFlowAsync()
         {
-            _logger.LogInformation("Agent {AgentId}: Beginning main conversation flow.", AgentId);
+            // Ensure previous language selection state is cleared
+            _agentState.IsAwaitingLanguageSelectionInput = false;
+
+            _logger.LogInformation("Agent {AgentId}: Beginning main conversation flow in language {LangCode}.", AgentId, _agentState.CurrentLanguageCode);
 
             if (_agentState.IsBackgroundMusicLoaded)
             {
-                _agentState.IsBackgroundMusicEnabled = true;
-            }   
+                _agentState.IsBackgroundMusicEnabled = true; // Logic to start/mix music is in AudioOutputHandler
+            }
 
+            // Greeting / Opening depends on configuration
             if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.AgentFirst)
             {
-                string openingMessage = "respond_to_customer: " + _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
-                _agentState.LLMService?.AddAssistantMessage(openingMessage);
-                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage));
-                await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage.Substring("respond_to_customer: ".Length), _conversationCTS.Token);
+                string? openingMessage = null;
+                if (_agentState.BusinessAppAgent.Utterances.GreetingMessage?.TryGetValue(_agentState.CurrentLanguageCode, out openingMessage) == true && !string.IsNullOrEmpty(openingMessage))
+                {
+                    _logger.LogDebug("Agent {AgentId}: Playing agent-first opening message.", AgentId);
+                    // Format for LLM history, synthesize raw text
+                    string llmHistoryMessage = "response_to_customer: " + openingMessage;
+                    _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
+                    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
+                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage, _conversationCTS.Token);
+                }
+                else
+                {
+                    _logger.LogWarning("Agent {AgentId}: AgentFirst opening configured but no greeting message found for language {LangCode}.", AgentId, _agentState.CurrentLanguageCode);
+                }
             }
             else if (_agentState.BusinessAppAgent?.Utterances.OpeningType == BusinessAppAgentOpeningType.UserFirst)
             {
                 _logger.LogDebug("Agent {AgentId}: Waiting for user to speak first.", AgentId);
-                string openingMessage = "respond_to_customer: " + _agentState.BusinessAppAgent.Utterances.GreetingMessage[_agentState.CurrentLanguageCode];
-                _agentState.LLMService?.AddAssistantMessage(openingMessage);
-                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage));
+                // Optional: Add a silent initial prompt to LLM history?
+                // string openingMessage = "User starts the conversation."; // Example internal note
+                // _agentState.LLMService?.AddAssistantMessage(openingMessage); // Or maybe not needed
             }
-       
+
+            // Enable listening after potential greeting
             _agentState.IsAcceptingSTTAudio = true;
-            // TODO enable vad here rather than in interruption
+            // TODO: Enable VAD if needed (_vadService.Start() ?)
 
             _logger.LogInformation("Agent {AgentId}: Ready for interaction.", AgentId);
         }
@@ -256,6 +373,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _agentState.IsAcceptingSTTAudio = false;
 
             // Cancel ongoing operations? Optional, but safer.
+            _dtmfSessionManager.CancelSession("Language Change");
             await _llmHandler.CancelCurrentLLMTaskAsync();
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
@@ -371,23 +489,96 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
 
-            if (clientId != null)
-            {
-                _agentState.CurrentClientId = clientId;
-            }
+            if (clientId != null) _agentState.CurrentClientId = clientId;
 
-            // if (_agentState.IsProcessingDTMFAlready) todo check if dtmf handler is actually waiting for dtmf inputs
-            _dtmfHandler.ProcessDigitAsync(digit, cancellationToken).GetAwaiter().GetResult();
+            // Pass digit to the session manager
+            _dtmfSessionManager.ProcessDigit(digit);
 
-            // temporary
-            if (_agentState.IsAwaitingLanguageSelection && _agentState.HasChoosenLanguage)
-            {
-                _agentState.IsAwaitingLanguageSelection = false;
-                _audioOutputHandler.CancelCurrentSpeechPlaybackAsync().GetAwaiter().GetResult();
-                BeginAgentConversationFlowAsync().GetAwaiter().GetResult();
-            }
+            // No need for language selection logic here anymore, it's handled by OnDtmfSessionEnded
 
             return Task.CompletedTask;
+        }
+        private async void OnDtmfSessionEnded(object? sender, DTMFSessionEventArgs args)
+        {
+            _logger.LogInformation("Agent {AgentId}: DTMF session for Node {NodeId} ended. Reason: {Reason}, Digits: '{Digits}'",
+                _agentState.AgentId, args.NodeId, args.Reason, args.CollectedDigits);
+
+            if (_conversationCTS.IsCancellationRequested) return; // Don't process if shutting down
+
+            // --- Handle Language Selection ---
+            if (args.NodeId == "internal::language_selection" && _agentState.IsAwaitingLanguageSelectionInput)
+            {
+                _agentState.IsAwaitingLanguageSelectionInput = false; // Mark selection process as finished
+                string selectedLanguageCode = _agentState.CurrentLanguageCode; // Default to current
+
+                if (args.Reason == DTMFSessionEndReason.CompletedMaxLength || args.Reason == DTMFSessionEndReason.CompletedTerminator)
+                {
+                    if (int.TryParse(args.CollectedDigits, out int languageIndex) &&
+                        _agentState.CurrentSessionRoute?.Language.EnabledMultiLanguages != null &&
+                        languageIndex > 0 && languageIndex <= _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages.Count)
+                    {
+                        selectedLanguageCode = _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages[languageIndex - 1].LanguageCode;
+                        _logger.LogInformation("Agent {AgentId}: User selected language '{Code}' via DTMF.", _agentState.AgentId, selectedLanguageCode);
+
+                        if (selectedLanguageCode != _agentState.CurrentLanguageCode)
+                        {
+                            await HandleLanguageChangeRequestAsync(selectedLanguageCode);
+                            // After language change, conversation flow should restart or continue based on HandleLanguageChangeRequestAsync logic
+                            // We might not need to explicitly call BeginAgentConversationFlowAsync here if HandleLanguageChange does it implicitly
+                            // Let's assume HandleLanguageChangeRequestAsync restarts the necessary parts
+                            return; // Exit after handling language change
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Agent {AgentId}: User re-selected current language '{Code}'.", _agentState.AgentId, selectedLanguageCode);
+                            // Maybe play confirmation? "Continuing in [Language]." (Optional)
+                            // await _audioOutputHandler.SynthesizeAndPlayBlockingAsync($"Continuing in {selectedLanguageCode}", CancellationToken.None);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Agent {AgentId}: Invalid language selection DTMF input: '{Digits}'.", _agentState.AgentId, args.CollectedDigits);
+                        // TODO: Play invalid selection prompt and potentially restart selection?
+                        // For now, proceed with default language.
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Agent {AgentId}: Language selection DTMF session ended due to {Reason}. Proceeding with default language.", _agentState.AgentId, args.Reason);
+                    // Proceed with default language
+                }
+
+                // If language didn't change or selection failed, begin the main flow
+                await BeginAgentConversationFlowAsync();
+            }
+            // --- Handle Regular DTMF Tool Results ---
+            else if (args.NodeId != "internal::language_selection")
+            {
+                // Package the result and send it back to the LLM as a system message
+                string resultMessage;
+                switch (args.Reason)
+                {
+                    case DTMFSessionEndReason.CompletedTerminator:
+                    case DTMFSessionEndReason.CompletedMaxLength:
+                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input received successfully: '{args.CollectedDigits}'";
+                        break;
+                    case DTMFSessionEndReason.TimeoutInterDigit:
+                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Timed out waiting between digits. Received: '{args.CollectedDigits}'";
+                        break;
+                    case DTMFSessionEndReason.TimeoutMaxDuration:
+                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Maximum session duration reached. Received: '{args.CollectedDigits}'";
+                        break;
+                    case DTMFSessionEndReason.Cancelled:
+                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input session was cancelled.";
+                        break;
+                    case DTMFSessionEndReason.Error:
+                    default:
+                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input session ended with an error.";
+                        break;
+                }
+                _logger.LogDebug("Agent {AgentId}: Sending DTMF result to LLM: {ResultMessage}", _agentState.AgentId, resultMessage);
+                await _llmHandler.ProcessSystemMessageAsync(resultMessage, "System", CancellationToken.None); // Use CancellationToken.None? Or master token?
+            }
         }
 
         public async Task ShutdownAsync(string reason)
@@ -417,8 +608,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             _interruptionManager?.Dispose();
 
-            // Stop DTMF handling? (DTMF handler might not have long running tasks)
-            _dtmfHandler?.Reset(); // Reset state if needed
+            _dtmfSessionManager?.Dispose();
 
             _audioOutputHandler?.StopSending();
             _audioOutputHandler?.Dispose();
@@ -437,6 +627,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             AudioGenerated = null;
             AgentTextResponse = null;
+            ClientTextQuery = null;
             Thinking = null;
             ErrorOccurred = null;
         }

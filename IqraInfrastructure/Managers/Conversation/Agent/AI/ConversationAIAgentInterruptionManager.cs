@@ -140,7 +140,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 }
                 _interruptionLLMIntegration = interruptionLLMIntegrationResult.Data;
 
-                interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_agentState.LLMBusinessIntegrationData, interruptionData.LLMIntegrationToUseForCheckingInterruption, new Dictionary<string, string> { });  
+                interuptibleLLMServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(_interruptionLLMIntegration, interruptionData.LLMIntegrationToUseForCheckingInterruption, new Dictionary<string, string> { });  
             }
 
             if (!interuptibleLLMServiceResult.Success || interuptibleLLMServiceResult.Data == null)

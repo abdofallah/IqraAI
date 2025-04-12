@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Telephony.Call;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -149,6 +150,93 @@ namespace IqraInfrastructure.Repositories.Telephony
             {
                 _logger.LogError(ex, "Error getting call by provider call ID {CallId}", callId);
                 return null;
+            }
+        }
+
+        public async Task<(List<CallQueueData> Items, bool HasMore)> GetCallsForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
+        {
+            try
+            {
+                var filterBuilder = Builders<CallQueueData>.Filter;
+                var baseFilter = filterBuilder.Eq(c => c.BusinessId, businessId);
+
+                FilterDefinition<CallQueueData> finalFilter = baseFilter;
+                SortDefinition<CallQueueData> sortDefinition;
+
+                if (fetchNext)
+                {
+                    // Sort for fetching the 'next' page (most recent first)
+                    sortDefinition = Builders<CallQueueData>.Sort
+                        .Descending(c => c.EnqueuedAt)
+                        .Descending(c => c.Id); // Use Id for tie-breaking
+
+                    if (cursor != null)
+                    {
+                        // Apply cursor filter for 'next' page
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Lt(c => c.EnqueuedAt, cursor.Timestamp),
+                            filterBuilder.And(
+                                filterBuilder.Eq(c => c.EnqueuedAt, cursor.Timestamp),
+                                filterBuilder.Lt(c => c.Id, cursor.Id) // MongoDB compares ObjectIds correctly
+                            )
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                }
+                else // Fetching Previous Page
+                {
+                    // Sort for fetching the 'previous' page (oldest first temporarily)
+                    sortDefinition = Builders<CallQueueData>.Sort
+                        .Ascending(c => c.EnqueuedAt)
+                        .Ascending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        // Apply cursor filter for 'previous' page
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Gt(c => c.EnqueuedAt, cursor.Timestamp),
+                            filterBuilder.And(
+                                filterBuilder.Eq(c => c.EnqueuedAt, cursor.Timestamp),
+                                filterBuilder.Gt(c => c.Id, cursor.Id)
+                            )
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                    else
+                    {
+                        // Cannot fetch previous page from the very beginning
+                        return (new List<CallQueueData>(), false);
+                    }
+                }
+
+                // Fetch one extra item to determine if there's a next/previous page
+                var queryLimit = limit + 1;
+
+                var calls = await _callQueueCollection.Find(finalFilter)
+                    .Sort(sortDefinition)
+                    .Limit(queryLimit)
+                    .ToListAsync();
+
+                bool hasMore = calls.Count > limit;
+
+                // Trim the extra item if it exists
+                if (hasMore)
+                {
+                    calls = calls.Take(limit).ToList();
+                }
+
+                // If fetching previous, reverse the results to maintain Descending order for the user
+                if (!fetchNext)
+                {
+                    calls.Reverse();
+                }
+
+                return (calls, hasMore);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated calls for business {BusinessId}", businessId);
+                return (new List<CallQueueData>(), false);
             }
         }
 

@@ -1,4 +1,3 @@
-/// <reference path="overview_tab.js" />
 /** Dynamic Variables **/
 
 const NumberProviderEnum = {

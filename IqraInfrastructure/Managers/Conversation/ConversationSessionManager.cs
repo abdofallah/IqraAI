@@ -412,6 +412,8 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private void CheckSilence(object? state)
         {
+            return;
+
             var silenceDuration = DateTime.UtcNow - _lastUserActivityTime;
 
             if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.EndCallOnSilenceMS)
@@ -473,6 +475,8 @@ namespace IqraInfrastructure.Managers.Conversation
                     return;
                 }
             }
+
+            // todo play a default message to end the call
 
             await EndAsync("Maximum session duration reached").ContinueWith(t =>
             {

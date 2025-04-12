@@ -20,10 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         // Language
         public string CurrentLanguageCode { get; internal set; } = string.Empty;
-
-        // Agent State
-        public bool IsAwaitingLanguageSelection = false;
-        public bool HasChoosenLanguage = false;
+        public bool IsAwaitingLanguageSelectionInput { get; set; } = false;
 
         // Integration & Service Instances (Managed possibly by handlers, but accessible here)
         public BusinessAppIntegration? STTBusinessIntegrationData { get; internal set; }
@@ -51,7 +48,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public bool IsRespondingCustomToolRespone { get; set; } = false;
         public bool IsUserSpeakingVAD { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
-        public bool IsProcessingDTMFAlready { get; set; } = false;
 
         // Audio Output State
         public float CurrentAgentVolumeFactor { get; set; } = 1.0f; // Volume for mixing
