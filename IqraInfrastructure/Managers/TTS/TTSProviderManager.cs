@@ -492,6 +492,11 @@ namespace IqraInfrastructure.Managers.TTS
                     result.Data = new AzureSpeechTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], (string)agentIntegrationData.FieldValues["speaker_language"], (string)agentIntegrationData.FieldValues["speaker"]);
                     return result;
 
+                case InterfaceTTSProviderEnum.ElevenLabsTextToSpeech:
+                    return result.SetSuccessResult(
+                        new ElevenLabsTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model_id"], (string)agentIntegrationData.FieldValues["voice_id"])
+                    );
+
                 default:
                     _logger.LogError("Business app TTS provider {ProviderType} not supported", ttsProviderData.Data.Id);
                     return result;

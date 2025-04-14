@@ -4,7 +4,7 @@
     {
         Unknown = 0,
         AzureSpeechServices = 1,
-        ElevelLabsTextToSpeech = 2,
+        ElevenLabsTextToSpeech = 2,
         GoogleCloudTextToSpeech = 3,
         CartesiaTextToSpeech = 4,
         FishAudioTextToSpeech = 5,

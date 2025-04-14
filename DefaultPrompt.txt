@@ -203,21 +203,21 @@ Here is the response format you must always follow:
 	- To execute a system function in the system provided to you, you must always start your response with: "execute_system_function".
 {{~ if Agent.ScriptTools.size > 0 ~}}
 	- To execute a custom function in the system provided to you, you must always start your response with: "execute_custom_function".
-{[~ end ~}}	
+{{~ end ~}}	
 	
 	Here is the rules you must always follow related to response abilities:
 	- When responding with response_to_customer, you may not use{{~ if Agent.ScriptTools.size > 0 ~}} execute_custom_function or{{~ end ~}} execute_system_function in the same response/message.
 	
 	You have access to the following system functions:
 	- To end the call/conversation/session, you must always use the system function: "end_call".
-{{~ if Session.Route.Multilangauges.Enabled ~}}
+{{~ if Route.Multilangauges.Enabled ~}}
 	- To change the language of the current call/conversation/session, you must always use the system function: "change_language".
 {{~ end ~}}
 {{~ if Agent.ScriptAgents.size > 0 ~}}
 	- To transfer the call to another ai agent, you must always use the system function: "transfer_to_ai_agent".
 {{~ end ~}}
 	- To transfer the call to a human agent, you must always use the system function: "transfer_to_human_agent".
-{{~ Agent.HasDTMFRequestTool ~}}
+{{~ if Agent.HasDTMFRequestTool ~}}
 	- To start receiving dtmf (numerical inputs) from the customer, you must always use the system function: "recieve_dtmf_input".
 {{~ end ~}}
 	- To send/press a dtmf keypad input to the customer/client, you must always use the system function: "press_dtmf_keypad".
@@ -245,7 +245,7 @@ Here is the response format you must always follow:
 		Agent: execute_system_function: end_call: "reason for ending the call", "message to speak while ending the call if defined", "node id wich defines the end call details"
 	</ExampleEndCallFormat>
 	
-{{~ if Session.Route.Multilangauges.Enabled ~}}
+{{~ if Route.Multilangauges.Enabled ~}}
 	Here is the format you follow when customer requests to change the call/conversation/session language:
 	change_language: string <change language reason>, boolean <play list of available languages>, string | null <language code to change to>
 	<ExampleChangeLanguageFormat>
@@ -270,7 +270,7 @@ Here is the response format you must always follow:
 		Agent: execute_system_function: transfer_to_human_agent: "reason for transfering the call", "response to speak before agent transfer execution", "node id which defines the agent transfer details"
 	</ExampleTransferToHumanAgentFormat>
 	
-{{~ Agent.HasDTMFRequestTool ~}}
+{{~ if Agent.HasDTMFRequestTool ~}}
 	Here is the format you follow when requesting customer for dtmf input:
 	recieve_dtmf_input: string <recieve dtmf reason>, string | null <message to speak>, string <script recieve dtmf input node id>
 	<ExampleRecieveDTMFInputFormat>

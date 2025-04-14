@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             {
                 _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, systemPromptResult.Code, systemPromptResult.Message);
                 // TODO: Raise error? Fallback to a default prompt?
-                _agentState.LLMBaseSystemPrompt = "ONLY RESPOND WITH: execute_system_function: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\""; // Basic fallback todo will fail to speak for other langauges
+                _agentState.LLMBaseSystemPrompt = "ONLY RESPOND WITH: execute_system_function: end_call: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\""; // Basic fallback todo will fail to speak for other langauges
             }
             else
             {
@@ -385,8 +385,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     else
                     {
                         _logger.LogError("Agent {AgentId}: LLM response ended but type unknown or invalid: {Response}", _agentState.AgentId, finalResponse);
-                        
-                        ResetLLMState(); // Reset anyway
+
+                        _agentState.LLMService!.AddAssistantMessage(finalResponse);
+                        AIAgentResponseCompleted?.Invoke(finalResponse);
+
+                        ResetLLMState();
 
                         await ProcessSystemMessageAsync("Invalid response type received. Please start with 'response_to_customer:', 'execute_system_function:', or 'execute_custom_function:'.", _agentState.CurrentClientId, CancellationToken.None);
                     }
@@ -427,7 +430,36 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
 
             string unprocessedText = _responseBuffer.ToString().Substring(_currentResponseBufferRead);
-            if (string.IsNullOrEmpty(unprocessedText)) return;
+            if (string.IsNullOrWhiteSpace(unprocessedText)) return;
+
+            // Check for unxpected custom or system function calls
+            int executionCustomFunctionStart = unprocessedText.IndexOf("execute_custom_function");
+            if (executionCustomFunctionStart != -1)
+            {
+                if (executionCustomFunctionStart >= _currentResponseBufferRead)
+                {
+                    return;
+                }
+                else
+                {
+                    // delete everything after including the prefix
+                    unprocessedText = unprocessedText.Substring(0, executionCustomFunctionStart);
+                }
+            }
+            int executionSystemFunctionStart = unprocessedText.IndexOf("execute_system_function");
+            if (executionSystemFunctionStart != -1)
+            {
+                if (executionSystemFunctionStart >= _currentResponseBufferRead)
+                {
+                    return;
+                }
+                else
+                {
+                    // delete everything after including the prefix
+                    unprocessedText = unprocessedText.Substring(0, executionSystemFunctionStart);
+                }
+            }
+            if (string.IsNullOrWhiteSpace(unprocessedText)) return;
 
             // Simple chunking strategy: Split on sentences or if a large chunk accumulates, or on end of response.
             // TODO More sophisticated NLP sentence boundary detection could be used.
@@ -485,6 +517,23 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             try
             {
+                var assistantMessage = _responseBuffer.ToString();
+                // Check for unexpected custom or system function calls
+                int executionCustomFunctionStart = assistantMessage.IndexOf("execute_custom_function");
+                if (executionCustomFunctionStart != -1)
+                {
+                    _responseBuffer.Remove(executionCustomFunctionStart, (_responseBuffer.Length - executionCustomFunctionStart));
+                    assistantMessage = _responseBuffer.ToString();
+                }
+                int executionSystemFunctionStart = assistantMessage.IndexOf("execute_system_function");
+                if (executionSystemFunctionStart != -1)
+                {
+                    _responseBuffer.Remove(executionSystemFunctionStart, (_responseBuffer.Length - executionSystemFunctionStart));
+                    assistantMessage = _responseBuffer.ToString();
+                }
+
+                if (_currentResponseBufferRead > _responseBuffer.Length) _currentResponseBufferRead = _responseBuffer.Length;
+
                 if (_agentState.IsResponding && _currentResponseBufferRead < _responseBuffer.Length)
                 {
                     var remainingText = _responseBuffer.ToString().Substring(_currentResponseBufferRead).Trim();
@@ -497,8 +546,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         _currentResponseBufferRead = _responseBuffer.Length;
                     }
                 }
-
-                var assistantMessage = _responseBuffer.ToString();
+               
                 AIAgentResponseCompleted?.Invoke(assistantMessage);
 
                 using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);

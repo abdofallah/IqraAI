@@ -156,7 +156,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             prompt += Environment.NewLine + @"
 Here is the session information that will be helpful for your context:
 <SessionInformation>
-    Current Choosen Language: {{Session.Route.CurrentLanguage.Code}} | {{Session.Route.CurrentLanguage.Name}}
+    Current Choosen Language: {{Session.Route.Multilangauges.CurrentLanguage.Code}} | {{Session.Route.Multilangauges.CurrentLanguage.Name}}
     {{~ if Session.Route.Multilangauges.Enabled ~}}
         Available Languages:
         {{ for language in Session.Route.Multilangauges.Languages }}
@@ -192,7 +192,7 @@ Here is the session information that will be helpful for your context:
             // Add Route data
             var routeObject = new ScriptObject();
             routeObject["Agent"] = CreateRouteAgentObject(sessionRoute.Agent);
-            routeObject["Multilangauges"] = CreateRouteLanguageObject(sessionRoute.Language, languageCode);
+            routeObject["Multilangauges"] = await CreateRouteLanguageObject(sessionRoute.Language, languageCode);
             sessionObject["Route"] = routeObject;
 
             // Add the model to the context

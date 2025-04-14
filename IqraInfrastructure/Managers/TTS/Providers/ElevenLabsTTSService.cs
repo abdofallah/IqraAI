@@ -1,27 +1,40 @@
 ﻿using ElevenLabs;
+using ElevenLabs.Models;
 using ElevenLabs.TextToSpeech;
 using ElevenLabs.Voices;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using System.Linq;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ElevenLabsTTSService : ITTSService
     {
         private ElevenLabsClient _client;
-        private Voice _voiceModel;
+
+        private Voice? _voiceData;
+        private Model? _modelData;
+
         private VoiceSettings _voiceSettings;
 
         private readonly string _apiKey;
+        private readonly string _modelId;
         private readonly string _voiceId;
 
         private List<string>? _previousRequestIds = new List<string>();
 
-        public ElevenLabsTTSService(string apiKey, string voiceId, float stability, float similarityBoost, float style, bool speakerBoost, float speed)
+        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
-            _voiceSettings = new VoiceSettings(stability, similarityBoost, style, speakerBoost, speed);
+            _modelId = modelId;
+
+            _voiceSettings = new VoiceSettings();
+            if (stability.HasValue) _voiceSettings.Stability = stability.Value;
+            if (similarityBoost.HasValue) _voiceSettings.SimilarityBoost = similarityBoost.Value;
+            if (style.HasValue) _voiceSettings.Style = style.Value;
+            if (speakerBoost.HasValue) _voiceSettings.SpeakerBoost = speakerBoost.Value;
+            if (speed.HasValue) _voiceSettings.Speed = speed.Value;
         }
 
         public void Initialize()
@@ -30,12 +43,15 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 new ElevenLabsAuthentication(_apiKey)
             );
 
-            _voiceModel = _client.VoicesEndpoint.GetVoiceAsync(_voiceId).GetAwaiter().GetResult();
+            _voiceData = _client.VoicesEndpoint.GetVoiceAsync(_voiceId).GetAwaiter().GetResult();
+
+            var allModels = _client.ModelsEndpoint.GetModelsAsync().GetAwaiter().GetResult().ToList();
+            _modelData = allModels.Find(d => d.Id == _modelId);
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new TextToSpeechRequest(_voiceModel, text, null, _voiceSettings, ElevenLabs.OutputFormat.PCM_16000, withTimestamps: true, previousRequestIds: _previousRequestIds.ToArray());
+            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, OutputFormat.PCM_16000, model: _modelData, withTimestamps: true, previousRequestIds: _previousRequestIds.ToArray());
 
             try
             {
@@ -62,7 +78,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public string GetProviderFullName()
         {
-            return "ElevelLabsTextToSpeech";
+            return "ElevenLabsTextToSpeech";
         }
 
         public InterfaceTTSProviderEnum GetProviderType()
@@ -72,7 +88,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
-            return InterfaceTTSProviderEnum.ElevelLabsTextToSpeech;
+            return InterfaceTTSProviderEnum.ElevenLabsTextToSpeech;
         }
     }
 }
