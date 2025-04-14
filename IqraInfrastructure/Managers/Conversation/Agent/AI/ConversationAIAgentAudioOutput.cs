@@ -233,7 +233,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             try
             {
-                var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken);
+                var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
 
                 if (ttsToken.IsCancellationRequested)
                 {

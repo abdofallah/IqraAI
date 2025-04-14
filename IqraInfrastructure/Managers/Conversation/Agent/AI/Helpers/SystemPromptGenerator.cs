@@ -78,7 +78,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     return result;
                 }
 
-                var openingAgentScriptNodesData = GetScriptNodesData(openingAgentScript, businessApp);
+                var openingAgentScriptNodesData = GetScriptNodesData(openingAgentScript, businessApp, agent);
 
                 // Initialize Scriban template
                 var template = Template.Parse(systemPromptForLanguage);    
@@ -105,6 +105,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 agentObject["Scripts"] = CreateAgentScriptsObject(new List<BusinessAppAgentScript>() { openingAgentScript }, languageCode);
                 agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingAgentScriptNodesData.tools, languageCode);
                 agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingAgentScriptNodesData.agents, languageCode);
+                agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingAgentScriptNodesData.scripts, languageCode);
+                agentObject["HasDTMFRequestTool"] = openingAgentScriptNodesData.hasDTMFRequestTool;
                 modelObject["Agent"] = agentObject;
                 
                 // Add Context (company) data
@@ -115,8 +117,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 contextObject["Products"] = CreateProductsObject(businessApp.Context.Products, languageCode);
                 modelObject["Context"] = contextObject;
 
-                // Register helper templates
-                RegisterHelperTemplates(scriptObject);
+                // Add Route Data
+                var routeObject = new ScriptObject();
+                routeObject["Multilangauges"] = CreateRouteLanguageObject(route.Language, languageCode);
+                modelObject["Route"] = routeObject;
 
                 // Add the model to the context
                 scriptObject.Import(modelObject);
@@ -148,9 +152,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
         {
             var result = new FunctionReturnResult<string?>();
 
+            // todo move this out of here into the dedicated backend prompt management system
             prompt += Environment.NewLine + @"
 Here is the session information that will be helpful for your context:
 <SessionInformation>
+    Current Choosen Language: {{Session.Route.CurrentLanguage.Code}} | {{Session.Route.CurrentLanguage.Name}}
+    {{~ if Session.Route.Multilangauges.Enabled ~}}
+        Available Languages:
+        {{ for language in Session.Route.Multilangauges.Languages }}
+            - {{language.Code}} | {{language.Name}}
+        {{~ end ~}}
+    {{~ end ~}}
 	Date and Time right now for timezone ({{Session.Route.Agent.Timezone.Name}}) is: {{Session.Route.Agent.Timezone.Time}}
 	{{~ if Session.Route.Agent.CallerNumberInContext ~}}
 	Caller phone Number is: {{Session.Caller.PhoneNumber}}
@@ -180,10 +192,8 @@ Here is the session information that will be helpful for your context:
             // Add Route data
             var routeObject = new ScriptObject();
             routeObject["Agent"] = CreateRouteAgentObject(sessionRoute.Agent);
+            routeObject["Multilangauges"] = CreateRouteLanguageObject(sessionRoute.Language, languageCode);
             sessionObject["Route"] = routeObject;
-
-            // Register helper templates
-            RegisterHelperTemplates(modelObject);
 
             // Add the model to the context
             modelObject.Import(modelObject);
@@ -596,6 +606,25 @@ Here is the session information that will be helpful for your context:
             return agentsArray;
         }
 
+        private ScriptArray CreateAgentScriptAddableScriptsObject(List<BusinessAppAgentScript> scripts, string languageCode)
+        {
+            var scriptsArray = new ScriptArray();
+            if (scripts != null)
+            {
+                foreach (var script in scripts)
+                {
+                    var scriptObject = new ScriptObject();
+
+                    // Basic tool information
+                    scriptObject["Id"] = script.Id;
+                    scriptObject["Name"] = GetLocalizedString(script.General.Name, languageCode, "Tool");
+                    scriptObject["Description"] = GetLocalizedString(script.General.Description, languageCode, ""); 
+                }
+            }
+
+            return scriptsArray;
+        }
+
         private ScriptObject CreateBrandingObject(BusinessAppContextBranding branding, string languageCode)
         {
             var brandingObject = new ScriptObject();
@@ -704,10 +733,6 @@ Here is the session information that will be helpful for your context:
                     serviceObject["Id"] = service.Id;
                     serviceObject["Name"] = GetLocalizedString(service.Name, languageCode, "Service");
                     serviceObject["ShortDescription"] = GetLocalizedString(service.ShortDescription, languageCode, "");
-                    serviceObject["LongDescription"] = GetLocalizedString(service.LongDescription, languageCode, "");
-                    serviceObject["AvailableAtBranches"] = service.AvailableAtBranches;
-                    serviceObject["RelatedProducts"] = service.RelatedProducts;
-                    serviceObject["OtherInformation"] = null;
 
                     // Add other information
                     var otherInfo = GetLocalizedDictionary(service.OtherInformation, languageCode);
@@ -739,8 +764,6 @@ Here is the session information that will be helpful for your context:
                     productObject["Id"] = product.Id;
                     productObject["Name"] = GetLocalizedString(product.Name, languageCode, "Product");
                     productObject["ShortDescription"] = GetLocalizedString(product.ShortDescription, languageCode, "");
-                    productObject["LongDescription"] = GetLocalizedString(product.LongDescription, languageCode, "");
-                    productObject["AvailableAtBranches"] = product.AvailableAtBranches ?? new List<string>();
                     
                     // Add other information
                     var otherInfo = GetLocalizedDictionary(product.OtherInformation, languageCode);
@@ -824,92 +847,71 @@ Here is the session information that will be helpful for your context:
             return null;
         }
 
-        private void RegisterHelperTemplates(ScriptObject scriptObject)
+        private async Task<ScriptObject> CreateRouteLanguageObject(BusinessAppRouteLanguage? routeLanguageData, string currentLanguageCode)
         {
-            // Register the service template function
-            scriptObject.Add("services_template", new Func<ScriptObject, string>(service => {
-                var sb = new StringBuilder();
-                sb.AppendLine($"<Service{service["Id"]}>");
-                sb.AppendLine($"Name: {service["Name"]}");
-                sb.AppendLine($"Short Description: {service["ShortDescription"]}");
-                sb.AppendLine($"Long Description: {service["LongDescription"]}");
-                
-                if (service["AvailableAtBranches"] is ScriptArray branches && branches.Count > 0)
+            var languageContainerObject = new ScriptObject(); // Will contain CurrentLanguage and Multilangauges
+
+            // Default empty objects to prevent template errors
+            var currentLangObject = new ScriptObject { { "Code", "unknown" }, { "Name", "Unknown" } };
+            var multiLangObject = new ScriptObject { { "Enabled", false }, { "Languages", new ScriptArray() } };
+
+            if (routeLanguageData != null && !string.IsNullOrEmpty(currentLanguageCode))
+            {
+                // 1. Current Language
+                var currentLanguageResult = await _languagesManager.GetLanguageByCode(currentLanguageCode);
+                var currentLanguageName = currentLanguageResult.Success && currentLanguageResult.Data != null
+                    ? currentLanguageResult.Data.Name
+                    : currentLanguageCode;
+
+                currentLangObject["Code"] = currentLanguageCode;
+                currentLangObject["Name"] = currentLanguageName;
+
+                // 2. Multi-languages Info
+                bool multiLangEnabled = routeLanguageData.MultiLanguageEnabled &&
+                                        routeLanguageData.EnabledMultiLanguages != null &&
+                                        routeLanguageData.EnabledMultiLanguages.Count > 0;
+
+                multiLangObject["Enabled"] = multiLangEnabled;
+
+                if (multiLangEnabled)
                 {
-                    sb.AppendLine("Available at branches:");
-                    foreach (var branch in branches)
+                    var languagesList = new ScriptArray();
+                    foreach (var enabledLang in routeLanguageData.EnabledMultiLanguages!)
                     {
-                        sb.AppendLine($"- {branch}");
+                        var langInfoResult = await _languagesManager.GetLanguageByCode(enabledLang.LanguageCode);
+                        var langName = langInfoResult.Success && langInfoResult.Data != null
+                            ? langInfoResult.Data.Name
+                            : enabledLang.LanguageCode;
+
+                        var langInfoObject = new ScriptObject();
+                        langInfoObject.Add("Code", enabledLang.LanguageCode);
+                        langInfoObject.Add("Name", langName);
+                        languagesList.Add(langInfoObject);
                     }
+                    multiLangObject["Languages"] = languagesList;
                 }
-                
-                if (service["RelatedProducts"] is ScriptArray products && products.Count > 0)
-                {
-                    sb.AppendLine("Related products:");
-                    foreach (var product in products)
-                    {
-                        sb.AppendLine($"- {product}");
-                    }
-                }
-                
-                if (service["OtherInformation"] is ScriptObject otherInfo)
-                {
-                    sb.AppendLine("Additional information:");
-                    foreach (var key in otherInfo.Keys)
-                    {
-                        sb.AppendLine($"- {key}: {otherInfo[key]}");
-                    }
-                }
-                
-                sb.AppendLine($"</Service{service["Id"]}>");
-                return sb.ToString();
-            }));
-            
-            // Register the product template function
-            scriptObject.Add("products_template", new Func<ScriptObject, string>(product => {
-                var sb = new StringBuilder();
-                sb.AppendLine($"<Product{product["Id"]}>");
-                sb.AppendLine($"Name: {product["Name"]}");
-                sb.AppendLine($"Short Description: {product["ShortDescription"]}");
-                sb.AppendLine($"Long Description: {product["LongDescription"]}");
-                
-                if (product["AvailableAtBranches"] is ScriptArray branches && branches.Count > 0)
-                {
-                    sb.AppendLine("Available at branches:");
-                    foreach (var branch in branches)
-                    {
-                        sb.AppendLine($"- {branch}");
-                    }
-                }
-                
-                if (product["OtherInformation"] is ScriptObject otherInfo)
-                {
-                    sb.AppendLine("Additional information:");
-                    foreach (var key in otherInfo.Keys)
-                    {
-                        sb.AppendLine($"- {key}: {otherInfo[key]}");
-                    }
-                }
-                
-                sb.AppendLine($"</Product{product["Id"]}>");
-                return sb.ToString();
-            }));
-            
-            // Register the agent scripts template function
-            scriptObject.Add("agent_scripts", new Func<ScriptObject, string>(script => {
-                return "TODO SCRIPT";
-            }));
+            }
+            else
+            {
+                if (routeLanguageData == null) _logger.LogError("BusinessAppRouteLanguage data was null when creating language object.");
+                if (string.IsNullOrEmpty(currentLanguageCode)) _logger.LogError("Current language code was null or empty when creating language object.");
+            }
+
+            languageContainerObject.Add("CurrentLanguage", currentLangObject);
+            languageContainerObject.Add("Multilangauges", multiLangObject);
+
+            return languageContainerObject;
         }
 
         #endregion
 
         #region Helper Methods
 
-        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents) GetScriptNodesData(BusinessAppAgentScript script, BusinessApp businessApp)
+        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
         {
-            var (tools, agents) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>());
+            var (tools, agents, scripts, hasDTMFRequestTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false);
 
-            foreach (var node in script.Nodes)
+            foreach (var node in currentScriptToCheck.Nodes)
             {
                 if (node.NodeType == BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool)
                 {
@@ -949,11 +951,31 @@ Here is the session information that will be helpful for your context:
                                 }
                             }
                         }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext)
+                        {
+                            var addScriptToContextNode = node as BusinessAppAgentScriptAddScriptToContextToolNode;
+                            if (addScriptToContextNode != null)
+                            {
+                                var alreadyAddedScript = scripts.Find(s => s.Id == addScriptToContextNode.ScriptId) != null;
+                                if (!alreadyAddedScript && addScriptToContextNode.ScriptId != currentScriptToCheck.Id)
+                                {
+                                    var scriptData = sessionRouteAgent.Scripts.Find(s => s.Id == addScriptToContextNode.ScriptId);
+                                    if (scriptData != null)
+                                    {
+                                        scripts.Add(scriptData);
+                                    }
+                                }
+                            }
+                        }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
+                        {
+                            hasDTMFRequestTool = true;
+                        }
                     }
                 }
             }
 
-            return (tools, agents);
+            return (tools, agents, scripts, hasDTMFRequestTool);
         }
 
         private string GetLocalizedString(Dictionary<string, string> dictionary, string languageCode, string defaultValue)

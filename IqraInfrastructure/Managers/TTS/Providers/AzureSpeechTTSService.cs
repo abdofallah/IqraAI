@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _synthesizer.BookmarkReached += OnBookmarkReached;
         }
 
-        public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken)
+        public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
             var result = await _synthesizer.SpeakTextAsync(text);
 

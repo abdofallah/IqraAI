@@ -6,7 +6,7 @@ namespace IqraCore.Interfaces.AI
     {
         void Initialize();
 
-        Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken);
+        Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData);
         Task StopTextSynthesisAsync();
         string GetProviderFullName();
         InterfaceTTSProviderEnum GetProviderType();

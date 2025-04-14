@@ -69,7 +69,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken)
         {
-            // Removed excessive logging as requested
             try
             {
                 string toolName;
@@ -83,8 +82,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 }
                 else
                 {
-                    // Log only error case
-                    _logger.LogError("Agent {AgentId}: Invalid system tool format (missing colon): {FunctionContent}", _agentState.AgentId, functionContent);
                     await ToolResultAvailable?.Invoke($"Error: Invalid system tool format '{functionContent}'. Expected 'tool_name: args'.");
                     return;
                 }
@@ -97,7 +94,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     // Format: end_call: string <reason>, string | null <message>, string | null <node_id>
                     string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "No reason provided";
                     string? messageToSpeak = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
-                    // string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null; // NodeId not used directly for ending
+                    // string? nodeId = arguments.Count > 2 ? UnescapeNullableArgument(arguments[2]) : null; // todo NodeId not used right now
 
                     if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
                         await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
@@ -113,21 +110,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 else if (toolName.Equals("change_language", StringComparison.OrdinalIgnoreCase))
                 {
                     // Format: change_language: string <reason>, boolean <play list>, string | null <language code>
-                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Language change requested"; // Reason not directly used?
+                    // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Language change requested"; // todo Reason not used right now
                     bool playList = false;
                     string? targetLanguageCode = null;
 
                     if (arguments.Count < 2)
                     {
-                        _logger.LogError("Agent {AgentId}: change_language tool called with insufficient arguments: {ArgsRaw}", _agentState.AgentId, argsRaw);
                         await ToolResultAvailable?.Invoke("Error: change_language requires at least reason and playList flag.");
                         return;
                     }
 
                     if (!bool.TryParse(UnescapeArgument(arguments[1]), out playList))
                     {
-                        _logger.LogError("Agent {AgentId}: change_language tool called with invalid boolean flag: {Arg}", _agentState.AgentId, arguments[1]);
-                        await ToolResultAvailable?.Invoke($"Error: change_language expects a boolean (true/false) for the second argument, got '{arguments[1]}'.");
+                        await ToolResultAvailable?.Invoke($"Error: change_language expects a boolean (true/false) for the second argument (play languages list), got '{arguments[1]}'.");
                         return;
                     }
 
@@ -140,8 +135,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             await InitiateLanguageSelectionRequested.Invoke();
                         else
                             _logger.LogWarning("Agent {AgentId}: InitiateLanguageSelectionRequested event has no subscribers.", _agentState.AgentId);
-                        // Notify LLM? Result comes when selection is done.
-                        // await ToolResultAvailable?.Invoke("Initiating language selection process."); // Maybe not needed
                     }
                     else if (!string.IsNullOrWhiteSpace(targetLanguageCode))
                     {
@@ -150,12 +143,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                             await ChangeLanguageRequested.Invoke(targetLanguageCode);
                         else
                             _logger.LogWarning("Agent {AgentId}: ChangeLanguageRequested event has no subscribers.", _agentState.AgentId);
-                        // Notify LLM? Result comes after change attempt.
-                        // await ToolResultAvailable?.Invoke($"Requesting language change to {targetLanguageCode}."); // Maybe not needed
                     }
                     else
                     {
-                        _logger.LogError("Agent {AgentId}: change_language called with playList=false but no target language code.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: change_language called with playList=false requires a target language code.");
                     }
                 }
@@ -168,7 +158,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     if (string.IsNullOrWhiteSpace(nodeId))
                     {
-                        _logger.LogError("Agent {AgentId}: Transfer to AI agent requested but Node ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Transfer to AI agent requires a Node ID.");
                         return;
                     }
@@ -192,7 +181,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     if (string.IsNullOrWhiteSpace(nodeId))
                     {
-                        _logger.LogError("Agent {AgentId}: Transfer to Human agent requested but Node ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Transfer to human agent requires a Node ID.");
                         return;
                     }
@@ -230,7 +218,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     var dtmfNodeResult = _scriptAccessor.GetDTMFNodeDetails(nodeId);
                     if (!dtmfNodeResult.Success || dtmfNodeResult.Data == null)
                     {
-                        _logger.LogError("Agent {AgentId}: Failed to get DTMF node details for Node ID '{NodeId}'. Error: {Error}", _agentState.AgentId, nodeId, dtmfNodeResult.Message);
                         await ToolResultAvailable?.Invoke($"Error: Could not find or parse DTMF configuration for node '{nodeId}'. {dtmfNodeResult.Message}");
                     }
                     else
@@ -253,7 +240,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     if (string.IsNullOrWhiteSpace(digitsToPress))
                     {
-                        _logger.LogError("Agent {AgentId}: press_dtmf_keypad called without digits.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: press_dtmf_keypad requires the digits to press as the second argument.");
                         return;
                     }
@@ -261,7 +247,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     // Validate digits
                     if (!ValidDtmfCharsRegex.IsMatch(digitsToPress))
                     {
-                        _logger.LogError("Agent {AgentId}: press_dtmf_keypad called with invalid characters: {Digits}", _agentState.AgentId, digitsToPress);
                         await ToolResultAvailable?.Invoke($"Error: press_dtmf_keypad received invalid characters. Only 0-9, *, #, A-D, W are allowed. Got: '{digitsToPress}'.");
                         return;
                     }
@@ -270,11 +255,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     {
                         await SendDTMFRequested.Invoke(digitsToPress);
                         // Acknowledge the request was sent
-                        await ToolResultAvailable?.Invoke($"System instruction to press DTMF digits '{digitsToPress}' was sent.");
+                        // TODO whether to acknowledge or not?
+                        // maybe just add to the conversation messages history and force ai to say acknowledge
+                        //await ToolResultAvailable?.Invoke($"System instruction to press DTMF digits '{digitsToPress}' was sent.");
                     }
                     else
                     {
-                        _logger.LogWarning("Agent {AgentId}: SendDTMFRequested event has no subscribers.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke($"System tool 'press_dtmf_keypad' acknowledged but no handler is configured to send DTMF.");
                     }
                 }
@@ -299,7 +285,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     // TODO: Need a method in ScriptAccessor to get the actual script text/content based on the node ID.
                     // var scriptContentResult = _scriptAccessor.GetScriptContextFromNode(nodeId);
-                    string? scriptContent = $"[Content for Script Node {nodeId} - Implementation Pending]"; // Placeholder
+                    string? scriptContent = null;// $"[Content for Script Node {nodeId} - Implementation Pending]"; // Placeholder
 
                     // if (!scriptContentResult.Success || string.IsNullOrWhiteSpace(scriptContentResult.Data))
                     // {
@@ -339,14 +325,28 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     if (string.IsNullOrWhiteSpace(productId))
                     {
-                        _logger.LogError("Agent {AgentId}: Retrieve product info requested but Product ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Retrieve product information requires a Product ID.");
                         return;
                     }
 
-                    // TODO: Implement actual retrieval logic
-                    _logger.LogWarning("Agent {AgentId}: 'retrieve_product_information' system tool not fully implemented (Product ID: {ProductId}).", _agentState.AgentId, productId);
-                    await ToolResultAvailable?.Invoke($"System tool 'retrieve_product_information' for product '{productId}' acknowledged but backend retrieval is not implemented.");
+                    var productData = _agentState.BusinessApp.Context.Products.Find(p => p.Id == productId);
+                    if (productData == null)
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: Product '{productId}' not found.");
+                        return;
+                    }
+
+                    var builtProductMessage = $"Product: {productData.Name}\n\nShort Description: {productData.ShortDescription}\n\nLong Description: {productData.LongDescription}";
+                    if (productData.AvailableAtBranches.Count > 0)
+                    {
+                        builtProductMessage += $"\n\nAvailable at branches with ids: {string.Join(", ", productData.AvailableAtBranches)}";
+                    }
+                    if (productData.OtherInformation[_agentState.CurrentLanguageCode].Count > 0)
+                    {
+                        builtProductMessage += $"\n\nOther Information: {string.Join(", ", productData.OtherInformation[_agentState.CurrentLanguageCode])}";
+                    }
+
+                    await ToolResultAvailable?.Invoke($"Successfully detailed information for product '{productId}'.\n\n{builtProductMessage}");
 
                 }
                 else if (toolName.Equals("retrieve_service_information", StringComparison.OrdinalIgnoreCase))
@@ -357,14 +357,32 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
                     if (string.IsNullOrWhiteSpace(serviceId))
                     {
-                        _logger.LogError("Agent {AgentId}: Retrieve service info requested but Service ID is missing.", _agentState.AgentId);
                         await ToolResultAvailable?.Invoke("Error: Retrieve service information requires a Service ID.");
                         return;
                     }
 
-                    // TODO: Implement actual retrieval logic
-                    _logger.LogWarning("Agent {AgentId}: 'retrieve_service_information' system tool not fully implemented (Service ID: {ServiceId}).", _agentState.AgentId, serviceId);
-                    await ToolResultAvailable?.Invoke($"System tool 'retrieve_service_information' for service '{serviceId}' acknowledged but backend retrieval is not implemented.");
+                    var serviceData = _agentState.BusinessApp.Context.Services.Find(s => s.Id == serviceId);
+                    if (serviceData == null)
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: Service '{serviceId}' not found.");
+                        return;
+                    }
+
+                    var builtServiceMessage = $"Service Name: ```{serviceData.Name[_agentState.CurrentLanguageCode]}```\nService Short Description: ```{serviceData.ShortDescription[_agentState.CurrentLanguageCode]}```\nService Long Description: ```{serviceData.LongDescription[_agentState.CurrentLanguageCode]}```";
+                    if (serviceData.AvailableAtBranches.Count > 0)
+                    {
+                        builtServiceMessage += $"\nAvailable at branches with id: ```{string.Join(", ", serviceData.AvailableAtBranches)}```";
+                    }
+                    if (serviceData.RelatedProducts.Count > 0)
+                    {
+                        builtServiceMessage += $"\nRelated products with id: ```{string.Join(", ", serviceData.RelatedProducts)}```";
+                    }
+                    if (serviceData.OtherInformation[_agentState.CurrentLanguageCode].Count > 0)
+                    {
+                        builtServiceMessage += $"\nOther Information: ```{string.Join(",\n", serviceData.OtherInformation[_agentState.CurrentLanguageCode])}\n```";
+                    }
+
+                    await ToolResultAvailable?.Invoke($"Successfully retrieved detailed information for service '{serviceId}':\n\n{builtServiceMessage}");
                 }
                 else if (toolName.Equals("acknowledge", StringComparison.OrdinalIgnoreCase))
                 {
@@ -372,14 +390,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 }
                 else
                 {
-                    _logger.LogWarning("Agent {AgentId}: Received unknown system tool: {ToolName}", _agentState.AgentId, toolName);
                     await ToolResultAvailable?.Invoke($"Error: Unknown system tool '{toolName}'.");
                 }
             }
             catch (OperationCanceledException)
             {
-                // Don't log cancellation as error, it's expected during shutdown or interruption
-                // _logger.LogInformation("Agent {AgentId}: System tool execution cancelled.", _agentState.AgentId);
                 await ToolResultAvailable?.Invoke($"System tool execution cancelled."); // Optionally notify LLM
             }
             catch (Exception ex)

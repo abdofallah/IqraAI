@@ -64,6 +64,9 @@ namespace ProjectIqraBackendApp
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
 
+            // Third Party Library Initalizations
+            Deepgram.Library.Initialize(Deepgram.Logger.LogLevel.Error);
+
             // Add services to the container
             builder.Services.AddControllers();
 
