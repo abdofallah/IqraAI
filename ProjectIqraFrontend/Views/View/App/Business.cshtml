@@ -432,7 +432,18 @@
                                     <option value="3">Interruptible via Response (STT transcription)</option>
                                 </select>
                                 <div class="w-100 route-conversation-type-box" box-type="turnbyturn">
-                                    // TODO
+                                    <div class="form-check form-switch">
+                                        <div style="display: inline-block; vertical-align: middle;">
+                                            <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                            <label class="form-label mb-0" for="editRouteAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                                <span>Use Interrupted Response in the Next Turn?</span>
+                                            </label>
+                                        </div>
+
+                                        <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Any customer/user response spoken during the AI/Agent's turn will be used in the next turn.">
+                                            <i class="fa-regular fa-circle-question"></i>
+                                        </a>
+                                    </div>
                                 </div>
                                 <div class="w-100 route-conversation-type-box" box-type="interruptibleviavad">
                                     <div class="">
@@ -447,7 +458,31 @@
                                     </div>
                                 </div>
                                 <div class="w-100 route-conversation-type-box" box-type="interruptibleviaai">
-                                    // TODO
+                                    <div class="form-check form-switch">
+                                        <div style="display: inline-block; vertical-align: middle;">
+                                            <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentInterruptViaAIUseAgentLLM">
+                                            <label class="form-label mb-0" for="editRouteAgentInterruptViaAIUseAgentLLM">
+                                                <span>Use Agent's LLM integration for checking for interruption?</span>
+                                            </label>
+                                        </div>
+
+                                        <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the LLM integration of the agent to check for interruptions.">
+                                            <i class="fa-regular fa-circle-question"></i>
+                                        </a>
+                                    </div>
+
+                                    <div class="mt-3" id="agentRouteInterruptionViaLLMIntegrationSelectBox">
+                                        <label class="form-label">Interruption LLM Integration</label>
+                                        <div class="input-group">
+                                        <select class="form-select" select-type="interrupt-integration-llm">
+                                            <!-- Dynamically Generated -->
+                                        </select>
+                                        <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration" disabled>
+                                            <i class="fa-regular fa-gear"></i>
+                                        </button>
+                                    </div>
+                                    </div>
+
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -2418,6 +2453,8 @@
         <!-- Phone Numbers Container -->
         <div class="main-container fade w-100 d-none" id="phone-numbers-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
+            
+            <!-- Header Container -->
             <div class="inner-header-container w-100 mb-3" id="phone-numbers-header">
                 <div class="" id="phone-numbers-inner-head">
                     <ul class="nav" id="inner-phone-numbers-tab" role="tablist">
@@ -2436,6 +2473,8 @@
                     </ul>
                 </div>
             </div>
+            
+            <!-- Main Container -->
             <div class="inner-container">
                 <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
                     <!-- ModemTel -->
@@ -2456,9 +2495,9 @@
                         <table id="physicalSimNumbersTable" class="table w-100">
                             <thead>
                                 <tr>
-                                    <th scope="col" style="width: 160px;">Status</th>
                                     <th scope="col">Country</th>
                                     <th scope="col">Number</th>
+                                    <th scope="col">Route</th>
                                     <th scope="col">Route Server Region</th>
                                     <th scope="col">Actions</th>
                                 </tr>
@@ -2560,6 +2599,154 @@
                                 <!-- Dynamically Generated -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modals -->
+
+            <!-- Add Route Phone Number Modal -->
+            <div class="modal fade" id="editChangeRouteNumberModal" tabindex="-1" aria-labelledby="editChangeRouteNumberModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="editChangeRouteNumberModalLabel">
+                                Select Number
+                            </h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                                <ul class="nav" id="routing-manager-assign-number-modal-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
+                                            ModemTel
+                                        </button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="routing-manager-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-twilio" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-twilio" aria-selected="true">Twilio</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="routing-manager-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-telnyx" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-telnyx" aria-selected="true">Telnyx</button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="tab-content w-100 mb-3" id="routing-manager-assign-number-modal-tabContent">
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="inputRouteModalSearchNumberInput" placeholder="Phone Number">
+                                    <button class="btn btn-primary" id="searchRouteManagerAssignNumberModalList">
+                                        <i class="fa-regular fa-magnifying-glass"></i>
+                                    </button>
+                                </div>
+
+                                <!-- ModemTel -->
+                                <div class="tab-pane fade show active" id="routing-manager-assign-number-modal-physical-sim" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-physical-sim-tab">
+                                    <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="1">
+                                        <!-- Dynamically Generated -->
+                                    </div>
+                                </div>
+
+                                <!-- Twilio -->
+                                <div class="tab-pane fade" id="routing-manager-assign-number-modal-twilio" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-twilio-tab">
+                                    <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="2">
+                                        <!-- Dynamically Generated -->
+                                    </div>
+                                </div>
+
+                                <!-- Vonage -->
+                                <div class="tab-pane fade" id="routing-manager-assign-number-modal-vonage" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-vonage-tab">
+                                    <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="3">
+                                        <!-- Dynamically Generated -->
+                                    </div>
+                                </div>
+
+                                <!-- Telnyx -->
+                                <div class="tab-pane fade" id="routing-manager-assign-number-modal-telnyx" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-telnyx-tab">
+                                    <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="4">
+                                        <!-- Dynamically Generated -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton" disabled>
+                                Select Number
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add ModemTel Modal -->
+            <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add ModemTel Number</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="physicalNumberModalIntegrationSelect" class="form-label">Integration</label>
+                                <select class="form-select" id="physicalNumberModalIntegrationSelect">
+                                    <!-- Dynamically Generated Once -->
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="physicalNumberModalCountrySelect" class="form-label">Country Code</label>
+                                <select class="form-select" id="physicalNumberModalCountrySelect">
+                                    <!-- Dynamically Generated Once -->
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="physicalNumberModalNumberInput" class="form-label">Number</label>
+                                <input type="tel" class="form-control" id="physicalNumberModalNumberInput" placeholder="Number">
+                            </div>
+                            <div class="mb-3">
+                                <label for="physicalNumberModalRegionSelect" class="form-label">Route Server Region <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Iqra's server region that will be used to process the call (For low latency, match your TTS/STT/LLM/etc intergation's region closed to this region)."><i class="fa-regular fa-circle-question"></i></a></label>
+                                <select class="form-select" id="physicalNumberModalRegionSelect">
+                                    <!-- Dynamically Generated Once -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="addNewPhysicalNumberButton" disabled>Save Number</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Twilio Number Modal -->
+                <div class="modal modal-lg fade" id="addNewTwilioNumberModal" tabindex="-1" aria-labelledby="addNewTwilioNumberModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="addNewTwilioNumberModalLabel">Add Twilio Number</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                todo
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Vonage Number Modal -->
+                <div class="modal modal-lg fade" id="addNewVonageSimNumberModal" tabindex="-1" aria-labelledby="addNewVonageSimNumberModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="addNewVonageSimNumberModalLabel">Add Vonage Sim Number</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                todo
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3667,10 +3854,10 @@
                             <button class="nav-link" id="settings-inner-languages-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-languages" type="button" role="tab" aria-controls="settings-inner-languages" aria-selected="true">Languages</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="settings-inner-domains-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-domains" type="button" role="tab" aria-controls="settings-inner-domains" aria-selected="true">Domains</button>
+                            <button class="nav-link disabled" id="settings-inner-domains-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-domains" type="button" role="tab" aria-controls="settings-inner-domains" aria-selected="true">Domains</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="settings-inner-users-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-users" type="button" role="tab" aria-controls="settings-inner-users" aria-selected="true">Users</button>
+                            <button class="nav-link disabled" id="settings-inner-users-tab" data-bs-toggle="pill" data-bs-target="#settings-inner-users" type="button" role="tab" aria-controls="settings-inner-users" aria-selected="true">Users</button>
                         </li>
                     </ul>
                     <button class="btn btn-primary btn-ic-span-align" id="settingsSaveButton" disabled>
@@ -4336,152 +4523,6 @@
                                 <span class="visually-hidden">Loading...</span>
                             </div>
                         </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add Route Phone Number Modal -->
-        <div class="modal fade" id="editChangeRouteNumberModal" tabindex="-1" aria-labelledby="editChangeRouteNumberModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="editChangeRouteNumberModalLabel">
-                            Select Number
-                        </h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="d-flex flex-row align-items-center justify-content-between mb-2">
-                            <ul class="nav" id="routing-manager-assign-number-modal-tab" role="tablist">
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
-                                        ModemTel
-                                    </button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="routing-manager-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-twilio" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-twilio" aria-selected="true">Twilio</button>
-                                </li>
-                                <li class="nav-item me-2" role="presentation">
-                                    <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="routing-manager-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-telnyx" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-telnyx" aria-selected="true">Telnyx</button>
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="tab-content w-100 mb-3" id="routing-manager-assign-number-modal-tabContent">
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control" id="inputRouteModalSearchNumberInput" placeholder="Phone Number">
-                                <button class="btn btn-primary" id="searchRouteManagerAssignNumberModalList">
-                                    <i class="fa-regular fa-magnifying-glass"></i>
-                                </button>
-                            </div>
-
-                            <!-- ModemTel -->
-                            <div class="tab-pane fade show active" id="routing-manager-assign-number-modal-physical-sim" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-physical-sim-tab">
-                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="1">
-                                    <!-- Dynamically Generated -->
-                                </div>
-                            </div>
-
-                            <!-- Twilio -->
-                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-twilio" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-twilio-tab">
-                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="2">
-                                    <!-- Dynamically Generated -->
-                                </div>
-                            </div>
-
-                            <!-- Vonage -->
-                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-vonage" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-vonage-tab">
-                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="3">
-                                    <!-- Dynamically Generated -->
-                                </div>
-                            </div>
-
-                            <!-- Telnyx -->
-                            <div class="tab-pane fade" id="routing-manager-assign-number-modal-telnyx" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-telnyx-tab">
-                                <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="4">
-                                    <!-- Dynamically Generated -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton" disabled>
-                            Select Number
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Add ModemTel Modal -->
-        <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add ModemTel Number</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="physicalNumberModalIntegrationSelect" class="form-label">Integration</label>
-                            <select class="form-select" id="physicalNumberModalIntegrationSelect">
-                                <!-- Dynamically Generated Once -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="physicalNumberModalCountrySelect" class="form-label">Country Code</label>
-                            <select class="form-select" id="physicalNumberModalCountrySelect">
-                                <!-- Dynamically Generated Once -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="physicalNumberModalNumberInput" class="form-label">Number</label>
-                            <input type="tel" class="form-control" id="physicalNumberModalNumberInput" placeholder="Number">
-                        </div>
-                        <div class="mb-3">
-                            <label for="physicalNumberModalRegionSelect" class="form-label">Route Server Region</label>
-                            <select class="form-select" id="physicalNumberModalRegionSelect">
-                                <!-- Dynamically Generated Once -->
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="addNewPhysicalNumberButton" disabled>Save Number</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Twilio Number Modal -->
-            <div class="modal modal-lg fade" id="addNewTwilioNumberModal" tabindex="-1" aria-labelledby="addNewTwilioNumberModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="addNewTwilioNumberModalLabel">Add Twilio Number</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            todo
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Add Vonage Number Modal -->
-            <div class="modal modal-lg fade" id="addNewVonageSimNumberModal" tabindex="-1" aria-labelledby="addNewVonageSimNumberModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="addNewVonageSimNumberModalLabel">Add Vonage Sim Number</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            todo
-                        </div>
                     </div>
                 </div>
             </div>

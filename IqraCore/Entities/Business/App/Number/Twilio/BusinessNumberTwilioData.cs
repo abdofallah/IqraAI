@@ -7,8 +7,6 @@ namespace IqraCore.Entities.Business
     {
         public override TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Twilio;
 
-        public BusinessNumberTwilioStatusEnum Status { get; set; } = BusinessNumberTwilioStatusEnum.Unknown;
-
         public string TwilioPhoneNumberId { get; set; } = string.Empty;
     }
 }

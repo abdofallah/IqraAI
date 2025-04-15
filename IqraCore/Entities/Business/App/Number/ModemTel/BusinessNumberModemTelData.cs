@@ -11,8 +11,6 @@ namespace IqraCore.Entities.Business
 
         public override TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.ModemTel;
 
-        public BusinessNumberModemTelStatusEnum Status { get; set; } = BusinessNumberModemTelStatusEnum.Unknown;
-
         public string ModemTelPhoneNumberId { get; set; } = "";
     }
 }

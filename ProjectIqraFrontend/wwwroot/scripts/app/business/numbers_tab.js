@@ -17,6 +17,8 @@ let IsSavingModemTelNumber = false;
 // Vonage
 
 /** Element Variables **/
+const numbersTabTooltipTriggerList = document.querySelectorAll('#phone-numbers-tab [data-bs-toggle="tooltip"]');
+const numbersTabTooltipList = [...numbersTabTooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
 const numbersTab = $("#phone-numbers-tab");
 
@@ -102,20 +104,17 @@ function createDefaultModemTelNumberObject() {
 function CreateBusinessModemTelNumbersTableElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
 	const regionData = SpecificationRegionsListData.find((regionData) => regionData.countryRegion === numberData.regionId);
+	const routeData = BusinessFullData.businessApp.routings.find((route) => route.id === numberData.routeId);
 
-	let statusElement = "";
-	if (numberData.status.value === 0) {
-		statusElement = `<span class="badge bg-danger">Offline</span>`;
-	} else if (numberData.status.value === 1) {
-		statusElement = `<span class="badge bg-success">Online</span>`;
-	} else {
-		statusElement = `<span class="badge bg-warning">Unknown</span>`;
-	}
+	let routeName = "-";
+	if (routeData) {
+		routeName = routeData.general.emoji + " " + routeData.general.name;
+    }
 
 	const element = $(`<tr number-id="${numberData.id}" provider-type="${numberData.provider.value}">
-                <td>${statusElement}</td>
                 <td>${countryData["Alpha-2 code"]}</td>
                 <td>${numberData.number}</td>
+				<td>${routeName}</td>
                 <td>${regionData.countryRegion}</td>
                 <td>
 					<button class="btn btn-light btn-sm" number-id="${numberData.id}" button-type="view-webhook-physical-number">

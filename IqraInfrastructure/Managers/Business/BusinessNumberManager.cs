@@ -124,10 +124,7 @@ namespace IqraInfrastructure.Managers.Business
 
             if (provider == TelephonyProviderEnum.ModemTel)
             {
-                newNumberData = new BusinessNumberModemTelData(newNumberData)
-                {
-                    Status = BusinessNumberModemTelStatusEnum.Offline
-                };
+                newNumberData = new BusinessNumberModemTelData(newNumberData);
 
                 var decryptedKey = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]);
 
