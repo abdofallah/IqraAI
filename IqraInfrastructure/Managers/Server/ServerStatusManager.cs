@@ -2,8 +2,13 @@
 using IqraCore.Entities.Server;
 using IqraInfrastructure.Repositories.Server;
 using Microsoft.Extensions.Logging;
-using NickStrupat;
+using NickStrupat; // Assuming this is for ComputerInfo
+using System;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Server
 {
@@ -23,6 +28,14 @@ namespace IqraInfrastructure.Managers.Server
         private readonly Process _currentProcess;
         private readonly PerformanceCounter? _cpuCounter;
         private readonly PerformanceCounter? _ramCounter;
+        private readonly ComputerInfo? _computerInfo;
+
+        // --- Linux Specific Fields ---
+        private const string ProcStatPath = "/proc/stat";
+        private const string ProcMemInfoPath = "/proc/meminfo";
+        private long _previousTotalCpuTime = 0;
+        private long _previousIdleCpuTime = 0;
+        // ---------------------------
 
         public ServerStatusManager(
             ILogger<ServerStatusManager> logger,
@@ -35,7 +48,6 @@ namespace IqraInfrastructure.Managers.Server
             _serverStatusChannel = serverStatusChannel;
             _serverStatusRepository = serverStatusRepository;
 
-            // Initialize server status
             _currentStatus = new ServerStatusData
             {
                 ServerId = _serverConfig.ServerId,
@@ -45,10 +57,12 @@ namespace IqraInfrastructure.Managers.Server
                 MaintenanceMode = false,
                 MaxConcurrentCallsCount = _serverConfig.ExpectedMaxConcurrentCalls,
                 CurrentActiveCallsCount = 0,
-                QueuedCallsCount = 0
+                QueuedCallsCount = 0,
+                CpuUsagePercent = 0,
+                MemoryUsagePercent = 0,
+                NetworkUsageMbps = 0
             };
 
-            // Initialize performance counters if running on Windows
             _currentProcess = Process.GetCurrentProcess();
             try
             {
@@ -56,11 +70,26 @@ namespace IqraInfrastructure.Managers.Server
                 {
                     _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
                     _ramCounter = new PerformanceCounter("Memory", "Available MBytes");
+                    _computerInfo = new ComputerInfo();
+                    _cpuCounter.NextValue(); // Prime the counter
+                    Task.Delay(100).Wait(); // Brief delay helps accuracy on first real read
+                }
+                else if (OperatingSystem.IsLinux())
+                {
+                    // Prime the CPU reading for the first calculation delta
+                    ReadLinuxCpuTimes(out _previousTotalCpuTime, out _previousIdleCpuTime);
+                }
+                else
+                {
+                    _logger.LogWarning("Operating system is not Windows or Linux. Hardware metrics might be limited or inaccurate.");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to initialize performance counters");
+                _logger.LogWarning(ex, "Failed to initialize OS-specific performance monitoring components.");
+                _cpuCounter = null;
+                _ramCounter = null;
+                _computerInfo = null;
             }
         }
 
@@ -68,7 +97,7 @@ namespace IqraInfrastructure.Managers.Server
         {
             lock (_statusLock)
             {
-                return _currentStatus;
+                return _currentStatus.Clone(); // Return a clone
             }
         }
 
@@ -111,30 +140,26 @@ namespace IqraInfrastructure.Managers.Server
 
         public async Task UpdateAndPublishStatusAsync()
         {
+            ServerStatusData statusSnapshot;
+
             try
             {
                 lock (_statusLock)
                 {
-                    // Update metrics
                     UpdateHardwareMetrics();
                     _currentStatus.LastUpdated = DateTime.UtcNow;
-                }
-
-                // Get a snapshot of the current status
-                ServerStatusData statusSnapshot;
-                lock (_statusLock)
-                {
                     statusSnapshot = _currentStatus.Clone();
-                }
+                } // Lock released here
 
                 // Publish to Redis
                 await _serverStatusChannel.PublishServerStatusAsync(statusSnapshot);
 
                 // Update MongoDB (less frequently)
-                if (DateTime.UtcNow - _lastHistoricalRecordTime > _historicalRecordInterval)
+                var now = DateTime.UtcNow;
+                if (now - _lastHistoricalRecordTime > _historicalRecordInterval)
                 {
                     await _serverStatusRepository.RecordHistoricalStatusAsync(statusSnapshot);
-                    _lastHistoricalRecordTime = DateTime.UtcNow;
+                    _lastHistoricalRecordTime = now;
                 }
             }
             catch (Exception ex)
@@ -147,63 +172,206 @@ namespace IqraInfrastructure.Managers.Server
         {
             try
             {
-                // Update CPU usage
-                if (OperatingSystem.IsWindows() && _cpuCounter != null)
+                if (OperatingSystem.IsWindows())
                 {
-                    _currentStatus.CpuUsagePercent = _cpuCounter.NextValue();
+                    if (_cpuCounter != null)
+                    {
+                        _currentStatus.CpuUsagePercent = _cpuCounter.NextValue();
+                    }
+                    else { _currentStatus.CpuUsagePercent = 0; }
+
+                    if (_ramCounter != null && _computerInfo != null)
+                    {
+                        var availableMb = _ramCounter.NextValue();
+                        try
+                        {
+                            var totalMb = (double)_computerInfo.TotalPhysicalMemory / 1024 / 1024;
+                            if (totalMb > 0)
+                            {
+                                _currentStatus.MemoryUsagePercent = 100.0 * (totalMb - availableMb) / totalMb;
+                            }
+                            else { _currentStatus.MemoryUsagePercent = 0; }
+                        }
+                        catch (Exception memEx)
+                        {
+                            _logger.LogWarning(memEx, "Could not retrieve total physical memory using ComputerInfo.");
+                            _currentStatus.MemoryUsagePercent = 0;
+                        }
+                    }
+                    else { _currentStatus.MemoryUsagePercent = 0; }
                 }
-                else
+                else if (OperatingSystem.IsLinux())
                 {
-                    _currentStatus.CpuUsagePercent = GetCpuUsageAlternative();
+                    _currentStatus.CpuUsagePercent = GetLinuxCpuUsage();
+                    _currentStatus.MemoryUsagePercent = GetLinuxMemoryUsage();
                 }
 
-                // Update memory usage
-                if (OperatingSystem.IsWindows() && _ramCounter != null)
-                {
-                    var availableMb = _ramCounter.NextValue();
-                    var totalMb = new ComputerInfo().TotalPhysicalMemory / 1024 / 1024;
-                    _currentStatus.MemoryUsagePercent = 100 - (availableMb / totalMb * 100);
-                }
-                else
-                {
-                    _currentStatus.MemoryUsagePercent = GetMemoryUsageAlternative();
-                }
+                _currentStatus.CpuUsagePercent = Math.Clamp(_currentStatus.CpuUsagePercent, 0.0, 100.0);
+                _currentStatus.MemoryUsagePercent = Math.Clamp(_currentStatus.MemoryUsagePercent, 0.0, 100.0);
 
-                // Update network usage (This is a simplified approach)
-                _currentStatus.NetworkUsageMbps = 0; // Implement if needed
+                // Network usage remains unimplemented
+                _currentStatus.NetworkUsageMbps = 0;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error updating hardware metrics");
+                _currentStatus.CpuUsagePercent = 0;
+                _currentStatus.MemoryUsagePercent = 0;
+                _currentStatus.NetworkUsageMbps = 0;
             }
         }
 
-        private double GetCpuUsageAlternative()
+        // --- Linux Specific Methods ---
+
+        private bool ReadLinuxCpuTimes(out long totalTime, out long idleTime)
         {
+            totalTime = 0;
+            idleTime = 0;
             try
             {
-                // Use process CPU time as an approximation
-                TimeSpan processorTime = _currentProcess.TotalProcessorTime;
-                return processorTime.TotalMilliseconds / (Environment.ProcessorCount * 100);
+                string? cpuLine = File.ReadLines(ProcStatPath).FirstOrDefault();
+                if (cpuLine == null || !cpuLine.StartsWith("cpu "))
+                {
+                    _logger.LogWarning($"Could not read expected CPU line from {ProcStatPath}");
+                    return false;
+                }
+
+                var parts = cpuLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 8)
+                {
+                    _logger.LogWarning($"Unexpected format in {ProcStatPath}: {cpuLine}");
+                    return false;
+                }
+
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    if (long.TryParse(parts[i], out long time)) { totalTime += time; }
+                    else
+                    {
+                        _logger.LogWarning($"Could not parse CPU time value '{parts[i]}' from {ProcStatPath}");
+                        return false;
+                    }
+                }
+
+                // Idle time = idle (index 4) + iowait (index 5)
+                if (long.TryParse(parts[4], out long idle) && long.TryParse(parts[5], out long ioWait))
+                {
+                    idleTime = idle + ioWait;
+                }
+                else
+                {
+                    _logger.LogWarning($"Could not parse idle/iowait time values from {ProcStatPath}");
+                    return false;
+                }
+                return true;
             }
-            catch
+            catch (IOException ioEx)
             {
-                return 0;
+                _logger.LogWarning(ioEx, $"IO Error reading {ProcStatPath}. Check file existence and permissions.");
+                return false;
+            }
+            catch (UnauthorizedAccessException authEx)
+            {
+                _logger.LogWarning(authEx, $"Permission denied reading {ProcStatPath}.");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Unexpected error reading CPU times from {ProcStatPath}.");
+                return false;
             }
         }
 
-        private double GetMemoryUsageAlternative()
+        private double GetLinuxCpuUsage()
+        {
+            if (!ReadLinuxCpuTimes(out long currentTotalTime, out long currentIdleTime))
+            {
+                _logger.LogWarning("Could not read current Linux CPU times. Reporting 0% usage.");
+                return 0.0;
+            }
+
+            long deltaTotal = currentTotalTime - _previousTotalCpuTime;
+            long deltaIdle = currentIdleTime - _previousIdleCpuTime;
+
+            _previousTotalCpuTime = currentTotalTime;
+            _previousIdleCpuTime = currentIdleTime;
+
+            if (deltaTotal <= 0)
+            {
+                return 0.0; // Cannot calculate delta accurately yet or error.
+            }
+
+            double cpuUsage = (double)(deltaTotal - deltaIdle) / deltaTotal * 100.0;
+            return cpuUsage;
+        }
+
+        private double GetLinuxMemoryUsage()
         {
             try
             {
-                // Use process working set as an approximation
-                return _currentProcess.WorkingSet64 / (double)(new ComputerInfo().TotalPhysicalMemory) * 100;
+                long memTotal = -1, memFree = -1, buffers = -1, cached = -1, sReclaimable = -1;
+                var lines = File.ReadAllLines(ProcMemInfoPath);
+
+                foreach (var line in lines)
+                {
+                    var parts = line.Split(':', StringSplitOptions.TrimEntries);
+                    if (parts.Length != 2) continue;
+                    string key = parts[0];
+                    string value = parts[1].Replace(" kB", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+                    if (long.TryParse(value, out long parsedValue))
+                    {
+                        switch (key)
+                        {
+                            case "MemTotal": memTotal = parsedValue; break;
+                            case "MemFree": memFree = parsedValue; break;
+                            case "Buffers": buffers = parsedValue; break;
+                            case "Cached": cached = parsedValue; break;
+                            case "SReclaimable": sReclaimable = parsedValue; break; // Slab Reclaimable
+                        }
+                    }
+                }
+
+                if (memTotal <= 0 || memFree < 0 || buffers < 0 || cached < 0)
+                {
+                    _logger.LogWarning($"Could not parse required memory fields from {ProcMemInfoPath}.");
+                    return 0.0;
+                }
+
+                // Calculate used memory. Linux uses free memory + buffers + cache for available.
+                // Used = Total - Free - Buffers - Cache.
+                // More accurate: Used = Total - Free - Buffers - (Cached - SReclaimable)
+                long usedMemory;
+                if (sReclaimable > 0)
+                {
+                    usedMemory = memTotal - memFree - buffers - (cached - sReclaimable);
+                }
+                else
+                {
+                    usedMemory = memTotal - memFree - buffers - cached; // Standard calc
+                }
+
+                double memUsagePercent = (double)usedMemory / memTotal * 100.0;
+                return memUsagePercent;
             }
-            catch
+            catch (IOException ioEx)
             {
-                return 0;
+                _logger.LogWarning(ioEx, $"IO Error reading {ProcMemInfoPath}.");
+                return 0.0;
+            }
+            catch (UnauthorizedAccessException authEx)
+            {
+                _logger.LogWarning(authEx, $"Permission denied reading {ProcMemInfoPath}.");
+                return 0.0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Unexpected error reading memory info from {ProcMemInfoPath}.");
+                return 0.0;
             }
         }
+
+        // --- Other Methods ---
 
         public bool HasCapacity()
         {
