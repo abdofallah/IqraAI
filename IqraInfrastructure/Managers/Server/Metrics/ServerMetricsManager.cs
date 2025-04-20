@@ -1,23 +1,26 @@
 ﻿using IqraCore.Entities.Server;
+using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Managers.Server
+namespace IqraInfrastructure.Managers.Server.Metrics
 {
     public class ServerMetricsManager : BackgroundService
     {
         private readonly ILogger<ServerMetricsManager> _logger;
-        private readonly ServerStatusManager _serverStatusManager;
+        private readonly ServerMetricsMonitor _serverStatusManager;
         private readonly CallQueueRepository _callQueueRepository;
+        private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ServerConfig _serverConfig;
 
-        private readonly TimeSpan _updateInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(500);
 
         public ServerMetricsManager(
             ILogger<ServerMetricsManager> logger,
-            ServerStatusManager serverStatusService,
+            ServerMetricsMonitor serverStatusService,
             CallQueueRepository callQueueRepository,
+            ConversationStateRepository conversationStateRepository,
             ServerConfig serverConfig)
         {
             _logger = logger;
@@ -35,8 +38,11 @@ namespace IqraInfrastructure.Managers.Server
                 try
                 {
                     // Update queued calls count
-                    int queuedCallsCount = await _callQueueRepository.GetQueuedCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
-                    _serverStatusManager.SetQueuedCalls(queuedCallsCount);
+                    long queuedCallsCount = await _callQueueRepository.GetQueuedCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
+                    _serverStatusManager.SetQueuedCalls((int)queuedCallsCount);
+
+                    long activeCallCount = await _conversationStateRepository.GetActiveCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
+                    _serverStatusManager.SetActiveCallsCount((int)activeCallCount);
 
                     // Update and publish server status
                     await _serverStatusManager.UpdateAndPublishStatusAsync();

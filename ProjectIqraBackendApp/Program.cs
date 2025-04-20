@@ -1,5 +1,6 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
+using IqraCore.Interfaces.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -9,6 +10,7 @@ using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
@@ -25,6 +27,7 @@ using IqraInfrastructure.Repositories.Telephony;
 using IqraInfrastructure.Repositories.TTS;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace ProjectIqraBackendApp
 {
@@ -344,7 +347,38 @@ namespace ProjectIqraBackendApp
             });
 
             // Core server services
-            builder.Services.AddSingleton<ServerStatusManager>();
+            builder.Services.AddSingleton<IHardwareMonitor>((sp) =>
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    return new WindowsHardwareMonitor(
+                        sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
+                        sp.GetRequiredService<ServerConfig>()
+                    );
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    return new LinuxHardwareMonitor(
+                        sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
+                        sp.GetRequiredService<ServerConfig>()
+                    );
+                }
+                else
+                {
+                    throw new Exception("Unsupported OS for IHARDWAREMONITOR");
+                }
+            });
+
+            builder.Services.AddSingleton<ServerMetricsMonitor>((sp) =>
+            {
+                return new ServerMetricsMonitor(
+                    sp.GetRequiredService<ILogger<ServerMetricsMonitor>>(),
+                    sp.GetRequiredService<ServerConfig>(),
+                    sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
+                    sp.GetRequiredService<ServerStatusRepository>(),
+                    sp.GetRequiredService<IHardwareMonitor>()
+                );
+            });
             builder.Services.AddSingleton<SystemPromptGenerator>((sp) =>
             {
                 return new SystemPromptGenerator(

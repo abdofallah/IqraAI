@@ -320,7 +320,7 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task<int> GetQueuedCallCountForServerAsync(string serverId, string regionId)
+        public async Task<long> GetQueuedCallCountForServerAsync(string serverId, string regionId)
         {
             try
             {
@@ -333,7 +333,7 @@ namespace IqraInfrastructure.Repositories.Telephony
                     })
                 );
 
-                return (int)await _callQueueCollection.CountDocumentsAsync(filter);
+                return await _callQueueCollection.CountDocumentsAsync(filter);
             }
             catch (Exception ex)
             {

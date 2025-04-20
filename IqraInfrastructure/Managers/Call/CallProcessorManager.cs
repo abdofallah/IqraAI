@@ -13,7 +13,7 @@ using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
-using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
@@ -30,7 +30,7 @@ namespace IqraInfrastructure.Managers.Call
     {
         private readonly ILogger<CallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ServerStatusManager _serverStatusManager;
+        private readonly ServerMetricsManager _serverStatusManager;
         private readonly CallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.Call
         public CallProcessorManager(
             ILogger<CallProcessorManager> logger,
             IServiceProvider serviceProvider,
-            ServerStatusManager serverStatusService,
+            ServerMetricsManager serverStatusService,
             CallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,

@@ -438,5 +438,30 @@ namespace IqraInfrastructure.Repositories.Conversation
 
             return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         }
+
+        public async Task<long> GetActiveCallCountForServerAsync(string serverId, string regionId)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.ServerId, serverId),
+                    Builders<ConversationState>.Filter.Eq(c => c.RegionId, regionId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new[]
+                    {
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Paused,
+                        ConversationSessionState.Ending
+                    })
+                );
+
+                return await _conversationStateCollection.CountDocumentsAsync(filter);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active call count for server {ServerId} in region {RegionId}", serverId, regionId);
+                throw;
+            }
+        }
     }
 }

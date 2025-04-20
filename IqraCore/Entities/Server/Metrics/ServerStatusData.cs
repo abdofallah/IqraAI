@@ -3,7 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Server
 {
-    public class ServerStatusData
+    public class ServerStatusData : ICloneable
     {
         [BsonId]
         public string ServerId { get; set; } = string.Empty;
@@ -16,12 +16,14 @@ namespace IqraCore.Entities.Server
         public DateTime? MaintenanceModeStartedAt { get; set; } = null;
 
         public int CurrentActiveCallsCount { get; set; } = 0;
-        public int MaxConcurrentCallsCount { get; set; } = 100;
         public int QueuedCallsCount { get; set; } = 0;
+
+        public int MaxConcurrentCallsCount { get; set; } = 0; // TODO
 
         public double CpuUsagePercent { get; set; } = 0;
         public double MemoryUsagePercent { get; set; } = 0;
-        public double NetworkUsageMbps { get; set; } = 0;
+        public double NetworkDownloadMbps { get; set; } = 0;
+        public double NetworkUploadMbps { get; set; } = 0;
 
         public ServerLoadStatusEnum LoadStatus
         {
@@ -37,23 +39,9 @@ namespace IqraCore.Entities.Server
             }
         }
 
-        public ServerStatusData Clone()
+        public object Clone()
         {
-            return new ServerStatusData
-            {
-                ServerId = ServerId,
-                RegionId = RegionId,
-                Type = Type,
-                LastUpdated = LastUpdated,
-                MaintenanceMode = MaintenanceMode,
-                MaintenanceModeStartedAt = MaintenanceModeStartedAt,
-                CurrentActiveCallsCount = CurrentActiveCallsCount,
-                MaxConcurrentCallsCount = MaxConcurrentCallsCount,
-                QueuedCallsCount = QueuedCallsCount,
-                CpuUsagePercent = CpuUsagePercent,
-                MemoryUsagePercent = MemoryUsagePercent,
-                NetworkUsageMbps = NetworkUsageMbps
-            };
+            return this.MemberwiseClone();
         }
     }
 }
