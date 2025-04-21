@@ -160,7 +160,7 @@ namespace IqraInfrastructure.Repositories.Business
             }
 
             if (shouldProceed) {
-                await _appRepository.AddVestaCPProxyTemplatesHash(templateHashes);
+                await _appRepository.AddUpdateVestaCPProxyTemplatesHash(templateHashes);
                 Console.WriteLine("[BusinessDomainVestaCPRepository] Updating templates files and rebuilding web.");
             }
             else

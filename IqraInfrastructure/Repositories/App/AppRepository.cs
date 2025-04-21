@@ -23,13 +23,8 @@ namespace IqraInfrastructure.Repositories.App
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }
 
-        /**
-         * 
-         * API Keys
-         * 
-        **/
-
-        private const string ApiKeyField = "ApiKeys";
+        // Fields
+        private const string AppPermissionConfigField = "AppPermissionConfig";
         private const string VestaCPProxyTemplatesHash = "VestaCPProxyTemplatesHash";
 
         /**
@@ -37,47 +32,34 @@ namespace IqraInfrastructure.Repositories.App
          * API Keys 
          * 
         **/ 
-        public async Task<bool> AddApiKey(string apiKey)
+        public async Task<bool> AddUpdateAppPermissionConfig(AppPermissionConfig appPermissionConfig)
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", ApiKeyField);
-            var update = Builders<BsonDocument>.Update.Push(ApiKeyField,
-                BsonDocument.Create(new ApiKey
-                {
-                    Key = apiKey,
-                    CreatedAt = DateTime.UtcNow
-                })
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", AppPermissionConfigField);
+            var update = Builders<BsonDocument>.Update.Set(AppPermissionConfigField,
+                BsonDocument.Create(appPermissionConfig)
             );
 
             var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
             return result.ModifiedCount > 0;
         }
 
-        public async Task<ApiKey?> GetApiKeyData(string apiKey)
+        public async Task<AppPermissionConfig?> GetAppPermissionConfig()
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", ApiKeyField) &
-                         Builders<BsonDocument>.Filter.ElemMatch(ApiKeyField, Builders<ApiKey>.Filter.Eq(d => d.Key, apiKey));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", AppPermissionConfigField);
 
             var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
 
             if (result == null) return null;
 
-            return BsonSerializer.Deserialize<ApiKey>(result);
+            return BsonSerializer.Deserialize<AppPermissionConfig>(result);
         }
-
-        public async Task<bool> ApiKeyExists(string apiKey)
-        {
-            var result = GetApiKeyData(apiKey);
-
-            return result != null;
-        }
-
         /**
          * 
          * VestaCP Proxy Templates Hash
          * 
         **/
 
-        public async Task<bool> AddVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
+        public async Task<bool> AddUpdateVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHash);
             var update = Builders<BsonDocument>.Update.Set("TemplateHashes", templateHashes);

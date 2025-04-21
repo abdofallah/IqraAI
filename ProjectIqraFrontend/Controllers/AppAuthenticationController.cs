@@ -1,6 +1,8 @@
-﻿using IqraCore.Entities.User;
+﻿using IqraCore.Entities.App.Configuration;
+using IqraCore.Entities.User;
 using IqraCore.Models.Authentication;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
@@ -8,15 +10,24 @@ namespace ProjectIqraFrontend.Controllers
     public class AppAuthenticationController : Controller
     {
         private readonly UserManager _userManager;
+        private readonly AppRepository _appRepository;
 
-        public AppAuthenticationController(UserManager userManager)
+        public AppAuthenticationController(UserManager userManager, AppRepository appRepository)
         {
             _userManager = userManager;
+            _appRepository = appRepository;
         }
 
         [HttpPost("/auth/register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
+            AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+            if (appPermissionConfig != null && appPermissionConfig.RegisterationDisabledAt != null)
+            {
+                string message = ("Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "." : ": " + appPermissionConfig.PublicRegisterationDisabledReason));
+                return BadRequest(new { success = false, message = message });
+            }
+
             if (!TryValidateModel(model))
             {
                 return BadRequest(new { success = false, message = "Invalid email or password" });
@@ -42,6 +53,13 @@ namespace ProjectIqraFrontend.Controllers
         [HttpPost("/auth/login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
+            AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+            if (appPermissionConfig != null && appPermissionConfig.LoginDisabledAt != null)
+            {
+                string message = ("Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason));
+                return BadRequest(new { success = false, message = message });
+            }
+
             if (!TryValidateModel(model))
             {
                 return BadRequest(new { success = false, message = "Invalid email or password" });

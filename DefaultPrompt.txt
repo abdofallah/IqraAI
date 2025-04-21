@@ -91,10 +91,10 @@ Here is the information about {{Context.Branding.Name}} that you may use as your
 	Here are the services provided by {{Context.Branding.Name}}:
 	<ServicesInformation>
 	{{~ for service in Context.Services ~}}
-		<ServiceInformation(Id=service.Id)>
+		<ServiceInformation(Id={{service.Id}})>
 			Name: {{service.Name}}
 			Short Description: {{service.ShortDescription}}
-		</ServiceInformation(Id=service.Id)>
+		</ServiceInformation(Id={{service.Id}})>
 	{{~ end ~}}
 	</ServicesInformation>
 {{~ end ~}}
@@ -103,10 +103,10 @@ Here is the information about {{Context.Branding.Name}} that you may use as your
 	Here are the products provided by {{Context.Branding.Name}}:
 	<ProductsInformation>
 	{{~ for product in Context.Products ~}}
-		<ProductInformation(Id=product.Id)>
+		<ProductInformation(Id={{product.Id}})>
 			Name: {{product.Name}}
 			Short Description: {{product.ShortDescription}}
-		</ProductInformation(Id=product.Id)>
+		</ProductInformation(Id={{product.Id}})>
 	{{~ end ~}}
 	</ProductsInformation>
 {{~ end ~}}
