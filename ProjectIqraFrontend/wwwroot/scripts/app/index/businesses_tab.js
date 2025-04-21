@@ -19,7 +19,7 @@ const addNewBusinessButtonSpinner = addNewBusinessButton.find(".save-button-spin
 
 /** Functions **/
 function MoveToBusinessPage(BusinessId) {
-	window.location.href = "/app/business/" + BusinessId;
+	window.location.href = "/business/" + BusinessId;
 }
 
 function CreateUserBusinessCard(businessData) {

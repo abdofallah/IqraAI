@@ -9,7 +9,6 @@ using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Region;
-using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
@@ -45,7 +44,10 @@ namespace ProjectIqraBackendApp
                 {
                     ServerId = appConfig["Server:Identity"],
                     RegionId = appConfig["Server:RegionId"],
-                    ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"])
+                    ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
+                    NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
+                    MaxNetworkDownloadMbps = int.Parse(appConfig["Server:MaxNetworkDownloadMbps"]),
+                    MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"])
                 };
             });
 
@@ -387,11 +389,39 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<LLMProviderManager>()
                 );
             });
-            builder.Services.AddSingleton<CallProcessorManager>();
+            builder.Services.AddSingleton<CallProcessorManager>((sp) =>
+            {
+                return new CallProcessorManager(
+                    sp.GetRequiredService<ILogger<CallProcessorManager>>(),
+                    sp,
+                    sp.GetRequiredService<ServerMetricsMonitor>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
 
             // Background services
-            builder.Services.AddHostedService<ServerMetricsManager>();
-            builder.Services.AddHostedService<CallQueueCleanupManager>();
+            builder.Services.AddHostedService<ServerMetricsManager>((sp) =>
+            {
+                return new ServerMetricsManager(
+                    sp.GetRequiredService<ILogger<ServerMetricsManager>>(),
+                    sp.GetRequiredService<ServerMetricsMonitor>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ServerConfig>()
+                );
+            });
+            builder.Services.AddHostedService<CallQueueAndConversationCleanupManager>((sp) =>
+            {
+                return new CallQueueAndConversationCleanupManager(
+                    sp.GetRequiredService<ILogger<CallQueueAndConversationCleanupManager>>(),
+                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<ServerConfig>()
+                );
+            });
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)

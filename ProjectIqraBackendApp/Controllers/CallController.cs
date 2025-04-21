@@ -42,12 +42,12 @@ namespace ProjectIqraBackendApp.Controllers
             }
 
             _logger.LogInformation("Received incoming call request for provider {Provider}, call ID {CallId}, queue ID {QueueId}",
-                request.Provider, request.CallId, request.QueueId);
+                request.Provider, request.ProviderCallId, request.QueueId);
 
             try
             {
                 // Validate the request
-                if (string.IsNullOrEmpty(request.QueueId) || string.IsNullOrEmpty(request.CallId) || request.BusinessId <= 0)
+                if (string.IsNullOrEmpty(request.QueueId) || string.IsNullOrEmpty(request.ProviderCallId) || request.BusinessId < 0)
                 {
                     result.Code = "HandleIncomingCall:2";
                     result.Message = "Invalid request parameters";
@@ -217,7 +217,7 @@ namespace ProjectIqraBackendApp.Controllers
             return new TelephonyWebhookContextModel
             {
                 Provider = TelephonyProviderEnum.ModemTel,
-                CallId = request.CallId,
+                CallId = request.ProviderCallId,
                 BusinessId = request.BusinessId,
                 PhoneNumberId = request.PhoneNumberId,
                 To = request.To,
@@ -238,12 +238,12 @@ namespace ProjectIqraBackendApp.Controllers
             }
 
             // For Twilio, we need to create a callback URL for TwiML
-            var callbackUrl = $"TODO/api/call/twilio/{request.CallId}/twiml";
+            var callbackUrl = $"TODO/api/call/twilio/{request.ProviderCallId}/twiml";
 
             return new TelephonyWebhookContextModel
             {
                 Provider = TelephonyProviderEnum.Twilio,
-                CallId = request.CallId,
+                CallId = request.ProviderCallId,
                 BusinessId = request.BusinessId,
                 PhoneNumberId = request.PhoneNumberId,
                 To = request.To,

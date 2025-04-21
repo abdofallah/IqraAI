@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helper.Region;
+﻿using IqraCore.Entities.Helper.Server;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Region
@@ -10,7 +10,7 @@ namespace IqraCore.Entities.Region
         public string Endpoint { get; set; } = string.Empty;
         public string APIKey { get; set; } = string.Empty;
 
-        public virtual RegionServerTypeEnum Type { get; set; } = RegionServerTypeEnum.Unknown;
+        public virtual ServerTypeEnum Type { get; set; } = ServerTypeEnum.Unknown;
 
         public DateTime? DisabledAt { get; set; } = null;
     }

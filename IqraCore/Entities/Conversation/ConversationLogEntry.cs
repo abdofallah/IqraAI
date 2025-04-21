@@ -4,9 +4,9 @@ namespace IqraCore.Entities.Conversation
 {
     public class ConversationLogEntry
     {
-        public ConversationLogLevel Level { get; set; }
-        public string Message { get; set; }
-        public DateTime Timestamp { get; set; }
-        public string DataJson { get; set; }
+        public ConversationLogLevel Level { get; set; } = ConversationLogLevel.Information;
+        public string Message { get; set; } = "";
+        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public string? DataJson { get; set; } = null;
     }
 }

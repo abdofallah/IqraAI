@@ -30,7 +30,7 @@ namespace IqraInfrastructure.Managers.Call
     {
         private readonly ILogger<CallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ServerMetricsManager _serverStatusManager;
+        private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly CallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.Call
         public CallProcessorManager(
             ILogger<CallProcessorManager> logger,
             IServiceProvider serviceProvider,
-            ServerMetricsManager serverStatusService,
+            ServerMetricsMonitor serverMetricsMonitor,
             CallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
@@ -51,7 +51,7 @@ namespace IqraInfrastructure.Managers.Call
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _serverStatusManager = serverStatusService;
+            _serverMetricsMonitor = serverMetricsMonitor;
             _callQueueRepository = callQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _businessManager = businessManager;
@@ -61,10 +61,11 @@ namespace IqraInfrastructure.Managers.Call
         public async Task<string> CreateConversationSessionAsync(
             ConversationSessionConfiguration config,
             TelephonyWebhookContextModel clientData,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             // Check if server has capacity
-            if (!_serverStatusManager.HasCapacity())
+            if (!_serverMetricsMonitor.HasCapacity())
             {
                 _logger.LogWarning("Server at capacity, cannot create new conversation session");
                 return string.Empty;
@@ -75,15 +76,8 @@ namespace IqraInfrastructure.Managers.Call
 
             try
             {
-                await _sessionCreationLock.WaitAsync(cancellationToken);    
-                await _callQueueRepository.UpdateCallSessionIdAndStatusAsync(config.QueueId, sessionId, CallQueueStatusEnum.Processing);
-
-                // Double check capacity after acquiring lock
-                if (!_serverStatusManager.HasCapacity())
-                {
-                    _logger.LogWarning("Server at capacity after lock, cannot create new conversation session");
-                    return string.Empty;
-                }
+                await _sessionCreationLock.WaitAsync(cancellationToken);
+                await _callQueueRepository.UpdateCallQueueSessionIdAndStatusAsync(config.QueueId, sessionId, CallQueueStatusEnum.Processing);
 
                 // Create a cancellation token for this session
                 var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -94,6 +88,7 @@ namespace IqraInfrastructure.Managers.Call
                     sessionId,
                     _businessManager,
                     config,
+                    _callQueueRepository,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _serviceProvider.GetRequiredService<ILoggerFactory>(),
@@ -143,8 +138,7 @@ namespace IqraInfrastructure.Managers.Call
                 _activeSessions[sessionId] = conversationSession;
 
                 // Update server status
-                await _callQueueRepository.UpdateStatusAsync(config.QueueId, CallQueueStatusEnum.Completed);
-                _serverStatusManager.IncrementActiveCalls();
+                await _callQueueRepository.UpdateCallQueueStatusAsync(config.QueueId, CallQueueStatusEnum.Processed);
 
                 _logger.LogInformation("Created conversation session {SessionId} for business {BusinessId}",
                     sessionId, config.BusinessId);
@@ -232,9 +226,6 @@ namespace IqraInfrastructure.Managers.Call
                 try
                 {
                     await session.EndAsync(reason);
-
-                    // Update server status
-                    _serverStatusManager.DecrementActiveCalls();
 
                     _logger.LogInformation("Ended conversation session {SessionId}: {Reason}", sessionId, reason);
                 }

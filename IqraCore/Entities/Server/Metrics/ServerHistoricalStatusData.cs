@@ -15,6 +15,7 @@ namespace IqraCore.Entities.Server
 
         public double CpuUsagePercent { get; set; } = 0;
         public double MemoryUsagePercent { get; set; } = 0;
-        public double NetworkUsageMbps { get; set; } = 0;
+        public double NetworkDownloadMbps { get; set; } = 0;
+        public double NetworkUploadMbps { get; set; } = 0;
     }
 }

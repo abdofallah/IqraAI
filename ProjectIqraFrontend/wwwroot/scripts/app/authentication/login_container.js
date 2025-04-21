@@ -21,7 +21,7 @@
                     setCookie('authKey', response.authKey, 24);
 
                     // Redirect to a logged-in page or update the UI accordingly
-                    window.location.href = '/app';
+                    window.location.href = '/';
                 },
                 error: (xhr, status, error) => {
                     console.error('Login error:', error);

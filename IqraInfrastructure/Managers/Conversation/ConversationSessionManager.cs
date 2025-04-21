@@ -3,11 +3,13 @@ using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Telephony.Call;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Client;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Telephony;
 using IqraInfrastructure.Services;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSessionManager> _logger;
         private readonly BusinessManager _businessManager;
+        private readonly CallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
 
@@ -35,6 +38,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private readonly ConversationSessionConfiguration _configuration;
 
+        private CallQueueData _sessionCallQueueData;
         private BusinessApp _sessionBusinessAppData;
         private BusinessAppRoute _sessionBusinessRouteData;
 
@@ -70,6 +74,7 @@ namespace IqraInfrastructure.Managers.Conversation
             string sessionId,
             BusinessManager businessManager,
             ConversationSessionConfiguration configuration,
+            CallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
             ILoggerFactory loggerFactory,
@@ -80,6 +85,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _callOrWebInitiated = callOrWebInitiated;
             _businessManager = businessManager;
             _configuration = configuration;
+            _callQueueRepository = callQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
             _loggerFactory = loggerFactory;
@@ -92,6 +98,14 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async Task InitalizeConversationConfigurationAsync()
         {
+            var callQueueData = await _callQueueRepository.GetCallQueueByIdAsync(_configuration.QueueId);
+            if (callQueueData == null)
+            {
+                _logger.LogError("Call queue data not found for queue ID {QueueId}", _configuration.QueueId);
+                throw new InvalidOperationException($"Call queue data not found for queue ID {_configuration.QueueId}");
+            }
+            _sessionCallQueueData = callQueueData;
+
             var businessAppData = await _businessManager.GetUserBusinessAppById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessAppData.Success)
             {
@@ -119,7 +133,10 @@ namespace IqraInfrastructure.Managers.Conversation
                 QueueId = _configuration.QueueId,
                 Status = ConversationSessionState.Created,
                 StartTime = DateTime.UtcNow,
-                LastActivityTime = DateTime.UtcNow
+                LastActivityTime = DateTime.UtcNow,
+                ProcessingServerId = _sessionCallQueueData.ProcessingServerId,
+                RegionId = _sessionCallQueueData.RegionId,
+                ExpectedEndTimeAt = DateTime.UtcNow.AddSeconds(_sessionBusinessRouteData.Configuration.MaxCallTimeS)
             };
 
             await _conversationStateRepository.CreateAsync(conversationState);

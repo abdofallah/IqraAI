@@ -1,0 +1,66 @@
+﻿using IqraCore.Entities.Server;
+using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Telephony;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace IqraInfrastructure.Managers.Call
+{
+    public class CallQueueAndConversationCleanupManager : BackgroundService
+    {
+        private readonly ILogger<CallQueueAndConversationCleanupManager> _logger;
+        private readonly CallQueueRepository _callQueueRepository;
+        private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly ServerConfig _serverConfig;
+
+        private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
+
+        public CallQueueAndConversationCleanupManager(
+            ILogger<CallQueueAndConversationCleanupManager> logger,
+            CallQueueRepository callQueueRepository,
+            ConversationStateRepository conversationStateRepository,
+            ServerConfig serverConfig
+        )
+        {
+            _logger = logger;
+            _callQueueRepository = callQueueRepository;
+            _conversationStateRepository = conversationStateRepository;
+            _serverConfig = serverConfig;
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("Queue Cleanup Service starting");
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    // Check for expired queued calls
+                    int expiredQueues = await _callQueueRepository.CleanupExpiredCallQueues(_serverConfig.RegionId, _serverConfig.ServerId);
+
+                    // Check for orphaned queued calls (processing but no session even after enough time?)
+                    int orphanedQueues = await _callQueueRepository.CleanupOrphanedCallQueues(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(-5));
+
+                    // Check for expired conversations
+                    int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(5));
+
+                    // TODO we should log these 3 if they are not 0 for analytics as this should only happen when there seems to be a major error
+                    // for now just log
+                    if (expiredQueues > 0 || orphanedQueues > 0 || expiredConversations > 0)
+                    {
+                        _logger.LogWarning($"Cleanedup:\nExpiredQueues: {expiredQueues}, OrphanedQueues: {orphanedQueues}, ExpiredConversations: {expiredConversations}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during queue cleanup");
+                }
+
+                await Task.Delay(_cleanupInterval, stoppingToken);
+            }
+
+            _logger.LogInformation("Queue Cleanup Service stopping");
+        }
+    }
+}

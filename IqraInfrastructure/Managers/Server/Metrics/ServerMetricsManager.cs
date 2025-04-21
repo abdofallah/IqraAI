@@ -14,7 +14,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ServerConfig _serverConfig;
 
-        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(500);
+        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(100);
 
         public ServerMetricsManager(
             ILogger<ServerMetricsManager> logger,
@@ -26,12 +26,13 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             _logger = logger;
             _serverStatusManager = serverStatusService;
             _callQueueRepository = callQueueRepository;
+            _conversationStateRepository = conversationStateRepository;
             _serverConfig = serverConfig;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Server Metrics Service starting");
+            _logger.LogInformation("Server Metrics Update Service starting");
 
             while (!stoppingToken.IsCancellationRequested)
             {

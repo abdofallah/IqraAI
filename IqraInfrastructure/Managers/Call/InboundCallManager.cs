@@ -144,14 +144,14 @@ namespace IqraInfrastructure.Managers.Call
                     ProviderMetadata = webhookContext.AdditionalData
                 };
 
-                string queueId = await _callQueueRepository.EnqueueCallAsync(callQueue);
+                string queueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
 
                 // 5. Forward call to selected backend server
                 var forwardResult = await ForwardCallToBackendAsync(serverSelection.Data.ServerEndpoint, regionServerApiKey, webhookContext, callQueue);
                 if (!forwardResult.Success)
                 {
                     // If forwarding fails, mark the queue entry as failed
-                    await _callQueueRepository.UpdateStatusAsync(queueId, CallQueueStatusEnum.Failed);
+                    await _callQueueRepository.UpdateCallQueueStatusAsync(queueId, CallQueueStatusEnum.Failed);
                     
                     result.Code = "DistributeIncomingCall:5";
                     result.Message = forwardResult.Message;
@@ -186,7 +186,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Find the call in the queue
-                var callQueue = await _callQueueRepository.GetCallByProviderCallIdAsync(provider, callId, businessId, phoneNumberId);
+                var callQueue = await _callQueueRepository.GetCallQueueByProviderCallIdAsync(provider, callId, businessId, phoneNumberId);
                 if (callQueue == null)
                 {
                     _logger.LogWarning("Call not found in queue for end notification: {CallId} for provider {Provider} in {businessId}/{phoneNumberId}", callId, provider, businessId, phoneNumberId);
@@ -345,7 +345,7 @@ namespace IqraInfrastructure.Managers.Call
                 var requestBody = new BackendIncomingCallRequest()
                 {
                     Provider = webhookContext.Provider,
-                    CallId = webhookContext.CallId,
+                    ProviderCallId = webhookContext.CallId,
                     QueueId = callQueue.Id,
                     BusinessId = callQueue.BusinessId,
                     PhoneNumberId = webhookContext.PhoneNumberId,
@@ -361,7 +361,7 @@ namespace IqraInfrastructure.Managers.Call
                 // Send the request to the backend app
                 if (!serverEndpoint.StartsWith("http"))
                 {
-                    serverEndpoint = "http://" + serverEndpoint;
+                    serverEndpoint = "https://" + serverEndpoint;
                 }
                 var baseUri = new Uri(serverEndpoint);
                 baseUri = new Uri(baseUri, "/api/call/incoming");
@@ -430,7 +430,7 @@ namespace IqraInfrastructure.Managers.Call
                 // Send the notification
                 if (!serverEndpoint.StartsWith("http"))
                 {
-                    serverEndpoint = "http://" + serverEndpoint;
+                    serverEndpoint = "https://" + serverEndpoint;
                 }
                 var baseUri = new Uri(serverEndpoint);
                 baseUri = new Uri(baseUri, $"/api/call/{sessionId}/ended");

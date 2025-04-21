@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Business
             PaginationCursor? decodedCursor = PaginationCursor.Decode(currentCursor);
 
             // 1. Fetch Call Queue Data Page
-            var (callQueueItems, hasMore) = await _callQueueRepository.GetCallsForBusinessPaginatedAsync(
+            var (callQueueItems, hasMore) = await _callQueueRepository.GetCallQueuesForBusinessPaginatedAsync(
                 businessId,
                 limit,
                 decodedCursor,

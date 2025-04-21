@@ -16,12 +16,6 @@ namespace ProjectIqraFrontend.Controllers
             _viewLinkConfiguration = viewLinkConfiguration;
         }
 
-        [HttpGet("/")]
-        public IActionResult Index()
-        {
-            return View("Index");
-        }
-
         [HttpGet("/login")]
         public async Task<IActionResult> Login()
         {
@@ -31,12 +25,12 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                return View("App/Authentication");
+                return View("Authentication");
             }
 
             if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
             {
-                return View("App/Authentication");
+                return View("Authentication");
             }
 
             return RedirectToAction("App");
@@ -51,7 +45,7 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                return View("App/Authentication");
+                return View("Authentication");
             }
 
             if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
@@ -59,7 +53,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            return View("App/Authentication");
+            return View("Authentication");
         }
 
         [HttpGet("/forget")]
@@ -71,7 +65,7 @@ namespace ProjectIqraFrontend.Controllers
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                return View("App/Authentication");
+                return View("Authentication");
             }
 
             if ((await _userManager.ValidateSession(userEmail, sessionId, authKey)))
@@ -79,7 +73,7 @@ namespace ProjectIqraFrontend.Controllers
                 return RedirectToAction("Login");
             }
 
-            return View("App/Authentication");
+            return View("Authentication");
         }
 
         [HttpGet("/logout")]
@@ -92,7 +86,7 @@ namespace ProjectIqraFrontend.Controllers
             return RedirectToAction("Login");
         }
 
-        [HttpGet("/app")]
+        [HttpGet("/")]
         public async Task<IActionResult> App()
         {
             string? sessionId = Request.Cookies["sessionId"];
@@ -111,17 +105,17 @@ namespace ProjectIqraFrontend.Controllers
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
 
-            return View("App/Index");
+            return View("Index");
         }
 
-        [HttpGet("/app/business")]
+        [HttpGet("/business")]
         public async Task<IActionResult> Business()
         {
             return RedirectToAction("App");
         }
 
 
-        [HttpGet("/app/business/{businessId}")]
+        [HttpGet("/business/{businessId}")]
         public async Task<IActionResult> Business(long? businessId)
         {
             string? sessionId = Request.Cookies["sessionId"];
@@ -144,10 +138,10 @@ namespace ProjectIqraFrontend.Controllers
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
 
 
-            return View("App/Business");
+            return View("Business");
         }
 
-        [HttpGet("/app/admin")]
+        [HttpGet("/admin")]
         public async Task<IActionResult> Admin()
         {
             string? sessionId = Request.Cookies["sessionId"];
@@ -178,7 +172,7 @@ namespace ProjectIqraFrontend.Controllers
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
 
-            return View("App/Admin");
+            return View("Admin");
         }
     }
 }

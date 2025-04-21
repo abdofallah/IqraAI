@@ -85,7 +85,8 @@ namespace IqraInfrastructure.Repositories.Server
                     QueuedCalls = status.QueuedCallsCount,
                     CpuUsagePercent = status.CpuUsagePercent,
                     MemoryUsagePercent = status.MemoryUsagePercent,
-                    NetworkUsageMbps = status.NetworkUsageMbps
+                    NetworkDownloadMbps = status.NetworkDownloadMbps,
+                    NetworkUploadMbps = status.NetworkUploadMbps
                 };
 
                 await _historicalStatusCollection.InsertOneAsync(historicalStatus);

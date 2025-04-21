@@ -1,6 +1,4 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Business;
-using IqraCore.Entities.Helper.Region;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
@@ -8,6 +6,7 @@ using IqraInfrastructure.Managers.Region;
 using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
 using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helper.Server;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -105,7 +104,7 @@ namespace IqraInfrastructure.Managers.Business
             newNumberData.RegionId = regionId;
 
             // Get Regions's Webhook
-            var getRegionWebhookServer = regionData.Servers.Find(x => x.Type == RegionServerTypeEnum.Proxy);
+            var getRegionWebhookServer = regionData.Servers.Find(x => x.Type == ServerTypeEnum.Proxy);
             if (getRegionWebhookServer == null)
             {
                 result.Code = "AddOrUpdateBusinessNumber:5";

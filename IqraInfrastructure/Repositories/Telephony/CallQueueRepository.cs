@@ -42,13 +42,6 @@ namespace IqraInfrastructure.Repositories.Telephony
                     .Ascending(c => c.Status);
 
                 _callQueueCollection.Indexes.CreateOne(new CreateIndexModel<CallQueueData>(businessIndex));
-
-                // Create TTL index to automatically expire completed calls after 24 hours
-                var ttlIndex = Builders<CallQueueData>.IndexKeys
-                    .Ascending(c => c.CompletedAt);
-
-                var indexOptions = new CreateIndexOptions { ExpireAfter = TimeSpan.FromHours(24) };
-                _callQueueCollection.Indexes.CreateOne(new CreateIndexModel<CallQueueData>(ttlIndex, indexOptions));
             }
             catch (Exception ex)
             {
@@ -56,13 +49,11 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task<string> EnqueueCallAsync(CallQueueData callQueueData)
+        public async Task<string> EnqueueCallQueueAsync(CallQueueData callQueueData)
         {
             try
             {
                 await _callQueueCollection.InsertOneAsync(callQueueData);
-                _logger.LogInformation("Call enqueued: {CallId} for business {BusinessId}",
-                    callQueueData.Id, callQueueData.BusinessId);
                 return callQueueData.Id;
             }
             catch (Exception ex)
@@ -72,7 +63,7 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task<List<CallQueueData>> GetNextCallsAsync(int limit, string serverId, string regionId)
+        public async Task<List<CallQueueData>> GetNextQueuedCallsForServerAsync(int limit, string serverId, string regionId)
         {
             try
             {
@@ -103,9 +94,6 @@ namespace IqraInfrastructure.Repositories.Telephony
                         .Set(c => c.ProcessingServerId, serverId);
 
                     await _callQueueCollection.UpdateManyAsync(updateFilter, update);
-
-                    _logger.LogInformation("Retrieved {Count} calls for processing on server {ServerId}",
-                        calls.Count, serverId);
                 }
 
                 return calls;
@@ -117,26 +105,26 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task<CallQueueData?> GetCallByIdAsync(string callId)
+        public async Task<CallQueueData?> GetCallQueueByIdAsync(string queueId)
         {
             try
             {
-                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, callId);
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
                 return await _callQueueCollection.Find(filter).FirstOrDefaultAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting call by ID {CallId}", callId);
+                _logger.LogError(ex, "Error getting call by ID {CallId}", queueId);
                 return null;
             }
         }
 
-        public async Task<CallQueueData?> GetCallByProviderCallIdAsync(TelephonyProviderEnum provider, string callId, long businessId, string phoneNumberId)
+        public async Task<CallQueueData?> GetCallQueueByProviderCallIdAsync(TelephonyProviderEnum provider, string providerCallId, long businessId, string phoneNumberId)
         {
             try
             {
                 var filter =
-                    Builders<CallQueueData>.Filter.Eq(c => c.ProviderCallId, callId)
+                    Builders<CallQueueData>.Filter.Eq(c => c.ProviderCallId, providerCallId)
                     &
                     Builders<CallQueueData>.Filter.Eq(c => c.Provider, provider)
                     &
@@ -148,12 +136,12 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting call by provider call ID {CallId}", callId);
+                _logger.LogError(ex, "Error getting call by provider call ID {CallId}", providerCallId);
                 return null;
             }
         }
 
-        public async Task<(List<CallQueueData> Items, bool HasMore)> GetCallsForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
+        public async Task<(List<CallQueueData> Items, bool HasMore)> GetCallQueuesForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
         {
             try
             {
@@ -240,7 +228,7 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task UpdateCallSessionIdAsync(string queueId, string sessionId)
+        public async Task UpdateCallQueueSessionIdAsync(string queueId, string sessionId)
         {
             try
             {
@@ -256,7 +244,7 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task UpdateCallSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status)
+        public async Task UpdateCallQueueSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status)
         {
             try
             {
@@ -273,7 +261,7 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task UpdateStatusAsync(string queueId, CallQueueStatusEnum status)
+        public async Task UpdateCallQueueStatusAsync(string queueId, CallQueueStatusEnum status)
         {
             try
             {
@@ -289,15 +277,42 @@ namespace IqraInfrastructure.Repositories.Telephony
             }
         }
 
-        public async Task<int> CleanupOrphanedCallsAsync(TimeSpan threshold)
+        public async Task<int> CleanupExpiredCallQueues(string regionId, string serverId)
         {
             try
             {
-                var thresholdTime = DateTime.UtcNow.Subtract(threshold);
+                var filter = Builders<CallQueueData>.Filter.And(
+                    Builders<CallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued),
+                    Builders<CallQueueData>.Filter.Lt(c => c.QueueExpiriesAt, DateTime.UtcNow),
+                    Builders<CallQueueData>.Filter.Ne(c => c.RegionId, regionId),
+                    Builders<CallQueueData>.Filter.Ne(c => c.ProcessingServerId, serverId)
+                );
 
+                var update = Builders<CallQueueData>.Update
+                    .Set(c => c.Status, CallQueueStatusEnum.Expired)
+                    .Set(c => c.CompletedAt, DateTime.UtcNow);
+
+                var result = await _callQueueCollection.UpdateManyAsync(filter, update);
+
+                return (int)result.ModifiedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up orphaned calls");
+                return 0;
+            }
+        }
+
+        public async Task<int> CleanupOrphanedCallQueues(string regionId, string serverId, DateTime thresholdToCheck)
+        {
+            try
+            {
                 var filter = Builders<CallQueueData>.Filter.And(
                     Builders<CallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Processing),
-                    Builders<CallQueueData>.Filter.Lt(c => c.ProcessingStartedAt, thresholdTime)
+                    Builders<CallQueueData>.Filter.Eq(c => c.SessionId, null),
+                    Builders<CallQueueData>.Filter.Lt(c => c.ProcessingStartedAt, thresholdToCheck),
+                    Builders<CallQueueData>.Filter.Ne(c => c.RegionId, regionId),
+                    Builders<CallQueueData>.Filter.Ne(c => c.ProcessingServerId, serverId)
                 );
 
                 var update = Builders<CallQueueData>.Update
@@ -305,11 +320,6 @@ namespace IqraInfrastructure.Repositories.Telephony
                     .Set(c => c.CompletedAt, DateTime.UtcNow);
 
                 var result = await _callQueueCollection.UpdateManyAsync(filter, update);
-
-                if (result.ModifiedCount > 0)
-                {
-                    _logger.LogWarning("Cleaned up {Count} orphaned calls", result.ModifiedCount);
-                }
 
                 return (int)result.ModifiedCount;
             }
@@ -327,10 +337,7 @@ namespace IqraInfrastructure.Repositories.Telephony
                 var filter = Builders<CallQueueData>.Filter.And(
                     Builders<CallQueueData>.Filter.Eq(c => c.ProcessingServerId, serverId),
                     Builders<CallQueueData>.Filter.Eq(c => c.RegionId, regionId),
-                    Builders<CallQueueData>.Filter.In(c => c.Status, new[]
-                    {
-                        CallQueueStatusEnum.Queued
-                    })
+                    Builders<CallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued)
                 );
 
                 return await _callQueueCollection.CountDocumentsAsync(filter);

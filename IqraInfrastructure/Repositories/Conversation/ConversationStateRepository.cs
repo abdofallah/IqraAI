@@ -444,7 +444,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             try
             {
                 var filter = Builders<ConversationState>.Filter.And(
-                    Builders<ConversationState>.Filter.Eq(c => c.ServerId, serverId),
+                    Builders<ConversationState>.Filter.Eq(c => c.ProcessingServerId, serverId),
                     Builders<ConversationState>.Filter.Eq(c => c.RegionId, regionId),
                     Builders<ConversationState>.Filter.In(c => c.Status, new[]
                     {
@@ -460,6 +460,32 @@ namespace IqraInfrastructure.Repositories.Conversation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting active call count for server {ServerId} in region {RegionId}", serverId, regionId);
+                throw;
+            }
+        }
+
+        public async Task<int> CleanupMaxDurationReachedConversationsAsync(string serverId, string regionId, DateTime thresholdTime)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.ProcessingServerId, serverId),
+                    Builders<ConversationState>.Filter.Eq(c => c.RegionId, regionId),
+                    Builders<ConversationState>.Filter.Lt(c => c.ExpectedEndTimeAt, thresholdTime)
+                );
+
+                var update = Builders<ConversationState>.Update
+                    .Set(c => c.Status, ConversationSessionState.Ended)
+                    .Set(c => c.EndTime, DateTime.UtcNow)
+                    .Push(c => c.Logs, new ConversationLogEntry() { Level = ConversationLogLevel.Critical, Message = "Expected endtime reached for conversation but it wasnt ended, so manually cleaned up" });
+
+                var result = await _conversationStateCollection.UpdateManyAsync(filter, update);
+
+                return (int)result.ModifiedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up max duration reached conversations for server {ServerId} in region {RegionId}", serverId, regionId);
                 throw;
             }
         }

@@ -146,7 +146,7 @@ namespace IqraInfrastructure.Managers.Call
                     ProviderMetadata = request.Metadata ?? new Dictionary<string, string>()
                 };
 
-                string queueId = await _callQueueRepository.EnqueueCallAsync(callQueue);
+                string queueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
 
                 // 6. Initiate the outbound call through the backend app
                 var initiateResult = await InitiateCallThroughBackendAsync(
@@ -158,7 +158,7 @@ namespace IqraInfrastructure.Managers.Call
                 if (!initiateResult.Success)
                 {
                     // Mark queue entry as failed
-                    await _callQueueRepository.UpdateStatusAsync(queueId, CallQueueStatusEnum.Failed);
+                    await _callQueueRepository.UpdateCallQueueStatusAsync(queueId, CallQueueStatusEnum.Failed);
 
                     result.Message = initiateResult.Message;
                     _logger.LogError("Call initiation failed: {Message}", initiateResult.Message);

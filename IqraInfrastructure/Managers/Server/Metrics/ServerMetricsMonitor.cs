@@ -19,7 +19,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         private readonly object _statusLock = new object();
 
         private DateTime _lastHistoricalRecordTime = DateTime.MinValue;
-        private readonly TimeSpan _historicalRecordInterval = TimeSpan.FromMinutes(5);
+        private readonly TimeSpan _historicalRecordInterval = TimeSpan.FromMinutes(1);
 
         public ServerMetricsMonitor(
             ILogger<ServerMetricsMonitor> logger,
@@ -50,6 +50,8 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 NetworkDownloadMbps = 0,
                 NetworkUploadMbps = 0
             };
+
+            InitializeAsync().GetAwaiter().GetResult();
         }
 
         public async Task InitializeAsync()

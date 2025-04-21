@@ -1,9 +1,9 @@
-﻿using IqraCore.Entities.Helper.Region;
+﻿using IqraCore.Entities.Helper.Server;
 
 namespace IqraCore.Entities.Region
 {
     public class RegionProxyServerData : RegionServerData
     {
-        public override RegionServerTypeEnum Type { get; set; } = RegionServerTypeEnum.Proxy;
+        public override ServerTypeEnum Type { get; set; } = ServerTypeEnum.Proxy;
     }
 }

@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Helper.Region;
+﻿using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server;
 using IqraCore.Models.Server;
@@ -45,8 +45,9 @@ namespace IqraInfrastructure.Managers.Server
                 }
 
                 // Get backend servers for the specified region
+                // stop using RegionServerTypeEnum and use ServerTypeEnum
                 var backendServers = regionData.Servers
-                    .Where(s => s.Type == RegionServerTypeEnum.Backend && s.DisabledAt == null)
+                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null)
                     .Select(s => s.Endpoint)
                     .ToList();
 

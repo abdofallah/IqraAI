@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Telephony.Call
@@ -19,16 +20,21 @@ namespace IqraCore.Entities.Telephony.Call
         public string NumberId { get; set; } = string.Empty;
         public string RouteId { get; set; } = string.Empty;
 
+        public DateTime QueueExpiriesAt { get; set; } = DateTime.UtcNow.AddDays(30);
+
         public TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
         public string ProviderCallId { get; set; } = string.Empty;
         public string CallerNumber { get; set; } = string.Empty;
 
+        [ExcludeInAllEndpoints]
         public int Priority { get; set; } = 0;
         public bool IsOutbound { get; set; } = false;
 
+        [ExcludeInAllEndpoints]
         public string ProcessingServerId { get; set; } = string.Empty;
         public string SessionId { get; set; } = string.Empty;
 
+        [ExcludeInAllEndpoints]
         public Dictionary<string, string> ProviderMetadata { get; set; } = new Dictionary<string, string>();
     }
 }
