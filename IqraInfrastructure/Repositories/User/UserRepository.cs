@@ -40,8 +40,13 @@ namespace IqraInfrastructure.Repositories.User
         public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition)
         {
             var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+            return await UpdateUser(filter, updateDefinition);
+        }
+
+        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition)
+        {
             var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition);
-            return result.ModifiedCount > 0;
+            return result.IsAcknowledged;
         }
 
         public Task<List<UserData>> GetUsersAsync()

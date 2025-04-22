@@ -1,4 +1,4 @@
-﻿var titleTemplate = '{{authType}} | Iqra Assistant';
+﻿var titleTemplate = '{{authType}} | Iqra AI';
 
 var currentAuthType = 'login';
 
@@ -47,7 +47,7 @@ function setAuthType(authType) {
     var containerId = '.' + authType + '-container';
 
     $(".main-container").children().each((index, element) => {
-        if (element.classList.contains(containerId.replace('.', ''))) {
+        if (element.classList.contains(containerId.replace('.', '')) || element.classList.contains('logo-container') || element.classList.contains('footer-container')) {
             return;
         }
 
@@ -60,6 +60,7 @@ function setAuthType(authType) {
     $(containerId + " #successMessage").addClass('d-none').removeClass('show');
     $(containerId + " #errorMessage").addClass('d-none').removeClass('show');
 
+    $(containerId + " form").removeClass('d-none');
     $(containerId + " input").removeClass('is-valid').removeClass('is-invalid').val("");
 
     setTimeout(() => {
@@ -68,7 +69,7 @@ function setAuthType(authType) {
             $(containerId).addClass('show');
         }, 10)
 
-        let currentTitle = titleTemplate.replace('{{authType}}', authType);
+        let currentTitle = titleTemplate.replace('{{authType}}', capitalizeFirstLetter(authType));
         window.history.pushState(authType, currentTitle, ('/' + authType));
         document.title = currentTitle;
     }, 100);

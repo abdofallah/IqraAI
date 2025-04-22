@@ -12,23 +12,27 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ email: email, password: password }),
                 success: (response) => {
-                    // Handle successful login
-                    console.log('Login successful');
+                    if (response.success) {
+                        setCookie('userEmail', email, 24);
+                        setCookie('sessionId', response.data.sessionId, 24);
+                        setCookie('authKey', response.data.authKey, 24);
 
-                    // Save session ID and authentication key in cookies
-                    setCookie('userEmail', email, 24);
-                    setCookie('sessionId', response.sessionId, 24);
-                    setCookie('authKey', response.authKey, 24);
-
-                    // Redirect to a logged-in page or update the UI accordingly
-                    window.location.href = '/';
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 10);
+                    }
+                    else {
+                        $('.login-container #errorMessage').removeClass('d-none');
+                        setTimeout(() => {
+                            $('.login-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                        }, 10);
+                    }
                 },
                 error: (xhr, status, error) => {
-                    console.error('Login error:', error);
-                    // Display an error message to the user
+                    console.error('Login error occured:', error);
                     $('.login-container #errorMessage').removeClass('d-none');
                     setTimeout(() => {
-                        $('.login-container #errorMessage').addClass('show').html('<span>Invalid email or password.</span>');
+                        $('.login-container #errorMessage').addClass('show').html('<span>Error occured while logging in.<br>Check console logs.</span>');
                     }, 10);
                 }
             });

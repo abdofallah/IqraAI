@@ -22,16 +22,19 @@
             contentType: 'application/json',
             data: JSON.stringify({ firstName: firstName, lastName: lastName, email: email, password: password }),
             success: (response) => {
-                // Handle successful register
-                console.log('register successful');
-
-                // Save session ID and authentication key in cookies
-                setCookie('userEmail', email, 24);
-                setCookie('sessionId', response.sessionId, 24);
-                setCookie('authKey', response.authKey, 24);
-
-                // Redirect to a logged-in page or update the UI accordingly
-                window.location.href = '/';
+                if (response.success) {
+                    $("#registerForm").addClass("d-none");
+                    $(".register-container #successMessage").removeClass("d-none");
+                    setTimeout(() => {
+                        $(".register-container #successMessage").addClass("show").html('<span>Thank you for registering!<br><br>Please verify your email before you can login.</span>');
+                    }, 10);
+                }
+                else {
+                    $('.register-container #errorMessage').removeClass('d-none');
+                    setTimeout(() => {
+                        $('.register-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                    }, 10);
+                }
             },
             error: (xhr, status, error) => {
                 console.error('register error:', xhr);

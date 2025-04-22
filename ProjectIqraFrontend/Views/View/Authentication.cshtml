@@ -1,54 +1,111 @@
-﻿<html>
+﻿<html data-bs-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | ProjectIqra</title>
+    <title>Login | Iqra AI</title>
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="~/css/style.css" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
     <style>
-        body {
+        #main-intro {
             position: relative;
+            overflow: hidden;
             background-color: black;
+            background-image: url('/img/AI/frame0000.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: center center;
         }
 
-        body::before {
-            content: '';
+        #imageSequenceCanvas
+        {
+            display: block;
+            width: 100%;
+            object-fit: cover;
+            height: 100vh;
+        }
+
+        #main-intro .overlay {
             position: absolute;
-            background: url('/img/9116f7fd184238ada99fdff9e2f2e3ac.gif');
-            background-size: cover;
-            background-position-x: center;
-            background-position-y: center;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            background-color: #1a1a1a;
+            opacity: 0.8;
+            mix-blend-mode: lighten;
             z-index: 10;
-            opacity: 0.1;
+        }
+
+        #main-intro .inner-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
         }
 
         .login-container,
         .register-container,
         .forget-container {
-            width: 400px;
-            max-width: 80%;
-            padding: 20px 40px;
-            background-color: rgba(255, 255, 255, 1);
+            width: 80%;
+            max-width: 800px;
+            padding: 40px 40px;
+            background-color: #2a2a2a;
             border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             z-index: 20;
         }
 
-        .logo {
-            width: 130px;
-            max-width: 100%;
+        .login-container p,
+        .register-container p,
+        .forget-container p {
+            margin: 0;
+        }
+
+        form {
+            margin: 0;
+        }
+
+        .left-logo {
             margin: auto;
-            text-align: center;
+            width: 500px;
+            max-width: 100%;
+
+            transition: 900ms rotate;
+            rotate: 0deg;
+
+            filter: drop-shadow(0px 0px 4px #93b44791);
+            animation-name: glow;
+            animation-duration: 2s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-direction: alternate;
+        }
+
+        .left-logo:hover {
+            rotate: 360deg;
+        }
+
+        @@keyframes glow {
+            0% {
+                filter: drop-shadow(0px 0px 4px #93b44791);
+            }
+            50% {
+                filter: drop-shadow(0px 0px 12px #93b44791);
+            }
+            100% {
+                filter: drop-shadow(0px 0px 4px #93b44791);
+            }
         }
 
         .form-label {
             margin-bottom: 0;
             font-weight: 600;
-            color: #3d3d3d;
         }
 
         a {
@@ -74,125 +131,141 @@
         #errorMessage {
             font-weight: 600;
         }
+
+        @@media (max-width: 768px) {
+            .w-md-100 {
+                width: 100% !important;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <div class="container d-flex justify-content-center align-items-center vh-100 main-container">
-        <!-- Login Container -->
-        <div class="login-container d-none fade">
-            <div class="text-center mb-3">
-                <img src="~/img/logo/Badal-Logo-Black.png" alt="Logo" class="logo">
+    <div class="d-flex">
+        <div class="w-50 vh-100 d-none d-md-block" id="main-intro">
+            <canvas id="imageSequenceCanvas" width="800" height="500"></canvas>
+            <div class="overlay"></div>
+            <div class="inner-container d-flex flex-column justify-content-center align-items-center">
+                <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="left-logo">
+            </div>
+        </div>
+        <div class="w-50 w-md-100 vh-100 d-flex flex-column justify-content-center align-items-center main-container">
+            <!-- Logo -->
+            <div class="py-4 logo-container">
+                <div>
+                    <h1 class="text-center mb-0" style="letter-spacing: 3px;">Iqra AI</h1>
+                    <h6 class="text-center mb-4" style="font-weight: 400; opacity: 0.7;">AI Powered Support</h6>
+                </div>
             </div>
 
-            <h2 class="text-center mb-0">IQRA</h2>
-            <h6 class="text-center mb-4">AI Assistant</h6>
-            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
-            </div>
-            <div class="alert alert-success d-none fade mb-4" id="successMessage">
-            </div>
-            <form id="loginForm">
-                <div class="mb-3">
-                    <label for="email" class="form-label">E-Mail</label>
-                    <input type="email" class="form-control" id="email" required>
-                    <div class="invalid-feedback">Invalid Input</div>
+            <!-- Login Container -->
+            <div class="login-container d-none fade">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1" style="letter-spacing: 2px;">Login | <span style="opacity: 0.3;">Enter your details</span></h3>
                 </div>
-                <div class="mb-2">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
-                    <div class="invalid-feedback">Invalid Input</div>
+                <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
                 </div>
-                <div class="mb-4">
-                    <a href="#" class="text-decoration-none forget-password" id="switchToForget">Forgot Password?</a>
+                <div class="alert alert-success d-none fade mb-4" id="successMessage">
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mb-4">
-                    <span>Login</span>
-                </button>
-
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-Mail</label>
+                        <input type="email" class="form-control" id="email" required>
+                        <div class="invalid-feedback">Invalid Input</div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                        <div class="invalid-feedback">Invalid Input</div>
+                    </div>
+                    <div class="mb-4">
+                        <a href="#" class="text-decoration-none forget-password" id="switchToForget">Forgot Password?</a>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                        <span>Login</span>
+                    </button>
+                </form>
                 <p>Don't have an account? <a href="#" id="switchToRegister" class="text-decoration-none">Register</a></p>
-            </form>
-        </div>
-
-        <!-- Register Container-->
-        <div class="register-container d-none fade">
-            <div class="text-center mb-3">
-                <img src="~/img/logo/Badal-Logo-Black.png" alt="Logo" class="logo">
             </div>
 
-            <h2 class="text-center mb-0">IQRA</h2>
-            <h6 class="text-center mb-4">AI Assistant</h6>
-            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
-            </div>
-            <div class="alert alert-success d-none fade mb-4" id="successMessage">
-            </div>
-            <form id="registerForm">
-                <div class="d-flex flex-row">
-                    <div class="mb-3 me-3 w-100">
-                        <label for="firstname" class="form-label">First Name</label>
-                        <input type="text" class="form-control" id="firstname" required>
+            <!-- Register Container-->
+            <div class="register-container d-none fade">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1" style="letter-spacing: 2px;">Register | <span style="opacity: 0.3;">Enter your details</span></h3>
+                </div>
+                <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+                </div>
+                <div class="alert alert-success d-none fade mb-4" id="successMessage">
+                </div>
+                <form id="registerForm">
+                    <div class="d-flex flex-row">
+                        <div class="mb-3 me-3 w-100">
+                            <label for="firstname" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="firstname" required>
+                            <div class="invalid-feedback">Invalid Input</div>
+                        </div>
+                        <div class="mb-3 w-100">
+                            <label for="lastname" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="lastname" required>
+                            <div class="invalid-feedback">Invalid Input</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-Mail</label>
+                        <input type="email" class="form-control" id="email" required>
                         <div class="invalid-feedback">Invalid Input</div>
                     </div>
-                    <div class="mb-3 w-100">
-                        <label for="lastname" class="form-label">Last Name</label>
-                        <input type="text" class="form-control" id="lastname" required>
-                        <div class="invalid-feedback">Invalid Input</div>
+                    <div class="mb-2">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" required>
+                        <div class="invalid-feedback">Password must be at least 8 characters.</div>
                     </div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="email" class="form-label">E-Mail</label>
-                    <input type="email" class="form-control" id="email" required>
-                    <div class="invalid-feedback">Invalid Input</div>
-                </div>
-                <div class="mb-2">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
-                    <div class="invalid-feedback">Password must be at least 8 characters.</div>
-                </div>
-                <div class="mb-4">
-                    <label for="confirm-password" class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" id="confirm-password" required>
-                    <div class="invalid-feedback">Passwords do not match.</div>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 mb-4">
-                    <span>Register</span>
-                </button>
-
+                    <div class="mb-4">
+                        <label for="confirm-password" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirm-password" required>
+                        <div class="invalid-feedback">Passwords do not match.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                        <span>Register</span>
+                    </button>
+                </form>
                 <p>Already have an account? <a href="#" id="switchToLoginCancel" class="text-decoration-none">Login</a></p>
-            </form>
-        </div>
-
-        <!-- Forget Container -->
-        <div class="forget-container d-none fade">
-            <div class="text-center mb-3">
-                <img src="~/img/logo/Badal-Logo-Black.png" alt="Logo" class="logo">
             </div>
 
-            <h2 class="text-center mb-0">IQRA</h2>
-            <h6 class="text-center mb-4">AI Assistant</h6>
-            <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
-            </div>
-            <div class="alert alert-success d-none fade mb-4" id="successMessage">
-            </div>
-            <form id="forgetForm">
-                <div class="mb-3">
-                    <label for="email" class="form-label">E-Mail</label>
-                    <input type="email" class="form-control" id="email" required>
-                    <div class="invalid-feedback">Invalid Input</div>
+            <!-- Forget Container -->
+            <div class="forget-container d-none fade">
+                <div class="mb-4 text-center">
+                    <h3 class="mb-1" style="letter-spacing: 2px;">Forget | <span style="opacity: 0.3;">Enter your details</span></h3>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 mb-4">
-                    <span>Reset Password</span>
-                </button>
-
+                <div class="alert alert-danger d-none fade mb-4" id="errorMessage">
+                </div>
+                <div class="alert alert-success d-none fade mb-4" id="successMessage">
+                </div>
+                <form id="forgetForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-Mail</label>
+                        <input type="email" class="form-control" id="email" required>
+                        <div class="invalid-feedback">Invalid Input</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                        <span>Reset Password</span>
+                    </button>
+                </form>
                 <p class="text-center"><a href="#" id="switchToLogin" class="text-decoration-none">Cancel</a></p>
-            </form>
-        </div>
+            </div>
 
+            <!-- Footer --> 
+            <div class="text-center footer-container position-absolute bottom-0 left-0 right-0" style="margin-bottom: 40px;">
+                <p class="m-0">Copyright &copy; 2025 Iqra AI | <a href="https://badal.om" target="_blank">Badal</a>, Bringing Change</p>
+            </div>
+        </div>
     </div>
 
     <!-- Libs -->
     <script src="~/js/jquery-3.7.1.min.js"></script>
     <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/animate-images.umd.min.js"></script>
 
     <!-- Scripts -->
     <script src="~/scripts/app/authentication/helper_functions.js"></script>
@@ -200,6 +273,7 @@
     <script src="~/scripts/app/authentication/login_container.js"></script>
     <script src="~/scripts/app/authentication/register_container.js"></script>
     <script src="~/scripts/app/authentication/forget_container.js"></script>
+    <script src="~/scripts/app/authentication/main_intro_container.js"></script>
 </body>
 
 </html>

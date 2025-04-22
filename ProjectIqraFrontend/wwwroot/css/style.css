@@ -8,6 +8,11 @@
 	--tcolor-dark: #1a1a1a;
 }
 
+[data-bs-theme=dark]
+{
+	--bs-body-bg: #1a1a1a !important;
+}
+
 img {
 	user-select: none;
 }

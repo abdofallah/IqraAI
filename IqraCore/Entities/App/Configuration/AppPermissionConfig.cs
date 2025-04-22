@@ -1,5 +1,8 @@
-﻿namespace IqraCore.Entities.App.Configuration
+﻿using MongoDB.Bson.Serialization.Attributes;
+
+namespace IqraCore.Entities.App.Configuration
 {
+    [BsonIgnoreExtraElements]
     public class AppPermissionConfig
     {
         // Maintenance

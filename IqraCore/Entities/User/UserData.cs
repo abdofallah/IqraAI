@@ -20,6 +20,9 @@ namespace IqraCore.Entities.User
         public List<UserResetPassword> ResetPasswordTokens { get; set; } = new List<UserResetPassword>();
 
         [ExcludeInAllEndpoints]
+        public string? VerifyEmailToken { get; set; } = null;
+
+        [ExcludeInAllEndpoints]
         [IncludeInEndpoint("/app/admin/users")]
         public UserAnalytics Analytics { get; set; } = new UserAnalytics();
     }

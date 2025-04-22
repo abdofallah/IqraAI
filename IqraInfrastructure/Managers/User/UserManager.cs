@@ -7,6 +7,7 @@ using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.User;
 using IqraCore.Models.Authentication;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver.Linq;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -71,15 +72,24 @@ namespace IqraInfrastructure.Managers.User
             var resetPassword = new UserResetPassword()
             {
                 RequestedAt = DateTime.Now,
-                Token = token
+                Token = token,
+                RequestedBy = requestedBy,
+                IsUsed = false
             };
-
-            if (!string.IsNullOrEmpty(requestedBy)) {
-                resetPassword.RequestedBy = requestedBy;
-            }
 
             var updateDefinition = Builders<UserData>.Update
                 .AddToSet(d => d.ResetPasswordTokens, resetPassword);
+
+            await _userDatabase.UpdateUser(userEmail, updateDefinition);
+            return token;
+        }
+
+        public async Task<string> GenerateUserRegisterVerifyToken(string userEmail)
+        {
+            string token = Guid.NewGuid().ToString();
+
+            var updateDefinition = Builders<UserData>.Update
+                .Set(d => d.VerifyEmailToken, token);
 
             await _userDatabase.UpdateUser(userEmail, updateDefinition);
             return token;
@@ -104,40 +114,37 @@ namespace IqraInfrastructure.Managers.User
             return userSession;
         }
 
-        public async Task<int> ValidateResetPasswordToken(UserData user, string token)
+        public async Task<FunctionReturnResult> ValidateResetPasswordToken(UserData user, string token)
         {
-            UpdateDefinition<UserData>? updateDefinition = null;
-            var resultFound = 1; // token not found
+            var result = new FunctionReturnResult();
 
-            foreach (var userResetPassword in user.ResetPasswordTokens)
+            var foundResetPasswordWithToken = user.ResetPasswordTokens.FirstOrDefault(d => d.Token == token);
+            if (foundResetPasswordWithToken == null || foundResetPasswordWithToken.IsUsed)
             {
-                if (userResetPassword.RequestedAt.AddDays(3) < DateTime.UtcNow)
-                {
-                    updateDefinition = Builders<UserData>.Update
-                        .PullFilter(u => u.ResetPasswordTokens, d => (d.Token == userResetPassword.Token && d.RequestedAt == userResetPassword.RequestedAt));
-                    await _userDatabase.UpdateUser(user.Email, updateDefinition);
-
-                    continue;
-                }
-
-                if (userResetPassword.Token == token)
-                {
-                    if (userResetPassword.RequestedAt.AddHours(1) < DateTime.UtcNow)
-                    {
-                        resultFound = 2; // is expired
-                    }
-
-                    resultFound = 200; // found and is not expired
-
-                    updateDefinition = Builders<UserData>.Update
-                        .PullFilter(u => u.ResetPasswordTokens, d => (d.Token == userResetPassword.Token && d.RequestedAt == userResetPassword.RequestedAt));
-                    await _userDatabase.UpdateUser(user.Email, updateDefinition);
-
-                    break;
-                }
+                return result.SetFailureResult(
+                    "ValidateResetPasswordToken:1",
+                    "Reset password token not found"
+                );
             }
 
-            return resultFound; 
+            try
+            {
+                if (foundResetPasswordWithToken.RequestedAt.AddHours(1) < DateTime.UtcNow)
+                {
+                    return result.SetFailureResult(
+                        "ValidateResetPasswordToken:2",
+                        "Reset password token is expired"
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            finally
+            {
+                var filter = Builders<UserData>.Filter.Eq(u => u.Email, user.Email) & Builders<UserData>.Filter.ElemMatch(u => u.ResetPasswordTokens, d => d.Token == token);
+                var updateDefinition = Builders<UserData>.Update.Set(u => u.ResetPasswordTokens.FirstMatchingElement().IsUsed, true);
+                await _userDatabase.UpdateUser(filter, updateDefinition);
+            } 
         }
 
         public async Task<bool> ValidateSession(string userEmail, string sessionId, string authKey)
@@ -165,13 +172,34 @@ namespace IqraInfrastructure.Managers.User
             return Guid.NewGuid().ToString();
         }
 
+        public async Task SendUserRegisterVerifyEmail(string userEmail)
+        {
+            string verifyToken = await GenerateUserRegisterVerifyToken(userEmail);
+            string resetUrl = $"https://app.iqra.bot/verify?email={userEmail}&token={verifyToken}";
+
+            string subject = "Verify Account | Iqra AI";
+            string body = $"Hey!<br><br>Thank you for registering with Iqra AI. Please click the link below to verify your account:<br><a href='{resetUrl}'>{resetUrl}</a>";
+
+            throw new NotImplementedException();
+            //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+        }
+
         public async Task SendPasswordResetEmail(string userEmail, string? requestedBy = null)
         {
             string resetToken = await GenerateResetPasswordToken(userEmail, requestedBy);
-            string resetUrl = $"{resetToken}";
+            string resetUrl = $"https://app.iqra.bot/reset?email={userEmail}&token={resetToken}";
 
-            string subject = "Reset Password | ProjectIqra";
+            string subject = "Reset Password | Iqra AI";
             string body = $"<a href='{resetUrl}'>{resetUrl}</a>{(string.IsNullOrEmpty(requestedBy) ? "" : $"<p>Requested By: {requestedBy}</p>")}";
+
+            throw new NotImplementedException();
+            //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+        }
+
+        public async Task SendUserRegisterWelcomeEmail(string email)
+        {
+            string subject = "Welcome to Iqra AI";
+            string body = "Thanks for registering with Iqra AI.";
 
             throw new NotImplementedException();
             //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
@@ -205,5 +233,13 @@ namespace IqraInfrastructure.Managers.User
 
             await _userDatabase.UpdateUser(user.Email, updateDefiniton);
         }
+
+        public async Task VerifyUserEmail(string email)
+        {
+            var updateDefinition = Builders<UserData>.Update
+                .Set(u => u.VerifyEmailToken, null);
+
+            await _userDatabase.UpdateUser(email, updateDefinition);
+        } 
     }
 }

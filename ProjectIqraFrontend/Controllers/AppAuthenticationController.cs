@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.App.Configuration;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.Authentication;
 using IqraInfrastructure.Managers.User;
@@ -19,130 +20,271 @@ namespace ProjectIqraFrontend.Controllers
         }
 
         [HttpPost("/auth/register")]
-        public async Task<IActionResult> Register([FromBody] RegisterModel model)
+        public async Task<FunctionReturnResult> Register([FromBody] RegisterModel model)
         {
-            AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
-            if (appPermissionConfig != null && appPermissionConfig.RegisterationDisabledAt != null)
+            var result = new FunctionReturnResult();
+
+            try
             {
-                string message = ("Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "." : ": " + appPermissionConfig.PublicRegisterationDisabledReason));
-                return BadRequest(new { success = false, message = message });
-            }
+                AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+                if (appPermissionConfig != null && appPermissionConfig.RegisterationDisabledAt != null)
+                {
+                    string message = ("Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "" : ": " + appPermissionConfig.PublicRegisterationDisabledReason));
 
-            if (!TryValidateModel(model))
+                    return result.SetFailureResult(
+                        "Register:1",
+                        message
+                    );
+                }
+
+                if (!TryValidateModel(model))
+                {
+                    return result.SetFailureResult(
+                        "Register:2",
+                        "Register data validation failed"
+                    );
+                }
+
+                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                if (user != null)
+                {
+                    return result.SetFailureResult(
+                        "Register:3",
+                        "User already exists"
+                    );
+                }
+
+                user = await _userManager.RegisterUser(model);
+                await _userManager.SendUserRegisterVerifyEmail(user.Email);
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "Invalid email or password" });
+                return result.SetFailureResult(
+                    "Register:-1",
+                    "Internal server error occured while trying to register."
+                );
             }
+        }
 
-            UserData? user = await _userManager.GetUserByEmail(model.Email);
-            if (user != null)
+        [HttpPost("/auth/verify")]
+        public async Task<FunctionReturnResult> Verify([FromQuery] string email, [FromQuery] string token)
+        {
+            var result = new FunctionReturnResult();
+
+            try
             {
-                return BadRequest(new { success = false, message = "User already exists" });
+                if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
+                {
+                    return result.SetFailureResult(
+                        "Verify:1",
+                        "Invalid email or token"
+                    );
+                }
+
+                UserData? user = await _userManager.GetUserByEmail(email);
+                if (user == null)
+                {
+                    return result.SetFailureResult(
+                        "Verify:2",
+                        "User not found"
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(user.VerifyEmailToken))
+                {
+                    return result.SetFailureResult(
+                        "Verify:3",
+                        "User is already verified"
+                    );
+                }
+
+                if (user.VerifyEmailToken != token)
+                {
+                    return result.SetFailureResult(
+                        "Verify:4",
+                        "Invalid verify token"
+                    );
+                }
+
+                await _userManager.VerifyUserEmail(user.Email);
+                await _userManager.SendUserRegisterWelcomeEmail(user.Email);
+
+                return result.SetSuccessResult();
             }
-
-            user = await _userManager.RegisterUser(model);
-
-            UserSession? session = await _userManager.CreateUserSession(user.Email);
-            if (session == null)
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "Error while creating session" });
+                return result.SetFailureResult(
+                    "Verify:-1",
+                    "Internal server error occured while trying to verify."
+                );
             }
-
-            return Ok(new { success = true, sessionId = session.Id, authKey = session.Token });
         }
 
         [HttpPost("/auth/login")]
-        public async Task<IActionResult> Login([FromBody] LoginModel model)
+        public async Task<FunctionReturnResult<LoginResponseModel?>> Login([FromBody] LoginModel model)
         {
-            AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
-            if (appPermissionConfig != null && appPermissionConfig.LoginDisabledAt != null)
+            var result = new FunctionReturnResult<LoginResponseModel?>();
+
+            try
             {
-                string message = ("Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason));
-                return BadRequest(new { success = false, message = message });
-            }
+                AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+                if (appPermissionConfig != null && appPermissionConfig.LoginDisabledAt != null)
+                {
+                    string message = ("Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason));
+                    return result.SetFailureResult(
+                        "Login:1",
+                        message
+                    );
+                }
 
-            if (!TryValidateModel(model))
+                if (!TryValidateModel(model))
+                {
+                    return result.SetFailureResult(
+                        "Login:2",
+                        "Login data validation failed"
+                    );
+                }
+
+                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                if (user == null || !_userManager.ValidatePassword(user, model.Password))
+                {
+                    return result.SetFailureResult(
+                        "Login:3",
+                        "Invalid email or password"
+                    );
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.VerifyEmailToken)) {
+                    return result.SetFailureResult(
+                        "Login:4",
+                        "User is not verified"
+                    );
+                }
+
+                UserPermission userPermission = user.Permission;
+                if (userPermission.LoginDisabledAt != null)
+                {
+                    var message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.LoginDisabledReason) ? "" : ": " + userPermission.LoginDisabledReason));
+                    return result.SetFailureResult(
+                        "Login:5",
+                        message
+                    );
+                }
+
+                UserSession? session = await _userManager.CreateUserSession(user.Email);
+                if (session == null)
+                {
+                    return result.SetFailureResult(
+                        "Login:6",
+                        "Failed to create user session"
+                    );
+                }
+
+                await _userManager.UpdateLastLoginAndIncreaseCount(user);
+                return result.SetSuccessResult(new LoginResponseModel()
+                    {
+                        SessionId = session.Id,
+                        AuthKey = session.Token
+                    }
+                );
+            }
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "Invalid email or password" });
+                return result.SetFailureResult(
+                    "Login:-1",
+                    "Internal server error occured while trying to login."
+                );
             }
-
-            UserData? user = await _userManager.GetUserByEmail(model.Email);
-            if (user == null || !_userManager.ValidatePassword(user, model.Password))
-            {
-                return BadRequest(new { success = false, message = "Invalid email or password" });
-            }
-
-            UserPermission userPermission = user.Permission;
-            if (userPermission.LoginDisabledAt != null)
-            {
-                return BadRequest(new { success = false, message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.LoginDisabledReason) ? "" : ": " + userPermission.LoginDisabledReason)) });
-            }
-
-            UserSession? session = await _userManager.CreateUserSession(user.Email);
-            if (session == null)
-            {
-                return BadRequest(new { success = false, message = "Error while creating session" });
-            }
-
-            await _userManager.UpdateLastLoginAndIncreaseCount(user);
-
-            return Ok(new { success = true, sessionId = session.Id, authKey = session.Token });
         }
 
         [HttpPost("/auth/request-reset-password")]
-        public async Task<IActionResult> RequestResetPassword([FromBody] ResetPasswordRequestModel model)
+        public async Task<FunctionReturnResult> RequestResetPassword([FromBody] ResetPasswordRequestModel model)
         {
-            if (!TryValidateModel(model))
+            var result = new FunctionReturnResult();
+
+            try
             {
-                return BadRequest(new { success = false, message = "Invalid email" });
-            }
+                if (!TryValidateModel(model))
+                {
+                    return result.SetFailureResult(
+                        "RequestResetPassword:1",
+                        "Invalid email"
+                    );
+                }
 
-            UserData? user = await _userManager.GetUserByEmail(model.Email);
-            if (user == null)
+                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                if (user == null)
+                {
+                    return result.SetFailureResult(
+                        "RequestResetPassword:2",
+                        "User not found"
+                    );
+                }
+
+                await _userManager.SendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "User not found" });
+                return result.SetFailureResult(
+                    "RequestResetPassword:-1",
+                    "Internal server error occured while trying to request reset password."
+                );
             }
-
-            await _userManager.SendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
-
-            return Ok(new { success = true, message = "Reset password email sent" });
         }
 
         [HttpPost("/auth/reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        public async Task<FunctionReturnResult> ResetPassword([FromBody] ResetPasswordModel model)
         {
-            if (!TryValidateModel(model))
-            {
-                return BadRequest(new { success = false, message = "Invalid email or token or password" });
-            }
+            var result = new FunctionReturnResult();
 
-            UserData? user = await _userManager.GetUserByEmail(model.Email);
-            if (user == null)
+            try
             {
-                return BadRequest(new { success = false, message = "User not found with email" });
-            }
-
-            int validateResult = await _userManager.ValidateResetPasswordToken(user, model.Token);
-            if (validateResult != 200)
-            {
-                if (validateResult == 1)
+                if (!TryValidateModel(model))
                 {
-                    return BadRequest(new { success = false, message = "Invalid token" });
+                    return result.SetFailureResult(
+                        "ResetPassword:1",
+                        "Invalid email or token or password"
+                    );
                 }
 
-                if (validateResult == 2)
+                UserData? user = await _userManager.GetUserByEmail(model.Email);
+                if (user == null)
                 {
-                    return BadRequest(new { success = false, message = "Token is expired, request new token" });
+                    return result.SetFailureResult(
+                        "ResetPassword:2",
+                        "User not found"
+                    );
                 }
 
-                return BadRequest(new { success = false, message = "Error while validating token" });
-            }
+                var validateResult = await _userManager.ValidateResetPasswordToken(user, model.Token);
+                if (!validateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "ResetPassword:" + validateResult.Code,
+                        validateResult.Message
+                    );
+                }
 
-            if (!(await _userManager.ResetPassword(user.Email, model.NewPassword)))
+                if (!(await _userManager.ResetPassword(user.Email, model.NewPassword)))
+                {
+                    return result.SetFailureResult(
+                        "ResetPassword:3",
+                        "Error while resetting password"
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = "Error while resetting password" });
+                return result.SetFailureResult(
+                    "ResetPassword:-1",
+                    "Internal server error occured while trying to reset password."
+                );
             }
-
-            return Ok(new { success = true, message = "Password reset successful" });
         }
     }
 }
