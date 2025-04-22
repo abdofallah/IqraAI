@@ -11,12 +11,18 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ email: email }),
                 success: (response) => {
-                    // Handle password reset email sent
-
-                    $('.forget-container #successMessage').removeClass('d-none');
-                    setTimeout(() => {
-                        $('.forget-container #successMessage').addClass('show').html('<span>A password reset email has been sent to you.</span>');
-                    }, 10);
+                    if (response.success) {
+                        $('.forget-container #successMessage').removeClass('d-none');
+                        setTimeout(() => {
+                            $('.forget-container #successMessage').addClass('show').html('<span>A password reset email has been sent to you.</span>');
+                        }, 10);
+                    }
+                    else {
+                        $('.forget-container #errorMessage').removeClass('d-none');
+                        setTimeout(() => {
+                            $('.forget-container #errorMessage').addClass('show').html('<span>' + response.message + '</span>');
+                        }, 10);
+                    }
                 },
                 error: (xhr, status, error) => {
                     console.error('Password reset error:', error);

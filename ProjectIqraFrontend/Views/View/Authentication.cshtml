@@ -87,6 +87,20 @@
             animation-direction: alternate;
         }
 
+        .logo {
+            margin: auto;
+            margin-bottom: -12px;
+            width: 180px;
+            max-width: 80%;
+
+            filter: drop-shadow(0px 0px 4px #93b44791);
+            animation-name: glow;
+            animation-duration: 2s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-direction: alternate;
+        }
+
         .left-logo:hover {
             rotate: 360deg;
         }
@@ -152,6 +166,7 @@
         <div class="w-50 w-md-100 vh-100 d-flex flex-column justify-content-center align-items-center main-container">
             <!-- Logo -->
             <div class="py-4 logo-container">
+                <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="logo d-block d-md-none">
                 <div>
                     <h1 class="text-center mb-0" style="letter-spacing: 3px;">Iqra AI</h1>
                     <h6 class="text-center mb-4" style="font-weight: 400; opacity: 0.7;">AI Powered Support</h6>
