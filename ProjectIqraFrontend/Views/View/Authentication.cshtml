@@ -2,7 +2,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no" />
     <title>Login | Iqra AI</title>
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="~/css/style.css" rel="stylesheet">
@@ -16,6 +16,8 @@
             background-repeat: no-repeat;
             background-size: cover;
             background-position: center center;
+
+            height: 100vh;
         }
 
         #imageSequenceCanvas
@@ -59,6 +61,7 @@
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             z-index: 20;
+            margin-bottom: 130px;
         }
 
         .login-container p,
@@ -85,6 +88,8 @@
             animation-timing-function: ease-in-out;
             animation-iteration-count: infinite;
             animation-direction: alternate;
+
+            position: absolute;
         }
 
         .logo {
@@ -163,7 +168,7 @@
                 <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="left-logo">
             </div>
         </div>
-        <div class="w-50 w-md-100 vh-100 d-flex flex-column justify-content-center align-items-center main-container">
+        <div class="w-50 w-md-100 min-vh-100 d-flex flex-column justify-content-center align-items-center main-container position-relative">
             <!-- Logo -->
             <div class="py-4 logo-container">
                 <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="logo d-block d-md-none">
@@ -271,7 +276,7 @@
             </div>
 
             <!-- Footer --> 
-            <div class="text-center footer-container position-absolute bottom-0 left-0 right-0" style="margin-bottom: 40px;">
+            <div class="text-center footer-container position-absolute bottom-0 left-0 right-0 px-3" style="margin-bottom: 40px;">
                 <p class="m-0">Copyright &copy; 2025 Iqra AI | <a href="https://badal.om" target="_blank">Badal</a>, Bringing Change</p>
             </div>
         </div>
