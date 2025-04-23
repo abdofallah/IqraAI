@@ -8,8 +8,8 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Client;
+using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
-using IqraInfrastructure.Repositories.Telephony;
 using IqraInfrastructure.Services;
 using Microsoft.Extensions.Logging;
 

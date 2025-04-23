@@ -7,11 +7,11 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
-using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Reflection;
 

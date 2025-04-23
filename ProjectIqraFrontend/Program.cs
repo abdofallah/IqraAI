@@ -22,9 +22,10 @@ using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Redis;
 using System.Reflection;
 using IqraCore.Entities.Configuration;
-using IqraInfrastructure.Repositories.Telephony;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.DependencyInjection;
+using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Managers.Mail;
 
 namespace ProjectIqraFrontend
 {
@@ -294,6 +295,21 @@ namespace ProjectIqraFrontend
     
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
         {
+            builder.Services.AddSingleton<EmailManager>((sp) =>
+            {
+                return new EmailManager(
+                    sp.GetRequiredService<ILogger<EmailManager>>(),
+                    new EmailSettings()
+                    {
+                        Host = appConfig["MailSMTP:Host"],
+                        Port = int.Parse(appConfig["MailSMTP:Port"]),
+                        Username = appConfig["MailSMTP:Username"],
+                        Password = appConfig["MailSMTP:Password"],
+                        FromEmail = appConfig["MailSMTP:FromEmail"],
+                        FromName = appConfig["MailSMTP:FromName"]
+                    }
+                );
+            });
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
             {
                 return new LanguagesManager(
@@ -339,8 +355,10 @@ namespace ProjectIqraFrontend
             {
                 return new UserManager(
                     sp.GetRequiredService<ILogger<UserManager>>(),
+                    sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserSessionRepository>(),
-                    sp.GetRequiredService<UserRepository>()
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<EmailManager>()
                 );
             });
             builder.Services.AddSingleton<BusinessManager>((sp) =>

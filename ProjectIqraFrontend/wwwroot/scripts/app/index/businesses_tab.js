@@ -78,13 +78,49 @@ function FillAddNewBusinessModalDefaults() {
 	});
 }
 
+function SetBusinessCardH4Width() {
+	const anyBusinessCard = BusinessesList.find(".business-card");
+	if (anyBusinessCard.length > 0) {
+		const firstBusinessCard = anyBusinessCard.first();
+
+		const businessCardWidth = firstBusinessCard.innerWidth();
+
+		const businessCardLeftRightPadding = parseInt(firstBusinessCard.css("padding-left")) + parseInt(firstBusinessCard.css("padding-right"));
+		const businessCardImageWidthAndPadding = firstBusinessCard.find("img").innerWidth();
+		const marginLeftForH4 = 20; // .business-card h4 in style.css
+
+		const currentUsedUpSpace = businessCardLeftRightPadding + businessCardImageWidthAndPadding + marginLeftForH4;
+
+		let availableH4Space = businessCardWidth - currentUsedUpSpace;
+
+		if (availableH4Space < 5) {
+            availableH4Space = 5;
+		}
+
+		$("#dynamicBusinessCardH4CSS").html(`
+            .business-card h4 {
+				width: ${availableH4Space}px;
+			}
+		`);
+    }
+}
+
 /** INIT **/
 function InitBusinessesTab() {
 	// Init
 	FillBusinessList();
 	FillAddNewBusinessModalDefaults();
+	SetBusinessCardH4Width();
 
 	// Event Handlers
+	$(window).resize(() => {
+		SetBusinessCardH4Width();
+	});
+
+	$(document).on("containerResizeProgress", (event) => {
+        SetBusinessCardH4Width();
+	})
+
 	$(document).on("click", ".business-card", (event) => {
 		event.preventDefault();
 
@@ -188,6 +224,7 @@ function InitBusinessesTab() {
 				addNewBusinessButton.prop("disabled", false);
 				addNewBusinessButtonSpinner.addClass("d-none");
 				addNewBusinessModal.modal("hide");
+				SetBusinessCardH4Width();
 			},
 			(businessError) => {
 				AlertManager.createAlert({

@@ -1,8 +1,8 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
+using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
-using IqraInfrastructure.Repositories.Telephony;
 
 namespace IqraInfrastructure.Managers.Business
 {

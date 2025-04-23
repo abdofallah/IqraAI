@@ -8,6 +8,9 @@ using IqraInfrastructure.Repositories.User;
 using IqraCore.Models.Authentication;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver.Linq;
+using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Managers.Mail;
+using Deepgram.Models.Manage.v1;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -15,17 +18,21 @@ namespace IqraInfrastructure.Managers.User
     {
         private readonly ILogger<UserManager> _logger;
 
+        private readonly AppRepository _appRepository;
         private readonly UserSessionRepository _userSessionDatabase;
         private readonly UserRepository _userDatabase;
+        private readonly EmailManager _emailManager;
 
         private readonly int _sessionDurationHours = 24;
 
-        public UserManager(ILogger<UserManager> logger, UserSessionRepository userSessionRepository, UserRepository userRepository)
+        public UserManager(ILogger<UserManager> logger, AppRepository appRepository, UserSessionRepository userSessionRepository, UserRepository userRepository, EmailManager emailManager)
         {
             _logger = logger;
 
+            _appRepository = appRepository;
             _userDatabase = userRepository;
             _userSessionDatabase = userSessionRepository;
+            _emailManager = emailManager;
         }
 
         public async Task AddBusinessIdToUser(string userEmail, long businessId)
@@ -172,37 +179,127 @@ namespace IqraInfrastructure.Managers.User
             return Guid.NewGuid().ToString();
         }
 
-        public async Task SendUserRegisterVerifyEmail(string userEmail)
+        public async Task<FunctionReturnResult> GenerateAndSendUserRegisterVerifyEmail(string userEmail)
         {
+            var result = new FunctionReturnResult();
+
             string verifyToken = await GenerateUserRegisterVerifyToken(userEmail);
-            string resetUrl = $"https://app.iqra.bot/verify?email={userEmail}&token={verifyToken}";
+            string verifyUrl = $"https://app.iqra.bot/verify?email={userEmail}&token={verifyToken}";
 
-            string subject = "Verify Account | Iqra AI";
-            string body = $"Hey!<br><br>Thank you for registering with Iqra AI. Please click the link below to verify your account:<br><a href='{resetUrl}'>{resetUrl}</a>";
+            var emailTemplates = await _appRepository.GetEmailTemplates();
+            if (emailTemplates == null)
+            {
+                _logger.LogError("Email Templates not found from database while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterVerifyEmail:1",
+                    "Email Templates not found"
+                );
+            }
 
-            throw new NotImplementedException();
-            //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+            var verifyEmailTemplate = emailTemplates.VerifyEmailTemplate;
+            if (string.IsNullOrEmpty(verifyEmailTemplate.Subject) || string.IsNullOrEmpty(verifyEmailTemplate.Body))
+            {
+                _logger.LogError("Verify Email Template subject or body null or empty while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterVerifyEmail:2",
+                    "Verify Email Template subject or body null or empty"
+                );
+            }
+
+            string subject = verifyEmailTemplate.Subject;
+            string body = verifyEmailTemplate.Body.Replace("{{verifyUrl}}", verifyUrl);
+
+            if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
+            {
+                _logger.LogError("Failed to send user register verify email because email manager failed, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterVerifyEmail:3",
+                    "Failed to send user register verify email"
+                );
+            }
+
+            return result.SetSuccessResult();
         }
 
-        public async Task SendPasswordResetEmail(string userEmail, string? requestedBy = null)
+        public async Task<FunctionReturnResult> GenerateAndSendPasswordResetEmail(string userEmail, string? requestedBy = null)
         {
+            var result = new FunctionReturnResult();
+
             string resetToken = await GenerateResetPasswordToken(userEmail, requestedBy);
             string resetUrl = $"https://app.iqra.bot/reset?email={userEmail}&token={resetToken}";
 
-            string subject = "Reset Password | Iqra AI";
-            string body = $"<a href='{resetUrl}'>{resetUrl}</a>{(string.IsNullOrEmpty(requestedBy) ? "" : $"<p>Requested By: {requestedBy}</p>")}";
+            var emailTemplates = await _appRepository.GetEmailTemplates();
+            if (emailTemplates == null)
+            {
+                _logger.LogError("Email Templates not found from database while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendPasswordResetEmail:1",
+                    "Email Templates not found"
+                );
+            }
 
-            throw new NotImplementedException();
-            //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+            var resetPasswordEmailTemplate = emailTemplates.ResetPasswordTemplate;
+            if (string.IsNullOrEmpty(resetPasswordEmailTemplate.Subject) || string.IsNullOrEmpty(resetPasswordEmailTemplate.Body))
+            {
+                _logger.LogError("Reset password Email Template subject or body null or empty while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendPasswordResetEmail:2",
+                    "Reset password Email Template subject or body null or empty"
+                );
+            }
+
+            string subject = resetPasswordEmailTemplate.Subject;
+            string body = resetPasswordEmailTemplate.Body.Replace("{{resetUrl}}", resetUrl);
+
+            if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
+            {
+                _logger.LogError("Failed to send user register reset password email because email manager failed, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendPasswordResetEmail:3",
+                    "Failed to send user register reset password email"
+                );
+            }
+
+            return result.SetSuccessResult();
         }
 
-        public async Task SendUserRegisterWelcomeEmail(string email)
+        public async Task<FunctionReturnResult> SendUserRegisterWelcomeEmail(string userEmail, string firstName, string lastName)
         {
-            string subject = "Welcome to Iqra AI";
-            string body = "Thanks for registering with Iqra AI.";
+            var result = new FunctionReturnResult();
 
-            throw new NotImplementedException();
-            //await _emailManager.SendEmailAsync(user.Email, subject, body); todo
+            var emailTemplates = await _appRepository.GetEmailTemplates();
+            if (emailTemplates == null)
+            {
+                _logger.LogError("Email Templates not found from database while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterWelcomeEmail:1",
+                    "Email Templates not found"
+                );
+            }
+
+            var welcomeEmailTemplate = emailTemplates.WelcomeUserTemplate;
+            if (string.IsNullOrEmpty(welcomeEmailTemplate.Subject) || string.IsNullOrEmpty(welcomeEmailTemplate.Body))
+            {
+                _logger.LogError("Welcome Email Template subject or body null or empty while sending user register email, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterWelcomeEmail:2",
+                    "Welcome Email Template subject or body null or empty"
+                );
+            }
+
+            string subject = welcomeEmailTemplate.Subject;
+            string body = welcomeEmailTemplate.Body.Replace("{{firstName}}", firstName).Replace("{{lastName}}", lastName);
+
+            if (!(await _emailManager.SendEmailAsync(userEmail, subject, body)))
+            {
+                _logger.LogError("Failed to send user register welcome email because email manager failed, {email}", userEmail);
+                return result.SetFailureResult(
+                    "SendUserRegisterWelcomeEmail:3",
+                    "Failed to send user register welcome email"
+                );
+            }
+
+            return result.SetSuccessResult();
         }
 
         public async Task<FunctionReturnResult<List<UserData>?>> GetUsersAsync(int page, int pageSize)

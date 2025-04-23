@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
     <title>Dashboard | Iqra AI</title>
 
     <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,9 +14,22 @@
     <link href="~/css/structure.css" rel="stylesheet">
     <link href="~/css/style.css" rel="stylesheet">
 
-    <link rel="icon" type="image/x-icon" href="~/img/favicon.ico">
+    <style>
+        @@media screen and (max-width: 768px) {
+            #businessesListActions {
+                flex-direction: column !important;
+            }
+
+            #AddNewBusinessButton {
+                margin: 0 !important;
+                margin-bottom: 12px !important;
+                width: 100% !important;
+            }
+        }
+    </style>
 
     <style id="dynamicCSS"></style>
+    <style id="dynamicBusinessCardH4CSS"></style>
 </head>
 
 <body id="body-pd" class="body-pd">
@@ -65,12 +80,10 @@
         <div class="main-container fade show w-100" id="business-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
             <div class="inner-container">
-                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                    <div style="min-width: 200px" class="me-4">
-                        <button id="AddNewBusinessButton" class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewBusinessModal" disabled>
-                            <span>+ Add New Business</span>
-                        </button>
-                    </div>
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between" id="businessesListActions">
+                    <button id="AddNewBusinessButton" style="min-width: 200px" class="mb-0 text-decoration-none fw-bold btn btn-primary me-4" data-bs-toggle="modal" data-bs-target="#addNewBusinessModal" disabled>
+                        <span>+ Add New Business</span>
+                    </button>
                     <div class="input-group w-100">
                         <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton" id="searchBusinessInput" disabled>
                         <button class="input-group-button btn btn-primary" id="searchBusinessButton" disabled>

@@ -24,6 +24,8 @@
             success: (response) => {
                 if (response.success) {
                     $("#registerForm").addClass("d-none");
+
+                    $('.register-container #errorMessage').addClass('d-none');
                     $(".register-container #successMessage").removeClass("d-none");
                     setTimeout(() => {
                         $(".register-container #successMessage").addClass("show").html('<span>Thank you for registering!<br><br>Please verify your email before you can login.</span>');

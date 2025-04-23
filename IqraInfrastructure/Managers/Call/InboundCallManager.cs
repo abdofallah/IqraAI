@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Telephony.Call;
-using IqraInfrastructure.Repositories.Telephony;
 using IqraInfrastructure.Managers.Business;
 using System.Text.Json;
 using System.Net.Http.Headers;
@@ -14,6 +13,7 @@ using IqraCore.Entities.Business;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraCore.Entities.Server.Call;
+using IqraInfrastructure.Repositories.Call;
 
 namespace IqraInfrastructure.Managers.Call
 {

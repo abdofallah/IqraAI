@@ -25,11 +25,12 @@ namespace IqraInfrastructure.Repositories.App
 
         // Fields
         private const string AppPermissionConfigField = "AppPermissionConfig";
-        private const string VestaCPProxyTemplatesHash = "VestaCPProxyTemplatesHash";
+        private const string VestaCPProxyTemplatesHashField = "VestaCPProxyTemplatesHash";
+        private const string EmailTemplatesField = "EmailTemplates";
 
         /**
          * 
-         * API Keys 
+         * App Permission Config
          * 
         **/ 
         public async Task<bool> AddUpdateAppPermissionConfig(AppPermissionConfig appPermissionConfig)
@@ -53,6 +54,7 @@ namespace IqraInfrastructure.Repositories.App
 
             return BsonSerializer.Deserialize<AppPermissionConfig>(result);
         }
+
         /**
          * 
          * VestaCP Proxy Templates Hash
@@ -61,7 +63,7 @@ namespace IqraInfrastructure.Repositories.App
 
         public async Task<bool> AddUpdateVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHash);
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHashField);
             var update = Builders<BsonDocument>.Update.Set("TemplateHashes", templateHashes);
 
             var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
@@ -70,13 +72,48 @@ namespace IqraInfrastructure.Repositories.App
 
         public async Task<VestaCPProxyTemplateHashes?> GetVestaCPProxyTemplatesHash()
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHash);
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHashField);
 
             var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
 
             if (result == null) return null;
 
             return BsonSerializer.Deserialize<VestaCPProxyTemplateHashes>(result);
+        }
+
+        /**
+         * 
+         * Email Templates
+         * 
+        **/
+
+        public async Task<bool> AddUpdateEmailTemplates(EmailTemplates emailTemplates)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", EmailTemplatesField);
+            var update = Builders<BsonDocument>.Update.Set(EmailTemplatesField,
+                BsonDocument.Create(emailTemplates)
+            );
+
+            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<EmailTemplates?> GetEmailTemplates()
+        {
+            try
+            {
+                var filter = Builders<BsonDocument>.Filter.Eq("_id", EmailTemplatesField);
+                var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+
+                if (result == null) return null;
+
+                return BsonSerializer.Deserialize<EmailTemplates>(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting email templates");
+                return null;
+            }
         }
     }
 }

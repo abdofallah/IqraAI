@@ -115,6 +115,24 @@ function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
 	}
 }
 
+function makeSureNavToggleIconIsCorrect() {
+	const windowWidth = $(window).width();
+	if (windowWidth < 768) {
+		const toggle = document.getElementById("header-toggle");
+
+		if ($(".l-navbar").hasClass("show")) {
+			if (!toggle.classList.contains("fa-xmark")) {
+				toggle.classList.add("fa-xmark");
+			}
+		}
+		else {
+			if (toggle.classList.contains("fa-xmark")) {
+				toggle.classList.remove("fa-xmark");
+			}
+		}
+	}
+}
+
 $(document).ready(() => {
 	$(document).on("click", ".l-navbar .nav_link", async (event) => {
 		const hasHrefTag = event.currentTarget.hasAttribute("href");
@@ -202,6 +220,8 @@ $(document).ready(() => {
 			clearTimeout(resizeTimeout);
 		}
 
+		makeSureNavToggleIconIsCorrect();
+
 		// Set a new timeout - this will only execute if no resize occurs for 250ms
 		resizeTimeout = setTimeout(() => {
 			const currentWidth = $(window).width();
@@ -214,14 +234,13 @@ $(document).ready(() => {
 
 				const currentActiveTabId = $(".l-navbar .nav_link.active").attr("for");
 				setDynamicBodyHeight(currentActiveTabId);
-
-				console.log("Resize complete");
 			}
 		}, 250); // Wait for 250ms of no resize events before executing
 	});
 
 	// Init
 	changeActiveSidebarLink("header-toggle", "nav-bar", "body-pd", "header");
+	makeSureNavToggleIconIsCorrect();
 
 	$(document)
 		.find(".l-navbar .nav_link")

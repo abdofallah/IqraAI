@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
-namespace IqraInfrastructure.Repositories.Telephony
+namespace IqraInfrastructure.Repositories.Call
 {
     public class CallQueueRepository
     {

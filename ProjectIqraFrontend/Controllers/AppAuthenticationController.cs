@@ -55,7 +55,14 @@ namespace ProjectIqraFrontend.Controllers
                 }
 
                 user = await _userManager.RegisterUser(model);
-                await _userManager.SendUserRegisterVerifyEmail(user.Email);
+                var emailResult = await _userManager.GenerateAndSendUserRegisterVerifyEmail(user.Email);
+                if (!emailResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "Register:" + emailResult.Code,
+                        "Email registeration successful but failed to send verify email: " + emailResult.Message
+                    );
+                }
 
                 return result.SetSuccessResult();
             }
@@ -109,7 +116,11 @@ namespace ProjectIqraFrontend.Controllers
                 }
 
                 await _userManager.VerifyUserEmail(user.Email);
-                await _userManager.SendUserRegisterWelcomeEmail(user.Email);
+                var emailResult = await _userManager.SendUserRegisterWelcomeEmail(user.Email, user.FirstName, user.LastName);
+                if (!emailResult.Success)
+                {
+                    // The user does not need to know this but we are logging it to find out why this happened
+                }
 
                 return result.SetSuccessResult();
             }
@@ -223,7 +234,15 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                await _userManager.SendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
+                var emailResult = await _userManager.GenerateAndSendPasswordResetEmail(user.Email, HttpContext.Connection.RemoteIpAddress?.ToString());
+                if (!emailResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "RequestResetPassword:" + emailResult.Code,
+                        emailResult.Message
+                    );
+                }
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)

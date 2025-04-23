@@ -13,7 +13,7 @@ using IqraCore.Entities.Configuration;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Repositories.Conversation;
-using IqraInfrastructure.Repositories.Telephony;
+using IqraInfrastructure.Repositories.Call;
 
 namespace IqraInfrastructure.Managers.Business
 {

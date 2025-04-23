@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Server;
+using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
-using IqraInfrastructure.Repositories.Telephony;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
