@@ -1,5 +1,8 @@
-﻿$(document).ready(function () {
-    const canvasElement = $('#imageSequenceCanvas')[0];
+﻿$(document).ready(() => {
+    const canvasElement = $('#imageSequenceCanvas');
+    const leftLogoContainerElement = $('.left-logo-container');
+    const mainIntroElement = $('#main-intro');
+
     const totalFrames = 127;
     const basePath = '/img/AI/';
 
@@ -15,18 +18,37 @@
         return `${adjustedBasePath}${fileNamePrefix}${paddedFrameNumber}${fileExtension}`;
     });
 
+    const originalImageWidth = 800;
+    const originalImageHeight = 600;
 
-    // Define options for the AnimateImages instance
+    const logoOriginalX = 283;
+    const logoOriginalY = 195;
+    const logoOriginalWidth = 235;
+    const logoOriginalHeight = 235;
+
+    let currentFillMode = 'cover';
+
     const sequenceOptions = {
-        images: imagesArray,     // Array of image URLs
-        loop: true,              // Loop the animation
-        fps: 30,                 // Play at 30 frames per second
-        autoplay: true,          // Start playing automatically after loading
-        preload: 'partial',       // Default is 'all', loads all images before playing
-        preloadNumber: '1',     // Number of images to preload
+        images: imagesArray,
+        loop: true,
+        fps: 30,
+        autoplay: true,
+        preload: 'partial',
+        preloadNumber: '1',
+        fillMode: currentFillMode,
         onLoadingProgress: function (progress) {
         },
         onPreloadFinished: function (instance) {
+            performLeftLogoResize();
+
+            canvasElement.addClass('zooming');
+            mainIntroElement.addClass('show');
+            setTimeout(() => {
+                leftLogoContainerElement.find('.left-logo').css('filter', 'drop-shadow(0px 0px 0px rgba(147, 180, 71, 0.3))');
+                setTimeout(() => {
+                    leftLogoContainerElement.find('.left-logo').addClass('glowing-loop');
+                }, 1500);
+            }, 1000);
         },
         onAnimationEnd: function (instance) {
         }
@@ -37,9 +59,80 @@
         return;
     }
 
+    let sequence;
     try {
-        const sequence = new AnimateImages(canvasElement, sequenceOptions);
+        sequence = new AnimateImages(canvasElement[0], sequenceOptions);
+        leftLogoContainerElement.find('.left-logo').css('filter', 'drop-shadow(0px 0px 100px rgba(147, 180, 71, 0.3))');
+
     } catch (error) {
         console.error('Error initializing AnimateImages:', error);
+        return;
     }
+
+    function performLeftLogoResize() {
+        const canvasEl = canvasElement[0];
+        const canvasWidth = canvasEl.clientWidth;
+        const canvasHeight = canvasEl.clientHeight;
+
+        let scaleFactor;
+        let imageDx = 0;
+        let imageDy = 0;
+        let sx = 0;
+        let sy = 0;
+
+        if (currentFillMode === 'contain') {
+            const ratioX = canvasWidth / originalImageWidth;
+            const ratioY = canvasHeight / originalImageHeight;
+            scaleFactor = Math.min(ratioX, ratioY);
+
+            const displayedImageWidth = originalImageWidth * scaleFactor;
+            const displayedImageHeight = originalImageHeight * scaleFactor;
+
+            imageDx = (canvasWidth - displayedImageWidth) / 2;
+            imageDy = (canvasHeight - displayedImageHeight) / 2;
+
+            sx = 0;
+            sy = 0;
+
+        } else if (currentFillMode === 'cover') {
+            scaleFactor = Math.max(canvasWidth / originalImageWidth, canvasHeight / originalImageHeight);
+
+            const sourceWidth = canvasWidth / scaleFactor;
+            const sourceHeight = canvasHeight / scaleFactor;
+
+            sx = (originalImageWidth - sourceWidth) / 2;
+            sy = (originalImageHeight - sourceHeight) / 2;
+
+            imageDx = 0;
+            imageDy = 0;
+
+        } else {
+            console.warn(`Unsupported fillMode: ${currentFillMode}. Logo overlay positioning may be incorrect.`);
+            leftLogoContainerElement.hide();
+            return;
+        }
+
+        const logoRelativeToSourceX = logoOriginalX - sx;
+        const logoRelativeToSourceY = logoOriginalY - sy;
+
+        const logoCanvasX = imageDx + logoRelativeToSourceX * scaleFactor;
+        const logoCanvasY = imageDy + logoRelativeToSourceY * scaleFactor;
+
+        const logoCanvasWidth = logoOriginalWidth * scaleFactor;
+        const logoCanvasHeight = logoOriginalHeight * scaleFactor;
+
+        leftLogoContainerElement.css({
+            left: logoCanvasX + 'px',
+            top: logoCanvasY + 'px',
+            width: logoCanvasWidth + 'px',
+            height: logoCanvasHeight + 'px',
+            display: 'block'
+        });
+    }
+
+    $(window).resize(() => {
+        setTimeout(performLeftLogoResize, 50);
+    });
+
+    performLeftLogoResize();
 });

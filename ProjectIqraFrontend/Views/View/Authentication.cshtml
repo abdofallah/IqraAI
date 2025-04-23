@@ -12,7 +12,6 @@
             position: relative;
             overflow: hidden;
             background-color: black;
-            background-image: url('/img/AI/frame0000.jpg');
             background-repeat: no-repeat;
             background-size: cover;
             background-position: center center;
@@ -20,12 +19,45 @@
             height: 100vh;
         }
 
+        #main-intro.show #imageSequenceCanvas,
+        #main-intro.show .left-logo-container {
+            opacity: 1;
+        }
+
         #imageSequenceCanvas
         {
             display: block;
             width: 100%;
-            object-fit: cover;
             height: 100vh;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+
+        #imageSequenceCanvas.zooming {
+            animation-name: zoominout;
+            animation-duration: 2s;
+            animation-timing-function: ease-in-out;
+            animation-iteration-count: infinite;
+            animation-direction: alternate;
+            transform: scale(1);
+        }
+
+        @@keyframes zoominout
+        {
+            0%
+            {
+                transform: scale(1);
+            }
+
+            50%
+            {
+                transform: scale(1.04);
+            }
+
+            100%
+            {
+                transform: scale(1);
+            }
         }
 
         #main-intro .overlay {
@@ -74,53 +106,90 @@
             margin: 0;
         }
 
+        .left-logo-container
+        {
+            position: absolute;
+            z-index: 20; 
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            transition: opacity 1s ease-in-out, filter 0.5s ease-out;
+        }
+
         .left-logo {
             margin: auto;
-            width: 500px;
-            max-width: 100%;
 
-            transition: 900ms rotate;
+            width: 100%;
+            height: 100%;
+
+            transition: 900ms rotate, filter 1000ms ease-in-out;
             rotate: 0deg;
+        }
 
-            filter: drop-shadow(0px 0px 4px #93b44791);
+        .left-logo.glowing-loop
+        {
             animation-name: glow;
             animation-duration: 2s;
             animation-timing-function: ease-in-out;
             animation-iteration-count: infinite;
             animation-direction: alternate;
+            filter: initial;
+        }
 
-            position: absolute;
+        @@keyframes glow
+        {
+            0%
+            {
+                filter: drop-shadow(0px 0px 10px rgba(147, 180, 71, 0));
+            }
+
+            50%
+            {
+                filter: drop-shadow(0px 0px 60px rgba(147, 180, 71, 0.2));
+            }
+
+            100%
+            {
+                filter: drop-shadow(0px 0px 10px rgba(147, 180, 71, 0));
+            }
         }
 
         .logo {
             margin: auto;
             margin-bottom: -12px;
+            padding-left: 12px;
             width: 180px;
             max-width: 80%;
-
-            filter: drop-shadow(0px 0px 4px #93b44791);
-            animation-name: glow;
-            animation-duration: 2s;
+            filter: drop-shadow(0px 0px 10px rgba(147, 180, 71, 0));
+            animation-name: glowmobile;
+            animation-duration: 4s;
             animation-timing-function: ease-in-out;
             animation-iteration-count: infinite;
             animation-direction: alternate;
+        }
+
+        @@keyframes glowmobile
+        {
+            0%
+            {
+                filter: drop-shadow(0px 0px 10px rgba(147, 180, 71, 0));
+            }
+
+            50%
+            {
+                filter: drop-shadow(0px 0px 25px rgba(147, 180, 71, 0.4));
+            }
+
+            100%
+            {
+                filter: drop-shadow(0px 0px 10px rgba(147, 180, 71, 0));
+            }
         }
 
         .left-logo:hover {
             rotate: 360deg;
         }
 
-        @@keyframes glow {
-            0% {
-                filter: drop-shadow(0px 0px 4px #93b44791);
-            }
-            50% {
-                filter: drop-shadow(0px 0px 12px #93b44791);
-            }
-            100% {
-                filter: drop-shadow(0px 0px 4px #93b44791);
-            }
-        }
+        
 
         .form-label {
             margin-bottom: 0;
@@ -162,10 +231,12 @@
 <body>
     <div class="d-flex">
         <div class="w-50 vh-100 d-none d-md-block" id="main-intro">
-            <canvas id="imageSequenceCanvas" width="800" height="500"></canvas>
+            <canvas id="imageSequenceCanvas" width="800" height="600"></canvas>
             <div class="overlay"></div>
             <div class="inner-container d-flex flex-column justify-content-center align-items-center">
-                <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="left-logo">
+                <div class="left-logo-container">
+                    <img src="~/img/logo/logo-colored-light.png" alt="Logo" class="left-logo">
+                </div>
             </div>
         </div>
         <div class="w-50 w-md-100 min-vh-100 d-flex flex-column justify-content-center align-items-center main-container position-relative">
