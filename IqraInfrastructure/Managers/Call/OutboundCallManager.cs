@@ -290,7 +290,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Create HttpClient
-                using var client = _httpClientFactory.CreateClient();
+                using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
 
                 // Set headers
                 client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);

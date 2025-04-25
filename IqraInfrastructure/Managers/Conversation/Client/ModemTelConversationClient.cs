@@ -149,7 +149,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                     new ArraySegment<byte>(audioData),
                     WebSocketMessageType.Binary,
                     true,
-                    cancellationToken);
+                    cancellationToken
+                );
 
                 _logger.LogDebug("Sent {Length} bytes of audio data for call {CallId}", audioData.Length, _callId);
             }

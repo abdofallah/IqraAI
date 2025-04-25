@@ -335,8 +335,9 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Create the HttpClient
-                using var client = _httpClientFactory.CreateClient();
-       
+                using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
+                // ignore ssl validation etc for client
+
                 // Set headers
                 client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -412,7 +413,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Create the HttpClient
-                using var client = _httpClientFactory.CreateClient();    
+                using var client = _httpClientFactory.CreateClient("CallManagerServerForward");    
                 
                 // Set headers
                 client.DefaultRequestHeaders.Add("X-API-Key", apiKey);

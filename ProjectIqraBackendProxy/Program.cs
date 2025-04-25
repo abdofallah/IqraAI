@@ -33,7 +33,7 @@ namespace ProjectIqraBackendProxy
             SetupManagers(builder, appConfig);
 
             // HTTP Client
-            builder.Services.AddHttpClient();
+            builder.Services.AddHttpClient("CallManagerServerForward").ConfigureHttpMessageHandlerBuilder(builder => builder.PrimaryHandler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true });
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);

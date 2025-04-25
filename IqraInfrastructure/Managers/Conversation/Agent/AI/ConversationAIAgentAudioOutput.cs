@@ -84,7 +84,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             Channels = _agentState.AgentConfiguration.Channels;
 
             BytesPerSample = BitsPerSample / 8;
-            ChunkDurationMs = 300;
+            ChunkDurationMs = 600;
             BytesPerChunk = SampleRate * BytesPerSample * Channels * ChunkDurationMs / 1000;
 
             // --- Move logic from InitalizeTTSForLangauge here ---
@@ -551,7 +551,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 short speechSample = i < speechShortSpan.Length ? (short)((float)speechShortSpan[i] * (float)agentVolume) : (short)0;
                 short backgroundSample = i < backgroundShortSpan.Length ? (short)((float)backgroundShortSpan[i] * (float)backgroundVolume) : (short)0;
 
-                int mixedSample = speechSample + backgroundSample;
+                int mixedSample = (speechSample / 2) + backgroundSample; // clip agent audio a bit
                 mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
             }
 
