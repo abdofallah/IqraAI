@@ -96,7 +96,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         {
             if (!_isConnected)
             {
-                _logger.LogDebug("WebSocket is already disconnected for call {CallId}", _callId);
+                _logger.LogWarning("WebSocket is already disconnected for call {CallId}", _callId);
                 return;
             }
 
@@ -151,8 +151,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                     true,
                     cancellationToken
                 );
-
-                _logger.LogDebug("Sent {Length} bytes of audio data for call {CallId}", audioData.Length, _callId);
             }
             catch (Exception ex)
             {
@@ -186,8 +184,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                     WebSocketMessageType.Text,
                     true,
                     cancellationToken);
-
-                _logger.LogDebug("Sent text message for call {CallId}: {Text}", _callId, text);
             }
             catch (Exception ex)
             {
@@ -280,8 +276,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
                 var messageType = message.Substring(0, firstColumnIndex).Trim();
 
-                _logger.LogDebug("Received control message: {Type} for call {CallId}", messageType, _callId);
-
                 switch (messageType)
                 {
                     case "call.ended":
@@ -299,7 +293,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                         break;
 
                     default:
-                        _logger.LogDebug("Unhandled control message type: {Type} for call {CallId}", messageType, _callId);
+                        _logger.LogError("Unhandled control message type: {Type} for call {CallId}", messageType, _callId);
                         break;
                 }
             }

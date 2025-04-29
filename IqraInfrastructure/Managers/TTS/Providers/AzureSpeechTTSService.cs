@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using Deepgram.Models.Manage.v1;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
@@ -39,6 +40,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var audioConfig = AudioConfig.FromStreamOutput(_pullStream);
 
             _synthesizer = new SpeechSynthesizer(speechConfig, audioConfig);
+            var connection = Connection.FromSpeechSynthesizer(_synthesizer);
+            connection.Open(true);
+
             _synthesizer.SynthesisStarted += OnSynthesisStarted;
             _synthesizer.SynthesisCompleted += OnSynthesisCompleted;
             _synthesizer.SynthesisCanceled += OnSynthesisCanceled;
@@ -75,6 +79,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             if (_loggingEnabled)
             {
+                Console.WriteLine($"first byte client latency: \t{e.Result.Properties.GetProperty(PropertyId.SpeechServiceResponse_SynthesisFirstByteLatencyMs)} ms");
+                Console.WriteLine($"finish client latency: \t{e.Result.Properties.GetProperty(PropertyId.SpeechServiceResponse_SynthesisFinishLatencyMs)} ms");
+                Console.WriteLine($"network latency: \t{e.Result.Properties.GetProperty(PropertyId.SpeechServiceResponse_SynthesisNetworkLatencyMs)} ms");
+                Console.WriteLine($"first byte service latency: \t{e.Result.Properties.GetProperty(PropertyId.SpeechServiceResponse_SynthesisServiceLatencyMs)} ms");
                 Console.WriteLine($"Synthesis Completed: Id={e.Result.ResultId}");
             }
         }
@@ -91,7 +99,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             if (_loggingEnabled)
             {
-                Console.WriteLine($"Synthesizing. Id: {e.Result.ResultId}");
+                //Console.WriteLine($"Synthesizing. Id: {e.Result.ResultId}");
             }
         }
 
@@ -99,7 +107,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             if (_loggingEnabled)
             {
-                Console.WriteLine($"Bookmark Reached. Text: {e.Text} Id: {e.ResultId}");
+                //Console.WriteLine($"Bookmark Reached. Text: {e.Text} Id: {e.ResultId}");
             }
         }
 

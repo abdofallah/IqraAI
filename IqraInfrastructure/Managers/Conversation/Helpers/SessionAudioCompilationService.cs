@@ -27,8 +27,6 @@ namespace IqraInfrastructure.Services
             string sessionId
         )
         {
-            _logger.LogInformation("Starting audio compilation for session {SessionId}", sessionId);
-
             ConversationState? conversationState = null;
             try
             {
@@ -46,7 +44,6 @@ namespace IqraInfrastructure.Services
 
                 if (!participantIds.Any())
                 {
-                    _logger.LogInformation("No participants found for session {SessionId}. Skipping audio compilation.", sessionId);
                     return;
                 }
 
@@ -78,9 +75,6 @@ namespace IqraInfrastructure.Services
                         anyCompilationFailed = true;
                     }
                 }
-
-                _logger.LogInformation("Finished audio compilation task for session {SessionId}. Compiled {Count} participants. Failures occurred: {AnyFailure}",
-                    sessionId, compiledFileRefs.Count, anyCompilationFailed);
             }
             catch (Exception ex)
             {

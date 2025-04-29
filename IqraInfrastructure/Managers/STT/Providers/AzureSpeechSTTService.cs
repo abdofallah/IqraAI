@@ -80,7 +80,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         private void OnRecognizing(object? sender, SpeechRecognitionEventArgs e)
         {
-            //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}"); todo logger
+            //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
             OnRecoginizingRecieved?.Invoke(this, e);
         }
 

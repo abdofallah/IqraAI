@@ -21,24 +21,24 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
                     deltaText = response.Delta.Text;
 
                     if (
-                        response.Delta != null &&
-                        response.Delta.StopReason != null &&
-                        (response.Delta.StopReason == "max_tokens" || response.Delta.StopReason != "end_turn")
+                        response.Delta.StopReason != null
+                        //&& (response.Delta.StopReason == Anthropic.SDK.Messaging.MessageStopReason.Length || response.Delta.StopReason == Anthropic.SDK.Messaging.MessageStopReason.Stop)
                     )
                     {
                         isEndOfResponse = true;
                     }
                 }
             }
-            else if (providerType == InterfaceLLMProviderEnum.OpenAIGPT)
+            else if (providerType == InterfaceLLMProviderEnum.OpenAIGPT || providerType == InterfaceLLMProviderEnum.AzureOpenAI)
             {
                 var response = (OpenAI.Chat.StreamingChatCompletionUpdate)responseObject;
+                var messageContentPart = (OpenAI.Chat.ChatMessageContentPart)response.ContentUpdate.FirstOrDefault();
 
-                deltaText = response.ContentUpdate.ToString();
+                deltaText = messageContentPart?.Text ?? "";
 
                 if (
-                    response.FinishReason != null &&
-                    (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
+                    response.FinishReason != null 
+                    //&& (response.FinishReason == OpenAI.Chat.ChatFinishReason.Stop || response.FinishReason == OpenAI.Chat.ChatFinishReason.Length)
                 )
                 {
                     isEndOfResponse = true;
@@ -54,9 +54,9 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
                     deltaText = candidate.Content.Parts.First().Text;
                 }
 
-                if (candidate != null &&
-                    candidate.FinishReason != null &&
-                    candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
+                if (
+                    candidate?.FinishReason != null
+                    //&& candidate.FinishReason != (GenerativeAI.Types.FinishReason.FINISH_REASON_UNSPECIFIED)
                 )
                 {
                     isEndOfResponse = true;
@@ -69,7 +69,24 @@ namespace IqraInfrastructure.Managers.LLM.Providers.Helpers
                 var choice = groqChunk.Choices?.FirstOrDefault();
                 deltaText = choice?.Delta?.Content;
 
-                if (!string.IsNullOrWhiteSpace(choice?.FinishReason))
+                if (
+                    choice?.FinishReason != null
+                    // && todo finish reason
+                    )
+                {
+                    isEndOfResponse = true;
+                }
+            }
+            else if (providerType == InterfaceLLMProviderEnum.AzureAIInference)
+            {
+                var response = (Azure.AI.Inference.StreamingChatCompletionsUpdate)responseObject;
+
+                deltaText = response.ContentUpdate;
+
+                if (
+                    response.FinishReason != null
+                    //&& (response.FinishReason == Azure.AI.Inference.CompletionsFinishReason.Stopped || response.FinishReason == Azure.AI.Inference.CompletionsFinishReason.TokenLimitReached)
+                )
                 {
                     isEndOfResponse = true;
                 }

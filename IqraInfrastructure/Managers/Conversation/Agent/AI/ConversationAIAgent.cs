@@ -12,6 +12,7 @@ using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
+using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
@@ -253,13 +254,46 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private async Task SetupLanguageSelectionViaDTMFAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Agent {AgentId}: Setting up multi-language selection via DTMF.", _agentState.AgentId);
-            string multiLanguagePrompt = "";
-            var availableLangs = _agentState.CurrentSessionRoute!.Language.EnabledMultiLanguages!;
-            int langCount = availableLangs.Count;
-
             try
             {
+                await HandleLanguageSelectionMessagePlaying(cancellationToken);
+
+                var dtmfConfig = new DTMFSessionConfig
+                {
+                    AssociatedNodeId = "internal::language_selection",
+                    MaxLength = 1,
+                    TerminatorChar = null,
+                    InterDigitTimeoutSeconds = 5,
+                    MaxSessionDurationSeconds = 10000
+                };
+
+                bool started = _dtmfSessionManager.StartSession(dtmfConfig);
+                if (started)
+                {
+                    _agentState.IsAwaitingLanguageSelectionInput = true;
+                }
+                else
+                {
+                    _logger.LogError("Agent {AgentId}: Failed to start DTMF session for language selection (already active?).", _agentState.AgentId);
+                    // Fallback? Maybe proceed with default language?
+                    await BeginAgentConversationFlowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Error during language selection setup. Proceeding with default.", _agentState.AgentId);
+                await BeginAgentConversationFlowAsync();
+            }
+        }
+
+        private string cachedMultiLanguagePlayMessage = string.Empty;
+        private async Task HandleLanguageSelectionMessagePlaying(CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(cachedMultiLanguagePlayMessage))
+            {
+                var availableLangs = _agentState.CurrentSessionRoute!.Language.EnabledMultiLanguages!;
+                int langCount = availableLangs.Count;
+
                 for (int i = 0; i < langCount; i++)
                 {
                     var languageInfo = availableLangs[i];
@@ -273,58 +307,17 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                        .Replace("{number}", numberWord, StringComparison.OrdinalIgnoreCase)
                        .Replace("{name}", languageLocaleName, StringComparison.OrdinalIgnoreCase);
 
-                    multiLanguagePrompt += $"\n{builtMessage}";
+                    cachedMultiLanguagePlayMessage += $"\n{builtMessage}";
                 }
 
-                multiLanguagePrompt = multiLanguagePrompt.Trim();
+                cachedMultiLanguagePlayMessage = cachedMultiLanguagePlayMessage.Trim();
+            }           
 
-                if (!string.IsNullOrWhiteSpace(multiLanguagePrompt))
-                {
-                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(multiLanguagePrompt, cancellationToken);
-
-                    // Start a specific DTMF session for language selection
-                    var dtmfConfig = new DTMFSessionConfig
-                    {
-                        AssociatedNodeId = "internal::language_selection", // Special identifier
-                        MaxLength = 1, // Expect single digit
-                        TerminatorChar = null, // No terminator needed
-                        InterDigitTimeoutSeconds = 10, // Generous timeout for selection
-                        MaxSessionDurationSeconds = 20
-                    };
-
-                    bool started = _dtmfSessionManager.StartSession(dtmfConfig);
-                    if (started)
-                    {
-                        _agentState.IsAwaitingLanguageSelectionInput = true; // Set flag
-                        _logger.LogInformation("Agent {AgentId}: Awaiting DTMF input for language selection.", _agentState.AgentId);
-                    }
-                    else
-                    {
-                        _logger.LogError("Agent {AgentId}: Failed to start DTMF session for language selection (already active?).", _agentState.AgentId);
-                        // Fallback? Maybe proceed with default language?
-                        await BeginAgentConversationFlowAsync();
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("Agent {AgentId}: Multi-language enabled, but prompt text generation failed. Proceeding with default.", _agentState.AgentId);
-                    await BeginAgentConversationFlowAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Error during language selection setup. Proceeding with default.", _agentState.AgentId);
-                await BeginAgentConversationFlowAsync();
-            }
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(cachedMultiLanguagePlayMessage, cancellationToken);
         }
 
         private async Task BeginAgentConversationFlowAsync()
         {
-            // Ensure previous language selection state is cleared
-            _agentState.IsAwaitingLanguageSelectionInput = false;
-
-            _logger.LogInformation("Agent {AgentId}: Beginning main conversation flow in language {LangCode}.", AgentId, _agentState.CurrentLanguageCode);
-
             if (_agentState.IsBackgroundMusicLoaded)
             {
                 _agentState.IsBackgroundMusicEnabled = true; // Logic to start/mix music is in AudioOutputHandler
@@ -365,7 +358,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private async Task HandleLanguageChangeRequestAsync(string newLanguageCode)
         {
-            _logger.LogInformation("Agent {AgentId}: Handling language change request to {LanguageCode}", AgentId, newLanguageCode);
             if (!_agentState.IsInitialized) return; // Should not happen
 
             // Update State
@@ -380,18 +372,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Re-initialize language-dependent modules
             try
             {
-                _logger.LogDebug("Agent {AgentId}: Re-initializing language-dependent modules.", AgentId);
-                
                 await _llmHandler.ReInitializeForLanguageAsync();
                 await _sttHandler.ReInitializeForLanguageAsync();
                 await _audioOutputHandler.ReInitializeForLanguageAsync();
                 await _toolExecutor.ReInitializeForLanguageAsync();
                 await _interruptionManager.ReInitializeForLanguageAsync();
-
-                _logger.LogInformation("Agent {AgentId}: Language successfully changed to {LanguageCode}.", AgentId, newLanguageCode);
-
-                // todo let the agent know that the language was changed
-                // we might need to keep the messages history so do something about that too todo
             }
             catch (Exception ex)
             {
@@ -508,47 +493,41 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // --- Handle Language Selection ---
             if (args.NodeId == "internal::language_selection" && _agentState.IsAwaitingLanguageSelectionInput)
             {
-                _agentState.IsAwaitingLanguageSelectionInput = false; // Mark selection process as finished
-                string selectedLanguageCode = _agentState.CurrentLanguageCode; // Default to current
-
-                if (args.Reason == DTMFSessionEndReason.CompletedMaxLength || args.Reason == DTMFSessionEndReason.CompletedTerminator)
+                _dtmfSessionManager.PauseSession();
+                if (args.Reason == DTMFSessionEndReason.CompletedMaxLength)
                 {
-                    if (int.TryParse(args.CollectedDigits, out int languageIndex) &&
+                    if (
+                        int.TryParse(args.CollectedDigits, out int languageIndex) &&
                         _agentState.CurrentSessionRoute?.Language.EnabledMultiLanguages != null &&
-                        languageIndex > 0 && languageIndex <= _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages.Count)
+                        languageIndex > 0 && languageIndex <= _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages.Count
+                    )
                     {
-                        selectedLanguageCode = _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages[languageIndex - 1].LanguageCode;
-                        _logger.LogInformation("Agent {AgentId}: User selected language '{Code}' via DTMF.", _agentState.AgentId, selectedLanguageCode);
-
+                        string selectedLanguageCode = _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages[languageIndex - 1].LanguageCode;
                         if (selectedLanguageCode != _agentState.CurrentLanguageCode)
                         {
                             await HandleLanguageChangeRequestAsync(selectedLanguageCode);
-                            // After language change, conversation flow should restart or continue based on HandleLanguageChangeRequestAsync logic
-                            // We might not need to explicitly call BeginAgentConversationFlowAsync here if HandleLanguageChange does it implicitly
-                            // Let's assume HandleLanguageChangeRequestAsync restarts the necessary parts
-                            return; // Exit after handling language change
                         }
-                        else
-                        {
-                            _logger.LogInformation("Agent {AgentId}: User re-selected current language '{Code}'.", _agentState.AgentId, selectedLanguageCode);
-                            // Maybe play confirmation? "Continuing in [Language]." (Optional)
-                            // await _audioOutputHandler.SynthesizeAndPlayBlockingAsync($"Continuing in {selectedLanguageCode}", CancellationToken.None);
-                        }
+
+                        _agentState.IsAwaitingLanguageSelectionInput = false;
+                        await BeginAgentConversationFlowAsync();
                     }
                     else
                     {
-                        _logger.LogWarning("Agent {AgentId}: Invalid language selection DTMF input: '{Digits}'.", _agentState.AgentId, args.CollectedDigits);
-                        // TODO: Play invalid selection prompt and potentially restart selection?
-                        // For now, proceed with default language.
+                        await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Invalid Language Selection.", CancellationToken.None);
+                        await HandleLanguageSelectionMessagePlaying(CancellationToken.None);
+                        _dtmfSessionManager.ResumeSession();
+                        return;
                     }
                 }
-                else
+                else if (args.Reason == DTMFSessionEndReason.TimeoutInterDigit)
                 {
-                    _logger.LogWarning("Agent {AgentId}: Language selection DTMF session ended due to {Reason}. Proceeding with default language.", _agentState.AgentId, args.Reason);
-                    // Proceed with default language
+                    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Please choose a language.", CancellationToken.None);
+                    await HandleLanguageSelectionMessagePlaying(CancellationToken.None);
+                    _dtmfSessionManager.ResumeSession();
+                    return;
                 }
 
-                // If language didn't change or selection failed, begin the main flow
+                // fallback
                 await BeginAgentConversationFlowAsync();
             }
             // --- Handle Regular DTMF Tool Results ---

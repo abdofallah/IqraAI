@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.1.1" />
+    <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.4" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
     <PackageReference Include="Deepgram" Version="5.2.0" />
     <PackageReference Include="ElevenLabs-DotNet" Version="3.5.0" />
     <PackageReference Include="FluentFTP" Version="52.1.0" />
@@ -24,7 +26,7 @@
     <PackageReference Include="Minio" Version="6.0.4" />
     <PackageReference Include="MongoDB.Driver" Version="3.3.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="OpenAI" Version="2.1.0" />
+    <PackageReference Include="OpenAI" Version="2.2.0-beta.4" />
     <PackageReference Include="Scriban" Version="6.2.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />

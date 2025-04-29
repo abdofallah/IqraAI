@@ -705,8 +705,6 @@ namespace IqraInfrastructure.Managers.Conversation
             if (sender is not IConversationClient client)
                 return;
 
-            _logger.LogDebug("Received audio from client {ClientId}", client.ClientId);
-
             // Update last activity time for silence detection
             _lastUserActivityTime = DateTime.UtcNow;
 
@@ -894,8 +892,6 @@ namespace IqraInfrastructure.Managers.Conversation
             if (sender is not IConversationAgent agent)
                 return;
 
-            _logger.LogDebug("Agent {AgentId} generated audio", agent.AgentId);
-
             // Store audio if recording is enabled
             if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
             {
@@ -1014,8 +1010,6 @@ namespace IqraInfrastructure.Managers.Conversation
 
             if (sender is not IConversationAgent agent)
                 return;
-
-            _logger.LogDebug("Agent {AgentId} thinking: {ThoughtProcess}", agent.AgentId, e.ThoughtProcess);
 
             // Log the thought process
             AddLogEntry(ConversationLogLevel.Debug, $"Agent {agent.AgentId} thinking: {e.ThoughtProcess}");

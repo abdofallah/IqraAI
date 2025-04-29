@@ -7,5 +7,7 @@
         AnthropicClaude = 2,
         GoogleAIGemini = 3,
         GroqCloud = 4,
+        AzureOpenAI = 5,
+        AzureAIInference = 6
     }
 }

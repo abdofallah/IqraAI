@@ -126,7 +126,9 @@ namespace IqraInfrastructure.Managers.Call
                     _logger.LogWarning("Region server not found: {ServerEndpoint}", serverSelection.Data.ServerEndpoint);
                     return result;
                 }
+                var regionServerId = regionServerData.Endpoint;
                 var regionServerApiKey = regionServerData.APIKey;
+                var resgionUseSSL = regionServerData.UseSSL;
 
                 // 4. Create call queue entry
                 var callQueue = new CallQueueData
@@ -140,14 +142,14 @@ namespace IqraInfrastructure.Managers.Call
                     CallerNumber = webhookContext.From,
                     Priority = 2, // High priority for incoming calls
                     IsOutbound = false,
-                    ProcessingServerId = serverSelection.Data.ServerId,
+                    ProcessingServerId = regionServerId,
                     ProviderMetadata = webhookContext.AdditionalData
                 };
 
                 string queueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
 
                 // 5. Forward call to selected backend server
-                var forwardResult = await ForwardCallToBackendAsync(serverSelection.Data.ServerEndpoint, regionServerApiKey, webhookContext, callQueue);
+                var forwardResult = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL,  webhookContext, callQueue);
                 if (!forwardResult.Success)
                 {
                     // If forwarding fails, mark the queue entry as failed
@@ -210,8 +212,9 @@ namespace IqraInfrastructure.Managers.Call
                         return;
                     }
                     var regionServerApiKey = regionServerData.APIKey;
+                    var regionUseSSL = regionServerData.UseSSL;
 
-                    await NotifyBackendCallEndedAsync(callQueue.ProcessingServerId, regionServerApiKey, callQueue.SessionId, provider, phoneNumberId);
+                    await NotifyBackendCallEndedAsync(callQueue.ProcessingServerId, regionServerApiKey, regionUseSSL, callQueue.SessionId, provider, phoneNumberId);
                     // todo notify backend and get success response to try again
                 }
 
@@ -328,7 +331,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<FunctionReturnResult> ForwardCallToBackendAsync(string serverEndpoint, string apiKey, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
+        private async Task<FunctionReturnResult> ForwardCallToBackendAsync(string serverEndpoint, string serverApiKey, bool regionUseSSL, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
         {
             var result = new FunctionReturnResult();
 
@@ -339,7 +342,7 @@ namespace IqraInfrastructure.Managers.Call
                 // ignore ssl validation etc for client
 
                 // Set headers
-                client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+                client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                 // Prepare the request body
@@ -360,10 +363,15 @@ namespace IqraInfrastructure.Managers.Call
                 var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
                 // Send the request to the backend app
-                if (!serverEndpoint.StartsWith("http"))
+                if (regionUseSSL)
                 {
                     serverEndpoint = "https://" + serverEndpoint;
                 }
+                else
+                {
+                    serverEndpoint = "http://" + serverEndpoint;
+                }
+
                 var baseUri = new Uri(serverEndpoint);
                 baseUri = new Uri(baseUri, "/api/call/incoming");
                 var response = await client.PostAsync(baseUri, content);
@@ -408,7 +416,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task NotifyBackendCallEndedAsync(string serverEndpoint, string apiKey,  string sessionId, TelephonyProviderEnum provider, string phoneNumberId)
+        private async Task NotifyBackendCallEndedAsync(string serverEndpoint, string apiKey, bool regionUseSSL, string sessionId, TelephonyProviderEnum provider, string phoneNumberId)
         {
             try
             {
@@ -429,10 +437,15 @@ namespace IqraInfrastructure.Managers.Call
                 var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
                 // Send the notification
-                if (!serverEndpoint.StartsWith("http"))
+                if (regionUseSSL)
                 {
                     serverEndpoint = "https://" + serverEndpoint;
                 }
+                else
+                {
+                    serverEndpoint = "http://" + serverEndpoint;
+                }
+
                 var baseUri = new Uri(serverEndpoint);
                 baseUri = new Uri(baseUri, $"/api/call/{sessionId}/ended");
                 var response = await client.PostAsync(baseUri, content);

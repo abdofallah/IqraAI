@@ -90,7 +90,6 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 await _minioClient.PutObjectAsync(args);
 
-                _logger.LogDebug("Stored audio with reference {Reference}, size {Size}", reference, audioData.Length);
                 return true;
             }
             catch (Exception ex)
@@ -182,7 +181,6 @@ namespace IqraInfrastructure.Repositories.Conversation
                 await _minioClient.RemoveObjectAsync(
                     new RemoveObjectArgs().WithBucket(_bucketName).WithObject(reference));
 
-                _logger.LogDebug("Deleted audio with reference {Reference}", reference);
                 return true;
             }
             catch (ObjectNotFoundException)
@@ -215,9 +213,6 @@ namespace IqraInfrastructure.Repositories.Conversation
                 {
                     items.Add(item.Key);
                 }
-
-                _logger.LogDebug("Listed {Count} audio files for conversation {ConversationId}",
-                    items.Count, conversationId);
 
                 return items;
             }

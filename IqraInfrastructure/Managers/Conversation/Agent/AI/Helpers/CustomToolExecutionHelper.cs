@@ -451,7 +451,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
         }
 
         // URI and Variable Resolution
-        private string ResolveEndpointQueryStrings(string endpoint, Dictionary<string, object> parameters)
+        public static string ResolveEndpointQueryStrings(string endpoint, Dictionary<string, object> parameters)
         {
             // First resolve any variables in the endpoint string
             string fullUri = ResolveContextVariables(endpoint, parameters);
@@ -505,7 +505,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             // Build the final URI
             return $"{baseUrlPart}?{string.Join("&", processedPairs)}";
         }
-        private string ResolveContextVariables(string text, Dictionary<string, object> context)
+        public static string ResolveContextVariables(string text, Dictionary<string, object> context)
         {
             if (string.IsNullOrEmpty(text)) return text;
 

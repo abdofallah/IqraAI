@@ -81,12 +81,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _waitingForStartChar = config.StartChar.HasValue;
 
             // Start Timers
-            if (config.MaxSessionDurationSeconds > 0)
-            {
-                _maxDurationTimer = new Timer(OnMaxDurationTimeout, null, TimeSpan.FromSeconds(config.MaxSessionDurationSeconds), Timeout.InfiniteTimeSpan);
-            }
-
-            if (!_waitingForStartChar && config.InterDigitTimeoutSeconds > 0)
+            ResetMaxDurationTimer();
+            if (!_waitingForStartChar)
             {
                 ResetInterDigitTimer();
             }
@@ -142,6 +138,23 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             ResetInterDigitTimer();
         }
 
+        public void PauseSession()
+        {
+            if (!_isSessionActive) return;
+            _interDigitTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            if (_activeSessionConfig!.MaxSessionDurationSeconds > 0)
+            {
+                _maxDurationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+        }
+
+        public void ResumeSession()
+        {
+            if (!_isSessionActive) return;
+            ResetInterDigitTimer();
+
+        }
+
         public void CancelSession(string reason = "Externally Cancelled")
         {
             if (!_isSessionActive) return;
@@ -150,10 +163,27 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         private void ResetInterDigitTimer()
         {
-            if (_activeSessionConfig != null && _activeSessionConfig.InterDigitTimeoutSeconds > 0)
+            if (_activeSessionConfig != null)
             {
-                _interDigitTimer?.Dispose(); // Dispose previous instance
+                _interDigitTimer?.Dispose();
+            }
+
+            if (_activeSessionConfig.InterDigitTimeoutSeconds > 0)
+            {
                 _interDigitTimer = new Timer(OnInterDigitTimeout, null, TimeSpan.FromSeconds(_activeSessionConfig.InterDigitTimeoutSeconds), Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        private void ResetMaxDurationTimer()
+        {
+            if (_activeSessionConfig != null)
+            {
+                _maxDurationTimer?.Dispose();
+            }
+
+            if (_activeSessionConfig.MaxSessionDurationSeconds > 0)
+            {
+                _maxDurationTimer = new Timer(OnMaxDurationTimeout, null, TimeSpan.FromSeconds(_activeSessionConfig.MaxSessionDurationSeconds), Timeout.InfiniteTimeSpan);
             }
         }
 
