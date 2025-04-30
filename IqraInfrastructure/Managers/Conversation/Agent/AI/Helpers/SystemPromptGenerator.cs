@@ -3,6 +3,7 @@ using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using Microsoft.Extensions.Logging;
@@ -102,7 +103,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 var agentObject = new ScriptObject();
                 agentObject["Personality"] = CreateAgentPersonalityObject(agent.Personality, languageCode);
                 agentObject["Context"] = CreateAgentContextObject(agent.Context);
-                agentObject["Scripts"] = CreateAgentScriptsObject(new List<BusinessAppAgentScript>() { openingAgentScript }, languageCode);
+                agentObject["Scripts"] = CreateAgentScriptsObject(openingAgentScriptNodesData.tools, new List<BusinessAppAgentScript>() { openingAgentScript }, languageCode);
                 agentObject["ScriptTools"] = CreateAgentScriptToolsObject(openingAgentScriptNodesData.tools, languageCode);
                 agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingAgentScriptNodesData.agents, languageCode);
                 agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingAgentScriptNodesData.scripts, languageCode);
@@ -237,7 +238,7 @@ Here is the session information that will be helpful for your context:
             return contextObject;
         }
 
-        private ScriptArray CreateAgentScriptsObject(List<BusinessAppAgentScript> scripts, string languageCode)
+        private ScriptArray CreateAgentScriptsObject(List<BusinessAppTool> scriptCustomTools, List<BusinessAppAgentScript> scripts, string languageCode)
         {
             var scriptsArray = new ScriptArray();
             if (scripts == null || !scripts.Any())
@@ -253,7 +254,7 @@ Here is the session information that will be helpful for your context:
                 scriptObject["Description"] = GetLocalizedString(script.General.Description, languageCode, "");
 
                 // Convert the conversation graph to a human-readable format
-                scriptObject["ConversationFlow"] = ConvertScriptToHumanReadable(script, languageCode);
+                scriptObject["ConversationFlow"] = ConvertScriptToHumanReadable(scriptCustomTools, script, languageCode);
 
                 scriptsArray.Add(scriptObject);
             }
@@ -261,7 +262,7 @@ Here is the session information that will be helpful for your context:
             return scriptsArray;
         }
 
-        private string ConvertScriptToHumanReadable(BusinessAppAgentScript script, string languageCode)
+        private string ConvertScriptToHumanReadable(List<BusinessAppTool> scriptCustomTools, BusinessAppAgentScript script, string languageCode)
         {
             if (script.Nodes == null || !script.Nodes.Any())
             {
@@ -309,7 +310,7 @@ Here is the session information that will be helpful for your context:
                 {
                     string scenarioNumber = (i + 1).ToString();
                     result.AppendLine($"## Main Scenario {scenarioNumber}");
-                    result.Append(ProcessNodeRecursively(startNodeChildren[i].TargetId, nodesMap, edgesMap, scenarioNumber, 0, null, languageCode));
+                    result.Append(ProcessNodeRecursively(startNodeChildren[i].TargetId, nodesMap, edgesMap, scenarioNumber, 0, null, languageCode, scriptCustomTools));
                     if (i < startNodeChildren.Count - 1)
                     {
                         result.AppendLine();
@@ -320,7 +321,7 @@ Here is the session information that will be helpful for your context:
             {
                 result.AppendLine("# Conversation Flow");
                 result.AppendLine();
-                result.Append(ProcessNodeRecursively(startNodeChildren[0].TargetId, nodesMap, edgesMap, "1", 0, null, languageCode));
+                result.Append(ProcessNodeRecursively(startNodeChildren[0].TargetId, nodesMap, edgesMap, "1", 0, null, languageCode, scriptCustomTools));
             }
 
             return result.ToString();
@@ -343,7 +344,8 @@ Here is the session information that will be helpful for your context:
             string scenarioPath,
             int depth,
             string lastNodeType,
-            string languageCode
+            string languageCode,
+            List<BusinessAppTool> scriptCustomTools
         )
         {
             if (!nodesMap.ContainsKey(nodeId))
@@ -381,8 +383,8 @@ Here is the session information that will be helpful for your context:
                         var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
                         if (systemToolNode != null)
                         {
-                            string toolTypeName = Enum.GetName(typeof(BusinessAppAgentScriptNodeSystemToolTypeENUM), systemToolNode.ToolType);
-                            result.AppendLine($"{indent}execute_system_function: NodeID={nodeId} ToolType={toolTypeName}");
+                            string toolTypeFormat = GetSystemToolTypeFormat(systemToolNode.ToolType, systemToolNode, languageCode);
+                            result.AppendLine($"{indent}execute_system_function: {toolTypeFormat}");
 
                             // Special handling for DTMF keypad input
                             if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
@@ -415,7 +417,7 @@ Here is the session information that will be helpful for your context:
                                         }
 
                                         result.AppendLine($"{indent}scenario ({outcomeValue}):");
-                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode));
+                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode, scriptCustomTools));
                                     }
 
                                     return result.ToString();
@@ -426,9 +428,11 @@ Here is the session information that will be helpful for your context:
 
                     case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
                         var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
-                        if (customToolNode != null)
+                        var nodeCustomTool = scriptCustomTools.FirstOrDefault(t => t.Id == customToolNode.ToolId);
+                        if (customToolNode != null && nodeCustomTool != null)
                         {
-                            result.AppendLine($"{indent}execute_custom_function: NodeId={nodeId} ToolId={customToolNode.ToolId}");
+                            var variablesScehema = BusinessAppToolArgumentsToJsonSchemea.ConvertToJsonSchema(nodeCustomTool.Configuration.InputSchemea, languageCode, true);
+                            result.AppendLine($"{indent}execute_custom_function: \"reason for execution\", \"message if any to speak before execution begins\", \"{nodeId}\", {variablesScehema}");
 
                             // Special handling for custom tool outcomes
                             var childCustomEdges = GetNodeChildren(nodeId, edgesMap);
@@ -458,7 +462,7 @@ Here is the session information that will be helpful for your context:
                                         }
 
                                         result.AppendLine($"{indent}scenario ({outcomeValue}):");
-                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode));
+                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode, scriptCustomTools));
                                     }
 
                                     return result.ToString();
@@ -480,12 +484,12 @@ Here is the session information that will be helpful for your context:
                 {
                     string subScenarioPath = $"{scenarioPath}.{i + 1}";
                     result.AppendLine($"{indent}### Scenario {subScenarioPath}");
-                    result.Append(ProcessNodeRecursively(childEdges[i].TargetId, nodesMap, edgesMap, subScenarioPath, depth + 1, null, languageCode));
+                    result.Append(ProcessNodeRecursively(childEdges[i].TargetId, nodesMap, edgesMap, subScenarioPath, depth + 1, null, languageCode, scriptCustomTools));
                 }
             }
             else if (childEdges.Count == 1)
             {
-                result.Append(ProcessNodeRecursively(childEdges[0].TargetId, nodesMap, edgesMap, scenarioPath, depth, currentNodeType, languageCode));
+                result.Append(ProcessNodeRecursively(childEdges[0].TargetId, nodesMap, edgesMap, scenarioPath, depth, currentNodeType, languageCode, scriptCustomTools));
             }
 
             return result.ToString();
@@ -508,6 +512,35 @@ Here is the session information that will be helpful for your context:
             }
         }
 
+        private string GetSystemToolTypeFormat(BusinessAppAgentScriptNodeSystemToolTypeENUM type, BusinessAppAgentScriptSystemToolNode systemToolNode, string currentLanguage)
+        {
+            string nodeId = systemToolNode.Id;
+
+            switch (type)
+            {
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall:
+                    var endCallNode = systemToolNode as BusinessAppAgentScriptEndCallToolNode;
+                    var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
+
+                    string originalFormat = $"end_call: \"reason for ending the call\", \"{((!string.IsNullOrEmpty(messageToSpeak)) ? messageToSpeak : "do not speak anything")}\", \"{nodeId}\"";
+                    return originalFormat;
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage:
+                    return "change_language: \"reason for changing language\", \"true to play all list of languages if customer does not define language and false if customer defines an available language\", \"if customer defines the language that is available in this session/conversation/call\"";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput:
+                    return $"recieve_dtmf_input: \"reason for requesting dtmf input\", \"response to speak before requesting dtmf input\", \"{nodeId}\"";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad:
+                    return "press_dtmf_keypad: \"array of keypad dtmf input you would like to press, can be one or many at once\"";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent:
+                    return $"transfer_to_ai_agent: \"reason for transfering the call\", \"response to speak before agent transfer execution\", \"{nodeId}\"";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToHuman:
+                    return $"transfer_to_human_agent: \"reason for transfering the call\", \"response to speak before agent transfer execution\", \"{nodeId}\"";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext:
+                    return "add_script_to_context";
+                default:
+                    return type.ToString();
+            }
+        }
+
         // Helper class to represent an edge in the script graph
         private class ScriptEdge
         {
@@ -523,69 +556,75 @@ Here is the session information that will be helpful for your context:
             {
                 foreach (var tool in tools)
                 {
-                    var toolObject = new ScriptObject();
-
-                    // Basic tool information
-                    toolObject["Id"] = tool.Id;
-                    toolObject["Name"] = GetLocalizedString(tool.General.Name, languageCode, "Tool");
-                    toolObject["Description"] = GetLocalizedString(tool.General.ShortDescription, languageCode, "");
-
-                    // Input schemas
-                    var inputSchemasArray = new ScriptArray();
-                    if (tool.Configuration.InputSchemea != null)
-                    {
-                        foreach (var inputSchema in tool.Configuration.InputSchemea)
-                        {
-                            var schemaObject = new ScriptObject();
-                            schemaObject["Id"] = inputSchema.Id;
-                            schemaObject["Name"] = GetLocalizedString(inputSchema.Name, languageCode, "Input");
-                            schemaObject["Description"] = GetLocalizedString(inputSchema.Description, languageCode, "");
-                            schemaObject["Type"] = inputSchema.Type.ToString();
-                            schemaObject["IsArray"] = inputSchema.IsArray;
-                            schemaObject["IsRequired"] = inputSchema.IsRequired;
-
-                            if (inputSchema.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime)
-                            {
-                                schemaObject["DateTimeFormat"] = ((BusinessAppToolConfigurationInputSchemeaDateTime)inputSchema).DateTimeFormat;
-                            }
-
-                            inputSchemasArray.Add(schemaObject);
-                        }
-                    }
-                    toolObject["InputSchemeas"] = inputSchemasArray;
-
-                    // Response information
-                    var responsesArray = new ScriptArray();
-                    if (tool.Response != null)
-                    {
-                        foreach (var response in tool.Response)
-                        {
-                            var responseObject = new ScriptObject();
-                            responseObject["Type"] = response.Key;
-
-                            // Add response details
-                            if (response.Value != null)
-                            {
-                                // Static response if available
-                                if (response.Value.HasStaticResponse)
-                                {
-                                    responseObject["StaticResponse"] = GetLocalizedString(response.Value.StaticResponse, languageCode, null);
-                                }
-                                else
-                                {
-                                    responseObject["StaticResponse"] = null;
-                                }
-                            }
-
-                            responsesArray.Add(responseObject);
-                        }
-                    }
-                    toolObject["Responses"] = responsesArray;
+                    var toolObject = CreateAgentScriptCustomToolObject(tool, languageCode);
 
                     toolsArray.Add(toolObject);
                 }
             }
             return toolsArray;
+        }
+        private ScriptObject CreateAgentScriptCustomToolObject(BusinessAppTool tool, string languageCode)
+        {
+            var toolObject = new ScriptObject();
+
+            // Basic tool information
+            toolObject["Id"] = tool.Id;
+            toolObject["Name"] = GetLocalizedString(tool.General.Name, languageCode, "Tool");
+            toolObject["Description"] = GetLocalizedString(tool.General.ShortDescription, languageCode, "");
+
+            // Input schemas
+            var inputSchemasArray = new ScriptArray();
+            if (tool.Configuration.InputSchemea != null)
+            {
+                foreach (var inputSchema in tool.Configuration.InputSchemea)
+                {
+                    var schemaObject = new ScriptObject();
+                    schemaObject["Id"] = inputSchema.Id;
+                    schemaObject["Name"] = GetLocalizedString(inputSchema.Name, languageCode, "Input");
+                    schemaObject["Description"] = GetLocalizedString(inputSchema.Description, languageCode, "");
+                    schemaObject["Type"] = inputSchema.Type.ToString();
+                    schemaObject["IsArray"] = inputSchema.IsArray;
+                    schemaObject["IsRequired"] = inputSchema.IsRequired;
+
+                    if (inputSchema.Type == BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime)
+                    {
+                        schemaObject["DateTimeFormat"] = ((BusinessAppToolConfigurationInputSchemeaDateTime)inputSchema).DateTimeFormat;
+                    }
+
+                    inputSchemasArray.Add(schemaObject);
+                }
+            }
+            toolObject["InputSchemeas"] = inputSchemasArray;
+
+            // Response information
+            var responsesArray = new ScriptArray();
+            if (tool.Response != null)
+            {
+                foreach (var response in tool.Response)
+                {
+                    var responseObject = new ScriptObject();
+                    responseObject["Type"] = response.Key;
+
+                    // Add response details
+                    if (response.Value != null)
+                    {
+                        // Static response if available
+                        if (response.Value.HasStaticResponse)
+                        {
+                            responseObject["StaticResponse"] = GetLocalizedString(response.Value.StaticResponse, languageCode, null);
+                        }
+                        else
+                        {
+                            responseObject["StaticResponse"] = null;
+                        }
+                    }
+
+                    responsesArray.Add(responseObject);
+                }
+            }
+            toolObject["Responses"] = responsesArray;
+
+            return toolObject;
         }
 
         private ScriptArray CreateAgentScriptAgentsObject(List<BusinessAppAgent> agents, string languageCode)
@@ -655,6 +694,7 @@ Here is the session information that will be helpful for your context:
                 foreach (var branch in branches)
                 {
                     var branchObject = new ScriptObject();
+                    branchObject["Id"] = branch.Id;
                     branchObject["Name"] = GetLocalizedString(branch.General.Name, languageCode, "Branch");
                     branchObject["Address"] = GetLocalizedString(branch.General.Address, languageCode, "");
                     branchObject["Phone"] = GetLocalizedString(branch.General.Phone, languageCode, "");

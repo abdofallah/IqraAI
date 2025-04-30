@@ -126,46 +126,6 @@ Here are the instruction you follow for all your scripts:
 
 	Remember, the goal is to provide a helpful and efficient experience for the customer during the call. By starting with a brief explanation and giving them the option to request more details, you ensure that the customer receives the information they need while keeping the conversation focused and manageable.
 </ConciseResponseInstruction>
-{{~ if Agent.ScriptTools.size > 0 ~}}
-
-Here are the details of the custom tools used within the scripts:
-<AgentScriptsCustomTools>
-{{~ for tool in Agent.ScriptTools ~}}
-	<AgentScriptCustomTool(ToolId={{tool.Id}})>
-		Tool Id: {{tool.Id}}
-		Name: {{tool.Name}}
-		Description: {{tool.Description}}
-		
-		Here are the input properties schemea:
-		<InputPropertiesSchemea>
-		{{~ for inputProperty in tool.InputSchemeas ~}}
-			<InputPropertySchemea(id={{inputProperty.Id}})>
-				Id: {{inputProperty.Id}}
-				Name: {{inputProperty.Name}}
-				Description: {{inputProperty.Description}}
-				Type: {{inputProperty.Type}}
-				Is an Array?: {{inputProperty.IsArray}}
-				Is Required: {{inputProperty.IsRequired}}
-				{{~ if inputProperty.Type == "DateTime" ~}}
-				Date Time Format: {{inputProperty.DateTimeFormat}}
-				{{~ end ~}}
-			</InputPropertySchemea(id={{inputProperty.Id}})>
-		{{~ end ~}}
-		</InputPropertiesSchemea>
-		
-		Here are available responses when executed:
-		<ExecutionResponses>
-		{{~ for executeResponse in tool.Responses ~}}
-			<ExecutionResponse(type={{executeResponse.Type}})>
-				Type: {{executeResponse.Type}}	
-				Response to Speak on Result: {{~ if executeResponse.StaticResponse != null ~}} {{executeResponse.StaticResponse}} {{~ else ~}} Generate a response based on the execution result. {{~ end}}
-			</ExecutionResponse(type={{executeResponse.Type}})>
-		{{~ end ~}}
-		</ExecutionResponses>
-	</AgentScriptCustomTool(ToolId={{tool.Id}})>
-{{~ end ~}}
-</AgentScriptsCustomTools>
-{{~ end ~}}
 {{~ if Agent.ScriptAgents.size > 0 ~}}
 
 Here are the details of the other ai agents that you can transfer the call to:

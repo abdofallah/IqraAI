@@ -81,7 +81,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _waitingForStartChar = config.StartChar.HasValue;
 
             // Start Timers
-            ResetMaxDurationTimer();
+            if (_activeSessionConfig.MaxSessionDurationSeconds > 0)
+            {
+                _maxDurationTimer = new Timer(OnMaxDurationTimeout, null, TimeSpan.FromSeconds(_activeSessionConfig.MaxSessionDurationSeconds), Timeout.InfiniteTimeSpan);
+            }
             if (!_waitingForStartChar)
             {
                 ResetInterDigitTimer();
@@ -142,10 +145,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             if (!_isSessionActive) return;
             _interDigitTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            if (_activeSessionConfig!.MaxSessionDurationSeconds > 0)
-            {
-                _maxDurationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            }
         }
 
         public void ResumeSession()
@@ -174,22 +173,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
         }
 
-        private void ResetMaxDurationTimer()
-        {
-            if (_activeSessionConfig != null)
-            {
-                _maxDurationTimer?.Dispose();
-            }
-
-            if (_activeSessionConfig.MaxSessionDurationSeconds > 0)
-            {
-                _maxDurationTimer = new Timer(OnMaxDurationTimeout, null, TimeSpan.FromSeconds(_activeSessionConfig.MaxSessionDurationSeconds), Timeout.InfiniteTimeSpan);
-            }
-        }
-
         private void OnInterDigitTimeout(object? state)
         {
-            if (!_isSessionActive) return; // Should not happen if timer is active, but safety check
+            if (!_isSessionActive) return;
             EndSession(DTMFSessionEndReason.TimeoutInterDigit);
         }
 
@@ -206,11 +192,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             string nodeId = _activeSessionConfig?.AssociatedNodeId ?? "Unknown";
             string collectedDigits = _digitBuffer.ToString();
 
-            // Stop timers and clear state *before* raising event
-            CleanupTimers();
-            _isSessionActive = false;
-            _activeSessionConfig = null;
-            // Don't clear buffer immediately, event handler needs it
+            if (reason != DTMFSessionEndReason.TimeoutInterDigit)
+            {
+                CleanupTimers();
+                _isSessionActive = false;
+                _activeSessionConfig = null;
+            }
 
             try
             {

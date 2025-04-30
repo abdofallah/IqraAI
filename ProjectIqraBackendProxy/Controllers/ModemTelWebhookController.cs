@@ -32,8 +32,6 @@ namespace ProjectIqraBackendProxy.Controllers
                 return BadRequest("Invalid request parameters");
             }
 
-            _logger.LogInformation("Received ModemTel webhook: {Event} for {BusinessId}/{PhoneNumberId}", webhookData.Event, businessId, phoneNumberId);
-
             // Validate the webhook signature
             if (!ValidateWebhookSignature())
             {
@@ -57,7 +55,7 @@ namespace ProjectIqraBackendProxy.Controllers
                     return await HandleCallEnded(webhookData, businessId, phoneNumberId);
 
                 default:
-                    _logger.LogInformation("Unhandled webhook event: {Event} for {BusinessId}/{PhoneNumberId}", webhookData.Event, businessId, phoneNumberId);
+                    _logger.LogWarning("Unhandled webhook event: {Event} for {BusinessId}/{PhoneNumberId}", webhookData.Event, businessId, phoneNumberId);
                     return Ok(); // Acknowledge receipt of unhandled events
             }
         }

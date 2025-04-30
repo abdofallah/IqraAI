@@ -3,8 +3,12 @@ using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helpers;
 using Jint;
 using Microsoft.Extensions.Logging;
+using Scriban.Functions;
+using Scriban.Runtime;
+using Scriban;
 using System.Text;
 using System.Text.Json;
+using static Google.Api.FieldInfo.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 {
@@ -54,7 +58,14 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     result.Message = $"Error building and validating custom tool variables for tool {toolData.Id}:\n\n```{convertedParametersResult.Message}```";
                     return result;
                 }
-                var baseUri = ResolveEndpointQueryStrings(toolData.Configuration.Endpoint, convertedParametersResult.Data);
+                var baseUriResult = await ResolveEndpointQueryStrings(toolData.Configuration.Endpoint, convertedParametersResult.Data);
+                if (!baseUriResult.Success)
+                {
+                    result.Code = "ExecuteHttpRequest:3";
+                    result.Message = $"Error resolving endpoint query strings for tool {toolData.Id}:\n\n```{baseUriResult.Message}```";
+                    return result;
+                }
+                var baseUri = baseUriResult.Data;
 
                 using (var toolHttpClient = new HttpClient())
                 {
@@ -66,13 +77,28 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     // Build Request Body
                     if (toolData.Configuration.RequestType != HttpMethodEnum.Get && toolData.Configuration.RequestType != HttpMethodEnum.Delete)
                     {
-                        requestContent = BuildRequestBody(toolData.Id, toolData.Configuration, convertedParametersResult.Data);
+                        var requestContentResult = await BuildRequestBody(toolData.Id, toolData.Configuration, convertedParametersResult.Data);
+                        if (!requestContentResult.Success)
+                        {
+                            result.Code = "ExecuteHttpRequest:4";
+                            result.Message = $"Error building request body for tool {toolData.Id}:\n\n```{requestContentResult.Message}```";
+                            return result;
+                        }    
+
+                        requestContent = requestContentResult.Data;
                     }
 
                     // Add Headers
                     foreach (var header in toolData.Configuration.Headers)
                     {
-                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, ResolveContextVariables(header.Value, convertedParametersResult.Data));
+                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, convertedParametersResult.Data);
+                        if (!headerValueResult.Success)
+                        {
+                            result.Code = "ExecuteHttpRequest:4";
+                            result.Message = $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
+                            return result;
+                        }
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
                     }
 
                     // Execute Request
@@ -82,6 +108,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                             httpResponseMessage = await toolHttpClient.GetAsync(baseUri, cancellationToken);
                             break;
                         case HttpMethodEnum.Post:
+                            var strindata = requestContent.ReadAsStringAsync().Result;
+
                             httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent, cancellationToken);
                             break;
                         case HttpMethodEnum.Put:
@@ -104,7 +132,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     var responseData = await httpResponseMessage.Content.ReadAsStringAsync(cancellationToken);
 
                     // Process Response
-                    if (!toolData.Response.TryGetValue(((int)responseStatusCode).ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
+                    if (!toolData.Response.TryGetValue(responseStatusCode.ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
                     {
                         result.Success = true; // Consider it success, but provide raw data
                         result.Data = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) returned status code {responseStatusCode} with data:\n\n```{responseData}```\n\nNo specific handling was defined for this status code.";
@@ -154,10 +182,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             }
         }
 
-        private HttpContent? BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object> context)
+        private async Task<FunctionReturnResult<HttpContent?>> BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object> context)
         {
-            HttpContent? requestContent = null;
-
+            var result = new FunctionReturnResult<HttpContent?>();
             try
             {
                 if (toolConfig.BodyType == HttpBodyEnum.FormData)
@@ -167,12 +194,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     {
                         foreach (var field in formBodyFields)
                         {
-                            // FormData values should generally be StringContent
-                            HttpContent fieldHttpContentData = new StringContent(ResolveContextVariables(field.Value, context));
+                            var fieldValueResult = await RenderScribanTemplateAsync(field.Value, context);
+                            if (!fieldValueResult.Success)
+                            {
+                                result.Code = "FillSessionInformationInPrompt:1";
+                                result.Message = "Error parsing system prompt template: " + string.Join(", ", fieldValueResult.Message);
+                                return result;
+                            }
+
+                            HttpContent fieldHttpContentData = new StringContent(fieldValueResult.Data);
                             formData.Add(fieldHttpContentData, field.Key);
                         }
                     }
-                    requestContent = formData;
+                    return result.SetSuccessResult(formData);
                 }
                 else if (toolConfig.BodyType == HttpBodyEnum.XWWWFormUrlencoded)
                 {
@@ -181,30 +215,49 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     {
                         foreach (var field in formBodyFields)
                         {
-                            formFields[field.Key] = ResolveContextVariables(field.Value, context);
+                            var fieldValueResult = await RenderScribanTemplateAsync(field.Value, context);
+                            if (!fieldValueResult.Success)
+                            {
+                                result.Code = "FillSessionInformationInPrompt:2";
+                                result.Message = "Error parsing system prompt template: " + string.Join(", ", fieldValueResult.Message);
+                                return result;
+                            }
+
+                            formFields[field.Key] = fieldValueResult.Data;
                         }
                     }
-                    requestContent = new FormUrlEncodedContent(formFields);
+                    return result.SetSuccessResult(new FormUrlEncodedContent(formFields));
                 }
                 else if (toolConfig.BodyType == HttpBodyEnum.Raw)
                 {
-                    string rawBody = "";
-                    if (toolConfig.BodyData != null)
+                    string rawBody = toolConfig.BodyData?.ToString() ?? "";
+                    if (!string.IsNullOrWhiteSpace(rawBody))
                     {
-                        // Assume BodyData is the string template if raw
-                        rawBody = ResolveContextVariables(toolConfig.BodyData.ToString() ?? "", context);
+                        var rawBodyResult = await RenderScribanTemplateAsync(rawBody, context);
+                        if (!rawBodyResult.Success)
+                        {
+                            result.Code = "FillSessionInformationInPrompt:3";
+                            result.Message = "Error parsing system prompt template: " + string.Join(", ", rawBodyResult.Message);
+                            return result;
+                        }
+
+                        rawBody = rawBodyResult.Data;
                     }
-                    requestContent = new StringContent(rawBody, Encoding.UTF8, "application/json"); // Default to JSON, could be configurable
+                    return result.SetSuccessResult(new StringContent(rawBody, Encoding.UTF8, "application/json"));// Default to JSON, could be configurable
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to build request body for tool {ToolId}", toolId);
                 // Maybe throw or return null, depending on desired error handling
-                return null;
+                result.Code = "FillSessionInformationInPrompt:4";
+                result.Message = "Error building request body for tool " + toolId + ": " + ex.Message;
+                return result;
             }
 
-            return requestContent;
+            result.Code = "FillSessionInformationInPrompt:5";
+            result.Message = "Failed to build request body for tool " + toolId;
+            return result;
         }
 
 
@@ -389,13 +442,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             var result = new FunctionReturnResult<string?>();
             if (string.IsNullOrWhiteSpace(javascriptCode))
             {
-                _logger.LogDebug("No JavaScript processor code provided, returning raw response data.");
                 result.Success = true;
                 result.Data = responseData; // Return raw data if no script
                 return result;
             }
 
-            _logger.LogDebug("Executing JavaScript processor.");
             var engine = new Engine(options => {
                 options.TimeoutInterval(TimeSpan.FromSeconds(5));
                 options.LimitMemory(5_000_000); // 5 MB
@@ -412,7 +463,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             try
             {
                 // Provide response data and a way to parse it if it's JSON
-                engine.SetValue("rawResponseData", responseData);
+                engine.SetValue("responseData", responseData);
 
                 // Execute the user's script
                 var executionResult = engine.Evaluate(javascriptCode);
@@ -451,17 +502,26 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
         }
 
         // URI and Variable Resolution
-        public static string ResolveEndpointQueryStrings(string endpoint, Dictionary<string, object> parameters)
+        public static async Task<FunctionReturnResult<string?>> ResolveEndpointQueryStrings(string endpoint, Dictionary<string, object> parameters)
         {
+            var result = new FunctionReturnResult<string?>();
+
             // First resolve any variables in the endpoint string
-            string fullUri = ResolveContextVariables(endpoint, parameters);
+            var fullUriResult = await RenderScribanTemplateAsync(endpoint, parameters);
+            if (!fullUriResult.Success)
+            {
+                result.Code = "ResolveEndpointQueryStrings:" + fullUriResult.Code;
+                result.Message = fullUriResult.Message;
+                return result;
+            }
+
+            string fullUri = fullUriResult.Data;
 
             // Parse the URL manually to avoid automatic + to space conversion
             int queryStartIndex = fullUri.IndexOf('?');
             if (queryStartIndex == -1)
             {
-                // No query parameters, return as is
-                return fullUri;
+                return result.SetSuccessResult(fullUri);
             }
 
             string baseUrlPart = fullUri.Substring(0, queryStartIndex);
@@ -503,19 +563,71 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             }
 
             // Build the final URI
-            return $"{baseUrlPart}?{string.Join("&", processedPairs)}";
+            return result.SetSuccessResult($"{baseUrlPart}?{string.Join("&", processedPairs)}");
         }
-        public static string ResolveContextVariables(string text, Dictionary<string, object> context)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
 
-            // Replace {{variableName}} with value from context
-            foreach (var key in context.Keys)
+
+        // --- Scriban Integration ---
+        private static readonly Func<string, DateTime> ParseDateTimeFunc = (inputString) => DateTime.Parse(inputString);
+        public static async Task<FunctionReturnResult<string?>> RenderScribanTemplateAsync(string? templateText, Dictionary<string, object> context)
+        {
+            var result = new FunctionReturnResult<string?>();
+            if (string.IsNullOrEmpty(templateText))
             {
-                text = text.Replace($"{{{{{key}}}}}", context[key]?.ToString() ?? "");
+                result.Success = true;
+                result.Data = templateText; // Return null or empty string as is
+                return result;
             }
 
-            return text;
+            try
+            {
+                var template = Template.Parse(templateText);
+                if (template.HasErrors)
+                {
+                    var errors = string.Join("\n", template.Messages.Select(m => m.Message));
+                    // _logger.LogWarning("Scriban template parsing failed: {Errors}", errors); // Need logger instance or make static
+                    result.Code = "RenderScriban:ParseError";
+                    result.Message = $"Template parsing errors:\n{errors}";
+                    return result;
+                }
+
+                var templateContext = new TemplateContext
+                {
+                    LoopLimit = 1000,
+                    RecursiveLimit = 64,
+                    StrictVariables = false,
+                    LimitToString = 1000,
+                    LoopLimitQueryable = 1000,
+                    ObjectRecursionLimit = 1000
+                };
+
+                var scriptObject = new ScriptObject();
+                foreach (var kvp in context)
+                {
+                    scriptObject.Add(kvp.Key, kvp.Value);
+                }
+
+                // Import custom functions
+                scriptObject.Import("datetimeparse", ParseDateTimeFunc);
+
+                // Import built-in objects (optional, but useful e.g., for date manipulation)
+                scriptObject.Import(typeof(DateTimeFunctions)); // Allows {{ date.now }}, {{ some_date | date.add_days 1 }}
+                scriptObject.Import(typeof(TimeSpanFunctions)); // Allows {{ timespan.from_days 1 }}
+                scriptObject.Import(typeof(StringFunctions));   // Allows {{ 'abc' | string.upcase }}
+                // Add other Scriban built-ins as needed (ArrayFunctions, MathFunctions, etc.)
+
+                templateContext.PushGlobal(scriptObject);
+
+                result.Data = await template.RenderAsync(templateContext);
+                result.Success = true;
+            }
+            catch (Exception ex) // Catch Scriban runtime errors
+            {
+                result.Code = "RenderScriban:RuntimeError";
+                result.Message = $"Template rendering error: {ex.Message}";
+            }
+
+            return result;
         }
     }
 }

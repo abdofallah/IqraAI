@@ -233,21 +233,18 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 _logger.LogWarning("Agent {AgentId}: Cannot notify start - not initialized or shutting down.", AgentId);
                 return;
             }
-            _logger.LogInformation("Agent {AgentId}: Conversation started notification received.", AgentId);
 
-            // --- Language Selection Logic (Moved from DTMF Handler) ---
             bool requiresLanguageSelection = _agentState.CurrentSessionRoute?.Language.MultiLanguageEnabled == true &&
                                             _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages?.Count > 1;
 
             if (requiresLanguageSelection)
             {
-                _logger.LogInformation("Agent {AgentId}: Multi-language selection required.", _agentState.AgentId);
+                // todo make this delay configurable by the user
+                await Task.Delay(1000);
                 await SetupLanguageSelectionViaDTMFAsync(_conversationCTS.Token);
-                // Conversation flow will begin after DTMF selection completes (handled in OnDtmfSessionEnded)
             }
             else
             {
-                // No language selection needed, begin directly
                 await BeginAgentConversationFlowAsync();
             }
         }
@@ -264,7 +261,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     MaxLength = 1,
                     TerminatorChar = null,
                     InterDigitTimeoutSeconds = 5,
-                    MaxSessionDurationSeconds = 10000
+                    MaxSessionDurationSeconds = 30
                 };
 
                 bool started = _dtmfSessionManager.StartSession(dtmfConfig);
@@ -493,6 +490,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // --- Handle Language Selection ---
             if (args.NodeId == "internal::language_selection" && _agentState.IsAwaitingLanguageSelectionInput)
             {
+                if (args.Reason== DTMFSessionEndReason.Cancelled)
+                {
+                    return;
+                }
+
                 _dtmfSessionManager.PauseSession();
                 if (args.Reason == DTMFSessionEndReason.CompletedMaxLength)
                 {
@@ -507,9 +509,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         {
                             await HandleLanguageChangeRequestAsync(selectedLanguageCode);
                         }
-
-                        _agentState.IsAwaitingLanguageSelectionInput = false;
-                        await BeginAgentConversationFlowAsync();
                     }
                     else
                     {
@@ -527,8 +526,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     return;
                 }
 
-                // fallback
+                // TODO ask user how much to wait for after language selection
+                // or if they wish for something to be played first
+                // could move it to BeginAgentConversationFlowAsync as well after background audio?
+                await Task.Delay(2000);
+
+                _agentState.IsAwaitingLanguageSelectionInput = false;
                 await BeginAgentConversationFlowAsync();
+                _dtmfSessionManager.CancelSession("Language Selected");
+                return;
             }
             // --- Handle Regular DTMF Tool Results ---
             else if (args.NodeId != "internal::language_selection")
