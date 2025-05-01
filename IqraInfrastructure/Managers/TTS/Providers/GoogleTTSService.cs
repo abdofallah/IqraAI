@@ -14,14 +14,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private readonly string _languageCode;
         private readonly string _voiceName;
-        private readonly int _sampleRateHertz = 16000;
-        private readonly AudioEncoding _audioEncoding = AudioEncoding.Linear16;
-        private readonly int _bytesPerSample = 2; // For Linear16 (16-bit)
-        private readonly int _channels = 1; // Mono
+        private readonly AudioEncoding _audioEncoding = AudioEncoding.Pcm;
+        private readonly int _bytesPerSample = 2;
+        private readonly int _channels = 1;
 
         private readonly string _serviceAccountKeyJson;
 
-        public GoogleTTSService(string serviceAccountKeyJson, string languageCode, string voiceName)
+        public GoogleTTSService(string serviceAccountKeyJson, string languageCode, string voiceName, int sampleRate = 8000)
         {
             _serviceAccountKeyJson = serviceAccountKeyJson;
             _languageCode = languageCode;
@@ -36,7 +35,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _audioConfig = new AudioConfig
             {
                 AudioEncoding = _audioEncoding,
-                SampleRateHertz = _sampleRateHertz
+                SampleRateHertz = sampleRate
             };
         }
 
@@ -58,6 +57,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 // Optionally rethrow or set a state indicating failure TODO
                 throw new InvalidOperationException("Failed to initialize Google Text-to-Speech client with provided credentials.", ex);
             }
+
+            if (!(new List<int>([8000,16000,24000,32000,44100])).Contains(_audioConfig.SampleRateHertz))
+            {
+                throw new Exception("Sample rate support are 8000, 16000, 24000, 32000 or 44100");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -70,7 +74,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 byte[] audioData = response.AudioContent.ToByteArray();
 
-                double durationSeconds = (double)audioData.Length / (_sampleRateHertz * _bytesPerSample * _channels);
+                double durationSeconds = (double)audioData.Length / (_audioConfig.SampleRateHertz * _bytesPerSample * _channels);
                 TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
                 return (audioData, duration);
             }

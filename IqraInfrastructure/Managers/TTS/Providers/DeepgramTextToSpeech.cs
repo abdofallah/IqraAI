@@ -10,15 +10,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private ISpeakRESTClient? _speakClient;
         private readonly string _apiKey;
         private readonly string _modelId;
+
         private readonly string _encoding = "linear16"; // For raw PCM 16-bit
-        private readonly int _sampleRate = 16000; // Target sample rate
+        private readonly int _sampleRate; // Target sample rate
         private readonly int _channels = 1; // Mono
         private readonly int _bytesPerSample = 2; // 16 bits = 2 bytes
 
-        public DeepgramTTSService(string apiKey, string modelId)
+        public DeepgramTTSService(string apiKey, string modelId, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _modelId = modelId;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()

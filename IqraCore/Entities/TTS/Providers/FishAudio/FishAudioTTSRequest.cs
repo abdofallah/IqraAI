@@ -9,21 +9,22 @@ namespace IqraCore.Entities.TTS.Providers.FishAudio
         public string Text { get; set; } = string.Empty;
 
         [Key("reference_id")]
-        public string? ReferenceId { get; set; } // Use pre-uploaded model ID
+        public string? ReferenceId { get; set; }
 
         [Key("format")]
-        public string Format { get; set; } = "wav"; // Request WAV to get header info
+        public string Format { get; set; } = "pcm";
+
+        [Key("sample_rate")]
+        public int SampleRate { get; set; } = 8;
 
         [Key("normalize")]
         public bool Normalize { get; set; } = true;
 
         [Key("latency")]
-        public string Latency { get; set; } = "normal";
+        public string Latency { get; set; } = "balanced";
 
-        // Add other parameters like references, chunk_length, mp3_bitrate if needed
-        // For simplicity, we'll stick to reference_id and basic settings.
         [Key("references")]
-        [IgnoreMember] // Ignore if not using direct audio references
-        public object[]? References { get; set; } = null; // Placeholder if needed later
+        [IgnoreMember]
+        public object[]? References { get; set; } = null;
     }
 }

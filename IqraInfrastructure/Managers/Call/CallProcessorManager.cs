@@ -108,7 +108,7 @@ namespace IqraInfrastructure.Managers.Call
                 await conversationSession.AddClientAsync(
                     telephonyClient.Data,
                     // todo make configurable
-                    16000,
+                    8000,
                     1,
                     8
                 );
@@ -123,7 +123,7 @@ namespace IqraInfrastructure.Managers.Call
                         {
                             BusinessId = config.BusinessId,
                             RouteId = config.RouteId,
-                            SampleRate = 16000,
+                            SampleRate = 8000,
                             BitsPerSample = 16,
                             Channels = 1
                         }

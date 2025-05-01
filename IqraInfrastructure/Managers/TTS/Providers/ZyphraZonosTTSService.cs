@@ -17,6 +17,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private const string ApiUrl = "https://api.zyphra.com/v1/audio/text-to-speech";
 
+        // pcm s16 le 48khz 16-bit mono
+        private readonly int _sampleRate = 48000; // can not be changed yet default by api
+        private readonly int _sampleSize = 16; // can not be changed default by api
+        private readonly int _channels = 1; // can not be changed default by api
+
         // Constructor
         public ZyphraZonosTTSService(string apiKey, string model, string? defaultVoiceName)
         {

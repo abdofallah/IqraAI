@@ -15,23 +15,28 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _groupId;
         private readonly string _modelId;
         private readonly string _voiceId;
-        private readonly int _sampleRate = 16000;
-        private readonly int _channels = 1;
+        private readonly int _sampleRate;
+        private readonly int _channels = 1; // default to mono
 
         private const string BaseUrl = "https://api.minimaxi.chat/v1";
 
-        public MinimaxTTSService(string apiKey, string groupId, string modelId, string voiceId = "Wise_Woman")
+        public MinimaxTTSService(string apiKey, string groupId, string modelId, string voiceId = "Wise_Woman", int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _groupId = groupId;
             _modelId = modelId;
             _voiceId = voiceId;
-            // Could add constructor params for default speed, vol, pitch, sampleRate, format etc.
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
         {
             // Static HttpClient initialization is handled implicitly
+
+            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_sampleRate))
+            {
+                throw new Exception("Sample rate support are 8000, 16000, 22050, 24000, 32000 or 44100");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -48,7 +53,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     Format = "pcm",
                     SampleRate = _sampleRate,
                     Channel = _channels,
-                    // Bitrate might be less relevant for PCM? API default is 128000
                 },
                 SubtitleEnable = false
             };

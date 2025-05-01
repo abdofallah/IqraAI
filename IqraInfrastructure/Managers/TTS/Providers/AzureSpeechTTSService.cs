@@ -17,14 +17,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private PullAudioOutputStream _pullStream;
 
+        private readonly int _sampleRate;
+
         private bool _loggingEnabled = false;
 
-        public AzureSpeechTTSService(string subscriptionKey, string region, string langauge, string speakerName)
+        public AzureSpeechTTSService(string subscriptionKey, string region, string langauge, string speakerName, int sampleRate = 8000)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
             _langauge = langauge;
             _speakerName = speakerName;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
@@ -33,8 +36,26 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             speechConfig.SpeechSynthesisLanguage = _langauge;
             speechConfig.SpeechSynthesisVoiceName = _speakerName;
 
-            // ai agent is forced in call processor manager . CreateConversationSessionAsync to use 16k 16bit mono
-            speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
+            if (_sampleRate == 8000)
+            {
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm);
+            }
+            else if (_sampleRate == 16000)
+            {
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
+            }
+            else if (_sampleRate == 24000)
+            {
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm);
+            }
+            else if (_sampleRate == 48000)
+            {
+                speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm);
+            }
+            else
+            {
+                throw new ArgumentException("Invalid sample rate. Must be 8000, 16000, 24000, or 48000.");
+            }
 
             _pullStream = AudioOutputStream.CreatePullStream();
             var audioConfig = AudioConfig.FromStreamOutput(_pullStream);

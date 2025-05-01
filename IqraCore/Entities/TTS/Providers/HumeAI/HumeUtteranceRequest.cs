@@ -25,5 +25,7 @@ namespace IqraCore.Entities.TTS.Providers.HumeAI
         [JsonPropertyName("trailing_silence")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? TrailingSilence { get; set; } // Seconds
+
+
     }
 }

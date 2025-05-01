@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private const int BytesPerSample = 2; // For pcm_s16le
         private const int Channels = 1; // Assuming mono output
 
-        public CartesiaTTSService(string apiKey, string voiceId, string modelId, string? languageCode = null, int sampleRate = 16000)
+        public CartesiaTTSService(string apiKey, string voiceId, string modelId, string? languageCode = null, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;

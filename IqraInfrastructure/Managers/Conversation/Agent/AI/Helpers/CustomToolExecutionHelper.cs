@@ -8,7 +8,6 @@ using Scriban.Runtime;
 using Scriban;
 using System.Text;
 using System.Text.Json;
-using static Google.Api.FieldInfo.Types;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 {
@@ -409,7 +408,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 
                     case BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime:
                         if (parameterValue.ValueKind == JsonValueKind.String && DateTime.TryParse(parameterValue.GetString(), out DateTime parsedDate))
-                            result.Data = parsedDate.ToString("o"); // Store consistently (ISO 8601)
+                            result.Data = parameterValue.ToString();
                         else
                             result.Message = $"{paramDesc} must be a valid datetime string, but received {parameterValue.ValueKind}.";
                         break;

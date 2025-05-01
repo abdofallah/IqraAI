@@ -3,9 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace IqraCore.Entities.TTS.Providers.MurfAI
 {
-    // Placeholder for pronunciation dictionary entry if needed later
-    // public class MurfPronunciationEntry { ... }
-
     public class MurfTtsGenerateRequest
     {
         [JsonPropertyName("text")]
@@ -15,19 +12,19 @@ namespace IqraCore.Entities.TTS.Providers.MurfAI
         public string VoiceId { get; set; } = string.Empty;
 
         [JsonPropertyName("format")]
-        public string Format { get; set; } = "WAV";
+        public string Format { get; set; } = "ULAW";
 
         [JsonPropertyName("sampleRate")]
-        public int SampleRate { get; set; } = 16000;
+        public int SampleRate { get; set; } = 8000;
 
         [JsonPropertyName("channelType")]
         public string ChannelType { get; set; } = "MONO";
 
         [JsonPropertyName("encodeAsBase64")]
-        public bool EncodeAsBase64 { get; set; } = true; // Request Base64 response
+        public bool EncodeAsBase64 { get; set; } = true;
 
         [JsonPropertyName("modelVersion")]
-        public string ModelVersion { get; set; } = "GEN2"; // Use newer model
+        public string ModelVersion { get; set; } = "GEN2";
 
         // Optional parameters can be added here
         [JsonPropertyName("pitch")]
@@ -46,8 +43,17 @@ namespace IqraCore.Entities.TTS.Providers.MurfAI
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? Variation { get; set; } // 0 to 5
 
-        // [JsonPropertyName("pronunciationDictionary")]
-        // [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        // public Dictionary<string, MurfPronunciationEntry>? PronunciationDictionary { get; set; }
+        [JsonPropertyName("pronunciationDictionary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, MurfPronunciationEntry>? PronunciationDictionary { get; set; }
+    }
+
+    public class MurfPronunciationEntry
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = string.Empty;
+
+        [JsonPropertyName("pronunciation")]
+        public string Pronunciation { get; set; } = string.Empty;
     }
 }

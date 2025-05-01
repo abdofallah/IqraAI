@@ -1,15 +1,9 @@
-﻿using IqraCore.Entities.TTS.Providers.Speechify; // Import the data models
+﻿using IqraCore.Entities.TTS.Providers.Speechify;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
@@ -48,9 +42,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Input = text,
                 VoiceId = _voiceId,
                 Model = _model,
-                AudioFormat = "wav", // Request WAV to get PCM data and header info
-                // Language = "en-US", // Optional: Can be passed via metaData or constructor
-                // Options = new SpeechifyOptionsRequest { ... } // Optional: Can be configured
+                AudioFormat = "wav",
             };
 
             // Allow overriding language from metaData

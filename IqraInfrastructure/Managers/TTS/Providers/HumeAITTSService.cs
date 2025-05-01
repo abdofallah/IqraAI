@@ -18,6 +18,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private const string ApiUrl = "https://api.hume.ai/v0/tts";
 
+        // pcm s16 le 48khz 16-bit mono
+        private readonly int _sampleRate = 48000; // can not be changed yet default by api
+        private readonly int _sampleSize = 16; // can not be changed default by api
+        private readonly int _channels = 1; // can not be changed default by api
+
         public HumeAITTSService(string apiKey, string? voiceId = null, string? voiceName = null, string? voiceProvider = null)
         {
             _apiKey = apiKey;
@@ -48,12 +53,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 Text = text,
                 Voice = voiceSpec
-                // Could add description, speed, silence from metaData if desired
             };
 
             var requestPayload = new HumeTtsRequest
             {
                 Utterances = new List<HumeUtteranceRequest> { utterance },
+                AudioFormat = new HumeTtsRequestAudioFormat() { Type = "pcm" }
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });

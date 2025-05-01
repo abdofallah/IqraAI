@@ -13,30 +13,46 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
         private readonly string _userId;
-        private readonly string _voiceId; // Can be ID, S3 URL, or specific name like "Atlas-PlayAI"
-        private readonly string? _voiceEngine; // e.g., "PlayDialog", "Play3.0-mini"
+        private readonly string _voiceId;
+        private readonly string? _voiceEngine;
 
-        private readonly int _sampleRate = 16000; // Target sample rate
-        private readonly int _characterLimit; // Varies by model
+        private readonly int _sampleRate;
+        private string _audioFormat;
 
         private const string ApiUrl = "https://api.play.ht/api/v2/tts/stream";
 
-        public PlayHtTTSService(string apiKey, string userId, string voiceId, string voiceEngine)
+        public PlayHtTTSService(string apiKey, string userId, string voiceId, string voiceEngine, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _userId = userId;
             _voiceId = voiceId;
             _voiceEngine = voiceEngine;
-
-            // Set character limit based on engine (defaulting to 2000 if engine is unknown/null)
-            _characterLimit = _voiceEngine == "Play3.0-mini" ? 20000 : 2000;
-
-            // Could add options for default sample rate, quality, speed etc.
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
         {
             // Static HttpClient initialization is handled implicitly
+
+            // make this dynamic within dashboard
+            if (_voiceEngine == "PlayHT1.0")
+            {
+                if (_sampleRate != 8000)
+                {
+                    throw new Exception("Unsupported sample rate for PlayHT1.0, supported are: 8000");
+                }
+                _audioFormat = "mulaw";
+
+            }
+            else
+            {
+                _audioFormat = "wav";
+            }
+
+            if (_sampleRate < 8000 || _sampleRate > 48000)
+            {
+                throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -46,23 +62,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
 
-            if (text.Length > _characterLimit)
-            {
-                // todo logging
-                Console.WriteLine($"Play.ht TTS Error: Text exceeds the {_characterLimit} character limit for the '{_voiceEngine ?? "default"}' engine.");
-                return (Array.Empty<byte>(), TimeSpan.Zero);
-            }
-
             var requestPayload = new PlayHtTtsRequest
             {
                 Text = text,
                 Voice = _voiceId,
                 VoiceEngine = _voiceEngine,
-                OutputFormat = "wav", // Request WAV to get header metadata
-                SampleRate = _sampleRate, // Request our target sample rate
-                // Populate optional fields from metaData if needed
-                // Speed = metaData?.TryGetValue("speed", out var speed) ? (double?)speed : null,
-                // Emotion = metaData?.TryGetValue("emotion", out var emotion) ? (string?)emotion : null,
+                OutputFormat = _audioFormat,
+                SampleRate = _sampleRate,
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -88,7 +94,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     // Parse the WAV header to extract PCM data and calculate duration
                     // todo logging
                     Console.WriteLine($"Play.ht: Received WAV format. Parsing header...");
-                    return ParseWavAndExtractPcm(wavData);
+                    return ParseAudioAndExtractPcm(wavData);
                 }
                 else
                 {
@@ -119,25 +125,32 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             }
         }
 
-        // WAV parser (reuse or adapt from FishAudio/HumeAI service)
-        private (byte[]?, TimeSpan?) ParseWavAndExtractPcm(byte[] wavData)
+        private (byte[]?, TimeSpan?) ParseAudioAndExtractPcm(byte[] audioData)
         {
             try
             {
-                if (wavData == null || wavData.Length < 44)
+                if (_audioFormat == "ULAW")
+                {
+                    double durationSeconds = (double)audioData.Length / _sampleRate;
+                    var ulawDuration = TimeSpan.FromSeconds(durationSeconds);
+
+                    return (audioData, ulawDuration);
+                }
+
+                if (audioData == null || audioData.Length < 44)
                 {
                     // todo logging
                     Console.WriteLine("Play.ht Error: Received invalid or incomplete WAV data.");
                     return (null, null);
                 }
 
-                using var reader = new BinaryReader(new MemoryStream(wavData));
+                using var reader = new BinaryReader(new MemoryStream(audioData));
 
                 // -- Basic WAV Header Parsing --
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (wavData, null); // Return original if malformed
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (audioData, null); // Return original if malformed
                 reader.ReadInt32(); // File size - 8
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (wavData, null);
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (wavData, null);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (audioData, null);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (audioData, null);
 
                 int fmtChunkSize = reader.ReadInt32();
                 short audioFormat = reader.ReadInt16(); // 1 for PCM
@@ -151,7 +164,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     // todo logging
                     Console.WriteLine("Play.ht Error: Received WAV is not in PCM format.");
-                    return (wavData, null); // Return original data if not PCM
+                    return (audioData, null); // Return original data if not PCM
                 }
 
                 // Skip any extra fmt bytes
@@ -161,25 +174,25 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 // Find 'data' chunk
                 string dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
                 // Handle potential LIST/INFO chunks before data chunk
-                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < wavData.Length - 8)
+                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < audioData.Length - 8)
                 {
                     int listChunkSize = reader.ReadInt32();
-                    if (listChunkSize <= 0 || reader.BaseStream.Position + listChunkSize > wavData.Length) // Basic sanity check
-                        return (wavData, null); // Malformed chunk size
+                    if (listChunkSize <= 0 || reader.BaseStream.Position + listChunkSize > audioData.Length) // Basic sanity check
+                        return (audioData, null); // Malformed chunk size
                     reader.BaseStream.Seek(listChunkSize, SeekOrigin.Current);
                     dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
                 }
                 if (dataChunkId.ToLowerInvariant() != "data")
                 {
                     Console.WriteLine("Play.ht Error: 'data' chunk not found in WAV.");
-                    return (wavData, null);
+                    return (audioData, null);
                 }
 
                 int dataChunkSize = reader.ReadInt32();
-                if (reader.BaseStream.Position + dataChunkSize > wavData.Length)
+                if (reader.BaseStream.Position + dataChunkSize > audioData.Length)
                 {
                     Console.WriteLine("Play.ht Error: WAV data chunk size exceeds available data.");
-                    dataChunkSize = (int)(wavData.Length - reader.BaseStream.Position); // Read what's available
+                    dataChunkSize = (int)(audioData.Length - reader.BaseStream.Position); // Read what's available
                     if (dataChunkSize < 0) dataChunkSize = 0;
                 }
 
@@ -201,7 +214,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 // todo logging
                 Console.WriteLine($"Play.ht WAV Parsing Error: {ex.Message}. Returning original WAV data.");
                 // Return original data if parsing fails, duration unknown
-                return (wavData, null);
+                return (audioData, null);
             }
         }
 
@@ -229,7 +242,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Dispose()
         {
-            // Static HttpClient doesn't need instance disposal
             GC.SuppressFinalize(this);
         }
     }

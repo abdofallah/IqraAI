@@ -14,18 +14,28 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _referenceId;
         private readonly string _model;
 
+        private readonly int _sampleRate;
+        private readonly int _channels = 1; //default by fishaudio
+        private readonly int _bitsPerSample = 16; //default by fishaudio
+
         private const string ApiUrl = "https://api.fish.audio/v1/tts";
 
-        public FishAudioTTSService(string apiKey, string referenceId, string model)
+        public FishAudioTTSService(string apiKey, string referenceId, string model, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _referenceId = referenceId;
             _model = model;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
         {
             // Static HttpClient, initialization done in constructor or is implicit
+
+            if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_sampleRate))
+            {
+                throw new Exception("Sample rate must be 8000, 16000, 24000, 32000 or 44100");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -39,7 +49,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 Text = text,
                 ReferenceId = _referenceId,
-                Format = "wav"
+                Format = "pcm",
+                SampleRate = (_sampleRate / 100) // it expects 8 instead of 8000
             };
 
             byte[] messagePackData;
@@ -69,108 +80,44 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 if (response.IsSuccessStatusCode)
                 {
-                    byte[] wavData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-
-                    // Parse WAV header to extract PCM data and calculate duration
-                    return ParseWavHeaderAndExtractPcm(wavData);
+                    byte[] pcmData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+                    return ParseAndExtractPcm(pcmData);
                 }
                 else
                 {
-                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken); // Might not be string if error is msgpack
-                    //Console.WriteLine($"Fish Audio API Error ({response.StatusCode}): {errorContent}");
+                    string errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
                     // todo logging
-                    // Consider trying to deserialize errorContent if it's msgpack
                     return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
             }
             catch (HttpRequestException ex)
             {
                 // todo logging
-                // Console.WriteLine($"Fish Audio HTTP Request Error: {ex.Message}");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
             catch (TaskCanceledException ex) when (ex.CancellationToken == cancellationToken)
             {
                 // todo logging
-                // Console.WriteLine("Fish Audio TTS synthesis was cancelled.");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
-            catch (Exception ex) // Catch broader exceptions, including MessagePack errors on response
+            catch (Exception ex)
             {
                 // todo logging
-                // Console.WriteLine($"Fish Audio TTS Error: {ex.Message}");
                 return (Array.Empty<byte>(), TimeSpan.Zero);
             }
         }
 
-        private (byte[]?, TimeSpan?) ParseWavHeaderAndExtractPcm(byte[] wavData)
+        private (byte[]?, TimeSpan?) ParseAndExtractPcm(byte[] pcmData)
         {
-            try
+            if (pcmData == null || pcmData.Length == 0)
             {
-                if (wavData == null || wavData.Length < 44) // Basic check for header size
-                {
-                    Console.WriteLine("Fish Audio Error: Received invalid or incomplete WAV data.");
-                    return (null, null);
-                }
-
-                using var reader = new BinaryReader(new MemoryStream(wavData));
-
-                // Read and validate chunks (simple validation)
-                string riff = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                if (riff != "RIFF") return (null, null);
-                reader.ReadInt32(); // File size - 8
-                string wave = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                if (wave != "WAVE") return (null, null);
-                string fmtChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                if (fmtChunkId != "fmt ") return (null, null);
-
-                int fmtChunkSize = reader.ReadInt32();
-                reader.ReadInt16(); // Audio format (1 for PCM)
-                short channels = reader.ReadInt16();
-                int sampleRate = reader.ReadInt32();
-                reader.ReadInt32(); // Byte rate
-                reader.ReadInt16(); // Block align
-                short bitsPerSample = reader.ReadInt16();
-
-                // Skip any extra fmt bytes
-                reader.BaseStream.Seek(fmtChunkSize - 16, SeekOrigin.Current);
-
-                // Find 'data' chunk
-                string dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                // Handle potential LIST chunk before data chunk
-                while (dataChunkId != "data" && reader.BaseStream.Position < wavData.Length - 8)
-                {
-                    int listChunkSize = reader.ReadInt32();
-                    reader.BaseStream.Seek(listChunkSize, SeekOrigin.Current);
-                    dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                }
-                if (dataChunkId != "data") return (null, null);
-
-
-                int dataChunkSize = reader.ReadInt32();
-
-                // Read the actual audio data (PCM)
-                byte[] pcmData = reader.ReadBytes(dataChunkSize);
-
-                if (sampleRate <= 0 || bitsPerSample <= 0 || channels <= 0 || dataChunkSize <= 0)
-                {
-                    Console.WriteLine("Fish Audio Error: Invalid WAV header parameters.");
-                    return (pcmData, null); // Return data even if duration calculation fails
-                }
-
-                // Calculate duration
-                double durationSeconds = (double)dataChunkSize / (sampleRate * channels * (bitsPerSample / 8));
-                TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
-
-                // Return *only* the raw PCM data and calculated duration
-                return (pcmData, duration);
+                return (null, null);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fish Audio WAV Parsing Error: {ex.Message}");
-                // Return original data if parsing fails, but duration is unknown
-                return (wavData, null);
-            }
+
+            double durationSeconds = (double)pcmData.Length / (_sampleRate * _channels * (_bitsPerSample / 8));
+            TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
+
+            return (pcmData, duration);
         }
 
 
@@ -197,7 +144,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Dispose()
         {
-            // Static HttpClient doesn't need instance disposal
             GC.SuppressFinalize(this);
         }
     }

@@ -21,9 +21,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _modelId;
         private readonly string _voiceId;
 
+        private readonly int _sampleRate;
+        private OutputFormat _outputFormat;
+
         private List<string>? _previousRequestIds = new List<string>();
 
-        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null)
+        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
@@ -35,6 +38,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (style.HasValue) _voiceSettings.Style = style.Value;
             if (speakerBoost.HasValue) _voiceSettings.SpeakerBoost = speakerBoost.Value;
             if (speed.HasValue) _voiceSettings.Speed = speed.Value;
+
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
@@ -47,11 +52,32 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             var allModels = _client.ModelsEndpoint.GetModelsAsync().GetAwaiter().GetResult().ToList();
             _modelData = allModels.Find(d => d.Id == _modelId);
+
+            if (_sampleRate == 8000)
+            {
+                _outputFormat = OutputFormat.Ulaw_8000;
+            }
+            else if (_sampleRate == 16000)
+            {
+                _outputFormat = OutputFormat.PCM_16000;
+            }
+            else if (_sampleRate == 24000)
+            {
+                _outputFormat = OutputFormat.PCM_24000;
+            }
+            else if (_sampleRate == 44100)
+            {
+                _outputFormat = OutputFormat.PCM_44100;
+            }
+            else
+            {
+                throw new Exception("Unsupported sample rate, supported are: 8000, 16000, 24000, 44100");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, OutputFormat.PCM_16000, model: _modelData, withTimestamps: true, previousRequestIds: _previousRequestIds.ToArray());
+            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, _outputFormat, model: _modelData, withTimestamps: true, previousRequestIds: _previousRequestIds.ToArray());
 
             try
             {

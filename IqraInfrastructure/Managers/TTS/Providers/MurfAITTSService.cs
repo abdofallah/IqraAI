@@ -12,20 +12,39 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
+        
         private readonly string _voiceId;
-        private readonly int _sampleRate = 16000; // Define target sample rate
+        private readonly string _model;
+
+        private readonly int _sampleRate;
+        private string _audioFormat;
 
         private const string ApiUrl = "https://api.murf.ai/v1/speech/generate";
 
-        public MurfAITTSService(string apiKey, string voiceId)
+        public MurfAITTSService(string apiKey, string model, string voiceId, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
+            _model = model;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
         {
             // Static HttpClient initialization is handled implicitly
+
+            if (_sampleRate == 8000)
+            {
+                _audioFormat = "ULAW";
+            }
+            else if (_sampleRate == 24000 || _sampleRate == 44100 || _sampleRate == 48000)
+            {
+                _audioFormat = "WAV";
+            }
+            else
+            {
+                throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -39,22 +58,20 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 Text = text,
                 VoiceId = _voiceId,
-                Format = "WAV",           // Request WAV
-                SampleRate = _sampleRate,   // Request desired sample rate
-                EncodeAsBase64 = true,     // Request Base64 embedded audio
-                ChannelType = "MONO",     // Request Mono
-                ModelVersion = "GEN2"       // Use newer model
-                // Populate optional fields from metaData if needed (e.g., pitch, rate)
-                // Pitch = metaData?.TryGetValue("pitch", out var pitchVal) ? (int?)pitchVal : null,
+                Format = _audioFormat,
+                SampleRate = _sampleRate,
+                EncodeAsBase64 = false,
+                ChannelType = "MONO",
+                ModelVersion = _model
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
             var requestUri = ApiUrl;
 
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
-            request.Headers.Add("api-key", _apiKey); // Use api-key header
+            request.Headers.Add("api-key", _apiKey);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json")); // Expect JSON response
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             try
             {
@@ -64,8 +81,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    // todo logging
                     Console.WriteLine($"Murf AI HTTP Error ({response.StatusCode}): {responseBody}");
-                    // Attempt to parse error details from body
+
                     try
                     {
                         var errorResp = JsonSerializer.Deserialize<MurfTtsGenerateResponse>(responseBody);
@@ -81,7 +99,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
                 var ttsResponse = JsonSerializer.Deserialize<MurfTtsGenerateResponse>(responseBody);
 
-                // Check for API level error message even on 200 OK
                 if (ttsResponse?.ErrorCode != null || !string.IsNullOrEmpty(ttsResponse?.ErrorMessage))
                 {
                     // todo logging
@@ -106,8 +123,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     duration = TimeSpan.FromSeconds(ttsResponse.AudioLengthInSeconds.Value);
                 }
 
-                // Since we requested WAV, parse it to get raw PCM and potentially recalculate duration if needed
-                return ParseWavAndExtractPcm(audioData, duration); // Pass known duration if available
+                return ParseAudioAndExtractPcm(audioData, duration);
 
             }
             catch (JsonException jsonEx)
@@ -142,19 +158,29 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             }
         }
 
-        // WAV parser (reuse or adapt from other services)
-        private (byte[]?, TimeSpan?) ParseWavAndExtractPcm(byte[] wavData, TimeSpan? knownDuration)
+        private (byte[]?, TimeSpan?) ParseAudioAndExtractPcm(byte[] audioData, TimeSpan? knownDuration)
         {
             try
             {
-                if (wavData == null || wavData.Length < 44) { return (null, null); }
+                if (_audioFormat == "ULAW")
+                {
+                    var ulawDuration = knownDuration;
+                    if (ulawDuration == null)
+                    {
+                        double durationSeconds = (double)audioData.Length / _sampleRate;
+                        ulawDuration = TimeSpan.FromSeconds(durationSeconds);
+                    }
+                    return (audioData, ulawDuration);
+                }
 
-                using var reader = new BinaryReader(new MemoryStream(wavData));
+                if (audioData == null || audioData.Length < 44) { return (null, null); }
+
+                using var reader = new BinaryReader(new MemoryStream(audioData));
                 // --- Basic WAV Header Parsing ---
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (wavData, knownDuration);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (audioData, knownDuration);
                 reader.ReadInt32(); // File size - 8
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (wavData, knownDuration);
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (wavData, knownDuration);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (audioData, knownDuration);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (audioData, knownDuration);
 
                 int fmtChunkSize = reader.ReadInt32();
                 short audioFormat = reader.ReadInt16();
@@ -168,17 +194,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     // todo logging
                     Console.WriteLine("Murf AI Error: Received WAV is not in PCM format.");
-                    return (wavData, knownDuration);
+                    return (audioData, knownDuration);
                 }
                 if (fmtChunkSize > 16)
                     reader.BaseStream.Seek(fmtChunkSize - 16, SeekOrigin.Current);
 
                 string dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < wavData.Length - 8)
+                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < audioData.Length - 8)
                 {
                     int listChunkSize = reader.ReadInt32();
-                    if (listChunkSize <= 0 || reader.BaseStream.Position + listChunkSize > wavData.Length)
-                        return (wavData, knownDuration);
+                    if (listChunkSize <= 0 || reader.BaseStream.Position + listChunkSize > audioData.Length)
+                        return (audioData, knownDuration);
                     reader.BaseStream.Seek(listChunkSize, SeekOrigin.Current);
                     dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
                 }
@@ -186,15 +212,15 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     // todo logging
                     Console.WriteLine("Murf AI Error: 'data' chunk not found in WAV.");
-                    return (wavData, knownDuration);
+                    return (audioData, knownDuration);
                 }
 
                 int dataChunkSize = reader.ReadInt32();
-                if (reader.BaseStream.Position + dataChunkSize > wavData.Length)
+                if (reader.BaseStream.Position + dataChunkSize > audioData.Length)
                 {
                     // todo logging
                     Console.WriteLine("Murf AI Error: WAV data chunk size exceeds available data.");
-                    dataChunkSize = (int)(wavData.Length - reader.BaseStream.Position);
+                    dataChunkSize = (int)(audioData.Length - reader.BaseStream.Position);
                     if (dataChunkSize < 0) dataChunkSize = 0;
                 }
 
@@ -215,7 +241,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 // todo logging
                 Console.WriteLine($"Murf AI WAV Parsing Error: {ex.Message}. Returning original WAV data.");
-                return (wavData, knownDuration); // Return original if parsing fails
+                return (audioData, knownDuration); // Return original if parsing fails
             }
         }
 
