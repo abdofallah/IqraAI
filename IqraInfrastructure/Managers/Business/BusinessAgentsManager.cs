@@ -538,9 +538,21 @@ namespace IqraInfrastructure.Managers.Business
 
                         newAgentData.Settings.BackgroundAudioUrl = validationResult.Hash;
                     }
+                    else if (backgroundAudioUrl == "previous")
+                    {
+                        if (string.IsNullOrWhiteSpace(existingAgentData.Settings.BackgroundAudioUrl))
+                        {
+                            result.Code = "AddOrUpdateAgent:28";
+                            result.Message = "Previous background audio url not found.";
+                            return result;
+                        }
+                        newAgentData.Settings.BackgroundAudioUrl = existingAgentData.Settings.BackgroundAudioUrl;
+                    }
                     else
                     {
-                        newAgentData.Settings.BackgroundAudioUrl = backgroundAudioUrl;
+                        result.Code = "AddOrUpdateAgent:29";
+                        result.Message = "Invalid background audio url type (allowed custom or previous).";
+                        return result;
                     }
 
                     if (!settingsTabElement.TryGetProperty("backgroundAudioVolume", out var backgroundAudioVolumeElement))

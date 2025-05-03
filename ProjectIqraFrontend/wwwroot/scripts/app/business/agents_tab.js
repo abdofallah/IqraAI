@@ -521,10 +521,10 @@ function validateAgentMultiLanguageElements() {
 
 function ResetAndEmptyAgentsManageTab() {
 	// Audio
-	if (AgentBackgroundAudioWaveSurfer?.destroy) {
+	if (AgentBackgroundAudioWaveSurfer !== null) {
 		AgentBackgroundAudioWaveSurfer.destroy();
+        AgentBackgroundAudioWaveSurfer = null;
 	}
-	AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
 	agentBackgroundAudioVolumeInput.val("100");
 	agentBackgroundAudioInputBox.find(".no-audio-notice").removeClass("d-none");
 	agentBackgroundAudioInputBox.find(".recording-container-waveform").addClass("d-none");
@@ -1785,23 +1785,29 @@ function CheckAgentSettingsTabChanges(enableDisableButton = true) {
 
 	// Background Audio URL
 	const backgroundAudioType = agentBackgroundAudioSelect.val();
-	if (
-		(CurrentManageAgentData.settings.backgroundAudioUrl === null && backgroundAudioType === "custom") ||
-		(CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "custom" && agentBackgroundAudioUploadInput[0].files.length === 1)
-	) {
-		changes.backgroundAudioUrl = "custom";
-		hasChanges = true;
-	}
-	if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "none") {
-		changes.backgroundAudioUrl = null;
-		hasChanges = true;
-	}
-	if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && backgroundAudioType === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0) {
-		changes.backgroundAudioUrl = CurrentManageAgentData.settings.backgroundAudioUrl;
-	}
 
 	if (backgroundAudioType === "none") {
 		changes.backgroundAudioUrl = null;
+
+		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null) {
+			hasChanges = true;
+		}
+	}
+
+	if (backgroundAudioType === "custom") {
+
+		if (
+			agentBackgroundAudioUploadInput[0].files.length === 1
+			||
+			(agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer == null)
+		) {
+			changes.backgroundAudioUrl = "custom";
+			hasChanges = true;
+		}
+
+		if (CurrentManageAgentData.settings.backgroundAudioUrl !== null && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer != null) {
+            changes.backgroundAudioUrl = "previous";
+		}
 	}
 
 	// Background Audio Volume
@@ -1826,7 +1832,7 @@ function validateAgentSettingsTab(onlyRemove = true) {
 	const errors = [];
 	let isValid = true;
 
-	if (agentBackgroundAudioSelect.val() === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0 && CurrentManageAgentData.settings.backgroundAudioUrl == null) {
+	if (agentBackgroundAudioSelect.val() === "custom" && agentBackgroundAudioUploadInput[0].files.length === 0 && AgentBackgroundAudioWaveSurfer == null) {
 		isValid = false;
 		errors.push("Audio file for background audio is required.");
 
@@ -1868,6 +1874,7 @@ function fillAgentSettingsTab() {
 	if (CurrentManageAgentData.settings.backgroundAudioUrl) {
 		agentBackgroundAudioSelect.val("custom").change();
 
+		AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
 		AgentBackgroundAudioWaveSurfer.load(`${BusinessAgentBackgroundAudioURL}/${CurrentManageAgentData.settings.backgroundAudioUrl}`);
 		agentBackgroundAudioVolumeInput.val(CurrentManageAgentData.settings.backgroundAudioVolume);
 
@@ -4523,7 +4530,7 @@ function initAgentTab() {
 
 		// Settings Tab Changes
 		function initAgentSettingsTabHandlers() {
-			$("#editAgentBackgroundAudioSelect, #editAgentBackgroundAudioVolume").on("input", () => {
+			agentBackgroundAudioVolumeInput.on("input", () => {
 				CheckAgentTabHasChanges();
 			});
 
@@ -4531,6 +4538,11 @@ function initAgentTab() {
 				const selectedValue = $(event.currentTarget).val();
 
 				if (selectedValue === "none") {
+					if (AgentBackgroundAudioWaveSurfer !== null) {
+						AgentBackgroundAudioWaveSurfer.destroy();
+						AgentBackgroundAudioWaveSurfer = null;
+					}
+
 					agentBackgroundAudioBox.addClass("d-none");
 					agentBackgroundAudioUploadInput.val("");
 
@@ -4548,6 +4560,7 @@ function initAgentTab() {
 				}
 
 				validateAgentSettingsTab(true);
+				CheckAgentTabHasChanges();
 			});
 
 			agentBackgroundAudioUploadBtn.on("click", (event) => {
@@ -4566,11 +4579,18 @@ function initAgentTab() {
 
 					reader.onload = (evt) => {
 						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
+
+						if (AgentBackgroundAudioWaveSurfer !== null) {
+                            AgentBackgroundAudioWaveSurfer.destroy();
+						}
+						AgentBackgroundAudioWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
 						AgentBackgroundAudioWaveSurfer.loadBlob(blob);
 
 						agentBackgroundAudioInputBox.find(".no-audio-notice").addClass("d-none");
 						agentBackgroundAudioInputBox.find(".recording-container-waveform").removeClass("d-none");
 						agentBackgroundAudioInputBox.find(".audio-controller").removeClass("d-none");
+
+						CheckAgentTabHasChanges();
 					};
 
 					reader.onerror = (evt) => {

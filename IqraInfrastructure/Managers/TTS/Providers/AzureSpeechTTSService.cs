@@ -73,7 +73,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var result = await _synthesizer.SpeakTextAsync(text);
+            var constructSSML = $"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{_langauge}\"><voice name=\"{_speakerName}\">{text}</voice></speak>";
+            var result = await _synthesizer.SpeakSsmlAsync(constructSSML);
 
             if (result.Reason == ResultReason.SynthesizingAudioCompleted)
             {
