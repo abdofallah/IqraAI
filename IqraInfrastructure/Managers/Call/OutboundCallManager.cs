@@ -122,11 +122,11 @@ namespace IqraInfrastructure.Managers.Call
                     _logger.LogWarning("Unable to get region data for region {RegionId}", numberValidation.Data.RegionId);
                     return result;
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.Data.ServerEndpoint);
+                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.Data[0].ServerEndpoint);
                 if (regionServerData == null)
                 {
                     result.Message = "Unable to get region server data";
-                    _logger.LogWarning("Unable to get region server data for region {RegionId} and endpoint {Endpoint}", numberValidation.Data.RegionId, serverSelection.Data.ServerEndpoint);
+                    _logger.LogWarning("Unable to get region server data for region {RegionId} and endpoint {Endpoint}", numberValidation.Data.RegionId, serverSelection.Data[0].ServerEndpoint);
                     return result;
                 }
                 var serverApiKey = regionServerData.APIKey;
@@ -142,7 +142,7 @@ namespace IqraInfrastructure.Managers.Call
                     CallerNumber = numberValidation.Data.Number,
                     Priority = 1, // Normal priority for outbound calls
                     IsOutbound = true,
-                    ProcessingServerId = serverSelection.Data.ServerId,
+                    ProcessingServerId = serverSelection.Data[0].ServerId,
                     ProviderMetadata = request.Metadata ?? new Dictionary<string, string>()
                 };
 
@@ -150,7 +150,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 // 6. Initiate the outbound call through the backend app
                 var initiateResult = await InitiateCallThroughBackendAsync(
-                    serverSelection.Data.ServerEndpoint,
+                    serverSelection.Data[0].ServerEndpoint,
                     serverApiKey,
                     callQueue,
                     request.ToNumber);

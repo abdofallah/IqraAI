@@ -69,7 +69,6 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     result.Code = "DistributeIncomingCall:1";
                     result.Message = "Unable to identify phone number";
-                    _logger.LogWarning("Unable to identify phone number for call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId);
                     return result;
                 }
 
@@ -83,7 +82,6 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     result.Code = "DistributeIncomingCall:2";
                     result.Message = "Business number has no route set";
-                    _logger.LogWarning("Business {BusinessId} phone number {PhoneNumberId} has no route set", businessId, phoneNumberInfo.NumberId);
                     return result;
                 }
 
@@ -104,8 +102,6 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     result.Code = "DistributeIncomingCall:" + serverSelection.Code;
                     result.Message = serverSelection.Message;
-                    _logger.LogWarning("Server selection failed for call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: {Message}",
-                        webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, serverSelection.Message);
                     return result;
                 }
 

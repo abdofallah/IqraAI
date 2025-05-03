@@ -104,53 +104,65 @@ namespace IqraInfrastructure.Managers.Business
                 var fieldsElement = changesJsonElement.RootElement.GetProperty("fields");
                 foreach (var field in integrationTypeData.Fields)
                 {
-                    if (fieldsElement.TryGetProperty(field.Id, out var valueElement))
-                    {
-                        string? value = valueElement.GetString();
-                        if (string.IsNullOrEmpty(value) && field.Required)
-                        {
-                            result.Code = "AddOrUpdateBusinessIntegration:5";
-                            result.Message = $"Field {field.Name} is required.";
-                            return result;
-                        }
-
-                        // Validate field value based on type
-                        if (!string.IsNullOrEmpty(value))
-                        {
-                            if (field.Type == "number" && !decimal.TryParse(value, out _))
-                            {
-                                result.Code = "AddOrUpdateBusinessIntegration:6";
-                                result.Message = $"Field {field.Name} must be a valid number.";
-                                return result;
-                            }
-                            else if (field.Type == "select")
-                            {
-                                if (!field.Options!.Any(o => o.Key == value))
-                                {
-                                    result.Code = "AddOrUpdateBusinessIntegration:7";
-                                    result.Message = $"Invalid option selected for {field.Name}.";
-                                    return result;
-                                }
-                            }
-                        }
-
-                        if (field.IsEncrypted)
-                        {
-                            value = integrationsManager.EncryptField(value);
-                            newIntegration.Fields.Add(field.Id, "value_encrypted_after_saving");
-                            newIntegration.EncryptedFields.Add(field.Id, value);
-                        }
-                        else
-                        {
-                            newIntegration.Fields.Add(field.Id, value);
-                        }
-
-                    }
-                    else if (field.Required)
+                    if (!fieldsElement.TryGetProperty(field.Id, out var valueElement))
                     {
                         result.Code = "AddOrUpdateBusinessIntegration:8";
                         result.Message = $"Required field {field.Name} is missing.";
                         return result;
+                    }
+
+                    string? value = valueElement.GetString();
+                    if (string.IsNullOrEmpty(value) && field.Required)
+                    {
+                        result.Code = "AddOrUpdateBusinessIntegration:5";
+                        result.Message = $"Field {field.Name} is required.";
+                        return result;
+                    }
+
+                    // Validate field value based on type
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        if (field.Type == "number" && !decimal.TryParse(value, out _))
+                        {
+                            result.Code = "AddOrUpdateBusinessIntegration:6";
+                            result.Message = $"Field {field.Name} must be a valid number.";
+                            return result;
+                        }
+                        else if (field.Type == "select")
+                        {
+                            if (!field.Options!.Any(o => o.Key == value))
+                            {
+                                result.Code = "AddOrUpdateBusinessIntegration:7";
+                                result.Message = $"Invalid option selected for {field.Name}.";
+                                return result;
+                            }
+                        }
+                    }
+
+                    if (field.IsEncrypted)
+                    {
+                        if (value == "value_encrypted_after_saving" && postType == "edit" && businessIntegrationData != null) // when updating we should use some other way to update it tbh
+                        {
+                            if (!businessIntegrationData.EncryptedFields.TryGetValue(field.Id, out string encryptedFieldValue))
+                            {
+                                result.Code = "AddOrUpdateBusinessIntegration:8";
+                                result.Message = $"Encrypted field {field.Name} is unchanged so previous value is missing.";
+                                return result;
+                            }
+
+                            value = encryptedFieldValue;
+                        }
+                        else
+                        {
+                            value = integrationsManager.EncryptField(value);  
+                        }
+
+                        newIntegration.Fields.Add(field.Id, "value_encrypted_after_saving");
+                        newIntegration.EncryptedFields.Add(field.Id, value);
+                    }
+                    else
+                    {
+                        newIntegration.Fields.Add(field.Id, value);
                     }
                 }
 
