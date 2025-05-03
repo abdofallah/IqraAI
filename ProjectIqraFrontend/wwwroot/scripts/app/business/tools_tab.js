@@ -63,6 +63,21 @@ const HTTPStatusCodeList = [
 	{ code: 511, name: "Network Authentication Required" },
 ]; // Make this dynamic - app/specification
 
+const HttpBodyEnum = {
+	None: 0,
+	FormData: 1,
+	XWWWFormUrlencoded: 2,
+	Raw: 3
+};
+
+const HttpMethodEnum = {
+	Get: 0,
+	Post: 1,
+	Put: 2,
+	Delete: 3,
+	Patch: 4,
+};
+
 require.config({
 	paths: {
 		vs: "/libs/monaco-editor-0.48.0-dist/package/min/vs",
@@ -1382,47 +1397,56 @@ function ValidateToolsManageTab(onlyRemove = true) {
 
 		// Body validation
 		const selectedBodyType = parseInt(toolManagerTab.find('[name="toolBodyTypeCheckbox"]:checked').val());
-		if (selectedBodyType === 1 || selectedBodyType === 2) {
-			// Form-data or x-www-form-urlencoded
-			const bodyElements = toolBodyKeyValueViewList.children();
-			bodyElements.each((idx, element) => {
-				const currentElement = $(element);
-				const keyInput = currentElement.find('[data-type="key"]');
-				const valueInput = currentElement.find('[data-type="value"]');
 
-				if (keyInput.val().trim() === "") {
-					validated = false;
-					errors.push(`Body form data #${idx + 1} key is required.`);
-
-					if (!onlyRemove) {
-						keyInput.addClass("is-invalid");
-					}
-				} else {
-					keyInput.removeClass("is-invalid");
-				}
-
-				if (valueInput.val().trim() === "") {
-					validated = false;
-					errors.push(`Body form data #${idx + 1} value is required.`);
-
-					if (!onlyRemove) {
-						valueInput.addClass("is-invalid");
-					}
-				} else {
-					valueInput.removeClass("is-invalid");
-				}
-			});
-		} else if (selectedBodyType === 3) {
-			// Raw
-			if (toolBodyRawTextarea.val().trim() === "") {
+		if (requestTypeValue == 0) {
+			if (selectedBodyType != HttpBodyEnum.None) {
 				validated = false;
-				errors.push("Raw body content is required.");
+				errors.push("Body is not allowed for GET request type.");
+			}
+		}
+		else {
+			if (selectedBodyType === 1 || selectedBodyType === 2) {
+				// Form-data or x-www-form-urlencoded
+				const bodyElements = toolBodyKeyValueViewList.children();
+				bodyElements.each((idx, element) => {
+					const currentElement = $(element);
+					const keyInput = currentElement.find('[data-type="key"]');
+					const valueInput = currentElement.find('[data-type="value"]');
 
-				if (!onlyRemove) {
-					toolBodyRawTextarea.addClass("is-invalid");
+					if (keyInput.val().trim() === "") {
+						validated = false;
+						errors.push(`Body form data #${idx + 1} key is required.`);
+
+						if (!onlyRemove) {
+							keyInput.addClass("is-invalid");
+						}
+					} else {
+						keyInput.removeClass("is-invalid");
+					}
+
+					if (valueInput.val().trim() === "") {
+						validated = false;
+						errors.push(`Body form data #${idx + 1} value is required.`);
+
+						if (!onlyRemove) {
+							valueInput.addClass("is-invalid");
+						}
+					} else {
+						valueInput.removeClass("is-invalid");
+					}
+				});
+			} else if (selectedBodyType === 3) {
+				// Raw
+				if (toolBodyRawTextarea.val().trim() === "") {
+					validated = false;
+					errors.push("Raw body content is required.");
+
+					if (!onlyRemove) {
+						toolBodyRawTextarea.addClass("is-invalid");
+					}
+				} else {
+					toolBodyRawTextarea.removeClass("is-invalid");
 				}
-			} else {
-				toolBodyRawTextarea.removeClass("is-invalid");
 			}
 		}
 	}
@@ -1693,6 +1717,23 @@ function initToolsTab() {
 					toolBodyRawView.addClass("d-none");
 
 					toolBodyNone.removeClass("d-none");
+				}
+			});
+
+			inputToolType.on("change", (event) => {
+				const requestType = parseInt($(event.currentTarget).val());
+
+				if (requestType == HttpMethodEnum.Get) {
+					$(`[name="toolBodyTypeCheckbox"][value="${HttpBodyEnum.None}"]`).prop("checked", true).change();
+
+					Object.keys(HttpBodyEnum).forEach((key) => {
+						$(`input[name="toolBodyTypeCheckbox"][value="${HttpBodyEnum[key]}"]`).prop("disabled", true);
+					});
+				}
+				else {
+					Object.keys(HttpBodyEnum).forEach((key) => {
+						$(`input[name="toolBodyTypeCheckbox"][value="${HttpBodyEnum[key]}"]`).prop("disabled", false);
+					});
 				}
 			});
 

@@ -315,6 +315,13 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 NewBusinessAppToolData.Configuration.BodyType = (HttpBodyEnum)configurationBodyTypeInt;
 
+                if (NewBusinessAppToolData.Configuration.RequestType == HttpMethodEnum.Get && NewBusinessAppToolData.Configuration.BodyType != HttpBodyEnum.None)
+                {
+                    result.Code = "AddOrUpdateUserBusinessTools:21";
+                    result.Message = "Configuration tab request type is get and body type is not none.";
+                    return result;
+                }
+
                 switch (NewBusinessAppToolData.Configuration.BodyType)
                 {
                     case HttpBodyEnum.None:
