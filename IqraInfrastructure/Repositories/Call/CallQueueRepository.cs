@@ -277,6 +277,21 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task UpdateCallQueueProcessingServerAsync(string queueId, string serverId)
+        {
+            try
+            {
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<CallQueueData>.Update
+                    .Set(c => c.ProcessingServerId, serverId);
+
+                await _callQueueCollection.UpdateOneAsync(filter, update);
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error updating processing server for queue {QueueId}", queueId);
+            }
+        }
+
         public async Task<int> CleanupExpiredCallQueues(string regionId, string serverId)
         {
             try

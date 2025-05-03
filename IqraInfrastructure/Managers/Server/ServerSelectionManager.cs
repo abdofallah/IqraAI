@@ -28,9 +28,9 @@ namespace IqraInfrastructure.Managers.Server
             _serverLock = lockFactory;
         }
 
-        public async Task<FunctionReturnResult<ServerSelectionResultModel?>> SelectOptimalServerAsync(string regionId)
+        public async Task<FunctionReturnResult<List<ServerSelectionResultModel>?>> SelectOptimalServerAsync(string regionId, List<string>? ServersToIgnore = null)
         {
-            var result = new FunctionReturnResult<ServerSelectionResultModel?>();
+            var result = new FunctionReturnResult<List<ServerSelectionResultModel>?>();
 
             try
             {
@@ -45,9 +45,8 @@ namespace IqraInfrastructure.Managers.Server
                 }
 
                 // Get backend servers for the specified region
-                // stop using RegionServerTypeEnum and use ServerTypeEnum
                 var backendServers = regionData.Servers
-                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null)
+                    .Where(s => s.Type == ServerTypeEnum.Backend && s.DisabledAt == null && (!ServersToIgnore?.Contains(s.Endpoint) ?? true))
                     .Select(s => s.Endpoint)
                     .ToList();
 
@@ -103,54 +102,20 @@ namespace IqraInfrastructure.Managers.Server
                     return result;
                 }
 
-                // Select the server with the highest score
-                var selectedServer = scoredServers.First().Server;
-
-                // Use a distributed lock to avoid race conditions when updating the server load
-                string lockKey = $"lock:server:selection:{selectedServer.ServerId}";
-                string lockValue = Guid.NewGuid().ToString();
-                if (await _serverLock.AcquireAsync(lockKey, lockValue, TimeSpan.FromSeconds(10)))
-                {
-                    // Get fresh server status to avoid race conditions
-                    var freshStatus = await _serverStatusChannel.GetServerStatusAsync(selectedServer.ServerId);
-                    if (freshStatus != null)
-                    {
-                        // Verify server still has capacity
-                        if (freshStatus.CurrentActiveCallsCount < freshStatus.MaxConcurrentCallsCount && !freshStatus.MaintenanceMode)
+                // Select the top three servers with the highest score
+                var topServers = scoredServers
+                    .Take(3)
+                    .Select(
+                        s => new ServerSelectionResultModel()
                         {
-                            result.Success = true;
-                            result.Data = new ServerSelectionResultModel()
-                            {
-                                ServerId = selectedServer.ServerId,
-                                ServerEndpoint = selectedServer.ServerId, // Currently Server id is the server endpoint, in case server id is different than endpoint, edit here CAUTION
-                                Score = scoredServers.First().Score
-                            };
-
-                            _logger.LogInformation("Selected server {ServerId} with score {Score} for region {RegionId}",
-                                result.Data.ServerId, result.Data.Score, regionId);
+                            ServerId = s.Server.ServerId,
+                            ServerEndpoint = s.Server.ServerId, // currently server id itself is the endpoint
+                            Score = s.Score
                         }
-                        else
-                        {
-                            result.Code = "SelectOptimalServerAsync:6";
-                            result.Message = "Selected server no longer has capacity";
-                            _logger.LogInformation("Selected server {ServerId} no longer has capacity", selectedServer.ServerId);
-                        }
-                    }
-                    else
-                    {
-                        result.Code = "SelectOptimalServerAsync:7";
-                        result.Message = "Selected server status is no longer available";
-                        _logger.LogWarning("Selected server {ServerId} status is no longer available", selectedServer.ServerId);
-                    }
+                    )
+                    .ToList();
 
-                    await _serverLock.ReleaseAsync(lockKey, lockValue);
-                }
-                else
-                {
-                    result.Code = "SelectOptimalServerAsync:8";
-                    result.Message = "Failed to acquire lock for server selection";
-                    _logger.LogWarning("Failed to acquire lock for server selection: {ServerId}", selectedServer.ServerId);
-                }
+                return result.SetSuccessResult(topServers);
             }
             catch (Exception ex)
             {

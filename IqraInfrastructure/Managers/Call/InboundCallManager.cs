@@ -118,19 +118,8 @@ namespace IqraInfrastructure.Managers.Call
                     _logger.LogWarning("Region not found: {RegionId}", regionId);
                     return result;
                 }
-                var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == serverSelection.Data.ServerEndpoint);
-                if (regionServerData == null)
-                {
-                    result.Code = "DistributeIncomingCall:4";
-                    result.Message = $"Region server not found: {serverSelection.Data.ServerEndpoint}";
-                    _logger.LogWarning("Region server not found: {ServerEndpoint}", serverSelection.Data.ServerEndpoint);
-                    return result;
-                }
-                var regionServerId = regionServerData.Endpoint;
-                var regionServerApiKey = regionServerData.APIKey;
-                var resgionUseSSL = regionServerData.UseSSL;
 
-                // 4. Create call queue entry
+                // Create call queue entry
                 var callQueue = new CallQueueData
                 {
                     BusinessId = businessId,
@@ -142,38 +131,71 @@ namespace IqraInfrastructure.Managers.Call
                     CallerNumber = webhookContext.From,
                     Priority = 2, // High priority for incoming calls
                     IsOutbound = false,
-                    ProcessingServerId = regionServerId,
+                    ProcessingServerId = "PROCESSING",
                     ProviderMetadata = webhookContext.AdditionalData
                 };
+                callQueue.Id = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
 
-                string queueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
+                FunctionReturnResult forwardResult = new FunctionReturnResult();
+                List<string> errorsList = new List<string>();
+                int optimalServersTried = 0;
+                while (optimalServersTried < serverSelection.Data.Count)
+                {
+                    var currentServer = serverSelection.Data[optimalServersTried];
 
-                // 5. Forward call to selected backend server
-                var forwardResult = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL,  webhookContext, callQueue);
+                    var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == currentServer.ServerEndpoint);
+                    if (regionServerData == null)
+                    {
+                        errorsList.Add($"{optimalServersTried}: Region server not found: {currentServer.ServerEndpoint}");
+                        continue;
+                    }
+
+                    var regionServerId = regionServerData.Endpoint;
+                    var regionServerApiKey = regionServerData.APIKey;
+                    var resgionUseSSL = regionServerData.UseSSL;
+
+                    callQueue.ProcessingServerId = regionServerId;
+                    await _callQueueRepository.UpdateCallQueueProcessingServerAsync(callQueue.Id, regionServerId);
+
+                    // 5. Forward call to selected backend server         
+                    int forwardCallAttempt = 0;
+                    while (forwardCallAttempt < 3)
+                    {
+                        forwardResult  = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
+                        if (!forwardResult.Success)
+                        {
+                            errorsList.Add($"Attempt {forwardCallAttempt}: {forwardResult.Code}: {forwardResult.Message}");
+                        }
+                        else
+                        {
+                            break;
+                        }
+
+                        forwardCallAttempt++;
+                    }
+                    
+                    if (forwardResult.Success)
+                    {
+                        break;
+                    }
+
+                    optimalServersTried++;
+                }
+                
                 if (!forwardResult.Success)
                 {
-                    // If forwarding fails, mark the queue entry as failed
-                    await _callQueueRepository.UpdateCallQueueStatusAsync(queueId, CallQueueStatusEnum.Failed);
-                    
-                    result.Code = "DistributeIncomingCall:5";
-                    result.Message = forwardResult.Message;
-                    _logger.LogError("Call forwarding failed for call {CallId} with queue {queueId}: {Message}",
-                        webhookContext.CallId, queueId, forwardResult.Message);
-                    return result;
+                    await _callQueueRepository.UpdateCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.Failed);
+                    return result.SetFailureResult("Failed to distribute call", string.Join("\n", errorsList));
                 }
 
-                // 6. Return success result
-                result.Success = true;
-                result.Data = new DistributionResultModel()
-                {
-                    QueueId = queueId,
-                    BackendServerId = serverSelection.Data.ServerId
-                };
-
-                _logger.LogInformation("Call {CallId} distributed to server {ServerId} with queue ID {QueueId}",
-                    webhookContext.CallId, serverSelection.Data.ServerId, queueId);
-
-                return result;
+                // Return success result
+                return result.SetSuccessResult(
+                    new DistributionResultModel()
+                    {
+                        QueueId = callQueue.Id,
+                        BackendServerId = callQueue.ProcessingServerId
+                    }
+                );
             }
             catch (Exception ex)
             {
@@ -342,6 +364,7 @@ namespace IqraInfrastructure.Managers.Call
                 // ignore ssl validation etc for client
 
                 // Set headers
+                client.Timeout = TimeSpan.FromSeconds(3);
                 client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

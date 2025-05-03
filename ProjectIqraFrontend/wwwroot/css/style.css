@@ -1631,6 +1631,16 @@ table.table > thead > * > * {
 	cursor: move;
 }
 
+.x6-widget-selection-inner
+{
+	border: 1px solid var(--tcolor-lighter-green) !important;
+	box-shadow: none !important;
+	border-radius: 4px;
+	padding: 30px !important;
+	margin-left: -27px !important;
+	margin-top: -27px !important;
+}
+
 .x6-node-selected .agent-script-node, .x6-node-selected .agent-script-node:hover
 {
 	border: 1px solid var(--tcolor-lighter-green) !important;
