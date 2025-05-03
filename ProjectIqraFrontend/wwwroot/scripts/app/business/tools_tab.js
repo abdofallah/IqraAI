@@ -701,7 +701,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			if (changes.configuration.bodyType === 3) {
 				changes.configuration.bodyData = toolBodyRawTextarea.val();
 
-				if (CurrentManageToolData.configuration.bodyType === 3 && CurrentManageToolData.configuration.bodyData !== toolBodyRawTextarea.val()) {
+				if (CurrentManageToolData.configuration.bodyType.value === 3 && CurrentManageToolData.configuration.bodyData !== changes.configuration.bodyData) {
 					hasChanges = true;
 				}
 			}
@@ -1718,6 +1718,8 @@ function initToolsTab() {
 
 					toolBodyNone.removeClass("d-none");
 				}
+
+				CheckToolsManageTabHasChanges(true);
 			});
 
 			inputToolType.on("change", (event) => {
@@ -1735,6 +1737,8 @@ function initToolsTab() {
 						$(`input[name="toolBodyTypeCheckbox"][value="${HttpBodyEnum[key]}"]`).prop("disabled", false);
 					});
 				}
+
+				CheckToolsManageTabHasChanges(true);
 			});
 
 			addToolBodyKeyValueButton.on("click", (event) => {

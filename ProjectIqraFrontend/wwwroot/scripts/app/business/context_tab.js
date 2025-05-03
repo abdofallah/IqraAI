@@ -2211,13 +2211,6 @@ function initContextTab() {
 			const activeTab = event.detail.from;
 			if (activeTab !== "context-tab") return;
 
-			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
-			if (!canLeaveBrandingTabResult) {
-				event.preventDefault();
-			} else if (ManageContextBranchType == null && ManageContextServiceType == null && ManageContextProductType == null) {
-				FillContextBrandingTab();
-			}
-
 			const canLeaveBranchesTabResult = await canLeaveContextBranchesTab(" Are you sure you want to discard these changes and leave the context tab?");
 			if (!canLeaveBranchesTabResult) {
 				event.preventDefault();
@@ -2225,7 +2218,6 @@ function initContextTab() {
 				ManageContextBranchType = null;
 				CurrentContextBranchData = null;
 				ShowContextBranchesListTab();
-				contextTabHeader.find("#context-inner-branding-tab").click();
 			}
 
 			const canLeaveServicesTabResult = await canLeaveContextServicesTab(" Are you sure you want to discard these changes and leave the context tab?");
@@ -2235,7 +2227,6 @@ function initContextTab() {
 				ManageContextServiceType = null;
 				CurrentContextServiceData = null;
 				ShowContextServicesListTab();
-				contextTabHeader.find("#context-inner-branding-tab").click();
 			}
 
 			const canLeaveProductsTabResult = await canLeaveContextProductsTab(" Are you sure you want to discard these changes and leave the context tab?");
@@ -2245,7 +2236,15 @@ function initContextTab() {
 				ManageContextProductType = null;
 				CurrentContextProductData = null;
 				ShowContextProductsListTab();
-				contextTabHeader.find("#context-inner-branding-tab").click();
+			}
+
+			contextTabHeader.find("#context-inner-branding-tab").click();
+
+			const canLeaveBrandingTabResult = await canLeaveContextBrandingTab(" Are you sure you want to discard these changes and leave the context tab?");
+			if (!canLeaveBrandingTabResult) {
+				event.preventDefault();
+			} else if (ManageContextBranchType == null && ManageContextServiceType == null && ManageContextProductType == null) {
+				FillContextBrandingTab();
 			}
 		});
 

@@ -5525,10 +5525,10 @@ function initAgentTab() {
 						const exisitingAgentDataIndex = BusinessFullData.businessApp.agents.findIndex((agent) => agent.id === CurrentManageAgentData.id);
 						if (ManageCurrentAgentScriptType === "edit") {
 							const exisitingAgentScriptDataIndex = BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts.findIndex((script) => script.id === ManageCurrentScriptData.id);
-							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts[exisitingAgentScriptDataIndex] = ManageCurrentScriptData;
+							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts[exisitingAgentScriptDataIndex] = structuredClone(ManageCurrentScriptData);
 							agentScriptsTable.find(`[script-id="${CurrentManageAgentData.id}"]`).find(".agent-script-name").text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
 						} else if (ManageCurrentAgentScriptType === "new") {
-							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts.push(ManageCurrentScriptData);
+							BusinessFullData.businessApp.agents[exisitingAgentDataIndex].scripts.push(structuredClone(ManageCurrentScriptData));
 							const noneAgentScriptNotice = agentScriptsTable.find(".none-agent-script-notice");
 							if (noneAgentScriptNotice.length > 0) {
 								noneAgentScriptNotice.remove();
@@ -5547,7 +5547,8 @@ function initAgentTab() {
 							timeout: 6000,
 						});
 
-						isSavingAgentScript = "edit";
+						isSavingAgentScript = false;
+						ManageCurrentAgentScriptType = "edit";
 					},
 					(saveError, isUnsuccessful) => {
 						AlertManager.createAlert({
