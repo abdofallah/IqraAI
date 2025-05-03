@@ -1483,7 +1483,12 @@ table.table > thead > * > * {
 }
 
 /** Config canvas **/
-.agent-script-graph-container .offcanvas {
+.x6-widget-selection-box {
+	display: none !important;
+}
+
+.agent-script-graph-container .offcanvas
+{
 	position: absolute;
 }
 
@@ -1619,10 +1624,22 @@ table.table > thead > * > * {
 	width: 100%;
 	height: auto;
 	color: #fff;
+	cursor: pointer;
 }
 
-.agent-script-node:hover {
-	box-shadow: -2px 3px 2px 0px rgb(64 93 55 / 40%);
+.node-moving .agent-script-node {
+	cursor: move;
+}
+
+.x6-node-selected .agent-script-node, .x6-node-selected .agent-script-node:hover
+{
+	border: 1px solid var(--tcolor-lighter-green) !important;
+	box-shadow: -2px 3px 2px 0px rgb(236 254 143 / 80%);
+}
+
+.agent-script-node:hover
+{
+	box-shadow: -1px 1px 2px 0px rgb(236 254 143 / 70%);
 }
 
 .agent-script-node-header {

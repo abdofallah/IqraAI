@@ -2074,6 +2074,8 @@ function initToolsTab() {
 							customToolsTable.find("tbody").append(CreateToolsTableElement(CurrentManageToolData));
 						}
 
+						customToolsTable.find('tr[tr-type="none-notice"]').remove();
+
 						confirmPublishToolButton.prop("disabled", true);
 						confirmPublishToolButtonSpinner.addClass("d-none");
 

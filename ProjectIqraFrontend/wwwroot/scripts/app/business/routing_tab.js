@@ -197,7 +197,7 @@ function fillRouteList() {
 
 	routingListTable.empty();
 	if (routes.length === 0) {
-		routingListTable.append("<span>No routes found.</span>");
+		routingListTable.append('<div class="col-12 none-routes-list-notice"><h6 class="text-center mt-5">No routes added yet...</h6></div>');
 	} else {
 		routes.forEach((route) => {
 			const element = createRouteListElement(route);
@@ -1995,6 +1995,8 @@ function initRoutingTab() {
 						const newRouteElement = $(createRouteListElement(ManageCurrentRouteData));
 						routingListTable.append(newRouteElement);
 					}
+
+					$(".none-routes-list-notice").remove();
 
 					// Reset save button state
 					saveRouteButton.prop("disabled", true);

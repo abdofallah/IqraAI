@@ -814,6 +814,9 @@
                                 <span>Agents</span>
                             </li>
                             <li class="breadcrumb-item">
+                                <span id="agentNameScriptBreadcrumb">Agent</span>
+                            </li>
+                            <li class="breadcrumb-item">
                                 <a href="#" id="switchBackToAgentsScriptManagerTab">Scripts</a>
                             </li>
                             <li class="breadcrumb-item active" aria-current="page"><span id="currentAgentScriptName">Script</span></li>
@@ -1137,7 +1140,7 @@
                                             </div>
 
                                             <!-- Configuration Offcanvas -->
-                                            <div class="offcanvas offcanvas-end text-bg-dark" data-bs-backdrop=" false" id="nodeConfigOffcanvas" tabindex="-1">
+                                            <div class="offcanvas offcanvas-end text-bg-dark" data-bs-scroll="true" data-bs-backdrop="false" data-bs-keyboard="false" id="nodeConfigOffcanvas" tabindex="-1">
                                                 <div class="offcanvas-header">
                                                     <h5 class="offcanvas-title" id="nodeConfigTitle">Node Configuration</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>

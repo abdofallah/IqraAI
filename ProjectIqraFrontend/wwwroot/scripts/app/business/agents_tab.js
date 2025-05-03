@@ -147,6 +147,7 @@ const agentScriptsTable = agentScriptsListTab.find("#agentScriptsTable");
 
 // SUB | Script - Manager Tab
 const switchBackToAgentsScriptManagerTab = agentTab.find("#switchBackToAgentsScriptManagerTab");
+const agentNameScriptBreadcrumb = agentTab.find("#agentNameScriptBreadcrumb");
 const currentAgentScriptName = agentTab.find("#currentAgentScriptName");
 
 const agentScriptsManagerTab = agentTab.find("#agentScriptsManagerTab");
@@ -3376,8 +3377,8 @@ function initializeAgentScriptGraph(isNew = true) {
 			event.edge.setAttrs({ line: { strokeDasharray: 0, style: {} } });
 		});
 
-		graph.on("cell:click", (event) => {
-			graph.cleanSelection();
+		graph.on("cell:click", ({ cell, e }) => {
+			
 		});
 
 		graph.on("blank:click", () => {
@@ -4638,6 +4639,7 @@ function initAgentTab() {
 
 				ManageCurrentAgentScriptType = "new";
 
+				agentNameScriptBreadcrumb.text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
 				currentAgentScriptName.text("New Script");
 				showAgentScriptManagerTab();
 			});
@@ -4648,6 +4650,7 @@ function initAgentTab() {
 				const canLeave = await canLeaveAgentScriptManagerTab();
 				if (!canLeave) return;
 
+				ResetAndEmptyAgentsScriptManageTab();
 				showAgentScriptListTab();
 
 				ManageCurrentAgentScriptType = null;
@@ -4693,6 +4696,7 @@ function initAgentTab() {
 
 				ManageCurrentAgentScriptType = "edit";
 
+				agentNameScriptBreadcrumb.text(CurrentManageAgentData.general.name[BusinessDefaultLanguage]);
 				currentAgentScriptName.text(ManageCurrentScriptData.general.name[BusinessDefaultLanguage]);
 				showAgentScriptManagerTab();
 			});
