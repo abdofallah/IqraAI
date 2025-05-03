@@ -1407,10 +1407,19 @@ table.table > thead > * > * {
 	cursor: pointer;
 }
 
+.available-integration-card.disabled {
+	cursor: default;
+}
+
 .available-integration-card img {
 	height: 64px;
 	max-width: -webkit-fill-available;
 	object-fit: contain;
+}
+
+.available-integration-card.disabled {
+	opacity: 0.7;
+	background-color: #3a3a3a;
 }
 
 #integrationTypesList .badge,

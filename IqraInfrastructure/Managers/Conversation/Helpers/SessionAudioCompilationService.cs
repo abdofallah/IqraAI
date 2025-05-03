@@ -154,7 +154,7 @@ namespace IqraInfrastructure.Services
                         _logger.LogWarning("Failed to retrieve or empty audio for chunk {Reference}, participant {ParticipantId}", chunkInfo.Reference, participant.id);
                     }
 
-                    await Task.Delay(10); // slow down
+                    await Task.Delay(300); // slow down
                 }
 
                 if (compiledAudioStream.Length == 0)

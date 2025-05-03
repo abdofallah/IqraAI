@@ -61,9 +61,12 @@ function createAvailableIntegrationCardElement(integration) {
 
 	return `
         <div class="col-lg-6 col-md-6 col-12 mb-3">
-            <div class="card h-100 cursor-pointer available-integration-card" data-integration-id="${integration.id}">
+            <div class="card h-100 ${(integration.disabledAt == null ? "" : "disabled")} available-integration-card" data-integration-id="${integration.id}">
                 <div class="card-body">
-                    <img class="px-2 mb-3" src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
+					<h5 class="card-title">${integration.name}${(integration.disabledAt == null ? "" : " | <span class='text-danger'>Disabled</span>") }</h5>
+
+					<img class="px-2 my-3" src="${`${IntegrationLogoURL}/${integration.logo}.webp`}">
+                    
                     <div class="mt-2">
                         ${typesBadges}
                     </div>
@@ -130,10 +133,7 @@ function resetOrClearIntegrationManager() {
 	}
 }
 
-function fillIntegrationFields(integrationType) {
-	const integration = SpecificationIntegrationsListData.find((i) => i.id === integrationType);
-	if (!integration) return;
-
+function fillIntegrationFields(integration) {
 	// Add fields
 	integration.fields.forEach((field) => {
 		integrationFieldsContainer.append(createIntegrationFieldElement(field));
@@ -342,9 +342,12 @@ function initIntegrationsTab() {
 		const card = $(event.currentTarget);
 		SelectedIntegrationType = card.data("integration-id");
 
-		resetOrClearIntegrationManager();
+		const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+		if (!integration) return;
+		if (integration.disabledAt != null) return;
 
-		fillIntegrationFields(SelectedIntegrationType);
+		resetOrClearIntegrationManager();
+		fillIntegrationFields(integration);
 
 		setTimeout(() => {
 			backToIntegrationsListButton.removeClass("d-none");
@@ -389,11 +392,14 @@ function initIntegrationsTab() {
 
 		SelectedIntegrationType = CurrentIntegrationData.type;
 
+        const integration = SpecificationIntegrationsListData.find((i) => i.id === SelectedIntegrationType);
+        if (!integration) return;
+
 		resetOrClearIntegrationManager();
 
 		// Fill the form
 		$("#integrationFriendlyNameInput").val(CurrentIntegrationData.friendlyName);
-		fillIntegrationFields(SelectedIntegrationType);
+		fillIntegrationFields(integration);
 
 		// Fill existing values
 		Object.entries(CurrentIntegrationData.fields).forEach(([fieldId, value]) => {

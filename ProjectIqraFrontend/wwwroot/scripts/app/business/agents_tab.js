@@ -403,9 +403,9 @@ function createDefaultAgentObject() {
 		},
 		scripts: [],
 		integrations: {
-			STT: {},
-			LLM: {},
-			TTS: {},
+			stt: {},
+			llm: {},
+			tts: {},
 		},
 		cache: {
 			messages: [],
@@ -440,9 +440,9 @@ function createDefaultAgentObject() {
 		agent.utterances.phrasesBeforeReply[language] = "";
 
 		// Initialize integrations for each language
-		agent.integrations.STT[language] = [];
-		agent.integrations.LLM[language] = [];
-		agent.integrations.TTS[language] = [];
+		agent.integrations.stt[language] = [];
+		agent.integrations.llm[language] = [];
+		agent.integrations.tts[language] = [];
 	});
 
 	return agent;
@@ -1108,9 +1108,15 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 function fillIntegrationsFromAgentData() {
 	// Fill integrations for each language from agent data
 	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentIntegrationsSTT[language] = [ ...CurrentManageAgentData.integrations.stt[language] ];
-		CurrentAgentIntegrationsLLM[language] = [ ...CurrentManageAgentData.integrations.llm[language] ];
-		CurrentAgentIntegrationsTTS[language] = [ ...CurrentManageAgentData.integrations.tts[language] ];
+		CurrentAgentIntegrationsSTT[language] = structuredClone(
+			CurrentManageAgentData.integrations.stt[language]
+		);
+		CurrentAgentIntegrationsLLM[language] = structuredClone(
+			CurrentManageAgentData.integrations.llm[language]
+		);
+		CurrentAgentIntegrationsTTS[language] = structuredClone(
+			CurrentManageAgentData.integrations.tts[language]
+		);
 	});
 
 	fillAgentIntegrationsList("STT");
@@ -3975,6 +3981,7 @@ function initAgentTab() {
 
 			ResetAndEmptyAgentsManageTab();
 			showAgentManagerTab();
+			FillAgentsManagerTab();
 
 			ManageAgentType = "new";
 		});
@@ -4480,6 +4487,7 @@ function initAgentTab() {
 				}
 
 				saveAgentIntegrationConfigurationChanges(changes.changes);
+				CheckAgentTabHasChanges();
 			});
 
 			integrationConfigurationModal.on("hide.bs.modal", (event) => {
@@ -4488,10 +4496,13 @@ function initAgentTab() {
 				CurrentAgentConfigurationFields = null;
 				CurrentAgentConfigurationValues = {};
 				CurrentAgentConfigurationType = null;
+				saveIntegrationConfigButton.prop("disabled", true);
 			});
 
 			// Track changes in fields
-			integrationConfigurationFieldsContainer.on("input, change", ".config-field-input", () => {
+			integrationConfigurationFieldsContainer.on("input change", ".config-field-input", (e) => {
+				e.stopPropagation();
+
 				const changes = getAgentIntegrationConfigurationChanges();
 				saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
 
@@ -4506,10 +4517,6 @@ function initAgentTab() {
 				currentIntegrationConfiguration.find((i) => i.id === CurrentAgentConfigurationIntegration).fieldValues = changes.changes;
 
 				validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, true);
-
-				CurrentAgentConfigurationValues = changes.changes;
-
-				CheckAgentTabHasChanges();
 			});
 		}
 		initAgentIntegrationsTabHandlers();

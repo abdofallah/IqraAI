@@ -14,6 +14,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private SpeechRecognizer _recognizer;
         private PushAudioInputStream _pushStream;
 
+        private readonly int _sampleRate;
+
         private event EventHandler<string> _transcriptionResultReceived;
 
         public event EventHandler<string> TranscriptionResultReceived
@@ -24,11 +26,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public event EventHandler<object> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
-        public AzureSpeechSTTService(string subscriptionKey, string region, string language)
+        public AzureSpeechSTTService(string subscriptionKey, string region, string language, int sampleRate = 8000)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
             _language = language;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
@@ -47,7 +50,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
             speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300"); // make it dynamic with some kind of maths
 
-            _pushStream = AudioInputStream.CreatePushStream();
+            _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_sampleRate), 16, 1, AudioStreamWaveFormat.PCM));
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);
 
             _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
