@@ -14,6 +14,7 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Managers.Region;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -46,6 +47,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessNumberManager? _businessNumberManager;
         private readonly BusinessRoutesManager? _businessRoutesManager;
         private readonly BusinessConversationsManager? _businessConversationsManager;
+        private readonly BusinessMakeCallManager? _businessMakeCallManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -62,7 +64,9 @@ namespace IqraInfrastructure.Managers.Business
             LanguagesManager? langaugesManager,
             CallQueueRepository? callQueueRepository,
             ConversationStateRepository? conversationStateRepository,
-            ConversationAudioRepository? conversationAudioRepository
+            ConversationAudioRepository? conversationAudioRepository,
+            RegionManager? regionManager,
+            IHttpClientFactory? httpClientFactory
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -138,6 +142,14 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessConversationsManager");
                 }
                 _businessConversationsManager = new BusinessConversationsManager(this, callQueueRepository, conversationStateRepository, conversationAudioRepository);
+            }
+            if (_settings.InitalizeMakeCallManager)
+            {
+                if (regionManager == null || httpClientFactory == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessMakeCallManager");
+                }
+                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, httpClientFactory);
             }
         }
 
@@ -418,6 +430,12 @@ namespace IqraInfrastructure.Managers.Business
         public BusinessConversationsManager GetConversationsManager() {
             if (!_settings.InitalizeConversationsManager || _businessConversationsManager == null) throw new Exception("Conversations manager not initalized");
             return _businessConversationsManager;
+        }
+
+        public BusinessMakeCallManager GetMakeCallManager()
+        {
+            if (!_settings.InitalizeMakeCallManager || _businessMakeCallManager == null) throw new Exception("Make Call manager not initialized");
+            return _businessMakeCallManager;
         }
     }
 }

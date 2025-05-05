@@ -28,14 +28,12 @@ namespace ProjectIqraBackendProxy.Controllers
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
-                _logger.LogWarning("Invalid request parameters from {IP}", HttpContext.Connection.RemoteIpAddress);
                 return BadRequest("Invalid request parameters");
             }
 
             // Validate the webhook signature
             if (!ValidateWebhookSignature())
             {
-                _logger.LogWarning("Invalid webhook signature from {IP} for {BusinessId}/{PhoneNumberId}", HttpContext.Connection.RemoteIpAddress, businessId, phoneNumberId);
                 return Unauthorized("Invalid signature");
             }
 
@@ -43,20 +41,40 @@ namespace ProjectIqraBackendProxy.Controllers
             switch (webhookData.Event?.ToLower())
             {
                 case "call.incoming":
-                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookIncomingCallData>();
+                    try
+                    {
+                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookIncomingCallData>();
+                    }
+                    catch (Exception ex)
+                    {
+                        return BadRequest("Error deserializing incoming call webhook data");
+                    }
                     return await HandleNewCall(webhookData, businessId, phoneNumberId);
 
                 case "call.answered":
-                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookAnsweredCallData>();
+                    try
+                    {
+                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookAnsweredCallData>();
+                    }
+                    catch (Exception ex)
+                    {
+                        return BadRequest("Error deserializing answered call webhook data");
+                    }
                     return await HandleCallAnswered(webhookData, businessId, phoneNumberId);
 
                 case "call.ended":
-                    webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookEndedCallData>();
+                    try
+                    {
+                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookEndedCallData>();
+                    }
+                    catch (Exception ex)
+                    {
+                        return BadRequest("Error deserializing ended call webhook data");
+                    }
                     return await HandleCallEnded(webhookData, businessId, phoneNumberId);
 
                 default:
-                    _logger.LogWarning("Unhandled webhook event: {Event} for {BusinessId}/{PhoneNumberId}", webhookData.Event, businessId, phoneNumberId);
-                    return Ok(); // Acknowledge receipt of unhandled events
+                    return BadRequest("Unhandled event type");
             }
         }
 
@@ -65,10 +83,8 @@ namespace ProjectIqraBackendProxy.Controllers
             try
             {
                 var incomingCallData = (ModemTelWebhookIncomingCallData)webhookData.Data;
-                if (incomingCallData == null || incomingCallData.CallId == null || incomingCallData.To == null || incomingCallData.From == null || incomingCallData.Direction == null
-                    || incomingCallData.Media == null || incomingCallData.Media.Token == null)
+                if (incomingCallData == null || incomingCallData.CallId == null || incomingCallData.To == null || incomingCallData.From == null || incomingCallData.Direction == null || incomingCallData.Media == null || incomingCallData.Media.Token == null)
                 {
-                    _logger.LogWarning("Invalid incoming call webhook data for {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
                     return BadRequest("Invalid incoming call webhook data");
                 }
 
@@ -84,7 +100,6 @@ namespace ProjectIqraBackendProxy.Controllers
                     {
                         ["event"] = webhookData.Event,
                         ["direction"] = incomingCallData.Direction,
-                        // MediaSession
                         ["mediaSessionToken"] = incomingCallData.Media.Token
                     }
                 };
@@ -92,11 +107,8 @@ namespace ProjectIqraBackendProxy.Controllers
                 var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
                 if (!distributionResult.Success)
                 {
-                    _logger.LogWarning("Failed to distribute call {CallId}: {Message} for {BusinessId}/{PhoneNumberId}", incomingCallData.CallId, distributionResult.Message, businessId, phoneNumberId);
                     return NoContent();
                 }
-
-                _logger.LogInformation("Call {CallId} routed to {BackendUrl} for {BusinessId}/{PhoneNumberId}", incomingCallData.CallId, distributionResult.Data.BackendServerId, businessId, phoneNumberId);
 
                 return Ok();
             }

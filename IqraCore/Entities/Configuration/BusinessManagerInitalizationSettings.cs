@@ -11,5 +11,6 @@
         public bool InitalizeNumberManager { get; set; } = false;
         public bool InitalizeRoutesManager { get; set; } = false;
         public bool InitalizeConversationsManager { get; set; } = false;
+        public bool InitalizeMakeCallManager { get; set; } = false;
     }
 }

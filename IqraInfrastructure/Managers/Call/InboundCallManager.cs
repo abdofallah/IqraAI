@@ -250,21 +250,18 @@ namespace IqraInfrastructure.Managers.Call
             {
                 if (webhookContext.Provider == TelephonyProviderEnum.Unknown)
                 {
-                    _logger.LogWarning("Unknown provider");
                     return null;
                 }
 
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(webhookContext.BusinessId, webhookContext.PhoneNumberId);
                 if (businessNumber == null)
                 {
-                    _logger.LogWarning("No business found for ModemTel number ID {BusinessId}/{NumberId}", webhookContext.BusinessId, webhookContext.PhoneNumberId);
                     return null;
                 }
 
                 var integratonData = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(webhookContext.BusinessId, businessNumber.IntegrationId);
                 if (integratonData == null)
                 {
-                    _logger.LogWarning("No integration found for ModemTel number ID {BusinessId}/{NumberId}", webhookContext.BusinessId, webhookContext.PhoneNumberId);
                     return null;
                 }
 

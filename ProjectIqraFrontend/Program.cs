@@ -66,6 +66,7 @@ namespace ProjectIqraFrontend
                 client.Timeout = TimeSpan.FromSeconds(30);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
+            builder.Services.AddHttpClient("ProxyForwarder").SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
             // JSON Middleware
             var customJSONMiddleware = new EndpointAwareJsonConverter();
