@@ -4842,6 +4842,9 @@ function initAgentTab() {
 				$("#nodeConfigOffcanvas").on("click", '#userQueryExamplesContainer [data-action="remove-example"]', (e) => {
 					e.stopPropagation();
 
+					const data = CurrentCanvasConfigCell.getData();
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
 					$(e.currentTarget).closest(".input-group").remove();
 
 					const queryExamples = Array.from($("#userQueryExamplesContainer input"))
@@ -4948,6 +4951,9 @@ function initAgentTab() {
 				// Remove Example Button Handler
 				$("#nodeConfigOffcanvas").on("click", '#aiResponseExamplesContainer [data-action="remove-example"]', (e) => {
 					e.stopPropagation();
+
+					const data = CurrentCanvasConfigCell.getData();
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
 					$(e.currentTarget).closest(".input-group").remove();
 

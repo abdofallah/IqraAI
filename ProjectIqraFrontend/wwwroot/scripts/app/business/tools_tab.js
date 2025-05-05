@@ -1106,8 +1106,8 @@ function FillToolsManageTab(toolData) {
 			argumentBox.find(`[data-type="required"][id^="toolInputArguementRequired"]`).prop("checked", schema.isRequired);
 
 			CurrentManageToolInputSchemeaMultiLangData[index] = {
-				name: schema.name,
-				description: schema.description,
+				name: structuredClone(schema.name),
+				description: structuredClone(schema.description),
 			};
 
 			argumentBox.find('[data-type="id"]').val(schema.id);
@@ -1762,6 +1762,8 @@ function initToolsTab() {
 				const selectedResponseType = toolResponseStatusSelect.val();
 
 				CreateToolResponseMonacoStatus(selectedResponseType);
+
+                CheckToolsManageTabHasChanges(true);
 			});
 
 			toolResponseStatusTypeList.on("change", 'input[input-type="toolResponseStatusSpeakStaticResponseCheck"]', (event) => {
@@ -1839,10 +1841,11 @@ function initToolsTab() {
 
 				delete CurrentManageToolResponseStaticResponse[statusType];
 
+				CheckToolsManageTabHasChanges(true);
 				validateToolsAllMultilanguageElements();
 			});
 
-			toolResponseStatusTypeList.on("click", '[button-type="selectToolResponseStatusType"]', (event) => {
+			toolResponseStatusTypeListButtons.on("click", '[button-type="selectToolResponseStatusType"]', (event) => {
 				event.preventDefault();
 				event.stopPropagation();
 
