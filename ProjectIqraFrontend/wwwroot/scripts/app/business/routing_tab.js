@@ -245,7 +245,7 @@ function createDefaultRouteObject() {
 		agent: {
 			selectedAgentId: "",
 			openingScriptId: "",
-			interrupton: {
+			interruption: {
 				type: {
 					value: 0,
 				},

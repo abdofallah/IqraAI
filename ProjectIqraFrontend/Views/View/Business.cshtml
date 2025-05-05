@@ -83,7 +83,7 @@
                         <span class="nav_name">Numbers</span>
                     </a>
                     <span class="mt-4 nav-category-label">Actions</span>
-                    <a class="nav_link disabled" for="make-calls-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="make-calls-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-phone nav_icon'></i>
                         <span class="nav_name">Make Calls</span>
                     </a>
@@ -2772,53 +2772,61 @@
         -->
         <!-- Make Calls Container -->
         <div class="main-container fade d-none w-100" id="make-calls-tab">
-            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-phone'></i> <span>Make Calls</span></h3>
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-phone-arrow-up-right'></i> <span>Make Calls</span></h3> <!-- Changed Icon -->
             <div class="inner-header-container mb-3">
                 <div class="d-flex flex-row align-items-center justify-content-between">
                     <ul class="nav" id="make-call-simple-tab" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="make-call-general-tab" data-bs-toggle="pill" data-bs-target="#make-call-general" type="button" role="tab" aria-controls="make-call-general" aria-selected="true">General</button>
+                            <button class="nav-link active" id="make-call-general-tab-btn" data-bs-toggle="pill" data-bs-target="#make-call-general" type="button" role="tab" aria-controls="make-call-general" aria-selected="true">General</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="make-call-number-tab" data-bs-toggle="pill" data-bs-target="#make-call-number" type="button" role="tab" aria-controls="make-call-number" aria-selected="true">Number</button>
+                            <button class="nav-link" id="make-call-number-tab-btn" data-bs-toggle="pill" data-bs-target="#make-call-number" type="button" role="tab" aria-controls="make-call-number" aria-selected="true">Number</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="make-call-configuration-tab" data-bs-toggle="pill" data-bs-target="#make-call-configuration" type="button" role="tab" aria-controls="make-call-configuration" aria-selected="true">Configuration</button>
+                            <button class="nav-link" id="make-call-configuration-tab-btn" data-bs-toggle="pill" data-bs-target="#make-call-configuration" type="button" role="tab" aria-controls="make-call-configuration" aria-selected="true">Configuration</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="make-call-agent-tab" data-bs-toggle="pill" data-bs-target="#make-call-agent" type="button" role="tab" aria-controls="make-call-agent" aria-selected="true">Agent</button>
+                            <button class="nav-link" id="make-call-agent-tab-btn" data-bs-toggle="pill" data-bs-target="#make-call-agent" type="button" role="tab" aria-controls="make-call-agent" aria-selected="true">Agent</button>
                         </li>
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link" id="make-call-actions-tab" data-bs-toggle="pill" data-bs-target="#make-call-actions" type="button" role="tab" aria-controls="make-call-actions" aria-selected="true">Actions</button>
+                            <button class="nav-link" id="make-call-actions-tab-btn" data-bs-toggle="pill" data-bs-target="#make-call-actions" type="button" role="tab" aria-controls="make-call-actions" aria-selected="true">Actions</button>
                         </li>
                     </ul>
-                    <button class="btn btn-primary btn-ic-span-align" id="makeCallInitiateButton">
-                        <i class='fa-regular fa-phone'></i>
-                        <span> Initiate Call</span>
-                    </button>
+                    <!-- Added Reset Button (Optional) -->
+                    <div class="d-flex">
+                        <button class="btn btn-outline-secondary btn-ic-span-align me-2" id="makeCallResetButton">
+                            <i class='fa-regular fa-arrows-rotate'></i>
+                            <span> Reset</span>
+                        </button>
+                        <button class="btn btn-primary btn-ic-span-align" id="makeCallInitiateButton">
+                            <!-- Added Spinner -->
+                            <span class="spinner-border spinner-border-sm d-none me-1" role="status" aria-hidden="true"></span>
+                            <i class='fa-regular fa-phone'></i>
+                            <span> Initiate Call</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="inner-container">
                 <div class="tab-content w-100" id="make-call-tabContent">
                     <!-- General -->
-                    <div class="tab-pane fade w-100 show active" id="make-call-general" role="tabpanel" aria-labelledby="make-call-general-tab" tabindex="0">
+                    <div class="tab-pane fade w-100 show active" id="make-call-general" role="tabpanel" aria-labelledby="make-call-general-tab-btn" tabindex="0">
                         <div class="mb-3">
-                            <label class="form-label" for="editMakeCallIdentifierInput">Identifier</label>
-                            <input type="text" class="form-control" id="editMakeCallIdentifierInput" placeholder="Call Identifier">
+                            <label class="form-label" for="makeCallIdentifierInput">Identifier</label>
+                            <input type="text" class="form-control" id="makeCallIdentifierInput" placeholder="Call/Campaign Identifier">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="editMakeCallDescriptionInput">Description</label>
-                            <input type="text" class="form-control" id="editMakeCallDescriptionInput" placeholder="Call Description">
+                            <label class="form-label" for="makeCallDescriptionInput">Description</label>
+                            <input type="text" class="form-control" id="makeCallDescriptionInput" placeholder="Call/Campaign Description">
                         </div>
                     </div>
 
                     <!-- Number -->
-                    <div class="tab-pane fade w-100" id="make-call-number" role="tabpanel" aria-labelledby="make-call-number-tab" tabindex="0">
+                    <div class="tab-pane fade w-100" id="make-call-number" role="tabpanel" aria-labelledby="make-call-number-tab-btn" tabindex="0">
                         <div class="">
                             <label class="form-label btn-ic-span-align" for="editMakeCallTypeInput">
-                                <span>Type </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Whether to make a call to a single number or multiple bulk numbers using a csv file.<br>Upload or set single number in the 'Number' tab.">
+                                <span>Call Type </span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Choose 'Single' to call one number directly, or 'Bulk' to upload a CSV file for multiple calls.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
@@ -2847,70 +2855,88 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Single Number Container -->
                         <div class="show fade" id="make-call-number-single-container">
                             <div class="mb-3">
-                                <label class="form-label" for="editSelectedMakeCallNumber">
-                                    Selected
-                                    Number
+                                <label class="form-label" for="makeCallSelectedFromNumber">
+                                    Call From Number
                                 </label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="editSelectedMakeCallNumber" value="+968 72359658" disabled>
-                                    <button class="btn btn-primary" id="editChangeMakeCallNumberButton" data-bs-toggle="modal" data-bs-target="#editChangeMakeCallNumberModal">
-                                        Change
+                                    <input type="text" class="form-control" id="makeCallSelectedFromNumber" placeholder="Select a number..." disabled>
+                                    <button class="btn btn-primary" id="makeCallChangeFromNumberButton" data-bs-toggle="modal" data-bs-target="#makeCallChangeFromNumberModal">
+                                        Select
                                     </button>
                                 </div>
-                                <!-- editChangeMakeCallNumberModal -->
-                                <div class="modal fade" id="editChangeMakeCallNumberModal" tabindex="-1" aria-labelledby="editChangeMakeCallNumberModalLabel" aria-hidden="true">
+                                <!-- makeCallChangeFromNumberModal -->
+                                <div class="modal fade" id="makeCallChangeFromNumberModal" tabindex="-1" aria-labelledby="makeCallChangeFromNumberModalLabel" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered modal-lg">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h1 class="modal-title fs-5" id="editChangeMakeCallNumberModalLabel">
-                                                    Select Phone
-                                                    Number
+                                                <h1 class="modal-title fs-5" id="makeCallChangeFromNumberModalLabel">
+                                                    Select 'Call From' Number
                                                 </h1>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body">
-                                                <div class="d-flex flex-row align-items-center justify-content-between mb-3">
-                                                    <ul class="nav mb-3" id="make-call-assign-number-modal-tab" role="tablist">
+                                                <!-- Tabs for providers will be similar to routing -->
+                                                <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                                                    <ul class="nav" id="make-call-assign-number-modal-tab" role="tablist">
+                                                        <!-- Provider Tabs Dynamically Generated or Hardcoded if fixed -->
                                                         <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link active" id="make-call-assign-number-modal-physical-sim-tab" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="make-call-assign-number-modal-physical-sim" aria-selected="true">
+                                                            <button class="nav-link active" id="make-call-assign-number-modal-modemtel-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-modemtel" type="button" role="tab" aria-selected="true">
                                                                 ModemTel
                                                             </button>
                                                         </li>
                                                         <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link" id="make-call-assign-number-modal-twilio-tab" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-twilio" type="button" role="tab" aria-controls="make-call-assign-number-modal-twilio" aria-selected="true">Twilio</button>
+                                                            <button class="nav-link" id="make-call-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-twilio" type="button" role="tab" aria-selected="true">Twilio</button>
                                                         </li>
                                                         <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link" id="make-call-assign-number-modal-vonage-tab" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-vonage" type="button" role="tab" aria-controls="make-call-assign-number-modal-vonage" aria-selected="true">Vonage</button>
+                                                            <button class="nav-link" id="make-call-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-vonage" type="button" role="tab" aria-selected="true">Vonage</button>
+                                                        </li>
+                                                        <li class="nav-item" role="presentation">
+                                                            <button class="nav-link" id="make-call-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-telnyx" type="button" role="tab" aria-selected="true">Telnyx</button>
                                                         </li>
                                                     </ul>
                                                 </div>
                                                 <div class="tab-content w-100 mb-3" id="make-call-assign-number-modal-tabContent">
                                                     <div class="input-group mb-3">
-                                                        <input type="text" class="form-control" id="inputAssignNumber" placeholder="Phone Number">
+                                                        <input type="text" class="form-control" id="inputMakeCallModalSearchNumberInput" placeholder="Search Number (e.g., +1)">
                                                         <button class="btn btn-primary" id="searchMakeCallAssignNumberModalList">
                                                             <i class="fa-regular fa-magnifying-glass"></i>
                                                         </button>
                                                     </div>
-                                                    <div class="list-group" id="make-call-assign-number-modal-list">
-                                                        <button type="button" class="list-group-item list-group-item-action active" aria-current="true" value="+968724912671">+968 724912671</button>
-                                                        <button type="button" class="list-group-item list-group-item-action" value="+1 52984555887">
-                                                            +1
-                                                            52984555887
-                                                        </button>
-                                                        <button type="button" class="list-group-item list-group-item-action" value="+1 59519489814" disabled>
-                                                            +1
-                                                            59519489814
-                                                        </button>
+
+                                                    <!-- Content for each provider tab -->
+                                                    <div class="tab-pane fade show active" id="make-call-assign-number-modal-modemtel" role="tabpanel">
+                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="1">
+                                                            <!-- Dynamically Generated -->
+                                                            <span class="list-group-item">No ModemTel numbers configured for outbound calls.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-twilio" role="tabpanel">
+                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="2">
+                                                            <!-- Dynamically Generated -->
+                                                            <span class="list-group-item">No Twilio numbers configured for outbound calls.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-vonage" role="tabpanel">
+                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="3">
+                                                            <!-- Dynamically Generated -->
+                                                            <span class="list-group-item">No Vonage numbers configured for outbound calls.</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-telnyx" role="tabpanel">
+                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="4">
+                                                            <!-- Dynamically Generated -->
+                                                            <span class="list-group-item">No Telnyx numbers configured for outbound calls.</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                <button type="button" class="btn btn-primary">
-                                                    Select
-                                                    Number
+                                                <button type="button" class="btn btn-primary" id="saveMakeCallFromNumberButton" disabled>
+                                                    Select Number
                                                 </button>
                                             </div>
                                         </div>
@@ -2918,144 +2944,204 @@
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="editMakeCallToNumberInput">Call Number</label>
-                                <input type="text" class="form-control" id="editMakeCallToNumberInput" value="+968 72359658">
+                                <label class="form-label" for="makeCallToNumberInput">Call To Number</label>
+                                <input type="tel" class="form-control" id="makeCallToNumberInput" placeholder="Enter number with country code (e.g., +1xxxxxxxxx)"> <!-- Changed type to tel -->
                             </div>
                         </div>
+                        <!-- Bulk Number Container -->
                         <div class="d-none fade" id="make-call-number-bulk-container">
                             <div class="mb-3">
-                                <label class="form-label btn-ic-span-align" for="editMakeCallToNumberBulkInput">
+                                <label class="form-label" for="makeCallSelectedFromNumberBulk">
+                                    Call From Number (Used if not specified in CSV)
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="makeCallSelectedFromNumberBulk" placeholder="Select a default 'from' number..." disabled>
+                                    <button class="btn btn-primary" id="makeCallChangeFromNumberButtonBulk" data-bs-toggle="modal" data-bs-target="#makeCallChangeFromNumberModal">
+                                        <!-- Reuses same modal -->
+                                        Select
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align" for="makeCallToNumberBulkInput">
                                     <span>Numbers CSV File </span>
-
-                                    <a class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="CSV File containing the numbers to call along with the settings to override for each number if required.">
+                                    <a class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Upload a CSV File. Must contain a 'to_number' column. Optionally include columns for 'from_number', 'identifier', 'description', 'agent_id', 'script_id', 'timezone' to override defaults.">
                                         <i class='fa-regular fa-circle-question'></i>
                                     </a>
+                                    <a href="/path/to/sample/bulk_call_template.csv" download="bulk_call_template.csv" class="d-inline-block ms-2 small">(Download Template)</a> <!-- Add Template Link -->
                                 </label>
-                                <input type="file" class="form-control" id="editMakeCallToNumberBulkInput">
+                                <input type="file" class="form-control" id="makeCallToNumberBulkInput" accept=".csv">
                             </div>
                         </div>
                     </div>
 
                     <!-- Configuration -->
-                    <div class="tab-pane fade w-100" id="make-call-configuration" role="tabpanel" aria-labelledby="make-call-configuration-tab" tabindex="0">
-                        <div class="mb-3">
-                            // todo select region
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check form-switch">
-                                <label class="form-check-label" for="editMakeCallRetryOnDeclineCheck">
-                                    Retry on decline
+                    <div class="tab-pane fade w-100" id="make-call-configuration" role="tabpanel" aria-labelledby="make-call-configuration-tab-btn" tabindex="0">
+                        <!-- Schedule / Call Now -->
+                        <div class="mb-4">
+                            <label class="form-label btn-ic-span-align">
+                                <span>When to Call</span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Choose to initiate the call(s) immediately or schedule them for a future date and time.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="makeCallScheduleType" id="makeCallScheduleTypeNow" value="now" checked>
+                                <label class="form-check-label" for="makeCallScheduleTypeNow">
+                                    Call Now
                                 </label>
-                                <input type="checkbox" role="switch" class="form-check-input" id="editMakeCallRetryOnDeclineCheck">
                             </div>
-                            <div class="makeCallRetryBox d-none fade">
-                                <div class="mb-3">
-                                    <label class="form-label" for="editMakeCallRetryOnDeclineCount">
-                                        Retry count
-                                    </label>
-                                    <input type="number" class="form-control" id="editMakeCallRetryOnDeclineCount" value="3">
-                                </div>
-                                <div class="">
-                                    <label class="form-label" for="editMakeCallRetryOnDeclineDelay">
-                                        Retry delay (ms)
-                                    </label>
-                                    <input type="number" class="form-control" id="editMakeCallRetryOnDeclineDelay" value="10000">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check form-switch">
-                                <label class="form-check-label" for="editMakeCallRetryOnMisscallCheck">
-                                    Retry on misscall
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="makeCallScheduleType" id="makeCallScheduleTypeLater" value="later">
+                                <label class="form-check-label" for="makeCallScheduleTypeLater">
+                                    Schedule For Later
                                 </label>
-                                <input type="checkbox" role="switch" class="form-check-input" id="editMakeCallRetryOnMisscallCheck">
                             </div>
-                            <div class="makeCallRetryBox d-none fade">
-                                <div class="mb-3">
-                                    <label class="form-label" for="editMakeCallRetryOnMisscallCount">
-                                        Retry
-                                        count
-                                    </label>
-                                    <input type="number" class="form-control" id="editMakeCallRetryOnMisscallCount" value="3">
-                                </div>
-                                <div class="">
-                                    <label class="form-label" for="editMakeCallRetryOnMisscallDelay">
-                                        Retry
-                                        delay (ms)
-                                    </label>
-                                    <input type="number" class="form-control" id="editMakeCallRetryOnMisscallDelay" value="10000">
+                            <div class="mt-2 d-none fade" id="makeCallScheduleDateTimeContainer">
+                                <label class="form-label" for="makeCallScheduleDateTimeInput">Schedule Date & Time</label>
+                                <input type="datetime-local" class="form-control" id="makeCallScheduleDateTimeInput">
+                            </div>
+                        </div>
+
+                        <!-- Retry on Decline -->
+                        <div class="mb-4 p-3 border rounded">
+                            <div class="form-check form-switch mb-2">
+                                <input type="checkbox" role="switch" class="form-check-input" id="makeCallRetryOnDeclineCheck">
+                                <label class="form-check-label" for="makeCallRetryOnDeclineCheck">
+                                    Enable Retry on Decline/Busy
+                                </label>
+                                <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Automatically retry the call if the recipient declines or the line is busy.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+                            <div class="makeCallRetryOptionsContainer d-none fade ms-4 my-2" id="makeCallRetryOnDeclineOptionsContainer"> <!-- Simplified container -->
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-auto">
+                                        <label for="makeCallRetryDeclineCountInput" class="col-form-label">Retries:</label>
+                                     </div>
+                                    <div class="col-auto">
+                                        <input type="number" class="form-control form-control-sm" id="makeCallRetryDeclineCountInput" value="3" min="1">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label for="makeCallRetryDeclineDelayInput" class="col-form-label">Delay:</label>
+                                    </div>
+                                    <div class="col-auto">
+                                         <input type="number" class="form-control form-control-sm" id="makeCallRetryDeclineDelayInput" value="10" min="1">
+                                    </div>
+                                    <div class="col-auto">
+                                        <select class="form-select form-select-sm" id="makeCallRetryDeclineUnitSelect">
+                                            <option value="seconds">Seconds</option>
+                                            <option value="minutes" selected>Minutes</option>
+                                            <option value="hours">Hours</option>
+                                            <option value="days">Days</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Retry on Misscall/No Answer -->
+                        <div class="mb-4 p-3 border rounded">
+                            <div class="form-check form-switch mb-2">
+                                <input type="checkbox" role="switch" class="form-check-input" id="makeCallRetryOnMissCheck">
+                                <label class="form-check-label" for="makeCallRetryOnMissCheck">
+                                    Enable Retry on No Answer
+                                </label>
+                                 <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Automatically retry the call if there is no answer after ringing.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+                            <div class="makeCallRetryOptionsContainer d-none fade ms-4 my-2" id="makeCallRetryOnMissOptionsContainer"> <!-- Simplified container -->
+                                 <div class="row g-2 align-items-center">
+                                    <div class="col-auto">
+                                        <label for="makeCallRetryMissCountInput" class="col-form-label">Retries:</label>
+                                     </div>
+                                    <div class="col-auto">
+                                        <input type="number" class="form-control form-control-sm" id="makeCallRetryMissCountInput" value="3" min="1">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label for="makeCallRetryMissDelayInput" class="col-form-label">Delay:</label>
+                                    </div>
+                                    <div class="col-auto">
+                                         <input type="number" class="form-control form-control-sm" id="makeCallRetryMissDelayInput" value="10" min="1">
+                                    </div>
+                                    <div class="col-auto">
+                                        <select class="form-select form-select-sm" id="makeCallRetryMissUnitSelect">
+                                            <option value="seconds">Seconds</option>
+                                            <option value="minutes" selected>Minutes</option>
+                                            <option value="hours">Hours</option>
+                                            <option value="days">Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Standard Timeouts -->
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallNumberSilenceNotify">
+                            <label class="form-label btn-ic-span-align" for="makeCallNumberSilenceNotify">
                                 <span>Notify on silence (ms) </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Miliseconds of silence to wait before notifying the user that the call will end if they do not give an input.">
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Milliseconds of silence to wait before notifying the user that the call will end if they do not give an input.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <input type="number" class="form-control" id="editMakeCallNumberSilenceNotify" value="1000">
+                            <input type="number" class="form-control" id="makeCallNumberSilenceNotify" value="10000" min="0">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallNumberSilenceEnd">
+                            <label class="form-label btn-ic-span-align" for="makeCallNumberSilenceEnd">
                                 <span>End call on silence (ms) </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Miliseconds of silence to wait for before ending the call.">
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Milliseconds of silence to wait after the notification before ending the call if there's still no input.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <input type="number" class="form-control" id="editMakeCallNumberSilenceEnd" value="1000">
+                            <input type="number" class="form-control" id="makeCallNumberSilenceEnd" value="30000" min="0">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallNumberTotalCallTime">
+                            <label class="form-label btn-ic-span-align" for="makeCallNumberTotalCallTime">
                                 <span>Max call time (s) </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Total max call time in seconds before its ended automatically.">
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Maximum total duration of the call in seconds before it's automatically ended.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <input type="number" class="form-control" id="editMakeCallNumberTotalCallTime" value="120">
+                            <input type="number" class="form-control" id="makeCallNumberTotalCallTime" value="600" min="1">
                         </div>
                     </div>
 
                     <!-- Agent -->
-                    <div class="tab-pane fade w-100" id="make-call-agent" role="tabpanel" aria-labelledby="make-call-agent-tab" tabindex="0">
+                    <div class="tab-pane fade w-100" id="make-call-agent" role="tabpanel" aria-labelledby="make-call-agent-tab-btn" tabindex="0">
                         <div class="mb-3">
-                            <label class="form-label" for="makeCallAgentName">Selected Agent</label>
+                            <label class="form-label" for="makeCallSelectedAgentName">Selected Agent</label>
                             <div class="input-group">
-                                <span class="input-group-text">🤖</span>
-                                <input type="text" class="form-control" id="makeCallAgentName" value="Opening Agent" disabled>
-                                <button class="btn btn-primary" id="editChangeMakeCallAgentButton" data-bs-toggle="modal" data-bs-target="#editChangeMakeCallAgentModal">
-                                    Change
+                                <span class="input-group-text" id="makeCallSelectedAgentIcon">-</span>
+                                <input type="text" class="form-control" id="makeCallSelectedAgentName" placeholder="Select Agent..." disabled>
+                                <button class="btn btn-primary" id="makeCallChangeAgentButton" data-bs-toggle="modal" data-bs-target="#makeCallChangeAgentModal">
+                                    Select
                                 </button>
                             </div>
-                            <!-- editChangeMakeCallAgentModal -->
-                            <div class="modal fade" id="editChangeMakeCallAgentModal" tabindex="-1" aria-labelledby="editChangeMakeCallAgentModalLabel" aria-hidden="true">
+                            <!-- makeCallChangeAgentModal -->
+                            <div class="modal fade" id="makeCallChangeAgentModal" tabindex="-1" aria-labelledby="makeCallChangeAgentModalLabel" aria-hidden="true">
                                 <div class="modal-dialog modal-dialog-centered modal-lg">
                                     <div class="modal-content">
                                         <div class="modal-header">
-                                            <h1 class="modal-title fs-5" id="editChangeMakeCallAgentModalLabel">Select Agent</h1>
+                                            <h1 class="modal-title fs-5" id="makeCallChangeAgentModalLabel">Select Agent</h1>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
                                         <div class="modal-body">
                                             <div class="input-group mb-3">
-                                                <input type="text" class="form-control" id="inputMakeCallSelectAgent" placeholder="Agent Name">
+                                                <input type="text" class="form-control" id="inputMakeCallSelectAgentSearch" placeholder="Search Agent Name...">
                                                 <button class="btn btn-primary" id="searchMakeCallSelectAgentList">
                                                     <i class="fa-regular fa-magnifying-glass"></i>
                                                 </button>
                                             </div>
                                             <div class="list-group" id="make-call-select-agent-modal-list">
-                                                <button type="button" class="list-group-item list-group-item-action active" aria-current="true" value="34124">
-                                                    <span>🤖 Opening Agent</span>
-                                                </button>
+                                                <!-- Dynamically Generated -->
+                                                <span class="list-group-item">No agents created yet.</span>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            <button type="button" class="btn btn-primary">
-                                                Select
-                                                Number
+                                            <button type="button" class="btn btn-primary" id="saveMakeCallAgentButton" disabled>
+                                                Select Agent
                                             </button>
                                         </div>
                                     </div>
@@ -3063,86 +3149,131 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallAgentDefaultScriptSelect">
+                            <label class="form-label btn-ic-span-align" for="makeCallAgentDefaultScriptSelect">
                                 <span>Opening Script </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation script to use for the initial opening conversation.">
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Select the conversation script the agent should start with.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallAgentDefaultScriptSelect">
-                                <option value="-1">Select Script</option>
-                                <option value="34124">Opening Script</option>
+                            <select class="form-select" id="makeCallAgentDefaultScriptSelect" disabled>
+                                <option value="" disabled selected>Select Agent First</option>
+                                <!-- Dynamically Generated -->
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallAgentConversationTypeSelect">
-                                <span>Conversation Type </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation type of the agent.<br><strong>Interruptible</strong>, Agent is interruptible by user.<br><strong>Turn by Turn</strong>, User and agent speak turn by turn.">
+                            <label class="form-label btn-ic-span-align" for="makeCallAgentLanguageSelect">
+                                <span>Language </span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Select the language the agent will use for this call. This affects voice synthesis and recognition.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallAgentConversationTypeSelect">
-                                <option value="interruptible">Interruptible</option>
-                                <option value="turnbyturn">Turn by Turn</option>
+                            <select class="form-select" id="makeCallAgentLanguageSelect">
+                                <option value="" disabled selected>Select Language</option>
+                                <!-- Dynamically Generated -->
                             </select>
-                            <div class="w-100 make-call-conversation-type-box" box-type="interruptible">
-                                <label class="form-label btn-ic-span-align" for="editMakeCallAgentConversationTypeInterruptibleMaxWords">
-                                    <span>Words to Interrupt </span>
-
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Words spoken by user to interrupt the agent.">
+                        </div>
+                        <!-- UPDATED INTERRUPTION SECTION -->
+                        <div class="mb-3">
+                            <label class="form-label btn-ic-span-align" for="makeCallAgentInterruptionTypeSelect">
+                                <span>Interruption Type </span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="How the conversation flow is managed.<br><strong>Turn by Turn:</strong> User and agent speak sequentially.<br><strong>Interruptible:</strong> User can interrupt the agent based on selected method.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <select class="form-select" id="makeCallAgentInterruptionTypeSelect">
+                                <option value="0" selected>Turn by Turn</option>
+                                <option value="1">Interruptible via VAD (Voice Activity Detection)</option>
+                                <option value="2">Interruptible via AI (LLM decides)</option>
+                                <option value="3">Interruptible via Response (STT transcription)</option>
+                            </select>
+                            <!-- Turn by Turn Options -->
+                            <div class="w-100 make-call-conversation-type-box d-none" box-type="turnbyturn">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="makeCallAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                    <label class="form-check-label mb-0" for="makeCallAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                        Use Interrupted Response in Next Turn?
+                                    </label>
+                                    <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Any user speech detected during the agent's turn will be processed in the user's next turn.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <!-- VAD Options -->
+                            <div class="w-100 make-call-conversation-type-box d-none" box-type="interruptibleviavad">
+                                <label class="form-label btn-ic-span-align" for="makeCallAgentConversationTypeInterruptibleAudioActivityDuration">
+                                    <span>Voice Activity Duration (ms) </span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Duration of continuous voice activity needed to trigger an interruption.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <input type="number" class="form-control" id="editMakeCallAgentConversationTypeInterruptibleMaxWords" value="3">
+                                <input type="number" class="form-control" id="makeCallAgentConversationTypeInterruptibleAudioActivityDuration" value="300" min="50">
+                            </div>
+                            <!-- AI LLM Options -->
+                            <div class="w-100 make-call-conversation-type-box d-none" box-type="interruptibleviaai">
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="makeCallAgentInterruptViaAIUseAgentLLM">
+                                    <label class="form-check-label mb-0" for="makeCallAgentInterruptViaAIUseAgentLLM">
+                                        Use Agent's LLM for Interruption Check?
+                                    </label>
+                                    <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use the agent's primary LLM integration to decide if an interruption is appropriate based on the user's speech. If unchecked, select a separate LLM below.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </div>
+                                <div class="mt-3 d-none" id="agentMakeCallInterruptionViaLLMIntegrationSelectBox">
+                                    <!-- Initially hidden -->
+                                    <label class="form-label">Interruption LLM Integration</label>
+                                    <div class="input-group">
+                                        <select class="form-select" select-type="interrupt-integration-llm-makecall">
+                                            <!-- Unique select-type -->
+                                            <!-- Dynamically Generated -->
+                                            <option value="" disabled selected>Select LLM Integration</option>
+                                        </select>
+                                        <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration" disabled>
+                                            <!-- Configure button might link elsewhere -->
+                                            <i class="fa-regular fa-gear"></i>
+                                        </button>
+                                    </div>
+                                    <!-- Placeholder for potential LLM config display -->
+                                </div>
+                            </div>
+                            <!-- Response Options (Currently no extra settings) -->
+                            <div class="w-100 make-call-conversation-type-box d-none" box-type="interruptibleviaresponse">
+                                <small class="text-muted">Interruption occurs as soon as user speech is transcribed.</small>
                             </div>
                         </div>
+                        <!-- === END UPDATED INTERRUPTION SECTION === -->
                         <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallNumberTimezoneSelect">
+                            <label class="form-label btn-ic-span-align" for="makeCallNumberTimezoneSelect">
                                 <span>Timezone </span>
-
-                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Timezone to be used for the call. The agent will recieve the current date/time of this timezone.">
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Timezone to be used for the call. The agent will receive the current date/time based on this selection. If using Bulk CSV, this can be overridden per number.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallNumberTimezoneSelect">
+                            <select class="form-select" id="makeCallNumberTimezoneSelect">
+                                <option value="" disabled selected>Select Timezone</option> <!-- Add default empty -->
                                 <option value="-12:00">(GMT -12:00) Eniwetok, Kwajalein</option>
                                 <option value="-11:00">(GMT -11:00) Midway Island, Samoa</option>
                                 <option value="-10:00">(GMT -10:00) Hawaii</option>
                                 <option value="-09:50">(GMT -9:30) Taiohae</option>
                                 <option value="-09:00">(GMT -9:00) Alaska</option>
-                                <option value="-08:00">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
-                                <option value="-07:00">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
-                                <option value="-06:00">
-                                    (GMT -6:00) Central Time (US &amp; Canada), Mexico City
-                                </option>
-                                <option value="-05:00">
-                                    (GMT -5:00) Eastern Time (US &amp; Canada), Bogota, Lima
-                                </option>
+                                <option value="-08:00">(GMT -8:00) Pacific Time (US & Canada)</option>
+                                <option value="-07:00">(GMT -7:00) Mountain Time (US & Canada)</option>
+                                <option value="-06:00">(GMT -6:00) Central Time (US & Canada), Mexico City</option>
+                                <option value="-05:00">(GMT -5:00) Eastern Time (US & Canada), Bogota, Lima</option>
                                 <option value="-04:50">(GMT -4:30) Caracas</option>
-                                <option value="-04:00">
-                                    (GMT -4:00) Atlantic Time (Canada), Caracas, La Paz
-                                </option>
+                                <option value="-04:00">(GMT -4:00) Atlantic Time (Canada), Caracas, La Paz</option>
                                 <option value="-03:50">(GMT -3:30) Newfoundland</option>
                                 <option value="-03:00">(GMT -3:00) Brazil, Buenos Aires, Georgetown</option>
                                 <option value="-02:00">(GMT -2:00) Mid-Atlantic</option>
                                 <option value="-01:00">(GMT -1:00) Azores, Cape Verde Islands</option>
-                                <option value="+00:00" selected="selected">
-                                    (GMT 0/UTC) Western Europe Time,
-                                    London, Lisbon, Casablanca
-                                </option>
+                                <option value="+00:00">(GMT 0/UTC) Western Europe Time, London, Lisbon, Casablanca</option>
                                 <option value="+01:00">(GMT +1:00) Brussels, Copenhagen, Madrid, Paris</option>
                                 <option value="+02:00">(GMT +2:00) Kaliningrad, South Africa</option>
-                                <option value="+03:00">
-                                    (GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg
-                                </option>
+                                <option value="+03:00">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
                                 <option value="+03:50">(GMT +3:30) Tehran</option>
                                 <option value="+04:00">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
                                 <option value="+04:50">(GMT +4:30) Kabul</option>
-                                <option value="+05:00">
-                                    (GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent
-                                </option>
+                                <option value="+05:00">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
                                 <option value="+05:50">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
                                 <option value="+05:75">(GMT +5:45) Kathmandu, Pokhara</option>
                                 <option value="+06:00">(GMT +6:00) Almaty, Dhaka, Colombo</option>
@@ -3150,21 +3281,13 @@
                                 <option value="+07:00">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
                                 <option value="+08:00">(GMT +8:00) Beijing, Perth, Singapore, Hong Kong</option>
                                 <option value="+08:75">(GMT +8:45) Eucla</option>
-                                <option value="+09:00">
-                                    (GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk
-                                </option>
+                                <option value="+09:00">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
                                 <option value="+09:50">(GMT +9:30) Adelaide, Darwin</option>
-                                <option value="+10:00">
-                                    (GMT +10:00) Eastern Australia, Guam, Vladivostok
-                                </option>
+                                <option value="+10:00">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
                                 <option value="+10:50">(GMT +10:30) Lord Howe Island</option>
-                                <option value="+11:00">
-                                    (GMT +11:00) Magadan, Solomon Islands, New Caledonia
-                                </option>
+                                <option value="+11:00">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
                                 <option value="+11:50">(GMT +11:30) Norfolk Island</option>
-                                <option value="+12:00">
-                                    (GMT +12:00) Auckland, Wellington, Fiji, Kamchatka
-                                </option>
+                                <option value="+12:00">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
                                 <option value="+12:75">(GMT +12:45) Chatham Islands</option>
                                 <option value="+13:00">(GMT +13:00) Apia, Nukualofa</option>
                                 <option value="+14:00">(GMT +14:00) Line Islands, Tokelau</option>
@@ -3172,28 +3295,22 @@
                         </div>
                         <div class="mb-3">
                             <div class="form-check form-switch">
-                                <div style="display: inline-block; vertical-align: middle;">
-                                    <input type="checkbox" role="switch" class="form-check-input" id="editMakeCallAgentCallerNumberInContextCheck" checked>
-                                    <label class="form-label mb-0" for="editMakeCallAgentCallerNumberInContextCheck">
-                                        <span>Caller Number in Context</span>
-                                    </label>
-                                </div>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Include the caller phone number in the agent's context.">
+                                <input type="checkbox" role="switch" class="form-check-input" id="makeCallAgentFromNumberInContextCheck" checked>
+                                <label class="form-check-label mb-0" for="makeCallAgentFromNumberInContextCheck">
+                                    Include 'From' Number in Context
+                                </label>
+                                <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Make the 'call from' phone number available to the agent.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="form-check form-switch">
-                                <div style="display: inline-block; vertical-align: middle;">
-                                    <input type="checkbox" role="switch" class="form-check-input" id="editMakeCallAgentCallingNumberInContextCheck" checked>
-                                    <label class="form-label mb-0" for="editMakeCallAgentCallingNumberInContextCheck">
-                                        <span>Calling Number in Context</span>
-                                    </label>
-                                </div>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Include the current calling phone number in the agent's context.">
+                                <input type="checkbox" role="switch" class="form-check-input" id="makeCallAgentToNumberInContextCheck" checked>
+                                <label class="form-check-label mb-0" for="makeCallAgentToNumberInContextCheck">
+                                    Include 'To' Number in Context
+                                </label>
+                                <a href="#" class="d-inline-block ms-1" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Make the 'call to' phone number available to the agent.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </div>
@@ -3201,160 +3318,131 @@
                     </div>
 
                     <!-- Actions -->
-                    <div class="tab-pane fade w-100" id="make-call-actions" role="tabpanel" aria-labelledby="make-call-actions-tab" tabindex="0">
-                        <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallActionToolDeclined">
-                                <span>Declined Action </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is declined.">
+                    <div class="tab-pane fade w-100" id="make-call-actions" role="tabpanel" aria-labelledby="make-call-actions-tab-btn" tabindex="0">
+                        <!-- Declined Action -->
+                        <div class="mb-3" id="makeCallActionToolDeclinedContainer">
+                            <!-- Added Container ID -->
+                            <label class="form-label btn-ic-span-align" for="makeCallActionToolDeclined">
+                                <span>Declined/Busy Action </span>
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Action to perform if the call is declined or the line is busy (after retries, if enabled).">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallActionToolDeclined">
-                                <option value="-1" selected>None</option>
-                                <option value="make_appointment" is-custom-tool="true">Make Appointment</option>
+                            <select class="form-select" id="makeCallActionToolDeclined">
+                                <option value="none" selected>None</option> <!-- Use 'none' value -->
+                                <!-- Dynamically Generated -->
                             </select>
-                            <div class="custom-tool-input-arguments">
-                                <label class="form-label btn-ic-span-align d-block" for="editMakeCallActionToolDeclinedInputArgumentsSelect">
+                            <div class="custom-tool-input-arguments mt-2 d-none">
+                                <!-- Initially hidden -->
+                                <label class="form-label btn-ic-span-align d-block" for="makeCallActionToolDeclinedInputArgumentsSelect">
                                     <span>Input Arguments </span>
-
-                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {calling_number}, {timezone_datetime}, {decline_count}.">
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Arguments for the selected tool.<br>Available: {from_number}, {to_number}, {timezone_datetime}, {decline_busy_count}.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <div class="input-group">
-                                    <select class="form-select" id="editMakeCallActionToolDeclinedArgumentsSelect">
-                                        <option value="-1">Select Input Argument</option>
-                                    </select>
-                                    <button class="btn btn-light" id="editMakeCallActionToolDeclinedInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                </div>
-                                <div class="mt-1" id="editMakeCallActionToolDeclinedInputArgumentsList">
-                                    <div class="input-group">
-                                        <span class="input-group-text">Appointment Time</span>
-                                        <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                        <button class="btn btn-danger">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </div>
+                                <select class="form-select mb-2" id="makeCallActionToolDeclinedInputArgumentsSelect">
+                                    <option value="" disabled selected>Add Input Argument</option> <!-- Default state -->
+                                    <!-- Dynamically generated -->
+                                </select>
+                                <div class="mt-1" id="makeCallActionToolDeclinedInputArgumentsList">
+                                    <!-- Dynamically Generated -->
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallActionToolMisscall">
-                                <span>Misscall Action </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is missed.">
+                        <!-- Missed Call Action -->
+                        <div class="mb-3" id="makeCallActionToolMissContainer">
+                            <!-- Added Container ID -->
+                            <label class="form-label btn-ic-span-align" for="makeCallActionToolMiss">
+                                <span>No Answer Action </span>
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Action to perform if the call is not answered (after retries, if enabled).">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallActionToolMisscall">
-                                <option value="-1" selected>None</option>
-                                <option value="make_appointment" is-custom-tool="true">Make Appointment</option>
+                            <select class="form-select" id="makeCallActionToolMiss">
+                                <option value="none" selected>None</option> <!-- Use 'none' value -->
+                                <!-- Dynamically Generated -->
                             </select>
-                            <div class="custom-tool-input-arguments">
-                                <label class="form-label btn-ic-span-align d-block" for="editMakeCallActionToolMisscallInputArgumentsSelect">
+                            <div class="custom-tool-input-arguments mt-2 d-none">
+                                <!-- Initially hidden -->
+                                <label class="form-label btn-ic-span-align d-block" for="makeCallActionToolMissInputArgumentsSelect">
                                     <span>Input Arguments </span>
-
-                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {calling_number}, {timezone_datetime}, {misscall_count}.">
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Arguments for the selected tool.<br>Available: {from_number}, {to_number}, {timezone_datetime}, {no_answer_count}.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <div class="input-group">
-                                    <select class="form-select" id="editMakeCallActionToolMisscallArgumentsSelect">
-                                        <option value="-1">Select Input Argument</option>
-                                    </select>
-                                    <button class="btn btn-light" id="editMakeCallActionToolMisscallInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                </div>
-                                <div class="mt-1" id="editMakeCallActionToolMisscallInputArgumentsList">
-                                    <div class="input-group">
-                                        <span class="input-group-text">Appointment Time</span>
-                                        <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                        <button class="btn btn-danger">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </div>
+                                <select class="form-select mb-2" id="makeCallActionToolMissInputArgumentsSelect">
+                                    <option value="" disabled selected>Add Input Argument</option> <!-- Default state -->
+                                    <!-- Dynamically generated -->
+                                </select>
+                                <div class="mt-1" id="makeCallActionToolMissInputArgumentsList">
+                                    <!-- Dynamically Generated -->
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallActionToolPickedUp">
-                                <span>Pickedup Action </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is picked up.">
+                        <!-- Picked Up Action -->
+                        <div class="mb-3" id="makeCallActionToolPickedUpContainer">
+                            <!-- Added Container ID -->
+                            <label class="form-label btn-ic-span-align" for="makeCallActionToolPickedUp">
+                                <span>Call Answered Action </span>
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Action to perform immediately when the call is answered by the recipient. Runs before the agent starts speaking.">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallActionToolPickedUp">
-                                <option value="-1" selected>None</option>
-                                <option value="make_appointment" is-custom-tool="true">Make Appointment</option>
+                            <select class="form-select" id="makeCallActionToolPickedUp">
+                                <option value="none" selected>None</option> <!-- Use 'none' value -->
+                                <!-- Dynamically Generated -->
                             </select>
-                            <div class="custom-tool-input-arguments">
-                                <label class="form-label btn-ic-span-align d-block" for="editMakeCallActionToolPickedUpInputArgumentsSelect">
+                            <div class="custom-tool-input-arguments mt-2 d-none">
+                                <!-- Initially hidden -->
+                                <label class="form-label btn-ic-span-align d-block" for="makeCallActionToolPickedUpInputArgumentsSelect">
                                     <span>Input Arguments </span>
-
-                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {calling_number}, {timezone_datetime}, {decline_count}, {misscall_count}.">
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Arguments for the selected tool.<br>Available: {from_number}, {to_number}, {timezone_datetime}, {call_session_id}.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <div class="input-group">
-                                    <select class="form-select" id="editMakeCallActionToolPickedUpArgumentsSelect">
-                                        <option value="-1">Select Input Argument</option>
-                                    </select>
-                                    <button class="btn btn-light" id="editMakeCallActionToolPickedUpInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                </div>
-                                <div class="mt-1" id="editMakeCallActionToolPickedUpInputArgumentsList">
-                                    <div class="input-group">
-                                        <span class="input-group-text">Appointment Time</span>
-                                        <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                        <button class="btn btn-danger">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </div>
+                                <select class="form-select mb-2" id="makeCallActionToolPickedUpInputArgumentsSelect">
+                                    <option value="" disabled selected>Add Input Argument</option> <!-- Default state -->
+                                    <!-- Dynamically generated -->
+                                </select>
+                                <div class="mt-1" id="makeCallActionToolPickedUpInputArgumentsList">
+                                    <!-- Dynamically Generated -->
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label btn-ic-span-align" for="editMakeCallActionToolEnded">
-                                <span>Ended Action </span>
-
-                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is ended.">
+                        <!-- Call Ended Action -->
+                        <div class="mb-3" id="makeCallActionToolEndedContainer">
+                            <!-- Added Container ID -->
+                            <label class="form-label btn-ic-span-align" for="makeCallActionToolEnded">
+                                <span>Call Ended Action </span>
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Action to perform after the call has finished (either normally or due to errors/max time).">
                                     <i class="fa-regular fa-circle-question"></i>
                                 </a>
                             </label>
-                            <select class="form-select" id="editMakeCallActionToolEnded">
-                                <option value="-1" selected>None</option>
-                                <option value="make_appointment" is-custom-tool="true">Make Appointment</option>
+                            <select class="form-select" id="makeCallActionToolEnded">
+                                <option value="none" selected>None</option> <!-- Use 'none' value -->
+                                <!-- Dynamically Generated -->
                             </select>
-                            <div class="custom-tool-input-arguments">
-                                <label class="form-label btn-ic-span-align d-block" for="editMakeCallActionToolEndedInputArgumentsSelect">
+                            <div class="custom-tool-input-arguments mt-2 d-none">
+                                <!-- Initially hidden -->
+                                <label class="form-label btn-ic-span-align d-block" for="makeCallActionToolEndedInputArgumentsSelect">
                                     <span>Input Arguments </span>
-
-                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}, {call_started}, {conversation}, {ended_by}.">
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Arguments for the selected tool.<br>Available: {from_number}, {to_number}, {timezone_datetime}, {call_session_id}, {call_start_datetime}, {call_end_datetime}, {call_duration_seconds}, {conversation_summary}, {ended_by}.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <div class="input-group">
-                                    <select class="form-select" id="editMakeCallActionToolEndedArgumentsSelect">
-                                        <option value="-1">Select Input Argument</option>
-                                    </select>
-                                    <button class="btn btn-light" id="editMakeCallActionToolEndedInputArgumentsSelectButton" disabled>Add Input Argument</button>
-                                </div>
-                                <div class="mt-1" id="editMakeCallActionToolEndedInputArgumentsList">
-                                    <div class="input-group">
-                                        <span class="input-group-text">Appointment Time</span>
-                                        <input type="text" class="form-control" input_arguement="appointment_time" value="{timezone_datetime}">
-                                        <button class="btn btn-danger">
-                                            <i class="fa-regular fa-trash"></i>
-                                        </button>
-                                    </div>
+                                <select class="form-select mb-2" id="makeCallActionToolEndedInputArgumentsSelect">
+                                    <option value="" disabled selected>Add Input Argument</option> <!-- Default state -->
+                                    <!-- Dynamically generated -->
+                                </select>
+                                <div class="mt-1" id="makeCallActionToolEndedInputArgumentsList">
+                                    <!-- Dynamically Generated -->
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+                    </div> <!-- End Actions Tab -->
+                </div> <!-- End Tab Content -->
+            </div> <!-- End Inner Container -->
+        </div> <!-- End Make Calls Container -->
         <!--
 
                   Analytics
@@ -5105,6 +5193,7 @@
                                                 initRoutingTab();
                                                 initNumbersTab();
                                                 initConversationsTab();
+                                                initMakeCallsTab();
 
                                                 let businessTutorials = BusinessFullData.businessData.tutorials;
                                                 if (businessTutorials) {
