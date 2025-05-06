@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
-using IqraCore.Entities.Telephony.Call;
 using IqraInfrastructure.Managers.Business;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -12,6 +11,8 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Call;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Call;
 
 namespace IqraInfrastructure.Managers.Call
 {

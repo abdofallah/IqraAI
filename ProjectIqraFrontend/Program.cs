@@ -88,7 +88,7 @@ namespace ProjectIqraFrontend
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
             customJSONMiddleware.SetHttpContextAccessor(httpContextAccessor);
 
-            app.UseStaticFiles();
+            app.MapStaticAssets();
             app.UseRouting();
 
             app.UseAuthentication();
@@ -377,6 +377,7 @@ namespace ProjectIqraFrontend
                         InitalizeSettingsManager = true,
                         InitalizeToolsManager = true,
                         InitalizeConversationsManager = true,
+                        InitalizeMakeCallManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
@@ -390,7 +391,9 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<LanguagesManager>(),
                     sp.GetRequiredService<CallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
-                    sp.GetRequiredService<ConversationAudioRepository>()
+                    sp.GetRequiredService<ConversationAudioRepository>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

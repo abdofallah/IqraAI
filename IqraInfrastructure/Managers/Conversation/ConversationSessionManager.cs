@@ -1,9 +1,9 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Call;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
-using IqraCore.Entities.Telephony.Call;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;

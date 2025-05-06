@@ -119,30 +119,11 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     $"Invalid 'config' JSON format: {ex.Message}"
                 );
             }
-
             IFormFile? bulkCsvFile = formData.Files.GetFile("bulk_file");
-            bool isBulk = bulkCsvFile != null;
-
-            if (isBulk && callConfig.NumberDetails.Type != "bulk")
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:11",
-                    "File provided but config type is not 'bulk'."
-                );
-            }
-            if (!isBulk && callConfig.NumberDetails.Type != "single")
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:12",
-                    "Config type is 'single' but file provided."
-                );
-            }
-
-            // parse the csv file into List<MakeCallNumberFileRowDto>??? and pass that to the forward call initiation???
 
             try
             {
-                var forwardResult = await _businessManager.GetMakeCallManager().ForwardCallInitiationRequestAsync(businessId, callConfig, bulkCsvFile);
+                var forwardResult = await _businessManager.GetMakeCallManager().ForwardCallInitiationRequestAsync(businessResult.Data, callConfig, bulkCsvFile);
 
                 if (!forwardResult.Success)
                 {

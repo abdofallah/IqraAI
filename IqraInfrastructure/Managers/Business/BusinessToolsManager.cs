@@ -38,6 +38,12 @@ namespace IqraInfrastructure.Managers.Business
          * 
         **/
 
+        public async Task<BusinessAppTool?> GetBusinessAppTool(long businessId, string toolId)
+        {
+            var result = await _businessAppRepository.GetBusinessAppTool(businessId, toolId);
+            return result;
+        }
+
         public async Task<bool> CheckBusinessToolExists(long businessId, string toolId)
         {
             var result = await _businessAppRepository.CheckBusinessAppToolExists(businessId, toolId);

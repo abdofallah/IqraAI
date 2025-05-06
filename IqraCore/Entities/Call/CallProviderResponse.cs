@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Telephony.Call
+﻿namespace IqraCore.Entities.Call
 {
     public class CallProviderResponse
     {

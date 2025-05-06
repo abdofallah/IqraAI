@@ -1,4 +1,4 @@
-﻿namespace IqraCore.Entities.Helper.Telephony
+﻿namespace IqraCore.Entities.Helper.Call.Session
 {
     public enum CallSessionLogLevelEnum
     {

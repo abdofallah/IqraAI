@@ -1,6 +1,7 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Call;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Telephony.Call;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;

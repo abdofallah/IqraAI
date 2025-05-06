@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
+using IqraCore.Utilities;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
@@ -257,7 +258,7 @@ namespace IqraInfrastructure.Managers.Business
                 result.Message = "Max call time not found.";
                 return result;
             }
-            if (!maxCallTimeSProperty.TryGetInt32(out var maxCallTimeS) || maxCallTimeS < 0 || maxCallTimeS > 1800)
+            if (!maxCallTimeSProperty.TryGetInt32(out var maxCallTimeS) || maxCallTimeS < 0 || maxCallTimeS > 1800) // this is also used in BusinessMakeCall so we should make this a const
             {
                 result.Code = "AddOrUpdateUserBusinessRoute:27";
                 result.Message = "Invalid max call time value (min 0, max 1800).";
@@ -418,10 +419,10 @@ namespace IqraInfrastructure.Managers.Business
                     result.Message = "Interruptible conversation type words not found.";
                     return result;
                 }
-                if (!interruptibleAudioActivityDurationProperty.TryGetInt32(out var interruptibleAudioActivityDuration) || interruptibleAudioActivityDuration < 1)
+                if (!interruptibleAudioActivityDurationProperty.TryGetInt32(out var interruptibleAudioActivityDuration) || interruptibleAudioActivityDuration < 100) // todo this is also set in BusinessMakeCallmanager, make it const
                 {
                     result.Code = "AddOrUpdateUserBusinessRoute:39";
-                    result.Message = "Invalid interruptible conversation type words value. (min 1)";
+                    result.Message = "Invalid interruptible conversation type words value. Must be at least 100 ms.";
                     return result;
                 }
                 newBusinessAppRouteData.Agent.Interruption = new BusinessAppRouteAgentInterruptionViaVAD()
@@ -655,7 +656,7 @@ namespace IqraInfrastructure.Managers.Business
                         var arrayValues = new List<object>();
                         foreach (var arrayElement in argumentValueProperty.EnumerateArray())
                         {
-                            var validationResult = ValidateArgumentValue(businessDefaultLanguage, arrayElement, toolInputArgument, actionType);
+                            var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, arrayElement, toolInputArgument, actionType);
                             if (!validationResult.Success)
                             {
                                 result.Code = validationResult.Code;
@@ -677,7 +678,7 @@ namespace IqraInfrastructure.Managers.Business
                     // Handle Single Value
                     else
                     {
-                        var validationResult = ValidateArgumentValue(businessDefaultLanguage, argumentValueProperty, toolInputArgument, actionType);
+                        var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, argumentValueProperty, toolInputArgument, actionType);
                         if (!validationResult.Success)
                         {
                             result.Code = validationResult.Code;
@@ -687,110 +688,6 @@ namespace IqraInfrastructure.Managers.Business
                         result.Data.Arguments.Add(toolInputArgument.Id, validationResult.Data);
                     }
                 }
-            }
-
-            result.Success = true;
-            return result;
-        }
-
-        // move to a tool helper class/function
-        private FunctionReturnResult<object> ValidateArgumentValue(string businessDefaultLanguage, JsonElement value, BusinessAppToolConfigurationInputSchemea argument, string actionType)
-        {
-            var result = new FunctionReturnResult<object>();
-
-            switch (argument.Type)
-            {
-                case BusinessAppToolConfigurationInputSchemeaTypeEnum.String:
-                    if (value.ValueKind != JsonValueKind.String)
-                    {
-                        result.Code = "ValidateArgumentValue:1";
-                        result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected string.";
-                        return result;
-                    }
-
-                    string? stringValue = value.GetString();
-                    if (string.IsNullOrWhiteSpace(stringValue))
-                    {
-                        if (argument.IsRequired)
-                        {
-                            result.Code = "ValidateArgumentValue:2";
-                            result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} value is empty but it is required.";
-                            return result;
-                        }
-                        result.Data = string.Empty;
-                        break;
-                    }
-
-                    result.Data = stringValue;
-                    break;
-
-                case BusinessAppToolConfigurationInputSchemeaTypeEnum.Number:
-                    if (value.ValueKind != JsonValueKind.Number && argument.IsRequired)
-                    {
-                        result.Code = "ValidateArgumentValue:3";
-                        result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected number.";
-                        return result;
-                    }
-                    else if (value.ValueKind == JsonValueKind.String)
-                    {
-                        result.Data = string.Empty;
-                        break;
-                    }
-
-                    if (!value.TryGetDouble(out var numberValue))
-                    {
-                        result.Code = "ValidateArgumentValue:4";
-                        result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} value type mismatch.";
-                        return result;
-                    }
-
-                    result.Data = numberValue;
-                    break;
-
-                case BusinessAppToolConfigurationInputSchemeaTypeEnum.Boolean:
-                    if (value.ValueKind != JsonValueKind.True && value.ValueKind != JsonValueKind.False && argument.IsRequired)
-                    {
-                        result.Code = "ValidateArgumentValue:5";
-                        result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected boolean.";
-                        return result;
-                    }
-                    else if (value.ValueKind == JsonValueKind.String)
-                    {
-                        result.Data = string.Empty;
-                        break;
-                    }
-
-                    result.Data = value.GetBoolean();
-                    break;
-
-                case BusinessAppToolConfigurationInputSchemeaTypeEnum.DateTime:
-                    if (value.ValueKind != JsonValueKind.String)
-                    {
-                        result.Code = "ValidateArgumentValue:6";
-                        result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected date time string.";
-                        return result;
-                    }
-
-                    string? dateTimeString = value.GetString();
-                    if (string.IsNullOrWhiteSpace(dateTimeString))
-                    {
-                        if (argument.IsRequired)
-                        {
-                            result.Code = "ValidateArgumentValue:7";
-                            result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} value is empty but it is required.";
-                            return result;
-                        }
-                        result.Data = string.Empty;
-                        break;
-                    }
-
-                    result.Data = dateTimeString;
-                    break;
-
-                default:
-                    result.Code = "ValidateArgumentValue:9";
-                    result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} has unknown type.";
-                    return result;
             }
 
             result.Success = true;

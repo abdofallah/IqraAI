@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.Conversation.Enum;
-using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helper.Call.Queue;
 
 namespace IqraCore.Models.Business.Conversations
 {

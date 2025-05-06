@@ -1,8 +1,9 @@
 ﻿using IqraCore.Attributes;
+using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace IqraCore.Entities.Telephony.Call
+namespace IqraCore.Entities.Call
 {
     public class CallQueueData
     {

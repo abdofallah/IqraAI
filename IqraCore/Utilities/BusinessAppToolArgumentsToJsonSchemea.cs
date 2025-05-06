@@ -4,26 +4,9 @@ using System.Text.Json;
 
 namespace IqraCore.Utilities
 {
-    /// <summary>
-    /// Provides utility methods to convert business application tool configuration arguments
-    /// into a JSON Schema representation.
-    /// </summary>
     public static class BusinessAppToolArgumentsToJsonSchemea
     {
-        /// <summary>
-        /// Converts a list of BusinessAppToolConfigurationInputSchemea definitions
-        /// into a JSON Schema string representing a JSON object.
-        /// </summary>
-        /// <param name="schemaDefinitions">List of property definitions, which can include instances of the base class or derived classes like BusinessAppToolConfigurationInputSchemeaDateTime.</param>
-        /// <param name="defaultLanguage">Language code to prefer for descriptions (e.g., "en"). Defaults to "en".</param>
-        /// <param name="minifyOutput">If true, output minified JSON; otherwise, pretty-print. Defaults to false.</param>
-        /// <returns>A JSON string representing the JSON Schema.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if schemaDefinitions is null.</exception>
-        public static string ConvertToJsonSchema(
-            List<BusinessAppToolConfigurationInputSchemea> schemaDefinitions,
-            string defaultLanguage = "en",
-            bool minifyOutput = false
-        )
+        public static string ConvertToJsonSchema(List<BusinessAppToolConfigurationInputSchemea> schemaDefinitions, string defaultLanguage = "en", bool minifyOutput = false)
         {
             if (schemaDefinitions == null)
             {
