@@ -829,7 +829,7 @@ Here is the session information that will be helpful for your context:
             {
                 var timeZoneOffsetString = routeAgent.Timezones[0];
 
-                TimeSpan? offset = ParseOffsetString(timeZoneOffsetString);
+                TimeSpan? offset = TimeZoneHelper.ParseOffsetString(timeZoneOffsetString);
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
                 DateTimeOffset targetTime;
 
@@ -855,36 +855,6 @@ Here is the session information that will be helpful for your context:
             routeAgentObject["CallerNumberInContext"] = routeAgent.CallerNumberInContext;
 
             return routeAgentObject;
-        }
-        private TimeSpan? ParseOffsetString(string offsetString)
-        {
-            if (string.IsNullOrEmpty(offsetString) || offsetString.Length < 6)
-                return null;
-
-            char signChar = offsetString[0];
-            if (signChar != '+' && signChar != '-')
-                return null;
-
-            if (offsetString[3] != ':')
-                return null;
-
-            if (int.TryParse(offsetString.Substring(1, 2), NumberStyles.None, CultureInfo.InvariantCulture, out int hours) &&
-                int.TryParse(offsetString.Substring(4, 2), NumberStyles.None, CultureInfo.InvariantCulture, out int minutes))
-            {
-                if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59)
-                {
-                    if (signChar == '-')
-                    {
-                        return new TimeSpan(hours, minutes, 0).Negate();
-                    }
-                    else
-                    {
-                        return new TimeSpan(hours, minutes, 0);
-                    }
-                }
-            }
-
-            return null;
         }
 
         private async Task<ScriptObject> CreateRouteLanguageObject(BusinessAppRouteLanguage? routeLanguageData, string currentLanguageCode)

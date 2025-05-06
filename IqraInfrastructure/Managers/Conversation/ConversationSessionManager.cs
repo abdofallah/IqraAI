@@ -1,5 +1,5 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Call;
+using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;

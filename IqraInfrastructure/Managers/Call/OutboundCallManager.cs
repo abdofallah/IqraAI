@@ -12,7 +12,7 @@ using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Call;
 using IqraCore.Entities.Helper.Call.Queue;
-using IqraCore.Entities.Call;
+using IqraCore.Entities.Call.Queue;
 
 namespace IqraInfrastructure.Managers.Call
 {

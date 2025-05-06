@@ -86,7 +86,7 @@ namespace IqraCore.Models.Business.MakeCalls
     public class MakeCallActionsDto
     {
         public MakeCallActionToolConfigDto? Declined { get; set; }
-        public MakeCallActionToolConfigDto? Missed { get; set; } 
+        public MakeCallActionToolConfigDto? Missed { get; set; }
         public MakeCallActionToolConfigDto? Answered { get; set; }
         public MakeCallActionToolConfigDto? Ended { get; set; }
     }

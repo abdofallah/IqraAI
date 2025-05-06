@@ -480,7 +480,12 @@ namespace IqraInfrastructure.Managers.Business
                     result.Message = "Invalid timezone value found in timezones list.";
                     return result;
                 }
-                // TODO VALIDATE TIMEZOME
+                if (!TimeZoneHelper.ValidateOffsetString(timezoneValue))
+                {
+                    result.Code = "AddOrUpdateUserBusinessRoute:41.1";
+                    result.Message = $"Unable to validate timezone {timezoneValue}.";
+                    return result;
+                }
                 newBusinessAppRouteData.Agent.Timezones.Add(timezoneValue);
             }
 

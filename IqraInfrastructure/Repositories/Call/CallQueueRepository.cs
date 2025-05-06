@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Call;
+﻿using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
@@ -13,10 +13,7 @@ namespace IqraInfrastructure.Repositories.Call
         private readonly IMongoCollection<CallQueueData> _callQueueCollection;
         private readonly ILogger<CallQueueRepository> _logger;
 
-        public CallQueueRepository(
-            string connectionString,
-            string databaseName,
-            ILogger<CallQueueRepository> logger)
+        public CallQueueRepository(string connectionString, string databaseName, ILogger<CallQueueRepository> logger)
         {
             var client = new MongoClient(connectionString);
             var database = client.GetDatabase(databaseName);

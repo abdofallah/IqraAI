@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace IqraCore.Entities.Helper.Call.Outbound
+﻿namespace IqraCore.Entities.Helper.Call.Outbound
 {
     public class OutboundBulkCallRowData
     {

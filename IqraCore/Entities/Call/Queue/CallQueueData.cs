@@ -3,8 +3,9 @@ using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace IqraCore.Entities.Call
+namespace IqraCore.Entities.Call.Queue
 {
+    [BsonKnownTypes(typeof(InboundCallQueueData), typeof(OutboundCallQueueData))]
     public class CallQueueData
     {
         [BsonId]
@@ -14,26 +15,18 @@ namespace IqraCore.Entities.Call
         public DateTime? ProcessingStartedAt { get; set; } = null;
         public DateTime? CompletedAt { get; set; } = null;
 
+        public CallQueueTypeEnum Type { get; set; } = CallQueueTypeEnum.Unknown;
         public CallQueueStatusEnum Status { get; set; } = CallQueueStatusEnum.Queued;
 
         public long BusinessId { get; set; }
         public string RegionId { get; set; } = string.Empty;
-        public string NumberId { get; set; } = string.Empty;
-        public string RouteId { get; set; } = string.Empty;
 
-        public DateTime QueueExpiriesAt { get; set; } = DateTime.UtcNow.AddDays(30);
+        public string SessionId { get; set; } = string.Empty;
 
-        public TelephonyProviderEnum Provider { get; set; } = TelephonyProviderEnum.Unknown;
-        public string ProviderCallId { get; set; } = string.Empty;
-        public string CallerNumber { get; set; } = string.Empty;
-
-        [ExcludeInAllEndpoints]
-        public int Priority { get; set; } = 0;
-        public bool IsOutbound { get; set; } = false;
-
+        public List<CallQueueLog> Logs { get; set; } = new List<CallQueueLog>();
+        
         [ExcludeInAllEndpoints]
         public string ProcessingServerId { get; set; } = string.Empty;
-        public string SessionId { get; set; } = string.Empty;
 
         [ExcludeInAllEndpoints]
         public Dictionary<string, string> ProviderMetadata { get; set; } = new Dictionary<string, string>();

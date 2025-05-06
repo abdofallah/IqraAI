@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Call;
+using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 
 namespace IqraCore.Interfaces.Telephony

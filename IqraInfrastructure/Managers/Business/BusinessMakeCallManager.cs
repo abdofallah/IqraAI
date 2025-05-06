@@ -39,9 +39,9 @@ namespace IqraInfrastructure.Managers.Business
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<FunctionReturnResult<object?>> ForwardCallInitiationRequestAsync(BusinessData businessData, MakeCallRequestDto callConfig, IFormFile? bulkCsvFile)
+        public async Task<FunctionReturnResult> ForwardCallInitiationRequestAsync(BusinessData businessData, MakeCallRequestDto callConfig, IFormFile? bulkCsvFile)
         {
-            var result = new FunctionReturnResult<object?>();
+            var result = new FunctionReturnResult();
 
             long businessId = businessData.Id;
             string businessDefaultLanguage = businessData.DefaultLanguage;
@@ -335,7 +335,16 @@ namespace IqraInfrastructure.Managers.Business
                     "Missing or invalid 'AgentSettings.Timezones' in configuration."
                 );
             }
-            // TODO validate the timezones values
+            foreach (var timezone in callConfig.AgentSettings.Timezones)
+            {
+                if (TimeZoneHelper.ValidateOffsetString(timezone) == false)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:38.1",
+                        $"Failed to validate 'AgentSettings.Timezones' in configuration. Timezone: {timezone}"
+                    );
+                }
+            }    
             if (callConfig.AgentSettings.IncludeFromNumberInContext == null)
             {
                 return result.SetFailureResult(
@@ -486,11 +495,22 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            // Validate Bulk CSV File
-            (List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)? bulkCallFileData = null;
-            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
+            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Single)
             {
-                var bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfig, defaultFromCallNumberData, defaultAgentData);
+                var singleForwardResult = await ForwardSingleCallToRegionProxy(businessData, callConfig, defaultAgentData, defaultFromCallNumberData);
+                if (!singleForwardResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:" + singleForwardResult.Code,
+                        singleForwardResult.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+            else if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
+            {
+                FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?> bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfig, defaultFromCallNumberData, defaultAgentData);
                 if (!bulkCallFileResult.Success)
                 {
                     return result.SetFailureResult(
@@ -498,21 +518,98 @@ namespace IqraInfrastructure.Managers.Business
                         bulkCallFileResult.Message
                     );
                 }
-                bulkCallFileData = bulkCallFileResult.Data;
+
+                var bulkForwardResult = await ForwardBulkCallsToRegionProxies(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult.Data!.Value.callsRows, bulkCallFileResult.Data!.Value.numberRegions);
+                if (!bulkForwardResult.Success)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:" + bulkForwardResult.Code,
+                        bulkForwardResult.Message
+                    );
+                }
             }
-            
+
+            return result.SetSuccessResult();
+        }
+
+        private async Task<FunctionReturnResult> ForwardSingleCallToRegionProxy(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData)
+        {
+            var result = new FunctionReturnResult();
+
+            var selectedRegion = businessNumberData.RegionId;
+            var regionData = await _regionManager.GetRegionById(selectedRegion);
+            if (regionData == null)
+            {
+                return result.SetFailureResult(
+                    "ForwardSingleCallToRegionProxy:1",
+                    "Phone number region not found."
+                );
+            }
+
+            var anyProxyServerForRegion = regionData.Servers.Find(s => s.Type == ServerTypeEnum.Proxy);
+            if (anyProxyServerForRegion == null)
+            {
+                return result.SetFailureResult(
+                    "ForwardSingleCallToRegionProxy:2",
+                    "No proxy server found for phone number region."
+                );
+            }
+
+            var proxyServerEndpoint = anyProxyServerForRegion.Endpoint;
+            var proxyServerUseSSL = anyProxyServerForRegion.UseSSL;
+            var proxyServerApiKey = anyProxyServerForRegion.APIKey;
+
+            var proxyServerCallURI = new Uri((proxyServerUseSSL ? "https://" : "http://") + proxyServerEndpoint);
+            proxyServerCallURI = new Uri(proxyServerCallURI, "/api/makecall/single");
+
+            string configJson = JsonSerializer.Serialize(callConfig);
+            var requestContent = new StringContent(configJson, Encoding.UTF8, "application/json");
+
+            using (var client = _httpClientFactory.CreateClient("ProxyForwarder"))
+            {
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("X-API-Key", proxyServerApiKey);
+
+                HttpResponseMessage response = await client.PostAsync(proxyServerCallURI, requestContent);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+
+                    FunctionReturnResult? resultError = null;
+                    try
+                    {
+                        resultError = JsonSerializer.Deserialize<FunctionReturnResult>(error);
+                    }
+                    catch {
+                        // ignore failure for now
+                    }
+
+                    if (resultError == null)
+                    {
+                        return result.SetFailureResult(
+                            "ForwardSingleCallToRegionProxy:3",
+                            "Failed to forward call to region proxy server. Error: " + error
+                        );
+                    }
+
+                    return result.SetFailureResult(
+                        "ForwardSingleCallToRegionProxy:" + resultError.Code,
+                        resultError.Message
+                    );
+                }
+
+                return result.SetSuccessResult();
+            }
+        }
+
+        private async Task<FunctionReturnResult> ForwardBulkCallsToRegionProxies(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)
+        {
+            var result = new FunctionReturnResult();
 
 
 
-
-
-
-
-
-
-
-
-            return result.SetFailureResult("ForwardCallInitiationRequestAsync:53", "Not implemented yet");
+            return result.SetSuccessResult();
         }
 
         //private async Task<FunctionReturnResult> ForwardCallCampaignToBackend()
@@ -900,7 +997,13 @@ namespace IqraInfrastructure.Managers.Business
                                 List<string> timezonesSplit = override_agent_timezones.Split(',').ToList();
                                 foreach (string zone in timezonesSplit)
                                 {
-                                    // todo validate the timezones
+                                    if (!TimeZoneHelper.ValidateOffsetString(zone))
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:20",
+                                            $"Agent timezone {zone} validation failed for row {currentRowLine}."
+                                        );
+                                    }
                                 }
                                 currentOutboundCallRow.OverrideAgentTimezones = timezonesSplit;
                             }

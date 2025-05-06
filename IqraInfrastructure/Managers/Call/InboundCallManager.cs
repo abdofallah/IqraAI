@@ -14,7 +14,7 @@ using IqraInfrastructure.Managers.Telephony;
 using IqraCore.Entities.Server.Call;
 using IqraInfrastructure.Repositories.Call;
 using IqraCore.Entities.Helper.Call.Queue;
-using IqraCore.Entities.Call;
+using IqraCore.Entities.Call.Queue;
 
 namespace IqraInfrastructure.Managers.Call
 {
