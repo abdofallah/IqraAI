@@ -137,12 +137,12 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     BusinessId = request.BusinessId,
                     RegionId = numberValidation.Data.RegionId,
-                    NumberId = request.PhoneNumberId,
-                    RouteId = numberValidation.Data.RouteId,
-                    Provider = numberValidation.Data.Provider,
-                    CallerNumber = numberValidation.Data.Number,
-                    Priority = 1, // Normal priority for outbound calls
-                    IsOutbound = true,
+                    //NumberId = request.PhoneNumberId,
+                    //RouteId = numberValidation.Data.RouteId,
+                    //Provider = numberValidation.Data.Provider,
+                    //CallerNumber = numberValidation.Data.Number,
+                    //Priority = 1, // Normal priority for outbound calls
+                    //IsOutbound = true,
                     ProcessingServerId = serverSelection.Data[0].ServerId,
                     ProviderMetadata = request.Metadata ?? new Dictionary<string, string>()
                 };
@@ -302,9 +302,9 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     QueueId = callQueue.Id,
                     callQueue.BusinessId,
-                    PhoneNumberId = callQueue.NumberId,
+                    PhoneNumberId = "",//callQueue.NumberId,
                     ToNumber = toNumber,
-                    callQueue.RouteId,
+                    //callQueue.RouteId,
                     Metadata = callQueue.ProviderMetadata
                 };
 

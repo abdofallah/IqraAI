@@ -181,7 +181,7 @@ namespace ProjectIqraBackendApp.Controllers
                 }
 
                 // End the conversation session
-                await _callProcessorManager.EndClientConnectionFromConversation(sessionId, "Call ended by provider", request.Provider, request.PhoneNumberId);
+                await _callProcessorManager.EndClientConnectionFromConversation(sessionId, "Call ended by provider via webhook", request.Provider, request.PhoneNumberId);
 
                 result.Success = true;
                 return result;

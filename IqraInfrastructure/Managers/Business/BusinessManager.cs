@@ -1,16 +1,13 @@
 ﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using Microsoft.AspNetCore.Http;
-using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using IqraCore.Entities.Configuration;
-using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Call;
@@ -66,7 +63,8 @@ namespace IqraInfrastructure.Managers.Business
             ConversationStateRepository? conversationStateRepository,
             ConversationAudioRepository? conversationAudioRepository,
             RegionManager? regionManager,
-            IHttpClientFactory? httpClientFactory
+            IHttpClientFactory? httpClientFactory,
+            OutboundCallCampaignRepository? outboundCallCampaignRepository
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -145,11 +143,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeMakeCallManager)
             {
-                if (regionManager == null || httpClientFactory == null)
+                if (regionManager == null || httpClientFactory == null || outboundCallCampaignRepository == null || callQueueRepository == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessMakeCallManager");
                 }
-                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, httpClientFactory);
+                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, httpClientFactory, outboundCallCampaignRepository, callQueueRepository);
             }
         }
 

@@ -121,13 +121,13 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     BusinessId = businessId,
                     RegionId = regionId,
-                    NumberId = phoneNumberInfo.NumberId,
-                    RouteId = numberRouteId,
-                    Provider = webhookContext.Provider,
-                    ProviderCallId = webhookContext.CallId,
-                    CallerNumber = webhookContext.From,
-                    Priority = 2, // High priority for incoming calls
-                    IsOutbound = false,
+                    //NumberId = phoneNumberInfo.NumberId,
+                    //RouteId = numberRouteId,
+                    //Provider = webhookContext.Provider,
+                    //ProviderCallId = webhookContext.CallId,
+                    //CallerNumber = webhookContext.From,
+                    //Priority = 2, // High priority for incoming calls
+                    //IsOutbound = false,
                     ProcessingServerId = "PROCESSING",
                     ProviderMetadata = webhookContext.AdditionalData
                 };
@@ -372,7 +372,7 @@ namespace IqraInfrastructure.Managers.Call
                     PhoneNumberId = webhookContext.PhoneNumberId,
                     To = webhookContext.To,
                     From = webhookContext.From,
-                    RouteId = callQueue.RouteId,
+                    RouteId = "",//callQueue.RouteId,
                     AdditionalData = webhookContext.AdditionalData
                 };
 

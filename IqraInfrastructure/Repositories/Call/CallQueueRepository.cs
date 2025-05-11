@@ -47,7 +47,7 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task<string> EnqueueCallQueueAsync(CallQueueData callQueueData)
+        public async Task<string?> EnqueueCallQueueAsync(CallQueueData callQueueData)
         {
             try
             {
@@ -57,7 +57,7 @@ namespace IqraInfrastructure.Repositories.Call
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error enqueueing call for business {BusinessId}", callQueueData.BusinessId);
-                throw;
+                return null;
             }
         }
 
@@ -72,7 +72,7 @@ namespace IqraInfrastructure.Repositories.Call
                 );
 
                 var sort = Builders<CallQueueData>.Sort
-                    .Descending(c => c.Priority)
+                    //.Descending(c => c.Priority)
                     .Ascending(c => c.EnqueuedAt);
 
                 var calls = await _callQueueCollection.Find(filter)
@@ -122,13 +122,13 @@ namespace IqraInfrastructure.Repositories.Call
             try
             {
                 var filter =
-                    Builders<CallQueueData>.Filter.Eq(c => c.ProviderCallId, providerCallId)
-                    &
-                    Builders<CallQueueData>.Filter.Eq(c => c.Provider, provider)
-                    &
-                    Builders<CallQueueData>.Filter.Eq(c => c.BusinessId, businessId)
-                    &
-                    Builders<CallQueueData>.Filter.Eq(c => c.NumberId, phoneNumberId);
+                    //Builders<CallQueueData>.Filter.Eq(c => c.ProviderCallId, providerCallId)
+                    //&
+                    //Builders<CallQueueData>.Filter.Eq(c => c.Provider, provider)
+                    //&
+                    Builders<CallQueueData>.Filter.Eq(c => c.BusinessId, businessId);
+                    //&
+                    //Builders<CallQueueData>.Filter.Eq(c => c.NumberId, phoneNumberId);
 
                 return await _callQueueCollection.Find(filter).FirstOrDefaultAsync();
             }
@@ -275,6 +275,23 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task SetCallQueueFailedStatusAsync(string queueId, CallQueueLog? log = null)
+        {
+            try
+            {
+                var filter = Builders<CallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<CallQueueData>.Update
+                    .Set(c => c.Status, CallQueueStatusEnum.Failed);
+                if (log != null) update = update.AddToSet(c => c.Logs, log);
+
+                await _callQueueCollection.UpdateOneAsync(filter, update);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating failed status for queue {QueueId}", queueId);
+            }
+        }
+
         public async Task UpdateCallQueueProcessingServerAsync(string queueId, string serverId)
         {
             try
@@ -296,7 +313,7 @@ namespace IqraInfrastructure.Repositories.Call
             {
                 var filter = Builders<CallQueueData>.Filter.And(
                     Builders<CallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued),
-                    Builders<CallQueueData>.Filter.Lt(c => c.QueueExpiriesAt, DateTime.UtcNow),
+                    //Builders<CallQueueData>.Filter.Lt(c => c.QueueExpiriesAt, DateTime.UtcNow),
                     Builders<CallQueueData>.Filter.Ne(c => c.RegionId, regionId),
                     Builders<CallQueueData>.Filter.Ne(c => c.ProcessingServerId, serverId)
                 );

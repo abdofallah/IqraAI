@@ -15,6 +15,7 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NLayer.NAudioSupport" Version="1.4.0" />
     <PackageReference Include="RJCP.SerialPortStream" Version="3.0.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
     <PackageReference Include="System.Data.HashFunction.xxHash" Version="2.0.0" />

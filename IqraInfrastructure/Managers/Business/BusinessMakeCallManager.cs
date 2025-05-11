@@ -1,21 +1,22 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
-using IqraCore.Entities.Region;
 using IqraCore.Models.Business.MakeCalls;
 using IqraInfrastructure.Managers.Region;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text;
 using PhoneNumbers;
 using IqraCore.Entities.Helper.Call.Outbound;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Utilities;
-using Azure.Core;
-using Deepgram.Models.Manage.v1;
 using nietras.SeparatedValues;
+using IqraCore.Entities.Call.Outbound;
+using Microsoft.Extensions.Logging;
+using IqraInfrastructure.Repositories.Call;
+using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Region;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -25,18 +26,24 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessManager _parentBusinessManager;
         private readonly RegionManager _regionManager;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
+        private readonly CallQueueRepository _callQueueRepository;
 
         public BusinessMakeCallManager(
             ILogger<BusinessMakeCallManager> logger,
             BusinessManager parentBusinessManager,
             RegionManager regionManager,
-            IHttpClientFactory httpClientFactory
-            )
+            IHttpClientFactory httpClientFactory,
+            OutboundCallCampaignRepository outboundCallCampaignRepository,
+            CallQueueRepository callQueueRepository
+        )
         {
             _logger = logger;
             _parentBusinessManager = parentBusinessManager;
             _regionManager = regionManager;
             _httpClientFactory = httpClientFactory;
+            _outboundCallCampaignRepository = outboundCallCampaignRepository;
+            _callQueueRepository = callQueueRepository;
         }
 
         public async Task<FunctionReturnResult> ForwardCallInitiationRequestAsync(BusinessData businessData, MakeCallRequestDto callConfig, IFormFile? bulkCsvFile)
@@ -495,9 +502,28 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
+            // Create a campaign
+            OutboundCallCampaignData outboundCallCampaignData = new OutboundCallCampaignData()
+            {
+                Id = Guid.NewGuid().ToString(),
+                CreatedAt = DateTime.UtcNow,
+                CallRequestData = callConfig,
+                IsBulkCall = (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk),
+                CallQueueIds = new List<string>()
+            };
+            var insertCampaignResult = await _outboundCallCampaignRepository.CreateOutboundCallCampaignAsync(outboundCallCampaignData);
+            if (!insertCampaignResult)
+            {
+                return result.SetFailureResult(
+                    "ForwardCallInitiationRequestAsync:53",
+                    "Failed to create outbound call campaign."
+                );
+            }
+
+            // Forward the Call To Proxy
             if (callConfig.NumberDetails.Type == OutboundCallNumberType.Single)
             {
-                var singleForwardResult = await ForwardSingleCallToRegionProxy(businessData, callConfig, defaultAgentData, defaultFromCallNumberData);
+                var singleForwardResult = await ForwardSingleCallToRegionProxy(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, outboundCallCampaignData.Id);
                 if (!singleForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -519,7 +545,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var bulkForwardResult = await ForwardBulkCallsToRegionProxies(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult.Data!.Value.callsRows, bulkCallFileResult.Data!.Value.numberRegions);
+                var bulkForwardResult = await ForwardBulkCallsToRegionProxies(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult.Data!.Value.callsRows, bulkCallFileResult.Data!.Value.numberRegions, outboundCallCampaignData.Id);
                 if (!bulkForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -532,14 +558,37 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult();
         }
 
-        private async Task<FunctionReturnResult> ForwardSingleCallToRegionProxy(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData)
+        private async Task<FunctionReturnResult> ForwardSingleCallToRegionProxy(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, string outboundCallCampaignId)
         {
             var result = new FunctionReturnResult();
+
+            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(businessData, callConfig, businessAppAgent, businessNumberData, outboundCallCampaignId, null);
+
+            // Enqueue outbound call queue
+            string? callQueueIdResult = await _callQueueRepository.EnqueueCallQueueAsync(outboundCallQueueData);
+            if (callQueueIdResult == null)
+            {
+                return result.SetFailureResult(
+                    "ForwardSingleCallToRegionProxy:1",
+                    "Failed to enqueue outbound call queue."
+                );
+            }
+
+            // Add queue to campaign
+            var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, outboundCallCampaignId);
+            if (!queueToCampaignResult)
+            {
+                return result.SetFailureResult(
+                    "ForwardSingleCallToRegionProxy:2",
+                    "Failed to add outbound call queue to campaign."
+                );
+            }
 
             var selectedRegion = businessNumberData.RegionId;
             var regionData = await _regionManager.GetRegionById(selectedRegion);
             if (regionData == null)
             {
+                await _callQueueRepository.UpdateCallQueueStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed);
                 return result.SetFailureResult(
                     "ForwardSingleCallToRegionProxy:1",
                     "Phone number region not found."
@@ -555,15 +604,118 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            var proxyServerEndpoint = anyProxyServerForRegion.Endpoint;
-            var proxyServerUseSSL = anyProxyServerForRegion.UseSSL;
-            var proxyServerApiKey = anyProxyServerForRegion.APIKey;
+            var queuedCallResult = await ForwardOutboundCallQueueToRegionProxy(anyProxyServerForRegion, new List<string>() { callQueueIdResult }, false);
+            if (!queuedCallResult.Success)
+            {
+                return result.SetFailureResult(
+                    "ForwardSingleCallToRegionProxy:" + queuedCallResult.Code,
+                    queuedCallResult.Message
+                );
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        private async Task<FunctionReturnResult> ForwardBulkCallsToRegionProxies(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions, string outboundCallCampaignId)
+        {
+            var result = new FunctionReturnResult();
+
+            List<string> listOfRegions = numberRegions.Values.Select(r => r).Distinct().ToList();
+
+            Dictionary<string, List<string>> proxyServersForRegions = new Dictionary<string, List<string>>();
+            Dictionary<string, RegionServerData> proxyServerDataForRegions = new Dictionary<string, RegionServerData>();
+
+            // Get proxy servers for regions
+            foreach (var regionId in listOfRegions)
+            {
+                var regionData = await _regionManager.GetRegionById(regionId);
+                if (regionData == null)
+                {
+                    _logger.LogError("Phone number region {regionId} not found for campaign id {outboundCallCampaignId}.", regionId, outboundCallCampaignId);
+                    continue;
+                }
+
+                var anyProxyServerForRegion = regionData.Servers.Find(s => s.Type == ServerTypeEnum.Proxy);
+                if (anyProxyServerForRegion == null)
+                {
+                    _logger.LogError("No proxy server found for phone number region {regionId} for campaign id {outboundCallCampaignId}.", regionId, outboundCallCampaignId);
+                    continue;
+                }
+
+                proxyServerDataForRegions.Add(regionId, anyProxyServerForRegion);
+                proxyServersForRegions.Add(regionId, new List<string>());
+            }
+
+            // Enqueue outbound call queues
+            var errors = new List<string>();
+            for (int i = 0; i < callsRows.Count; i++)
+            {
+                var outboundCallRow  = callsRows[i];
+
+                OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(businessData, callConfig, businessAppAgent, businessNumberData, outboundCallCampaignId, outboundCallRow);
+
+                // Enqueue outbound call queue
+                string? callQueueIdResult = await _callQueueRepository.EnqueueCallQueueAsync(outboundCallQueueData);
+                if (callQueueIdResult == null)
+                {
+                    errors.Add("Failed to enqueue outbound call queue at row " + (i + 1) + ".");
+                    continue;
+                }
+
+                var selectedRegion = numberRegions[outboundCallRow.FromNumberId];
+                if (!proxyServerDataForRegions.ContainsKey(selectedRegion))
+                {
+                    string errorMessage = $"No proxy server found for phone number region {selectedRegion}.";
+                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueueIdResult, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = errorMessage });
+                    continue;
+                }
+
+                proxyServersForRegions[selectedRegion].Add(callQueueIdResult);
+            }
+
+            // Forward outbound call queues to proxies
+            foreach (var regionId in proxyServersForRegions.Keys)
+            {
+                var proxyServerForRegion = proxyServerDataForRegions[regionId];
+                var outboundCallsQueueId = proxyServersForRegions[regionId];
+
+                var queuedCallResult = await ForwardOutboundCallQueueToRegionProxy(proxyServerForRegion, outboundCallsQueueId, true);
+                if (!queuedCallResult.Success)
+                {
+                    errors.Add(queuedCallResult.Message);
+                    continue;
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                var addErrorResult = await _outboundCallCampaignRepository.AddErrorLogs(outboundCallCampaignId, errors);
+                // ignore add error result for now, we need to figure out how to do this better (we will see if any major fails happen that can not notify the user)
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        private async Task<FunctionReturnResult> ForwardOutboundCallQueueToRegionProxy(RegionServerData proxyServerForRegion, List<string> outboundCallsQueueId, bool isBulk)
+        {
+            var result = new FunctionReturnResult();
+
+            var proxyServerEndpoint = proxyServerForRegion.Endpoint;
+            var proxyServerUseSSL = proxyServerForRegion.UseSSL;
+            var proxyServerApiKey = proxyServerForRegion.APIKey;
 
             var proxyServerCallURI = new Uri((proxyServerUseSSL ? "https://" : "http://") + proxyServerEndpoint);
-            proxyServerCallURI = new Uri(proxyServerCallURI, "/api/makecall/single");
+            proxyServerCallURI = isBulk ? new Uri(proxyServerCallURI, "/api/makecall/bulk") : new Uri(proxyServerCallURI, "/api/makecall/single");
 
-            string configJson = JsonSerializer.Serialize(callConfig);
-            var requestContent = new StringContent(configJson, Encoding.UTF8, "application/json");
+            StringContent requestContent;
+            if (!isBulk)
+            {
+                requestContent = new StringContent("{ \"QueueId\": \"" + outboundCallsQueueId[0] + "\" }", Encoding.UTF8, "application/json");
+            }
+            else
+            {
+                requestContent = new StringContent("{ \"QueueIds\": " + JsonSerializer.Serialize(outboundCallsQueueId) + " }", Encoding.UTF8, "application/json");
+            }
 
             using (var client = _httpClientFactory.CreateClient("ProxyForwarder"))
             {
@@ -581,20 +733,21 @@ namespace IqraInfrastructure.Managers.Business
                     {
                         resultError = JsonSerializer.Deserialize<FunctionReturnResult>(error);
                     }
-                    catch {
+                    catch
+                    {
                         // ignore failure for now
                     }
 
                     if (resultError == null)
                     {
                         return result.SetFailureResult(
-                            "ForwardSingleCallToRegionProxy:3",
-                            "Failed to forward call to region proxy server. Error: " + error
+                            "ForwardOutboundCallQueueToRegionProxy:1",
+                            "Failed to forward outbound call queue to region proxy server. Error: " + error
                         );
                     }
 
                     return result.SetFailureResult(
-                        "ForwardSingleCallToRegionProxy:" + resultError.Code,
+                        "ForwardOutboundCallQueueToRegionProxy:" + resultError.Code,
                         resultError.Message
                     );
                 }
@@ -602,128 +755,175 @@ namespace IqraInfrastructure.Managers.Business
                 return result.SetSuccessResult();
             }
         }
-
-        private async Task<FunctionReturnResult> ForwardBulkCallsToRegionProxies(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)
+    
+        private OutboundCallQueueData BuildOutboundCallQueueData(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, string outboundCallCampaignId, OutboundBulkCallRowData? bulkCallRowData)
         {
-            var result = new FunctionReturnResult();
+            string CallingNumberId;
+            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.FromNumberId))
+            {
+                CallingNumberId = callConfig.NumberDetails!.FromNumberId!;
+            }
+            else
+            {
+                CallingNumberId = bulkCallRowData!.FromNumberId;
+            }
 
+            string RecipientNumber;
+            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.ToNumber))
+            {
+                RecipientNumber = callConfig.NumberDetails!.ToNumber!;
+            }
+            else
+            {
+                RecipientNumber = bulkCallRowData!.ToNumber;
+            }
 
+            Dictionary<string, string> DynamicVariables;
+            if (bulkCallRowData == null || bulkCallRowData.DynamicVariables == null)
+            {
+                DynamicVariables = new Dictionary<string, string>(); // todo get from callConfig
+            }
+            else
+            {
+                DynamicVariables = bulkCallRowData.DynamicVariables;
+            }
 
-            return result.SetSuccessResult();
+            OutboundCallRetryData RetryDeclineData = new OutboundCallRetryData() { Enabled = false };
+            if (bulkCallRowData == null || bulkCallRowData.OverrideRetryCallDeclinedData == null)
+            {
+                if (callConfig.Configuration!.RetryDecline!.Enabled! == true)
+                {
+                    RetryDeclineData = new()
+                    {
+                        Enabled = true,
+                        RetryCount = callConfig.Configuration!.RetryDecline!.Count!,
+                        RetryDelay = callConfig.Configuration!.RetryDecline!.Delay!,
+                        RetryUnit = callConfig.Configuration!.RetryDecline!.Unit!,
+                        TimesTried = 0,
+                        LastTried = null,
+                    };
+                }
+            }
+            else
+            {
+                if (bulkCallRowData.OverrideRetryCallDeclinedData!.Enabled! == true)
+                {
+                    RetryDeclineData = new()
+                    {
+                        Enabled = true,
+                        RetryCount = bulkCallRowData.OverrideRetryCallDeclinedData.Count!,
+                        RetryDelay = bulkCallRowData.OverrideRetryCallDeclinedData.Delay!,
+                        RetryUnit = bulkCallRowData.OverrideRetryCallDeclinedData.Unit!,
+                        TimesTried = 0,
+                        LastTried = null,
+                    };
+                }
+            }
+
+            OutboundCallRetryData RetryMissData = new OutboundCallRetryData() { Enabled = false };
+            if (bulkCallRowData == null || bulkCallRowData.OverrideRetryCallMissedData == null)
+            {
+                if (callConfig.Configuration!.RetryMiss!.Enabled! == true)
+                {
+                    RetryMissData = new()
+                    {
+                        Enabled = true,
+                        RetryCount = callConfig.Configuration!.RetryMiss!.Count!,
+                        RetryDelay = callConfig.Configuration!.RetryMiss!.Delay!,
+                        RetryUnit = callConfig.Configuration!.RetryMiss!.Unit!,
+                        TimesTried = 0,
+                        LastTried = null,
+                    };
+                }
+            }
+            else
+            {
+                if (bulkCallRowData.OverrideRetryCallMissedData!.Enabled! == true)
+                {
+                    RetryMissData = new()
+                    {
+                        Enabled = true,
+                        RetryCount = bulkCallRowData.OverrideRetryCallMissedData.Count!,
+                        RetryDelay = bulkCallRowData.OverrideRetryCallMissedData.Delay!,
+                        RetryUnit = bulkCallRowData.OverrideRetryCallMissedData.Unit!,
+                        TimesTried = 0,
+                        LastTried = null,
+                    };
+                }
+            }
+
+            string AgentId;
+            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideAgentId))
+            {
+                AgentId = callConfig.AgentSettings!.AgentId!;
+            }
+            else
+            {
+                AgentId = bulkCallRowData.OverrideAgentId;
+            }
+
+            string AgentScriptId;
+            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideSelectedAgentScriptId))
+            {
+                AgentScriptId = callConfig.AgentSettings!.ScriptId!;
+            }
+            else
+            {
+                AgentScriptId = bulkCallRowData.OverrideSelectedAgentScriptId;
+            }
+
+            string AgentLanguageCode;
+            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideAgentLanguageCode))
+            {
+                AgentLanguageCode = callConfig.AgentSettings!.LanguageCode!;
+            }
+            else
+            {
+                AgentLanguageCode = bulkCallRowData.OverrideAgentLanguageCode;
+            }
+
+            List<string> AgentTimezones;
+            if (bulkCallRowData == null || bulkCallRowData.OverrideAgentTimezones == null)
+            {
+                AgentTimezones = callConfig.AgentSettings!.Timezones!;
+            }
+            else
+            {
+                AgentTimezones = bulkCallRowData.OverrideAgentTimezones;
+            }
+
+            OutboundCallQueueData outboundCallQueueData = new OutboundCallQueueData()
+            {
+                CreatedAt = DateTime.UtcNow,
+                Type = CallQueueTypeEnum.Outbound,
+                Status = CallQueueStatusEnum.WaitingForQueueing,
+                BusinessId = businessData.Id,
+                RegionId = null,
+                SessionId = null,
+                Logs = new List<CallQueueLog>(),
+                ProcessingServerId = null,
+                ProviderMetadata = new Dictionary<string, string>(),
+                // outbound related
+                CampaignId = outboundCallCampaignId,
+                CallingNumberId = CallingNumberId,
+                ProviderCallId = null,
+                RecipientNumber = RecipientNumber,
+                ScheduledForDateTime = DateTime.UtcNow.AddMinutes(1),
+                CallRetryOnDeclineData = RetryDeclineData,
+                CallRetryOnMissedData = RetryMissData,
+                DynamicVariables = DynamicVariables,
+                AgentId = AgentId,
+                AgentScriptId = AgentScriptId,
+                AgentLanguageCode = AgentLanguageCode,
+                AgentTimeZone = AgentTimezones
+            };
+            if (callConfig.Configuration!.Schedule!.Type! == OutboundCallScheduleType.Scheduled)
+            {
+                outboundCallQueueData.ScheduledForDateTime = callConfig.Configuration!.Schedule!.DateTimeUTC!.Value;
+            }         
+
+            return outboundCallQueueData;
         }
-
-        //private async Task<FunctionReturnResult> ForwardCallCampaignToBackend()
-        //{
-        //    // --- Forwarding ---
-        //    string targetUrl;
-        //    HttpContent requestContent;
-        //    bool isBulk = bulkCsvFile != null;
-
-        //    try
-        //    {
-        //        if (isBulk)
-        //        {
-        //            targetUrl = $"{proxyEndpoint.TrimEnd('/')}/api/makecall/bulk";
-        //            var multipartContent = new MultipartFormDataContent();
-
-        //            // Add config JSON part
-        //            string configJson = JsonSerializer.Serialize(callConfig);
-        //            multipartContent.Add(new StringContent(configJson, Encoding.UTF8, "application/json"), "config");
-
-        //            // Add file part
-        //            var fileStreamContent = new StreamContent(bulkCsvFile!.OpenReadStream());
-        //            fileStreamContent.Headers.ContentType = new MediaTypeHeaderValue("text/csv"); // Set content type
-        //            multipartContent.Add(fileStreamContent, "bulk_file", bulkCsvFile.FileName);
-
-        //            requestContent = multipartContent;
-        //        }
-        //        else
-        //        {
-        //            targetUrl = $"{proxyEndpoint.TrimEnd('/')}/api/makecall/single";
-        //            string configJson = JsonSerializer.Serialize(callConfig);
-        //            requestContent = new StringContent(configJson, Encoding.UTF8, "application/json");
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error preparing request content for proxy forwarding.");
-        //        result.Code = "ForwardCall:7"; result.Message = "Error preparing request data."; return result;
-        //    }
-
-        //    try
-        //    {
-        //        using var client = _httpClientFactory.CreateClient("ProxyForwarder"); // Use named client
-        //        client.DefaultRequestHeaders.Clear();
-        //        client.DefaultRequestHeaders.Add("X-API-Key", proxyApiKey);
-        //        if (!isBulk) client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-        //        _logger.LogInformation("Forwarding call initiation request to {TargetUrl}", targetUrl);
-
-        //        HttpResponseMessage response = await client.PostAsync(targetUrl, requestContent);
-
-        //        // --- Response Handling ---
-        //        if (!response.IsSuccessStatusCode)
-        //        {
-        //            string errorBody = await response.Content.ReadAsStringAsync();
-        //            _logger.LogWarning("Proxy server at {TargetUrl} returned error {StatusCode}. Body: {ErrorBody}", targetUrl, response.StatusCode, errorBody);
-        //            result.Code = $"ForwardCall:Proxy{(int)response.StatusCode}";
-        //            // Try to parse error response from proxy if it follows FunctionReturnResult structure
-        //            try
-        //            {
-        //                var proxyErrorResult = JsonSerializer.Deserialize<FunctionReturnResult<object>>(errorBody);
-        //                result.Message = $"Proxy Error: {proxyErrorResult?.Message ?? response.ReasonPhrase}";
-        //            }
-        //            catch
-        //            {
-        //                result.Message = $"Proxy returned status {response.StatusCode}: {response.ReasonPhrase}";
-        //            }
-
-        //            // Clean up multipart content if created
-        //            if (isBulk) requestContent?.Dispose();
-
-        //            return result;
-        //        }
-
-        //        // Success from Proxy
-        //        var responseBody = await response.Content.ReadAsStringAsync();
-        //        _logger.LogInformation("Received successful response from proxy: {ResponseBody}", responseBody);
-        //        try
-        //        {
-        //            // Assume proxy returns FunctionReturnResult<T> structure
-        //            var proxyResult = JsonSerializer.Deserialize<FunctionReturnResult<object>>(responseBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        //            result.Success = proxyResult?.Success ?? true; // Assume success if proxy returned 2xx and valid JSON
-        //            result.Message = proxyResult?.Message ?? "Request processed by proxy.";
-        //            result.Data = proxyResult?.Data; // Forward any data returned by the proxy
-        //        }
-        //        catch (JsonException jsonEx)
-        //        {
-        //            _logger.LogWarning(jsonEx, "Failed to deserialize successful proxy response body: {ResponseBody}", responseBody);
-        //            result.Success = true; // Still treat as overall success because proxy returned 2xx
-        //            result.Message = "Request processed by proxy (response format unclear).";
-        //            result.Data = responseBody; // Return raw response body as data
-        //        }
-
-        //        // Clean up multipart content if created
-        //        if (isBulk) requestContent?.Dispose();
-
-        //        return result;
-
-        //    }
-        //    catch (HttpRequestException httpEx)
-        //    {
-        //        _logger.LogError(httpEx, "HTTP error forwarding request to proxy {TargetUrl}", targetUrl);
-        //        result.Code = "ForwardCall:HttpErr"; result.Message = $"Error communicating with proxy server: {httpEx.Message}";
-        //        if (isBulk) requestContent?.Dispose();
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Unexpected error forwarding request to proxy {TargetUrl}", targetUrl);
-        //        result.Code = "ForwardCall:Ex"; result.Message = $"Internal error forwarding request: {ex.Message}";
-        //        if (isBulk) requestContent?.Dispose();
-        //        return result;
-        //    }
-        //}
 
         private async Task<FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, IFormFile formFile, MakeCallRequestDto callConfig, BusinessNumberData defaultCallNumber, BusinessAppAgent defaultCallAgent)
         {
@@ -756,7 +956,7 @@ namespace IqraInfrastructure.Managers.Business
 
                     // Skip header
                     await reader.MoveNextAsync();
-                    foreach (SepReader.Row readRow in reader)
+                    foreach (var readRow in reader)
                     {
                         var currentOutboundCallRow = new OutboundBulkCallRowData();
                         var currentRowLine = readRow.LineNumberFrom;
@@ -1017,6 +1217,7 @@ namespace IqraInfrastructure.Managers.Business
                                 $"Error reading row {currentRowLine}: {ex.Message}"
                             );
                         }
+
                     }
                 }
 
@@ -1031,8 +1232,6 @@ namespace IqraInfrastructure.Managers.Business
                     $"Error reading CSV file: {ex.Message}"
                 );
             }
-
-
         }
 
         private async Task<FunctionReturnResult> ValidateActionData(long businessId, string businessDefaultLanguage, MakeCallActionToolConfigDto data, string actionType)

@@ -85,9 +85,9 @@ namespace IqraInfrastructure.Managers.Business
                     EnqueuedAt = cq.EnqueuedAt,
                     ProcessingStartedAt = cq.ProcessingStartedAt,
                     CompletedAt = cq.CompletedAt,
-                    NumberId = cq.NumberId,
-                    RouteId = cq.RouteId,
-                    CallerNumber = cq.CallerNumber,
+                    NumberId = "",//cq.NumberId,
+                    RouteId = "",//cq.RouteId,
+                    CallerNumber = "",//cq.CallerNumber,
                     SessionId = null, // Default to null
                     SessionStatus = null // Default to null
                 };

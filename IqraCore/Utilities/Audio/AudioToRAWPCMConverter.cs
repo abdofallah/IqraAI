@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using NAudio.Wave;
+using NLayer.NAudioSupport;
 
 namespace IqraCore.Utilities.Audio
 {
@@ -47,7 +48,8 @@ namespace IqraCore.Utilities.Audio
                 {
                     try
                     {
-                        reader = new Mp3FileReader(inputStream);
+                        var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
+                        reader = new Mp3FileReaderBase(inputStream, builder);
                         logger.LogDebug("Agent {AgentId}: Reading MP3 file (ID: {FileId}) for conversion.", agentId, fileIdForLogging);
                     }
                     catch (Exception ex)

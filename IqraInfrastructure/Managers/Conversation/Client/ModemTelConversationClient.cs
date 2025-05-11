@@ -278,11 +278,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
                 switch (messageType)
                 {
-                    case "call.ended":
-                        _logger.LogInformation("Call {CallId} ended by provider", _callId);
-                        await DisconnectAsync("Call ended by provider");
-                        break;
-
                     case "DTMF":
                         var dtmfData = message.Substring(firstColumnIndex + 1).Trim();
                         if (!string.IsNullOrEmpty(dtmfData))
