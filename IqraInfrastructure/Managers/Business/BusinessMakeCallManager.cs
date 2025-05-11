@@ -502,6 +502,20 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
+            // first check if bulk data converted/valid
+            FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>? bulkCallFileResult = null;
+            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
+            {
+                bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfig, defaultFromCallNumberData, defaultAgentData);
+                if (!bulkCallFileResult.Success || bulkCallFileResult.Data == null)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:" + bulkCallFileResult.Code,
+                        bulkCallFileResult.Message
+                    );
+                }
+            }
+
             // Create a campaign
             OutboundCallCampaignData outboundCallCampaignData = new OutboundCallCampaignData()
             {
@@ -536,16 +550,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
             {
-                FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?> bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfig, defaultFromCallNumberData, defaultAgentData);
-                if (!bulkCallFileResult.Success)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:" + bulkCallFileResult.Code,
-                        bulkCallFileResult.Message
-                    );
-                }
-
-                var bulkForwardResult = await ForwardBulkCallsToRegionProxies(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult.Data!.Value.callsRows, bulkCallFileResult.Data!.Value.numberRegions, outboundCallCampaignData.Id);
+                var bulkForwardResult = await ForwardBulkCallsToRegionProxies(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult!.Data!.Value.callsRows, bulkCallFileResult!.Data!.Value.numberRegions, outboundCallCampaignData.Id);
                 if (!bulkForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -588,7 +593,7 @@ namespace IqraInfrastructure.Managers.Business
             var regionData = await _regionManager.GetRegionById(selectedRegion);
             if (regionData == null)
             {
-                await _callQueueRepository.UpdateCallQueueStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed);
+                await _callQueueRepository.SetCallQueueFailedStatusAsync(outboundCallQueueData.Id, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "Phone number region not found." });
                 return result.SetFailureResult(
                     "ForwardSingleCallToRegionProxy:1",
                     "Phone number region not found."
@@ -598,6 +603,7 @@ namespace IqraInfrastructure.Managers.Business
             var anyProxyServerForRegion = regionData.Servers.Find(s => s.Type == ServerTypeEnum.Proxy);
             if (anyProxyServerForRegion == null)
             {
+                await _callQueueRepository.SetCallQueueFailedStatusAsync(outboundCallQueueData.Id, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "No proxy server found for phone number region." });
                 return result.SetFailureResult(
                     "ForwardSingleCallToRegionProxy:2",
                     "No proxy server found for phone number region."
@@ -607,6 +613,7 @@ namespace IqraInfrastructure.Managers.Business
             var queuedCallResult = await ForwardOutboundCallQueueToRegionProxy(anyProxyServerForRegion, new List<string>() { callQueueIdResult }, false);
             if (!queuedCallResult.Success)
             {
+                await _callQueueRepository.SetCallQueueFailedStatusAsync(outboundCallQueueData.Id, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = ("ForwardSingleCallToRegionProxy:" + queuedCallResult.Code + ":" + queuedCallResult.Message) });
                 return result.SetFailureResult(
                     "ForwardSingleCallToRegionProxy:" + queuedCallResult.Code,
                     queuedCallResult.Message
@@ -687,6 +694,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
+            // todo what if no call is queued?
+
             if (errors.Count > 0)
             {
                 var addErrorResult = await _outboundCallCampaignRepository.AddErrorLogs(outboundCallCampaignId, errors);
@@ -717,42 +726,52 @@ namespace IqraInfrastructure.Managers.Business
                 requestContent = new StringContent("{ \"QueueIds\": " + JsonSerializer.Serialize(outboundCallsQueueId) + " }", Encoding.UTF8, "application/json");
             }
 
-            using (var client = _httpClientFactory.CreateClient("ProxyForwarder"))
+            try
             {
-                client.DefaultRequestHeaders.Clear();
-                client.DefaultRequestHeaders.Add("X-API-Key", proxyServerApiKey);
-
-                HttpResponseMessage response = await client.PostAsync(proxyServerCallURI, requestContent);
-
-                if (!response.IsSuccessStatusCode)
+                using (var client = _httpClientFactory.CreateClient("ProxyForwarder"))
                 {
-                    var error = await response.Content.ReadAsStringAsync();
+                    client.DefaultRequestHeaders.Clear();
+                    client.DefaultRequestHeaders.Add("X-API-Key", proxyServerApiKey);
 
-                    FunctionReturnResult? resultError = null;
-                    try
-                    {
-                        resultError = JsonSerializer.Deserialize<FunctionReturnResult>(error);
-                    }
-                    catch
-                    {
-                        // ignore failure for now
-                    }
+                    HttpResponseMessage response = await client.PostAsync(proxyServerCallURI, requestContent);
 
-                    if (resultError == null)
+                    if (!response.IsSuccessStatusCode)
                     {
+                        var error = await response.Content.ReadAsStringAsync();
+
+                        FunctionReturnResult? resultError = null;
+                        try
+                        {
+                            resultError = JsonSerializer.Deserialize<FunctionReturnResult>(error);
+                        }
+                        catch
+                        {
+                            // ignore failure for now
+                        }
+
+                        if (resultError == null)
+                        {
+                            return result.SetFailureResult(
+                                "ForwardOutboundCallQueueToRegionProxy:1",
+                                "Failed to forward outbound call queue to region proxy server. Error: " + error
+                            );
+                        }
+
                         return result.SetFailureResult(
-                            "ForwardOutboundCallQueueToRegionProxy:1",
-                            "Failed to forward outbound call queue to region proxy server. Error: " + error
+                            "ForwardOutboundCallQueueToRegionProxy:" + resultError.Code,
+                            resultError.Message
                         );
                     }
 
-                    return result.SetFailureResult(
-                        "ForwardOutboundCallQueueToRegionProxy:" + resultError.Code,
-                        resultError.Message
-                    );
+                    return result.SetSuccessResult();
                 }
-
-                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "ForwardOutboundCallQueueToRegionProxy:2",
+                    "Failed to forward outbound call queue to region proxy server. Error: " + ex.Message
+                );
             }
         }
     
@@ -943,7 +962,7 @@ namespace IqraInfrastructure.Managers.Business
             {
                 var rowsDataList = new List<OutboundBulkCallRowData>();
 
-                using (var reader = Sep.Reader(o => o with { HasHeader = true, Sep = Sep.New(','), DisableColCountCheck = false }).From(formFile.OpenReadStream()))
+                using (var reader = Sep.Reader(o => o with { HasHeader = true, Sep = Sep.New(','), DisableQuotesParsing = false}).From(formFile.OpenReadStream()))
                 {
                     var header = reader.Header;
                     if (header.ColNames.Count != 9)
@@ -954,26 +973,23 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
-                    // Skip header
-                    await reader.MoveNextAsync();
                     foreach (var readRow in reader)
                     {
                         var currentOutboundCallRow = new OutboundBulkCallRowData();
                         var currentRowLine = readRow.LineNumberFrom;
 
-                        string? from_number_id;
-                        string? to_number;
-                        string? dynamic_variables;
-                        string? override_retry_on_call_declined;
-                        string? override_retry_on_missed_call;
-                        string? override_agent_id;
-                        string? override_agent_script_id;
-                        string? override_agent_language_code;
-                        string? override_agent_timezones;
-
                         try
                         {
-                            from_number_id = readRow["from_number_id"].ToString();
+                            string? from_number_id = readRow["from_number_id"].ToString();
+                            string? to_number = readRow["to_number"].ToString();
+                            string? dynamic_variables = readRow["dynamic_variables"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
+                            string? override_retry_on_call_declined = readRow["override_retry_on_call_declined"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
+                            string? override_retry_on_missed_call = readRow["override_retry_on_missed_call"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
+                            string? override_agent_id = readRow["override_agent_id"].ToString();
+                            string? override_agent_script_id = readRow["override_agent_script_id"].ToString();
+                            string? override_agent_language_code = readRow["override_agent_language_code"].ToString();
+                            string? override_agent_timezones = readRow["override_agent_timezones"].ToString().TrimStart('"').TrimEnd('"');
+
                             if (!string.IsNullOrWhiteSpace(from_number_id))
                             {
                                 if (!cachedBusinessNumberRegionData.ContainsKey(from_number_id))
@@ -991,7 +1007,6 @@ namespace IqraInfrastructure.Managers.Business
                                 currentOutboundCallRow.FromNumberId = from_number_id;
                             }
 
-                            to_number = readRow["to_number"].ToString();
                             if (string.IsNullOrWhiteSpace(to_number))
                             {
                                 return result.SetFailureResult(
@@ -999,17 +1014,27 @@ namespace IqraInfrastructure.Managers.Business
                                     $"Missing 'to_number' in row {currentRowLine}."
                                 );
                             }
-                            PhoneNumber parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(to_number, "ZZ");
-                            if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+                            PhoneNumber parsedPhoneNumber;
+                            try
+                            {
+                                parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(to_number, "ZZ");
+                            }
+                            catch (Exception ex)
                             {
                                 return result.SetFailureResult(
                                     "ValidateAndBuildBulkCSVCallFile:5",
+                                    $"Error parsing 'to_number' in row {currentRowLine}. Make sure number start with +countrycode."
+                                );
+                            }
+                            if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+                            {
+                                return result.SetFailureResult(
+                                    "ValidateAndBuildBulkCSVCallFile:5.1",
                                     $"Number validation failed for 'to_number' in row {currentRowLine}."
                                 );
                             }
                             currentOutboundCallRow.ToNumber = to_number;
 
-                            dynamic_variables = readRow["dynamic_variables"].ToString();
                             Dictionary<string, string>? dynamicVariablesDictionary = null;
                             if (!string.IsNullOrWhiteSpace(dynamic_variables))
                             {
@@ -1034,7 +1059,6 @@ namespace IqraInfrastructure.Managers.Business
                             }
                             currentOutboundCallRow.DynamicVariables = dynamicVariablesDictionary;
 
-                            override_retry_on_call_declined = readRow["override_retry_on_call_declined"].ToString();
                             OutboundBulkCallRowDataRetryData? outboundBulkCallRowDataRetryDeclinedData = null;
                             if (!string.IsNullOrWhiteSpace(override_retry_on_call_declined))
                             {
@@ -1090,7 +1114,6 @@ namespace IqraInfrastructure.Managers.Business
                             }
                             currentOutboundCallRow.OverrideRetryCallDeclinedData = outboundBulkCallRowDataRetryDeclinedData;
 
-                            override_retry_on_missed_call = readRow["override_retry_on_missed_call"].ToString();
                             OutboundBulkCallRowDataRetryData? outboundBulkCallRowDataRetryMissedData = null;
                             if (!string.IsNullOrWhiteSpace(override_retry_on_missed_call))
                             {
@@ -1145,8 +1168,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                             }
                             currentOutboundCallRow.OverrideRetryCallMissedData = outboundBulkCallRowDataRetryMissedData;
-
-                            override_agent_id = readRow["override_agent_id"].ToString();
+                           
                             if (!string.IsNullOrWhiteSpace(override_agent_id))
                             {
                                 if (!innerCachedBusinessAgentsScriptsData.ContainsKey(override_agent_id))
@@ -1163,8 +1185,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                                 currentOutboundCallRow.OverrideAgentId = override_agent_id;
                             }
-
-                            override_agent_script_id = readRow["override_agent_script_id"].ToString();
+                  
                             if (!string.IsNullOrWhiteSpace(override_agent_script_id))
                             {
                                 string agentIdToCheckAgainst = string.IsNullOrWhiteSpace(override_agent_id) ? defaultCallAgent.Id : override_agent_id;
@@ -1178,7 +1199,6 @@ namespace IqraInfrastructure.Managers.Business
                                 currentOutboundCallRow.OverrideSelectedAgentScriptId = override_agent_script_id;
                             }
 
-                            override_agent_language_code = readRow["override_agent_language_code"].ToString();
                             if (!string.IsNullOrEmpty(override_agent_language_code))
                             {
                                 if (!businessData.Languages.Contains(override_agent_language_code))
@@ -1190,8 +1210,7 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                                 currentOutboundCallRow.OverrideAgentLanguageCode = override_agent_language_code;
                             }
-
-                            override_agent_timezones = readRow["override_agent_timezones"].ToString();
+                        
                             if (!string.IsNullOrEmpty(override_agent_timezones))
                             {
                                 List<string> timezonesSplit = override_agent_timezones.Split(',').ToList();
@@ -1201,7 +1220,7 @@ namespace IqraInfrastructure.Managers.Business
                                     {
                                         return result.SetFailureResult(
                                             "ValidateAndBuildBulkCSVCallFile:20",
-                                            $"Agent timezone {zone} validation failed for row {currentRowLine}."
+                                            $"Agent timezone {zone} validation failed for row {currentRowLine}. Must start with + or - followed by HH:MM format."
                                         );
                                     }
                                 }
@@ -1219,6 +1238,14 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                     }
+                }
+
+                if (rowsDataList.Count == 0)
+                {
+                    return result.SetFailureResult(
+                        "ValidateAndBuildBulkCSVCallFile:21",
+                        "No rows found in CSV file or were converted."
+                    );
                 }
 
                 return result.SetSuccessResult(

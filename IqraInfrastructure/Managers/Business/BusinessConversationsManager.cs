@@ -82,7 +82,7 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     QueueId = cq.Id, // Assuming CallQueueData.Id is the QueueId
                     Status = cq.Status,
-                    EnqueuedAt = cq.EnqueuedAt,
+                    EnqueuedAt = DateTime.Now, //cq.EnqueuedAt,
                     ProcessingStartedAt = cq.ProcessingStartedAt,
                     CompletedAt = cq.CompletedAt,
                     NumberId = "",//cq.NumberId,
@@ -107,19 +107,19 @@ namespace IqraInfrastructure.Managers.Business
             if (fetchNext)
             {
                 paginatedResult.HasNextPage = hasMore;
-                paginatedResult.NextCursor = hasMore ? new PaginationCursor { Timestamp = callQueueItems.Last().EnqueuedAt, Id = callQueueItems.Last().Id }.Encode() : null;
+                paginatedResult.NextCursor = hasMore ? new PaginationCursor { Timestamp = DateTime.Now, /**callQueueItems.Last().EnqueuedAt,**/ Id = callQueueItems.Last().Id }.Encode() : null;
                 // If we fetched using 'next', the previous cursor refers to the *first* item on the current page
                 paginatedResult.PreviousCursor = (decodedCursor != null || callQueueItems.Count == limit) // Only show previous if not on absolute first page view
-                                                  ? new PaginationCursor { Timestamp = callQueueItems.First().EnqueuedAt, Id = callQueueItems.First().Id }.Encode()
+                                                  ? new PaginationCursor { Timestamp = DateTime.Now, /**callQueueItems.First().EnqueuedAt,**/ Id = callQueueItems.First().Id }.Encode()
                                                   : null;
                 paginatedResult.HasPreviousPage = decodedCursor != null; // True if we used a cursor to get here
             }
             else // We fetched 'previous'
             {
                 paginatedResult.HasPreviousPage = hasMore;
-                paginatedResult.PreviousCursor = hasMore ? new PaginationCursor { Timestamp = callQueueItems.First().EnqueuedAt, Id = callQueueItems.First().Id }.Encode() : null;
+                paginatedResult.PreviousCursor = hasMore ? new PaginationCursor { Timestamp = DateTime.Now, /**callQueueItems.First().EnqueuedAt,**/ Id = callQueueItems.First().Id }.Encode() : null;
                 // If we fetched using 'previous', the next cursor refers to the *last* item on the current page
-                paginatedResult.NextCursor = new PaginationCursor { Timestamp = callQueueItems.Last().EnqueuedAt, Id = callQueueItems.Last().Id }.Encode();
+                paginatedResult.NextCursor = new PaginationCursor { Timestamp = DateTime.Now, /**callQueueItems.Last().EnqueuedAt,**/ Id = callQueueItems.Last().Id }.Encode();
                 paginatedResult.HasNextPage = true; // If we successfully fetched a previous page, there's always a next page (the one we came from)
             }
 

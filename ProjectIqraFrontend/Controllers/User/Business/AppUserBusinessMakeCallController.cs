@@ -22,9 +22,9 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         [HttpPost("/app/user/business/{businessId}/calls/initiate")]
         [RequestSizeLimit(10 * 1024 * 1024)]
         [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)]
-        public async Task<FunctionReturnResult<object?>> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<object?>();
+            var result = new FunctionReturnResult();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -133,7 +133,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     );
                 }
 
-                return result.SetSuccessResult(forwardResult.Data);
+                return result.SetSuccessResult();
             }
             catch (Exception ex)
             {

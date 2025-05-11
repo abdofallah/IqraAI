@@ -2867,81 +2867,6 @@
                                         Select
                                     </button>
                                 </div>
-                                <!-- makeCallChangeFromNumberModal -->
-                                <div class="modal fade" id="makeCallChangeFromNumberModal" tabindex="-1" aria-labelledby="makeCallChangeFromNumberModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h1 class="modal-title fs-5" id="makeCallChangeFromNumberModalLabel">
-                                                    Select 'Call From' Number
-                                                </h1>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <!-- Tabs for providers will be similar to routing -->
-                                                <div class="d-flex flex-row align-items-center justify-content-between mb-2">
-                                                    <ul class="nav" id="make-call-assign-number-modal-tab" role="tablist">
-                                                        <!-- Provider Tabs Dynamically Generated or Hardcoded if fixed -->
-                                                        <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link active" id="make-call-assign-number-modal-modemtel-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-modemtel" type="button" role="tab" aria-selected="true">
-                                                                ModemTel
-                                                            </button>
-                                                        </li>
-                                                        <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link" id="make-call-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-twilio" type="button" role="tab" aria-selected="true">Twilio</button>
-                                                        </li>
-                                                        <li class="nav-item me-2" role="presentation">
-                                                            <button class="nav-link" id="make-call-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-vonage" type="button" role="tab" aria-selected="true">Vonage</button>
-                                                        </li>
-                                                        <li class="nav-item" role="presentation">
-                                                            <button class="nav-link" id="make-call-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-telnyx" type="button" role="tab" aria-selected="true">Telnyx</button>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                <div class="tab-content w-100 mb-3" id="make-call-assign-number-modal-tabContent">
-                                                    <div class="input-group mb-3">
-                                                        <input type="text" class="form-control" id="inputMakeCallModalSearchNumberInput" placeholder="Search Number (e.g., +1)">
-                                                        <button class="btn btn-primary" id="searchMakeCallAssignNumberModalList">
-                                                            <i class="fa-regular fa-magnifying-glass"></i>
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- Content for each provider tab -->
-                                                    <div class="tab-pane fade show active" id="make-call-assign-number-modal-modemtel" role="tabpanel">
-                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="1">
-                                                            <!-- Dynamically Generated -->
-                                                            <span class="list-group-item">No ModemTel numbers configured for outbound calls.</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-twilio" role="tabpanel">
-                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="2">
-                                                            <!-- Dynamically Generated -->
-                                                            <span class="list-group-item">No Twilio numbers configured for outbound calls.</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-vonage" role="tabpanel">
-                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="3">
-                                                            <!-- Dynamically Generated -->
-                                                            <span class="list-group-item">No Vonage numbers configured for outbound calls.</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="tab-pane fade" id="make-call-assign-number-modal-telnyx" role="tabpanel">
-                                                        <div class="list-group make-call-assign-number-modal-list" number-provider="4">
-                                                            <!-- Dynamically Generated -->
-                                                            <span class="list-group-item">No Telnyx numbers configured for outbound calls.</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                <button type="button" class="btn btn-primary" id="saveMakeCallFromNumberButton" disabled>
-                                                    Select Number
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="makeCallToNumberInput">Call To Number</label>
@@ -2971,6 +2896,82 @@
                                     <a href="/path/to/sample/bulk_call_template.csv" download="bulk_call_template.csv" class="d-inline-block ms-2 small">(Download Template)</a> <!-- Add Template Link -->
                                 </label>
                                 <input type="file" class="form-control" id="makeCallToNumberBulkInput" accept=".csv">
+                            </div>
+                        </div>
+
+                        <!-- makeCallChangeFromNumberModal -->
+                        <div class="modal fade" id="makeCallChangeFromNumberModal" tabindex="-1" aria-labelledby="makeCallChangeFromNumberModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5" id="makeCallChangeFromNumberModalLabel">
+                                            Select 'Call From' Number
+                                        </h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <!-- Tabs for providers will be similar to routing -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                                            <ul class="nav" id="make-call-assign-number-modal-tab" role="tablist">
+                                                <!-- Provider Tabs Dynamically Generated or Hardcoded if fixed -->
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="make-call-assign-number-modal-modemtel-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-modemtel" type="button" role="tab" aria-selected="true">
+                                                        ModemTel
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link" id="make-call-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-twilio" type="button" role="tab" aria-selected="true">Twilio</button>
+                                                </li>
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link" id="make-call-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-vonage" type="button" role="tab" aria-selected="true">Vonage</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="make-call-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#make-call-assign-number-modal-telnyx" type="button" role="tab" aria-selected="true">Telnyx</button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="tab-content w-100 mb-3" id="make-call-assign-number-modal-tabContent">
+                                            <div class="input-group mb-3">
+                                                <input type="text" class="form-control" id="inputMakeCallModalSearchNumberInput" placeholder="Search Number (e.g., +1)">
+                                                <button class="btn btn-primary" id="searchMakeCallAssignNumberModalList">
+                                                    <i class="fa-regular fa-magnifying-glass"></i>
+                                                </button>
+                                            </div>
+
+                                            <!-- Content for each provider tab -->
+                                            <div class="tab-pane fade show active" id="make-call-assign-number-modal-modemtel" role="tabpanel">
+                                                <div class="list-group make-call-assign-number-modal-list" number-provider="1">
+                                                    <!-- Dynamically Generated -->
+                                                    <span class="list-group-item">No ModemTel numbers configured for outbound calls.</span>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane fade" id="make-call-assign-number-modal-twilio" role="tabpanel">
+                                                <div class="list-group make-call-assign-number-modal-list" number-provider="2">
+                                                    <!-- Dynamically Generated -->
+                                                    <span class="list-group-item">No Twilio numbers configured for outbound calls.</span>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane fade" id="make-call-assign-number-modal-vonage" role="tabpanel">
+                                                <div class="list-group make-call-assign-number-modal-list" number-provider="3">
+                                                    <!-- Dynamically Generated -->
+                                                    <span class="list-group-item">No Vonage numbers configured for outbound calls.</span>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane fade" id="make-call-assign-number-modal-telnyx" role="tabpanel">
+                                                <div class="list-group make-call-assign-number-modal-list" number-provider="4">
+                                                    <!-- Dynamically Generated -->
+                                                    <span class="list-group-item">No Telnyx numbers configured for outbound calls.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary" id="saveMakeCallFromNumberButton" disabled>
+                                            Select Number
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,9 +1,26 @@
 ﻿/** Global Variables & ENUMs **/
 // const AgentInterruptionTypeENUM is loaded from routing_tab.js
 
+const OutboundCallNumberType = {
+    Single: 0,
+    Bulk: 1
+}
+
+const OutboundCallScheduleType = {
+    Now: 0,
+    Later: 1
+}
+
+const OutboundCallRetryDelayUnitType = {
+    Seconds: 0,
+	Minutes: 1,
+	Hours: 2,
+    Days: 3
+}
+
 /** Dynamic State Variables **/
 let IsInitiatingCall = false;
-let CurrentMakeCallType = "single";
+let CurrentMakeCallType = OutboundCallNumberType.Single;
 let SelectedFromNumberId = null;
 let SelectedBulkFromFileObject = null;
 let SelectedAgentId = null;
@@ -100,31 +117,13 @@ const makeCallActionToolEndedArgsSelect = makeCallsTab.find("#makeCallActionTool
 const makeCallActionToolEndedArgsList = makeCallsTab.find("#makeCallActionToolEndedInputArgumentsList");
 
 /** API FUNCTIONS **/
-function InitiateCall(callConfigData, isBulk, successCallback, errorCallback) {
-	let requestData;
-	let processDataFlag = true;
-	let contentType = "application/json";
-
-	if (isBulk) {
-		if (!SelectedBulkFromFileObject) {
-			if (errorCallback) errorCallback({ success: false, message: "Bulk file is missing." }, true);
-			return;
-		}
-		requestData = new FormData();
-		requestData.append("config", JSON.stringify(callConfigData));
-		requestData.append("bulk_file", SelectedBulkFromFileObject);
-		processDataFlag = false;
-		contentType = false;
-	} else {
-		requestData = JSON.stringify(callConfigData);
-	}
-
+function InitiateCall(data, successCallback, errorCallback) {
 	$.ajax({
 		url: `/app/user/business/${CurrentBusinessId}/calls/initiate`,
 		type: "POST",
-		data: requestData,
-		processData: processDataFlag,
-		contentType: contentType,
+		data: data,
+		processData: false,
+		contentType: false,
 		dataType: "json",
 		success: (response) => {
 			if (response.success) {
@@ -172,9 +171,9 @@ function captureInitialFormState() {
 	makeCallFormInitialState.interruptionType = makeCallAgentInterruptionTypeSelect.val();
 	// Capture specific interruption sub-settings based on type... (can get complex, maybe simplify change check)
 	// Timezone & Context
-	makeCallFormInitialState.timezone = makeCallNumberTimezoneSelect.val();
-	makeCallFormInitialState.contextFrom = makeCallAgentFromNumberInContextCheck.is(":checked");
-	makeCallFormInitialState.contextTo = makeCallAgentToNumberInContextCheck.is(":checked");
+	makeCallFormInitialState.timezones = [makeCallNumberTimezoneSelect.val()];
+	makeCallFormInitialState.includeFromNumberInContext = makeCallAgentFromNumberInContextCheck.is(":checked");
+	makeCallFormInitialState.includeToNumberInContext = makeCallAgentToNumberInContextCheck.is(":checked");
 	// Actions (Just track if *any* tool is selected for simplicity)
 	makeCallFormInitialState.actionDeclinedTool = makeCallActionToolDeclinedSelect.val();
 	makeCallFormInitialState.actionMissTool = makeCallActionToolMissSelect.val();
@@ -189,8 +188,8 @@ function checkMakeCallTabHasChanges() {
 	if (makeCallFormInitialState.description !== makeCallDescriptionInput.val()) return true;
 	if (makeCallFormInitialState.callType !== CurrentMakeCallType) return true;
 	if (makeCallFormInitialState.fromNumberId !== SelectedFromNumberId) return true;
-	if (makeCallFormInitialState.toNumber !== makeCallToNumberInput.val() && CurrentMakeCallType === 'single') return true;
-	if (makeCallFormInitialState.bulkFileSelected !== !!SelectedBulkFromFileObject && CurrentMakeCallType === 'bulk') return true;
+	if (makeCallFormInitialState.toNumber !== makeCallToNumberInput.val() && CurrentMakeCallType === OutboundCallNumberType.Single) return true;
+	if (makeCallFormInitialState.bulkFileSelected !== !!SelectedBulkFromFileObject && CurrentMakeCallType === OutboundCallNumberType.Bulk) return true;
 	const currentScheduleType = makeCallScheduleTypeLaterRadio.is(":checked") ? 'later' : 'now';
 	if (makeCallFormInitialState.scheduleType !== currentScheduleType) return true;
 	if (makeCallFormInitialState.scheduleDateTime !== makeCallScheduleDateTimeInput.val() && currentScheduleType === 'later') return true;
@@ -214,9 +213,9 @@ function checkMakeCallTabHasChanges() {
 	if (makeCallFormInitialState.languageCode !== makeCallAgentLanguageSelect.val()) return true; // Added Language Check
 	if (makeCallFormInitialState.interruptionType !== makeCallAgentInterruptionTypeSelect.val()) return true;
 	// Add checks for interruption sub-settings if needed for more precise change detection
-	if (makeCallFormInitialState.timezone !== makeCallNumberTimezoneSelect.val()) return true;
-	if (makeCallFormInitialState.contextFrom !== makeCallAgentFromNumberInContextCheck.is(":checked")) return true;
-	if (makeCallFormInitialState.contextTo !== makeCallAgentToNumberInContextCheck.is(":checked")) return true;
+	if (makeCallFormInitialState.timezones !== [makeCallNumberTimezoneSelect.val()]) return true;
+	if (makeCallFormInitialState.includeFromNumberInContext !== makeCallAgentFromNumberInContextCheck.is(":checked")) return true;
+	if (makeCallFormInitialState.includeToNumberInContext !== makeCallAgentToNumberInContextCheck.is(":checked")) return true;
 	if (makeCallFormInitialState.actionDeclinedTool !== makeCallActionToolDeclinedSelect.val()) return true;
 	if (makeCallFormInitialState.actionMissTool !== makeCallActionToolMissSelect.val()) return true;
 	if (makeCallFormInitialState.actionAnsweredTool !== makeCallActionToolPickedUpSelect.val()) return true;
@@ -262,7 +261,7 @@ async function confirmInitiateCall() {
 	// Basic summary, can be enhanced
 	let summary = `Initiate call?\n`;
 	summary += `Type: ${CurrentMakeCallType}\n`;
-	if (CurrentMakeCallType === 'single') {
+	if (CurrentMakeCallType === OutboundCallNumberType.Single) {
 		summary += `From: ${makeCallSelectedFromNumberInput.val() || 'Not Selected'}\n`;
 		summary += `To: ${makeCallToNumberInput.val() || 'Not Entered'}\n`;
 	} else {
@@ -301,7 +300,7 @@ async function confirmInitiateCall() {
 
 function resetMakeCallForm() {
 	// ... (Reset State Variables) ...
-	CurrentMakeCallType = "single";
+	CurrentMakeCallType = OutboundCallNumberType.Single;
 	SelectedFromNumberId = null;
 	SelectedBulkFromFileObject = null;
 	SelectedAgentId = null;
@@ -374,7 +373,7 @@ function resetMakeCallForm() {
 	initiateCallButton.prop("disabled", false);
 	initiateCallButtonSpinner.addClass("d-none");
 	resetButton.prop("disabled", false); // Ensure reset is enabled after programmatic reset
-	handleCallTypeChange("single");
+	handleCallTypeChange(OutboundCallNumberType.Single);
 
 	// Capture the state AFTER resetting to establish the baseline for changes
 	captureInitialFormState();
@@ -401,7 +400,7 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
     if (!makeCallDescriptionInput.val().trim()) addError("Call description is required.", makeCallDescriptionInput);
 
 	// --- Number Tab Validation ---
-	if (CurrentMakeCallType === "single") {
+	if (CurrentMakeCallType === OutboundCallNumberType.Single) {
 		removeError(makeCallSelectedFromNumberInput);
 		removeError(makeCallToNumberInput);
 		if (!SelectedFromNumberId) addError("A 'Call From' number must be selected.", makeCallSelectedFromNumberInput);
@@ -525,10 +524,10 @@ function gatherMakeCallConfig() {
 		numberDetails: {
 			type: CurrentMakeCallType,
 			fromNumberId: SelectedFromNumberId,
-			toNumber: CurrentMakeCallType === "single" ? makeCallToNumberInput.val().trim() : null,
+			toNumber: CurrentMakeCallType === OutboundCallNumberType.Single ? makeCallToNumberInput.val().trim() : null,
 		},
 		configuration: {
-			schedule: { type: makeCallScheduleTypeLaterRadio.is(":checked") ? "later" : "now", dateTimeUTC: null },
+			schedule: { type: makeCallScheduleTypeLaterRadio.is(":checked") ? OutboundCallScheduleType.Later : OutboundCallScheduleType.Now, dateTimeUTC: null },
 			retryDecline: {
 				enabled: makeCallRetryOnDeclineCheck.is(":checked"),
 				count: null,
@@ -552,13 +551,14 @@ function gatherMakeCallConfig() {
 			scriptId: makeCallAgentDefaultScriptSelect.val() || null,
 			languageCode: makeCallAgentLanguageSelect.val() || null,
 			interruption: { type: parseInt(makeCallAgentInterruptionTypeSelect.val()), useInterruptedResponseInNextTurn: null, vadDurationMS: null, useAgentLLM: null, llmIntegrationId: null },
-			timezone: makeCallNumberTimezoneSelect.val() || null,
-			context: { includeFromNumber: makeCallAgentFromNumberInContextCheck.is(":checked"), includeToNumber: makeCallAgentToNumberInContextCheck.is(":checked") },
+			timezones: [makeCallNumberTimezoneSelect.val()] || null,
+			includeFromNumberInContext: makeCallAgentFromNumberInContextCheck.is(":checked"),
+			includeToNumberInContext: makeCallAgentToNumberInContextCheck.is(":checked")
 		},
 		actions: { declined: null, missed: null, answered: null, ended: null },
 	};
 
-	if (config.configuration.schedule.type === "later" && makeCallScheduleDateTimeInput.val()) {
+	if (config.configuration.schedule.type === OutboundCallScheduleType.Later && makeCallScheduleDateTimeInput.val()) {
 		try {
 			config.configuration.schedule.dateTimeUTC = new Date(makeCallScheduleDateTimeInput.val()).toISOString();
 		} catch (e) {
@@ -601,7 +601,9 @@ function gatherMakeCallConfig() {
 			});
 			config.actions[mapping.key] = actionData;
 		} else {
-			config.actions[mapping.key] = null;
+			config.actions[mapping.key] = {
+				toolId: null
+			};
 		}
 	});
 	return config;
@@ -645,15 +647,15 @@ function fillMakeCallNumberModalNumbersList() {
 }
 
 function handleCallTypeChange(selectedType) {
-	if (selectedType === "single") {
-		CurrentMakeCallType = "single";
+	if (selectedType === OutboundCallNumberType.Single) {
+		CurrentMakeCallType = OutboundCallNumberType.Single;
 		makeCallTypeSingleBox.addClass("active");
 		makeCallTypeBulkBox.removeClass("active");
 		makeCallNumberSingleContainer.removeClass("d-none").addClass("show");
 		makeCallNumberBulkContainer.addClass("d-none").removeClass("show");
 	} else {
 		// bulk
-		CurrentMakeCallType = "bulk";
+		CurrentMakeCallType = OutboundCallNumberType.Bulk;
 		makeCallTypeSingleBox.removeClass("active");
 		makeCallTypeBulkBox.addClass("active");
 		makeCallNumberSingleContainer.addClass("d-none").removeClass("show");
@@ -857,8 +859,8 @@ function initGeneralTabHandlers() {
 }
 
 function initNumberTabHandlers() {
-	makeCallTypeSingleBox.on("click", () => handleCallTypeChange("single"));
-	makeCallTypeBulkBox.on("click", () => handleCallTypeChange("bulk"));
+	makeCallTypeSingleBox.on("click", () => handleCallTypeChange(OutboundCallNumberType.Single));
+	makeCallTypeBulkBox.on("click", () => handleCallTypeChange(OutboundCallNumberType.Bulk));
 
 	const handleOpenNumberModal = (event) => {
 		event.preventDefault();
@@ -1058,17 +1060,16 @@ function initActionsTabHandlers() {
 	});
 }
 
-/** MAIN INITIALIZATION **/
+// INIT
 function initMakeCallsTab() {
-	// Initialize Bootstrap Components
 	const tooltipTriggerList = makeCallsTab[0].querySelectorAll('[data-bs-toggle="tooltip"]');
 	[...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
-	if (makeCallChangeFromNumberModalElement.length) makeCallChangeFromNumberModal = new bootstrap.Modal(makeCallChangeFromNumberModalElement[0]);
-	if (makeCallChangeAgentModalElement.length) makeCallChangeAgentModal = new bootstrap.Modal(makeCallChangeAgentModalElement[0]);
+	makeCallChangeFromNumberModal = new bootstrap.Modal(makeCallChangeFromNumberModalElement[0]);
+	makeCallChangeAgentModal = new bootstrap.Modal(makeCallChangeAgentModalElement[0]);
 
 	// Pre-populate Dropdowns
-	fillMakeCallAgentInterruptViaAIIntegrationSelect();
 	populateLanguageSelect();
+	fillMakeCallAgentInterruptViaAIIntegrationSelect();
 	populateToolSelect(makeCallActionToolDeclinedSelect);
 	populateToolSelect(makeCallActionToolMissSelect);
 	populateToolSelect(makeCallActionToolPickedUpSelect);
@@ -1099,55 +1100,74 @@ function initMakeCallsTab() {
 		initiateCallButton.prop("disabled", true);
 		initiateCallButtonSpinner.removeClass("d-none");
 		resetButton.prop("disabled", true);
-		const config = gatherMakeCallConfig();
-		const isBulk = CurrentMakeCallType === "bulk";
+
+		const callConfigData = gatherMakeCallConfig();
+
+		var requestData = new FormData();
+		requestData.append("config", JSON.stringify(callConfigData));
+
+		if (CurrentMakeCallType === OutboundCallNumberType.Bulk) {
+			if (!SelectedBulkFromFileObject) {
+				if (errorCallback) errorCallback({ success: false, message: "Bulk file is missing." }, true);
+				return;
+			}
+
+			requestData.append("bulk_file", SelectedBulkFromFileObject);
+		}
 
 		InitiateCall(
-			config, isBulk,
+			requestData,
 			(response) => {
-				AlertManager.createAlert({ type: "success", message: response.message || "Call(s) initiated successfully!", timeout: 5000 });
+				AlertManager.createAlert({ type: "success", message: response.message || "Call campaign initiated successfully!", timeout: 5000 });
 				resetMakeCallForm();
+
+				IsInitiatingCall = false;
+				initiateCallButton.prop("disabled", false);
+				initiateCallButtonSpinner.addClass("d-none");
+				resetButton.prop("disabled", false);
 			},
 			(errorResponse, isUnsuccessful) => {
-				const message = errorResponse?.message || (isUnsuccessful ? "Failed to initiate call(s)." : "Network or server error.");
-				AlertManager.createAlert({ type: "danger", message: message, timeout: 7000 });
+				AlertManager.createAlert({
+					type: "danger",
+					message: "Error occured while initiating call(s). Check browser console for logs.",
+					timeout: 6000,
+				});
+
+				console.error("Error occured while initiating call(s): ", errorResponse);
+
+				IsInitiatingCall = false;
+				initiateCallButton.prop("disabled", false);
+				initiateCallButtonSpinner.addClass("d-none");
+				resetButton.prop("disabled", false);
 			},
-		).always(() => {
-			IsInitiatingCall = false;
-			initiateCallButton.prop("disabled", false);
-			initiateCallButtonSpinner.addClass("d-none");
-			resetButton.prop("disabled", false);
-		});
+		)
 	});
 
 	resetButton.on("click", (event) => {
 		event.preventDefault();
 		resetMakeCallForm();
-		AlertManager.createAlert({ type: "info", message: "Form reset to defaults.", timeout: 3000 });
 	});
 
 	$("#nav-bar").on("tabChange", async (event) => {
 		const destinationTabId = event.detail.to;
 		const sourceTabId = event.detail.from;
 
-		// Leaving Make Calls Tab
-		if (sourceTabId === "make-calls-tab" && destinationTabId !== "make-calls-tab") {
-			const canLeave = await canLeaveMakeCallTab(" Are you sure you want to discard these settings and leave?");
-			if (!canLeave) {
-				event.preventDefault();
-			}
+		if (sourceTabId !== "make-calls-tab") {
+			return;
 		}
 
-		if (destinationTabId === "make-calls-tab") {
-			populateLanguageSelect();
-			fillMakeCallAgentInterruptViaAIIntegrationSelect();
-			populateToolSelect(makeCallActionToolDeclinedSelect);
-			populateToolSelect(makeCallActionToolMissSelect);
-			populateToolSelect(makeCallActionToolPickedUpSelect);
-			populateToolSelect(makeCallActionToolEndedSelect);
-			fillMakeCallAgentModalList();
-			fillMakeCallNumberModalNumbersList();
+		const canLeave = await canLeaveMakeCallTab(" Are you sure you want to discard these settings and leave?");
+		if (!canLeave) {
+			event.preventDefault();
+			return;
 		}
+
+		populateLanguageSelect();
+		fillMakeCallAgentInterruptViaAIIntegrationSelect();
+		populateToolSelect(makeCallActionToolDeclinedSelect);
+		populateToolSelect(makeCallActionToolMissSelect);
+		populateToolSelect(makeCallActionToolPickedUpSelect);
+		populateToolSelect(makeCallActionToolEndedSelect);
 	});
 
 	// Tab Handlers
