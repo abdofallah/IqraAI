@@ -358,7 +358,7 @@ namespace IqraInfrastructure.Managers.Call
                 // ignore ssl validation etc for client
 
                 // Set headers
-                client.Timeout = TimeSpan.FromSeconds(3);
+                client.Timeout = TimeSpan.FromSeconds(7); // todo check if 7 seconds is good
                 client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
@@ -438,9 +438,10 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Create the HttpClient
-                using var client = _httpClientFactory.CreateClient("CallManagerServerForward");    
-                
+                using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
+
                 // Set headers
+                client.Timeout = TimeSpan.FromSeconds(15); // todo check if 15seconds is good
                 client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
 
                 // Prepare the request body

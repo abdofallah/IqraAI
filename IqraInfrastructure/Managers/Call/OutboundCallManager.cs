@@ -294,6 +294,7 @@ namespace IqraInfrastructure.Managers.Call
                 using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
 
                 // Set headers
+                client.Timeout = TimeSpan.FromSeconds(15); // todo check if 15seconds is enough
                 client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

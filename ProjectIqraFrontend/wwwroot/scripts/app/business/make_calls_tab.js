@@ -27,7 +27,7 @@ let SelectedAgentId = null;
 let SelectedAgentData = null;
 let makeCallFormInitialState = {};
 
-/** Element Variables (Cached Selectors) **/
+/** Element Variables **/
 const makeCallsTab = $("#make-calls-tab");
 // Header
 const initiateCallButton = makeCallsTab.find("#makeCallInitiateButton");
@@ -139,7 +139,7 @@ function InitiateCall(data, successCallback, errorCallback) {
 	});
 }
 
-/** CORE UTILITY FUNCTIONS **/
+// Functions
 function captureInitialFormState() {
 	makeCallFormInitialState = gatherMakeCallConfig(true); // Use gather config, but maybe simplify it
 	// We need a simpler comparison, maybe just capture raw values
@@ -228,16 +228,10 @@ function checkMakeCallTabHasChanges() {
 async function canLeaveMakeCallTab(leaveMessage = "") {
 	if (IsInitiatingCall) {
 		AlertManager.createAlert({ type: "warning", message: "Cannot leave while initiating a call.", timeout: 6000 });
-		return false; // Prevent leaving if a call is in progress
+		return false;
 	}
 
 	if (checkMakeCallTabHasChanges()) {
-		// Ensure BootstrapConfirmDialog class is available globally
-		if (typeof BootstrapConfirmDialog === 'undefined') {
-			console.error("BootstrapConfirmDialog is not defined. Cannot show confirmation.");
-			// Decide behaviour: allow leaving or prevent? Defaulting to allow leaving with a console error.
-			return true;
-		}
 		const confirmDialog = new BootstrapConfirmDialog({
 			title: "Unsaved Changes",
 			message: `You have unsaved changes in the Make Call form.${leaveMessage}`,
@@ -245,16 +239,14 @@ async function canLeaveMakeCallTab(leaveMessage = "") {
 			cancelText: "Stay",
 			confirmButtonClass: "btn-danger",
 			cancelButtonClass: "btn-secondary",
-			modalSize: "modal-lg", // Correct property name might be modalSize or similar
+			modalSize: "modal-lg",
 		});
 		const confirmResult = await confirmDialog.show();
 		if (!confirmResult) {
-			return false; // User clicked "Stay"
+			return false;
 		}
-		// If confirmed, reset the form before allowing navigation
-		resetMakeCallForm();
 	}
-	return true; // OK to leave (no changes or user confirmed discard)
+	return true;
 }
 
 async function confirmInitiateCall() {
@@ -357,7 +349,6 @@ function resetMakeCallForm() {
 	makeCallNumberTimezoneSelect.val("");
 	makeCallAgentFromNumberInContextCheck.prop("checked", true);
 	makeCallAgentToNumberInContextCheck.prop("checked", true);
-
 
 	// ... (Reset Actions Tab) ...
 	[
@@ -609,7 +600,7 @@ function gatherMakeCallConfig() {
 	return config;
 }
 
-/** NUMBER TAB FUNCTIONS **/
+// Number Tab Functions
 function createMakeCallNumberModalListElement(numberData) {
 	const isUsedByRoute = numberData.routeId !== null && numberData.routeId !== undefined;
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
@@ -664,7 +655,7 @@ function handleCallTypeChange(selectedType) {
 	validateMakeCallConfig(true);
 }
 
-/** CONFIGURATION TAB FUNCTIONS **/
+// Configuration Tab Functions
 function handleRetryOptionsVisibility(type) {
 	const mainCheckbox = type === "Decline" ? makeCallRetryOnDeclineCheck : makeCallRetryOnMissCheck;
 	const optionsContainer = type === "Decline" ? makeCallRetryOnDeclineOptionsContainer : makeCallRetryOnMissOptionsContainer;
@@ -677,7 +668,7 @@ function handleRetryOptionsVisibility(type) {
 	validateMakeCallConfig(true);
 }
 
-/** AGENT TAB FUNCTIONS **/
+// Agent Tab Functions
 function createMakeCallAgentModalListElement(agentData) {
 	const agentName = agentData.general.name[BusinessDefaultLanguage] || agentData.general.name[Object.keys(agentData.general.name)[0]] || "Unnamed Agent";
 	const agentEmoji = agentData.general.emoji || "🤖";
@@ -783,7 +774,7 @@ function populateLanguageSelect() {
 }
 
 
-/** ACTIONS TAB FUNCTIONS **/
+// Action Tab Functions
 function populateToolSelect($selectElement) {
 	$selectElement.empty().append('<option value="none" selected>None</option>');
 	const tools = BusinessFullData?.businessApp?.tools || [];
@@ -852,7 +843,7 @@ function handleArgumentRemoval($removeButton, $argsSelect) {
 	validateMakeCallConfig(true);
 }
 
-/** EVENT HANDLER INITIALIZATION **/
+// Event Handlers
 function initGeneralTabHandlers() {
 	makeCallIdentifierInput.on("input", () => validateMakeCallConfig(true));
 	makeCallDescriptionInput.on("input", () => validateMakeCallConfig(true));
@@ -1149,7 +1140,6 @@ function initMakeCallsTab() {
 	});
 
 	$("#nav-bar").on("tabChange", async (event) => {
-		const destinationTabId = event.detail.to;
 		const sourceTabId = event.detail.from;
 
 		if (sourceTabId !== "make-calls-tab") {
@@ -1168,6 +1158,8 @@ function initMakeCallsTab() {
 		populateToolSelect(makeCallActionToolMissSelect);
 		populateToolSelect(makeCallActionToolPickedUpSelect);
 		populateToolSelect(makeCallActionToolEndedSelect);
+
+		resetMakeCallForm();
 	});
 
 	// Tab Handlers

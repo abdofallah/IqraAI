@@ -27,5 +27,9 @@ namespace IqraCore.Entities.Business
         public List<long> WhiteLabelDomainIds { get; set; } = new List<long>();
 
         public BusinessPermission Permission { get; set; } = new BusinessPermission();
+
+        // Plan/Billing/Allocation
+        public decimal? AllocatedMonthlyMinuteCap { get; set; } = null;
+        public int? AllocatedConcurrencySlots { get; set; } = null;
     }
 }

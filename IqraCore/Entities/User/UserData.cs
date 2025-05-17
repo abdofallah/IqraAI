@@ -1,4 +1,5 @@
 ﻿using IqraCore.Attributes;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User
@@ -12,6 +13,8 @@ namespace IqraCore.Entities.User
         public List<long> Businesses { get; set; } = new List<long>();
 
         public UserPermission Permission { get; set; } = new UserPermission();
+        public List<UserPaymentMethod> PaymentMethods { get; set; } = new List<UserPaymentMethod>();
+        public UserBillingData Billing { get; set; } = new UserBillingData();
 
         [ExcludeInAllEndpoints]
         public string PasswordSHA { get; set; } = string.Empty;
