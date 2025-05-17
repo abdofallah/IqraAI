@@ -48,6 +48,10 @@
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
+                    <a class="nav_link" for="billing-tab">
+                        <i class='fa-regular fa-file-invoice-dollar nav_icon'></i>
+                        <span class="nav_name">Billing</span>
+                    </a>
                     <a class="nav_link" for="region-tab">
                         <i class='fa-regular fa-server nav_icon'></i>
                         <span class="nav_name">Region</span>
@@ -154,6 +158,9 @@
                                         <button class="nav-link active" id="users-manage-general-tab" data-bs-toggle="pill" data-bs-target="#users-manage-general" type="button" role="tab" aria-controls="users-manage-general" aria-selected="true">General</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="users-manage-billing-tab-button" data-bs-toggle="pill" data-bs-target="#users-manage-billing-content" type="button" role="tab" aria-controls="users-manage-billing-content" aria-selected="false">Billing</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
                                         <button class="nav-link" id="users-manage-actions-tab" data-bs-toggle="pill" data-bs-target="#users-manage-actions" type="button" role="tab" aria-controls="users-manage-actions" aria-selected="true">Actions</button>
                                     </li>
                                     <li class="nav-item me-2" role="presentation">
@@ -191,6 +198,97 @@
                                     <div class="mb-3">
                                         <label for="usersManagePasswordInput" class="form-label">Password</label>
                                         <input type="text" class="form-control" id="usersManagePasswordInput" placeholder="Password">
+                                    </div>
+                                </div>
+                                <!-- Billing -->
+                                <div class="tab-pane fade w-100" id="users-manage-billing-content" role="tabpanel" aria-labelledby="users-manage-billing-tab-button" tabindex="0">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h4>Plan & Credits</h4>
+                                            <div class="mb-3">
+                                                <label for="userManageCurrentPlanSelect" class="form-label">Current Plan</label>
+                                                <select class="form-select" id="userManageCurrentPlanSelect" name="Billing.CurrentPlanId">
+                                                    <option value="">-- No Plan Assigned --</option>
+                                                    <!-- Options will be populated by JS with available PlanDefinitions (ID as value, Name as text) -->
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="userManageCreditBalanceInput" class="form-label">Credit Balance</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" step="0.01" class="form-control" id="userManageCreditBalanceInput" name="Billing.CreditBalance" placeholder="0.00">
+                                                    <button class="btn btn-outline-secondary" type="button" id="adjustUserCreditButton" data-bs-toggle="modal" data-bs-target="#adjustCreditModal">Adjust</button>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Plan Base Concurrency</label>
+                                                <input type="text" class="form-control" id="userManagePlanBaseConcurrencyDisplay" placeholder="N/A" disabled readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="userManagePurchasedConcurrencyInput" class="form-label">Purchased Additional Concurrency Slots</label>
+                                                <input type="number" class="form-control" id="userManagePurchasedConcurrencyInput" name="Billing.PurchasedAdditionalConcurrencySlots" placeholder="0">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Total Owned Concurrency Slots</label>
+                                                <input type="text" class="form-control" id="userManageTotalConcurrencyDisplay" placeholder="N/A" disabled readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="userManageLastConcurrencyFeeBilledAtInput" class="form-label">Last Concurrency Fee Billed At</label>
+                                                <input type="text" class="form-control" id="userManageLastConcurrencyFeeBilledAtInput" name="Billing.LastConcurrencyFeeBilledAt" placeholder="N/A" disabled readonly>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="userManageNextConcurrencyFeeBillingDateInput" class="form-label">Next Concurrency Fee Billing Date</label>
+                                                <input type="text" class="form-control" id="userManageNextConcurrencyFeeBillingDateInput" name="Billing.NextConcurrencyFeeBillingDate" placeholder="N/A" disabled readonly>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h4>Auto-Refill Settings</h4>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="userManageAutoRefillStatusToggle" name="Billing.AutoRefill.StatusBoolean"> <!-- JS will convert to enum -->
+                                                <label class="form-check-label" for="userManageAutoRefillStatusToggle">Enable Auto-Refill</label>
+                                            </div>
+                                            <div id="userManageAutoRefillDetails" class="d-none">
+                                                <!-- Show only if toggle is on -->
+                                                <div class="mb-3">
+                                                    <label for="userManageAutoRefillThresholdInput" class="form-label">Refill When Balance Below</label>
+                                                    <input type="number" step="0.01" class="form-control" id="userManageAutoRefillThresholdInput" name="Billing.AutoRefill.RefillWhenBalanceBelow" placeholder="e.g., 10.00">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="userManageAutoRefillAmountInput" class="form-label">Refill Amount</label>
+                                                    <input type="number" step="0.01" class="form-control" id="userManageAutoRefillAmountInput" name="Billing.AutoRefill.RefillAmount" placeholder="e.g., 50.00">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="userManageAutoRefillPaymentMethodSelect" class="form-label">Default Payment Method</label>
+                                                    <select class="form-select" id="userManageAutoRefillPaymentMethodSelect" name="Billing.AutoRefill.DefaultPaymentMethodId">
+                                                        <option value="">-- Select Payment Method --</option>
+                                                        <!-- Options populated by JS with user's saved payment methods -->
+                                                    </select>
+                                                    <!-- We'll need another section (perhaps under User Profile in user-facing dashboard) to manage UserPaymentMethods -->
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Last Auto-Refill Attempt</label>
+                                                    <input type="text" class="form-control" id="userManageAutoRefillLastAttemptDisplay" placeholder="N/A" disabled readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <h4>Billing History (Transactions)</h4>
+                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                        <table class="table table-sm" id="userBillingHistoryTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                    <th>Amount</th>
+                                                    <th>Balance After</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Dynamically generated transaction rows for this user -->
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                                 <!-- Actions -->
@@ -862,6 +960,284 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Billing Container -->
+        <div class="main-container fade w-100 d-none" id="billing-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-file-invoice-dollar'></i> <span>Billing Management</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs (for Billing sub-sections like Plans, Transactions, Settings etc.) -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="billing-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="billing-plans-tab-button" data-bs-toggle="pill" data-bs-target="#billing-plans-content" type="button" role="tab" aria-controls="billing-plans-content" aria-selected="true">Plans</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="billing-transactions-tab-button" data-bs-toggle="pill" data-bs-target="#billing-transactions-content" type="button" role="tab" aria-controls="billing-transactions-content" aria-selected="false">Transactions</button> <!-- For later implementation -->
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link disabled" id="billing-settings-tab-button" data-bs-toggle="pill" data-bs-target="#billing-settings-content" type="button" role="tab" aria-controls="billing-settings-content" aria-selected="false">Settings</button> <!-- For later (e.g., gateway config) -->
+                        </li>
+                    </ul>
+                    <!-- Breadcrumbs for when managing a specific plan -->
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="billing-plans-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToBillingPlansListTabFromManageTab">Plans</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageBillingPlanName">Plan</span></li>
+                        </ol>
+                    </nav>
+                </div>
+                <!-- Tab Content for Billing -->
+                <div class="tab-content w-100" id="billing-inner-tabContent">
+                    <!-- Plans Content Area -->
+                    <div class="tab-pane fade w-100 show active" id="billing-plans-content" role="tabpanel" aria-labelledby="billing-plans-tab-button" tabindex="0">
+                        <!-- This will contain the Plans List and Plan Manage/Create views -->
+                        <!-- Plans List Table Tab -->
+                        <div class="fade w-100 show" id="billingPlansListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 200px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewPlanButton">
+                                        <span>+ Add New Plan</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" id="searchPlanInput" placeholder="Plan Name or ID" aria-label="Plan Name or ID" aria-describedby="searchPlanButton">
+                                    <button class="input-group-button btn btn-primary" id="searchPlanButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="billingPlansListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Type</th>
+                                        <th scope="col">Pricing Model</th>
+                                        <th scope="col">Base Price/Min</th>
+                                        <th scope="col">Base Concurrency</th>
+                                        <th scope="col">Status</th> <!-- Active/Archived -->
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated Plan Rows -->
+                                    <!-- Example Row (to be generated by JS)
+                                    <tr>
+                                        <td>Basic PAYG</td>
+                                        <td>Public</td>
+                                        <td>Standard PayAsYouGo</td>
+                                        <td>$0.04</td>
+                                        <td>10</td>
+                                        <td><span class="badge bg-success">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-light me-2 edit-plan-button" data-plan-id="planId123"><i class="fa-regular fa-pencil"></i></button>
+                                            <button class="btn btn-sm btn-outline-danger archive-plan-button" data-plan-id="planId123"><i class="fa-regular fa-archive"></i></button>
+                                        </td>
+                                    </tr>
+                                    -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Plans Manage Tab (Create/Edit) -->
+                        <div class="fade w-100 d-none" id="billingPlansManageTab">
+                            <!-- Header Tab for Manage Plan (Save Button) -->
+                            <div class="mb-3 d-flex flex-row align-items-center justify-content-end">
+                                <!-- The breadcrumb #billing-plans-manage-breadcrumb will be shown here by JS -->
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="billingPlansManageSaveButton">
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save Plan</span>
+                                </button>
+                            </div>
+
+                            <!-- Form Content (as designed previously) -->
+                            <form id="managePlanForm">
+                                <!-- Hidden input for Plan ID during edit -->
+                                <input type="hidden" id="managePlanIdInput" name="Id">
+
+                                <!-- I. Core Plan Identification & Type -->
+                                <div class="card mb-3">
+                                    <div class="card-header">Core Plan Information</div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label for="managePlanNameInput" class="form-label">Name <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="managePlanNameInput" name="Name" placeholder="e.g., Standard, Enterprise Gold" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="managePlanDescriptionInput" class="form-label">Description</label>
+                                            <textarea class="form-control" id="managePlanDescriptionInput" name="Description" rows="3" placeholder="Brief overview of the plan"></textarea>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanTypeSelect" class="form-label">Plan Type <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="managePlanTypeSelect" name="Type" required>
+                                                    <option value="Public">Public</option>
+                                                    <option value="Enterprise">Enterprise</option>
+                                                    <option value="Custom">Custom</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanPricingModelSelect" class="form-label">Pricing Model <span class="text-danger">*</span></label>
+                                                <select class="form-select" id="managePlanPricingModelSelect" name="PricingModel" required>
+                                                    <option value="">Select Pricing Model</option>
+                                                    <option value="StandardPayAsYouGo">Standard PAYG</option>
+                                                    <option value="VolumeBasedTiered">Volume-Based Tiered</option>
+                                                    <option value="FixedPricePackage">Fixed Price Package</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- II. Pricing Model: Standard PAYG Details -->
+                                <div class="card mb-3 d-none" id="planPricingModelStandardPayAsYouGoSection">
+                                    <div class="card-header">Standard PAYG Details</div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanStandardBaseMinutePriceInput" class="form-label">Base Minute Price <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.001" class="form-control" id="managePlanStandardBaseMinutePriceInput" name="StandardPlan.BaseMinutePrice" placeholder="e.g., 0.04">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanStandardBaseConcurrencyInput" class="form-label">Base Included Concurrency <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" id="managePlanStandardBaseConcurrencyInput" name="StandardPlan.BaseConcurrency" placeholder="e.g., 10">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- III. Pricing Model: Volume-Based Tiered Details -->
+                                <div class="card mb-3 d-none" id="planPricingModelVolumeBasedTieredSection">
+                                    <div class="card-header">Volume-Based Tiered Details</div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanVolumeBaseMinutePriceInput" class="form-label">Base Minute Price (Before Discount) <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.001" class="form-control" id="managePlanVolumeBaseMinutePriceInput" name="VolumeTieredPlan.BaseMinutePriceBeforeDiscount" placeholder="e.g., 0.04">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanVolumeBaseConcurrencyInput" class="form-label">Base Included Concurrency <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" id="managePlanVolumeBaseConcurrencyInput" name="VolumeTieredPlan.BaseConcurrency" placeholder="e.g., 25">
+                                            </div>
+                                        </div>
+                                        <h5 class="mt-2">Volume Discount Tiers</h5>
+                                        <div id="volumeDiscountTiersContainer">
+                                            <!-- Tier template will be cloned here by JS -->
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addVolumeDiscountTierButton"><i class="fa-regular fa-plus"></i> Add Tier</button>
+                                    </div>
+                                </div>
+                                <!-- Template for Volume Discount Tier (hidden) -->
+                                <div class="row align-items-end mb-2 d-none" id="volumeDiscountTierTemplate">
+                                    <div class="col-md-5">
+                                        <label class="form-label small">Min. Monthly Minutes <span class="text-danger">*</span></label>
+                                        <input type="number" class="form-control form-control-sm volume-tier-minutes" placeholder="e.g., 50000">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small">Discount Percentage <span class="text-danger">*</span></label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm volume-tier-discount" placeholder="e.g., 0.10 for 10%">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-danger btn-sm remove-volume-tier-button w-100"><i class="fa-regular fa-trash-alt"></i></button>
+                                    </div>
+                                </div>
+
+
+                                <!-- IV. Pricing Model: Fixed Price Package Details -->
+                                <div class="card mb-3 d-none" id="planPricingModelFixedPricePackageSection">
+                                    <div class="card-header">Fixed Price Package Details</div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="managePlanFixedMonthlyPriceInput" class="form-label">Fixed Monthly Price <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" class="form-control" id="managePlanFixedMonthlyPriceInput" name="FixedPackagePlan.FixedMonthlyPrice" placeholder="e.g., 1500">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="managePlanFixedIncludedMinutesInput" class="form-label">Included Minutes <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" id="managePlanFixedIncludedMinutesInput" name="FixedPackagePlan.IncludedMinutes" placeholder="e.g., 50000">
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <label for="managePlanFixedIncludedConcurrencyInput" class="form-label">Included Concurrency <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" id="managePlanFixedIncludedConcurrencyInput" name="FixedPackagePlan.IncludedConcurrency" placeholder="e.g., 25">
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="managePlanFixedOverageMinutePriceInput" class="form-label">Overage Minute Price <span class="text-danger">*</span></label>
+                                            <input type="number" step="0.001" class="form-control" id="managePlanFixedOverageMinutePriceInput" name="FixedPackagePlan.OverageMinutePrice" placeholder="e.g., 0.03">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- V. Common Plan Settings -->
+                                <div class="card mb-3">
+                                    <div class="card-header">Common Plan Settings</div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanAdditionalConcurrencyPriceInput" class="form-label">Additional Concurrency Slot Price (Monthly) <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" class="form-control" id="managePlanAdditionalConcurrencyPriceInput" name="AdditionalConcurrencySlotPrice" placeholder="e.g., 7.00">
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="managePlanMinimumTopUpInput" class="form-label">Minimum Top-Up Amount <span class="text-danger">*</span></label>
+                                                <input type="number" step="0.01" class="form-control" id="managePlanMinimumTopUpInput" name="MinimumTopUpAmount" placeholder="e.g., 5.00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- VI. Features & Configuration -->
+                                <div class="card mb-3">
+                                    <div class="card-header">Features</div>
+                                    <div class="card-body">
+                                        <label class="form-label">Enabled Feature Flags</label>
+                                        <div id="managePlanFeatureFlagsContainer">
+                                            <!-- Checkboxes for features will be populated by JS -->
+                                            <!-- Example:
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="CustomServers" id="feature_CustomServers" name="EnabledFeatureFlags">
+                                                <label class="form-check-label" for="feature_CustomServers">
+                                                    Custom Servers
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="DedicatedSupport" id="feature_DedicatedSupport" name="EnabledFeatureFlags">
+                                                <label class="form-check-label" for="feature_DedicatedSupport">
+                                                    Dedicated Support
+                                                </label>
+                                            </div>
+                                             -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Archive Status (only for editing existing plans) -->
+                                <div class="card mb-3 d-none" id="managePlanArchiveSection">
+                                    <div class="card-body">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="managePlanIsArchivedInput" name="IsArchived">
+                                            <label class="form-check-label" for="managePlanIsArchivedInput">Archived (Plan will not be assignable or visible for new subscriptions)</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Transactions Content Area (Placeholder) -->
+                    <div class="tab-pane fade w-100" id="billing-transactions-content" role="tabpanel" aria-labelledby="billing-transactions-tab-button" tabindex="0">
+                        <p>Financial Transactions List (Coming Soon)</p>
+                        <!-- Table to list all financial transactions: User, Type, Amount, Date, Related IDs -->
+                    </div>
+
+                    <!-- Settings Content Area (Placeholder) -->
+                    <div class="tab-pane fade w-100" id="billing-settings-content" role="tabpanel" aria-labelledby="billing-settings-tab-button" tabindex="0">
+                        <p>Billing Settings (Coming Soon)</p>
+                        <!-- Payment Gateway Configuration, Default currency, Tax settings etc. -->
                     </div>
                 </div>
             </div>
@@ -2074,6 +2450,42 @@
         </div>
     </div>
 
+    <!-- Modals -->
+    <div class="modal fade" id="adjustCreditModal" tabindex="-1" aria-labelledby="adjustCreditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="adjustCreditModalLabel">Adjust User Credit</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Current Balance for <strong id="adjustCreditUserName"></strong>: <span id="adjustCreditCurrentBalance"></span></p>
+                    <input type="hidden" id="adjustCreditUserEmailInput">
+                    <div class="mb-3">
+                        <label for="adjustmentTypeSelect" class="form-label">Adjustment Type</label>
+                        <select class="form-select" id="adjustmentTypeSelect">
+                            <option value="ManualCreditAdjustment">Add Credit (Manual)</option>
+                            <option value="ManualDebitAdjustment">Remove Credit (Manual)</option>
+                            <option value="Refund">Refund</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustmentAmountInput" class="form-label">Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="adjustmentAmountInput" placeholder="e.g., 10.00">
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustmentReasonInput" class="form-label">Reason / Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="adjustmentReasonInput" rows="3" placeholder="e.g., Goodwill gesture, Correction for billing error" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmCreditAdjustmentButton">Apply Adjustment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ASP -->
     <script>
         const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
@@ -2097,6 +2509,7 @@
 
         var CurrentUsersList = null;
         var CurrentBusinessesList = null;
+        var CurrentPlansList = null;
         var CurrentRegionsList = null;
         var CurrentLLMProvidersList = null;
         var CurrentSTTProvidersList = null;
@@ -2568,6 +2981,8 @@
                     &&
                     CurrentBusinessesList != null
                     &&
+                    CurrentPlansList != null
+                    &&
                     CurrentRegionsList != null
                     &&
                     CurrentLLMProvidersList != null
@@ -2589,6 +3004,83 @@
                 }
             }
             , 100);
+
+        function RunActionAfterUsersLoad(action) {
+            var usersCheckInterval = setInterval(
+                () => {
+                    if (CurrentUsersList != null) {
+                        clearInterval(usersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterBusinessesLoad(action) {
+            var businessesCheckInterval = setInterval(
+                () => {
+                    if (CurrentBusinessesList != null) {
+                        clearInterval(businessesCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterPlansLoad(action) {
+            var plansCheckInterval = setInterval(
+                () => {
+                    if (CurrentPlansList != null) {
+                        clearInterval(plansCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterRegionsLoad(action) {
+            var regionsCheckInterval = setInterval(
+                () => {
+                    if (CurrentRegionsList != null) {
+                        clearInterval(regionsCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterLLMProvidersLoad(action) {
+            var LLMProvidersCheckInterval = setInterval(
+                () => {
+                    if (CurrentLLMProvidersList != null) {
+                        clearInterval(LLMProvidersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterSTTProvidersLoad(action) {
+            var STTProvidersCheckInterval = setInterval(
+                () => {
+                    if (CurrentSTTProvidersList != null) {
+                        clearInterval(STTProvidersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterTTSProvidersLoad(action) {
+            var TTSProvidersCheckInterval = setInterval(
+                () => {
+                    if (CurrentTTSProvidersList != null) {
+                        clearInterval(TTSProvidersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
 
         function RunActionAfterLanguagesLoad(action) {
             var languagesCheckInterval = setInterval(
@@ -2616,12 +3108,59 @@
     <!-- Scripts -->
     <script src="~/scripts/app/admin/users_tab.js"></script>
     <script src="~/scripts/app/admin/businesses_tab.js"></script>
+    <script src="~/scripts/app/admin/billing_tab.js"></script>
     <script src="~/scripts/app/admin/regions_tab.js"></script>
     <script src="~/scripts/app/admin/llm_provider_tab.js"></script>
     <script src="~/scripts/app/admin/stt_provider_tab.js"></script>
     <script src="~/scripts/app/admin/tts_provider_tab.js"></script>
     <script src="~/scripts/app/admin/languages_tab.js"></script>
     <script src="~/scripts/app/admin/integrations_tab.js"></script>
+
+    <script>
+        // Fetch Initial Data
+        FetchUsersFromAPI(
+            UsersTabListTabPage, UsersTabListTabPageSize,
+            (users) => {
+                CurrentUsersList = users;
+            },
+            (usersError) => {
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error occured while fetching users. Check browser console for logs.",
+                    timeout: 5000,
+                });
+
+                console.log("Error occured while fetching users: ", usersError);
+            },
+        );
+        FetchPlansFromAPI(
+            PlansListTablePage, PlansListTablePageSize,
+            (plans) => {
+                CurrentPlansList = plans;
+            },
+            (error) => {
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Error occured while fetching plans. Check browser console for logs.",
+                    timeout: 5000
+                });
+
+                console.error("Error occured while fetching plans:", error);
+            }
+        );
+
+        // Users Tab
+        RunActionAfterUsersLoad(() => {
+            RunActionAfterPlansLoad(() => {
+                initUsersTab();
+            });
+        });
+
+        // Billing/Plan Tab
+        RunActionAfterPlansLoad(() => {
+            InitBillingPlansTab();
+        });
+    </script>
 </body>
 
 </html>
