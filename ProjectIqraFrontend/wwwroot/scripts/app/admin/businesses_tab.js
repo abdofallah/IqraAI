@@ -126,6 +126,55 @@ const businessPermissionsConversationWebsocketDisableExportingReasonInput = busi
 const businessPermissionsConversationWebsocketDisableDeleting = businessesManageTab.find("#businessPermissionsConversationWebsocketDisableDeleting");
 const businessPermissionsConversationWebsocketDisableDeletingReasonInput = businessesManageTab.find("#businessPermissionsConversationWebsocketDisableDeletingReasonInput");
 
+// API Functions
+function FetchBusinessesFromAPI(page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/businesses',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+function FetchSearchedBusinessesFromAPI(query, page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/business/search',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			query: query,
+			page: page,
+			pageSize: pageSize
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+// Functions
 function ResetAndEmptyBusinessManageTabData() {
 	businessesManageTab.find("input[type=text], input[type=email], input[type=number], textarea").val("");
 	businessesManageTab.find("input[type=checkbox]").prop("checked", false).change();

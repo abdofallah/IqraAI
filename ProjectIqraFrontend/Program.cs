@@ -26,6 +26,8 @@ using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.DependencyInjection;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Managers.Mail;
+using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Repositories.Billing;
 
 namespace ProjectIqraFrontend
 {
@@ -301,6 +303,14 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<OutboundCallCampaignRepository>>()
                 );
             });
+            builder.Services.AddSingleton<PlanRepository>((sp) =>
+            {
+                return new PlanRepository(
+                    sp.GetRequiredService<ILogger<PlanRepository>>(),
+                    appConfig["PlanRepository:ConnectionString"],
+                    appConfig["PlanRepository:DatabaseName"]
+                );
+            });
         }
     
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -429,6 +439,13 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<TTSProviderManager>>(),
                     sp.GetRequiredService<TTSProviderRepository>(),
                     sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<PlanManager>((sp) =>
+            {
+                return new PlanManager(
+                    sp.GetRequiredService<ILogger<PlanManager>>(),
+                    sp.GetRequiredService<PlanRepository>()
                 );
             });
         }

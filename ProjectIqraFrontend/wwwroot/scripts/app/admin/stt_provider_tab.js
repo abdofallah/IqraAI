@@ -56,6 +56,68 @@ const sttProviderIntegrationFieldsList = sttProviderIntegrationsTab.find("#sttPr
 const searchSTTProviderIntegrationFieldInput = sttProviderIntegrationsTab.find("input[aria-label='Search Field']");
 const searchSTTProviderIntegrationFieldButton = sttProviderIntegrationsTab.find("#searchSTTProviderIntegrationFieldButton");
 
+/** API Functions **/
+function SaveSTTProviderData(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/sttproviders/save",
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: function (response) {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function SaveSTTProviderModelData(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/sttproviders/model/save",
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: function (response) {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function FetchSTTProvidersFromAPI(page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/sttproviders",
+		type: "POST",
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: function (response) {
+			if (response.success) {
+				successCallback(response.data);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
 /** Core Functions **/
 
 // Provider List Functions

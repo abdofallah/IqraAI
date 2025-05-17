@@ -37,8 +37,27 @@ const addNewRegionButton = regionTab.find("#addNewRegionButton");
 
 const addNewRegionServerButton = regionTab.find("#addNewRegionServerButton");
 
-/** Functions **/
+/** API Functions **/
+function FetchRegionsFromAPI(successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/regions',
+		type: 'POST',
+		dataType: "json",
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
 
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+/** Functions **/
 function CreateRegionListTableElement(regionData) {
 	let countryData = CountriesList[regionData.countryCode.toUpperCase()];
 

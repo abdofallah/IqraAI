@@ -68,6 +68,68 @@ const ttsProviderIntegrationFieldsList = ttsProviderIntegrationsTab.find("#ttsPr
 const searchTTSProviderIntegrationFieldInput = ttsProviderIntegrationsTab.find("input[aria-label='Search Field']");
 const searchTTSProviderIntegrationFieldButton = ttsProviderIntegrationsTab.find("#searchTTSProviderIntegrationFieldButton");
 
+/** API Functions **/
+function SaveTTSProviderData(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/ttsproviders/save",
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: function (response) {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function SaveTTSProviderSpeakerData(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/ttsproviders/speaker/save",
+		type: "POST",
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: function (response) {
+			if (response.success) {
+				successCallback(response);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function FetchTTSProvidersFromAPI(page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: "/app/admin/ttsproviders",
+		type: "POST",
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: function (response) {
+			if (response.success) {
+				successCallback(response.data);
+			} else {
+				errorCallback(response, true);
+			}
+		},
+		error: function (xhr, status, error) {
+			errorCallback(error, false);
+		}
+	});
+}
+
 /** Provider List Functions **/
 function CreateTTSProviderListTableElement(ttsProviderData) {
 	let disabledData = "";

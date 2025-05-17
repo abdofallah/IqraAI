@@ -21,6 +21,52 @@ const manageLanguagesNameInput = languagesManageTab.find("#manageLanguagesNameIn
 const manageLanguagesLocaleNameInput = languagesManageTab.find("#manageLanguagesLocaleNameInput");
 const manageLanguagesDisabledInput = languagesManageTab.find("#manageLanguagesDisabledInput");
 
+/** API Functions **/
+function FetchLanguagesFromAPI(page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/languages',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, true);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function SaveLanguagesData(formData, successCallback, errorCallback) {
+	$.ajax({
+		type: "POST",
+		url: "/app/admin/languages/save",
+		data: formData,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, true);
+				return;
+			}
+
+			successCallback(response);
+		},
+		error: (error) => {
+			errorCallback(error, false);
+		}
+	});
+}
+
 /** Functions **/
 function ShowLanguagesManageTab() {
 	languagesListTableTab.removeClass("show");

@@ -35,8 +35,46 @@ const integrationHelpTextInput = $("#integrationHelpTextInput");
 const integrationHelpUrlInput = $("#integrationHelpUrlInput");
 const integrationDisabledCheck = $("#integrationDisabledCheck");
 
-/** Core Functions **/
+/** API Functions **/
+function FetchIntegrationsFromAPI(successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/integrations',
+		type: 'GET',
+		dataType: "json",
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
 
+function SaveIntegrationToAPI(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/integrations/save',
+		type: 'POST',
+		data: formData,
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+/** Core Functions **/
 function createIntegrationCardElement(integration) {
 	const typesBadges = integration.type.map((type) => `<span class="badge border border-dark text-dark me-1 mb-1">${type}</span>`).join("");
 

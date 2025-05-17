@@ -94,101 +94,105 @@ const adjustmentReasonInput = adjustCreditModal.find("#adjustmentReasonInput");
 const confirmCreditAdjustmentButton = adjustCreditModal.find("#confirmCreditAdjustmentButton");
 
 // API Functions
-function FetchUserBillingDataFromAPI(email, successCallback, errorCallback) {
-	// This might be redundant if your main FetchUserFromAPI returns billing data.
-	// If not, implement like other Fetch...FromAPI functions.
-	console.log(`API: Fetching billing data for user ${email}`);
-	// Mock: Simulate fetching if not part of main user object
-	const user = CurrentUsersList.find(u => u.email === email);
-	if (user && user.billing) { // Assuming billing is nested in your mock CurrentUsersList
-		setTimeout(() => successCallback(user.billing), 100);
-	} else {
-		// Simulate a default empty billing object if not found or for new users
-		setTimeout(() => successCallback({ creditBalance: 0, currentPlanId: null, purchasedAdditionalConcurrencySlots: 0, autoRefill: { status: 'Disabled' } }), 100);
-	}
-	/*
+function FetchUsersFromAPI(page, pageSize, successCallback, errorCallback) {
 	$.ajax({
-		url: '/app/admin/user/billing', // Example endpoint
+		url: '/app/admin/users',
 		type: 'POST',
 		dataType: "json",
-		data: { email: email },
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+function FetchUserFromAPI(email, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/user',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			email: email
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+function FetchUserBusinessesFromAPI(userEmail, businessIds, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/user/businesses',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			email: userEmail,
+			businessIds: businessIds
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+function FetchUserTransactionsFromAPI(email, page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/user/transactions',
+		type: 'POST',
+		dataType: "json",
+		data: { email: email, page: page, pageSize: pageSize },
 		success: (response) => {
 			if (!response.success) { errorCallback(response); return; }
 			successCallback(response.data);
 		},
 		error: (error) => { errorCallback(error); }
 	});
-	*/
-}
-
-function FetchUserTransactionsFromAPI(email, page, pageSize, successCallback, errorCallback) {
-	console.log(`API: Fetching transactions for user ${email}`);
-	// Mock
-	const mockTransactions = [
-		// { timestamp: new Date(Date.now() - 86400000).toISOString(), type: "CreditTopUp", description: "Initial Top-up", amount: 50.00, balanceAfter: 50.00 },
-		// { timestamp: new Date().toISOString(), type: "DebitUsage", description: "Call Usage (100 mins)", amount: -4.00, balanceAfter: 46.00 }
-	];
-	setTimeout(() => successCallback(mockTransactions), 200);
-	/*
-	$.ajax({
-		url: '/app/admin/user/transactions', // Example endpoint
-		type: 'POST',
-		dataType: "json",
-		data: { email: email, page: page, pageSize: pageSize },
-		success: (response) => {
-			if (!response.success) { errorCallback(response); return; }
-			successCallback(response.data); // Assuming response.data is an array of transactions
-		},
-		error: (error) => { errorCallback(error); }
-	});
-	*/
 }
 
 function AdjustUserCreditAPI(userEmail, adjustmentType, amount, reason, successCallback, errorCallback) {
-	console.log(`API: Adjusting credit for ${userEmail}. Type: ${adjustmentType}, Amount: ${amount}, Reason: ${reason}`);
-	// Mock
-	setTimeout(() => {
-		// Find user, update balance (mock only, real update on server)
-		const user = CurrentUsersList.find(u => u.email === userEmail);
-		if (user) {
-			if (!user.billing) user.billing = { creditBalance: 0 }; // Ensure billing object exists
-			let numericAmount = parseFloat(amount);
-			if (adjustmentType === "ManualDebitAdjustment" || adjustmentType === "Refund" && numericAmount > 0) { // Refund can be positive for user
-				numericAmount = -Math.abs(numericAmount); // Ensure debit is negative, refund to user is positive for their balance
-			} else if (adjustmentType === "Refund") { // If refund implies money taken back from user (rare)
-				// numericAmount = -Math.abs(numericAmount);
-			}
-
-
-			const newBalance = parseFloat(user.billing.creditBalance) + numericAmount;
-			// user.billing.creditBalance = newBalance; // Client-side mock update
-
-			// Add to mock transactions
-			// CurrentUserFinancialTransactions.push({ timestamp: new Date().toISOString(), type: adjustmentType, description: reason, amount: numericAmount, balanceAfter: newBalance });
-
-			successCallback({ success: true, newBalance: newBalance, message: "Credit adjusted successfully." });
-		} else {
-			errorCallback({ success: false, message: "User not found for credit adjustment." });
-		}
-	}, 300);
-	/*
 	$.ajax({
-		url: '/app/admin/user/credit/adjust', // Example endpoint
+		url: '/app/admin/user/credit/adjust',
 		type: 'POST',
 		dataType: "json",
 		data: {
 			email: userEmail,
 			transactionType: adjustmentType, // Ensure this matches backend enum/string
-			amount: amount, // Backend should handle if it's credit or debit based on type
+			amount: amount,
 			description: reason
 		},
 		success: (response) => {
 			if (!response.success) { errorCallback(response); return; }
-			successCallback(response); // Expect { success: true, newBalance: ..., message: ... }
+			successCallback(response);
 		},
 		error: (error) => { errorCallback(error); }
 	});
-	*/
 }
 
 // Functions

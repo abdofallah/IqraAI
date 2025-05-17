@@ -77,6 +77,74 @@ const llmProviderIntegrationFieldsList = llmProviderIntegrationsTab.find("#llmPr
 const searchLLMProviderIntegrationFieldInput = llmProviderIntegrationsTab.find("input[aria-label='Search Field']");
 const searchLLMProviderIntegrationFieldButton = llmProviderIntegrationsTab.find("#searchLLMProviderIntegrationFieldButton");
 
+/** API Functions **/
+function FetchLLMProvidersFromAPI(page, pageSize, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/admin/llmproviders',
+		type: 'POST',
+		dataType: "json",
+		data: {
+			page: page,
+			pageSize: pageSize
+		},
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, true);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function SaveLLMProviderData(formData, successCallback, errorCallback) {
+	$.ajax({
+		type: "POST",
+		url: "/app/admin/llmproviders/save",
+		data: formData,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, true);
+				return;
+			}
+
+			successCallback(response);
+		},
+		error: (error) => {
+			errorCallback(error, false);
+		}
+	});
+}
+
+function SaveLLMProviderModelData(formData, successCallback, errorCallback) {
+	$.ajax({
+		type: "POST",
+		url: "/app/admin/llmproviders/model/save",
+		data: formData,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response, true);
+				return;
+			}
+
+			successCallback(response);
+		},
+		error: (error) => {
+			errorCallback(error, false);
+		}
+	});
+}
+
 /** Functions **/
 function CreateLLMProviderListTableElement(llmProviderData) {
 	let disabledData = "";
