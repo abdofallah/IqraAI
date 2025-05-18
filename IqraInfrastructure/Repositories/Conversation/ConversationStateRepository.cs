@@ -431,6 +431,28 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
+        public async Task<long> GetActiveCallCountForBusinessAsync(long businessId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var filter = Builders<ConversationState>.Filter.And(
+                    Builders<ConversationState>.Filter.Eq(c => c.BusinessId, businessId),
+                    Builders<ConversationState>.Filter.In(c => c.Status, new[]
+                    {
+                        ConversationSessionState.Active,
+                        ConversationSessionState.Starting,
+                        ConversationSessionState.Paused
+                    })
+                );
+
+                return await _conversationStateCollection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error getting active call count for business {BusinessId}", businessId);
+                throw;
+            }
+        }
+
         private int CountWords(string text)
         {
             if (string.IsNullOrWhiteSpace(text))

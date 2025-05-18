@@ -1,13 +1,16 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
@@ -207,6 +210,9 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
                     null
                 );
             });
@@ -226,11 +232,14 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<CallQueueRepository>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
-                    sp.GetRequiredService<RegionManager>()
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<ConversationStateRepository>()
                 );
             });
             builder.Services.AddSingleton<OutboundCallManager>((sp) =>

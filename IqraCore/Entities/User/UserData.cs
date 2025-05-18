@@ -1,5 +1,4 @@
 ﻿using IqraCore.Attributes;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.User

@@ -15,6 +15,9 @@ using IqraCore.Entities.Server.Call;
 using IqraInfrastructure.Repositories.Call;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Call.Queue;
+using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Repositories.Conversation;
 
 namespace IqraInfrastructure.Managers.Call
 {
@@ -25,11 +28,14 @@ namespace IqraInfrastructure.Managers.Call
 
         private readonly CallQueueRepository _callQueueRepository;
         private readonly ServerSelectionManager _serverSelectionService;
+        private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
+        private readonly PlanManager _planManager;
         private readonly ModemTelManager _modemTelManager;
         private readonly TwilioManager _twilioManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
+        private readonly ConversationStateRepository _conversationStateRepository;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -39,11 +45,14 @@ namespace IqraInfrastructure.Managers.Call
 
             CallQueueRepository callQueueRepository,
             ServerSelectionManager serverSelectionService,
+            UserManager userManager,
             BusinessManager businessManager,
+            PlanManager planManager,
             ModemTelManager modemTelManager,
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
-            RegionManager regionManager
+            RegionManager regionManager,
+            ConversationStateRepository conversationStateRepository
         )
         {
             _logger = logger;
@@ -52,15 +61,19 @@ namespace IqraInfrastructure.Managers.Call
             _callQueueRepository = callQueueRepository;
             _serverSelectionService = serverSelectionService;
             _businessManager = businessManager;
+            _userManager = userManager;
+            _planManager = planManager;
             _modemTelManager = modemTelManager;
             _twilioManager = twilioManager;
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
+            _conversationStateRepository = conversationStateRepository;
         }
 
         public async Task<FunctionReturnResult<DistributionResultModel?>> DistributeIncomingCall(TelephonyWebhookContextModel webhookContext)
         {
             var result = new FunctionReturnResult<DistributionResultModel?>();
+            string? callQueueId = null;
 
             try
             {
@@ -86,21 +99,43 @@ namespace IqraInfrastructure.Managers.Call
                     return result;
                 }
 
-                // TODO - Disabled for now as business plans are not yet implemented
-                //// 2. Validate business plan and concurrent call limits
-                //var planValidation = await _businessPlanManager.ValidateCallLimitsAsync(businessId);
-                //if (!planValidation.Success)
-                //{
-                //    result.Message = planValidation.Message;
-                //    _logger.LogWarning("Business plan validation failed for call {CallId}: {Message}",
-                //        webhookContext.CallId, planValidation.Message);
-                //    return result;
-                //}
+                // Create call queue entry
+                var callQueue = new InboundCallQueueData
+                {
+                    EnqueuedAt = DateTime.UtcNow,
+
+                    BusinessId = businessId,
+                    RegionId = regionId,
+
+                    RouteId = numberRouteId,
+                    RouteNumberId = phoneNumberInfo.NumberId,
+
+                    RouteNumberProvider = webhookContext.Provider,
+                    ProviderCallId = webhookContext.CallId,
+                    CallerNumber = webhookContext.From,
+                };
+                callQueueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
+                if (string.IsNullOrWhiteSpace(callQueue.Id))
+                {
+                    result.Code = "DistributeIncomingCall:2";
+                    result.Message = "Unable to create call queue entry";
+                    return result;
+                }
+                callQueue.Id = callQueueId;
+
+                var planValidation = await CheckCreditAndCocurrency(businessId);
+                if (!planValidation.Success)
+                {
+                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = planValidation.Message, Type = CallQueueLogTypeEnum.Error });
+                    result.Message = planValidation.Message;
+                    return result;
+                }
 
                 // 3. Select optimal server
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
+                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = serverSelection.Message, Type = CallQueueLogTypeEnum.Error });
                     result.Code = "DistributeIncomingCall:" + serverSelection.Code;
                     result.Message = serverSelection.Message;
                     return result;
@@ -110,28 +145,14 @@ namespace IqraInfrastructure.Managers.Call
                 var regionData = await _regionManager.GetRegionById(regionId);
                 if (regionData == null)
                 {
+                    _logger.LogError("Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: region not found {RegionId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, regionId);
+
+                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
                     result.Code = "DistributeIncomingCall:3";
-                    result.Message = $"Region not found: {regionId}";
-                    _logger.LogWarning("Region not found: {RegionId}", regionId);
+                    result.Message = $"Region not found: {regionId}";     
                     return result;
                 }
-
-                // Create call queue entry
-                var callQueue = new CallQueueData
-                {
-                    BusinessId = businessId,
-                    RegionId = regionId,
-                    //NumberId = phoneNumberInfo.NumberId,
-                    //RouteId = numberRouteId,
-                    //Provider = webhookContext.Provider,
-                    //ProviderCallId = webhookContext.CallId,
-                    //CallerNumber = webhookContext.From,
-                    //Priority = 2, // High priority for incoming calls
-                    //IsOutbound = false,
-                    ProcessingServerId = "PROCESSING",
-                    ProviderMetadata = webhookContext.AdditionalData
-                };
-                callQueue.Id = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
+               
 
                 FunctionReturnResult forwardResult = new FunctionReturnResult();
                 List<string> errorsList = new List<string>();
@@ -196,8 +217,15 @@ namespace IqraInfrastructure.Managers.Call
             }
             catch (Exception ex)
             {
-                result.Message = $"Error distributing call: {ex.Message}";
                 _logger.LogError(ex, "Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId);
+
+                if (callQueueId != null && !string.IsNullOrEmpty(callQueueId))
+                {
+                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueueId, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
+                }
+
+                result.Code = "DistributeIncomingCall:-1";
+                result.Message = $"Error distributing call: {ex.Message}";    
                 return result;
             }
         }
@@ -494,6 +522,63 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError(ex, "Error notifying backend of call end");
             }
+        }
+
+        private async Task<FunctionReturnResult> CheckCreditAndCocurrency(long businessId)
+        {
+            var result = new FunctionReturnResult();
+
+            var businessDataResult = await _businessManager.GetUserBusinessById(businessId, "CheckCreditAndCocurrency");
+            if (!businessDataResult.Success)
+            {
+                result.Code = "CheckCreditAndCocurrency:" + businessDataResult.Code;
+                result.Message = businessDataResult.Message;
+                return result;
+            }
+
+            var businessMasterUser = businessDataResult.Data.MasterUserEmail;
+
+            var masterUserData = await _userManager.GetUserByEmail(businessMasterUser);
+            if (masterUserData == null)
+            {
+                result.Code = "CheckCreditAndCocurrency:1";
+                result.Message = "Master user not found";
+                return result;
+            }
+
+            if (masterUserData.Billing.CreditBalance <= 0)
+            {
+                result.Code = "CheckCreditAndCocurrency:2";
+                result.Message = "Credit balance is 0 or less";
+                return result;
+            }
+
+            var planDataResult = await _planManager.GetPlanByIdAsync(masterUserData.Billing.CurrentPlanId);
+            if (!planDataResult.Success)
+            {
+                result.Code = "CheckCreditAndCocurrency:" + planDataResult.Code;
+                result.Message = planDataResult.Message;
+                return result;
+            }
+
+            long totalCallCocurrency = planDataResult.Data.GetBaseIncludedConcurrency() + masterUserData.Billing.PurchasedAdditionalConcurrencySlots;
+
+            long? activeCallsCount = await _conversationStateRepository.GetActiveCallCountForBusinessAsync(businessId);
+            if (activeCallsCount == null)
+            {
+                result.Code = "CheckCreditAndCocurrency:3";
+                result.Message = "Unable to get active call count for business";
+                return result;
+            }
+
+            if (activeCallsCount >= totalCallCocurrency)
+            {
+                result.Code = "CheckCreditAndCocurrency:4";
+                result.Message = $"Call concurrency limit reached {activeCallsCount}/{totalCallCocurrency}";
+                return result;
+            }
+
+            return result.SetSuccessResult();
         }
 
         private class PhoneNumberInfo

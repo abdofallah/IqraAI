@@ -27,6 +27,7 @@ namespace IqraInfrastructure.Repositories.App
         private const string AppPermissionConfigField = "AppPermissionConfig";
         private const string VestaCPProxyTemplatesHashField = "VestaCPProxyTemplatesHash";
         private const string EmailTemplatesField = "EmailTemplates";
+        private const string BillingPlanConfigField = "BillingPlanConfig";
 
         /**
          * 
@@ -60,7 +61,6 @@ namespace IqraInfrastructure.Repositories.App
          * VestaCP Proxy Templates Hash
          * 
         **/
-
         public async Task<bool> AddUpdateVestaCPProxyTemplatesHash(Dictionary<string, string> templateHashes)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", VestaCPProxyTemplatesHashField);
@@ -86,7 +86,6 @@ namespace IqraInfrastructure.Repositories.App
          * Email Templates
          * 
         **/
-
         public async Task<bool> AddUpdateEmailTemplates(EmailTemplates emailTemplates)
         {
             var filter = Builders<BsonDocument>.Filter.Eq("_id", EmailTemplatesField);
@@ -97,7 +96,7 @@ namespace IqraInfrastructure.Repositories.App
             var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
             return result.ModifiedCount > 0;
         }
-
+        
         public async Task<EmailTemplates?> GetEmailTemplates()
         {
             try
@@ -114,6 +113,30 @@ namespace IqraInfrastructure.Repositories.App
                 _logger.LogError(ex, "Error getting email templates");
                 return null;
             }
+        }
+    
+/**
+         * 
+         * Billing Plan Config
+         * 
+        **/
+        public async Task<bool> AddUpdateBillingPlanConfig(BillingPlanConfig billingPlanConfig)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BillingPlanConfigField);
+            var update = Builders<BsonDocument>.Update.Set(BillingPlanConfigField,
+                BsonDocument.Create(billingPlanConfig)
+            );
+
+            var result = await _applicationConfigurationCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+            return result.IsAcknowledged;
+        }
+
+        public async Task<BillingPlanConfig?> GetBillingPlanConfig()
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", BillingPlanConfigField);
+            var result = await _applicationConfigurationCollection.Find(filter).FirstOrDefaultAsync();
+            if (result == null) return null;
+            return BsonSerializer.Deserialize<BillingPlanConfig>(result);
         }
     }
 }

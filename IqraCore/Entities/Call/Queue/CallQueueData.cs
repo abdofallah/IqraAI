@@ -9,7 +9,7 @@ namespace IqraCore.Entities.Call.Queue
     {
         [BsonId]
         public string Id { get; set; } = Guid.NewGuid().ToString();
-
+         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? EnqueuedAt { get; set; } = null;
         public DateTime? ProcessingStartedAt { get; set; } = null;

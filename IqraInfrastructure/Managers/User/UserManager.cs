@@ -48,14 +48,19 @@ namespace IqraInfrastructure.Managers.User
             return await _userDatabase.GetUserByEmail(email);
         }
 
-        public async Task<UserData> RegisterUser(RegisterModel model)
+        public async Task<UserData> RegisterUser(RegisterModel model, decimal defaultCreditBalance, string defaultPlanId)
         {
             UserData newUser = new UserData
             {
                 Email = model.Email,
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                PasswordSHA = HashPassword(model.Password)
+                PasswordSHA = HashPassword(model.Password),
+                Billing = new UserBillingData()
+                {
+                    CreditBalance = defaultCreditBalance,
+                    CurrentPlanId = defaultPlanId
+                }
             };
 
             await _userDatabase.AddUserAsync(newUser);

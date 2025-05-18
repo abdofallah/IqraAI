@@ -54,7 +54,18 @@ namespace ProjectIqraFrontend.Controllers
                     );
                 }
 
-                user = await _userManager.RegisterUser(model);
+                BillingPlanConfig? planConfig = await _appRepository.GetBillingPlanConfig();
+                if (planConfig == null || string.IsNullOrWhiteSpace(planConfig.NewUserPlanId) || planConfig.NewUserCredit < 0)
+                {
+                    return result.SetFailureResult(
+                        "Register:4",
+                        "Plan congfiguration not found or invalid"
+                    );
+                }
+
+                // todo should confirm plan exists??
+
+                user = await _userManager.RegisterUser(model, planConfig.NewUserCredit, planConfig.NewUserPlanId);
                 var emailResult = await _userManager.GenerateAndSendUserRegisterVerifyEmail(user.Email);
                 if (!emailResult.Success)
                 {
