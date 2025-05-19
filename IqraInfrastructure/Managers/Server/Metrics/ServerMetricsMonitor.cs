@@ -10,7 +10,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
     public class ServerMetricsMonitor : IAsyncDisposable
     {
         private readonly ILogger<ServerMetricsMonitor> _logger;
-        private readonly ServerConfig _serverConfig;
+        private readonly BackendAppConfig _serverConfig;
         private readonly ServerLiveStatusChannelRepository _serverStatusChannel;
         private readonly ServerStatusRepository _serverStatusRepository;
         private readonly IHardwareMonitor _hardwareMonitor;
@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
 
         public ServerMetricsMonitor(
             ILogger<ServerMetricsMonitor> logger,
-            ServerConfig serverConfig,
+            BackendAppConfig serverConfig,
             ServerLiveStatusChannelRepository serverStatusChannel,
             ServerStatusRepository serverStatusRepository,
             IHardwareMonitor hardwareMonitor

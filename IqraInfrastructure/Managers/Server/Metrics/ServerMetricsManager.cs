@@ -12,7 +12,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         private readonly ServerMetricsMonitor _serverStatusManager;
         private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
-        private readonly ServerConfig _serverConfig;
+        private readonly BackendAppConfig _serverConfig;
 
         private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(100);
 
@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
             ServerMetricsMonitor serverStatusService,
             InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
-            ServerConfig serverConfig)
+            BackendAppConfig serverConfig)
         {
             _logger = logger;
             _serverStatusManager = serverStatusService;

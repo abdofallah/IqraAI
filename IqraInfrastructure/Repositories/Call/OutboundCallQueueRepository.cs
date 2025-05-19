@@ -106,19 +106,12 @@ namespace IqraInfrastructure.Repositories.Call
 
         public async Task<(List<OutboundCallQueueData> processedCalls, PaginationCursor? nextCursor)> GetProcessableOutboundCallsAndMarkAsync(
             string regionId,
-            int batchSizeToFetch, // How many to consider for processing in this round
-            int maxToProcess,     // Max calls this proxy instance wants to actually process now
+            int batchSizeToFetch,
             DateTime scheduleThreshold,
-            string proxyInstanceId,
             PaginationCursor? previousRequestLastSeenCursor
-        ) // Cursor from the previous call to this method
+        )
         {
             var successfullyMarkedCalls = new List<OutboundCallQueueData>();
-            if (batchSizeToFetch <= 0 || maxToProcess <= 0)
-            {
-                return (successfullyMarkedCalls, previousRequestLastSeenCursor);
-            }
-
             PaginationCursor? newLastSeenCursorInThisBatch = null;
 
             try
@@ -169,12 +162,6 @@ namespace IqraInfrastructure.Repositories.Call
                 {
                     newLastSeenCursorInThisBatch = new PaginationCursor { Timestamp = call.ScheduledForDateTime, Id = call.Id };
 
-                    if (successfullyMarkedCalls.Count >= maxToProcess)
-                    {
-                        // We have enough calls for this processing cycle
-                        break;
-                    }
-
                     var updateFilter = Builders<OutboundCallQueueData>.Filter.And(
                         filterBuilder.Eq(c => c.Id, call.Id),
                         filterBuilder.Eq(c => c.Status, CallQueueStatusEnum.Queued) // Ensure it's still Queued (important!)
@@ -182,9 +169,7 @@ namespace IqraInfrastructure.Repositories.Call
 
                     var updateDefinition = Builders<OutboundCallQueueData>.Update
                         .Set(c => c.Status, CallQueueStatusEnum.WaitingForProcessing)
-                        .Set(c => c.ProcessingServerId, proxyInstanceId)
-                        .Set(c => c.EnqueuedAt, call.EnqueuedAt ?? now) // Ensure EnqueuedAt is set
-                        .Push(c => c.Logs, new CallQueueLog { CreatedAt = now, Type = CallQueueLogTypeEnum.System, Message = $"Picked up by proxy {proxyInstanceId}" });
+                        .Set(c => c.EnqueuedAt, call.EnqueuedAt ?? now);
 
                     var options = new FindOneAndUpdateOptions<OutboundCallQueueData>
                     {
@@ -203,7 +188,7 @@ namespace IqraInfrastructure.Repositories.Call
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error marking call {CallId} for processing by proxy {ProxyId} during paginated fetch.", call.Id, proxyInstanceId);
+                        _logger.LogError(ex, "Error marking call {CallId} for processing by proxy during paginated fetch.", call.Id);
                     }
                 }
 
@@ -223,7 +208,7 @@ namespace IqraInfrastructure.Repositories.Call
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetProcessableOutboundCallsAndMarkAsync for region {RegionId} by proxy {ProxyId}", regionId, proxyInstanceId);
+                _logger.LogError(ex, "Error in GetProcessableOutboundCallsAndMarkAsync for region {RegionId} by proxy", regionId);
                 return (new List<OutboundCallQueueData>(), previousRequestLastSeenCursor); // Return old cursor on error to retry same range
             }
         }

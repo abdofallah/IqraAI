@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Server
 {
-    public class ServerConfig
+    public class BackendAppConfig
     {
         // General
         public string ServerId { get; set; } = string.Empty;

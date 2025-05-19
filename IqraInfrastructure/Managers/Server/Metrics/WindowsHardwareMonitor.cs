@@ -10,7 +10,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
     public class WindowsHardwareMonitor : IHardwareMonitor
     {
         private readonly ILogger<WindowsHardwareMonitor> _logger;
-        private readonly ServerConfig _serverConfig;
+        private readonly BackendAppConfig _serverConfig;
 
         private PerformanceCounter? _cpuCounter;
         private PerformanceCounter? _memCounter;
@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetPhysicallyInstalledSystemMemory(out long TotalMemoryInKilobytes);
 
-        public WindowsHardwareMonitor(ILogger<WindowsHardwareMonitor> logger, ServerConfig serverConfig)
+        public WindowsHardwareMonitor(ILogger<WindowsHardwareMonitor> logger, BackendAppConfig serverConfig)
         {
             _logger = logger;
             _serverConfig = serverConfig ?? throw new ArgumentNullException(nameof(serverConfig));

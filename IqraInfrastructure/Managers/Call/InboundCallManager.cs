@@ -36,6 +36,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
         private readonly ConversationStateRepository _conversationStateRepository;
+        private readonly BillingValidationManager _billingValidationManager;
 
         private JsonSerializerOptions _seralizationOptionCamelCase = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -52,7 +53,8 @@ namespace IqraInfrastructure.Managers.Call
             TwilioManager twilioManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            ConversationStateRepository conversationStateRepository
+            ConversationStateRepository conversationStateRepository,
+            BillingValidationManager billingValidationManager
         )
         {
             _logger = logger;
@@ -68,6 +70,7 @@ namespace IqraInfrastructure.Managers.Call
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
             _conversationStateRepository = conversationStateRepository;
+            _billingValidationManager = billingValidationManager;
         }
 
         public async Task<FunctionReturnResult<DistributionResultModel?>> DistributeIncomingCall(TelephonyWebhookContextModel webhookContext)
@@ -123,10 +126,10 @@ namespace IqraInfrastructure.Managers.Call
                 }
                 callQueue.Id = callQueueId;
 
-                var planValidation = await CheckCreditAndCocurrency(businessId);
+                var planValidation = await _billingValidationManager.CheckCreditAndConcurrencyAsync(businessId, "inbound call");
                 if (!planValidation.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = planValidation.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });
                     result.Message = planValidation.Message;
                     return result;
                 }
@@ -135,7 +138,7 @@ namespace IqraInfrastructure.Managers.Call
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
-                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = serverSelection.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
                     result.Code = "DistributeIncomingCall:" + serverSelection.Code;
                     result.Message = serverSelection.Message;
                     return result;
@@ -159,6 +162,7 @@ namespace IqraInfrastructure.Managers.Call
                 int optimalServersTried = 0;
                 while (optimalServersTried < serverSelection.Data.Count)
                 {
+                    forwardResult = new FunctionReturnResult();
                     var currentServer = serverSelection.Data[optimalServersTried];
 
                     var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == currentServer.ServerEndpoint);
@@ -182,7 +186,7 @@ namespace IqraInfrastructure.Managers.Call
                         forwardResult  = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
                         if (!forwardResult.Success)
                         {
-                            errorsList.Add($"Attempt {forwardCallAttempt}: {forwardResult.Code}: {forwardResult.Message}");
+                            errorsList.Add($"Attempt {forwardCallAttempt}: [{forwardResult.Code}] {forwardResult.Message}");
                         }
                         else
                         {
@@ -425,28 +429,32 @@ namespace IqraInfrastructure.Managers.Call
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
+
+                    _logger.LogError("Error forwarding call to backend server {StatusCode} - {Error}", response.StatusCode, errorContent);
+
                     result.Code = "ForwardCallToBackendAsync:1";
                     result.Message = "Error forwarding call to backend server";
-                    _logger.LogError("Error forwarding call to backend server {StatusCode} - {Error}", response.StatusCode, errorContent);
                     return result;
                 }
 
                 // Parse the response
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseData = JsonSerializer.Deserialize<FunctionReturnResult>(responseContent, _seralizationOptionCamelCase);
-                if (responseData == null)
+                if (responseData == null) // should never happen tho
                 {
+                    _logger.LogError("Invalid response from backend server {ResponseContent}", responseContent);
+
                     result.Code = "ForwardCallToBackendAsync:2";
-                    result.Message = "Invalid response from backend server";
-                    _logger.LogError("Invalid response from backend server");
+                    result.Message = "Invalid response from backend server";              
                     return result;
                 }
 
                 if (!responseData.Success)
                 {
+                    _logger.LogError("Error forwarding call to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
+
                     result.Code = "ForwardCallToBackendAsync:" + responseData.Code;
                     result.Message = responseData.Message;
-                    _logger.LogError("Error forwarding call to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
                     return result;
                 }
 
@@ -455,9 +463,10 @@ namespace IqraInfrastructure.Managers.Call
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error forwarding call to backend server");
+
                 result.Code = "ForwardCallToBackendAsync:-1";
                 result.Message = $"Error forwarding call to backend: {ex.Message}";
-                _logger.LogError(ex, "Error forwarding call to backend server");
                 return result;
             }
         }
@@ -500,22 +509,25 @@ namespace IqraInfrastructure.Managers.Call
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Failed to notify backend of call end: {StatusCode} - {Error}",
-                        response.StatusCode, errorContent);
+
+                    _logger.LogError("Failed to notify backend of call end: {StatusCode} - {Error}", response.StatusCode, errorContent);
+
                     return;
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var responseData = JsonSerializer.Deserialize<FunctionReturnResult>(responseContent, _seralizationOptionCamelCase);
-                if (responseData == null)
+                if (responseData == null) // should never hapopen tho
                 {
                     _logger.LogError("Invalid response from backend server {ResponseContent}", responseContent);
+
                     return;
                 }
 
                 if (!responseData.Success)
                 {
                     _logger.LogError("Error forwarding call ended notificaiton to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
+
                     return;
                 }
             }
@@ -523,94 +535,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError(ex, "Error notifying backend of call end");
             }
-        }
-
-        // move to a helper class to be used by both inbound and outbound
-        private async Task<FunctionReturnResult> CheckCreditAndCocurrency(long businessId)
-        {
-            var result = new FunctionReturnResult();
-
-            var businessDataResult = await _businessManager.GetUserBusinessById(businessId, "CheckCreditAndCocurrency");
-            if (!businessDataResult.Success)
-            {
-                result.Code = "CheckCreditAndCocurrency:" + businessDataResult.Code;
-                result.Message = businessDataResult.Message;
-                return result;
-            }
-
-            var businessMasterUser = businessDataResult.Data.MasterUserEmail;
-
-            var masterUserData = await _userManager.GetUserByEmail(businessMasterUser);
-            if (masterUserData == null)
-            {
-                result.Code = "CheckCreditAndCocurrency:1";
-                result.Message = "Master user not found";
-                return result;
-            }
-
-            if (masterUserData.Billing.CreditBalance <= 0)
-            {
-                result.Code = "CheckCreditAndCocurrency:2";
-                result.Message = "Credit balance is 0 or less";
-                return result;
-            }
-
-            var planDataResult = await _planManager.GetPlanByIdAsync(masterUserData.Billing.CurrentPlanId);
-            if (!planDataResult.Success)
-            {
-                result.Code = "CheckCreditAndCocurrency:" + planDataResult.Code;
-                result.Message = planDataResult.Message;
-                return result;
-            }
-
-            long totalCallCocurrency = planDataResult.Data.GetBaseIncludedConcurrency() + masterUserData.Billing.PurchasedAdditionalConcurrencySlots;
-            long? userActiveCallsCount = await _conversationStateRepository.GetActiveCallCountByMasterUserEmailAsync(businessDataResult.Data.MasterUserEmail);
-            if (userActiveCallsCount == null)
-            {
-                result.Code = "CheckCreditAndCocurrency:3";
-                result.Message = "Unable to get active call count for user";
-                return result;
-            }
-
-            if (userActiveCallsCount >= totalCallCocurrency)
-            {
-                result.Code = "CheckCreditAndCocurrency:4";
-                result.Message = $"Total user call concurrency limit reached";
-                return result;
-            }
-
-            int? bussinessAllocatedCocurrency = businessDataResult.Data.AllocatedConcurrencySlots;
-            if (bussinessAllocatedCocurrency != null)
-            {
-                long? businessActiveCallsCount = await _conversationStateRepository.GetActiveCallCountForBusinessAsync(businessId);
-                if (businessActiveCallsCount == null)
-                {
-                    result.Code = "CheckCreditAndCocurrency:5";
-                    result.Message = "Unable to get active call count for business";
-                    return result;
-                }
-
-                if (businessActiveCallsCount >= bussinessAllocatedCocurrency)
-                {
-                    result.Code = "CheckCreditAndCocurrency:6";
-                    result.Message = $"Total business call concurrency limit reached";
-                    return result;
-                }
-            }
-
-            decimal? businessAllocatedMonthlyMinutes = businessDataResult.Data.AllocatedMonthlyMinuteCap;
-            if (businessAllocatedMonthlyMinutes != null)
-            {
-                if (businessDataResult.Data.CurrentMonthlyMinuteUsage >= businessAllocatedMonthlyMinutes)
-                {
-                    result.Code = "CheckCreditAndCocurrency:7";
-                    result.Message = $"Total business allocated monthly minutes limit reached";
-                    return result;
-                }
-            }
-
-            return result.SetSuccessResult();
-        }
+        } 
 
         private class PhoneNumberInfo
         {

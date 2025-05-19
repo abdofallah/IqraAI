@@ -38,9 +38,9 @@ namespace ProjectIqraBackendApp
 
             // Configuration
             var appConfig = builder.Configuration;
-            builder.Services.AddSingleton<ServerConfig>(sp =>
+            builder.Services.AddSingleton<BackendAppConfig>(sp =>
             {
-                return new ServerConfig
+                return new BackendAppConfig
                 {
                     ServerId = appConfig["Server:Identity"],
                     RegionId = appConfig["Server:RegionId"],
@@ -357,14 +357,14 @@ namespace ProjectIqraBackendApp
                 {
                     return new WindowsHardwareMonitor(
                         sp.GetRequiredService<ILogger<WindowsHardwareMonitor>>(),
-                        sp.GetRequiredService<ServerConfig>()
+                        sp.GetRequiredService<BackendAppConfig>()
                     );
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     return new LinuxHardwareMonitor(
                         sp.GetRequiredService<ILogger<LinuxHardwareMonitor>>(),
-                        sp.GetRequiredService<ServerConfig>()
+                        sp.GetRequiredService<BackendAppConfig>()
                     );
                 }
                 else
@@ -377,7 +377,7 @@ namespace ProjectIqraBackendApp
             {
                 return new ServerMetricsMonitor(
                     sp.GetRequiredService<ILogger<ServerMetricsMonitor>>(),
-                    sp.GetRequiredService<ServerConfig>(),
+                    sp.GetRequiredService<BackendAppConfig>(),
                     sp.GetRequiredService<ServerLiveStatusChannelRepository>(),
                     sp.GetRequiredService<ServerStatusRepository>(),
                     sp.GetRequiredService<IHardwareMonitor>()
@@ -412,7 +412,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ServerMetricsMonitor>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
-                    sp.GetRequiredService<ServerConfig>()
+                    sp.GetRequiredService<BackendAppConfig>()
                 );
             });
         }

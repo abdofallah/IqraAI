@@ -8,7 +8,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
     public class LinuxHardwareMonitor : IHardwareMonitor
     {
         private readonly ILogger<LinuxHardwareMonitor> _logger;
-        private readonly ServerConfig _serverConfig;
+        private readonly BackendAppConfig _serverConfig;
 
         private const string ProcStatPath = "/proc/stat";
         private const string ProcMemInfoPath = "/proc/meminfo";
@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         private long _previousTxBytes = 0;
         private DateTime _lastNetworkReadTime = DateTime.MinValue;
 
-        public LinuxHardwareMonitor(ILogger<LinuxHardwareMonitor> logger, ServerConfig serverConfig)
+        public LinuxHardwareMonitor(ILogger<LinuxHardwareMonitor> logger, BackendAppConfig serverConfig)
         {
             _logger = logger;
             _serverConfig = serverConfig ?? throw new ArgumentNullException(nameof(serverConfig));

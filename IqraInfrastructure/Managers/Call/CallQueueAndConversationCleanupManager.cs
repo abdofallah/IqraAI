@@ -11,7 +11,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ILogger<CallQueueAndConversationCleanupManager> _logger;
         private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
-        private readonly ServerConfig _serverConfig;
+        private readonly BackendAppConfig _serverConfig;
 
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromMinutes(5);
 
@@ -19,7 +19,7 @@ namespace IqraInfrastructure.Managers.Call
             ILogger<CallQueueAndConversationCleanupManager> logger,
             InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
-            ServerConfig serverConfig
+            BackendAppConfig serverConfig
         )
         {
             _logger = logger;
