@@ -16,7 +16,7 @@ namespace IqraCore.Entities.Call.Queue
         public DateTime? CompletedAt { get; set; } = null;
 
         public virtual CallQueueTypeEnum Type { get; set; } = CallQueueTypeEnum.Unknown;
-        public CallQueueStatusEnum Status { get; set; } = CallQueueStatusEnum.WaitingForQueueing;
+        public CallQueueStatusEnum Status { get; set; } = CallQueueStatusEnum.Queued;
 
         public long BusinessId { get; set; }
         public string? RegionId { get; set; } = null;

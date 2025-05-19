@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSessionManager> _logger;
         private readonly BusinessManager _businessManager;
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
 
@@ -39,6 +39,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ConversationSessionConfiguration _configuration;
 
         private CallQueueData _sessionCallQueueData;
+        private BusinessData _sessionBusinessData;
         private BusinessApp _sessionBusinessAppData;
         private BusinessAppRoute _sessionBusinessRouteData;
 
@@ -74,7 +75,7 @@ namespace IqraInfrastructure.Managers.Conversation
             string sessionId,
             BusinessManager businessManager,
             ConversationSessionConfiguration configuration,
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
             ILoggerFactory loggerFactory,
@@ -98,13 +99,21 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async Task InitalizeConversationConfigurationAsync()
         {
-            var callQueueData = await _callQueueRepository.GetCallQueueByIdAsync(_configuration.QueueId);
+            var callQueueData = await _callQueueRepository.GetInboundCallQueueByIdAsync(_configuration.QueueId);
             if (callQueueData == null)
             {
                 _logger.LogError("Call queue data not found for queue ID {QueueId}", _configuration.QueueId);
                 throw new InvalidOperationException($"Call queue data not found for queue ID {_configuration.QueueId}");
             }
             _sessionCallQueueData = callQueueData;
+
+            var businessData = await _businessManager.GetUserBusinessById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
+            if (!businessData.Success)
+            {
+                _logger.LogError("Business data not found for business ID {BusinessId}", _configuration.BusinessId);
+                throw new InvalidOperationException($"Business data not found for business ID {_configuration.BusinessId}");
+            }
+            _sessionBusinessData = businessData.Data;
 
             var businessAppData = await _businessManager.GetUserBusinessAppById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessAppData.Success)
@@ -128,6 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation
             var conversationState = new ConversationState
             {
                 Id = _sessionId,
+                BusinessMasterEmail = _sessionBusinessData.MasterUserEmail,
                 BusinessId = _configuration.BusinessId,
                 RouteId = _configuration.RouteId,
                 QueueId = _configuration.QueueId,

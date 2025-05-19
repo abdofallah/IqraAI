@@ -9,7 +9,7 @@ namespace IqraInfrastructure.Managers.Call
     public class CallQueueAndConversationCleanupManager : BackgroundService
     {
         private readonly ILogger<CallQueueAndConversationCleanupManager> _logger;
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ServerConfig _serverConfig;
 
@@ -17,7 +17,7 @@ namespace IqraInfrastructure.Managers.Call
 
         public CallQueueAndConversationCleanupManager(
             ILogger<CallQueueAndConversationCleanupManager> logger,
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ServerConfig serverConfig
         )
@@ -37,10 +37,10 @@ namespace IqraInfrastructure.Managers.Call
                 try
                 {
                     // Check for expired queued calls
-                    int expiredQueues = await _callQueueRepository.CleanupExpiredCallQueues(_serverConfig.RegionId, _serverConfig.ServerId);
+                    int expiredQueues = await _callQueueRepository.CleanupExpiredInboundCallQueues(_serverConfig.RegionId);
 
                     // Check for orphaned queued calls (processing but no session even after enough time?)
-                    int orphanedQueues = await _callQueueRepository.CleanupOrphanedCallQueues(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(-5));
+                    int orphanedQueues = await _callQueueRepository.CleanupInboundOrphanedCallQueues(_serverConfig.RegionId, DateTime.UtcNow.Subtract(TimeSpan.FromMinutes(5)));
 
                     // Check for expired conversations
                     int expiredConversations = await _conversationStateRepository.CleanupMaxDurationReachedConversationsAsync(_serverConfig.RegionId, _serverConfig.ServerId, DateTime.UtcNow.AddMinutes(5));

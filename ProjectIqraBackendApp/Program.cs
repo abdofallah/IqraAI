@@ -120,12 +120,12 @@ namespace ProjectIqraBackendApp
                     appConfig["LanguagesDatabase:DatabaseName"]
                 );
             });
-            builder.Services.AddSingleton<CallQueueRepository>(sp =>
+            builder.Services.AddSingleton<InboundCallQueueRepository>(sp =>
             {
-                return new CallQueueRepository(
+                return new InboundCallQueueRepository(
                     appConfig["CallQueueRepository:ConnectionString"],
                     appConfig["CallQueueRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<CallQueueRepository>>()
+                    sp.GetRequiredService<ILogger<InboundCallQueueRepository>>()
                 );
             });
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
@@ -308,7 +308,6 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    null,
                     null
                 );
             });
@@ -398,7 +397,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<CallProcessorManager>>(),
                     sp,
                     sp.GetRequiredService<ServerMetricsMonitor>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>()
@@ -411,16 +410,7 @@ namespace ProjectIqraBackendApp
                 return new ServerMetricsManager(
                     sp.GetRequiredService<ILogger<ServerMetricsManager>>(),
                     sp.GetRequiredService<ServerMetricsMonitor>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
-                    sp.GetRequiredService<ConversationStateRepository>(),
-                    sp.GetRequiredService<ServerConfig>()
-                );
-            });
-            builder.Services.AddHostedService<CallQueueAndConversationCleanupManager>((sp) =>
-            {
-                return new CallQueueAndConversationCleanupManager(
-                    sp.GetRequiredService<ILogger<CallQueueAndConversationCleanupManager>>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<ServerConfig>()
                 );

@@ -8,6 +8,7 @@ namespace IqraCore.Entities.Conversation
         [BsonId]
         public string Id { get; set; }
 
+        public string BusinessMasterEmail { get; set; }
         public long BusinessId { get; set; }
         public string RouteId { get; set; }
         public string QueueId { get; set; }

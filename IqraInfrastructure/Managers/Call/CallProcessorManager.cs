@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ILogger<CallProcessorManager> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
@@ -45,7 +45,7 @@ namespace IqraInfrastructure.Managers.Call
             ILogger<CallProcessorManager> logger,
             IServiceProvider serviceProvider,
             ServerMetricsMonitor serverMetricsMonitor,
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager)
@@ -78,7 +78,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 await _sessionCreationLock.WaitAsync(cancellationToken);
-                await _callQueueRepository.UpdateCallQueueSessionIdAndStatusAsync(config.QueueId, sessionId, CallQueueStatusEnum.Processing);
+                await _callQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(config.QueueId, sessionId, CallQueueStatusEnum.Processing);
 
                 // Create a cancellation token for this session
                 var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -139,7 +139,7 @@ namespace IqraInfrastructure.Managers.Call
                 _activeSessions[sessionId] = conversationSession;
 
                 // Update server status
-                await _callQueueRepository.UpdateCallQueueStatusAsync(config.QueueId, CallQueueStatusEnum.Processed);
+                await _callQueueRepository.UpdateInboundCallQueueStatusAsync(config.QueueId, CallQueueStatusEnum.Processed);
 
                 _logger.LogInformation("Created conversation session {SessionId} for business {BusinessId}",
                     sessionId, config.BusinessId);

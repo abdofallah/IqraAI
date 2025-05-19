@@ -67,6 +67,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 );
             }
 
+            if (user.Billing.CreditBalance <= 0)
+            {
+                return result.SetFailureResult(
+                    "InitiateCalls:6",
+                    "Insufficient credit balance."
+                );
+            }
+
             var businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
             if (!businessResult.Success || businessResult.Data == null)
             {
@@ -90,11 +98,21 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(business.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + business.Permission.MakeCall.DisabledCallingReason)
                 );
             }
+            if (business.AllocatedMonthlyMinuteCap.HasValue)
+            {
+                if (business.CurrentMonthlyMinuteUsage >= business.AllocatedMonthlyMinuteCap.Value)
+                {
+                    return result.SetFailureResult(
+                        "InitiateCalls:9",
+                        "Monthly minute cap exceeded for business"
+                    );
+                }
+            }
 
             if (!formData.TryGetValue("config", out StringValues configJsonValues) || string.IsNullOrWhiteSpace(configJsonValues.FirstOrDefault()))
             {
                 return result.SetFailureResult(
-                    "InitiateCalls:9",
+                    "InitiateCalls:10",
                     "Missing 'config' data in request."
                 );
             }
@@ -107,7 +125,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 if (callConfig == null)
                 {
                     return result.SetFailureResult(
-                        "InitiateCalls:10",
+                        "InitiateCalls:11",
                         "Unable to deserialize 'config' JSON."
                     );
                 }
@@ -115,7 +133,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             catch (JsonException ex)
             {
                 return result.SetFailureResult(
-                    "InitiateCalls:11",
+                    "InitiateCalls:12",
                     $"Invalid 'config' JSON format: {ex.Message}"
                 );
             }
@@ -123,7 +141,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             try
             {
-                var forwardResult = await _businessManager.GetMakeCallManager().ForwardCallInitiationRequestAsync(businessResult.Data, callConfig, bulkCsvFile);
+                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessResult.Data, callConfig, bulkCsvFile);
 
                 if (!forwardResult.Success)
                 {
@@ -138,7 +156,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "InitiateCalls:EX",
+                    "InitiateCalls:EXCEPTION",
                     $"Internal server error processing request: {ex.Message}"
                 );
             }

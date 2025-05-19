@@ -10,13 +10,13 @@ namespace IqraInfrastructure.Managers.Business
     {
         private readonly BusinessManager _parentBusinessManager;
 
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _conversationAudioRepository;
 
         public BusinessConversationsManager(
             BusinessManager businessManager,
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository conversationAudioRepository
         )
@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Business
             PaginationCursor? decodedCursor = PaginationCursor.Decode(currentCursor);
 
             // 1. Fetch Call Queue Data Page
-            var (callQueueItems, hasMore) = await _callQueueRepository.GetCallQueuesForBusinessPaginatedAsync(
+            var (callQueueItems, hasMore) = await _callQueueRepository.GetInboundCallQueuesForBusinessPaginatedAsync(
                 businessId,
                 limit,
                 decodedCursor,

@@ -26,7 +26,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ILogger<InboundCallManager> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly ServerSelectionManager _serverSelectionService;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.Call
             ILogger<InboundCallManager> logger,
             IHttpClientFactory httpClientFactory,
 
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository inboundCallQueueRepository,
             ServerSelectionManager serverSelectionService,
             UserManager userManager,
             BusinessManager businessManager,
@@ -58,7 +58,7 @@ namespace IqraInfrastructure.Managers.Call
             _logger = logger;
             _httpClientFactory = httpClientFactory;
 
-            _callQueueRepository = callQueueRepository;
+            _inboundCallQueueRepository = inboundCallQueueRepository;
             _serverSelectionService = serverSelectionService;
             _businessManager = businessManager;
             _userManager = userManager;
@@ -100,7 +100,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 // Create call queue entry
-                var callQueue = new InboundCallQueueData
+                InboundCallQueueData callQueue = new InboundCallQueueData
                 {
                     EnqueuedAt = DateTime.UtcNow,
 
@@ -114,10 +114,10 @@ namespace IqraInfrastructure.Managers.Call
                     ProviderCallId = webhookContext.CallId,
                     CallerNumber = webhookContext.From,
                 };
-                callQueueId = await _callQueueRepository.EnqueueCallQueueAsync(callQueue);
+                callQueueId = await _inboundCallQueueRepository.EnqueueInboundCallQueueAsync(callQueue);
                 if (string.IsNullOrWhiteSpace(callQueue.Id))
                 {
-                    result.Code = "DistributeIncomingCall:2";
+                    result.Code = "DistributeIncomingCall:3";
                     result.Message = "Unable to create call queue entry";
                     return result;
                 }
@@ -126,7 +126,7 @@ namespace IqraInfrastructure.Managers.Call
                 var planValidation = await CheckCreditAndCocurrency(businessId);
                 if (!planValidation.Success)
                 {
-                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = planValidation.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = planValidation.Message, Type = CallQueueLogTypeEnum.Error });
                     result.Message = planValidation.Message;
                     return result;
                 }
@@ -135,7 +135,7 @@ namespace IqraInfrastructure.Managers.Call
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
-                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = serverSelection.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = serverSelection.Message, Type = CallQueueLogTypeEnum.Error });
                     result.Code = "DistributeIncomingCall:" + serverSelection.Code;
                     result.Message = serverSelection.Message;
                     return result;
@@ -147,8 +147,8 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     _logger.LogError("Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: region not found {RegionId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, regionId);
 
-                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
-                    result.Code = "DistributeIncomingCall:3";
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
+                    result.Code = "DistributeIncomingCall:4";
                     result.Message = $"Region not found: {regionId}";     
                     return result;
                 }
@@ -173,7 +173,7 @@ namespace IqraInfrastructure.Managers.Call
                     var resgionUseSSL = regionServerData.UseSSL;
 
                     callQueue.ProcessingServerId = regionServerId;
-                    await _callQueueRepository.UpdateCallQueueProcessingServerAsync(callQueue.Id, regionServerId);
+                    await _inboundCallQueueRepository.UpdateInboundCallQueueProcessingServerAsync(callQueue.Id, regionServerId);
 
                     // 5. Forward call to selected backend server         
                     int forwardCallAttempt = 0;
@@ -202,8 +202,9 @@ namespace IqraInfrastructure.Managers.Call
                 
                 if (!forwardResult.Success)
                 {
-                    await _callQueueRepository.UpdateCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.Failed);
-                    return result.SetFailureResult("Failed to distribute call", string.Join("\n", errorsList));
+                    var message = string.Join("\n", errorsList);
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
+                    return result.SetFailureResult("DistributeIncomingCall:5", message);
                 }
 
                 // Return success result
@@ -221,7 +222,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 if (callQueueId != null && !string.IsNullOrEmpty(callQueueId))
                 {
-                    await _callQueueRepository.SetCallQueueFailedStatusAsync(callQueueId, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
+                    await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
                 }
 
                 result.Code = "DistributeIncomingCall:-1";
@@ -235,7 +236,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 // Find the call in the queue
-                var callQueue = await _callQueueRepository.GetCallQueueByProviderCallIdAsync(provider, callId, businessId, phoneNumberId);
+                var callQueue = await _inboundCallQueueRepository.GetInboundCallQueueByProviderCallIdAsync(provider, callId, businessId, phoneNumberId);
                 if (callQueue == null)
                 {
                     _logger.LogWarning("Call not found in queue for end notification: {CallId} for provider {Provider} in {businessId}/{phoneNumberId}", callId, provider, businessId, phoneNumberId);
@@ -524,6 +525,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
+        // move to a helper class to be used by both inbound and outbound
         private async Task<FunctionReturnResult> CheckCreditAndCocurrency(long businessId)
         {
             var result = new FunctionReturnResult();
@@ -562,20 +564,49 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             long totalCallCocurrency = planDataResult.Data.GetBaseIncludedConcurrency() + masterUserData.Billing.PurchasedAdditionalConcurrencySlots;
-
-            long? activeCallsCount = await _conversationStateRepository.GetActiveCallCountForBusinessAsync(businessId);
-            if (activeCallsCount == null)
+            long? userActiveCallsCount = await _conversationStateRepository.GetActiveCallCountByMasterUserEmailAsync(businessDataResult.Data.MasterUserEmail);
+            if (userActiveCallsCount == null)
             {
                 result.Code = "CheckCreditAndCocurrency:3";
-                result.Message = "Unable to get active call count for business";
+                result.Message = "Unable to get active call count for user";
                 return result;
             }
 
-            if (activeCallsCount >= totalCallCocurrency)
+            if (userActiveCallsCount >= totalCallCocurrency)
             {
                 result.Code = "CheckCreditAndCocurrency:4";
-                result.Message = $"Call concurrency limit reached {activeCallsCount}/{totalCallCocurrency}";
+                result.Message = $"Total user call concurrency limit reached";
                 return result;
+            }
+
+            int? bussinessAllocatedCocurrency = businessDataResult.Data.AllocatedConcurrencySlots;
+            if (bussinessAllocatedCocurrency != null)
+            {
+                long? businessActiveCallsCount = await _conversationStateRepository.GetActiveCallCountForBusinessAsync(businessId);
+                if (businessActiveCallsCount == null)
+                {
+                    result.Code = "CheckCreditAndCocurrency:5";
+                    result.Message = "Unable to get active call count for business";
+                    return result;
+                }
+
+                if (businessActiveCallsCount >= bussinessAllocatedCocurrency)
+                {
+                    result.Code = "CheckCreditAndCocurrency:6";
+                    result.Message = $"Total business call concurrency limit reached";
+                    return result;
+                }
+            }
+
+            decimal? businessAllocatedMonthlyMinutes = businessDataResult.Data.AllocatedMonthlyMinuteCap;
+            if (businessAllocatedMonthlyMinutes != null)
+            {
+                if (businessDataResult.Data.CurrentMonthlyMinuteUsage >= businessAllocatedMonthlyMinutes)
+                {
+                    result.Code = "CheckCreditAndCocurrency:7";
+                    result.Message = $"Total business allocated monthly minutes limit reached";
+                    return result;
+                }
             }
 
             return result.SetSuccessResult();

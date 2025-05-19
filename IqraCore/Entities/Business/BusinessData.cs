@@ -30,6 +30,8 @@ namespace IqraCore.Entities.Business
 
         // Plan/Billing/Allocation
         public decimal? AllocatedMonthlyMinuteCap { get; set; } = null;
+        public decimal? CurrentMonthlyMinuteUsage { get; set; } = null;
+
         public int? AllocatedConcurrencySlots { get; set; } = null;
     }
 }

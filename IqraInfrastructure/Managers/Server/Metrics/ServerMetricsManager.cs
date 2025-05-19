@@ -10,7 +10,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
     {
         private readonly ILogger<ServerMetricsManager> _logger;
         private readonly ServerMetricsMonitor _serverStatusManager;
-        private readonly CallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ServerConfig _serverConfig;
 
@@ -19,7 +19,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
         public ServerMetricsManager(
             ILogger<ServerMetricsManager> logger,
             ServerMetricsMonitor serverStatusService,
-            CallQueueRepository callQueueRepository,
+            InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ServerConfig serverConfig)
         {
@@ -39,7 +39,7 @@ namespace IqraInfrastructure.Managers.Server.Metrics
                 try
                 {
                     // Update queued calls count
-                    long queuedCallsCount = await _callQueueRepository.GetQueuedCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
+                    long queuedCallsCount = await _callQueueRepository.GetActiveInboundCallCountForProcessingServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);
                     _serverStatusManager.SetQueuedCalls((int)queuedCallsCount);
 
                     long activeCallCount = await _conversationStateRepository.GetActiveCallCountForServerAsync(_serverConfig.ServerId, _serverConfig.RegionId);

@@ -680,7 +680,17 @@ namespace IqraInfrastructure.Managers.LLM
                     return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
                 case InterfaceLLMProviderEnum.OpenAIGPT:
-                    return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), integrationData.Fields["model"]));
+                    {
+                        var model = (string)agentIntegrationData.FieldValues["model"];
+                        var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                        var endpoint = "https://api.openai.com/v1";
+                        if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) && !string.IsNullOrEmpty(endpointValue) && Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
+                        {
+                            endpoint = endpointValue;
+                        }
+
+                        return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), integrationData.Fields["model"], endpoint));
+                    }
 
                 case InterfaceLLMProviderEnum.GoogleAIGemini:
                     return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));                 

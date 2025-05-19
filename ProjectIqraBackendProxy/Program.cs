@@ -8,6 +8,8 @@ using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -15,6 +17,7 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
+using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Reflection;
 
@@ -84,12 +87,12 @@ namespace ProjectIqraBackendProxy
 
         private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
         {
-            builder.Services.AddSingleton<CallQueueRepository>(sp =>
+            builder.Services.AddSingleton<InboundCallQueueRepository>(sp =>
             {
-                return new CallQueueRepository(
+                return new InboundCallQueueRepository(
                     appConfig["CallQueueRepository:ConnectionString"],
                     appConfig["CallQueueRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<CallQueueRepository>>()
+                    sp.GetRequiredService<ILogger<InboundCallQueueRepository>>()
                 );
             });
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
@@ -149,6 +152,30 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
                     appConfig["BusinessAppDatabase:ConnectionString"],
                     appConfig["BusinessAppDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<UserRepository>((sp) =>
+            {
+                return new UserRepository(
+                    sp.GetRequiredService<ILogger<UserRepository>>(),
+                    appConfig["UserDatabase:ConnectionString"],
+                    appConfig["UserDatabase:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<PlanRepository>((sp) =>
+            {
+                return new PlanRepository(
+                    sp.GetRequiredService<ILogger<PlanRepository>>(),
+                    appConfig["PlanRepository:ConnectionString"],
+                    appConfig["PlanRepository:DatabaseName"]
+                );
+            });
+            builder.Services.AddSingleton<ConversationStateRepository>((sp) =>
+            {
+                return new ConversationStateRepository(
+                    appConfig["ConversationStateRepository:ConnectionString"],
+                    appConfig["ConversationStateRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<ConversationStateRepository>>()
                 );
             });
         }
@@ -212,7 +239,6 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
-                    null,
                     null
                 );
             });
@@ -230,7 +256,7 @@ namespace ProjectIqraBackendProxy
                 return new InboundCallManager(
                     sp.GetRequiredService<ILogger<InboundCallManager>>(),
                     sp.GetRequiredService<IHttpClientFactory>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
                     sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<BusinessManager>(),
@@ -249,11 +275,28 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>()
+                );
+            });
+            builder.Services.AddSingleton<UserManager>((sp) =>
+            {
+                return new UserManager(
+                    sp.GetRequiredService<ILogger<UserManager>>(),
+                    null,
+                    null,
+                    sp.GetRequiredService<UserRepository>(),
+                    null
+                );
+            });
+            builder.Services.AddSingleton<PlanManager>((sp) =>
+            {
+                return new PlanManager(
+                    sp.GetRequiredService<ILogger<PlanManager>>(),
+                    sp.GetRequiredService<PlanRepository>()
                 );
             });
         }

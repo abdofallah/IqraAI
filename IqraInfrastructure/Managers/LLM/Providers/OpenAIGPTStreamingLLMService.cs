@@ -1,7 +1,10 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
+using OpenAI;
 using OpenAI.Chat;
+using System.ClientModel;
+using System.ClientModel.Primitives;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
@@ -28,12 +31,21 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         public event EventHandler MessageStreamedCancelled;
 
-        public OpenAIGPTStreamingLLMService(string APIKey, string Model)
+        public OpenAIGPTStreamingLLMService(string APIKey, string Model, string Endpoint)
         {
             _logger = null; // todo
             _cts = new();
 
-            _client = new ChatClient(Model, APIKey);
+            OpenAIClient client = new OpenAIClient(new ApiKeyCredential(APIKey), new OpenAIClientOptions()
+            {
+                Endpoint = new Uri(Endpoint),
+                UserAgentApplicationId = "Iqra.bot",
+                NetworkTimeout = TimeSpan.FromSeconds(10),
+                RetryPolicy = new ClientRetryPolicy(),
+                Transport = new HttpClientPipelineTransport()
+            });
+
+            _client = client.GetChatClient(Model);
 
             _maxTokens = 1024; // todo make dynamic
             _temperature = 1; // todo make dynamic

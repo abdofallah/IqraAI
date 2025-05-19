@@ -267,12 +267,12 @@ namespace ProjectIqraFrontend
                     appConfig["TTSProviderDatabase:DatabaseName"]
                 );
             });
-            builder.Services.AddSingleton<CallQueueRepository>((sp) =>
+            builder.Services.AddSingleton<InboundCallQueueRepository>((sp) =>
             {
-                return new CallQueueRepository(
+                return new InboundCallQueueRepository(
                     appConfig["CallQueueRepository:ConnectionString"],
                     appConfig["CallQueueRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<CallQueueRepository>>()
+                    sp.GetRequiredService<ILogger<InboundCallQueueRepository>>()
                 );
             });
             builder.Services.AddSingleton<ConversationStateRepository>((sp) =>
@@ -408,11 +408,10 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<LanguagesManager>(),
-                    sp.GetRequiredService<CallQueueRepository>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<ConversationAudioRepository>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<OutboundCallCampaignRepository>()
                 );
             });

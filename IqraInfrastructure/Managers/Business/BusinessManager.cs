@@ -59,11 +59,10 @@ namespace IqraInfrastructure.Managers.Business
             ModemTelManager? modemTelManager,
             IntegrationsManager? integrationsManager,
             LanguagesManager? langaugesManager,
-            CallQueueRepository? callQueueRepository,
+            InboundCallQueueRepository? callQueueRepository,
             ConversationStateRepository? conversationStateRepository,
             ConversationAudioRepository? conversationAudioRepository,
             RegionManager? regionManager,
-            IHttpClientFactory? httpClientFactory,
             OutboundCallCampaignRepository? outboundCallCampaignRepository
         )
         {
@@ -143,11 +142,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeMakeCallManager)
             {
-                if (regionManager == null || httpClientFactory == null || outboundCallCampaignRepository == null || callQueueRepository == null)
+                if (regionManager == null || outboundCallCampaignRepository == null || callQueueRepository == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessMakeCallManager");
                 }
-                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, httpClientFactory, outboundCallCampaignRepository, callQueueRepository);
+                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, callQueueRepository);
             }
         }
 
