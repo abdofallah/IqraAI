@@ -295,6 +295,14 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>()
                 );
             });
+            builder.Services.AddSingleton<OutboundCallQueueRepository>((sp) =>
+            {
+                return new OutboundCallQueueRepository(
+                    appConfig["CallQueueRepository:ConnectionString"],
+                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
+                );
+            });
             builder.Services.AddSingleton<OutboundCallCampaignRepository>((sp) =>
             {
                 return new OutboundCallCampaignRepository(
@@ -412,7 +420,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<ConversationAudioRepository>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<OutboundCallCampaignRepository>()
+                    sp.GetRequiredService<OutboundCallCampaignRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

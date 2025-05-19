@@ -59,11 +59,12 @@ namespace IqraInfrastructure.Managers.Business
             ModemTelManager? modemTelManager,
             IntegrationsManager? integrationsManager,
             LanguagesManager? langaugesManager,
-            InboundCallQueueRepository? callQueueRepository,
+            InboundCallQueueRepository? inboundCallQueueRepo,
             ConversationStateRepository? conversationStateRepository,
             ConversationAudioRepository? conversationAudioRepository,
             RegionManager? regionManager,
-            OutboundCallCampaignRepository? outboundCallCampaignRepository
+            OutboundCallCampaignRepository? outboundCallCampaignRepository,
+            OutboundCallQueueRepository? outboundCallQueueRepository
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -134,19 +135,19 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeConversationsManager)
             {
-                if (conversationStateRepository == null || conversationAudioRepository == null || callQueueRepository == null)
+                if (conversationStateRepository == null || conversationAudioRepository == null || inboundCallQueueRepo == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessConversationsManager");
                 }
-                _businessConversationsManager = new BusinessConversationsManager(this, callQueueRepository, conversationStateRepository, conversationAudioRepository);
+                _businessConversationsManager = new BusinessConversationsManager(this, inboundCallQueueRepo, conversationStateRepository, conversationAudioRepository);
             }
             if (_settings.InitalizeMakeCallManager)
             {
-                if (regionManager == null || outboundCallCampaignRepository == null || callQueueRepository == null)
+                if (regionManager == null || outboundCallCampaignRepository == null || outboundCallQueueRepository == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessMakeCallManager");
                 }
-                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, callQueueRepository);
+                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, outboundCallQueueRepository);
             }
         }
 

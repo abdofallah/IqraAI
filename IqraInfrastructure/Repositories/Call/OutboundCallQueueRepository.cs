@@ -81,11 +81,6 @@ namespace IqraInfrastructure.Repositories.Call
                     new CreateIndexModel<OutboundCallQueueData>(
                         Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.CampaignId),
                         new CreateIndexOptions { Name = "Idx_Archived_CampaignId" }),
-
-                    // For general lookup by ID
-                     new CreateIndexModel<OutboundCallQueueData>(
-                        Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.Id),
-                        new CreateIndexOptions { Name = "Idx_Archived_Id", Unique = true }),
                 };
             _outboundArchivedQueueCollection.Indexes.CreateManyAsync(archivedIndexes).GetAwaiter().GetResult();
         }

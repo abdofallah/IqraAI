@@ -29,7 +29,7 @@ namespace ProjectIqraBackendApp.Controllers
         }
 
         [HttpPost("incoming")]
-        public async Task<FunctionReturnResult> HandleIncomingCall([FromBody] BackendIncomingCallRequest request)
+        public async Task<FunctionReturnResult> HandleIncomingCall([FromBody] BackendInboundCallRequest request)
         {
             var result = new FunctionReturnResult();
 
@@ -107,7 +107,7 @@ namespace ProjectIqraBackendApp.Controllers
         }
 
         [HttpPost("outbound")]
-        public async Task<IActionResult> InitiateOutboundCall([FromBody] OutboundCallRequestModel request)
+        public async Task<IActionResult> InitiateOutboundCall([FromBody] BackendOutboundCallRequest request)
         {
             // Validate API key
             if (!ValidateApiKey())
@@ -207,7 +207,7 @@ namespace ProjectIqraBackendApp.Controllers
             return !string.IsNullOrEmpty(apiKey) && apiKey == expectedApiKey;
         }
 
-        private TelephonyWebhookContextModel CreateModemTelClientData(BackendIncomingCallRequest request)
+        private TelephonyWebhookContextModel CreateModemTelClientData(BackendInboundCallRequest request)
         {
             if (!request.AdditionalData.TryGetValue("mediaSessionToken", out var token))
             {
@@ -229,7 +229,7 @@ namespace ProjectIqraBackendApp.Controllers
             };
         }
 
-        private TelephonyWebhookContextModel CreateTwilioClientData(BackendIncomingCallRequest request)
+        private TelephonyWebhookContextModel CreateTwilioClientData(BackendInboundCallRequest request)
         {
             // Extract Twilio-specific data from request
             if (!request.AdditionalData.TryGetValue("accountSid", out var accountSid))

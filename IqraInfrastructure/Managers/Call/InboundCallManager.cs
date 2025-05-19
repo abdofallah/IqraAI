@@ -396,17 +396,9 @@ namespace IqraInfrastructure.Managers.Call
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                 // Prepare the request body
-                var requestBody = new BackendIncomingCallRequest()
+                var requestBody = new BackendInboundCallRequest()
                 {
-                    Provider = webhookContext.Provider,
-                    ProviderCallId = webhookContext.CallId,
                     QueueId = callQueue.Id,
-                    BusinessId = callQueue.BusinessId,
-                    PhoneNumberId = webhookContext.PhoneNumberId,
-                    To = webhookContext.To,
-                    From = webhookContext.From,
-                    RouteId = "",//callQueue.RouteId,
-                    AdditionalData = webhookContext.AdditionalData
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestBody);

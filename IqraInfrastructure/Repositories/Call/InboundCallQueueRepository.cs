@@ -5,7 +5,6 @@ using IqraCore.Entities.Helpers;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
-using System.Collections;
 
 namespace IqraInfrastructure.Repositories.Call
 {
@@ -47,11 +46,6 @@ namespace IqraInfrastructure.Repositories.Call
                             .Descending(c => c.EnqueuedAt) // For default pagination order
                             .Descending(c => c.Id),        // Tie-breaker
                         new CreateIndexOptions { Name = "Idx_Inbound_Business_EnqueuedAt_Id" }),
-
-                    // For general lookups by ID
-                     new CreateIndexModel<InboundCallQueueData>(
-                        Builders<InboundCallQueueData>.IndexKeys.Ascending(c => c.Id),
-                        new CreateIndexOptions { Name = "Idx_Inbound_Id", Unique = true }),
                 };
 
             _inboundCallQueueCollection.Indexes.CreateManyAsync(inboundIndexes).GetAwaiter().GetResult();
