@@ -1,4 +1,6 @@
+using Google.Api;
 using IqraCore.Entities.Configuration;
+using IqraCore.Entities.Server.Configuration;
 using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
@@ -19,6 +21,7 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
 namespace ProjectIqraBackendProxy
@@ -31,12 +34,24 @@ namespace ProjectIqraBackendProxy
 
             // Configuration
             var appConfig = builder.Configuration;
+            ProxyAppConfig proxyAppConfig = new ProxyAppConfig()
+            {
+                RegionId = appConfig["Proxy:RegionId"],
+                Identity = appConfig["Proxy:Identity"],
+                OutboundProcessing = new ProxyAppOutboundProcessingConfig()
+                {
+                    DbFetchBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:DbFetchBatchSize"]),
+                    PollingIntervalSeconds = int.Parse(appConfig["Proxy:OutboundProcessing:PollingIntervalSeconds"]),
+                    ProcessingBatchSize = int.Parse(appConfig["Proxy:OutboundProcessing:ProcessingBatchSize"]),
+                    ScheduleWindowMinutes = int.Parse(appConfig["Proxy:OutboundProcessing:ScheduleWindowMinutes"])
+                }
+            };
 
             // Repositories
             SetupRepositories(builder, appConfig);
 
             // Managers
-            SetupManagers(builder, appConfig);
+            SetupManagers(builder, appConfig, proxyAppConfig);
 
             // HTTP Client
             builder.Services.AddHttpClient("CallManagerServerForward").ConfigureHttpMessageHandlerBuilder(builder => builder.PrimaryHandler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true });
@@ -49,6 +64,7 @@ namespace ProjectIqraBackendProxy
                 client.Timeout = TimeSpan.FromSeconds(30);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
+            builder.Services.AddHttpClient("OutboundCallForwardClient");
 
             // Add services to the container
             builder.Services.AddControllers();
@@ -178,9 +194,17 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<ILogger<ConversationStateRepository>>()
                 );
             });
+            builder.Services.AddSingleton<OutboundCallQueueRepository>(sp =>
+            {
+                return new OutboundCallQueueRepository(
+                    appConfig["CallQueueRepository:ConnectionString"],
+                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
+                );
+            });
         }
 
-        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
+        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, ProxyAppConfig proxyAppConfig)
         {
             builder.Services.AddSingleton<RegionManager>((sp) =>
             {
@@ -239,6 +263,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
+                    null,
                     null
                 );
             });
@@ -265,21 +290,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<ConversationStateRepository>()
-                );
-            });
-            builder.Services.AddSingleton<OutboundCallManager>((sp) =>
-            {
-                return new OutboundCallManager(
-                    sp.GetRequiredService<ILogger<OutboundCallManager>>(),
-                    sp.GetRequiredService<IHttpClientFactory>(),
-                    sp.GetRequiredService<BusinessManager>(),
-                    sp.GetRequiredService<ServerSelectionManager>(),
-                    sp.GetRequiredService<InboundCallQueueRepository>(),
-                    sp.GetRequiredService<ModemTelManager>(),
-                    sp.GetRequiredService<TwilioManager>(),
-                    sp.GetRequiredService<IntegrationsManager>(),
-                    sp.GetRequiredService<RegionManager>()
+                    sp.GetRequiredService<ConversationStateRepository>(),
+                    sp.GetRequiredService<BillingValidationManager>()
                 );
             });
             builder.Services.AddSingleton<UserManager>((sp) =>
@@ -297,6 +309,36 @@ namespace ProjectIqraBackendProxy
                 return new PlanManager(
                     sp.GetRequiredService<ILogger<PlanManager>>(),
                     sp.GetRequiredService<PlanRepository>()
+                );
+            });
+            builder.Services.AddSingleton<BillingValidationManager>((sp) =>
+            {
+                return new BillingValidationManager(
+                    sp.GetRequiredService<ILogger<BillingValidationManager>>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<ConversationStateRepository>()
+                );
+            });
+            builder.Services.AddSingleton<OutboundCallProcessingOrchestrator>((sp) =>
+            {
+                return new OutboundCallProcessingOrchestrator(
+                    sp.GetRequiredService<ILogger<OutboundCallProcessingOrchestrator>>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<BillingValidationManager>(),
+                    sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
+                );
+            });
+            builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
+            {
+                return new OutboundCallProcessorService(
+                    sp.GetRequiredService<ILogger<OutboundCallProcessorService>>(),
+                    proxyAppConfig,
+                    sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
             });
         }

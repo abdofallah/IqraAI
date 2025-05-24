@@ -56,7 +56,7 @@ namespace IqraInfrastructure.Repositories.Call
                     // For finding calls being processed by a specific proxy instance
                     new CreateIndexModel<OutboundCallQueueData>(
                         Builders<OutboundCallQueueData>.IndexKeys
-                            .Ascending(c => c.ProcessingServerId) // Assuming this will store Proxy Instance ID
+                            .Ascending(c => c.ProcessingBackendServerId) // Assuming this will store Proxy Instance ID
                             .Ascending(c => c.Status),
                         new CreateIndexOptions { Name = "Idx_Active_ProcessingServerId_Status" }),
 
@@ -163,7 +163,7 @@ namespace IqraInfrastructure.Repositories.Call
                     );
 
                     var updateDefinition = Builders<OutboundCallQueueData>.Update
-                        .Set(c => c.Status, CallQueueStatusEnum.WaitingForProcessing)
+                        .Set(c => c.Status, CallQueueStatusEnum.ProcessingProxy)
                         .Set(c => c.EnqueuedAt, call.EnqueuedAt ?? now);
 
                     var options = new FindOneAndUpdateOptions<OutboundCallQueueData>
@@ -231,11 +231,11 @@ namespace IqraInfrastructure.Repositories.Call
 
                 if (newProcessingServerId != null) // Can be null to unset, or a new server ID
                 {
-                    updateBuilder = updateBuilder.Set(c => c.ProcessingServerId, newProcessingServerId);
+                    updateBuilder = updateBuilder.Set(c => c.ProcessingBackendServerId, newProcessingServerId);
                 }
                 else if (newStatus == CallQueueStatusEnum.Queued) // If requeueing, clear ProcessingServerId
                 {
-                    updateBuilder = updateBuilder.Set(c => c.ProcessingServerId, (string?)null);
+                    updateBuilder = updateBuilder.Set(c => c.ProcessingBackendServerId, (string?)null);
                 }
 
 
@@ -253,7 +253,7 @@ namespace IqraInfrastructure.Repositories.Call
                 {
                     updateBuilder = updateBuilder.Set(c => c.CompletedAt, completedAt.Value);
                 }
-                else if (newStatus == CallQueueStatusEnum.Processed || newStatus == CallQueueStatusEnum.Failed ||
+                else if (newStatus == CallQueueStatusEnum.ProcessedBackend || newStatus == CallQueueStatusEnum.Failed ||
                          newStatus == CallQueueStatusEnum.Canceled || newStatus == CallQueueStatusEnum.Expired)
                 {
                     updateBuilder = updateBuilder.Set(c => c.CompletedAt, DateTime.UtcNow);

@@ -2,8 +2,10 @@
 
 namespace IqraCore.Entities.Conversation.Configuration
 {
-    public class ConversationAgentConfiguration
+    public class ConversationClientConfiguration
     {
+        public CallQueueData QueueData { get; set; }
+        
         // Audio Config
         public int SampleRate { get; set; }
         public int BitsPerSample { get; set; }

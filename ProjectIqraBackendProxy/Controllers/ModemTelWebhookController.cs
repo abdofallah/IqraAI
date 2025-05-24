@@ -23,8 +23,8 @@ namespace ProjectIqraBackendProxy.Controllers
             _callDistributionManager = distributionService;
         }
 
-        [HttpPost("incoming/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleIncomingWebhook([FromBody] ModemTelWebhookData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
+        [HttpPost("status/{businessId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleSattusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
@@ -37,129 +37,68 @@ namespace ProjectIqraBackendProxy.Controllers
                 return Unauthorized("Invalid signature");
             }
 
-            // Process webhook based on event type
-            switch (webhookData.Event?.ToLower())
+            var webhookContext = new TelephonyWebhookContextModel
             {
-                case "call.incoming":
-                    try
-                    {
-                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookIncomingCallData>();
-                    }
-                    catch (Exception ex)
-                    {
-                        return BadRequest("Error deserializing incoming call webhook data");
-                    }
-                    return await HandleNewCall(webhookData, businessId, phoneNumberId);
+                Provider = TelephonyProviderEnum.ModemTel,
+                CallId = webhookData.CallId,
+                BusinessId = businessId,
+                PhoneNumberId = phoneNumberId,
+                To = webhookData.To,
+                From = webhookData.From,
+                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
+            };
 
-                case "call.answered":
-                    try
+            // Process webhook based on event type
+            switch (webhookData.CallStatus?.ToLower())
+            {
+                case "incoming":
                     {
-                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookAnsweredCallData>();
-                    }
-                    catch (Exception ex)
-                    {
-                        return BadRequest("Error deserializing answered call webhook data");
-                    }
-                    return await HandleCallAnswered(webhookData, businessId, phoneNumberId);
+                        var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
 
-                case "call.ended":
-                    try
-                    {
-                        webhookData.Data = ((JsonElement)webhookData.Data).Deserialize<ModemTelWebhookEndedCallData>();
+                        return Ok();
                     }
-                    catch (Exception ex)
+
+                case "in-progress":
                     {
-                        return BadRequest("Error deserializing ended call webhook data");
+                        var distributionResult = await _callDistributionManager.NotifyCallStarted(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
                     }
-                    return await HandleCallEnded(webhookData, businessId, phoneNumberId);
+
+                case "completed":
+                    {
+                        var distributionResult = await _callDistributionManager.NotifyCallEnded(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                case "no-answer":
+                case "busy":
+                    {
+                        var distributionResult = await _callDistributionManager.NotifyCallBusy(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
 
                 default:
                     return BadRequest("Unhandled event type");
             }
-        }
-
-        private async Task<IActionResult> HandleNewCall(ModemTelWebhookData webhookData, long businessId, string phoneNumberId)
-        {
-            try
-            {
-                var incomingCallData = (ModemTelWebhookIncomingCallData)webhookData.Data;
-                if (incomingCallData == null || incomingCallData.CallId == null || incomingCallData.To == null || incomingCallData.From == null || incomingCallData.Direction == null || incomingCallData.Media == null || incomingCallData.Media.Token == null)
-                {
-                    return BadRequest("Invalid incoming call webhook data");
-                }
-
-                var webhookContext = new TelephonyWebhookContextModel
-                {
-                    Provider = TelephonyProviderEnum.ModemTel,
-                    CallId = incomingCallData.CallId,
-                    BusinessId = businessId,
-                    PhoneNumberId = phoneNumberId,
-                    To = incomingCallData.To,
-                    From = incomingCallData.From,
-                    AdditionalData = new Dictionary<string, string>
-                    {
-                        ["event"] = webhookData.Event,
-                        ["direction"] = incomingCallData.Direction,
-                        ["mediaSessionToken"] = incomingCallData.Media.Token
-                    }
-                };
-
-                var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
-                if (!distributionResult.Success)
-                {
-                    return NoContent();
-                }
-
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing new call from ModemTel for {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
-                return StatusCode(500, "Internal server error");
-            }
-        }
-
-        private async Task<IActionResult> HandleCallAnswered(ModemTelWebhookData webhookData, long businessId, string phoneNumberId)
-        {
-            var answeredData = webhookData.Data as ModemTelWebhookAnsweredCallData;
-            if (answeredData == null || answeredData.CallId == null)
-            {
-                _logger.LogWarning("Invalid call answered webhook data for {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
-                return BadRequest("Invalid call answered webhook data");
-            }
-
-            _logger.LogInformation("Call {CallId} answered for {BusinessId}/{PhoneNumberId}", answeredData.CallId, businessId, phoneNumberId);
-            return Ok();
-        }
-
-        private async Task<IActionResult> HandleCallEnded(ModemTelWebhookData webhookData, long businessId, string phoneNumberId)
-        {
-            var endedData = webhookData.Data as ModemTelWebhookEndedCallData;
-            if (endedData == null || endedData.CallId == null)
-            {
-                _logger.LogWarning("Invalid call ended webhook data for {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
-                return BadRequest("Invalid call ended webhook data");
-            }
-
-            // Inform the backend app that the call has ended (through Redis pubsub)
-            await _callDistributionManager.NotifyCallEnded(
-                endedData.CallId,
-                TelephonyProviderEnum.ModemTel,
-                businessId,
-                phoneNumberId
-            );
-
-            _logger.LogInformation("Call {CallId} ended for {BusinessId}/{PhoneNumberId}", endedData.CallId, businessId, phoneNumberId);
-            return Ok();
-        }
-
-        private bool ValidateWebhookSignature()
-        {
-            // temporary placeholder function for now
-            return true;
-
-            // In future implement the user to generate their own api key or certificate
-            // validate against the phone number webhook's api key or certificate with the one recieved in the request
         }
     }
 }

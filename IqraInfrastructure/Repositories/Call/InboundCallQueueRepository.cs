@@ -234,13 +234,13 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        public async Task UpdateInboundCallQueueProcessingServerAsync(string queueId, string? serverId)
+        public async Task UpdateInboundCallQueueProcessingBackendServerIdAsync(string queueId, string? serverId)
         {
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
                 var update = Builders<InboundCallQueueData>.Update
-                    .Set(c => c.ProcessingServerId, serverId);
+                    .Set(c => c.ProcessingBackendServerId, serverId);
 
                 await _inboundCallQueueCollection.UpdateOneAsync(filter, update);
             }
@@ -304,7 +304,7 @@ namespace IqraInfrastructure.Repositories.Call
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.And(
-                    Builders<InboundCallQueueData>.Filter.Eq(c => c.ProcessingServerId, serverId),
+                    Builders<InboundCallQueueData>.Filter.Eq(c => c.ProcessingBackendServerId, serverId),
                     Builders<InboundCallQueueData>.Filter.Eq(c => c.RegionId, regionId),
                     Builders<InboundCallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Queued)
                 );

@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Conversation;
 using Microsoft.Extensions.Logging;
 
@@ -36,7 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
         public abstract Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);
         public abstract Task SendTextAsync(string text, CancellationToken cancellationToken);
-        public abstract Task ConnectAsync(CancellationToken cancellationToken);
+        public abstract Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken);
         public abstract Task DisconnectAsync(string reason);
 
         protected void OnAudioReceived(byte[] audioData)
@@ -59,5 +60,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _isConnected = false;
             Disconnected?.Invoke(this, new ConversationClientDisconnectedEventArgs(reason));
         }
+
+        public abstract void Dispose();
     }
 }

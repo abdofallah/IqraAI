@@ -16,10 +16,12 @@ using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
-    public class ConversationAIAgent : IConversationAgent, IDisposable
+    public class ConversationAIAgent : IConversationAgent
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationAIAgent> _logger;
+
+        private readonly ConversationAgentConfiguration _agentConfiguration;
 
         // Dependencies
         private readonly ConversationSessionManager _conversationSessionManager;
@@ -50,6 +52,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public string AgentId => _agentState.AgentId;
         public ConversationAgentType AgentType => ConversationAgentType.AI;
 
+        public ConversationAgentConfiguration AgentConfiguration => _agentConfiguration;
+
         // Events
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioGenerated;
 
@@ -63,6 +67,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             ILoggerFactory loggerFactory,
             ConversationSessionManager sessionManager,
             string agentId, // Agent ID passed in
+            ConversationAgentConfiguration agentConfiguration,
+
             BusinessManager businessManager,
             SystemPromptGenerator systemPromptGenerator,
             STTProviderManager sttProviderManager,
@@ -70,10 +76,12 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             LLMProviderManager llmProviderManager,
             LanguagesManager languagesManager,
             BusinessAgentAudioRepository audioRepository
-            )
+        )
         {
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationAIAgent>();
+
+            _agentConfiguration = agentConfiguration;
 
             // Store dependencies
             _conversationSessionManager = sessionManager;
@@ -87,6 +95,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // Create shared state
             _agentState = new ConversationAIAgentState(agentId, _conversationCTS.Token);
+            _agentState.AgentConfiguration = _agentConfiguration;
 
             // Instantiate Helper Modules
             _scriptAccessor = new ScriptExecutionManager(loggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
@@ -104,8 +113,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
-
-            _logger.LogInformation("ConversationAIAgent {AgentId} instance created.", agentId);
         }
 
         private void WireUpEvents()
@@ -173,7 +180,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Usually followed by waiting for OnSpeechPlaybackComplete.
         }
 
-        public async Task InitializeAsync(ConversationAgentConfiguration config, BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken)
+        public async Task InitializeAsync(BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken)
         {
             if (_agentState.IsInitialized)
             {
@@ -183,7 +190,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _logger.LogInformation("AI Agent {AgentId} initializing...", AgentId);
 
             _conversationCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _agentState.AgentConfiguration = config;
 
             try
             {
@@ -213,8 +219,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 await _audioInputHandler.InitializeAsync(_conversationCTS.Token);
 
                 _agentState.IsInitialized = true;
-                _logger.LogInformation("AI Agent {AgentId} initialized successfully. Route: {RouteId}, Lang: {Lang}, Type: {Type}",
-                    AgentId, config.RouteId, _agentState.CurrentLanguageCode, _agentState.CurrentConversationType);
+                _logger.LogInformation("AI Agent {AgentId} initialized successfully. Lang: {Lang}, Type: {Type}",
+                    AgentId, _agentState.CurrentLanguageCode, _agentState.CurrentConversationType);
             }
             catch (Exception ex)
             {

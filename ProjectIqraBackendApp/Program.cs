@@ -25,6 +25,7 @@ using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -47,7 +48,8 @@ namespace ProjectIqraBackendApp
                     ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
                     NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
                     MaxNetworkDownloadMbps = int.Parse(appConfig["Server:MaxNetworkDownloadMbps"]),
-                    MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"])
+                    MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"]),
+                    ApiKey = appConfig["Server:ApiKey"]
                 };
             });
 
@@ -88,6 +90,52 @@ namespace ProjectIqraBackendApp
 
             // Initalize All Singleton Services
             InitializeAllSingletonServices(app.Services);
+
+            app.UseWebSockets(new WebSocketOptions
+                {
+                    KeepAliveInterval = TimeSpan.FromSeconds(10)
+                }
+            );
+
+            app.Use(async (context, next) =>
+            {
+                if (
+                    context.Request.Path.StartsWithSegments("/ws/call/modemtel")
+                    ||
+                    context.Request.Path.StartsWithSegments("/ws/call/twilio")
+                )
+                {
+                    if (context.WebSockets.IsWebSocketRequest)
+                    {
+                        var path = context.Request.Path.Value;
+                        if (path.EndsWith("/")) path = path.Substring(0, path.Length - 1);
+                        var splitPath = path.Split('/');
+
+                        var providerType = splitPath.ElementAt(2);
+
+                        var conversationStateId = splitPath.ElementAt(3);                      
+                        if (string.IsNullOrEmpty(conversationStateId))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Missing conversation state ID or token");
+                            return;
+                        }
+
+                        WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+
+                        await app.Services.GetRequiredService<CallProcessorManager>().SetConversationClientWebsocket(conversationStateId, webSocket);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 400;
+                        await context.Response.WriteAsync("WebSocket connection expected");
+                    }
+                }
+                else
+                {
+                    await next();
+                }
+            });
 
             app.UseCors("AllowedOrigins");
 

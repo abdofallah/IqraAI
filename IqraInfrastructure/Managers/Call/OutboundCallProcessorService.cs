@@ -12,7 +12,7 @@ namespace IqraInfrastructure.Managers.Call
     public class OutboundCallProcessorService : IHostedService, IDisposable
     {
         private readonly ILogger<OutboundCallProcessorService> _logger;
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly OutboundCallProcessingOrchestrator _outboundCallProcessingOrchestrator;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
         private Task _pollTask;
         private PaginationCursor? _currentRegionQueueCursor;
@@ -25,12 +25,12 @@ namespace IqraInfrastructure.Managers.Call
         public OutboundCallProcessorService(
             ILogger<OutboundCallProcessorService> logger,
             ProxyAppConfig proxyAppConfig,
-            IServiceScopeFactory scopeFactory,
+            OutboundCallProcessingOrchestrator callProcessingOrchestrator,
             OutboundCallQueueRepository outboundCallQueueRepo
         )
         {
             _logger = logger;
-            _scopeFactory = scopeFactory;
+            _outboundCallProcessingOrchestrator = callProcessingOrchestrator;
             _proxyAppConfig = proxyAppConfig;
             _outboundCallQueueRepo = outboundCallQueueRepo;
 
@@ -127,9 +127,7 @@ namespace IqraInfrastructure.Managers.Call
                     return;
                 }
 
-                using var scope = _scopeFactory.CreateScope();
-                var orchestrator = scope.ServiceProvider.GetRequiredService<OutboundCallProcessingOrchestrator>();
-                await orchestrator.ProcessCallAsync(call);
+                await _outboundCallProcessingOrchestrator.ProcessCallAsync(call);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { /** Ignore **/ }
             catch (Exception ex)
@@ -138,9 +136,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 try
                 {
-                    using var errorScope = _scopeFactory.CreateScope();
-                    var repo = errorScope.ServiceProvider.GetRequiredService<OutboundCallQueueRepository>();
-                    await repo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Type = CallQueueLogTypeEnum.Error, Message = $"Unhandled error during processing: {ex.Message}" });
+                    await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Type = CallQueueLogTypeEnum.Error, Message = $"Unhandled error during processing: {ex.Message}" });
                 }
                 catch (Exception finalEx)
                 {

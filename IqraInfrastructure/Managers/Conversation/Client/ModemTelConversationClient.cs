@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
@@ -10,12 +11,15 @@ namespace IqraInfrastructure.Managers.Conversation.Client
     public class ModemTelConversationClient : BaseTelephonyConversationClient
     {
         private readonly ModemTelManager _modemTelManager;
+
         private readonly string _callId;
         private readonly string _apiKey;
         private readonly string _apiBaseUrl;
         private readonly string _mediaSessionToken;
+
         private ClientWebSocket? _webSocket;
         private Task? _receiveTask;
+
         private readonly int _bufferSize = 4096;
 
         private bool _isAnswered = false;
@@ -30,8 +34,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             string apiKey,       
             string mediaSessionToken,
             ModemTelManager modemTelManager,
-            ILogger<ModemTelConversationClient> logger)
-            : base(clientId, phoneNumber, logger)
+            ILogger<ModemTelConversationClient> logger
+        ) : base(clientId, phoneNumber, logger)
         {
             _callId = callId;
             _apiKey = apiKey;
@@ -41,34 +45,33 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _clientTelephonyType = TelephonyProviderEnum.ModemTel;
         }
 
-        public override async Task ConnectAsync(CancellationToken cancellationToken)
+        public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)
         {
+            var result = new FunctionReturnResult();
+
             if (!_isAnswered)
             {
                 var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _callId);
                 if (!answerResult.Success)
                 {
-                    _logger.LogError("Error answering call {CallId}: {ErrorMessage}", _callId, answerResult.Message);
-                    return;
+                    return result.SetFailureResult($"ConnectAsync:{answerResult.Code}", answerResult.Message);
                 }
                 _isAnswered = true;
             }
 
             if (_isConnected)
             {
-                _logger.LogWarning("WebSocket is already connected for call {CallId}", _callId);
-                return;
+                // consider as success if already conncted??
+                return result.SetSuccessResult();
             }
 
             try
             {
                 _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-                // Create a new WebSocket
                 _webSocket = new ClientWebSocket();
                 _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_mediaSessionToken}");
 
-                // Connect to the WebSocket
                 var currentBaseUrl = _apiBaseUrl;
                 if (currentBaseUrl.StartsWith("http://") || currentBaseUrl.StartsWith("https://"))
                 {
@@ -76,19 +79,28 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                 }
                 var baseUri = new Uri(currentBaseUrl);
                 baseUri = new Uri(baseUri, $"ws/calls/{_callId}");
-                await _webSocket.ConnectAsync(baseUri, _connectionCts.Token);
 
-                _logger.LogInformation("Connected to ModemTel WebSocket for call {CallId}", _callId);
+                try
+                {
+                    await _webSocket.ConnectAsync(baseUri, _connectionCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    _webSocket.Dispose();
+                    _webSocket = null;
+
+                    return result.SetFailureResult($"ConnectAsync:WEBSOCKET_CONNECT_EXCEPTION", ex.Message);
+                }
 
                 // Start receiving data
                 _receiveTask = Task.Run(() => ReceiveLoopAsync(_connectionCts.Token), _connectionCts.Token);
 
                 _isConnected = true;
+                return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error connecting to ModemTel WebSocket for call {CallId}", _callId);
-                throw;
+                return result.SetFailureResult($"ConnectAsync:EXCEPTION", ex.Message);
             }
         }
 
@@ -108,22 +120,25 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                 // Close the WebSocket if it's still open
                 if (_webSocket != null && _webSocket.State == WebSocketState.Open)
                 {
+                    await _webSocket.SendAsync(
+                        new ArraySegment<byte>(Encoding.UTF8.GetBytes("disconnect")),
+                        WebSocketMessageType.Close,
+                        true,
+                        CancellationToken.None
+                    );
+
                     await _webSocket.CloseAsync(
                         WebSocketCloseStatus.NormalClosure,
                         reason,
-                        CancellationToken.None);
+                        CancellationToken.None
+                    );
                 }
 
                 // End the call on the ModemTel side
                 await _modemTelManager.HangupCallAsync(_apiKey, _apiBaseUrl, _callId);
 
-                _logger.LogInformation("Disconnected from ModemTel WebSocket for call {CallId}: {Reason}", _callId, reason);
-
                 // Dispose resources
-                _webSocket?.Dispose();
-                _webSocket = null;
-                _connectionCts?.Dispose();
-                _connectionCts = null;
+                Dispose();
 
                 _isConnected = false;
                 OnDisconnected(reason);
@@ -154,6 +169,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             }
             catch (Exception ex)
             {
+                // check if fails constantly for 3 seconds, then kill the client
                 _logger.LogError(ex, "Error sending audio data for call {CallId}", _callId);
                 throw;
             }
@@ -199,22 +215,17 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
             try
             {
-                while (!cancellationToken.IsCancellationRequested &&
-                       _webSocket != null &&
-                       _webSocket.State == WebSocketState.Open)
+                while (!cancellationToken.IsCancellationRequested && _webSocket != null && _webSocket.State == WebSocketState.Open)
                 {
                     WebSocketReceiveResult result;
                     try
                     {
                         result = await _webSocket.ReceiveAsync(
                             new ArraySegment<byte>(buffer),
-                            cancellationToken);
+                            cancellationToken
+                        );
                     }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                    {
-                        // Normal cancellation
-                        break;
-                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
                     catch (WebSocketException ex)
                     {
                         _logger.LogWarning(ex, "WebSocket error for call {CallId}", _callId);
@@ -295,6 +306,37 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing control message for call {CallId}: {Message}", _callId, message);
+            }
+        }
+
+        public override void Dispose()
+        {
+            if (_webSocket != null )
+            {
+                try
+                {
+                    _webSocket.Dispose();
+                }
+                catch { /** IGNORE **/ }
+
+                _webSocket = null;
+            }
+
+            if (_receiveTask != null)
+            {
+                try
+                {
+                    _receiveTask.Wait();
+                }
+                catch { /** IGNORE **/ }
+                
+                try
+                {
+                    _receiveTask.Dispose();
+                }
+                catch { /** IGNORE **/ }
+
+                _receiveTask = null;
             }
         }
 

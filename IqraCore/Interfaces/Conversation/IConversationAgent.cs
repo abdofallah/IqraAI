@@ -5,9 +5,10 @@ using IqraCore.Entities.Conversation.Events;
 
 namespace IqraCore.Interfaces.Conversation
 {
-    public interface IConversationAgent
+    public interface IConversationAgent : IDisposable
     {
         string AgentId { get; }
+        ConversationAgentConfiguration AgentConfiguration { get; }
         ConversationAgentType AgentType { get; }
 
         Task NotifyConversationStarted();
@@ -15,7 +16,7 @@ namespace IqraCore.Interfaces.Conversation
         Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken);
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
         Task ProcessDTMFAsync(string digit, string clientId, CancellationToken cancellationToken);
-        Task InitializeAsync(ConversationAgentConfiguration config, BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken);
+        Task InitializeAsync(BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken);
         Task ShutdownAsync(string reason);
 
         event EventHandler<ConversationAudioGeneratedEventArgs> AudioGenerated;

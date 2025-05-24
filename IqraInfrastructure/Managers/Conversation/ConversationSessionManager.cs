@@ -4,6 +4,8 @@ using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
@@ -15,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
-    public class ConversationSessionManager
+    public class ConversationSessionManager : IDisposable
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSessionManager> _logger;
@@ -25,7 +27,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ConversationAudioRepository _audioStorageManager;
 
         private readonly string _sessionId;
-
+        private CallQueueData _sessionCallQueueData;
         private readonly string _callOrWebInitiated;
 
         private readonly List<IConversationClient> _clients = new();
@@ -36,9 +38,6 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private readonly List<ConversationMessage> _messages = new();
 
-        private readonly ConversationSessionConfiguration _configuration;
-
-        private CallQueueData _sessionCallQueueData;
         private BusinessData _sessionBusinessData;
         private BusinessApp _sessionBusinessAppData;
         private BusinessAppRoute _sessionBusinessRouteData;
@@ -51,7 +50,9 @@ namespace IqraInfrastructure.Managers.Conversation
         private DateTime _lastUserActivityTime = DateTime.UtcNow;
         private Timer? _silenceTimer;
         private Timer? _sessionDurationTimer;
-        private CancellationTokenSource? _sessionCts;
+
+        private CancellationTokenSource _sessionCts;
+        private bool disposedValue;
 
         public event EventHandler<ConversationSessionStateChangedEventArgs>? StateChanged;
         public event EventHandler<ConversationMessageAddedEventArgs>? MessageAdded;
@@ -62,7 +63,7 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentRemovedEventArgs>? AgentRemoved;
 
         public string SessionId => _sessionId;
-        public ConversationSessionConfiguration Configuration => _configuration;
+        public ConversationSessionState State => _state;
         public bool IsCallInitiated => _callOrWebInitiated == "call";
         public bool IsWebInitiated => _callOrWebInitiated == "web";
         public string PrimaryClientIdentifier()
@@ -73,87 +74,124 @@ namespace IqraInfrastructure.Managers.Conversation
 
         public ConversationSessionManager(
             string sessionId,
+            CallQueueData queueData,
+            string callOrWebInitiated,
+            CancellationTokenSource sessionCTS,
+
             BusinessManager businessManager,
-            ConversationSessionConfiguration configuration,
             InboundCallQueueRepository callQueueRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
-            ILoggerFactory loggerFactory,
-            string callOrWebInitiated
-            )
+            ILoggerFactory loggerFactory
+        )
         {
             _sessionId = sessionId;
+            _sessionCallQueueData = queueData;
             _callOrWebInitiated = callOrWebInitiated;
+            _sessionCts = sessionCTS;
+
             _businessManager = businessManager;
-            _configuration = configuration;
             _callQueueRepository = callQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationSessionManager>();
-
-            // Create initial conversation state in the repository
-            InitalizeConversationConfigurationAsync().Wait();
-            InitializeConversationStateAsync().Wait();
         }
 
-        private async Task InitalizeConversationConfigurationAsync()
+        public async Task<FunctionReturnResult> InitalizeAsync()
         {
-            var callQueueData = await _callQueueRepository.GetInboundCallQueueByIdAsync(_configuration.QueueId);
-            if (callQueueData == null)
-            {
-                _logger.LogError("Call queue data not found for queue ID {QueueId}", _configuration.QueueId);
-                throw new InvalidOperationException($"Call queue data not found for queue ID {_configuration.QueueId}");
-            }
-            _sessionCallQueueData = callQueueData;
+            var result = new FunctionReturnResult();
 
-            var businessData = await _businessManager.GetUserBusinessById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
+            try
+            {
+                await InitalizeConversationConfigurationAsync();
+                await InitializeConversationStateAsync();
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult("InitalizeAsync:EXCEPTION", $"Failed to initialize conversation session state: {ex.Message}");
+            }
+        }
+
+        public async Task InitalizeConversationConfigurationAsync()
+        {
+            var businessData = await _businessManager.GetUserBusinessById(_sessionCallQueueData.BusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessData.Success)
             {
-                _logger.LogError("Business data not found for business ID {BusinessId}", _configuration.BusinessId);
-                throw new InvalidOperationException($"Business data not found for business ID {_configuration.BusinessId}");
+                _logger.LogError("Business data not found for business ID {BusinessId}", _sessionCallQueueData.BusinessId);
+                throw new InvalidOperationException($"Business data not found for business ID {_sessionCallQueueData.BusinessId}");
             }
             _sessionBusinessData = businessData.Data;
 
-            var businessAppData = await _businessManager.GetUserBusinessAppById(_configuration.BusinessId, "InitalizeConversationConfigurationAsync");
+            var businessAppData = await _businessManager.GetUserBusinessAppById(_sessionCallQueueData.BusinessId, "InitalizeConversationConfigurationAsync");
             if (!businessAppData.Success)
             {
-                _logger.LogError("Business app data not found for business ID {BusinessId}", _configuration.BusinessId);
-                throw new InvalidOperationException($"Business app data not found for business ID {_configuration.BusinessId}");
+                _logger.LogError("Business app data not found for business ID {BusinessId}", _sessionCallQueueData.BusinessId);
+                throw new InvalidOperationException($"Business app data not found for business ID {_sessionCallQueueData.BusinessId}");
             }
             _sessionBusinessAppData = businessAppData.Data;
 
-            var businessRouteData = businessAppData.Data.Routings.Find(r => r.Id == _configuration.RouteId);
-            if (businessRouteData == null)
+            if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
             {
-                _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _configuration.BusinessId, _configuration.RouteId);
-                throw new InvalidOperationException($"Business route data not found for business ID {_configuration.BusinessId} and route ID {_configuration.RouteId}");
+                InboundCallQueueData inboundCallQueue = _sessionCallQueueData as InboundCallQueueData;
+
+                var businessRouteData = businessAppData.Data.Routings.Find(r => r.Id == inboundCallQueue.RouteId);
+                if (businessRouteData == null)
+                {
+                    _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _sessionCallQueueData.BusinessId, inboundCallQueue.RouteId);
+                    throw new InvalidOperationException($"Business route data not found for business ID {_sessionCallQueueData.BusinessId} and route ID {inboundCallQueue.RouteId}");
+                }
+                _sessionBusinessRouteData = businessRouteData;
             }
-            _sessionBusinessRouteData = businessRouteData;
+            else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+            {
+                OutboundCallQueueData outboundCallQueue = _sessionCallQueueData as OutboundCallQueueData;
+
+                // todo _sessionBusinessRouteData
+            }
         }
 
-        private async Task InitializeConversationStateAsync()
+        public async Task InitializeConversationStateAsync()
         {
             var conversationState = new ConversationState
             {
                 Id = _sessionId,
                 BusinessMasterEmail = _sessionBusinessData.MasterUserEmail,
-                BusinessId = _configuration.BusinessId,
-                RouteId = _configuration.RouteId,
-                QueueId = _configuration.QueueId,
+                BusinessId = _sessionCallQueueData.BusinessId,
+                QueueId = _sessionCallQueueData.Id,
                 Status = ConversationSessionState.Created,
                 StartTime = DateTime.UtcNow,
                 LastActivityTime = DateTime.UtcNow,
-                ProcessingServerId = _sessionCallQueueData.ProcessingServerId,
+                ProcessingServerId = _sessionCallQueueData.ProcessingBackendServerId,
                 RegionId = _sessionCallQueueData.RegionId,
                 ExpectedEndTimeAt = DateTime.UtcNow.AddSeconds(_sessionBusinessRouteData.Configuration.MaxCallTimeS)
             };
 
             await _conversationStateRepository.CreateAsync(conversationState);
-            _logger.LogInformation("Initialized conversation state with ID {SessionId}", _sessionId);
         }
 
-        public async Task<bool> AddClientAsync(IConversationClient client, int SampleRate, int Channels, int bitsPerSample)
+        public async Task<FunctionReturnResult> AddPrimaryClient(IConversationClient client, ConversationClientConfiguration clientConfig)
+        {
+            var result = new FunctionReturnResult();
+
+            if (_primaryClient != null)
+            {
+                return result.SetFailureResult("AddPrimaryClient:ALREADY_REGISTERED", "A primary client is already registered with the session");
+            }
+
+            var addClientResult = await AddClientAsync(client, clientConfig);
+            if (!addClientResult)
+            {
+                return result.SetFailureResult("AddPrimaryClient:ADD_CLIENT_FAILED", "Failed to add primary client");
+            }
+
+            _primaryClient = client;
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<bool> AddClientAsync(IConversationClient client, ConversationClientConfiguration clientConfig)
         {
             if (client == null)
                 throw new ArgumentNullException(nameof(client));
@@ -186,9 +224,9 @@ namespace IqraInfrastructure.Managers.Conversation
                 JoinedAt = DateTime.UtcNow,
                 AudioInfo = new ConversationMemberAudioInfo()
                 { 
-                    SampleRate = SampleRate,
-                    Channels = Channels,
-                    BitsPerSample = 16,
+                    SampleRate = clientConfig.SampleRate,
+                    Channels = clientConfig.Channels,
+                    BitsPerSample = clientConfig.BitsPerSample,
                 },
                 Metadata = new Dictionary<string, string>
                 {
@@ -255,16 +293,27 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
-        public bool SetPrimaryClient(string clientId)
+        public async Task<FunctionReturnResult> AddPrimaryAgent(IConversationAgent agent)
         {
-            lock (_clientsLock)
+            var result = new FunctionReturnResult();
+
+            if (_primaryAgent != null)
             {
-                _primaryClient = _clients.FirstOrDefault(c => c.ClientId == clientId);
-                return _primaryClient != null;
+                return result.SetFailureResult("AddPrimaryAgent:ALREADY_REGISTERED", "A primary agent is already registered with the session");
             }
+
+            var addAgentResult = await AddAgentAsync(agent);
+            if (!addAgentResult)
+            {
+                return result.SetFailureResult("AddPrimaryAgent:ADD_AGENT_FAILED", "Failed to add primary agent");
+            }
+
+            _primaryAgent = agent;
+
+            return result.SetSuccessResult();
         }
 
-        public async Task<bool> AddAgentAsync(IConversationAgent agent, ConversationAgentConfiguration configuration)
+        public async Task<bool> AddAgentAsync(IConversationAgent agent)
         {
             if (agent == null)
                 throw new ArgumentNullException(nameof(agent));
@@ -289,9 +338,6 @@ namespace IqraInfrastructure.Managers.Conversation
                 _agents.Add(agent);
             }
 
-            // Initialize the agent with the provided configuration
-            await agent.InitializeAsync(configuration, _sessionBusinessAppData, _sessionBusinessRouteData, CancellationToken.None);
-
             // Create agent info in the database
             var agentInfo = new ConversationAgentInfo
             {
@@ -300,9 +346,9 @@ namespace IqraInfrastructure.Managers.Conversation
                 JoinedAt = DateTime.UtcNow,
                 AudioInfo = new ConversationMemberAudioInfo()
                 {
-                    SampleRate = configuration.SampleRate,
-                    Channels = configuration.Channels,
-                    BitsPerSample = configuration.BitsPerSample,
+                    SampleRate = agent.AgentConfiguration.SampleRate,
+                    Channels = agent.AgentConfiguration.Channels,
+                    BitsPerSample = agent.AgentConfiguration.BitsPerSample,
                 },
                 Metadata = new Dictionary<string, string>
                 {
@@ -355,16 +401,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
             _logger.LogInformation("Removed agent {AgentId} from session {SessionId}: {Reason}", agentId, _sessionId, reason);
             return true;
-        }
-
-        public bool SetPrimaryAgent(string agentId)
-        {
-            lock (_agentsLock)
-            {
-                _primaryAgent = _agents.FirstOrDefault(a => a.AgentId == agentId);
-                return _primaryAgent != null;
-            }
-        }
+        }       
 
         public IReadOnlyList<IConversationAgent> GetAgents()
         {
@@ -374,57 +411,75 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public async Task InitalizeAgent(string agentId)
         {
-            if (_state != ConversationSessionState.Created)
+
+        }
+
+        public async Task<FunctionReturnResult> StartAsync()
+        {
+            var result = new FunctionReturnResult();
+
+            if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
             {
-                _logger.LogWarning("Cannot start session {SessionId} because it is in state {State}", _sessionId, _state);
-                return;
+                return await StartInboundSessionAsync();
+            }
+            else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+            {
+                return await StartOutboundSessionAsync();
             }
 
-            // Create a cancellation token for the session
-            _sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            return result.SetFailureResult("StartAsync:INVALID_SESSION_TYPE", "Invalid session type");
+        }
 
-            // Update state
-            await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
+        private async Task<FunctionReturnResult> StartInboundSessionAsync()
+        {
+            var result = new FunctionReturnResult();
 
-            // Initialize clients
-            var tasks = new List<Task>();
-            foreach (var client in _clients)
+            try
             {
-                tasks.Add(
-                    Task.Run(
-                        async () =>
-                        {
-                            await Task.Delay(_sessionBusinessRouteData.Configuration.PickUpDelayMS, _sessionCts.Token);
-                            await client.ConnectAsync(_sessionCts.Token);
-                        }
-                    )
-                );
-            }
-            await Task.WhenAll(tasks);
+                // Update state
+                await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
-            // Start silence and max duration detection timer
-            StartTimers();
+                // Initialize primary client
+                await Task.Delay(_sessionBusinessRouteData.Configuration.PickUpDelayMS, _sessionCts.Token);
+                var primaryClientConnectResult = await _primaryClient.ConnectAsync(_sessionCts.Token);
+                if (!primaryClientConnectResult.Success)
+                {
+                    return result.SetFailureResult($"StartAsync:{primaryClientConnectResult.Code}", primaryClientConnectResult.Message);
+                }
 
-            // Update state
-            await UpdateStateAsync(ConversationSessionState.Active, "Session active");
+                // Start silence and max duration detection timer
+                StartTimers();
 
-            var agentsNotify = _agents.Select(async (agent) =>
+                // Update state
+                await UpdateStateAsync(ConversationSessionState.Active, "Session active");
+
+                var agentsNotify = _agents.Select(async (agent) =>
                 {
                     try
                     {
                         return agent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) // should never be the case...
                     {
                         return Task.CompletedTask;
                     }
                 }
-            );
-            await Task.WhenAll(agentsNotify);
+                );
+                // await Task.WhenAll(agentsNotify); i dont think we have to await this i guess
 
-            _logger.LogInformation("Session {SessionId} started", _sessionId);
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
+            }
+        }
+
+        private async Task<FunctionReturnResult> StartOutboundSessionAsync()
+        {
+
         }
 
         private void StartTimers()
@@ -439,13 +494,10 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private void CheckSilence(object? state)
         {
-            return;
-
             var silenceDuration = DateTime.UtcNow - _lastUserActivityTime;
 
             if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.EndCallOnSilenceMS)
             {
-                _logger.LogInformation("Ending session {SessionId} due to silence timeout", _sessionId);
                 EndAsync("Silence timeout reached").ContinueWith(t =>
                 {
                     if (t.IsFaulted)
@@ -456,14 +508,12 @@ namespace IqraInfrastructure.Managers.Conversation
             }
             else if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS)
             {
-                _logger.LogDebug("Silence detected in session {SessionId}", _sessionId);
-
-                // Notify agents about silence
                 lock (_agentsLock)
                 {
                     foreach (var agent in _agents)
                     {
                         // TODO disabled for now
+                        // todo get these texts from user what to say
                         //agent.ProcessTextAsync($"<silence duration=\"{silenceDuration.TotalSeconds:F1}s\">", null, CancellationToken.None)
                         //    .ContinueWith(t =>
                         //    {
@@ -548,7 +598,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _logger.LogInformation("Session {SessionId} resumed", _sessionId);
         }
 
-        public async Task EndAsync(string reason)
+        public async Task EndAsync(string reason, ConversationSessionState finalState = ConversationSessionState.Ended)
         {
             if (_state == ConversationSessionState.Ended)
             {
@@ -598,7 +648,7 @@ namespace IqraInfrastructure.Managers.Conversation
             }
 
             // Update state
-            await UpdateStateAsync(ConversationSessionState.Ended, reason);
+            await UpdateStateAsync(finalState, reason);
 
             // Calculate final metrics
             await UpdateFinalMetricsAsync();
@@ -606,7 +656,8 @@ namespace IqraInfrastructure.Managers.Conversation
             // Run Audio Compilation in the background
             RunAudioCompilationAsync();
 
-            _logger.LogInformation("Session {SessionId} ended: {Reason}", _sessionId, reason);
+            // Dispose
+            Dispose();
         }
 
         private async Task UpdateFinalMetricsAsync()
@@ -922,7 +973,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 var targetClient = GetClients().FirstOrDefault(c => c.ClientId == e.TargetClientId);
                 if (targetClient != null)
                 {
-                    await targetClient.SendAudioAsync(e.AudioData, CancellationToken.None);
+                    _ = targetClient.SendAudioAsync(e.AudioData, CancellationToken.None);
                 }
                 else
                 {
@@ -936,7 +987,7 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 try
                 {
-                    await client.SendAudioAsync(e.AudioData, CancellationToken.None);
+                    _ = client.SendAudioAsync(e.AudioData, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -1056,6 +1107,26 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                 });
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

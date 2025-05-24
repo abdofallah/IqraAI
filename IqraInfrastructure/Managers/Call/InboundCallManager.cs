@@ -80,7 +80,6 @@ namespace IqraInfrastructure.Managers.Call
 
             try
             {
-                // 1. Identify business and number information from webhook
                 var phoneNumberInfo = await GetPhoneNumberInfo(webhookContext);
                 if (phoneNumberInfo == null)
                 {
@@ -106,6 +105,7 @@ namespace IqraInfrastructure.Managers.Call
                 InboundCallQueueData callQueue = new InboundCallQueueData
                 {
                     EnqueuedAt = DateTime.UtcNow,
+                    Status = CallQueueStatusEnum.ProcessingProxy,
 
                     BusinessId = businessId,
                     RegionId = regionId,
@@ -116,6 +116,8 @@ namespace IqraInfrastructure.Managers.Call
                     RouteNumberProvider = webhookContext.Provider,
                     ProviderCallId = webhookContext.CallId,
                     CallerNumber = webhookContext.From,
+
+                    ProviderMetadata = webhookContext.AdditionalData
                 };
                 callQueueId = await _inboundCallQueueRepository.EnqueueInboundCallQueueAsync(callQueue);
                 if (string.IsNullOrWhiteSpace(callQueue.Id))
@@ -134,7 +136,6 @@ namespace IqraInfrastructure.Managers.Call
                     return result;
                 }
 
-                // 3. Select optimal server
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
@@ -144,7 +145,6 @@ namespace IqraInfrastructure.Managers.Call
                     return result;
                 }
 
-                // Get Region Api key
                 var regionData = await _regionManager.GetRegionById(regionId);
                 if (regionData == null)
                 {
@@ -176,8 +176,9 @@ namespace IqraInfrastructure.Managers.Call
                     var regionServerApiKey = regionServerData.APIKey;
                     var resgionUseSSL = regionServerData.UseSSL;
 
-                    callQueue.ProcessingServerId = regionServerId;
-                    await _inboundCallQueueRepository.UpdateInboundCallQueueProcessingServerAsync(callQueue.Id, regionServerId);
+                    callQueue.ProcessingBackendServerId = regionServerId;
+                    await _inboundCallQueueRepository.UpdateInboundCallQueueProcessingBackendServerIdAsync(callQueue.Id, regionServerId);
+                    await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.ProcessedProxy);
 
                     // 5. Forward call to selected backend server         
                     int forwardCallAttempt = 0;
@@ -186,6 +187,7 @@ namespace IqraInfrastructure.Managers.Call
                         forwardResult  = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
                         if (!forwardResult.Success)
                         {
+                            await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.ProcessingProxy);
                             errorsList.Add($"Attempt {forwardCallAttempt}: [{forwardResult.Code}] {forwardResult.Message}");
                         }
                         else
@@ -210,13 +212,12 @@ namespace IqraInfrastructure.Managers.Call
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
                     return result.SetFailureResult("DistributeIncomingCall:5", message);
                 }
-
-                // Return success result
+                
                 return result.SetSuccessResult(
                     new DistributionResultModel()
                     {
                         QueueId = callQueue.Id,
-                        BackendServerId = callQueue.ProcessingServerId
+                        BackendServerId = callQueue.ProcessingBackendServerId
                     }
                 );
             }
@@ -248,7 +249,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 // If the call has a session ID, notify the backend app
-                if (!string.IsNullOrEmpty(callQueue.SessionId) && !string.IsNullOrEmpty(callQueue.ProcessingServerId))
+                if (!string.IsNullOrEmpty(callQueue.SessionId) && !string.IsNullOrEmpty(callQueue.ProcessingBackendServerId))
                 {
                     // Get Region Api key
                     var regionData = await _regionManager.GetRegionById(callQueue.RegionId);
@@ -257,16 +258,16 @@ namespace IqraInfrastructure.Managers.Call
                         _logger.LogWarning("Region not found: {RegionId}", callQueue.RegionId);
                         return;
                     }
-                    var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == callQueue.ProcessingServerId);
+                    var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == callQueue.ProcessingBackendServerId);
                     if (regionServerData == null)
                     {
-                        _logger.LogWarning("Region server not found: {ServerEndpoint}", callQueue.ProcessingServerId);
+                        _logger.LogWarning("Region server not found: {ServerEndpoint}", callQueue.ProcessingBackendServerId);
                         return;
                     }
                     var regionServerApiKey = regionServerData.APIKey;
                     var regionUseSSL = regionServerData.UseSSL;
 
-                    await NotifyBackendCallEndedAsync(callQueue.ProcessingServerId, regionServerApiKey, regionUseSSL, callQueue.SessionId, provider, phoneNumberId);
+                    await NotifyBackendCallEndedAsync(callQueue.ProcessingBackendServerId, regionServerApiKey, regionUseSSL, callQueue.SessionId, provider, phoneNumberId);
                     // todo notify backend and get success response to try again
                 }
 
@@ -388,7 +389,6 @@ namespace IqraInfrastructure.Managers.Call
             {
                 // Create the HttpClient
                 using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
-                // ignore ssl validation etc for client
 
                 // Set headers
                 client.Timeout = TimeSpan.FromSeconds(7); // todo check if 7 seconds is good

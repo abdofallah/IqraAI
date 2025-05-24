@@ -32,7 +32,8 @@ namespace IqraInfrastructure.Managers.Call
             BillingValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
             RegionManager regionManager,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory
+        )
         {
             _logger = logger;
             _outboundCallQueueRepo = outboundCallQueueRepo;
@@ -62,7 +63,7 @@ namespace IqraInfrastructure.Managers.Call
                 return;
             }
 
-            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Processing, new CallQueueLog { Message = $"Processing Queue", Type = CallQueueLogTypeEnum.Information });
+            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.ProcessingProxy, new CallQueueLog { Message = $"Processing Queue within proxy", Type = CallQueueLogTypeEnum.Information });
 
             var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(call.RegionId);
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
@@ -97,7 +98,7 @@ namespace IqraInfrastructure.Managers.Call
                 var forwardResponse = await ForwardToBackendAsync(backendServerDetails, requestDto);
                 if (forwardResponse.Success)
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Processed, new CallQueueLog { Message = $"Forwarded to backend {backendServerDetails.Endpoint}.", Type = CallQueueLogTypeEnum.Information }, newProcessingServerId: backendServerDetails.Endpoint);
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.ProcessingBackend, new CallQueueLog { Message = $"Forwarded to backend {backendServerDetails.Endpoint}. Waiting for processing.", Type = CallQueueLogTypeEnum.Information }, newProcessingServerId: backendServerDetails.Endpoint);
                     successfullyForwarded = true;
                     break;
                 }

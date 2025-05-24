@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Twilio.TwiML.Voice;
+using Twilio.TwiML;
 
 namespace IqraInfrastructure.Managers.Telephony
 {
@@ -130,12 +132,20 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
-        public async Task<FunctionReturnResult<TwilioCallDetails>> MakeCallAsync(string accountSid, string authToken, string from, string to, string callbackUrl)
+        public async Task<FunctionReturnResult<TwilioCallDetails>> MakeCallAsync(string accountSid, string authToken, string from, string to, string statusCallbackUrl, string websocketUrl, string websocketToken)
         {
             var result = new FunctionReturnResult<TwilioCallDetails>();
 
             try
             {
+                var voiceResponse = new VoiceResponse();
+                var connect = new Connect();
+                var stream = new Twilio.TwiML.Voice.Stream(url: websocketUrl);
+                stream.Parameter(name: "token", value: websocketToken);
+                connect.Append(stream);
+                voiceResponse.Append(connect);
+                string twimlString = voiceResponse.ToString();
+
                 using (var client = CreateConfiguredHttpClient(accountSid, authToken))
                 {
                     // Prepare request body
@@ -143,8 +153,9 @@ namespace IqraInfrastructure.Managers.Telephony
                     {
                         new KeyValuePair<string, string>("From", from),
                         new KeyValuePair<string, string>("To", to),
-                        new KeyValuePair<string, string>("Url", callbackUrl),
-                        new KeyValuePair<string, string>("StatusCallback", $"{callbackUrl}/status")
+                        new KeyValuePair<string, string>("Twiml", twimlString),
+                        new KeyValuePair<string, string>("StatusCallback", statusCallbackUrl),
+                        new KeyValuePair<string, string>("StatusCallbackMethod", "POST")
                     });
 
                     // Make outbound call

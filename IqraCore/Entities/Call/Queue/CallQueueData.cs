@@ -26,7 +26,8 @@ namespace IqraCore.Entities.Call.Queue
         public List<CallQueueLog> Logs { get; set; } = new List<CallQueueLog>();
 
         [ExcludeInAllEndpoints]
-        public string? ProcessingServerId { get; set; } = null;
+        public string? ProcessingProxyServerId { get; set; } = null;
+        public string? ProcessingBackendServerId { get; set; } = null;
 
         [ExcludeInAllEndpoints]
         public Dictionary<string, string> ProviderMetadata { get; set; } = new Dictionary<string, string>();

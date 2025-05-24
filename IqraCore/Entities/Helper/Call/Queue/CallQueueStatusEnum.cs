@@ -3,11 +3,12 @@
     public enum CallQueueStatusEnum
     {
         Queued = 0,
-        WaitingForProcessing = 1,
-        Processing = 2,
-        Processed = 3,
-        Failed = 4,
-        Canceled = 5,
-        Expired = 6
+        ProcessingProxy = 1,
+        ProcessedProxy = 2,
+        ProcessingBackend = 3,
+        ProcessedBackend = 4,
+        Failed = 5,
+        Canceled = 6,
+        Expired = 7
     }
 }

@@ -13,5 +13,8 @@
         public string NetworkInterfaceName { get; set; } = string.Empty;
         public double MaxNetworkDownloadMbps { get; set; } = 100;
         public double MaxNetworkUploadMbps { get; set; } = 100;
+
+        // Security/Api
+        public string ApiKey { get; set; }
     }
 }
