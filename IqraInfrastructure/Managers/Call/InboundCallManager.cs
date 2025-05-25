@@ -184,7 +184,7 @@ namespace IqraInfrastructure.Managers.Call
                     int forwardCallAttempt = 0;
                     while (forwardCallAttempt < 3)
                     {
-                        forwardResult  = await ForwardCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
+                        forwardResult  = await ForwardIncomingCallToBackendAsync(regionServerId, regionServerApiKey, resgionUseSSL, webhookContext, callQueue);
                         if (!forwardResult.Success)
                         {
                             await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(callQueue.Id, CallQueueStatusEnum.ProcessingProxy);
@@ -236,8 +236,47 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        public async Task NotifyCallEnded(string callId, TelephonyProviderEnum provider, long businessId, string phoneNumberId)
+        public async Task<FunctionReturnResult> NotifyCallRinging(TelephonyWebhookContextModel telephonyWebhookContextModel)
         {
+            var result = new FunctionReturnResult();
+
+
+
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> NotifyCallBusy(TelephonyWebhookContextModel telephonyWebhookContextModel)
+        {
+            var result = new FunctionReturnResult();
+
+
+
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> NotifyCallStarted(TelephonyWebhookContextModel telephonyWebhookContextModel)
+        {
+            var result = new FunctionReturnResult();
+
+
+
+
+            return result.SetSuccessResult();
+        }
+
+        public async Task<FunctionReturnResult> NotifyCallEnded(TelephonyWebhookContextModel telephonyWebhookContextModel)
+        {
+
+            var result = new FunctionReturnResult();
+
+
+
+
+            return result.SetSuccessResult();
+
+
             try
             {
                 // Find the call in the queue
@@ -381,7 +420,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<FunctionReturnResult> ForwardCallToBackendAsync(string serverEndpoint, string serverApiKey, bool regionUseSSL, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
+        private async Task<FunctionReturnResult> ForwardIncomingCallToBackendAsync(string serverEndpoint, string serverApiKey, bool regionUseSSL, TelephonyWebhookContextModel webhookContext, CallQueueData callQueue)
         {
             var result = new FunctionReturnResult();
 

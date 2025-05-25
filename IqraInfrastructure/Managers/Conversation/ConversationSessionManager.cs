@@ -66,11 +66,8 @@ namespace IqraInfrastructure.Managers.Conversation
         public ConversationSessionState State => _state;
         public bool IsCallInitiated => _callOrWebInitiated == "call";
         public bool IsWebInitiated => _callOrWebInitiated == "web";
-        public string PrimaryClientIdentifier()
-        {
-            if (_primaryClient != null && _primaryClient.ClientType == ConversationClientType.Telephony) return ((BaseTelephonyConversationClient)_primaryClient).ClientPhoneNumber;
-            return "UNKNOWN";
-        }
+        public IConversationClient? PrimaryClient => _primaryClient;
+        public IConversationAgent? PrimaryAgent => _primaryAgent;
 
         public ConversationSessionManager(
             string sessionId,
@@ -409,11 +406,6 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 return _agents.ToList().AsReadOnly();
             }
-        }
-
-        public async Task InitalizeAgent(string agentId)
-        {
-
         }
 
         public async Task<FunctionReturnResult> StartAsync()

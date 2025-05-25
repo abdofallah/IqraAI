@@ -36,7 +36,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         }
 
         public abstract Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);
-        public abstract Task SendTextAsync(string text, CancellationToken cancellationToken);
+        public abstract Task SendDTMFAsync(string digits, CancellationToken cancellationToken);
         public abstract Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken);
         public abstract Task DisconnectAsync(string reason);
 

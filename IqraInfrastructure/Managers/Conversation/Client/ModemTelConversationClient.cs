@@ -1,46 +1,35 @@
-﻿using IqraCore.Entities.Helper.Telephony;
+﻿using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Conversation.Client
 {
-    public class ModemTelConversationClient : BaseTelephonyConversationClient
+    public class ModemTelConversationClient : WebSocketCapableConversationClient
     {
         private readonly ModemTelManager _modemTelManager;
-
-        private readonly string _callId;
+        private readonly string _providerCallId;
         private readonly string _apiKey;
         private readonly string _apiBaseUrl;
-        private readonly string _mediaSessionToken;
+        private bool _callAnsweredByProviderApi = false;
 
-        private ClientWebSocket? _webSocket;
-        private Task? _receiveTask;
-
-        private readonly int _bufferSize = 4096;
-
-        private bool _isAnswered = false;
-
-        public string CallId => _callId;
 
         public ModemTelConversationClient(
             string clientId,
-            string phoneNumber,
-            string callId,
+            string clientPhoneNumber,
+            string providerCallId,
             string apiBaseUrl,
-            string apiKey,       
-            string mediaSessionToken,
+            string apiKey,
             ModemTelManager modemTelManager,
             ILogger<ModemTelConversationClient> logger
-        ) : base(clientId, phoneNumber, logger)
+        ) : base(clientId, clientPhoneNumber, logger)
         {
-            _callId = callId;
-            _apiKey = apiKey;
+            _providerCallId = providerCallId;
             _apiBaseUrl = apiBaseUrl;
-            _mediaSessionToken = mediaSessionToken;
+            _apiKey = apiKey;
             _modemTelManager = modemTelManager;
             _clientTelephonyType = TelephonyProviderEnum.ModemTel;
         }
@@ -48,304 +37,93 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult();
-
-            if (!_isAnswered)
+            if (_isConnected && _activeWebSocket != null)
             {
-                var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _callId);
-                if (!answerResult.Success)
-                {
-                    return result.SetFailureResult($"ConnectAsync:{answerResult.Code}", answerResult.Message);
-                }
-                _isAnswered = true;
-            }
-
-            if (_isConnected)
-            {
-                // consider as success if already conncted??
                 return result.SetSuccessResult();
             }
 
+            _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            if (queueData.Direction == CallQueueDirection.Inbound && !_callAnsweredByProviderApi)
+            {
+                var callDetailsResult = await _modemTelManager.GetCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
+                bool isModemTelCallInProgress = callDetailsResult.Success && callDetailsResult.Data != null &&
+                                               "in-progress".Equals(callDetailsResult.Data.Status, System.StringComparison.OrdinalIgnoreCase);
+
+                if (!isModemTelInProgress)
+                {
+                    // This assumes ModemTelML might have already answered it. If not, and explicit answer is needed:
+                    // var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
+                    // if (!answerResult.Success)
+                    // {
+                    //     return result.SetFailureResult($"ConnectAsync:ModemTel_Answer_Failed", answerResult.Message);
+                    // }
+                    // _callAnsweredByProviderApi = true;
+                    // For now, we assume ModemTelML flow handles answering.
+                }
+                else
+                {
+                    _callAnsweredByProviderApi = true;
+                }
+            }
+
+            return result.SetSuccessResult();
+        }
+
+        public override async Task HandleAcceptedWebSocketAsync(WebSocket webSocket, CancellationToken sessionCts)
+        {
+            await base.HandleAcceptedWebSocketAsync(webSocket, sessionCts);
+            // Any ModemTel specific logic after WebSocket is accepted by base can go here.
+        }
+
+        protected override Task ProcessReceivedBinaryFrameAsync(byte[] data, CancellationToken cancellationToken)
+        {
+            OnAudioReceived(data);
+            return Task.CompletedTask;
+        }
+
+        protected override Task ProcessReceivedTextFrameAsync(string message, CancellationToken cancellationToken)
+        {
+            if (message.StartsWith("DTMF:"))
+            {
+                var digit = message.Substring("DTMF:".Length);
+                if (!string.IsNullOrEmpty(digit))
+                {
+                    OnDTMFRecieved(digit);
+                }
+            }
+            return Task.CompletedTask;
+        }
+
+        public override async Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        {
+            if (!_isConnected || _activeWebSocket == null || _activeWebSocket.State != WebSocketState.Open)
+            {
+                return;
+            }
+            string dtmfMessage = $"DTMF:{digits}";
             try
             {
-                _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-                _webSocket = new ClientWebSocket();
-                _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_mediaSessionToken}");
-
-                var currentBaseUrl = _apiBaseUrl;
-                if (currentBaseUrl.StartsWith("http://") || currentBaseUrl.StartsWith("https://"))
-                {
-                    currentBaseUrl = currentBaseUrl.Replace("http://", "ws://").Replace("https://", "wss://");
-                }
-                var baseUri = new Uri(currentBaseUrl);
-                baseUri = new Uri(baseUri, $"ws/calls/{_callId}");
-
-                try
-                {
-                    await _webSocket.ConnectAsync(baseUri, _connectionCts.Token);
-                }
-                catch (Exception ex)
-                {
-                    _webSocket.Dispose();
-                    _webSocket = null;
-
-                    return result.SetFailureResult($"ConnectAsync:WEBSOCKET_CONNECT_EXCEPTION", ex.Message);
-                }
-
-                // Start receiving data
-                _receiveTask = Task.Run(() => ReceiveLoopAsync(_connectionCts.Token), _connectionCts.Token);
-
-                _isConnected = true;
-                return result.SetSuccessResult();
+                var messageBytes = Encoding.UTF8.GetBytes(dtmfMessage);
+                await base.SendWebSocketDataAsync(new System.ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, cancellationToken);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
-                return result.SetFailureResult($"ConnectAsync:EXCEPTION", ex.Message);
+                await base.HandleWebSocketErrorAndDisconnect($"Error sending DTMF: {ex.Message}");
+                throw;
             }
         }
 
         public override async Task DisconnectAsync(string reason)
         {
-            if (!_isConnected)
+            bool wasConnected = _isConnected; // Check before calling base.DisconnectAsync
+            await base.DisconnectAsync(reason); // Handles WebSocket closure and sets _isConnected = false
+
+            if (wasConnected && !string.IsNullOrEmpty(_providerCallId))
             {
-                _logger.LogWarning("WebSocket is already disconnected for call {CallId}", _callId);
-                return;
+                await _modemTelManager.HangupCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
             }
-
-            try
-            {
-                // Cancel the receive task
-                _connectionCts?.Cancel();
-
-                // Close the WebSocket if it's still open
-                if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-                {
-                    await _webSocket.SendAsync(
-                        new ArraySegment<byte>(Encoding.UTF8.GetBytes("disconnect")),
-                        WebSocketMessageType.Close,
-                        true,
-                        CancellationToken.None
-                    );
-
-                    await _webSocket.CloseAsync(
-                        WebSocketCloseStatus.NormalClosure,
-                        reason,
-                        CancellationToken.None
-                    );
-                }
-
-                // End the call on the ModemTel side
-                await _modemTelManager.HangupCallAsync(_apiKey, _apiBaseUrl, _callId);
-
-                // Dispose resources
-                Dispose();
-
-                _isConnected = false;
-                OnDisconnected(reason);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error disconnecting from ModemTel WebSocket for call {CallId}", _callId);
-            }
-        }
-
-        public override async Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
-        {
-            if (!_isConnected || _webSocket == null || _webSocket.State != WebSocketState.Open)
-            {
-                _logger.LogWarning("Cannot send audio because WebSocket is not connected for call {CallId}", _callId);
-                return;
-            }
-
-            try
-            {
-                // Send audio data
-                await _webSocket.SendAsync(
-                    new ArraySegment<byte>(audioData),
-                    WebSocketMessageType.Binary,
-                    true,
-                    cancellationToken
-                );
-            }
-            catch (Exception ex)
-            {
-                // check if fails constantly for 3 seconds, then kill the client
-                _logger.LogError(ex, "Error sending audio data for call {CallId}", _callId);
-                throw;
-            }
-        }
-
-        public override async Task SendTextAsync(string text, CancellationToken cancellationToken)
-        {
-            if (!_isConnected || _webSocket == null || _webSocket.State != WebSocketState.Open)
-            {
-                _logger.LogWarning("Cannot send text because WebSocket is not connected for call {CallId}", _callId);
-                return;
-            }
-
-            try
-            {
-                // For ModemTel, we might need to send a control message as text
-                var controlMessage = new ModemTelControlMessage
-                {
-                    Type = "message",
-                    Text = text
-                };
-
-                var json = JsonSerializer.Serialize(controlMessage);
-                var buffer = Encoding.UTF8.GetBytes(json);
-
-                await _webSocket.SendAsync(
-                    new ArraySegment<byte>(buffer),
-                    WebSocketMessageType.Text,
-                    true,
-                    cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error sending text message for call {CallId}", _callId);
-                throw;
-            }
-        }
-
-        private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
-        {
-            var buffer = new byte[_bufferSize];
-            var ms = new MemoryStream();
-
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested && _webSocket != null && _webSocket.State == WebSocketState.Open)
-                {
-                    WebSocketReceiveResult result;
-                    try
-                    {
-                        result = await _webSocket.ReceiveAsync(
-                            new ArraySegment<byte>(buffer),
-                            cancellationToken
-                        );
-                    }
-                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
-                    catch (WebSocketException ex)
-                    {
-                        _logger.LogWarning(ex, "WebSocket error for call {CallId}", _callId);
-                        break;
-                    }
-
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        _logger.LogInformation("WebSocket closed by server for call {CallId}: {CloseStatus} {CloseDescription}",
-                            _callId, result.CloseStatus, result.CloseStatusDescription);
-
-                        await DisconnectAsync("WebSocket closed by server: " + result.CloseStatusDescription);
-                        break;
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Binary)
-                    {
-                        // Audio data
-                        ms.Write(buffer, 0, result.Count);
-
-                        if (result.EndOfMessage)
-                        {
-                            byte[] audioData = ms.ToArray();
-                            OnAudioReceived(audioData);
-                            ms.SetLength(0);
-                        }
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Text)
-                    {
-                        // Control message
-                        var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        await ProcessControlMessageAsync(message, cancellationToken);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogError(ex, "Error in WebSocket receive loop for call {CallId}", _callId);
-                    await DisconnectAsync("Error in receive loop: " + ex.Message);
-                }
-            }
-            finally
-            {
-                ms.Dispose();
-            }
-        }
-
-        private async Task ProcessControlMessageAsync(string message, CancellationToken cancellationToken)
-        {
-            try
-            {
-                var firstColumnIndex = message.IndexOf(":");
-                if (firstColumnIndex == -1)
-                {
-                    _logger.LogWarning("Invalid control message: {Message} for call {CallId}", message, _callId);
-                    return;
-                }
-
-                var messageType = message.Substring(0, firstColumnIndex).Trim();
-
-                switch (messageType)
-                {
-                    case "DTMF":
-                        var dtmfData = message.Substring(firstColumnIndex + 1).Trim();
-                        if (!string.IsNullOrEmpty(dtmfData))
-                        {
-                            _logger.LogInformation("DTMF received: {Digit} for call {CallId}", dtmfData, _callId);
-                            OnDTMFRecieved(dtmfData);
-                        }
-                        break;
-
-                    default:
-                        _logger.LogError("Unhandled control message type: {Type} for call {CallId}", messageType, _callId);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing control message for call {CallId}: {Message}", _callId, message);
-            }
-        }
-
-        public override void Dispose()
-        {
-            if (_webSocket != null )
-            {
-                try
-                {
-                    _webSocket.Dispose();
-                }
-                catch { /** IGNORE **/ }
-
-                _webSocket = null;
-            }
-
-            if (_receiveTask != null)
-            {
-                try
-                {
-                    _receiveTask.Wait();
-                }
-                catch { /** IGNORE **/ }
-                
-                try
-                {
-                    _receiveTask.Dispose();
-                }
-                catch { /** IGNORE **/ }
-
-                _receiveTask = null;
-            }
-        }
-
-        private class ModemTelControlMessage
-        {
-            public string Type { get; set; } = string.Empty;
-            public string? CallId { get; set; }
-            public string? Digit { get; set; }
-            public string? Text { get; set; }
+            // OnDisconnected event is called by base.DisconnectAsync
         }
     }
 }

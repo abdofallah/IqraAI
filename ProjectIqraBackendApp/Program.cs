@@ -96,44 +96,54 @@ namespace ProjectIqraBackendApp
                     KeepAliveInterval = TimeSpan.FromSeconds(10)
                 }
             );
-
             app.Use(async (context, next) =>
             {
-                if (
-                    context.Request.Path.StartsWithSegments("/ws/call/modemtel")
-                    ||
-                    context.Request.Path.StartsWithSegments("/ws/call/twilio")
-                )
+                if (context.Request.Path.StartsWithSegments("/ws/session"))
                 {
                     if (context.WebSockets.IsWebSocketRequest)
                     {
-                        var path = context.Request.Path.Value;
-                        if (path.EndsWith("/")) path = path.Substring(0, path.Length - 1);
-                        var splitPath = path.Split('/');
+                        var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("WebSocketMiddleware");
 
-                        var providerType = splitPath.ElementAt(2);
-
-                        var conversationStateId = splitPath.ElementAt(3);                      
-                        if (string.IsNullOrEmpty(conversationStateId))
+                        var pathSegments = context.Request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                        if (pathSegments == null || pathSegments.Length < 5 ||
+                            pathSegments[0] != "ws" || pathSegments[1] != "session" || pathSegments[3] != "client")
                         {
-                            context.Response.StatusCode = 400;
-                            await context.Response.WriteAsync("Missing conversation state ID or token");
-                            return;
+                            context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
 
-                        WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                        string sessionId = pathSegments[2];
+                        string clientId = pathSegments[4];
 
-                        await app.Services.GetRequiredService<CallProcessorManager>().SetConversationClientWebsocket(conversationStateId, webSocket);
+                        if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(clientId))
+                        {
+                            context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
+                        }
+
+                        var callProcessorManager = context.RequestServices.GetRequiredService<CallProcessorManager>();
+                        var sessionCts = callProcessorManager.GetSessionCancellationTokenSource(sessionId);
+                        if (sessionCts == null || sessionCts.IsCancellationRequested)
+                        {
+                            context.Response.StatusCode = 404; await context.Response.WriteAsync("Session not active or not found."); return;
+                        }
+
+                        try
+                        {
+                            WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                            await callProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, webSocket, sessionCts);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (!context.Response.HasStarted) context.Response.StatusCode = 500;
+                        }
                     }
                     else
                     {
-                        context.Response.StatusCode = 400;
-                        await context.Response.WriteAsync("WebSocket connection expected");
+                        context.Response.StatusCode = 400; await context.Response.WriteAsync("Expected WebSocket request.");
                     }
                 }
                 else
                 {
-                    await next();
+                    await next(context);
                 }
             });
 

@@ -3,7 +3,6 @@ using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 
 namespace ProjectIqraBackendProxy.Controllers
 {
@@ -12,7 +11,7 @@ namespace ProjectIqraBackendProxy.Controllers
     public class ModemTelWebhookController : ControllerBase
     {
         private readonly ILogger<ModemTelWebhookController> _logger;
-        private readonly InboundCallManager _callDistributionManager;
+        private readonly InboundCallManager _inboundCallManager;
 
         public ModemTelWebhookController(
             ILogger<ModemTelWebhookController> logger,
@@ -20,21 +19,15 @@ namespace ProjectIqraBackendProxy.Controllers
         )
         {
             _logger = logger;
-            _callDistributionManager = distributionService;
+            _inboundCallManager = distributionService;
         }
 
         [HttpPost("status/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleSattusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
+        public async Task<IActionResult> HandleStatusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
                 return BadRequest("Invalid request parameters");
-            }
-
-            // Validate the webhook signature
-            if (!ValidateWebhookSignature())
-            {
-                return Unauthorized("Invalid signature");
             }
 
             var webhookContext = new TelephonyWebhookContextModel
@@ -53,7 +46,7 @@ namespace ProjectIqraBackendProxy.Controllers
             {
                 case "incoming":
                     {
-                        var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
+                        var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -62,20 +55,9 @@ namespace ProjectIqraBackendProxy.Controllers
                         return Ok();
                     }
 
-                case "in-progress":
+                case "ringing":
                     {
-                        var distributionResult = await _callDistributionManager.NotifyCallStarted(webhookContext);
-                        if (!distributionResult.Success)
-                        {
-                            return NoContent();
-                        }
-
-                        return Ok();
-                    }
-
-                case "completed":
-                    {
-                        var distributionResult = await _callDistributionManager.NotifyCallEnded(webhookContext);
+                        var distributionResult = await _inboundCallManager.NotifyCallRinging(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -87,7 +69,7 @@ namespace ProjectIqraBackendProxy.Controllers
                 case "no-answer":
                 case "busy":
                     {
-                        var distributionResult = await _callDistributionManager.NotifyCallBusy(webhookContext);
+                        var distributionResult = await _inboundCallManager.NotifyCallBusy(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -95,6 +77,28 @@ namespace ProjectIqraBackendProxy.Controllers
 
                         return Ok();
                     }
+
+                case "in-progress":
+                    {
+                        var distributionResult = await _inboundCallManager.NotifyCallStarted(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                case "completed":
+                    {
+                        var distributionResult = await _inboundCallManager.NotifyCallEnded(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }        
 
                 default:
                     return BadRequest("Unhandled event type");
