@@ -11,6 +11,7 @@ using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Call.Helper;
 using IqraInfrastructure.Managers.Conversation;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
@@ -30,7 +31,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using System.Security.Cryptography;
 
 namespace IqraInfrastructure.Managers.Call
 {
@@ -200,15 +200,14 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("ProcessInboundCallAsync:SESSION_CONNECTORS_INIT_FAILED", "Session (agent/telephony) init failed");
                 }
 
-                var generatedWebhookToken = GenerateRandomToken();
-                var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId);
+                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
+                var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
 
                 return result.SetSuccessResult(
                     new ProcessedInboundCallResponse()
                     {
                         SessionId = sessionResult.Data.SessionId,
-                        WebhookUrl = webhookUrl.ToString(),
-                        WebhookToken = generatedWebhookToken
+                        WebhookUrl = webhookUrl.ToString()
                     }
                 );
             }
@@ -287,7 +286,7 @@ namespace IqraInfrastructure.Managers.Call
                 var taskResultSuccess = false;
                 IConversationAgent? agent = null;
                 bool hasAddedAgent = false;
-                IConversationClient? client = null;
+                IConversationClient? primaryTelephonyClient = null;
                 bool hasAddedClient = false;
                 await Task.Run(async () =>
                 {
@@ -307,7 +306,7 @@ namespace IqraInfrastructure.Managers.Call
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{sessionTelephonyResult.Code}] {sessionTelephonyResult.Message}" });
                             return;
                         }
-                        client = sessionTelephonyResult.Data;
+                        primaryTelephonyClient = sessionTelephonyResult.Data;
 
                         var addSessionAgentResult = await sessionResult.Data.AddPrimaryAgent(agent);
                         if (!addSessionAgentResult.Success)
@@ -317,7 +316,7 @@ namespace IqraInfrastructure.Managers.Call
                         }
                         hasAddedAgent = true;
 
-                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(client, new ConversationClientConfiguration() { QueueData = outboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
+                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = outboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
                         if (!addSessionTelephonyResult.Success)
                         {
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{addSessionTelephonyResult.Code}] {addSessionTelephonyResult.Message}" });
@@ -345,9 +344,9 @@ namespace IqraInfrastructure.Managers.Call
 
                             if (hasAddedClient == false)
                             {
-                                if (client != null)
+                                if (primaryTelephonyClient != null)
                                 {
-                                    client.Dispose();
+                                    primaryTelephonyClient.Dispose();
                                 }
                             }
 
@@ -357,27 +356,30 @@ namespace IqraInfrastructure.Managers.Call
                     }
                 });
 
+                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
+                var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+
                 OutboundCallResultModel? callResultModel = null;
                 switch (businessNumber.Provider)
                 {
                     case TelephonyProviderEnum.ModemTel:
                         callResultModel = await InitiateModemTelOutboundCallAsync(
-                            outboundQueueData.BusinessId,
                             businessNumber as BusinessNumberModemTelData,
                             integrationResult.Data,
                             outboundQueueData.RecipientNumber,
-                            queueId,
+                            sessionResult.Data.SessionId,
+                            webhookUrl,
                             regionServerData
                         );
                         break;
 
                     case TelephonyProviderEnum.Twilio:
                         callResultModel = await InitiateTwilioOutboundCallAsync(
-                            outboundQueueData.BusinessId,
                             businessNumber as BusinessNumberTwilioData,
                             integrationResult.Data,
                             outboundQueueData.RecipientNumber,
                             queueId,
+                            webhookUrl,
                             regionServerData
                         );
                         break;
@@ -385,6 +387,8 @@ namespace IqraInfrastructure.Managers.Call
                     default:
                         return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider");
                 }
+
+                return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
@@ -400,31 +404,6 @@ namespace IqraInfrastructure.Managers.Call
                         await CleanupSessionAsync(sessionResult.Data.SessionId);
                     }
                 }
-            }
-        }
-
-        public async Task EndConversationSessionAsync(string sessionId, string reason)
-        {
-            if (_activeSessions.TryGetValue(sessionId, out var session))
-            {
-                try
-                {
-                    await session.EndAsync(reason);
-
-                    _logger.LogInformation("Ended conversation session {SessionId}: {Reason}", sessionId, reason);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error ending conversation session {SessionId}", sessionId);
-                }
-                finally
-                {
-                    await CleanupSessionAsync(sessionId);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Session {SessionId} not found for ending", sessionId);
             }
         }
 
@@ -453,7 +432,6 @@ namespace IqraInfrastructure.Managers.Call
                 _logger.LogWarning("Session {SessionId} not found for ending client connection", sessionId);
             }
         }
-        
         private async Task CleanupSessionAsync(string sessionId)
         {
             // Remove from active sessions
@@ -473,7 +451,6 @@ namespace IqraInfrastructure.Managers.Call
                 }
             }
         }
-
         private async Task<FunctionReturnResult<ConversationSessionManager?>> CreateConversationSessionAsync(CallQueueData queueData)
         {
             var result = new FunctionReturnResult<ConversationSessionManager?>();
@@ -524,9 +501,29 @@ namespace IqraInfrastructure.Managers.Call
             var result = new FunctionReturnResult<IConversationClient?>();
 
             // Create a client ID from session ID and provider
-            string clientId = $"{queueData.RouteNumberProvider}_{queueData.RouteNumberId}";
+            string clientId;
+            string numberId;
+            string? callId;
+            if (queueData.Type == CallQueueTypeEnum.Inbound)
+            {
+                var inboundCallQueueData = queueData as InboundCallQueueData;
+                clientId = $"client_{inboundCallQueueData.RouteNumberId}";
+                numberId = inboundCallQueueData.RouteNumberId;
+                callId = inboundCallQueueData.ProviderCallId;
+            }
+            else if (queueData.Type == CallQueueTypeEnum.Outbound)
+            {
+                var outboundCallQeueData = queueData as OutboundCallQueueData;
+                clientId = $"client_{outboundCallQeueData.CallingNumberId}";
+                numberId = outboundCallQeueData.CallingNumberId;
+                callId = null;
+            }
+            else
+            {
+                return result.SetFailureResult("CreateTelephonyClient:INVALID_QUEUE_TYPE", "Invalid queue type");
+            }
 
-            var businessNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(queueData.BusinessId, queueData.RouteNumberId);
+            var businessNumberData = await _businessManager.GetNumberManager().GetBusinessNumberById(queueData.BusinessId, numberId);
             if (businessNumberData == null)
             {
                 _logger.LogError("Business number not found for business {BusinessId}", queueData.BusinessId);
@@ -544,45 +541,36 @@ namespace IqraInfrastructure.Managers.Call
 
             string phoneNumberData = businessNumberData.CountryCode + businessNumberData.Number; // todo this is alphabet country code not number
 
-            switch (queueData.RouteNumberProvider)
+            switch (businessNumberData.Provider)
             {
                 case TelephonyProviderEnum.ModemTel:
-                    // Get required ModemTel data
-                    var token = queueData.ProviderMetadata["mediaSessionToken"];
-
-                    result.Success = true;
-                    result.Data = new ModemTelConversationClient(
-                        clientId,
-                        phoneNumberData,
-                        queueData.ProviderCallId,
-                        integrationData.Data.Fields["endpoint"],
-                        _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
-                        token,
-                        _serviceProvider.GetRequiredService<ModemTelManager>(),
-                        _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>());
-
-                    return result;
+                    return result.SetSuccessResult(
+                        new ModemTelConversationClient(
+                            clientId,
+                            phoneNumberData,
+                            callId,
+                            integrationData.Data.Fields["endpoint"],
+                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
+                            _serviceProvider.GetRequiredService<ModemTelManager>(),
+                            _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>()
+                        )
+                    );
 
                 case TelephonyProviderEnum.Twilio:
-                    // Get required Twilio data
-                    var accountSid = queueData.ProviderMetadata["accountSid"];
-                    var callbackUrl = queueData.ProviderMetadata["callbackUrl"];
-
-                    result.Success = true;
-                    result.Data = new TwilioConversationClient(
-                        clientId,
-                        phoneNumberData,
-                        queueData.ProviderCallId,
-                        accountSid,
-                        _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
-                        callbackUrl,
-                        _serviceProvider.GetRequiredService<TwilioManager>(),
-                        _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>());
-                    return result;
+                    return result.SetSuccessResult(
+                        new TwilioConversationClient(
+                            clientId,
+                            phoneNumberData,
+                            callId,
+                            integrationData.Data.Fields["accountsid"],
+                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
+                            _serviceProvider.GetRequiredService<TwilioManager>(),
+                            _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>()
+                        )
+                    );
 
                 default:
-                    result.Message = $"Unsupported provider {queueData.RouteNumberProvider}";
-                    return result;
+                    return result.SetFailureResult("CreateTelephonyClient:INVALID_PROVIDER", "Invalid provider");
             }
         }
 
@@ -620,8 +608,8 @@ namespace IqraInfrastructure.Managers.Call
             BusinessNumberModemTelData phoneNumber,
             BusinessAppIntegration integration,
             string toNumber,
-            string sessionId, // This is our sessionId
-            string clientGeneratedTokenForWsAuth, // Token for OUR WS endpoint
+            string sessionId,
+            string websocketUrl,
             RegionServerData regionServer
         )
         {
@@ -633,14 +621,7 @@ namespace IqraInfrastructure.Managers.Call
                 var modemTelManager = _serviceProvider.GetRequiredService<ModemTelManager>();
 
                 var statusCallbackUrl = new Uri((regionServer.UseSSL ? "https://" : "http://") + regionServer.Endpoint);
-                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/modemtel/{queueId}"); // Example status callback
-
-                // NEW WebSocket URL format
-                // Assuming primary client is the telephony client we just set up for this session
-                string telephonyClientId = $"{TelephonyProviderEnum.ModemTel}_{phoneNumber.Id}"; // Construct client ID as used in CreateTelephonyClient
-                var websocketCallbackUrl = new Uri((regionServer.UseSSL ? "wss://" : "ws://") + regionServer.Endpoint);
-                string wsPath = $"ws/session/{queueId}/client/{Uri.EscapeDataString(telephonyClientId)}?token={Uri.EscapeDataString(clientGeneratedTokenForWsAuth)}";
-                websocketCallbackUrl = new Uri(websocketCallbackUrl, wsPath);
+                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/modemtel/status/{sessionId}");
 
                 var callResult = await modemTelManager.MakeCallAsync(
                     apiKey,
@@ -648,10 +629,7 @@ namespace IqraInfrastructure.Managers.Call
                     phoneNumber.ModemTelPhoneNumberId,
                     toNumber,
                     statusCallbackUrl.ToString(),
-                    websocketCallbackUrl.ToString(),
-                    null // The old `sessionToken` was for ModemTel's WS, now client's WS uses its own token in URL.
-                         // If ModemTel's MakeCallAsync still expects a token for *itself*, provide it.
-                         // The `websocketCallbackUrl.ToString()` now contains the client's token for its own WS.
+                    websocketUrl
                 );
 
                 if (!callResult.Success || callResult.Data == null)
@@ -671,8 +649,8 @@ namespace IqraInfrastructure.Managers.Call
             BusinessNumberTwilioData phoneNumber,
             BusinessAppIntegration integration,
             string toNumber,
-            string sessionId, // This is our sessionId
-            string clientGeneratedTokenForWsAuth, // Token for OUR WS endpoint
+            string sessionId,
+            string websocketUrl,
             RegionServerData regionServer
         )
         {
@@ -684,12 +662,7 @@ namespace IqraInfrastructure.Managers.Call
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
 
                 var statusCallbackUrl = new Uri((regionServer.UseSSL ? "https://" : "http://") + regionServer.Endpoint);
-                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/twilio/{queueId}");
-
-                string telephonyClientId = $"{TelephonyProviderEnum.Twilio}_{phoneNumber.Id}";
-                var websocketCallbackUrl = new Uri((regionServer.UseSSL ? "wss://" : "ws://") + regionServer.Endpoint);
-                string wsPath = $"ws/session/{queueId}/client/{Uri.EscapeDataString(telephonyClientId)}?token={Uri.EscapeDataString(clientGeneratedTokenForWsAuth)}";
-                websocketCallbackUrl = new Uri(websocketCallbackUrl, wsPath);
+                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/twilio/status/{sessionId}");
 
                 var callResult = await twilioManager.MakeCallAsync(
                     accountSid,
@@ -697,9 +670,7 @@ namespace IqraInfrastructure.Managers.Call
                     phoneNumber.Number,
                     toNumber,
                     statusCallbackUrl.ToString(), // Status callback for Twilio
-                    websocketCallbackUrl.ToString(), // URL for Twilio <Stream> to connect to
-                    null // The old `sessionToken` was for if Twilio's <Stream> used a specific token in its payload,
-                         // now our WS endpoint uses the token in its URL.
+                    websocketUrl
                 );
 
                 if (!callResult.Success || callResult.Data == null)
@@ -715,9 +686,17 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        public async Task AssignWebSocketToClientAsync(string sessionId, string clientId, WebSocket webSocket, CancellationTokenSource sessionOverallCts)
+        public async Task<FunctionReturnResult> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
         {
-            if (_activeSessions.TryGetValue(sessionId, out var sessionManager))
+            var result = new FunctionReturnResult();
+
+            var validatedSessionTokenResult = CallWebsocketTokenGenerator.ValidateHmacToken(sessionToken, sessionId, clientId, _backendAppConfig.WebhookTokenSecret, out var validationError);
+            if (!validatedSessionTokenResult)
+            {
+                return result.SetFailureResult("AssignWebSocketToClientAsync:VALIDATION_FAILED", validationError);
+            }
+
+            if (_activeSessions.TryGetValue(sessionId, out var sessionManager) && _ctsSessions.TryGetValue(sessionId, out var sessionOverallCts))
             {
                 IConversationClient? convClient = null;
                 if (sessionManager.PrimaryClient?.ClientId == clientId)
@@ -728,41 +707,22 @@ namespace IqraInfrastructure.Managers.Call
                 if (convClient is WebSocketCapableConversationClient wsClient)
                 {
                     await wsClient.HandleAcceptedWebSocketAsync(webSocket, sessionOverallCts.Token);
+                    return result.SetSuccessResult();
                 }
                 else
                 {
-                    try { await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Client not WebSocket capable or not found", CancellationToken.None); } catch { }
-                    webSocket.Dispose();
+                    return result.SetFailureResult("AssignWebSocketToClientAsync:NOT_FOUND", "Client not websocket capable or not found");
                 }
             }
             else
             {
-                try { await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session not found", CancellationToken.None); } catch { }
-                webSocket.Dispose();
+                return result.SetFailureResult("AssignWebSocketToClientAsync:SESSION_NOT_FOUND", "Session or session cts not found");
             }
         }
 
-        public CancellationTokenSource? GetSessionCancellationTokenSource(string sessionId)
+        public string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
-            if (_ctsSessions.TryGetValue(sessionId, out var sessionCTS))
-            {
-                return sessionCTS;
-            }
-            return null;
-        }
-
-        public string GenerateRandomToken()
-        {
-            byte[] randomNumber = RandomNumberGenerator.GetBytes(32);
-            return Convert.ToBase64String(randomNumber)
-                .TrimEnd('=')
-                .Replace('+', 'i')
-                .Replace('/', 'q');
-        }
-
-        public string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId)
-        {
-            return new Uri(new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint), $"/ws/session/{sessionId}/client/{clientId}").ToString();
+            return new Uri(new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint), $"/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
         }
     }
 }

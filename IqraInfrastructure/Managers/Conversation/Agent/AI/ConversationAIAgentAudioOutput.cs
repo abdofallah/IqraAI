@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
 
             var defaultTTSServiceInfo = _agentState.BusinessAppAgent.Integrations.TTS[_agentState.CurrentLanguageCode][0];
-            var ttsBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.AgentConfiguration.BusinessId, defaultTTSServiceInfo.Id);
+            var ttsBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.BusinessApp.Id, defaultTTSServiceInfo.Id);
 
             if (!ttsBusinessIntegrationDataResult.Success || ttsBusinessIntegrationDataResult.Data == null)
             {

@@ -13,7 +13,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
     public class TwilioConversationClient : WebSocketCapableConversationClient
     {
         private readonly TwilioManager _twilioManager;
-        private readonly string _providerCallSid;
+        private readonly string? _providerCallSid;
         private readonly string _accountSid;
         private readonly string _authToken;
         private string? _streamSidFromTwilio;
@@ -22,7 +22,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public TwilioConversationClient(
             string clientId,
             string clientPhoneNumber,
-            string providerCallSid,
+            string? providerCallSid,
             string accountSid,
             string authToken,
             TwilioManager twilioManager,
@@ -139,6 +139,31 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             catch (Exception ex)
             {
                 await base.HandleWebSocketErrorAndDisconnect($"Error sending Twilio DTMF: {ex.Message}");
+                throw;
+            }
+        }
+
+        public override async Task ClearBufferedAudioAync(CancellationToken cancellationToken)
+        {
+            if (!_isConnected || _activeWebSocket == null || _activeWebSocket.State != WebSocketState.Open || string.IsNullOrEmpty(_streamSidFromTwilio))
+            {
+                return;
+            }
+
+            var clearAudioPayload = new
+            {
+                @event = "clear",
+                streamSid = _streamSidFromTwilio
+            };
+            string jsonPayload = JsonSerializer.Serialize(clearAudioPayload);
+            try
+            {
+                var messageBytes = Encoding.UTF8.GetBytes(jsonPayload);
+                await base.SendWebSocketDataAsync(new ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await base.HandleWebSocketErrorAndDisconnect($"Error sending Twilio clear audio buffer: {ex.Message}");
                 throw;
             }
         }

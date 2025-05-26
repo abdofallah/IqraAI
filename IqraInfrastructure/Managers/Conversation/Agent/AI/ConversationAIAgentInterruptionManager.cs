@@ -132,7 +132,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
             else
             {
-                var interruptionLLMIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.AgentConfiguration.BusinessId, interruptionData.LLMIntegrationToUseForCheckingInterruption.Id);
+                var interruptionLLMIntegrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.BusinessApp.Id, interruptionData.LLMIntegrationToUseForCheckingInterruption.Id);
                 if (!interruptionLLMIntegrationResult.Success || interruptionLLMIntegrationResult.Data == null)
                 {
                     _logger.LogError("Agent {AgentId}: Interruption LLM integration {IntegrationId} not found", _agentState.AgentId, interruptionData.LLMIntegrationToUseForCheckingInterruption.Id);

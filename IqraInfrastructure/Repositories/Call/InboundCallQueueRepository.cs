@@ -279,7 +279,7 @@ namespace IqraInfrastructure.Repositories.Call
             try
             {
                 var filter = Builders<InboundCallQueueData>.Filter.And(
-                    Builders<InboundCallQueueData>.Filter.Eq(c => c.Status, CallQueueStatusEnum.Processing),
+                    Builders<InboundCallQueueData>.Filter.In(c => c.Status, new CallQueueStatusEnum[] { CallQueueStatusEnum.ProcessingProxy, CallQueueStatusEnum.ProcessedProxy, CallQueueStatusEnum.ProcessingBackend, CallQueueStatusEnum.ProcessedBackend }),
                     Builders<InboundCallQueueData>.Filter.Lt(c => c.ProcessingStartedAt, thresholdToCheck),
                     Builders<InboundCallQueueData>.Filter.Ne(c => c.RegionId, regionId)
                 );

@@ -11,7 +11,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
     public class ModemTelConversationClient : WebSocketCapableConversationClient
     {
         private readonly ModemTelManager _modemTelManager;
-        private readonly string _providerCallId;
+        private readonly string? _providerCallId;
         private readonly string _apiKey;
         private readonly string _apiBaseUrl;
         private bool _callAnsweredByProviderApi = false;
@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public ModemTelConversationClient(
             string clientId,
             string clientPhoneNumber,
-            string providerCallId,
+            string? providerCallId,
             string apiBaseUrl,
             string apiKey,
             ModemTelManager modemTelManager,
@@ -37,35 +37,35 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)
         {
             var result = new FunctionReturnResult();
-            if (_isConnected && _activeWebSocket != null)
-            {
-                return result.SetSuccessResult();
-            }
+            //if (_isConnected && _activeWebSocket != null)
+            //{
+            //    return result.SetSuccessResult();
+            //}
 
-            _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            //_connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            if (queueData.Direction == CallQueueDirection.Inbound && !_callAnsweredByProviderApi)
-            {
-                var callDetailsResult = await _modemTelManager.GetCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
-                bool isModemTelCallInProgress = callDetailsResult.Success && callDetailsResult.Data != null &&
-                                               "in-progress".Equals(callDetailsResult.Data.Status, System.StringComparison.OrdinalIgnoreCase);
+            //if (queueData.Direction == CallQueueDirection.Inbound && !_callAnsweredByProviderApi)
+            //{
+            //    var callDetailsResult = await _modemTelManager.GetCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
+            //    bool isModemTelCallInProgress = callDetailsResult.Success && callDetailsResult.Data != null &&
+            //                                   "in-progress".Equals(callDetailsResult.Data.Status, System.StringComparison.OrdinalIgnoreCase);
 
-                if (!isModemTelInProgress)
-                {
-                    // This assumes ModemTelML might have already answered it. If not, and explicit answer is needed:
-                    // var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
-                    // if (!answerResult.Success)
-                    // {
-                    //     return result.SetFailureResult($"ConnectAsync:ModemTel_Answer_Failed", answerResult.Message);
-                    // }
-                    // _callAnsweredByProviderApi = true;
-                    // For now, we assume ModemTelML flow handles answering.
-                }
-                else
-                {
-                    _callAnsweredByProviderApi = true;
-                }
-            }
+            //    if (!isModemTelInProgress)
+            //    {
+            //        // This assumes ModemTelML might have already answered it. If not, and explicit answer is needed:
+            //        // var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
+            //        // if (!answerResult.Success)
+            //        // {
+            //        //     return result.SetFailureResult($"ConnectAsync:ModemTel_Answer_Failed", answerResult.Message);
+            //        // }
+            //        // _callAnsweredByProviderApi = true;
+            //        // For now, we assume ModemTelML flow handles answering.
+            //    }
+            //    else
+            //    {
+            //        _callAnsweredByProviderApi = true;
+            //    }
+            //}
 
             return result.SetSuccessResult();
         }
@@ -105,6 +105,25 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             try
             {
                 var messageBytes = Encoding.UTF8.GetBytes(dtmfMessage);
+                await base.SendWebSocketDataAsync(new System.ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, cancellationToken);
+            }
+            catch (System.Exception ex)
+            {
+                await base.HandleWebSocketErrorAndDisconnect($"Error sending DTMF: {ex.Message}");
+                throw;
+            }
+        }
+
+        public override async Task ClearBufferedAudioAync(CancellationToken cancellationToken)
+        {
+            if (!_isConnected || _activeWebSocket == null || _activeWebSocket.State != WebSocketState.Open)
+            {
+                return;
+            }
+            string clearMessage = $"clear";
+            try
+            {
+                var messageBytes = Encoding.UTF8.GetBytes(clearMessage);
                 await base.SendWebSocketDataAsync(new System.ArraySegment<byte>(messageBytes), WebSocketMessageType.Text, cancellationToken);
             }
             catch (System.Exception ex)

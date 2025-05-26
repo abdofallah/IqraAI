@@ -104,8 +104,6 @@ namespace ProjectIqraBackendApp.Controllers
                 return result;
             }
 
-            _logger.LogInformation("Received call ended notification for session {SessionId}", sessionId);
-
             try
             {
                 // Validate the request

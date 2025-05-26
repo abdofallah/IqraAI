@@ -144,6 +144,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             }
         }
 
+        public abstract Task ClearBufferedAudioAync(CancellationToken cancellationToken);
+
         public override async Task DisconnectAsync(string reason) // Made virtual to allow override
         {
             if (!_isConnected && _activeWebSocket == null)

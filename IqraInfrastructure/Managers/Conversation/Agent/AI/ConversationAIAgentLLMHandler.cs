@@ -63,7 +63,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // --- Build Primary LLM ---
             var defaultLLMServiceInfo = _agentState.BusinessAppAgent.Integrations.LLM[_agentState.CurrentLanguageCode][0];
-            var llmBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.AgentConfiguration.BusinessId, defaultLLMServiceInfo.Id);
+            var llmBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.BusinessApp.Id, defaultLLMServiceInfo.Id);
             if (!llmBusinessIntegrationDataResult.Success || llmBusinessIntegrationDataResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Business app LLM integration {IntegrationId} not found", _agentState.AgentId, defaultLLMServiceInfo.Id);

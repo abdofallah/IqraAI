@@ -105,7 +105,7 @@ namespace ProjectIqraBackendApp
                         var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("WebSocketMiddleware");
 
                         var pathSegments = context.Request.Path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                        if (pathSegments == null || pathSegments.Length < 5 ||
+                        if (pathSegments == null || pathSegments.Length < 6 ||
                             pathSegments[0] != "ws" || pathSegments[1] != "session" || pathSegments[3] != "client")
                         {
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
@@ -113,23 +113,25 @@ namespace ProjectIqraBackendApp
 
                         string sessionId = pathSegments[2];
                         string clientId = pathSegments[4];
+                        string sessionToken = pathSegments[5];
 
-                        if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(clientId))
+                        if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(sessionToken))
                         {
                             context.Response.StatusCode = 400; await context.Response.WriteAsync("Invalid WebSocket path."); return;
                         }
 
                         var callProcessorManager = context.RequestServices.GetRequiredService<CallProcessorManager>();
-                        var sessionCts = callProcessorManager.GetSessionCancellationTokenSource(sessionId);
-                        if (sessionCts == null || sessionCts.IsCancellationRequested)
-                        {
-                            context.Response.StatusCode = 404; await context.Response.WriteAsync("Session not active or not found."); return;
-                        }
-
                         try
                         {
                             WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                            await callProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, webSocket, sessionCts);
+                            var assignResult = await callProcessorManager.AssignWebSocketToClientAsync(sessionId, clientId, sessionToken, webSocket);
+                            if (!assignResult.Success)
+                            {
+                                await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, $"[{assignResult.Code}] {assignResult.Message}", CancellationToken.None);
+                                webSocket.Dispose();
+
+                                context.Response.StatusCode = 400; await context.Response.WriteAsync($"[{assignResult.Code}] {assignResult.Message}"); return;
+                            }
                         }
                         catch (Exception ex)
                         {

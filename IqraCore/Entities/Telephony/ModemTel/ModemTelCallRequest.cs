@@ -13,9 +13,6 @@ namespace IqraCore.Entities.Telephony.ModemTel
         [JsonPropertyName("streamUrl")]
         public string StreamUrl { get; set; }
 
-        [JsonPropertyName("streamToken")]
-        public string StreamToken { get; set; }
-
         [JsonPropertyName("statusCallback")]
         public string StatusCallback { get; set; }
     }

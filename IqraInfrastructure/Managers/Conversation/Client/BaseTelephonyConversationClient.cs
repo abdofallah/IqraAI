@@ -62,5 +62,12 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         }
 
         public abstract void Dispose();
+
+        public Task SendTextAsync(string text, CancellationToken cancellationToken)
+        {
+            // telephony client cant display text so we ignore it
+            // should never be called for telephony clients in the first place
+            return Task.CompletedTask;
+        }
     }
 }

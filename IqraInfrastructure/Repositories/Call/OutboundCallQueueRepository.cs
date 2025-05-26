@@ -243,7 +243,7 @@ namespace IqraInfrastructure.Repositories.Call
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingStartedAt, processingStartedAt.Value);
                 }
-                else if (newStatus == CallQueueStatusEnum.Processing && !processingStartedAt.HasValue) // Set if transitioning to Processing
+                else if (newStatus == CallQueueStatusEnum.ProcessingProxy && !processingStartedAt.HasValue) // Set if transitioning to Processing
                 {
                     updateBuilder = updateBuilder.Set(c => c.ProcessingStartedAt, DateTime.UtcNow);
                 }

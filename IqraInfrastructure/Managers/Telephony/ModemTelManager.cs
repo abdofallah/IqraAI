@@ -266,7 +266,7 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
-        public async Task<FunctionReturnResult<ModemTelCall>> MakeCallAsync(string apiKey, string apiBaseUrl, string phoneNumberId, string toNumber, string statusCallbackUrl, string websocketUrl, string websocketToken)
+        public async Task<FunctionReturnResult<ModemTelCall>> MakeCallAsync(string apiKey, string apiBaseUrl, string phoneNumberId, string toNumber, string statusCallbackUrl, string websocketUrl)
         {
             var result = new FunctionReturnResult<ModemTelCall>();
 
@@ -279,7 +279,6 @@ namespace IqraInfrastructure.Managers.Telephony
                         PhoneNumberId = phoneNumberId,
                         To = toNumber,
                         StatusCallback = statusCallbackUrl,
-                        StreamToken = websocketToken,
                         StreamUrl = websocketUrl,
                     };
 

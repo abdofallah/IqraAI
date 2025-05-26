@@ -12,14 +12,17 @@ namespace ProjectIqraBackendProxy.Controllers
     {
         private readonly ILogger<ModemTelWebhookController> _logger;
         private readonly InboundCallManager _inboundCallManager;
+        private readonly CallStatusManager _callStatusManager;
 
         public ModemTelWebhookController(
             ILogger<ModemTelWebhookController> logger,
-            InboundCallManager distributionService
+            InboundCallManager inboundCallManager,
+            CallStatusManager callStatusManager
         )
         {
             _logger = logger;
-            _inboundCallManager = distributionService;
+            _inboundCallManager = inboundCallManager;
+            _callStatusManager = callStatusManager;
         }
 
         [HttpPost("status/{businessId}/{phoneNumberId}")]
@@ -41,7 +44,6 @@ namespace ProjectIqraBackendProxy.Controllers
                 Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
             };
 
-            // Process webhook based on event type
             switch (webhookData.CallStatus?.ToLower())
             {
                 case "incoming":
@@ -49,15 +51,15 @@ namespace ProjectIqraBackendProxy.Controllers
                         var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
                         if (!distributionResult.Success)
                         {
-                            return NoContent();
+                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say>Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
                         }
 
-                        return Ok();
+                        return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" track=""both_tracks"" /></Connect><Hangup /></Response>");
                     }
 
                 case "ringing":
                     {
-                        var distributionResult = await _inboundCallManager.NotifyCallRinging(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyCallRinging(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -69,7 +71,7 @@ namespace ProjectIqraBackendProxy.Controllers
                 case "no-answer":
                 case "busy":
                     {
-                        var distributionResult = await _inboundCallManager.NotifyCallBusy(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyCallBusy(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -80,7 +82,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
                 case "in-progress":
                     {
-                        var distributionResult = await _inboundCallManager.NotifyCallStarted(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyCallStarted(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -91,7 +93,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
                 case "completed":
                     {
-                        var distributionResult = await _inboundCallManager.NotifyCallEnded(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyCallEnded(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();

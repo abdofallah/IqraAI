@@ -3,7 +3,6 @@ using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server.Configuration;
 using IqraInfrastructure.Repositories.Call;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 

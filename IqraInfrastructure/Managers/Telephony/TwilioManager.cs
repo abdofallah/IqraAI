@@ -132,7 +132,7 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
-        public async Task<FunctionReturnResult<TwilioCallDetails>> MakeCallAsync(string accountSid, string authToken, string from, string to, string statusCallbackUrl, string websocketUrl, string websocketToken)
+        public async Task<FunctionReturnResult<TwilioCallDetails>> MakeCallAsync(string accountSid, string authToken, string from, string to, string statusCallbackUrl, string websocketUrl)
         {
             var result = new FunctionReturnResult<TwilioCallDetails>();
 
@@ -141,7 +141,6 @@ namespace IqraInfrastructure.Managers.Telephony
                 var voiceResponse = new VoiceResponse();
                 var connect = new Connect();
                 var stream = new Twilio.TwiML.Voice.Stream(url: websocketUrl);
-                stream.Parameter(name: "token", value: websocketToken);
                 connect.Append(stream);
                 voiceResponse.Append(connect);
                 string twimlString = voiceResponse.ToString();

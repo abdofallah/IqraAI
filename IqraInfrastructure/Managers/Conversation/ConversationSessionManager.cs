@@ -471,7 +471,18 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private async Task<FunctionReturnResult> StartOutboundSessionAsync()
         {
+            var result = new FunctionReturnResult();
 
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
+            }
+
+            return result.SetSuccessResult();
         }
 
         private void StartTimers()

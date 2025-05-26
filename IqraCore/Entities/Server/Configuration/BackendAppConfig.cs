@@ -16,5 +16,6 @@
 
         // Security/Api
         public string ApiKey { get; set; }
+        public string WebhookTokenSecret { get; set; }
     }
 }

@@ -45,6 +45,8 @@ namespace IqraInfrastructure.Managers.Call
 
         public async Task ProcessCallAsync(OutboundCallQueueData call)
         {
+            // todo also check if phone is available and can make call
+
             var validationResult = await _billingValidationManager.CheckCreditAndConcurrencyAsync(call.BusinessId, "outbound call");
             if (!validationResult.Success)
             {

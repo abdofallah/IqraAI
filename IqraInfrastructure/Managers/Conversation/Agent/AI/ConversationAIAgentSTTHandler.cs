@@ -37,7 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             var defaultSTTService = _agentState.BusinessAppAgent.Integrations.STT[_agentState.CurrentLanguageCode][0]; // Assuming existence check happened before
 
-            var sttBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.AgentConfiguration!.BusinessId, defaultSTTService.Id);
+            var sttBusinessIntegrationDataResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(_agentState.BusinessApp.Id, defaultSTTService.Id);
             if (!sttBusinessIntegrationDataResult.Success || sttBusinessIntegrationDataResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Business app STT integration {IntegrationId} not found", _agentState.AgentId, defaultSTTService.Id);

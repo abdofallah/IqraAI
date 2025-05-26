@@ -10,139 +10,100 @@ namespace ProjectIqraBackendProxy.Controllers
     public class TwilioWebhookController : ControllerBase
     {
         private readonly ILogger<TwilioWebhookController> _logger;
-        private readonly InboundCallManager _callDistributionManager;
+        private readonly InboundCallManager _inboundCallManager;
+        private readonly CallStatusManager _callStatusManager;
 
         public TwilioWebhookController(
             ILogger<TwilioWebhookController> logger,
-            InboundCallManager callDistributionManager
+            InboundCallManager inboundCallManager,
+            CallStatusManager callStatusManager
         )
         {
             _logger = logger;
-            _callDistributionManager = callDistributionManager;
-        }
-
-        [HttpPost("incoming/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleIncomingCall([FromForm] TwilioWebhookDataModel webhookData, long businessId, string phoneNumberId)
-        {
-            // Validate business and phone number
-            if (businessId <= 0 || string.IsNullOrWhiteSpace(phoneNumberId))
-            {
-                _logger.LogWarning("Invalid request parameters for Twilio webhook: {BusinessId}/{PhoneNumberId}", businessId, phoneNumberId);
-                return BadRequest("Invalid request parameters");
-            }
-
-            _logger.LogInformation("Received Twilio webhook for {BusinessId}/{PhoneNumberId}, CallSid: {CallSid}", businessId, phoneNumberId, webhookData.CallSid);
-
-            // Validate the webhook signature
-            if (!ValidateTwilioSignature())
-            {
-                _logger.LogWarning("Invalid Twilio signature from {IP} for {BusinessId}/{PhoneNumberId}", HttpContext.Connection.RemoteIpAddress, businessId, phoneNumberId);
-                return Unauthorized("Invalid signature");
-            }
-
-            try
-            {
-                // Prepare the webhook context
-                var webhookContext = new TelephonyWebhookContextModel
-                {
-                    Provider = TelephonyProviderEnum.Twilio,
-                    CallId = webhookData.CallSid,
-                    BusinessId = businessId,
-                    PhoneNumberId = phoneNumberId,
-                    To = webhookData.To,
-                    From = webhookData.From,
-                    AdditionalData = new Dictionary<string, string>
-                    {
-                        ["direction"] = webhookData.Direction,
-                        ["callStatus"] = webhookData.CallStatus,
-                        ["accountSid"] = webhookData.AccountSid,
-                        ["apiVersion"] = webhookData.ApiVersion
-                    }
-                };
-
-                // Process the call through our distribution manager
-                var distributionResult = await _callDistributionManager.DistributeIncomingCall(webhookContext);
-                if (!distributionResult.Success)
-                {
-                    _logger.LogWarning("Failed to distribute Twilio call {CallSid}: {Message}", webhookData.CallSid, distributionResult.Message);
-
-                    // Return TwiML response for failure
-                    return Content(TwiMLForFailure, "application/xml");
-                }
-
-                // Get the backend server URL for redirect
-                var backendUrl = GetBackendUrlForRedirect(distributionResult.Data.BackendServerId, webhookData.CallSid);
-
-                _logger.LogInformation("Twilio call {CallSid} routed to {BackendUrl}", webhookData.CallSid, backendUrl);
-
-                // Return TwiML response with redirect
-                return Content(GenerateTwiMLForRedirect(backendUrl), "application/xml");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing Twilio webhook for call {CallSid}", webhookData.CallSid);
-                return Content(TwiMLForError, "application/xml");
-            }
+            _inboundCallManager = inboundCallManager;
+            _callStatusManager = callStatusManager;
         }
 
         [HttpPost("status/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleCallStatus([FromForm] TwilioStatusCallbackDataModel statusData, long businessId, string phoneNumberId)
+        public async Task<IActionResult> HandleStatusWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
-            // Validate the webhook signature
-            if (!ValidateTwilioSignature())
+            if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
-                _logger.LogWarning("Invalid Twilio signature for status callback from {IP}", HttpContext.Connection.RemoteIpAddress);
-                return Unauthorized("Invalid signature");
+                return BadRequest("Invalid request parameters");
             }
 
-            _logger.LogInformation("Received Twilio status callback: {CallSid}, Status: {CallStatus}", statusData.CallSid, statusData.CallStatus);
-
-            // Check if this is a call completion status
-            if (statusData.CallStatus == "completed" || 
-                statusData.CallStatus == "failed" || 
-                statusData.CallStatus == "busy" || 
-                statusData.CallStatus == "no-answer" || 
-                statusData.CallStatus == "canceled")
+            var webhookContext = new TelephonyWebhookContextModel
             {
-                await _callDistributionManager.NotifyCallEnded(statusData.CallSid, TelephonyProviderEnum.Twilio, businessId, phoneNumberId);
+                Provider = TelephonyProviderEnum.ModemTel,
+                CallId = webhookData.CallSid,
+                BusinessId = businessId,
+                PhoneNumberId = phoneNumberId,
+                To = webhookData.To,
+                From = webhookData.From,
+                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
+            };
+
+            switch (webhookData.CallStatus?.ToLower())
+            {
+                case "incoming":
+                    {
+                        var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say>Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
+                        }
+
+                        return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" track=""both_tracks"" /></Connect><Hangup /></Response>");
+                    }
+
+                case "ringing":
+                    {
+                        var distributionResult = await _callStatusManager.NotifyCallRinging(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                case "no-answer":
+                case "busy":
+                    {
+                        var distributionResult = await _callStatusManager.NotifyCallBusy(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                case "in-progress":
+                    {
+                        var distributionResult = await _callStatusManager.NotifyCallStarted(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                case "completed":
+                    {
+                        var distributionResult = await _callStatusManager.NotifyCallEnded(webhookContext);
+                        if (!distributionResult.Success)
+                        {
+                            return NoContent();
+                        }
+
+                        return Ok();
+                    }
+
+                default:
+                    return BadRequest("Unhandled event type");
             }
-
-            return Ok();
         }
-
-        private bool ValidateTwilioSignature()
-        {
-            // temporary placeholder function for now
-            return true;
-
-            // In future implement the user to generate their own api key or certificate
-            // validate against the phone number webhook's api key or certificate with the one recieved in the request
-        }
-
-        private string GetBackendUrlForRedirect(string backendServerEndpoint, string callSid)
-        {
-            var baseUri = new Uri(backendServerEndpoint);
-            return new Uri(baseUri, $"/api/twilio/call/{callSid}").ToString();
-        }
-
-        private string GenerateTwiMLForRedirect(string redirectUrl)
-        {
-            return $@"<?xml version=""1.0"" encoding=""UTF-8""?>
-            <Response>
-                <Redirect method=""POST"">{redirectUrl}</Redirect>
-            </Response>";
-        }
-
-        private static string TwiMLForFailure = @"<?xml version=""1.0"" encoding=""UTF-8""?>
-            <Response>
-                <Say>We're sorry, but all of our agents are currently busy. Please try your call again later.</Say>
-                <Hangup />
-            </Response>";
-
-        private static string TwiMLForError = @"<?xml version=""1.0"" encoding=""UTF-8""?>
-            <Response>
-                <Say>We're sorry, but we encountered a problem with your call. Please try again later.</Say>
-                <Hangup />
-            </Response>";
     }
 }
