@@ -28,9 +28,9 @@ namespace ProjectIqraBackendApp.Controllers
         }
 
         [HttpPost("incoming")]
-        public async Task<FunctionReturnResult> HandleIncomingCall([FromBody] BackendInboundCallRequest request)
+        public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> HandleIncomingCall([FromBody] BackendInboundCallRequest request)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
 
             // Validate API key
             if (!ValidateApiKey())
@@ -52,7 +52,7 @@ namespace ProjectIqraBackendApp.Controllers
                     return result.SetFailureResult("InitiateOutboundCall:" + processInboundCallResult.Code, processInboundCallResult.Message);
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(processInboundCallResult.Data);
             }
             catch (Exception ex)
             {

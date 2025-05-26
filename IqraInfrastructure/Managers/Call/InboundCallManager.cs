@@ -261,9 +261,7 @@ namespace IqraInfrastructure.Managers.Call
 
                     _logger.LogError("Error forwarding call to backend server {StatusCode} - {Error}", response.StatusCode, errorContent);
 
-                    result.Code = "ForwardCallToBackendAsync:1";
-                    result.Message = "Error forwarding call to backend server";
-                    return result;
+                    return result.SetFailureResult("ForwardCallToBackendAsync:RESPONSE_" + response.StatusCode, errorContent);
                 }
 
                 // Parse the response
@@ -272,23 +270,18 @@ namespace IqraInfrastructure.Managers.Call
                 if (responseData == null) // should never happen tho
                 {
                     _logger.LogError("Invalid response from backend server {ResponseContent}", responseContent);
-
-                    result.Code = "ForwardCallToBackendAsync:2";
-                    result.Message = "Invalid response from backend server";              
-                    return result;
+         
+                    return result.SetFailureResult("ForwardCallToBackendAsync:INVALID_RESPONSE", "Invalid response from backend server");
                 }
 
                 if (!responseData.Success)
                 {
                     _logger.LogError("Error forwarding call to backend server: {Code} - {Message}", responseData.Code, responseData.Message);
 
-                    result.Code = "ForwardCallToBackendAsync:" + responseData.Code;
-                    result.Message = responseData.Message;
-                    return result;
+                    return result.SetFailureResult("ForwardCallToBackendAsync:" + responseData.Code, responseData.Message);
                 }
 
-                result.Success = true;
-                return result;
+                return result.SetSuccessResult(responseData.Data);
             }
             catch (Exception ex)
             {

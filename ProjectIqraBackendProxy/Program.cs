@@ -283,14 +283,11 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<IHttpClientFactory>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
-                    sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<BusinessManager>(),
-                    sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<TwilioManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BillingValidationManager>()
                 );
             });
@@ -332,6 +329,10 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
+            builder.Services.AddSingleton<CallStatusManager>((sp) =>
+            {
+                return new CallStatusManager();
+            });
             builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
             {
                 return new OutboundCallProcessorService(
@@ -340,8 +341,7 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
-            });
-        }
+            });        }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
         {

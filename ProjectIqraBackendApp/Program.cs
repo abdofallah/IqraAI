@@ -39,25 +39,27 @@ namespace ProjectIqraBackendApp
 
             // Configuration
             var appConfig = builder.Configuration;
+            var backendAppConfig = new BackendAppConfig
+            {
+                ServerId = appConfig["Server:Identity"],
+                RegionId = appConfig["Server:RegionId"],
+                ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
+                NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
+                MaxNetworkDownloadMbps = int.Parse(appConfig["Server:MaxNetworkDownloadMbps"]),
+                MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"]),
+                ApiKey = appConfig["Server:ApiKey"],
+                WebhookTokenSecret = appConfig["Server:WebhookTokenSecret"],
+            };
             builder.Services.AddSingleton<BackendAppConfig>(sp =>
             {
-                return new BackendAppConfig
-                {
-                    ServerId = appConfig["Server:Identity"],
-                    RegionId = appConfig["Server:RegionId"],
-                    ExpectedMaxConcurrentCalls = int.Parse(appConfig["Server:ExpectedMaxConcurrentCalls"]),
-                    NetworkInterfaceName = appConfig["Server:NetworkInterfaceName"],
-                    MaxNetworkDownloadMbps = int.Parse(appConfig["Server:MaxNetworkDownloadMbps"]),
-                    MaxNetworkUploadMbps = int.Parse(appConfig["Server:MaxNetworkUploadMbps"]),
-                    ApiKey = appConfig["Server:ApiKey"]
-                };
+                return backendAppConfig;
             });
 
             // Repositories
             SetupRepositories(builder, appConfig);
 
             // Managers
-            SetupManagers(builder, appConfig);
+            SetupManagers(builder, appConfig, backendAppConfig);
 
             // HTTP Client
             builder.Services.AddHttpClient();
@@ -188,6 +190,14 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<InboundCallQueueRepository>>()
                 );
             });
+            builder.Services.AddSingleton<OutboundCallQueueRepository>(sp =>
+            {
+                return new OutboundCallQueueRepository(
+                    appConfig["CallQueueRepository:ConnectionString"],
+                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
+                );
+            });
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 return new ServerStatusRepository(
@@ -310,7 +320,7 @@ namespace ProjectIqraBackendApp
             });
         }
 
-        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
+        private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
         {
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
             {
@@ -457,11 +467,14 @@ namespace ProjectIqraBackendApp
                 return new CallProcessorManager(
                     sp.GetRequiredService<ILogger<CallProcessorManager>>(),
                     sp,
+                    backendAppConfig,
                     sp.GetRequiredService<ServerMetricsMonitor>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
-                    sp.GetRequiredService<IntegrationsManager>()
+                    sp.GetRequiredService<IntegrationsManager>(),
+                    sp.GetRequiredService<RegionManager>()
                 );
             });
 

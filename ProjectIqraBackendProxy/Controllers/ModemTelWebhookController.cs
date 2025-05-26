@@ -25,8 +25,8 @@ namespace ProjectIqraBackendProxy.Controllers
             _callStatusManager = callStatusManager;
         }
 
-        [HttpPost("status/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleStatusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
+        [HttpPost("incoming/{businessId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleIncomingWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
@@ -44,6 +44,8 @@ namespace ProjectIqraBackendProxy.Controllers
                 Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
             };
 
+            _logger.LogInformation($"Recieved modemtel hook with status: {webhookData.CallStatus}");
+
             switch (webhookData.CallStatus?.ToLower())
             {
                 case "incoming":
@@ -51,7 +53,7 @@ namespace ProjectIqraBackendProxy.Controllers
                         var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
                         if (!distributionResult.Success)
                         {
-                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say>Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
+                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say language=""en_US"" voice=""lessac"">Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
                         }
 
                         return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" track=""both_tracks"" /></Connect><Hangup /></Response>");
