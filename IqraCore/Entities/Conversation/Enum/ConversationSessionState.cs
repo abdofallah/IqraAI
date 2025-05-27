@@ -3,11 +3,12 @@
     public enum ConversationSessionState
     {
         Created = 0,
-        Starting = 1,
-        Active = 2,
-        Paused = 3,
-        Ending = 4,
-        Ended = 5,
-        Error = 6
+        WaitingForPrimaryClient = 1,
+        Starting = 2,
+        Active = 3,
+        Paused = 4,
+        Ending = 5,
+        Ended = 6,
+        Error = 7
     }
 }

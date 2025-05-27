@@ -33,7 +33,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _accountSid = accountSid;
             _authToken = authToken;
             _twilioManager = twilioManager;
-            _clientTelephonyType = TelephonyProviderEnum.Twilio;
+            _clientTelephonyProviderType = TelephonyProviderEnum.Twilio;
         }
 
         public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)

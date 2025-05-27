@@ -5,6 +5,7 @@ using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
@@ -17,10 +18,10 @@ using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation
 {
-    public class ConversationSessionManager : IDisposable
+    public class ConversationSession : IDisposable
     {
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ILogger<ConversationSessionManager> _logger;
+        private readonly ILogger<ConversationSession> _logger;
         private readonly BusinessManager _businessManager;
         private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
@@ -69,7 +70,7 @@ namespace IqraInfrastructure.Managers.Conversation
         public IConversationClient? PrimaryClient => _primaryClient;
         public IConversationAgent? PrimaryAgent => _primaryAgent;
 
-        public ConversationSessionManager(
+        public ConversationSession(
             string sessionId,
             CallQueueData queueData,
             string callOrWebInitiated,
@@ -92,7 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
             _loggerFactory = loggerFactory;
-            _logger = loggerFactory.CreateLogger<ConversationSessionManager>();
+            _logger = loggerFactory.CreateLogger<ConversationSession>();
         }
 
         public async Task<FunctionReturnResult> InitalizeAsync()
@@ -290,6 +291,14 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
+        public IConversationClient? GetTelephonyClientByProviderPhoneNumberId(TelephonyProviderEnum provider, string providerPhoneNumberId)
+        {
+            lock (_clientsLock)
+            {
+                return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientTelephonyProviderPhoneNumberId == providerPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyType == provider);
+            }
+        }
+
         public async Task<FunctionReturnResult> AddPrimaryAgent(IConversationAgent agent)
         {
             var result = new FunctionReturnResult();
@@ -412,34 +421,12 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             var result = new FunctionReturnResult();
 
-            if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
-            {
-                return await StartInboundSessionAsync();
-            }
-            else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
-            {
-                return await StartOutboundSessionAsync();
-            }
-
-            return result.SetFailureResult("StartAsync:INVALID_SESSION_TYPE", "Invalid session type");
-        }
-
-        private async Task<FunctionReturnResult> StartInboundSessionAsync()
-        {
-            var result = new FunctionReturnResult();
-
             try
             {
                 // Update state
                 await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
-                // Initialize primary client
-                await Task.Delay(_sessionBusinessRouteData.Configuration.PickUpDelayMS, _sessionCts.Token);
-                var primaryClientConnectResult = await _primaryClient.ConnectAsync(_sessionCts.Token);
-                if (!primaryClientConnectResult.Success)
-                {
-                    return result.SetFailureResult($"StartAsync:{primaryClientConnectResult.Code}", primaryClientConnectResult.Message);
-                }
+                await PrimaryAgent.InitializeAsync(_sessionBusinessAppData, _sessionBusinessRouteData, _sessionCts.Token);
 
                 // Start silence and max duration detection timer
                 StartTimers();
@@ -459,7 +446,6 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                 }
                 );
-                // await Task.WhenAll(agentsNotify); i dont think we have to await this i guess
 
                 return result.SetSuccessResult();
             }
@@ -467,22 +453,6 @@ namespace IqraInfrastructure.Managers.Conversation
             {
                 return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
             }
-        }
-
-        private async Task<FunctionReturnResult> StartOutboundSessionAsync()
-        {
-            var result = new FunctionReturnResult();
-
-            try
-            {
-
-            }
-            catch (Exception ex)
-            {
-                return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
-            }
-
-            return result.SetSuccessResult();
         }
 
         private void StartTimers()

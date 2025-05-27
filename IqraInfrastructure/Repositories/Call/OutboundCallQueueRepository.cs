@@ -339,6 +339,26 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
+        public async Task<OutboundCallQueueData?> GetOutboundCallQueueBySessionIdAsync(string sessionId, bool searchArchivedIfNotFoundInActive = true)
+        {
+            try
+            {
+                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.SessionId, sessionId);
+                var call = await _outboundActiveQueueCollection.Find(filter).FirstOrDefaultAsync();
+
+                if (call == null && searchArchivedIfNotFoundInActive)
+                {
+                    call = await _outboundArchivedQueueCollection.Find(filter).FirstOrDefaultAsync();
+                }
+                return call;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting outbound call by ID {SessionId}", sessionId);
+                return null;
+            }
+        }
+
         public async Task<List<OutboundCallQueueData>> GetOutboundCallsByCampaignIdAsync(string campaignId, bool searchArchived = false)
         {
             var calls = new List<OutboundCallQueueData>();

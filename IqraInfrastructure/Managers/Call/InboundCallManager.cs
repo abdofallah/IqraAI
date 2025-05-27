@@ -71,9 +71,7 @@ namespace IqraInfrastructure.Managers.Call
                 var phoneNumberInfo = await GetPhoneNumberInfo(webhookContext);
                 if (phoneNumberInfo == null)
                 {
-                    result.Code = "DistributeIncomingCall:1";
-                    result.Message = "Unable to identify phone number";
-                    return result;
+                    return result.SetFailureResult("DistributeIncomingCall:NUMBER_NOT_FOUND", "Unable to identify phone number");
                 }
 
                 long businessId = phoneNumberInfo.BusinessId;
@@ -84,9 +82,7 @@ namespace IqraInfrastructure.Managers.Call
                 // TODO in future if phone number has options of what to do in case of no route, set it here
                 if (string.IsNullOrWhiteSpace(numberRouteId))
                 {
-                    result.Code = "DistributeIncomingCall:2";
-                    result.Message = "Business number has no route set";
-                    return result;
+                    return result.SetFailureResult("DistributeIncomingCall:NO_ROUTE_SET", "Business number has no route set");
                 }
 
                 // Create call queue entry
@@ -110,9 +106,7 @@ namespace IqraInfrastructure.Managers.Call
                 callQueueId = await _inboundCallQueueRepository.EnqueueInboundCallQueueAsync(callQueue);
                 if (string.IsNullOrWhiteSpace(callQueue.Id))
                 {
-                    result.Code = "DistributeIncomingCall:3";
-                    result.Message = "Unable to create call queue entry";
-                    return result;
+                    return result.SetFailureResult("DistributeIncomingCall:CALL_QUEUE_NOT_CREATED", "Unable to create call queue entry");
                 }
                 callQueue.Id = callQueueId;
 
@@ -120,17 +114,16 @@ namespace IqraInfrastructure.Managers.Call
                 if (!planValidation.Success)
                 {
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{planValidation.Code}]: {planValidation.Message}", Type = CallQueueLogTypeEnum.Error });
-                    result.Message = planValidation.Message;
-                    return result;
+
+                    return result.SetFailureResult($"DistributeIncomingCall:{planValidation.Code}", planValidation.Message);
                 }
 
                 var serverSelection = await _serverSelectionService.SelectOptimalServerAsync(regionId);
                 if (!serverSelection.Success)
                 {
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"[{serverSelection.Code}]: {serverSelection.Message}", Type = CallQueueLogTypeEnum.Error });
-                    result.Code = "DistributeIncomingCall:" + serverSelection.Code;
-                    result.Message = serverSelection.Message;
-                    return result;
+
+                    return result.SetFailureResult($"DistributeIncomingCall:{serverSelection.Code}", serverSelection.Message);
                 }
 
                 var regionData = await _regionManager.GetRegionById(regionId);
@@ -139,9 +132,8 @@ namespace IqraInfrastructure.Managers.Call
                     _logger.LogError("Error distributing call {CallId} for provider {Provider} in {businessId}/{phoneNumberId}: region not found {RegionId}", webhookContext.CallId, webhookContext.Provider, webhookContext.BusinessId, webhookContext.PhoneNumberId, regionId);
 
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = $"Region not found: {regionId}", Type = CallQueueLogTypeEnum.Error });
-                    result.Code = "DistributeIncomingCall:4";
-                    result.Message = $"Region not found: {regionId}";     
-                    return result;
+                    
+                    return result.SetFailureResult("DistributeIncomingCall:REGION_NOT_FOUND", $"Region not found: {regionId}");
                 }
                
 
@@ -198,7 +190,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     var message = string.Join("\n", errorsList);
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueue.Id, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = message, Type = CallQueueLogTypeEnum.Error });
-                    return result.SetFailureResult("DistributeIncomingCall:5", message);
+                    return result.SetFailureResult("DistributeIncomingCall:BACKEND_ERROR", message);
                 }
                 
                 return result.SetSuccessResult(forwardResult.Data);
@@ -212,9 +204,7 @@ namespace IqraInfrastructure.Managers.Call
                     await _inboundCallQueueRepository.SetInboundCallQueueFailedStatusAsync(callQueueId, new CallQueueLog() { CreatedAt = DateTime.UtcNow, Message = ex.Message, Type = CallQueueLogTypeEnum.Error });
                 }
 
-                result.Code = "DistributeIncomingCall:-1";
-                result.Message = $"Error distributing call: {ex.Message}";    
-                return result;
+                return result.SetFailureResult("DistributeIncomingCall:EXCEPTION", result.Message);
             }
         }
              
@@ -287,9 +277,7 @@ namespace IqraInfrastructure.Managers.Call
             {
                 _logger.LogError(ex, "Error forwarding call to backend server");
 
-                result.Code = "ForwardCallToBackendAsync:-1";
-                result.Message = $"Error forwarding call to backend: {ex.Message}";
-                return result;
+                return result.SetFailureResult("ForwardCallToBackendAsync:EXCEPTION", result.Message);
             }
         }
 

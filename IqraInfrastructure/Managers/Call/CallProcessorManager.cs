@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using Deepgram.Models.Agent.v2.WebSocket;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
@@ -49,7 +50,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly RegionManager _regionManager;
 
         // combine the two
-        private readonly ConcurrentDictionary<string, ConversationSessionManager> _activeSessions = new();
+        private readonly ConcurrentDictionary<string, ConversationSession> _activeSessions = new();
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _ctsSessions = new();
 
         private readonly SemaphoreSlim _sessionCreationLock = new SemaphoreSlim(1, 1);
@@ -85,7 +86,7 @@ namespace IqraInfrastructure.Managers.Call
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
 
-            FunctionReturnResult<ConversationSessionManager?>? sessionResult = null;
+            FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
             var sessionBitPerSample = 16;
             var sessionChannels = 1;
@@ -234,7 +235,7 @@ namespace IqraInfrastructure.Managers.Call
         {
             var result = new FunctionReturnResult();
 
-            FunctionReturnResult<ConversationSessionManager?>? sessionResult = null;
+            FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
             var sessionBitPerSample = 16;
             var sessionChannels = 1;
@@ -406,30 +407,63 @@ namespace IqraInfrastructure.Managers.Call
                 }
             }
         }
-
-        public async Task EndClientConnectionFromConversation(string sessionId, string reason, TelephonyProviderEnum provider, string phoneNumberId)
+        public async Task<FunctionReturnResult> NotifyTelephonyClientStatus(string sessionId, TelephonyStatusNotifyToBackendModel request)
         {
-            if (_activeSessions.TryGetValue(sessionId, out var session))
-            {
-                try
-                {
-                    string clientId = $"{provider}_{phoneNumberId}";
-                    await session.RemoveClientAsync(clientId, reason);
+            var result = new FunctionReturnResult();
 
-                    _logger.LogInformation("Ended client connection conversation session {SessionId}: {Reason}", sessionId, reason);
-                }
-                catch (Exception ex)
+            try
+            {
+                if (!_activeSessions.TryGetValue(sessionId, out var sessionData))
                 {
-                    _logger.LogError(ex, "Error ending client connection conversation session {SessionId}", sessionId);
+                    return result.SetFailureResult("NotifyTelephonyClientStatus:SESSION_NOT_FOUND", "Session not found");
                 }
-                finally
+
+                switch (request.Status)
                 {
-                    await CleanupSessionAsync(sessionId);
+                    case "in-progress":
+                        {
+                            if (sessionData.State != ConversationSessionState.WaitingForPrimaryClient)
+                            {
+                                return result.SetFailureResult("NotifyTelephonyClientStatus:INVALID_STATE", "Invalid session state");
+                            }
+
+                            await sessionData.StartAsync();
+                            
+                            return result.SetSuccessResult();
+                        }
+
+                    case "completed":
+                        {
+                            if (sessionData.State == ConversationSessionState.Ending || sessionData.State == ConversationSessionState.Ended)
+                            {
+                                // already ending or ended no need to do anything
+                                return result.SetSuccessResult();
+                            }
+
+                            BaseTelephonyConversationClient? telephonyClient = (BaseTelephonyConversationClient)sessionData.GetTelephonyClientByProviderPhoneNumberId(request.Provider, request.PhoneNumberId);
+                            if (telephonyClient == null)
+                            {
+                                return result.SetFailureResult("NotifyTelephonyClientStatus:CLIENT_NOT_FOUND", "Client not found");
+                            }
+
+                            await telephonyClient.DisconnectAsync("Recieved completed status by telephony provider");
+                            
+                            return result.SetSuccessResult();
+                        }
+
+                    case "busy":
+                        {
+                            // for outbound calls, we need to end the session and clean it up, check for retry logic and requeue if needed
+                            goto default;
+                        }
+
+                    default:
+                        return result.SetFailureResult("NotifyTelephonyClientStatus:UNHANDLED_STATUS", "unhandled status type");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                _logger.LogWarning("Session {SessionId} not found for ending client connection", sessionId);
+                return result.SetFailureResult("NotifyTelephonyClientStatus:EXCEPTION", ex.Message);
             }
         }
         private async Task CleanupSessionAsync(string sessionId)
@@ -451,9 +485,10 @@ namespace IqraInfrastructure.Managers.Call
                 }
             }
         }
-        private async Task<FunctionReturnResult<ConversationSessionManager?>> CreateConversationSessionAsync(CallQueueData queueData)
+        
+        private async Task<FunctionReturnResult<ConversationSession?>> CreateConversationSessionAsync(CallQueueData queueData)
         {
-            var result = new FunctionReturnResult<ConversationSessionManager?>();
+            var result = new FunctionReturnResult<ConversationSession?>();
 
             if (!_serverMetricsMonitor.HasCapacity())
             {
@@ -468,7 +503,7 @@ namespace IqraInfrastructure.Managers.Call
                 CancellationTokenSource newSessionCTS = new CancellationTokenSource();
                 CancellationTokenSource combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(newSessionCTS.Token, _processorCTS.Token);
 
-                var conversationSession = new ConversationSessionManager(
+                var conversationSession = new ConversationSession(
                     sessionId,
                     queueData,
                     "call",
@@ -495,8 +530,7 @@ namespace IqraInfrastructure.Managers.Call
                 _sessionCreationLock.Release();
             }
         }
-
-        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionManager sessionManager)
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSession sessionManager)
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
@@ -573,8 +607,7 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("CreateTelephonyClient:INVALID_PROVIDER", "Invalid provider");
             }
         }
-
-        private async Task<FunctionReturnResult<IConversationAgent?>> CreateAIAgentAsync(ConversationSessionManager sessionManager, ConversationAgentConfiguration agentConfiguration)
+        private async Task<FunctionReturnResult<IConversationAgent?>> CreateAIAgentAsync(ConversationSession sessionManager, ConversationAgentConfiguration agentConfiguration)
         {
             var result = new FunctionReturnResult<IConversationAgent?>();
 
@@ -604,14 +637,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<OutboundCallResultModel> InitiateModemTelOutboundCallAsync(
-            BusinessNumberModemTelData phoneNumber,
-            BusinessAppIntegration integration,
-            string toNumber,
-            string sessionId,
-            string websocketUrl,
-            RegionServerData regionServer
-        )
+        private async Task<OutboundCallResultModel> InitiateModemTelOutboundCallAsync(BusinessNumberModemTelData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, RegionServerData regionServer)
         {
             var result = new OutboundCallResultModel();
             try
@@ -644,15 +670,7 @@ namespace IqraInfrastructure.Managers.Call
                 result.Message = $"Error initiating call: {ex.Message}"; return result;
             }
         }
-
-        private async Task<OutboundCallResultModel> InitiateTwilioOutboundCallAsync(
-            BusinessNumberTwilioData phoneNumber,
-            BusinessAppIntegration integration,
-            string toNumber,
-            string sessionId,
-            string websocketUrl,
-            RegionServerData regionServer
-        )
+        private async Task<OutboundCallResultModel> InitiateTwilioOutboundCallAsync(BusinessNumberTwilioData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, RegionServerData regionServer)
         {
             var result = new OutboundCallResultModel();
             try
@@ -720,7 +738,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        public string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
+        private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
             return new Uri(new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint), $"/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
         }

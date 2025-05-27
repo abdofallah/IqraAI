@@ -14,12 +14,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected readonly ILogger _logger;
         protected bool _isConnected;
         protected CancellationTokenSource? _connectionCts;
-        protected TelephonyProviderEnum _clientTelephonyType;
+        protected TelephonyProviderEnum _clientTelephonyProviderType;
+        protected readonly string _clientTelephonyProviderPhoneNumberId;
 
         public string ClientId => _clientId;
         public string ClientPhoneNumber => _clientPhoneNumber;
         public ConversationClientType ClientType => ConversationClientType.Telephony;
-        public TelephonyProviderEnum ClientTelephonyType => _clientTelephonyType;
+        public TelephonyProviderEnum ClientTelephonyType => _clientTelephonyProviderType;
+        public string ClientTelephonyProviderPhoneNumberId => _clientTelephonyProviderPhoneNumberId;
 
         public event EventHandler<ConversationAudioReceivedEventArgs>? AudioReceived;
         public event EventHandler<ConversationTextReceivedEventArgs>? TextReceived;
@@ -32,7 +34,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _clientPhoneNumber = phoneNumber;
             _logger = logger;
             _isConnected = false;
-            _clientTelephonyType = TelephonyProviderEnum.Unknown;
+            _clientTelephonyProviderType = TelephonyProviderEnum.Unknown;
         }
 
         public abstract Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);

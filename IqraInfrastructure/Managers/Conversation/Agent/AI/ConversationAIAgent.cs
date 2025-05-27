@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private readonly ConversationAgentConfiguration _agentConfiguration;
 
         // Dependencies
-        private readonly ConversationSessionManager _conversationSessionManager;
+        private readonly ConversationSession _conversationSessionManager;
         private readonly BusinessManager _businessManager;
         private readonly SystemPromptGenerator _systemPromptGenerator;
         private readonly LanguagesManager _langaugesManager;
@@ -65,7 +65,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public ConversationAIAgent(
             ILoggerFactory loggerFactory,
-            ConversationSessionManager sessionManager,
+            ConversationSession sessionManager,
             string agentId, // Agent ID passed in
             ConversationAgentConfiguration agentConfiguration,
 

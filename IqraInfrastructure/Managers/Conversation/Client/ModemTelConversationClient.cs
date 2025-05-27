@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _apiBaseUrl = apiBaseUrl;
             _apiKey = apiKey;
             _modemTelManager = modemTelManager;
-            _clientTelephonyType = TelephonyProviderEnum.ModemTel;
+            _clientTelephonyProviderType = TelephonyProviderEnum.ModemTel;
         }
 
         public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)

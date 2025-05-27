@@ -58,7 +58,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
                 case "ringing":
                     {
-                        var distributionResult = await _callStatusManager.NotifyCallRinging(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyOutboundCallRinging(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -70,7 +70,7 @@ namespace ProjectIqraBackendProxy.Controllers
                 case "no-answer":
                 case "busy":
                     {
-                        var distributionResult = await _callStatusManager.NotifyCallBusy(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyOutboundCallBusy(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -81,7 +81,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
                 case "in-progress":
                     {
-                        var distributionResult = await _callStatusManager.NotifyCallStarted(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyInboundCallStarted(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();

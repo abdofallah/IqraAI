@@ -1,7 +1,6 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Server;
-using IqraCore.Entities.Server.Call;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +31,6 @@ namespace ProjectIqraBackendApp.Controllers
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
 
-            // Validate API key
             if (!ValidateApiKey())
             {
                 return result.SetFailureResult("HandleIncomingCall:INVALID_API_KEY", "Invalid API key");
@@ -91,42 +89,36 @@ namespace ProjectIqraBackendApp.Controllers
             }
         }
 
-        [HttpPost("{sessionId}/ended")]
-        public async Task<FunctionReturnResult> HandleCallEnded(string sessionId, [FromBody] CallEndNotifyBackendData request)
+        [HttpPost("{sessionId}/telephonyclient/status")]
+        public async Task<FunctionReturnResult> HandleSessionClientStatus(string sessionId, [FromBody] TelephonyStatusNotifyToBackendModel request)
         {
             var result = new FunctionReturnResult();
 
-            // Validate API key
             if (!ValidateApiKey())
             {
-                result.Code = "HandleCallEnded:1";
-                result.Message = "Invalid API key";
-                return result;
+                return result.SetFailureResult("HandleSessionClientStatus:INVALID_API_KEY", "Invalid API key");
             }
 
             try
             {
-                // Validate the request
-                if (string.IsNullOrWhiteSpace(sessionId) || request.Provider == TelephonyProviderEnum.Unknown || string.IsNullOrWhiteSpace(request.PhoneNumberId))
+                if (string.IsNullOrWhiteSpace(sessionId) || request.Provider == TelephonyProviderEnum.Unknown || string.IsNullOrWhiteSpace(request.PhoneNumberId) || string.IsNullOrEmpty(request.Status))
                 {
-                    result.Code = "HandleCallEnded:2";
-                    result.Message = "Invalid request parameters";
-                    return result;
+                    return result.SetFailureResult("HandleSessionClientStatus:BAD_REQUEST_DATA", "Invalid request parameters");
                 }
 
-                // End the conversation session
-                await _callProcessorManager.EndClientConnectionFromConversation(sessionId, "Call ended by provider via webhook", request.Provider, request.PhoneNumberId);
+                var notifyResult = await _callProcessorManager.NotifyTelephonyClientStatus(sessionId, request);
+                if (!notifyResult.Success)
+                {
+                    return result.SetFailureResult($"HandleSessionClientStatus:{result.Code}", result.Message);
+                }
 
-                result.Success = true;
-                return result;
+                return result.SetSuccessResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling call ended notification");
+                _logger.LogError(ex, "Error handling telephony call status notification");
 
-                result.Code = "HandleCallEnded:-1";
-                result.Message = "Internal server error";
-                return result;
+                return result.SetFailureResult($"HandleSessionClientStatus:EXCEPTON", result.Message);
             }
         }
 
