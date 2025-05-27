@@ -7,8 +7,9 @@
         ProcessedProxy = 2,
         ProcessingBackend = 3,
         ProcessedBackend = 4,
-        Failed = 5,
-        Canceled = 6,
-        Expired = 7
+        Completed = 5,
+        Failed = 6,
+        Canceled = 7,
+        Expired = 8
     }
 }

@@ -13,11 +13,14 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected readonly string _clientPhoneNumber;
         protected readonly ILogger _logger;
         protected bool _isConnected;
+        protected bool _hasDiconnected;
         protected CancellationTokenSource? _connectionCts;
         protected TelephonyProviderEnum _clientTelephonyProviderType;
         protected readonly string _clientTelephonyProviderPhoneNumberId;
 
         public string ClientId => _clientId;
+        public bool IsConnected => _isConnected;
+        public bool HasDisconnected => _hasDiconnected;
         public string ClientPhoneNumber => _clientPhoneNumber;
         public ConversationClientType ClientType => ConversationClientType.Telephony;
         public TelephonyProviderEnum ClientTelephonyType => _clientTelephonyProviderType;
@@ -34,6 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _clientPhoneNumber = phoneNumber;
             _logger = logger;
             _isConnected = false;
+            _hasDiconnected = false;
             _clientTelephonyProviderType = TelephonyProviderEnum.Unknown;
         }
 

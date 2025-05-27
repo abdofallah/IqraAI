@@ -68,7 +68,6 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("NotifyInboundCallStarted:" + forwardToBackendResult.Code, forwardToBackendResult.Message);
                 }
 
-                await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(callQueueWithSession.Data.Id, CallQueueStatusEnum.Completed);
                 return result.SetSuccessResult();
             }
             catch (Exception ex) {
@@ -127,7 +126,7 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("GetIncomingCallSessionId:NOT_FOUND", "Call not found in queue");
                 }
 
-                if (string.IsNullOrWhiteSpace(callQueue.SessionId) || callQueue.Status != CallQueueStatusEnum.ProcessingBackend)
+                if (string.IsNullOrWhiteSpace(callQueue.SessionId) || callQueue.Status != CallQueueStatusEnum.ProcessedBackend)
                 {
                     return result.SetFailureResult("GetIncomingCallSessionId:INVALID_STATUS", "Call has no session id or status is not processing backend");
                 }
@@ -192,7 +191,7 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("GetOutboundCallQueueWithSession:NOT_FOUND", "Call not found in queue");
                 }
 
-                if (string.IsNullOrWhiteSpace(callQueue.SessionId) || callQueue.Status != CallQueueStatusEnum.ProcessingBackend)
+                if (string.IsNullOrWhiteSpace(callQueue.SessionId) || callQueue.Status != CallQueueStatusEnum.ProcessedBackend)
                 {
                     return result.SetFailureResult("GetOutboundCallQueueWithSession:INVALID_STATUS", "Call has no session id or status is not processing backend");
                 }

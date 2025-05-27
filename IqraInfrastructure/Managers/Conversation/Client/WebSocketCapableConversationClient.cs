@@ -11,7 +11,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected Task? _receiveLoopTask;
         protected readonly int _receiveBufferSize = 8192;
 
-
         protected WebSocketCapableConversationClient(string clientId, string phoneNumber, ILogger logger)
             : base(clientId, phoneNumber, logger)
         {
@@ -62,7 +61,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                     {
                         break; // Master cancellation
                     }
-                    catch (WebSocketException)
+                    catch (WebSocketException ex)
                     {
                         await HandleWebSocketErrorAndDisconnect("WebSocketException in ReceiveLoop");
                         break;
@@ -148,6 +147,12 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
         public override async Task DisconnectAsync(string reason) // Made virtual to allow override
         {
+            if (_hasDiconnected)
+            {
+                return;
+            }
+            _hasDiconnected = true;
+
             if (!_isConnected && _activeWebSocket == null)
             {
                 OnDisconnected(reason); // Ensure event fires if called when already "disconnected"

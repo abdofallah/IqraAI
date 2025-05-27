@@ -95,7 +95,7 @@ namespace ProjectIqraBackendApp
 
             app.UseWebSockets(new WebSocketOptions
                 {
-                    KeepAliveInterval = TimeSpan.FromSeconds(10)
+                    KeepAliveInterval = TimeSpan.FromSeconds(30)
                 }
             );
             app.Use(async (context, next) =>
@@ -133,6 +133,14 @@ namespace ProjectIqraBackendApp
                                 webSocket.Dispose();
 
                                 context.Response.StatusCode = 400; await context.Response.WriteAsync($"[{assignResult.Code}] {assignResult.Message}"); return;
+                            }
+
+                            // todo this is bad design, we need to await the websocket handler task for recieve itself if possible
+                            // well seems like we need to wait here else we lose the websocket (it aborts)
+                            // https://learn.microsoft.com/en-us/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0
+                            while (webSocket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
+                            {
+                                await Task.Delay(50);
                             }
                         }
                         catch (Exception ex)

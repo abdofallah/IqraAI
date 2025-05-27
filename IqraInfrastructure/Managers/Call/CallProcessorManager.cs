@@ -204,6 +204,9 @@ namespace IqraInfrastructure.Managers.Call
                 var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
                 var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
 
+                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
+                await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
+
                 return result.SetSuccessResult(
                     new ProcessedInboundCallResponse()
                     {
@@ -389,6 +392,9 @@ namespace IqraInfrastructure.Managers.Call
                         return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider");
                 }
 
+                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
+                await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
+
                 return result.SetSuccessResult();
             }
             catch (Exception ex)
@@ -479,6 +485,7 @@ namespace IqraInfrastructure.Managers.Call
                     cts.Cancel();
                     cts.Dispose();
                 }
+                catch (ObjectDisposedException) { /** ignore **/ }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error disposing session cancellation token");
@@ -518,6 +525,8 @@ namespace IqraInfrastructure.Managers.Call
 
                 _activeSessions[sessionId] = conversationSession;
                 _ctsSessions[sessionId] = newSessionCTS;
+
+                conversationSession.SessionEnded += async (object? sender, object? e) => { await CleanupSessionAsync(sessionId); };
 
                 return result.SetSuccessResult(conversationSession);
             }
@@ -704,9 +713,9 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        public async Task<FunctionReturnResult> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
+        public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<CancellationTokenSource?>();
 
             var validatedSessionTokenResult = CallWebsocketTokenGenerator.ValidateHmacToken(sessionToken, sessionId, clientId, _backendAppConfig.WebhookTokenSecret, out var validationError);
             if (!validatedSessionTokenResult)
@@ -725,7 +734,7 @@ namespace IqraInfrastructure.Managers.Call
                 if (convClient is WebSocketCapableConversationClient wsClient)
                 {
                     await wsClient.HandleAcceptedWebSocketAsync(webSocket, sessionOverallCts.Token);
-                    return result.SetSuccessResult();
+                    return result.SetSuccessResult(sessionOverallCts);
                 }
                 else
                 {

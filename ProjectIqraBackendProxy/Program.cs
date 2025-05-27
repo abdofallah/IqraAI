@@ -331,7 +331,13 @@ namespace ProjectIqraBackendProxy
             });
             builder.Services.AddSingleton<CallStatusManager>((sp) =>
             {
-                return new CallStatusManager();
+                return new CallStatusManager(
+                    sp.GetRequiredService<ILogger<CallStatusManager>>(),
+                    sp.GetRequiredService<InboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<IHttpClientFactory>()
+                );
             });
             builder.Services.AddHostedService<OutboundCallProcessorService>((sp) =>
             {
@@ -341,7 +347,8 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallProcessingOrchestrator>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>()
                 );
-            });        }
+            });        
+        }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
         {

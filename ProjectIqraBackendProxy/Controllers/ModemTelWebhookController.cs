@@ -44,8 +44,6 @@ namespace ProjectIqraBackendProxy.Controllers
                 Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
             };
 
-            _logger.LogInformation($"Recieved modemtel hook with status: {webhookData.CallStatus}");
-
             switch (webhookData.CallStatus?.ToLower())
             {
                 case "incoming":

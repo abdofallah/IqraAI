@@ -63,6 +63,8 @@ namespace IqraInfrastructure.Managers.Conversation
         public event EventHandler<ConversationAgentAddedEventArgs>? AgentAdded;
         public event EventHandler<ConversationAgentRemovedEventArgs>? AgentRemoved;
 
+        public event EventHandler<object>? SessionEnded;
+
         public string SessionId => _sessionId;
         public ConversationSessionState State => _state;
         public bool IsCallInitiated => _callOrWebInitiated == "call";
@@ -629,6 +631,8 @@ namespace IqraInfrastructure.Managers.Conversation
             // Run Audio Compilation in the background
             RunAudioCompilationAsync();
 
+            SessionEnded?.Invoke(this, null);
+
             // Dispose
             Dispose();
         }
@@ -714,7 +718,7 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
-        private async Task UpdateStateAsync(ConversationSessionState newState, string reason)
+        public async Task UpdateStateAsync(ConversationSessionState newState, string reason)
         {
             var oldState = _state;
             _state = newState;

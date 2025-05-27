@@ -380,6 +380,21 @@ namespace IqraInfrastructure.Repositories.Call
             }
         }
 
-        
+        public async Task UpdateOutboundCallQueueSessionIdAndStatusAsync(string queueId, string sessionId, CallQueueStatusEnum status)
+        {
+            try
+            {
+                var filter = Builders<OutboundCallQueueData>.Filter.Eq(c => c.Id, queueId);
+                var update = Builders<OutboundCallQueueData>.Update
+                    .Set(c => c.SessionId, sessionId)
+                    .Set(c => c.Status, status);
+
+                await _outboundActiveQueueCollection.UpdateOneAsync(filter, update);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating session ID and status for queue {QueueId}", queueId);
+            }
+        }
     }
 }

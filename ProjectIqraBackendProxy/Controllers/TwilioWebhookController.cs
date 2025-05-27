@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
+using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,7 @@ namespace ProjectIqraBackendProxy.Controllers
             _callStatusManager = callStatusManager;
         }
 
-        [HttpPost("status/{businessId}/{phoneNumberId}")]
+        [HttpPost("incoming/{businessId}/{phoneNumberId}")]
         public async Task<IActionResult> HandleStatusWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
@@ -50,31 +51,18 @@ namespace ProjectIqraBackendProxy.Controllers
                         var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
                         if (!distributionResult.Success)
                         {
-                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say>Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
+                            // todo ask user what to do with failed calls
+                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say language=""en_US"" voice=""lessac"">Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
                         }
 
                         return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" track=""both_tracks"" /></Connect><Hangup /></Response>");
                     }
 
-                case "ringing":
-                    {
-                        var distributionResult = await _callStatusManager.NotifyOutboundCallRinging(webhookContext);
-                        if (!distributionResult.Success)
-                        {
-                            return NoContent();
-                        }
-
-                        return Ok();
-                    }
-
                 case "no-answer":
                 case "busy":
                     {
-                        var distributionResult = await _callStatusManager.NotifyOutboundCallBusy(webhookContext);
-                        if (!distributionResult.Success)
-                        {
-                            return NoContent();
-                        }
+                        // probably the incoming call was missed
+                        // future ask user what to do with missed calls
 
                         return Ok();
                     }
@@ -92,7 +80,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
                 case "completed":
                     {
-                        var distributionResult = await _callStatusManager.NotifyCallEnded(webhookContext);
+                        var distributionResult = await _callStatusManager.NotifyInboundCallEnded(webhookContext);
                         if (!distributionResult.Success)
                         {
                             return NoContent();
@@ -104,6 +92,32 @@ namespace ProjectIqraBackendProxy.Controllers
                 default:
                     return BadRequest("Unhandled event type");
             }
+        }
+
+        [HttpPost("status/{sessionId}")]
+        public async Task<IActionResult> HandleStatusWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
+            {
+                return BadRequest("Invalid request parameters");
+            }
+
+            var webhookContext = new TelephonyWebhookContextModel
+            {
+                Provider = TelephonyProviderEnum.ModemTel,
+                CallId = webhookData.CallSid,
+                To = webhookData.To,
+                From = webhookData.From,
+                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
+            };
+
+            var distributionResult = await _callStatusManager.NotifyOutboundCallStatus(sessionId, webhookContext, webhookData.CallStatus?.ToLower());
+            if (!distributionResult.Success)
+            {
+                return NoContent();
+            }
+
+            return Ok();
         }
     }
 }
