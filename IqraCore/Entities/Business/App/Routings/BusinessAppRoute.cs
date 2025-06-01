@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.Business
 {
-    public class BusinessAppRoute
+    public class BusinessAppRoute 
     {
         public string Id { get; set; } = string.Empty;
         public BusinessAppRouteGeneral General { get; set; } = new BusinessAppRouteGeneral();

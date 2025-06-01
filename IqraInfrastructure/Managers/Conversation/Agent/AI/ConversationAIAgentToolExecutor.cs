@@ -45,7 +45,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public async Task InitializeAsync()
         {
-            if (_agentState.BusinessApp == null || _agentState.CurrentSessionRoute == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode))
+            if (_agentState.BusinessApp == null || _agentState.CurrentSessionContext == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode))
             {
                 _logger.LogError("Agent {AgentId}: Cannot initialize ScriptExecutionManager - missing required state.", _agentState.AgentId);
                 throw new InvalidOperationException("ScriptExecutionManager requires BusinessApp, Route, and LanguageCode.");
@@ -54,7 +54,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // ScriptAccessor loads the script data
             await _scriptAccessor.LoadScriptAsync(
                _agentState.BusinessApp,
-               _agentState.CurrentSessionRoute,
+               _agentState.CurrentSessionContext,
                _agentState.CurrentLanguageCode
             );
 

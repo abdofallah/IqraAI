@@ -112,7 +112,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             _logger.LogDebug("Agent {AgentId}: Setting up interrupting LLM.", _agentState.AgentId);
 
-            BusinessAppRouteAgentInterruptionViaAI interruptionData = ((BusinessAppRouteAgentInterruptionViaAI)_agentState.CurrentSessionRoute?.Agent.Interruption);
+            BusinessAppRouteAgentInterruptionViaAI interruptionData = ((BusinessAppRouteAgentInterruptionViaAI)_agentState.CurrentSessionContext?.Agent.Interruption);
 
             FunctionReturnResult<ILLMService?> interuptibleLLMServiceResult;
             if (interruptionData.UseCurrentAgentLLMForInterrupting)
@@ -179,7 +179,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     _agentState.IsExecutingSystemTool || _agentState.IsRespondingSystemToolRespone
                 )
                 {
-                    if (((BusinessAppRouteAgentInterruptionTurnByTurn)_agentState.CurrentSessionRoute.Agent.Interruption).UseInterruptedResponseInNextTurn)
+                    if (((BusinessAppRouteAgentInterruptionTurnByTurn)_agentState.CurrentSessionContext.Agent.Interruption).UseInterruptedResponseInNextTurn)
                     {
                         _agentState.InterruptResponseBuffer.Append($"(Spoken during your turn [{text}])");
                     }
@@ -303,7 +303,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         // vad timer not running
                         if (_vadInterruptTimerTask == null)
                         {
-                            int interruptMs = ((BusinessAppRouteAgentInterruptionViaVAD)_agentState.CurrentSessionRoute?.Agent.Interruption).InterruptibleConversationAudioActivityDurationMS;
+                            int interruptMs = ((BusinessAppRouteAgentInterruptionViaVAD)_agentState.CurrentSessionContext?.Agent.Interruption).InterruptibleConversationAudioActivityDurationMS;
 
                             _logger.LogDebug("Agent {AgentId}: VAD Speech Start (VAD Interrupt) - Fading out agent over {ms}ms and starting timer.", _agentState.AgentId, interruptMs);
 

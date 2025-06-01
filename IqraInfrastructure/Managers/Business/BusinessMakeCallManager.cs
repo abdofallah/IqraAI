@@ -553,9 +553,16 @@ namespace IqraInfrastructure.Managers.Business
                         bulkForwardResult.Message
                     );
                 }
-            }
 
-            return result.SetSuccessResult();
+                return result.SetSuccessResult();
+            }
+            else
+            {
+                return result.SetFailureResult(
+                    "ForwardCallInitiationRequestAsync:54",
+                    "Invalid number type."
+                );
+            }
         }
 
         private async Task<FunctionReturnResult> QueueSingleCall(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, string outboundCallCampaignId)

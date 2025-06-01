@@ -34,42 +34,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _clientTelephonyProviderType = TelephonyProviderEnum.ModemTel;
         }
 
-        public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)
-        {
-            var result = new FunctionReturnResult();
-            //if (_isConnected && _activeWebSocket != null)
-            //{
-            //    return result.SetSuccessResult();
-            //}
-
-            //_connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-            //if (queueData.Direction == CallQueueDirection.Inbound && !_callAnsweredByProviderApi)
-            //{
-            //    var callDetailsResult = await _modemTelManager.GetCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
-            //    bool isModemTelCallInProgress = callDetailsResult.Success && callDetailsResult.Data != null &&
-            //                                   "in-progress".Equals(callDetailsResult.Data.Status, System.StringComparison.OrdinalIgnoreCase);
-
-            //    if (!isModemTelInProgress)
-            //    {
-            //        // This assumes ModemTelML might have already answered it. If not, and explicit answer is needed:
-            //        // var answerResult = await _modemTelManager.AnswerCallAsync(_apiKey, _apiBaseUrl, _providerCallId);
-            //        // if (!answerResult.Success)
-            //        // {
-            //        //     return result.SetFailureResult($"ConnectAsync:ModemTel_Answer_Failed", answerResult.Message);
-            //        // }
-            //        // _callAnsweredByProviderApi = true;
-            //        // For now, we assume ModemTelML flow handles answering.
-            //    }
-            //    else
-            //    {
-            //        _callAnsweredByProviderApi = true;
-            //    }
-            //}
-
-            return result.SetSuccessResult();
-        }
-
         public override async Task HandleAcceptedWebSocketAsync(WebSocket webSocket, CancellationToken sessionCts)
         {
             await base.HandleAcceptedWebSocketAsync(webSocket, sessionCts);

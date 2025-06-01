@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 
         // Keep state needed to access script data
         private BusinessApp? _businessApp;
-        private BusinessAppRoute? _currentSessionRoute;
+        private ConversationSessionContext? _currentSessionContext;
         private BusinessAppAgent? _currentRouteAgent;
         private BusinessAppAgentScript? _curentAgentActiveScript;
         private string? _currentSessionlanguageCode;
@@ -28,18 +29,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
         }
 
         // LoadScriptAsync remains largely the same
-        public Task LoadScriptAsync(BusinessApp businessApp, BusinessAppRoute currentSessionRoute, string languageCode)
+        public Task LoadScriptAsync(BusinessApp businessApp, ConversationSessionContext currentSessionContext, string languageCode)
         {
             _businessApp = businessApp;
-            _currentSessionRoute = currentSessionRoute;
+            _currentSessionContext = currentSessionContext;
             _currentSessionlanguageCode = languageCode;
             _isScriptInitialized = false;
 
-            _logger.LogInformation("Loading script data for Route {RouteId}, Agent {AgentId}, Lang {LangCode}",
-                currentSessionRoute.Id, currentSessionRoute.Agent.SelectedAgentId, languageCode);
-
-            var currentRouteAgentId = _currentSessionRoute.Agent.SelectedAgentId;
-            var routeAgentScriptId = _currentSessionRoute.Agent.OpeningScriptId; // Assuming opening script is the main one for now
+            var currentRouteAgentId = _currentSessionContext.Agent.SelectedAgentId;
+            var routeAgentScriptId = _currentSessionContext.Agent.OpeningScriptId; // Assuming opening script is the main one for now
 
             try
             {
@@ -71,7 +69,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading route {RouteId} agent {AgentId} script {ScriptId} for business {BusinessId}", _currentSessionRoute?.Id, currentRouteAgentId, routeAgentScriptId, _businessApp?.Id);
+                _logger.LogError(ex, "Error loading agent {AgentId} script {ScriptId} for business {BusinessId}", currentRouteAgentId, routeAgentScriptId, _businessApp?.Id);
                 _isScriptInitialized = false; // Ensure state reflects failure
                 throw; // Re-throw to signal failure
             }

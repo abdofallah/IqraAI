@@ -1,6 +1,7 @@
 ﻿using Humanizer;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
@@ -180,7 +181,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Usually followed by waiting for OnSpeechPlaybackComplete.
         }
 
-        public async Task InitializeAsync(BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken)
+        public async Task InitializeAsync(BusinessApp businessAppData, ConversationSessionContext contextData, CancellationToken cancellationToken)
         {
             if (_agentState.IsInitialized)
             {
@@ -195,13 +196,13 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             {
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
-                _agentState.CurrentSessionRoute = businessRouteData;
-                _agentState.CurrentConversationType = businessRouteData.Agent.Interruption.Type;
-                _agentState.CurrentLanguageCode = businessRouteData.Language.DefaultLanguageCode; // Initial language
-                _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == businessRouteData.Agent.SelectedAgentId);
+                _agentState.CurrentSessionContext = contextData;
+                _agentState.CurrentConversationType = contextData.Agent.Interruption.Type;
+                _agentState.CurrentLanguageCode = contextData.Language.DefaultLanguageCode; // Initial language
+                _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == contextData.Agent.SelectedAgentId);
                 if (_agentState.BusinessAppAgent == null)
                 {
-                    throw new InvalidOperationException($"Business app agent {businessRouteData.Agent.SelectedAgentId} not found");
+                    throw new InvalidOperationException($"Business app agent {contextData.Agent.SelectedAgentId} not found");
                 }
                 _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30)/100); // Get from config
 
@@ -211,7 +212,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 await _sttHandler.InitializeAsync();
                 await _scriptAccessor.LoadScriptAsync(
                     _agentState.BusinessApp,
-                    _agentState.CurrentSessionRoute,
+                    _agentState.CurrentSessionContext,
                     _agentState.CurrentLanguageCode
                 );
                 await _toolExecutor.InitializeAsync();
@@ -240,8 +241,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return;
             }
 
-            bool requiresLanguageSelection = _agentState.CurrentSessionRoute?.Language.MultiLanguageEnabled == true &&
-                                            _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages?.Count > 1;
+            bool requiresLanguageSelection = _agentState.CurrentSessionContext?.Language.MultiLanguageEnabled == true &&
+                                            _agentState.CurrentSessionContext.Language.EnabledMultiLanguages?.Count > 1;
 
             if (requiresLanguageSelection)
             {
@@ -294,7 +295,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         {
             if (string.IsNullOrWhiteSpace(cachedMultiLanguagePlayMessage))
             {
-                var availableLangs = _agentState.CurrentSessionRoute!.Language.EnabledMultiLanguages!;
+                var availableLangs = _agentState.CurrentSessionContext!.Language.EnabledMultiLanguages!;
                 int langCount = availableLangs.Count;
 
                 for (int i = 0; i < langCount; i++)
@@ -404,7 +405,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
             // Instruct LLM to end the call immediately
-            string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionRoute?.Configuration.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";      
+            string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";      
             await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _agentState.CurrentClientId, _conversationCTS.Token); // todo this is problematic
         }
 
@@ -506,11 +507,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 {
                     if (
                         int.TryParse(args.CollectedDigits, out int languageIndex) &&
-                        _agentState.CurrentSessionRoute?.Language.EnabledMultiLanguages != null &&
-                        languageIndex > 0 && languageIndex <= _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages.Count
+                        _agentState.CurrentSessionContext?.Language.EnabledMultiLanguages != null &&
+                        languageIndex > 0 && languageIndex <= _agentState.CurrentSessionContext.Language.EnabledMultiLanguages.Count
                     )
                     {
-                        string selectedLanguageCode = _agentState.CurrentSessionRoute.Language.EnabledMultiLanguages[languageIndex - 1].LanguageCode;
+                        string selectedLanguageCode = _agentState.CurrentSessionContext.Language.EnabledMultiLanguages[languageIndex - 1].LanguageCode;
                         if (selectedLanguageCode != _agentState.CurrentLanguageCode)
                         {
                             await HandleLanguageChangeRequestAsync(selectedLanguageCode);

@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 
@@ -16,7 +17,7 @@ namespace IqraCore.Interfaces.Conversation
         Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken);
         Task ProcessTextAsync(string text, string clientId, CancellationToken cancellationToken);
         Task ProcessDTMFAsync(string digit, string clientId, CancellationToken cancellationToken);
-        Task InitializeAsync(BusinessApp businessAppData, BusinessAppRoute businessRouteData, CancellationToken cancellationToken);
+        Task InitializeAsync(BusinessApp businessAppData, ConversationSessionContext contextData, CancellationToken cancellationToken);
         Task ShutdownAsync(string reason);
 
         event EventHandler<ConversationAudioGeneratedEventArgs> AudioGenerated;

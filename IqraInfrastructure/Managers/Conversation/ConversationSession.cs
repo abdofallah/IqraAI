@@ -2,8 +2,10 @@
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
+using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
@@ -24,6 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ILogger<ConversationSession> _logger;
         private readonly BusinessManager _businessManager;
         private readonly InboundCallQueueRepository _callQueueRepository;
+        private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
 
@@ -41,7 +44,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
         private BusinessData _sessionBusinessData;
         private BusinessApp _sessionBusinessAppData;
-        private BusinessAppRoute _sessionBusinessRouteData;
+        private ConversationSessionContext _sessionContextData;
 
         private readonly object _clientsLock = new();
         private readonly object _agentsLock = new();
@@ -142,13 +145,109 @@ namespace IqraInfrastructure.Managers.Conversation
                     _logger.LogError("Business route data not found for business ID {BusinessId} and route ID {RouteId}", _sessionCallQueueData.BusinessId, inboundCallQueue.RouteId);
                     throw new InvalidOperationException($"Business route data not found for business ID {_sessionCallQueueData.BusinessId} and route ID {inboundCallQueue.RouteId}");
                 }
-                _sessionBusinessRouteData = businessRouteData;
+
+                _sessionContextData = new ConversationSessionContext()
+                {
+                    Agent = new ConversationSessionContextAgent()
+                    {
+                        SelectedAgentId = businessRouteData.Agent.SelectedAgentId,
+                        OpeningScriptId = businessRouteData.Agent.OpeningScriptId,
+                        Interruption = businessRouteData.Agent.Interruption,
+                        TelephonyNumberInContext = businessRouteData.Agent.RouteNumberInContext,
+                        CallerNumberInContext = businessRouteData.Agent.CallerNumberInContext,
+                        Timezones = businessRouteData.Agent.Timezones
+                    },
+                    Timeout = new ConversationSessionContextTimeout()
+                    {
+                        PickUpDelayMS = businessRouteData.Configuration.PickUpDelayMS,
+                        NotifyOnSilenceMS = businessRouteData.Configuration.NotifyOnSilenceMS,
+                        EndCallOnSilenceMS = businessRouteData.Configuration.EndCallOnSilenceMS,
+                        MaxCallTimeS = businessRouteData.Configuration.MaxCallTimeS,
+                        RecordCallAudio = businessRouteData.Configuration.RecordCallAudio
+                    },
+                    Language = new ConversationSessionContextLanguage()
+                    {
+                        DefaultLanguageCode = businessRouteData.Language.DefaultLanguageCode,
+                        MultiLanguageEnabled = businessRouteData.Language.MultiLanguageEnabled,
+                        EnabledMultiLanguages = businessRouteData.Language.EnabledMultiLanguages
+                    }
+                    // TODO ACTIONS
+                };
             }
             else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
             {
                 OutboundCallQueueData outboundCallQueue = _sessionCallQueueData as OutboundCallQueueData;
 
-                // todo _sessionBusinessRouteData
+                var campaignData = await _outboundCallCampaignRepository.GetOutboundCallCampaignByIdAsync(outboundCallQueue.CampaignId);
+                if (campaignData == null)
+                {
+                    _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionCallQueueData.BusinessId, outboundCallQueue.Id);
+                    throw new InvalidOperationException($"Outbound call campaign not found for business ID {_sessionCallQueueData.BusinessId} and queue ID {outboundCallQueue.Id}");
+                }
+
+                _sessionContextData = new ConversationSessionContext()
+                {
+                    Agent = new ConversationSessionContextAgent()
+                    {
+                        SelectedAgentId = outboundCallQueue.AgentId,
+                        OpeningScriptId = outboundCallQueue.AgentScriptId,
+                        Timezones = outboundCallQueue.AgentTimeZone,
+                        TelephonyNumberInContext = campaignData.CallRequestData.AgentSettings.IncludeFromNumberInContext.Value,
+                        RecipientNumberInContext = campaignData.CallRequestData.AgentSettings.IncludeToNumberInContext.Value,
+                    },
+                    Language = new ConversationSessionContextLanguage()
+                    {
+                        DefaultLanguageCode = outboundCallQueue.AgentLanguageCode,
+                        MultiLanguageEnabled = false
+                    },
+                    Timeout = new ConversationSessionContextTimeout()
+                    {
+                        NotifyOnSilenceMS = campaignData.CallRequestData.Configuration.Timeouts.NotifyOnSilenceMS.Value,
+                        EndCallOnSilenceMS = campaignData.CallRequestData.Configuration.Timeouts.EndOnSilenceMS.Value,
+                        MaxCallTimeS = campaignData.CallRequestData.Configuration.Timeouts.MaxCallTimeS.Value,
+                    }
+                    // TODO ACTIONS
+                };
+
+                if (campaignData.CallRequestData.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.TurnByTurn)
+                {
+                    _sessionContextData.Agent.Interruption = new BusinessAppRouteAgentInterruptionTurnByTurn()
+                    {
+                        UseInterruptedResponseInNextTurn = campaignData.CallRequestData.AgentSettings.Interruption.UseInterruptedResponseInNextTurn.Value
+                    };
+                }
+                else if (campaignData.CallRequestData.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.InterruptibleViaVAD)
+                {
+                    _sessionContextData.Agent.Interruption = new BusinessAppRouteAgentInterruptionViaVAD()
+                    {
+                        InterruptibleConversationAudioActivityDurationMS = campaignData.CallRequestData.AgentSettings.Interruption.VadDurationMS.Value
+                    };
+                }
+                else if (campaignData.CallRequestData.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.InterruptibleViaAI)
+                {
+                    var interruptionVIAAI = new BusinessAppRouteAgentInterruptionViaAI()
+                    {
+                        UseCurrentAgentLLMForInterrupting = campaignData.CallRequestData.AgentSettings.Interruption.UseAgentLLM.Value
+                    };
+                    if (campaignData.CallRequestData.AgentSettings.Interruption.UseAgentLLM.Value == true)
+                    {
+                        interruptionVIAAI.LLMIntegrationToUseForCheckingInterruption = new BusinessAppAgentIntegrationData()
+                        {
+                            Id = campaignData.CallRequestData.AgentSettings.Interruption.LLMIntegrationId,
+                            FieldValues = campaignData.CallRequestData.AgentSettings.Interruption.LLMIntegrationConfigFields
+                        };
+                    }
+
+                    _sessionContextData.Agent.Interruption = interruptionVIAAI;
+                }
+                else if (campaignData.CallRequestData.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.InterruptibleViaResponse)
+                {
+                    _sessionContextData.Agent.Interruption = new BusinessAppRouteAgentInterruptionViaResponse();
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported interruption type: {campaignData.CallRequestData.AgentSettings.Interruption.Type}");
+                }
             }
         }
 
@@ -165,7 +264,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 LastActivityTime = DateTime.UtcNow,
                 ProcessingServerId = _sessionCallQueueData.ProcessingBackendServerId,
                 RegionId = _sessionCallQueueData.RegionId,
-                ExpectedEndTimeAt = DateTime.UtcNow.AddSeconds(_sessionBusinessRouteData.Configuration.MaxCallTimeS)
+                ExpectedEndTimeAt = DateTime.UtcNow.AddSeconds(_sessionContextData.Timeout.MaxCallTimeS)
             };
 
             await _conversationStateRepository.CreateAsync(conversationState);
@@ -279,7 +378,7 @@ namespace IqraInfrastructure.Managers.Conversation
             // If there are no more clients, end the session
             if (_clients.Count == 0 && _state == ConversationSessionState.Active)
             {
-                await EndAsync("All clients disconnected");
+                await EndAsync(reason+ ": All clients disconnected");
             }
 
             return true;
@@ -407,7 +506,12 @@ namespace IqraInfrastructure.Managers.Conversation
             // Notify event subscribers
             AgentRemoved?.Invoke(this, new ConversationAgentRemovedEventArgs(agentId, reason));
 
-            _logger.LogInformation("Removed agent {AgentId} from session {SessionId}: {Reason}", agentId, _sessionId, reason);
+            // If there are no more agents, end the session
+            if (_agents.Count == 0 && _state == ConversationSessionState.Active)
+            {
+                await EndAsync(reason + ": All agents disconnected");
+            }
+
             return true;
         }       
 
@@ -428,26 +532,14 @@ namespace IqraInfrastructure.Managers.Conversation
                 // Update state
                 await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
-                await PrimaryAgent.InitializeAsync(_sessionBusinessAppData, _sessionBusinessRouteData, _sessionCts.Token);
+                await PrimaryAgent.InitializeAsync(_sessionBusinessAppData, _sessionContextData, _sessionCts.Token);
+                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
 
                 // Start silence and max duration detection timer
                 StartTimers();
 
                 // Update state
-                await UpdateStateAsync(ConversationSessionState.Active, "Session active");
-
-                var agentsNotify = _agents.Select(async (agent) =>
-                {
-                    try
-                    {
-                        return agent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
-                    }
-                    catch (Exception ex) // should never be the case...
-                    {
-                        return Task.CompletedTask;
-                    }
-                }
-                );
+                await UpdateStateAsync(ConversationSessionState.Active, "Session active");          
 
                 return result.SetSuccessResult();
             }
@@ -460,10 +552,10 @@ namespace IqraInfrastructure.Managers.Conversation
         private void StartTimers()
         {
             // Start silence detection timer
-            _silenceTimer = new Timer(CheckSilence, null, _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS, _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS);
+            _silenceTimer = new Timer(CheckSilence, null, _sessionContextData.Timeout.NotifyOnSilenceMS, _sessionContextData.Timeout.NotifyOnSilenceMS);
 
             // Start session duration timer
-            var maxDurationMs = _sessionBusinessRouteData.Configuration.MaxCallTimeS * 1000;
+            var maxDurationMs = _sessionContextData.Timeout.MaxCallTimeS * 1000;
             _sessionDurationTimer = new Timer(async (state) => { await EndSessionOnMaxDuration(state); }, null, maxDurationMs, Timeout.Infinite);
         }
 
@@ -471,7 +563,7 @@ namespace IqraInfrastructure.Managers.Conversation
         {
             var silenceDuration = DateTime.UtcNow - _lastUserActivityTime;
 
-            if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.EndCallOnSilenceMS)
+            if (silenceDuration.TotalMilliseconds > _sessionContextData.Timeout.EndCallOnSilenceMS)
             {
                 EndAsync("Silence timeout reached").ContinueWith(t =>
                 {
@@ -481,7 +573,7 @@ namespace IqraInfrastructure.Managers.Conversation
                     }
                 });
             }
-            else if (silenceDuration.TotalMilliseconds > _sessionBusinessRouteData.Configuration.NotifyOnSilenceMS)
+            else if (silenceDuration.TotalMilliseconds > _sessionContextData.Timeout.NotifyOnSilenceMS)
             {
                 lock (_agentsLock)
                 {
@@ -747,7 +839,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _lastUserActivityTime = DateTime.UtcNow;
 
             // Store audio if recording is enabled
-            if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
+            if (_sessionContextData.Timeout.RecordCallAudio)
             {
                 try
                 {
@@ -931,7 +1023,7 @@ namespace IqraInfrastructure.Managers.Conversation
                 return;
 
             // Store audio if recording is enabled
-            if (_sessionBusinessRouteData.Configuration.RecordCallAudio)
+            if (_sessionContextData.Timeout.RecordCallAudio)
             {
                 try
                 {

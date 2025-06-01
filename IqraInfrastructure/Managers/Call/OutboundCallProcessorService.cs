@@ -53,10 +53,10 @@ namespace IqraInfrastructure.Managers.Call
             _logger.LogInformation("OutboundCallProcessorService polling loop started for region {Region}.", _proxyAppConfig.RegionId);
             try
             {
-                var scheduleThreshold = DateTime.UtcNow.AddMinutes(_proxyAppConfig.OutboundProcessing.ScheduleWindowMinutes);
-
                 while (!token.IsCancellationRequested)
                 {
+                    var scheduleThreshold = DateTime.UtcNow.AddMinutes(_proxyAppConfig.OutboundProcessing.ScheduleWindowMinutes);
+
                     var (callsSuccessfullyMarked, nextCursor) = await _outboundCallQueueRepo.GetProcessableOutboundCallsAndMarkAsync(
                         _proxyAppConfig.RegionId,
                         _proxyAppConfig.OutboundProcessing.DbFetchBatchSize,

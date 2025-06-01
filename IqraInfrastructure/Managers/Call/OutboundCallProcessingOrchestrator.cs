@@ -70,6 +70,7 @@ namespace IqraInfrastructure.Managers.Call
             var serverSelectionResult = await _serverSelectionManager.SelectOptimalServerAsync(call.RegionId);
             if (!serverSelectionResult.Success || !serverSelectionResult.Data.Any())
             {
+                // todo this should happen very critically but should we kill the queue because of it?
                 await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"No backend server available for region {call.RegionId}. {serverSelectionResult.Message}", Type = CallQueueLogTypeEnum.Error });
                 return;
             }

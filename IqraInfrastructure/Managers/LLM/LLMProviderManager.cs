@@ -668,39 +668,48 @@ namespace IqraInfrastructure.Managers.LLM
         {
             var result = new FunctionReturnResult<ILLMService?>();
 
-            var llmProviderData = await GetProviderDataByIntegration(integrationData.Type);
-            if (!llmProviderData.Success)
+            try
             {
-                return result.SetFailureResult("BuildProviderServiceByIntegration:1", $"Provider not find by integration type");
-            }
+                var llmProviderData = await GetProviderDataByIntegration(integrationData.Type);
+                if (!llmProviderData.Success)
+                {
+                    return result.SetFailureResult("BuildProviderServiceByIntegration:1", $"Provider not find by integration type");
+                }
 
-            switch (llmProviderData.Data.Id)
-            {
-                case InterfaceLLMProviderEnum.AnthropicClaude:
-                    return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
+                switch (llmProviderData.Data.Id)
+                {
+                    case InterfaceLLMProviderEnum.AnthropicClaude:
+                        return result.SetSuccessResult(new AnthropicClaudeStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
-                case InterfaceLLMProviderEnum.OpenAIGPT:
-                    {
-                        var model = (string)agentIntegrationData.FieldValues["model"];
-                        var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                        var endpoint = "https://api.openai.com/v1";
-                        if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) && !string.IsNullOrEmpty(endpointValue) && Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
+                    case InterfaceLLMProviderEnum.OpenAIGPT:
                         {
-                            endpoint = endpointValue;
+                            var model = (string)agentIntegrationData.FieldValues["model"];
+                            var apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            var endpoint = "https://api.openai.com/v1";
+                            if (integrationData.Fields.TryGetValue("endpoint", out var endpointValue) && !string.IsNullOrEmpty(endpointValue) && Uri.IsWellFormedUriString(endpointValue, UriKind.Absolute))
+                            {
+                                endpoint = endpointValue;
+                            }
+
+                            return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"], endpoint));
                         }
 
-                        return result.SetSuccessResult(new OpenAIGPTStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), integrationData.Fields["model"], endpoint));
-                    }
+                    case InterfaceLLMProviderEnum.GoogleAIGemini:
+                        return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
-                case InterfaceLLMProviderEnum.GoogleAIGemini:
-                    return result.SetSuccessResult(new GoogleAIGeminiStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));                 
+                    case InterfaceLLMProviderEnum.GroqCloud:
+                        return result.SetSuccessResult(new GroqCloudStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
 
-                case InterfaceLLMProviderEnum.GroqCloud:
-                    return result.SetSuccessResult(new GroqCloudStreamingLLMService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model"]));
-
-                default:
-                    _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
-                    return result.SetFailureResult("BuildProviderServiceByIntegration:2", $"Business app LLM provider {llmProviderData.Data.Id} not supported");
+                    default:
+                        _logger.LogError("Business app LLM provider {ProviderType} not supported", llmProviderData.Data.Id);
+                        return result.SetFailureResult("BuildProviderServiceByIntegration:2", $"Business app LLM provider {llmProviderData.Data.Id} not supported");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to build provider service");
+                
+                return result.SetFailureResult("BuildProviderServiceByIntegration:EXCEPTION", $"Failed to build provider service: {ex.Message}");
             }
         }
     }

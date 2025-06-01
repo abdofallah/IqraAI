@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Helper.Agent;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helper.Call.Outbound;
 
 namespace IqraCore.Models.Business.MakeCalls

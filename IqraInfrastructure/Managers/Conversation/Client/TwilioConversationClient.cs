@@ -1,6 +1,4 @@
-﻿using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Helper.Telephony;
-using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Helper.Telephony;
 using IqraInfrastructure.Managers.Telephony;
 using Microsoft.Extensions.Logging;
 using System.Net.WebSockets;
@@ -34,21 +32,6 @@ namespace IqraInfrastructure.Managers.Conversation.Client
             _authToken = authToken;
             _twilioManager = twilioManager;
             _clientTelephonyProviderType = TelephonyProviderEnum.Twilio;
-        }
-
-        public override async Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken)
-        {
-            var result = new FunctionReturnResult();
-            if (_isConnected && _activeWebSocket != null)
-            {
-                return result.SetSuccessResult();
-            }
-            _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-            // For Twilio, the TwiML response with <Connect><Stream> is handled by
-            // the calling HTTP controller/service in response to Twilio's webhook.
-            // This ConnectAsync just signals readiness.
-            return result.SetSuccessResult();
         }
 
         public override async Task HandleAcceptedWebSocketAsync(WebSocket webSocket, CancellationToken sessionCts)

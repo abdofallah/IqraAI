@@ -11,7 +11,6 @@ namespace IqraCore.Interfaces.Conversation
 
         Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken);
         Task SendTextAsync(string text, CancellationToken cancellationToken);
-        Task<FunctionReturnResult> ConnectAsync(CancellationToken cancellationToken);
         Task DisconnectAsync(string reason);
 
         event EventHandler<ConversationAudioReceivedEventArgs> AudioReceived;

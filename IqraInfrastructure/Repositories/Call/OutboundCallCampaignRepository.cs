@@ -17,6 +17,20 @@ namespace IqraInfrastructure.Repositories.Call
             _logger = logger;
         }
 
+        public async Task<OutboundCallCampaignData?> GetOutboundCallCampaignByIdAsync(string campaignId)
+        {
+            try
+            {
+                var filter = Builders<OutboundCallCampaignData>.Filter.Eq(c => c.Id, campaignId);
+                return await _callQueueCollection.Find(filter).FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting outbound call campaign by ID {CampaignId}", campaignId);
+                return null;
+            }
+        }
+
         public async Task<bool> CreateOutboundCallCampaignAsync(OutboundCallCampaignData outboundCallCampaignData)
         {
             try

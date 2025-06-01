@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Helper;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
@@ -30,7 +31,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
         public async Task<FunctionReturnResult<string?>> GenerateInitialSystemPrompt(
             BusinessApp businessApp,
             BusinessAppAgent agent,
-            BusinessAppRoute route,
+            ConversationSessionContext currentSessionContext,
             string languageCode,
             InterfaceLLMProviderEnum llmProvider,
             string llmModelId
@@ -71,7 +72,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     return result;
                 }
 
-                BusinessAppAgentScript? openingAgentScript = agent.Scripts.Find(d => d.Id == route.Agent.OpeningScriptId);
+                BusinessAppAgentScript? openingAgentScript = agent.Scripts.Find(d => d.Id == currentSessionContext.Agent.OpeningScriptId);
                 if (openingAgentScript == null)
                 {
                     result.Code = "GenerateSystemPrompt:4";
@@ -120,7 +121,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 
                 // Add Route Data
                 var routeObject = new ScriptObject();
-                routeObject["Multilangauges"] = CreateRouteLanguageObject(route.Language, languageCode);
+                routeObject["Multilangauges"] = CreateRouteLanguageObject(currentSessionContext.Language, languageCode);
                 modelObject["Route"] = routeObject;
 
                 // Add the model to the context
@@ -149,29 +150,81 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             return result;
         }
 
-        public async Task<FunctionReturnResult<string?>> FillSessionInformationInPrompt(string prompt, string clientIdentifier, BusinessAppRoute sessionRoute, BusinessAppAgent routeAgent, string languageCode)
+        public async Task<FunctionReturnResult<string?>> GenerateDateTimeInformationForMessage(string? dateTimeFormatTemplate, List<string> timezones)
+        {
+            var result = new FunctionReturnResult<string?>();
+
+            if (string.IsNullOrEmpty(dateTimeFormatTemplate))
+            {
+                dateTimeFormatTemplate = "<DateTimeInformation>Date and Time right now for timezone ({{Session.Route.Agent.Timezone.Name}}) is: {{Session.Route.Agent.Timezone.Time}}</DateTimeInformation>";
+            }
+
+            // Initialize Scriban template
+            var template = Template.Parse(dateTimeFormatTemplate);
+            if (template.HasErrors)
+            {
+                result.Code = "GenerateDateTimeInformationForMessage:1";
+                result.Message = "Error parsing system prompt template: " + string.Join(", ", template.Messages);
+                return result;
+            }
+
+            // Create template context
+            var templateContext = new TemplateContext();
+            var modelObject = new ScriptObject();
+
+            // Add Session data
+            var sessionObject = new ScriptObject();
+
+            // Add Route data
+            var routeObject = new ScriptObject();
+            routeObject["Agent"] = CreateRouteAgentTimezoneObject(timezones);
+            sessionObject["Route"] = routeObject;
+            modelObject["Session"] = sessionObject;
+
+            // Add the model to the context
+            modelObject.Import(modelObject);
+            templateContext.PushGlobal(modelObject);
+
+            // Render the template
+            var renderedPrompt = await template.RenderAsync(templateContext);
+            if (string.IsNullOrWhiteSpace(renderedPrompt))
+            {
+                result.Code = "GenerateDateTimeInformationForMessage:2";
+                result.Message = "System prompt is empty after rendering";
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = renderedPrompt;
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<string?>> FillSessionInformationInPrompt(string? sessionInformationTemplate, string clientIdentifier, ConversationSessionContext currentSessionContext, BusinessAppAgent routeAgent, string languageCode)
         {
             var result = new FunctionReturnResult<string?>();
 
             // todo move this out of here into the dedicated backend prompt management system
-            prompt += Environment.NewLine + @"
-Here is the session information that will be helpful for your context:
-<SessionInformation>
-    Current Choosen Language: {{Session.Route.Multilangauges.CurrentLanguage.Code}} | {{Session.Route.Multilangauges.CurrentLanguage.Name}}
-    {{~ if Session.Route.Multilangauges.Enabled ~}}
-        Available Languages:
-        {{ for language in Session.Route.Multilangauges.Languages }}
-            - {{language.Code}} | {{language.Name}}
-        {{~ end ~}}
-    {{~ end ~}}
-	Date and Time right now for timezone ({{Session.Route.Agent.Timezone.Name}}) is: {{Session.Route.Agent.Timezone.Time}}
-	{{~ if Session.Route.Agent.CallerNumberInContext ~}}
-	Caller phone Number is: {{Session.Caller.PhoneNumber}}
-	{{~ end ~}}
-</SessionInformation>";
-
+            if (string.IsNullOrEmpty(sessionInformationTemplate))
+            {
+                sessionInformationTemplate = @"
+                Here is the session information that will be helpful for your context:
+                <SessionInformation>
+                    Current Choosen Language: {{Session.Route.Multilangauges.CurrentLanguage.Code}} | {{Session.Route.Multilangauges.CurrentLanguage.Name}}
+                    {{~ if Session.Route.Multilangauges.Enabled ~}}
+                        Available Languages:
+                        {{ for language in Session.Route.Multilangauges.Languages }}
+                            - {{language.Code}} | {{language.Name}}
+                        {{~ end ~}}
+                    {{~ end ~}}	
+	                {{~ if Session.Route.Agent.CallerNumberInContext ~}}
+	                Caller phone Number is: {{Session.Caller.PhoneNumber}}
+	                {{~ end ~}}
+                </SessionInformation>";
+            }
+            
             // Initialize Scriban template
-            var template = Template.Parse(prompt);
+            var template = Template.Parse(sessionInformationTemplate);
             if (template.HasErrors)
             {
                 result.Code = "FillSessionInformationInPrompt:1";
@@ -192,8 +245,8 @@ Here is the session information that will be helpful for your context:
 
             // Add Route data
             var routeObject = new ScriptObject();
-            routeObject["Agent"] = CreateRouteAgentObject(sessionRoute.Agent);
-            routeObject["Multilangauges"] = await CreateRouteLanguageObject(sessionRoute.Language, languageCode);
+            routeObject["Agent"] = CreateRouteAgentObject(currentSessionContext.Agent);
+            routeObject["Multilangauges"] = await CreateRouteLanguageObject(currentSessionContext.Language, languageCode);
             sessionObject["Route"] = routeObject;
 
             // Add the model to the context
@@ -820,14 +873,14 @@ Here is the session information that will be helpful for your context:
             return productsArray;
         }
 
-        private ScriptObject CreateRouteAgentObject(BusinessAppRouteAgent routeAgent)
+        private ScriptObject CreateRouteAgentTimezoneObject(List<string> timezones)
         {
             var routeAgentObject = new ScriptObject();
 
             ScriptObject timezoneObject = new ScriptObject();
-            if (routeAgent.Timezones != null && routeAgent.Timezones.Count > 0)
+            if (timezones != null && timezones.Count > 0)
             {
-                var timeZoneOffsetString = routeAgent.Timezones[0];
+                var timeZoneOffsetString = timezones[0];
 
                 TimeSpan? offset = TimeZoneHelper.ParseOffsetString(timeZoneOffsetString);
                 DateTimeOffset utcNow = DateTimeOffset.UtcNow;
@@ -851,13 +904,20 @@ Here is the session information that will be helpful for your context:
             }
             routeAgentObject["Timezone"] = timezoneObject;
 
+            return routeAgentObject;
+        }
+
+        private ScriptObject CreateRouteAgentObject(ConversationSessionContextAgent contextAgent)
+        {
+            var routeAgentObject = new ScriptObject();
+
             // Add caller number context
-            routeAgentObject["CallerNumberInContext"] = routeAgent.CallerNumberInContext;
+            // TODO
 
             return routeAgentObject;
         }
 
-        private async Task<ScriptObject> CreateRouteLanguageObject(BusinessAppRouteLanguage? routeLanguageData, string currentLanguageCode)
+        private async Task<ScriptObject> CreateRouteLanguageObject(ConversationSessionContextLanguage? contextLanguageData, string currentLanguageCode)
         {
             var languageContainerObject = new ScriptObject(); // Will contain CurrentLanguage and Multilangauges
 
@@ -865,7 +925,7 @@ Here is the session information that will be helpful for your context:
             var currentLangObject = new ScriptObject { { "Code", "unknown" }, { "Name", "Unknown" } };
             var multiLangObject = new ScriptObject { { "Enabled", false }, { "Languages", new ScriptArray() } };
 
-            if (routeLanguageData != null && !string.IsNullOrEmpty(currentLanguageCode))
+            if (contextLanguageData != null && !string.IsNullOrEmpty(currentLanguageCode))
             {
                 // 1. Current Language
                 var currentLanguageResult = await _languagesManager.GetLanguageByCode(currentLanguageCode);
@@ -877,16 +937,17 @@ Here is the session information that will be helpful for your context:
                 currentLangObject["Name"] = currentLanguageName;
 
                 // 2. Multi-languages Info
-                bool multiLangEnabled = routeLanguageData.MultiLanguageEnabled &&
-                                        routeLanguageData.EnabledMultiLanguages != null &&
-                                        routeLanguageData.EnabledMultiLanguages.Count > 0;
+                bool multiLangEnabled = contextLanguageData.MultiLanguageEnabled != null &&
+                                        contextLanguageData.MultiLanguageEnabled.Value &&
+                                        contextLanguageData.EnabledMultiLanguages != null &&
+                                        contextLanguageData.EnabledMultiLanguages.Count > 0;
 
                 multiLangObject["Enabled"] = multiLangEnabled;
 
                 if (multiLangEnabled)
                 {
                     var languagesList = new ScriptArray();
-                    foreach (var enabledLang in routeLanguageData.EnabledMultiLanguages!)
+                    foreach (var enabledLang in contextLanguageData.EnabledMultiLanguages!)
                     {
                         var langInfoResult = await _languagesManager.GetLanguageByCode(enabledLang.LanguageCode);
                         var langName = langInfoResult.Success && langInfoResult.Data != null
@@ -903,7 +964,7 @@ Here is the session information that will be helpful for your context:
             }
             else
             {
-                if (routeLanguageData == null) _logger.LogError("BusinessAppRouteLanguage data was null when creating language object.");
+                if (contextLanguageData == null) _logger.LogError("BusinessAppRouteLanguage data was null when creating language object.");
                 if (string.IsNullOrEmpty(currentLanguageCode)) _logger.LogError("Current language code was null or empty when creating language object.");
             }
 

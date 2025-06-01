@@ -4,6 +4,7 @@ using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.VAD;
 using System.Text;
 using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Conversation.Context;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
@@ -14,7 +15,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public CancellationToken MasterCancellationToken { get; internal set; } = CancellationToken.None;
         public ConversationAgentConfiguration? AgentConfiguration { get; internal set; }
         public BusinessApp? BusinessApp { get; internal set; }
-        public BusinessAppRoute? CurrentSessionRoute { get; internal set; }
+        public ConversationSessionContext? CurrentSessionContext { get; internal set; }
         public BusinessAppAgent? BusinessAppAgent { get; internal set; }
         public AgentInterruptionTypeENUM CurrentConversationType { get; internal set; }
 

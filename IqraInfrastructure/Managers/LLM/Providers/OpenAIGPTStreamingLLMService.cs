@@ -62,10 +62,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
 
-            var finalMessages = _initialMessages
-                .Concat(_messagesMemory)
-                .ToList();
-            finalMessages.Prepend(ChatMessage.CreateSystemMessage(_systemPrompt));
+            var finalMessages = (new List<ChatMessage>() { _systemPrompt }).Concat(_messagesMemory).ToList();
 
             var parameters = new ChatCompletionOptions()
             {
@@ -160,7 +157,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             return GetProviderTypeStatic();
         }
 
-        public InterfaceLLMProviderEnum GetProviderTypeStatic()
+        public static InterfaceLLMProviderEnum GetProviderTypeStatic()
         {
             return InterfaceLLMProviderEnum.OpenAIGPT;
         }

@@ -98,27 +98,45 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             await InitializeAsync(); // Re-runs full init logic
         }
 
+        // Basic fallback todo will fail to speak for other langauges
+        private const string PromptGenFailEndCallMessage = "ONLY RESPOND WITH: execute_system_function: end_call: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\"";
         private async Task GenerateAndSetBaseSystemPromptAsync()
         {
             var systemPromptResult = await _systemPromptGenerator.GenerateInitialSystemPrompt(
                _agentState.BusinessApp!,
                _agentState.BusinessAppAgent!,
-               _agentState.CurrentSessionRoute!,
+               _agentState.CurrentSessionContext!,
                _agentState.CurrentLanguageCode,
                _agentState.LLMService!.GetProviderType(),
                _agentState.LLMService!.GetModel()
             );
+
             if (!systemPromptResult.Success || systemPromptResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, systemPromptResult.Code, systemPromptResult.Message);
                 // TODO: Raise error? Fallback to a default prompt?
-                _agentState.LLMBaseSystemPrompt = "ONLY RESPOND WITH: execute_system_function: end_call: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\""; // Basic fallback todo will fail to speak for other langauges
+                _agentState.LLMService!.SetSystemPrompt(PromptGenFailEndCallMessage);
+                return;
             }
             else
             {
-                _agentState.LLMBaseSystemPrompt = systemPromptResult.Data;
-            }
-            _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+                var sessionInformationResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
+                _agentState.LLMBaseSystemPrompt,
+                _agentState.CurrentClientId ?? "UnknownClient", // todo this is wrong, we need to make it primary for now, in future we will see how to handle it if multiple clients, maybe just let know in customer_query and adding all callers ids in the session information
+                _agentState.CurrentSessionContext!,
+                _agentState.BusinessAppAgent!,
+                _agentState.CurrentLanguageCode);
+                if (!sessionInformationResult.Success || sessionInformationResult.Data == null)
+                {
+                    _logger.LogError("Agent {AgentId}: Error generating system prompt: {Code} {Message}", _agentState.AgentId, sessionInformationResult.Code, sessionInformationResult.Message);
+                    // raise error add log todo
+                    _agentState.LLMService!.SetSystemPrompt(PromptGenFailEndCallMessage);
+                    return;
+                }
+
+                _agentState.LLMBaseSystemPrompt = systemPromptResult.Data + Environment.NewLine + Environment.NewLine + sessionInformationResult.Data;
+                _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
+            }        
         }
 
         private async Task WarmupLLMAsync()
@@ -224,7 +242,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             CurrentlyProcessingMessage = text;
             _agentState.CurrentClientId = clientId;
 
-            await UpdateSystemPromptWithSessionInfoAsync();
+            var currentDateTimeData = await _systemPromptGenerator.GenerateDateTimeInformationForMessage(null, _agentState.CurrentSessionContext.Agent.Timezones);
+            if (!currentDateTimeData.Success || currentDateTimeData.Data == null)
+            {
+                _logger.LogError("Agent {AgentId}: Error generating date time information for message.", _agentState.AgentId);
+            }
 
             string messageToSend = string.Empty;
             if (isSystemMessage)
@@ -233,7 +255,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
             else
             {
-                messageToSend = $"customer_query: {text}";
+                messageToSend = $"customer_query: {text}{(currentDateTimeData.Success ? ("\n\n" + currentDateTimeData.Data) : "")}";
             }
 
             TextRecievedForLLMToProcess?.Invoke(messageToSend, clientId);
@@ -250,28 +272,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken);
             await _llmTask;
-        }
-
-        private async Task UpdateSystemPromptWithSessionInfoAsync()
-        {
-            // Regenerate system prompt with current session details
-            var sessionFilledPromptResult = await _systemPromptGenerator.FillSessionInformationInPrompt(
-                _agentState.LLMBaseSystemPrompt,
-                _agentState.CurrentClientId ?? "UnknownClient", // todo this is wrong, we need to make it primary for now, in future we will see how to handle it if multiple clients, maybe just let know in customer_query and adding all callers ids in the session information
-                _agentState.CurrentSessionRoute!,
-                _agentState.BusinessAppAgent!,
-                _agentState.CurrentLanguageCode);
-
-            if (!sessionFilledPromptResult.Success)
-            {
-                _logger.LogWarning("Agent {AgentId}: Error filling session information in prompt: {Message}. Using base prompt.", _agentState.AgentId, sessionFilledPromptResult.Message);
-                _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt); // Fallback
-                                                                                          // TODO: Raise warning/error event?
-            }
-            else
-            {
-                _agentState.LLMService!.SetSystemPrompt(sessionFilledPromptResult.Data);
-            }
         }
 
         private async void OnLLMMessageStreamed(object? sender, object responseObj)
