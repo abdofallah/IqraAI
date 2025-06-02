@@ -25,7 +25,6 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<ConversationSession> _logger;
         private readonly BusinessManager _businessManager;
-        private readonly InboundCallQueueRepository _callQueueRepository;
         private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
@@ -82,7 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation
             CancellationTokenSource sessionCTS,
 
             BusinessManager businessManager,
-            InboundCallQueueRepository callQueueRepository,
+            OutboundCallCampaignRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
             ILoggerFactory loggerFactory
@@ -94,7 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _sessionCts = sessionCTS;
 
             _businessManager = businessManager;
-            _callQueueRepository = callQueueRepository;
+            _outboundCallCampaignRepository = outboundCallCampaignRepository;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
             _loggerFactory = loggerFactory;

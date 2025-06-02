@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Helper.Telephony;
-using IqraCore.Entities.Telephony.ModemTel;
 using IqraCore.Models.Telephony;
 using IqraInfrastructure.Managers.Call;
 using Microsoft.AspNetCore.Mvc;

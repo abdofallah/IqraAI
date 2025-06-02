@@ -206,6 +206,14 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
                 );
             });
+            builder.Services.AddSingleton<OutboundCallCampaignRepository>(sp =>
+            {
+                return new OutboundCallCampaignRepository(
+                    appConfig["OutboundCallCampaignRepository:ConnectionString"],
+                    appConfig["OutboundCallCampaignRepository:DatabaseName"],
+                    sp.GetRequiredService<ILogger<OutboundCallCampaignRepository>>()
+                );
+            });
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 return new ServerStatusRepository(
@@ -479,6 +487,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ServerMetricsMonitor>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<OutboundCallCampaignRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),

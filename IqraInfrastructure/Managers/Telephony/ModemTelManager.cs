@@ -285,7 +285,8 @@ namespace IqraInfrastructure.Managers.Telephony
                     var jsonContent = JsonSerializer.Serialize(callRequest, _jsonOptions);
                     var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                    var response = await client.PostAsync($"{apiBaseUrl}/api/v1/calls", httpContent);
+                    var uri = new Uri(new Uri(apiBaseUrl), "/api/v1/calls");
+                    var response = await client.PostAsync(uri, httpContent);
 
                     if (!response.IsSuccessStatusCode)
                     {

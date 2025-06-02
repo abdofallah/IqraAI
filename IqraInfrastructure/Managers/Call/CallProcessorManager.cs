@@ -5,6 +5,7 @@ using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helper.Call.Queue;
+using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
@@ -44,6 +45,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
+        private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
@@ -64,6 +66,7 @@ namespace IqraInfrastructure.Managers.Call
             ServerMetricsMonitor serverMetricsMonitor,
             InboundCallQueueRepository inboundCallQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
+            OutboundCallCampaignRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
@@ -76,6 +79,7 @@ namespace IqraInfrastructure.Managers.Call
             _serverMetricsMonitor = serverMetricsMonitor;
             _inboundCallQueueRepository = inboundCallQueueRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
+            _outboundCallCampaignRepository = outboundCallCampaignRepository;
             _conversationStateRepository = conversationStateRepository;
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
@@ -251,7 +255,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     return result.SetFailureResult("InitiateOutboundCallAsync:QUEUE_NOT_FOUND", "Queue not found");
                 }
-                await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend);
+                await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend, newProcessingServerId: _backendAppConfig.ServerId);
 
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
                 if (businessNumber == null)
@@ -274,6 +278,10 @@ namespace IqraInfrastructure.Managers.Call
                 if (regionServerData == null)
                 {
                     return result.SetFailureResult("InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found");
+                }
+                var anyRegionProxyServerData = regionData.Servers.FirstOrDefault(s => s.Type == ServerTypeEnum.Proxy);
+                if (anyRegionProxyServerData == null) {
+                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND", "Region proxy server not found");
                 }
 
                 sessionResult = await CreateConversationSessionAsync(outboundQueueData);
@@ -362,6 +370,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
                 var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+                var callbackUrl = BuildStatusCallbackUrl(anyRegionProxyServerData, outboundQueueData.BusinessId, sessionResult.Data.SessionId, businessNumber.Provider, outboundQueueData.CallingNumberId);
 
                 OutboundCallResultModel? callResultModel = null;
                 switch (businessNumber.Provider)
@@ -373,7 +382,7 @@ namespace IqraInfrastructure.Managers.Call
                             outboundQueueData.RecipientNumber,
                             sessionResult.Data.SessionId,
                             webhookUrl,
-                            regionServerData
+                            callbackUrl
                         );
                         break;
 
@@ -384,7 +393,7 @@ namespace IqraInfrastructure.Managers.Call
                             outboundQueueData.RecipientNumber,
                             queueId,
                             webhookUrl,
-                            regionServerData
+                            callbackUrl
                         );
                         break;
 
@@ -517,7 +526,7 @@ namespace IqraInfrastructure.Managers.Call
                     combinedCTS,
 
                     _businessManager,
-                    _inboundCallQueueRepository,
+                    _outboundCallCampaignRepository,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _serviceProvider.GetRequiredService<ILoggerFactory>()                  
@@ -646,7 +655,7 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        private async Task<OutboundCallResultModel> InitiateModemTelOutboundCallAsync(BusinessNumberModemTelData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, RegionServerData regionServer)
+        private async Task<OutboundCallResultModel> InitiateModemTelOutboundCallAsync(BusinessNumberModemTelData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, string statusCallbackUrl)
         {
             var result = new OutboundCallResultModel();
             try
@@ -655,15 +664,12 @@ namespace IqraInfrastructure.Managers.Call
                 string apiBaseUrl = integration.Fields["endpoint"];
                 var modemTelManager = _serviceProvider.GetRequiredService<ModemTelManager>();
 
-                var statusCallbackUrl = new Uri((regionServer.UseSSL ? "https://" : "http://") + regionServer.Endpoint);
-                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/modemtel/status/{sessionId}");
-
                 var callResult = await modemTelManager.MakeCallAsync(
                     apiKey,
                     apiBaseUrl,
                     phoneNumber.ModemTelPhoneNumberId,
                     toNumber,
-                    statusCallbackUrl.ToString(),
+                    statusCallbackUrl,
                     websocketUrl
                 );
 
@@ -679,7 +685,7 @@ namespace IqraInfrastructure.Managers.Call
                 result.Message = $"Error initiating call: {ex.Message}"; return result;
             }
         }
-        private async Task<OutboundCallResultModel> InitiateTwilioOutboundCallAsync(BusinessNumberTwilioData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, RegionServerData regionServer)
+        private async Task<OutboundCallResultModel> InitiateTwilioOutboundCallAsync(BusinessNumberTwilioData phoneNumber, BusinessAppIntegration integration, string toNumber, string sessionId, string websocketUrl, string statusCallbackUrl)
         {
             var result = new OutboundCallResultModel();
             try
@@ -688,15 +694,12 @@ namespace IqraInfrastructure.Managers.Call
                 string authToken = _integrationsManager.DecryptField(integration.EncryptedFields["authToken"]);
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
 
-                var statusCallbackUrl = new Uri((regionServer.UseSSL ? "https://" : "http://") + regionServer.Endpoint);
-                statusCallbackUrl = new Uri(statusCallbackUrl, $"api/call/status/twilio/status/{sessionId}");
-
                 var callResult = await twilioManager.MakeCallAsync(
                     accountSid,
                     authToken,
                     phoneNumber.Number,
                     toNumber,
-                    statusCallbackUrl.ToString(), // Status callback for Twilio
+                    statusCallbackUrl, // Status callback for Twilio
                     websocketUrl
                 );
 
@@ -750,6 +753,16 @@ namespace IqraInfrastructure.Managers.Call
         private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
             return new Uri(new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint), $"/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
+        }
+
+        private string BuildStatusCallbackUrl(RegionServerData proxyServerData, long businessId, string sessionId, TelephonyProviderEnum telephonyProvider, string businessNumberId)
+        {
+            var providerName = telephonyProvider.ToString().ToLower();
+
+            var statusCallbackUrl = new Uri((proxyServerData.UseSSL ? "https://" : "http://") + proxyServerData.Endpoint);
+            statusCallbackUrl = new Uri(statusCallbackUrl, $"api/{providerName}/webhook/status/{businessId}/{sessionId}/{businessNumberId}");
+
+            return statusCallbackUrl.ToString();
         }
     }
 }

@@ -494,7 +494,7 @@ namespace IqraInfrastructure.Managers.TTS
 
                 case InterfaceTTSProviderEnum.ElevenLabsTextToSpeech:
                     return result.SetSuccessResult(
-                        new ElevenLabsTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model_id"], (string)agentIntegrationData.FieldValues["voice_id"])
+                        new ElevenLabsTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model_id"], (string)agentIntegrationData.FieldValues["voice_id"], 0.5f, 0.5f, 0, false, 1.05f)
                     );
 
                 default:

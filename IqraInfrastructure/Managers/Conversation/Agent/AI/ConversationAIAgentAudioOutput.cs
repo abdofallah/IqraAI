@@ -302,7 +302,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     // Wait for the duration, but allow cancellation
                     // Use a combined token source for waiting
                     using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _audioSendingCTS.Token);
-                    await Task.Delay(duration, waitCts.Token);
+                    await Task.Delay(duration + TimeSpan.FromMilliseconds(300), waitCts.Token); // todo adding forced miliseconds could be bad but lets see.
                     _logger.LogDebug("Agent {AgentId}: Blocking wait finished.", _agentState.AgentId);
                 }
                 catch (OperationCanceledException)

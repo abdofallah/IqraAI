@@ -101,7 +101,6 @@ namespace IqraInfrastructure.Managers.Call
                 var forwardResponse = await ForwardToBackendAsync(backendServerDetails, requestDto);
                 if (forwardResponse.Success)
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.ProcessingBackend, new CallQueueLog { Message = $"Forwarded to backend {backendServerDetails.Endpoint}. Waiting for processing.", Type = CallQueueLogTypeEnum.Information }, newProcessingServerId: backendServerDetails.Endpoint);
                     successfullyForwarded = true;
                     break;
                 }

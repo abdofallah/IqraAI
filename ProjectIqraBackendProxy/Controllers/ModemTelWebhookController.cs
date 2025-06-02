@@ -94,8 +94,8 @@ namespace ProjectIqraBackendProxy.Controllers
             }
         }
 
-        [HttpPost("status/{sessionId}")]
-        public async Task<IActionResult> HandleStatusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] string sessionId)
+        [HttpPost("status/{businessId}/{sessionId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleStatusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string sessionId, [FromRoute] string phoneNumberId)
         {
             if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
             {
@@ -108,6 +108,8 @@ namespace ProjectIqraBackendProxy.Controllers
                 CallId = webhookData.CallId,
                 To = webhookData.To,
                 From = webhookData.From,
+                BusinessId = businessId,
+                PhoneNumberId = phoneNumberId,
                 Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
             };
 

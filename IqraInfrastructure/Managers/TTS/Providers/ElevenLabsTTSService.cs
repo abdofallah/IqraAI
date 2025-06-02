@@ -1,10 +1,6 @@
 ﻿using ElevenLabs;
-using ElevenLabs.Models;
-using ElevenLabs.TextToSpeech;
-using ElevenLabs.Voices;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
-using System.Linq;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -12,17 +8,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private ElevenLabsClient _client;
 
-        private Voice? _voiceData;
-        private Model? _modelData;
+        private VoiceResponseModel? _voiceData;
+        private ModelResponseModel? _modelData;
 
-        private VoiceSettings _voiceSettings;
+        private VoiceSettingsResponseModel _voiceSettings;
 
         private readonly string _apiKey;
         private readonly string _modelId;
         private readonly string _voiceId;
 
         private readonly int _sampleRate;
-        private OutputFormat _outputFormat;
+        private TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat _outputFormat;
 
         private List<string>? _previousRequestIds = new List<string>();
 
@@ -32,11 +28,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _voiceId = voiceId;
             _modelId = modelId;
 
-            _voiceSettings = new VoiceSettings();
+            _voiceSettings = new VoiceSettingsResponseModel();
             if (stability.HasValue) _voiceSettings.Stability = stability.Value;
             if (similarityBoost.HasValue) _voiceSettings.SimilarityBoost = similarityBoost.Value;
             if (style.HasValue) _voiceSettings.Style = style.Value;
-            if (speakerBoost.HasValue) _voiceSettings.SpeakerBoost = speakerBoost.Value;
+            if (speakerBoost.HasValue) _voiceSettings.UseSpeakerBoost = speakerBoost.Value;
             if (speed.HasValue) _voiceSettings.Speed = speed.Value;
 
             _sampleRate = sampleRate;
@@ -44,30 +40,29 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Initialize()
         {
-            _client = new ElevenLabsClient(
-                new ElevenLabsAuthentication(_apiKey)
-            );
+            _client = new ElevenLabsClient(_apiKey);
 
-            _voiceData = _client.VoicesEndpoint.GetVoiceAsync(_voiceId).GetAwaiter().GetResult();
+            _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_voiceId).GetAwaiter().GetResult();
 
-            var allModels = _client.ModelsEndpoint.GetModelsAsync().GetAwaiter().GetResult().ToList();
-            _modelData = allModels.Find(d => d.Id == _modelId);
+            var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
+            _modelData = allModels.Find(d => d.ModelId == _modelId);
+            if (_modelData == null) throw new Exception("Model not found");
 
             if (_sampleRate == 8000)
             {
-                _outputFormat = OutputFormat.Ulaw_8000;
+                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000;
             }
             else if (_sampleRate == 16000)
             {
-                _outputFormat = OutputFormat.PCM_16000;
+                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000;
             }
             else if (_sampleRate == 24000)
             {
-                _outputFormat = OutputFormat.PCM_24000;
+                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000;
             }
             else if (_sampleRate == 44100)
             {
-                _outputFormat = OutputFormat.PCM_44100;
+                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100;
             }
             else
             {
@@ -77,15 +72,23 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new TextToSpeechRequest(_voiceData, text, null, _voiceSettings, _outputFormat, model: _modelData, withTimestamps: true, previousRequestIds: _previousRequestIds.ToArray());
+            var request = new BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPost(text, _modelData.ModelId, null, _voiceSettings, null, null, null, null, _previousRequestIds, null, null, null);
 
             try
             {
-                var result = await _client.TextToSpeechEndpoint.TextToSpeechAsync(request, null, cancellationToken);
+                var result = await _client.TextToSpeech.CreateTextToSpeechByVoiceIdWithTimestampsAsync(_voiceData.VoiceId, request, null, null, _outputFormat, null, cancellationToken);
+                
+                if (_previousRequestIds.Count >= 3)
+                {
+                    _previousRequestIds.RemoveAt(0);
+                }
+                if (!string.IsNullOrEmpty(result.Item2))
+                {
+                    _previousRequestIds.Add(result.Item2);
+                }
 
-                _previousRequestIds.Add(result.Id);
-
-                return (result.ClipData.ToArray(), TimeSpan.FromSeconds(result.TimestampedTranscriptCharacters.Last().EndTime));
+                var audioData = Convert.FromBase64String(result.Item1.AudioBase64);
+                return (audioData, TimeSpan.FromSeconds(result.Item1.Alignment.CharacterEndTimesSeconds.Last()));
             }
             catch (Exception ex) {
                 // todo log it
