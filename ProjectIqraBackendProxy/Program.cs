@@ -325,7 +325,11 @@ namespace ProjectIqraBackendProxy
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<BillingValidationManager>(),
                     sp.GetRequiredService<ServerSelectionManager>(),
+                    sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<ModemTelManager>(),
+                    sp.GetRequiredService<TwilioManager>(),
+                    sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<IHttpClientFactory>()
                 );
             });

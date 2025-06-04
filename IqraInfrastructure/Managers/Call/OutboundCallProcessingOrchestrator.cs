@@ -1,12 +1,17 @@
-﻿using IqraCore.Entities.Call.Queue;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Region;
 using IqraCore.Models.Server;
 using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
+using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Call;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
@@ -21,7 +26,11 @@ namespace IqraInfrastructure.Managers.Call
         private readonly OutboundCallQueueRepository _outboundCallQueueRepo;
         private readonly BillingValidationManager _billingValidationManager;
         private readonly ServerSelectionManager _serverSelectionManager;
+        private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
+        private readonly ModemTelManager _modemTelManager;
+        private readonly TwilioManager _twilioManager;
+        private readonly IntegrationsManager _integrationsManager;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly JsonSerializerOptions _camelCaseSerializationOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
@@ -31,7 +40,11 @@ namespace IqraInfrastructure.Managers.Call
             OutboundCallQueueRepository outboundCallQueueRepo,
             BillingValidationManager billingValidationManager,
             ServerSelectionManager serverSelectionManager,
+            BusinessManager businessManager,
             RegionManager regionManager,
+            ModemTelManager modemTelManager,
+            TwilioManager twilioManager,
+            IntegrationsManager integrationsManager,
             IHttpClientFactory httpClientFactory
         )
         {
@@ -40,13 +53,15 @@ namespace IqraInfrastructure.Managers.Call
             _billingValidationManager = billingValidationManager;
             _serverSelectionManager = serverSelectionManager;
             _regionManager = regionManager;
+            _businessManager = businessManager;
+            _modemTelManager = modemTelManager;
+            _twilioManager = twilioManager;
+            _integrationsManager = integrationsManager;
             _httpClientFactory = httpClientFactory;
         }
 
         public async Task ProcessCallAsync(OutboundCallQueueData call)
         {
-            // todo also check if phone is available and can make call
-
             var validationResult = await _billingValidationManager.CheckCreditAndConcurrencyAsync(call.BusinessId, "outbound call");
             if (!validationResult.Success)
             {
@@ -56,13 +71,73 @@ namespace IqraInfrastructure.Managers.Call
                     (validationResult.Code.Contains("USER_CONCURRENCY_LIMIT") || validationResult.Code.Contains("BUSINESS_CONCURRENCY_LIMIT"))
                 )
                 {
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued, new CallQueueLog { Message = $"Validation failed (will retry): {validationResult.Message}", Type = CallQueueLogTypeEnum.Information });     
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued, new CallQueueLog { Message = $"Validation failed (will retry): {validationResult.Message}", Type = CallQueueLogTypeEnum.Information });
+                    return;
                 }
-                else
-                {
-                    await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}", Type = CallQueueLogTypeEnum.Error });
-                }
+
+                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Validation failed: [{validationResult.Code}] {validationResult.Message}", Type = CallQueueLogTypeEnum.Error });
                 return;
+            }
+
+            var businessPhoneNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(call.BusinessId, call.CallingNumberId);
+            if (businessPhoneNumber == null)
+            {
+                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} not found.", Type = CallQueueLogTypeEnum.Error });
+            }
+
+            var businessPhoneIntegration = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(call.BusinessId, businessPhoneNumber.IntegrationId);
+            if (businessPhoneIntegration == null)
+            {
+                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"System error: Business number {call.CallingNumberId} integration {businessPhoneNumber.IntegrationId} not found.", Type = CallQueueLogTypeEnum.Error });
+            }
+
+            switch (businessPhoneNumber.Provider)
+            {
+                case TelephonyProviderEnum.ModemTel:
+                    {
+                        var modemTelPhonenumberId = ((BusinessNumberModemTelData)businessPhoneNumber).ModemTelPhoneNumberId;
+                        var modemtelStatusToCheck = new List<string>() { "Queued", "CallInProgress", "RingingIncoming", "RingingOutgoing" };
+
+                        var currentNumberCalls = await _modemTelManager.GetCallsByStatusForPhoneNumber(_integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["apikey"]), businessPhoneIntegration.Data.Fields["endpoint"], modemTelPhonenumberId, modemtelStatusToCheck, 1);
+                        if (!currentNumberCalls.Success)
+                        {
+                            await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
+                            return;
+                        }
+
+                        if (currentNumberCalls.Data.Count > 0)
+                        {
+                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+                            return;
+                        }
+                        break;
+                    }
+
+                case TelephonyProviderEnum.Twilio:
+                    {
+                        var twilioPhonenumberId = ((BusinessNumberTwilioData)businessPhoneNumber).TwilioPhoneNumberId;
+                        var twilioStatusToCheck = new List<string>() { "queued", "ringing", "in-progress" };
+                        throw new Exception("Twilio is not supported yet. check if sid and token keys are correct below/also multi status check might not work and even from-to switch, find better way");
+                        var currentNumberCalls = await _twilioManager.GetCallsByStatusForPhoneNumber(businessPhoneIntegration.Data.Fields["sid"], _integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["token"]), twilioPhonenumberId, twilioStatusToCheck, 1);
+                        if (!currentNumberCalls.Success)
+                        {
+                            await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
+                            return;
+                        }
+
+                        if (currentNumberCalls.Data.Count > 0)
+                        {
+                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+                            return;
+                        }
+                        break;
+                    }
+
+                default:
+                    {
+                        await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"Unknown calling number provider: {businessPhoneNumber.Provider}.", Type = CallQueueLogTypeEnum.Error });
+                        return;
+                    }
             }
 
             await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.ProcessingProxy, new CallQueueLog { Message = $"Processing Queue within proxy", Type = CallQueueLogTypeEnum.Information });

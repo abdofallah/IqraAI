@@ -262,5 +262,46 @@ namespace IqraInfrastructure.Repositories.Conversation
                 return null;
             }
         }
+
+        public async Task<string?> GeneratePresignedUrlAsync(string reference, int expiresInSeconds)
+        {
+            if (string.IsNullOrEmpty(reference) || reference.Contains(".."))
+            {
+                _logger.LogWarning("Invalid audio reference for presigned URL: {Reference}", reference);
+                return null;
+            }
+
+            if (expiresInSeconds <= 0 || expiresInSeconds > 604800)
+            {
+                _logger.LogWarning("Invalid expiry time for presigned URL: {ExpiresInSeconds} seconds. Must be between 1 and 604800.", expiresInSeconds);
+                return null;
+            }
+
+            try
+            {
+                var statArgs = new StatObjectArgs()
+                    .WithBucket(_bucketName)
+                    .WithObject(reference);
+                await _minioClient.StatObjectAsync(statArgs);
+
+                var presignedGetObjectArgs = new PresignedGetObjectArgs()
+                    .WithBucket(_bucketName)
+                    .WithObject(reference)
+                    .WithExpiry(expiresInSeconds);
+
+                string presignedUrl = await _minioClient.PresignedGetObjectAsync(presignedGetObjectArgs);
+                return presignedUrl;
+            }
+            catch (ObjectNotFoundException)
+            {
+                _logger.LogWarning("Audio not found, cannot generate presigned URL for reference: {Reference}", reference);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating presigned URL for audio reference {Reference}", reference);
+                return null;
+            }
+        }
     }
 }

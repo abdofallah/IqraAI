@@ -78,7 +78,7 @@ namespace IqraInfrastructure.Repositories.Business
             ValidateVestaCPAccounts().GetAwaiter().GetResult();
             
             // Upload the latest templates files
-            UpdateTemplatesFiles().GetAwaiter().GetResult();
+            //UpdateTemplatesFiles().GetAwaiter().GetResult();
 
             // Rebuild all the web with the latest templates files
             var rebuildAdminResult = RebuildAdminWeb(true).GetAwaiter().GetResult();

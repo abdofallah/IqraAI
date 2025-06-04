@@ -60,6 +60,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public event EventHandler<ConversationTextGeneratedEventArgs>? AgentTextResponse;
         public event EventHandler<ConversationTextReceivedEventArgs>? ClientTextQuery;
+        public event EventHandler<object?> ClearBufferedAudio;
 
         public event EventHandler<ConversationAgentThinkingEventArgs>? Thinking; // TODO: Wire this up if needed
         public event EventHandler<ConversationAgentErrorEventArgs>? ErrorOccurred;
@@ -121,6 +122,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Audio Output -> Orchestrator (Public Events)
             _audioOutputHandler.AudioChunkGenerated += (sender, args) => AudioGenerated?.Invoke(this, args);
             _audioOutputHandler.SpeechPlaybackComplete += OnSpeechPlaybackComplete; // Handle completion signal
+            _audioOutputHandler.OnAudioBufferCleared += (sender, args) => ClearBufferedAudio?.Invoke(this, args);
 
             // STT Handler -> Orchestrator (Process Text)
             _sttHandler.TranscriptionReceived += ProcessTranscriptionResultAsync;
@@ -620,6 +622,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             AudioGenerated = null;
             AgentTextResponse = null;
             ClientTextQuery = null;
+            ClearBufferedAudio = null;
             Thinking = null;
             ErrorOccurred = null;
         }

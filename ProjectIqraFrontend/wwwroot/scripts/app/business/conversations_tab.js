@@ -14,20 +14,23 @@ let waveSurferClient = null;
 // Enums mirroring backend
 const CallQueueStatusEnum = {
     Queued: 0,
-    Processing: 1,
-    Completed: 2,
-    Failed: 3,
-    Cancelled: 4,
-    Expired: 5
+    ProcessingProxy: 1,
+    ProcessedProxy: 2,
+    ProcessingBackend: 3,
+    ProcessedBackend: 4,
+    Failed: 5,
+    Cancelled: 6,
+    Expired: 7
 };
 const ConversationSessionState = {
     Created: 0,
-    Starting: 1,
-    Active: 2,
-    Paused: 3,
-    Ending: 4,
-    Ended: 5,
-    Failed: 6,
+    WaitingForPrimaryClient: 1,
+    Starting: 2,
+    Active: 3,
+    Paused: 4,
+    Ending: 5,
+    Ended: 6,
+    Failed: 7,
 };
 const ConversationMemberAudioCompilationStatus = {
     WaitingForSessionEnd: 0,
@@ -166,31 +169,10 @@ function FetchConversationStateBySessionId(sessionId, successCallback, errorCall
     });
 }
 function FetchTemporaryAudioUrl(sessionId, memberType, memberId, successCallback, errorCallback) {
-    // TODO: Implement actual API call to your new backend endpoint
-    console.log(`Placeholder: Fetching audio URL for session ${sessionId}, type ${memberType}, id ${memberId}`);
-
-    // --- Replace with actual AJAX call ---
-    // Simulating success after a delay for demonstration
-    setTimeout(() => {
-        if (memberType === 'client' && memberId === 'client-id-1') { // Example condition
-            // Simulated success URL
-            successCallback({ url: "/assets/surah-nasr.mp3" }); // Use your placeholder audio
-        } else if (memberType === 'agent' && memberId === 'agent-id-1') {
-            successCallback({ url: "/assets/surah-nasr.mp3" }); // Use your placeholder audio
-        }
-        else {
-            // Simulate failure
-            console.error(`Simulated audio URL fetch failed for ${memberType} ${memberId}`);
-            errorCallback({ message: "Failed to retrieve audio URL (simulated)." });
-        }
-    }, 1500);
-    // --- End of simulation ---
-
-    /* Example AJAX structure:
     $.ajax({
-        url: `/app/user/business/${CurrentBusinessId}/conversations/audio_url`,
-        type: "POST", // or GET
-        data: JSON.stringify({ sessionId: sessionId, memberType: memberType, memberId: memberId }),
+        url: `/app/user/business/${CurrentBusinessId}/conversations/state/${sessionId}/audio_url`,
+        type: "POST",
+        data: JSON.stringify({ memberType: memberType, memberId: memberId }),
         contentType: "application/json; charset=utf-8",
         dataType: "json",
         success: (response) => {
@@ -205,7 +187,6 @@ function FetchTemporaryAudioUrl(sessionId, memberType, memberId, successCallback
             errorCallback({ message: errorMsg, code: jqXHR.status });
         },
     });
-    */
 }
 
 /** Helper Functions **/
@@ -257,12 +238,14 @@ function getStatusBadgeElement(statusType, statusValue, includeText = true) {
                 badgeClass = "bg-warning text-dark";
                 statusText = "Queued";
                 break;
-            case CallQueueStatusEnum.Processing:
+            case CallQueueStatusEnum.ProcessingProxy:
+            case CallQueueStatusEnum.ProcessedProxy:
+            case CallQueueStatusEnum.ProcessingBackend:
                 iconClass = "fa-solid fa-spinner fa-spin";
                 badgeClass = "bg-info";
                 statusText = "Processing";
                 break;
-            case CallQueueStatusEnum.Completed:
+            case CallQueueStatusEnum.ProcessedBackend:
                 iconClass = "fa-regular fa-check-circle";
                 badgeClass = "bg-success";
                 statusText = "Completed"; // Simplified text
@@ -292,6 +275,11 @@ function getStatusBadgeElement(statusType, statusValue, includeText = true) {
                 iconClass = "fa-regular fa-file-lines";
                 badgeClass = "bg-secondary text-muted";
                 statusText = "Created";
+                break;
+            case ConversationSessionState.WaitingForPrimaryClient:
+                iconClass = "fa-regular fa-rocket-launch";
+                badgeClass = "bg-info";
+                statusText = "Waiting for Client";
                 break;
             case ConversationSessionState.Starting:
                 iconClass = "fa-solid fa-rocket-launch";
@@ -669,44 +657,45 @@ function LoadConversationAudio(stateData) {
 
 
     // --- Agent Audio ---
-    // Assuming first agent for simplicity. Adjust if multiple agents are possible.
     const agentInfo = stateData.agents && stateData.agents.length > 0 ? stateData.agents[0] : null;
-    if (agentInfo && agentInfo.audioInfo && agentInfo.audioInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
+    if (agentInfo && agentInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
         agentAudioContainer.removeClass('d-none');
         agentAudioLoader.removeClass('d-none');
         agentAudioPlayBtn.prop('disabled', true);
         agentAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         agentAudioError.addClass('d-none');
 
-        FetchTemporaryAudioUrl(stateData.id, 'agent', agentInfo.agentId,
-            (audioData) => handleAudioUrlSuccess(audioData.url, '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError),
-            (error) => handleAudioUrlError(error, agentAudioLoader, agentAudioError)
-        );
-    } else if (agentInfo && agentInfo.audioInfo && agentInfo.audioInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
+        handleAudioUrlSuccess(stateData.agents[0].audioUrl, '#waveform-agent-audio', agentAudioLoader, agentAudioPlayBtn, agentAudioDownloadBtn, agentAudioError)
+        //handleAudioUrlError(error, agentAudioLoader, agentAudioError)
+    } else if (agentInfo && agentInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
         agentAudioContainer.removeClass('d-none');
         agentAudioError.text(`Agent audio compilation failed: ${agentInfo.audioInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
+    }
+    else {
+        agentAudioContainer.removeClass('d-none');
+        agentAudioError.text('Agent audio currently compiling. Please wait a while and check later.').removeClass('d-none');
     }
     // Optionally show a message if status is Waiting or Compiling
 
     // --- Client Audio ---
-    // Assuming first client
     const clientInfo = stateData.clients && stateData.clients.length > 0 ? stateData.clients[0] : null;
-    if (clientInfo && clientInfo.audioInfo && clientInfo.audioInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
+    if (clientInfo && clientInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Compiled) {
         clientAudioContainer.removeClass('d-none');
         clientAudioLoader.removeClass('d-none');
         clientAudioPlayBtn.prop('disabled', true);
         clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
         clientAudioError.addClass('d-none');
 
-        FetchTemporaryAudioUrl(stateData.id, 'client', clientInfo.clientId,
-            (audioData) => handleAudioUrlSuccess(audioData.url, '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError),
-            (error) => handleAudioUrlError(error, clientAudioLoader, clientAudioError)
-        );
-    } else if (clientInfo && clientInfo.audioInfo && clientInfo.audioInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
+        handleAudioUrlSuccess(stateData.clients[0].audioUrl, '#waveform-client-audio', clientAudioLoader, clientAudioPlayBtn, clientAudioDownloadBtn, clientAudioError)
+        //handleAudioUrlError(error, clientAudioLoader, clientAudioError)
+    } else if (clientInfo && clientInfo.audioCompilationStatus.value === ConversationMemberAudioCompilationStatus.Failed) {
         clientAudioContainer.removeClass('d-none');
         clientAudioError.text(`Client audio compilation failed: ${clientInfo.audioInfo.failedReason || 'Unknown reason'}`).removeClass('d-none');
     }
-    // Optionally show a message if status is Waiting or Compiling
+    else {
+        clientAudioContainer.removeClass('d-none');
+        clientAudioError.text('Client audio currently compiling. Please wait a while and check later.').removeClass('d-none');
+    }
 }
 
 /** Event Handlers **/

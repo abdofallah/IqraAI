@@ -27,12 +27,28 @@ namespace ProjectIqraFrontend.Controllers
             try
             {
                 AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+                if (appPermissionConfig == null)
+                {
+                    return result.SetFailureResult(
+                        "Register:PERMISSION_CONFIG_NOT_FOUND",
+                        "App permission configuration not found. Notify us right away!"
+                    );
+                }
+                if (appPermissionConfig.MaintenanceEnabledAt != null)
+                {
+                    string message = ("Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason));
+
+                    return result.SetFailureResult(
+                        "Register:MAINTENANCE_ENABLED",
+                        message
+                    );
+                }
                 if (appPermissionConfig != null && appPermissionConfig.RegisterationDisabledAt != null)
                 {
                     string message = ("Registration is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicRegisterationDisabledReason) ? "" : ": " + appPermissionConfig.PublicRegisterationDisabledReason));
 
                     return result.SetFailureResult(
-                        "Register:1",
+                        "Register:REGISTERATION_DISABLED",
                         message
                     );
                 }
@@ -40,7 +56,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (!TryValidateModel(model))
                 {
                     return result.SetFailureResult(
-                        "Register:2",
+                        "Register:MODEL_VALIDATION_FAILED",
                         "Register data validation failed"
                     );
                 }
@@ -49,7 +65,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (user != null)
                 {
                     return result.SetFailureResult(
-                        "Register:3",
+                        "Register:USER_ALREADY_EXISTS",
                         "User already exists"
                     );
                 }
@@ -58,7 +74,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (planConfig == null || string.IsNullOrWhiteSpace(planConfig.NewUserPlanId) || planConfig.NewUserCredit < 0)
                 {
                     return result.SetFailureResult(
-                        "Register:4",
+                        "Register:PLAN_CONFIG_NOT_FOUND",
                         "Plan congfiguration not found or invalid"
                     );
                 }
@@ -80,7 +96,7 @@ namespace ProjectIqraFrontend.Controllers
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "Register:-1",
+                    "Register:EXCEPTION",
                     "Internal server error occured while trying to register."
                 );
             }
@@ -152,11 +168,27 @@ namespace ProjectIqraFrontend.Controllers
             try
             {
                 AppPermissionConfig? appPermissionConfig = await _appRepository.GetAppPermissionConfig();
+                if (appPermissionConfig == null)
+                {
+                    return result.SetFailureResult(
+                        "Login:PERMISSION_CONFIG_NOT_FOUND",
+                        "App permission configuration not found. Notify us right away!"
+                    );
+                }
+                if (appPermissionConfig.MaintenanceEnabledAt != null)
+                {
+                    string message = ("Maintenance is currently enabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicMaintenanceEnabledReason) ? "" : ": " + appPermissionConfig.PublicMaintenanceEnabledReason));
+
+                    return result.SetFailureResult(
+                        "Login:MAINTENANCE_ENABLED",
+                        message
+                    );
+                }
                 if (appPermissionConfig != null && appPermissionConfig.LoginDisabledAt != null)
                 {
                     string message = ("Login is currently disabled" + (string.IsNullOrEmpty(appPermissionConfig.PublicLoginDisabledReason) ? "." : ": " + appPermissionConfig.PublicLoginDisabledReason));
                     return result.SetFailureResult(
-                        "Login:1",
+                        "Login:LOGIN_DISABLED",
                         message
                     );
                 }
@@ -164,7 +196,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (!TryValidateModel(model))
                 {
                     return result.SetFailureResult(
-                        "Login:2",
+                        "Login:MODEL_VALIDATION_FAILED",
                         "Login data validation failed"
                     );
                 }
@@ -173,14 +205,14 @@ namespace ProjectIqraFrontend.Controllers
                 if (user == null || !_userManager.ValidatePassword(user, model.Password))
                 {
                     return result.SetFailureResult(
-                        "Login:3",
+                        "Login:INVALID_EMAIL_OR_PASSWORD",
                         "Invalid email or password"
                     );
                 }
 
                 if (!string.IsNullOrWhiteSpace(user.VerifyEmailToken)) {
                     return result.SetFailureResult(
-                        "Login:4",
+                        "Login:USER_NOT_VERIFIED",
                         "User is not verified"
                     );
                 }
@@ -190,7 +222,7 @@ namespace ProjectIqraFrontend.Controllers
                 {
                     var message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.LoginDisabledReason) ? "" : ": " + userPermission.LoginDisabledReason));
                     return result.SetFailureResult(
-                        "Login:5",
+                        "Login:USER_LOGIN_DISABLED",
                         message
                     );
                 }
@@ -199,7 +231,7 @@ namespace ProjectIqraFrontend.Controllers
                 if (session == null)
                 {
                     return result.SetFailureResult(
-                        "Login:6",
+                        "Login:CREATE_USER_SESSION_FAILED",
                         "Failed to create user session"
                     );
                 }
@@ -215,7 +247,7 @@ namespace ProjectIqraFrontend.Controllers
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "Login:-1",
+                    "Login:EXCEPTION",
                     "Internal server error occured while trying to login."
                 );
             }

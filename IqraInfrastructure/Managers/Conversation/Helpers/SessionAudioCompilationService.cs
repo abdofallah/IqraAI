@@ -3,6 +3,8 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using System.Text;
+using System.Xml.Linq;
 
 namespace IqraInfrastructure.Services
 {
@@ -91,7 +93,7 @@ namespace IqraInfrastructure.Services
             bool isSuccess = false;
             string? failedReason = null;
 
-            await _stateRepository.SetClientAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Compiling);
+            await _stateRepository.SetMemberAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Compiling, participant.isAgent);
 
             try
             {
@@ -154,7 +156,7 @@ namespace IqraInfrastructure.Services
                         _logger.LogWarning("Failed to retrieve or empty audio for chunk {Reference}, participant {ParticipantId}", chunkInfo.Reference, participant.id);
                     }
 
-                    await Task.Delay(300); // slow down
+                    await Task.Delay(50); // slow down
                 }
 
                 if (compiledAudioStream.Length == 0)
@@ -164,20 +166,33 @@ namespace IqraInfrastructure.Services
                     return null;
                 }
 
-                // Store compiled audio
-                string compiledAudioReference = $"{sessionId}/compiled/{participant.id}_{DateTime.UtcNow:yyyyMMddHHmmss}.raw";
                 compiledAudioStream.Position = 0;
-                byte[] compiledBytes = compiledAudioStream.ToArray();
+                byte[] pcmData = compiledAudioStream.ToArray();
+
+                byte[] wavHeader = GenerateWavHeader(
+                    participant.AudioInfo.SampleRate,
+                    (short)participant.AudioInfo.BitsPerSample,
+                    (short)participant.AudioInfo.Channels,
+                    pcmData.Length
+                );
+
+                byte[] wavData = new byte[wavHeader.Length + pcmData.Length];
+                Buffer.BlockCopy(wavHeader, 0, wavData, 0, wavHeader.Length);
+                Buffer.BlockCopy(pcmData, 0, wavData, wavHeader.Length, pcmData.Length);
+
+                // Store compiled audio
+                string compiledAudioReference = $"{sessionId}/compiled/{participant.id}.wav";
 
                 var compiledMetadata = new Dictionary<string, string>
                 {
                     { "ParticipantId", participant.id },
                     { "SessionId", sessionId },
                     { "CompilationTimestamp", DateTime.UtcNow.ToString("o") },
-                    { "OriginalChunkCount", chunkInfos.Count.ToString() }
+                    { "OriginalChunkCount", chunkInfos.Count.ToString() },
+                    { "Format", "wav" }
                 };
 
-                bool storedSuccessfully = await _audioRepository.StoreAudioAsync(compiledAudioReference, compiledBytes, compiledMetadata);
+                bool storedSuccessfully = await _audioRepository.StoreAudioAsync(compiledAudioReference, wavData, compiledMetadata);
 
                 if (storedSuccessfully)
                 {
@@ -197,11 +212,11 @@ namespace IqraInfrastructure.Services
             {
                 if (isSuccess)
                 {
-                    await _stateRepository.SetClientAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Compiled);
+                    await _stateRepository.SetMemberAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Compiled, participant.isAgent);
                 }
                 else
                 {
-                    await _stateRepository.SetClientAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Failed, failedReason);
+                    await _stateRepository.SetMemberAudioStatusAsync(sessionId, participant.id, ConversationMemberAudioCompilationStatus.Failed, participant.isAgent, failedReason);
                 }
             }
             
@@ -241,6 +256,34 @@ namespace IqraInfrastructure.Services
                     Interlocked.Increment(ref failCount);
                 }
             });
+        }
+
+        private byte[] GenerateWavHeader(int sampleRate, short bitsPerSample, short channels, int pcmDataLength)
+        {
+            using (var ms = new MemoryStream())
+            using (var writer = new BinaryWriter(ms, Encoding.UTF8)) // Encoding doesn't matter much for non-char writes
+            {
+                // RIFF Chunk
+                writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+                writer.Write(36 + pcmDataLength); // ChunkSize: 4 (WAVE) + 24 (fmt chunk) + 8 (data chunk header) + pcmDataLength
+                writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+
+                // fmt Sub-Chunk
+                writer.Write(Encoding.ASCII.GetBytes("fmt "));
+                writer.Write(16); // Subchunk1Size: 16 for PCM
+                writer.Write((short)1); // AudioFormat: 1 for PCM (Linear Quantization)
+                writer.Write(channels);
+                writer.Write(sampleRate);
+                writer.Write(sampleRate * channels * (bitsPerSample / 8)); // ByteRate: SampleRate * NumChannels * BitsPerSample/8
+                writer.Write((short)(channels * (bitsPerSample / 8))); // BlockAlign: NumChannels * BitsPerSample/8
+                writer.Write(bitsPerSample);
+
+                // data Sub-Chunk
+                writer.Write(Encoding.ASCII.GetBytes("data"));
+                writer.Write(pcmDataLength); // Subchunk2Size: Size of the actual sound data
+
+                return ms.ToArray();
+            }
         }
     }
 }

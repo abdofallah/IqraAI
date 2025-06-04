@@ -26,6 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
     {
         public event EventHandler<ConversationAudioGeneratedEventArgs>? AudioChunkGenerated;
         public event Action? SpeechPlaybackComplete;
+        public event EventHandler<object?>? OnAudioBufferCleared;
 
         private readonly ILogger<ConversationAIAgentAudioOutput> _logger;
         private readonly ConversationAIAgentState _agentState;
@@ -302,8 +303,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     // Wait for the duration, but allow cancellation
                     // Use a combined token source for waiting
                     using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _audioSendingCTS.Token);
-                    await Task.Delay(duration + TimeSpan.FromMilliseconds(300), waitCts.Token); // todo adding forced miliseconds could be bad but lets see.
-                    _logger.LogDebug("Agent {AgentId}: Blocking wait finished.", _agentState.AgentId);
+                    await Task.Delay(((int)duration.TotalMilliseconds), waitCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -661,6 +661,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _currentSpeechDuration = TimeSpan.Zero;
 
             // 5. Signal playback is complete (as we just cleared everything)
+            OnAudioBufferCleared?.Invoke(this, null);
             SpeechPlaybackComplete?.Invoke();
 
             // We don't cancel _audioSendingCTS here, as that stops the whole loop including background.

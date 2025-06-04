@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Conversation;
+using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.Conversations;
 using IqraInfrastructure.Repositories.Call;
@@ -10,7 +11,7 @@ namespace IqraInfrastructure.Managers.Business
     {
         private readonly BusinessManager _parentBusinessManager;
 
-        private readonly InboundCallQueueRepository _callQueueRepository;
+        private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _conversationAudioRepository;
 
@@ -23,7 +24,7 @@ namespace IqraInfrastructure.Managers.Business
         {
             _parentBusinessManager = businessManager;
 
-            _callQueueRepository = callQueueRepository;
+            _inboundCallQueueRepository = callQueueRepository;
             _conversationStateRepository = conversationStateRepository;
             _conversationAudioRepository = conversationAudioRepository;
         }
@@ -46,7 +47,7 @@ namespace IqraInfrastructure.Managers.Business
             PaginationCursor? decodedCursor = PaginationCursor.Decode(currentCursor);
 
             // 1. Fetch Call Queue Data Page
-            var (callQueueItems, hasMore) = await _callQueueRepository.GetInboundCallQueuesForBusinessPaginatedAsync(
+            var (callQueueItems, hasMore) = await _inboundCallQueueRepository.GetInboundCallQueuesForBusinessPaginatedAsync(
                 businessId,
                 limit,
                 decodedCursor,
@@ -80,16 +81,16 @@ namespace IqraInfrastructure.Managers.Business
             {
                 var metadata = new InboundConversationMetadataModel
                 {
-                    QueueId = cq.Id, // Assuming CallQueueData.Id is the QueueId
+                    QueueId = cq.Id,
                     Status = cq.Status,
-                    EnqueuedAt = DateTime.Now, //cq.EnqueuedAt,
+                    EnqueuedAt = DateTime.Now,
                     ProcessingStartedAt = cq.ProcessingStartedAt,
                     CompletedAt = cq.CompletedAt,
-                    NumberId = "",//cq.NumberId,
-                    RouteId = "",//cq.RouteId,
-                    CallerNumber = "",//cq.CallerNumber,
-                    SessionId = null, // Default to null
-                    SessionStatus = null // Default to null
+                    NumberId = cq.RouteNumberId,
+                    RouteId = cq.RouteId,
+                    CallerNumber = cq.CallerNumber,
+                    SessionId = null,
+                    SessionStatus = null
                 };
 
                 if (!string.IsNullOrEmpty(cq.Id) && conversationStates.TryGetValue(cq.Id, out var state))
@@ -128,9 +129,9 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<ConversationState?>> GetConversationStateByIdAsync(long businessId, string sessionId)
+        public async Task<FunctionReturnResult<ConversationStateViewModel?>> GetConversationStateViewModelByIdAsync(long businessId, string sessionId)
         {
-            var result = new FunctionReturnResult<ConversationState?>();
+            var result = new FunctionReturnResult<ConversationStateViewModel?>();
             if (string.IsNullOrWhiteSpace(sessionId))
             {
                 result.Code = "GetConvState:1";
@@ -146,14 +147,85 @@ namespace IqraInfrastructure.Managers.Business
                     result.SetFailureResult("GetConversationStateByIdAsync:1", $"Conversation state with Session ID '{sessionId}' not found.");
                     return result;
                 }
-
                 if (state.BusinessId != businessId)
                 {
                     result.SetFailureResult("GetConversationStateByIdAsync:2", $"Access denied. Conversation does not belong to business ID {businessId}.");
                     return result;
                 }
 
-                result.SetSuccessResult(state);
+                ConversationStateViewModel resultModel = new ConversationStateViewModel()
+                {
+                    Id = state.Id,
+                    QueueId = state.QueueId,
+                    Status = state.Status,
+                    StartTime = state.StartTime,
+                    EndTime = state.EndTime,
+                    Clients = new List<ConversationStateClientViewModel>(),
+                    Agents = new List<ConversationStateAgentViewModel>(),
+                    Messages = new List<ConversationStateMessageViewModel>(),
+                    Logs = new List<ConversationStateLogViewModel>()
+                };
+
+                int audioUrlExpirySeconds = (int)TimeSpan.FromMinutes(30).TotalSeconds;
+
+                foreach (var client in state.Clients)
+                {
+                    string? audioUrl = null;
+                    if (client.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
+                    {
+                        audioUrl = await _conversationAudioRepository.GeneratePresignedUrlAsync($"{sessionId}/compiled/{client.ClientId}.wav", audioUrlExpirySeconds);
+                    }
+
+                    var clientModel = new ConversationStateClientViewModel()
+                    {
+                        ClientId = client.ClientId,
+                        ClientType = client.ClientType,
+                        JoinedAt = client.JoinedAt,
+                        LeftAt = client.LeftAt,
+                        LeaveReason = client.LeaveReason,
+                        AudioCompilationStatus = client.AudioInfo.AudioCompilationStatus,
+                        AudioUrl = audioUrl
+                    };
+
+                    resultModel.Clients.Add(clientModel);
+                }
+
+                foreach (var agent in state.Agents)
+                {
+                    string? audioUrl = null;
+                    if (agent.AudioInfo.AudioCompilationStatus == ConversationMemberAudioCompilationStatus.Compiled)
+                    {
+                        audioUrl = await _conversationAudioRepository.GeneratePresignedUrlAsync($"{sessionId}/compiled/{agent.AgentId}.wav", audioUrlExpirySeconds);
+                    }
+
+                    var clientModel = new ConversationStateAgentViewModel()
+                    {
+                        AgentId = agent.AgentId,
+                        AgentType = agent.AgentType,
+                        JoinedAt = agent.JoinedAt,
+                        LeftAt = agent.LeftAt,
+                        LeaveReason = agent.LeaveReason,
+                        AudioCompilationStatus = agent.AudioInfo.AudioCompilationStatus,
+                        AudioUrl = audioUrl
+                    };
+
+                    resultModel.Agents.Add(clientModel);
+                }
+
+                foreach (var message in state.Messages)
+                {
+                    var messageModel = new ConversationStateMessageViewModel()
+                    {
+                        SenderId = message.SenderId,
+                        Role = message.Role,
+                        Content = message.Content,
+                        Timestamp = message.Timestamp,
+                    };
+
+                    resultModel.Messages.Add(messageModel);
+                }
+
+                result.SetSuccessResult(resultModel);
                 return result;
             }
             catch (Exception ex)

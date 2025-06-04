@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Twilio.TwiML.Voice;
 using Twilio.TwiML;
+using GenerativeAI.Core;
 
 namespace IqraInfrastructure.Managers.Telephony
 {
@@ -315,6 +316,59 @@ namespace IqraInfrastructure.Managers.Telephony
                 result.Code = "EndCall:2";
                 result.Message = $"Error ending call: {ex.Message}";
                 _logger.LogError(ex, "Error ending Twilio call");
+            }
+
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<List<TwilioCallDetails>?>> GetCallsByStatusForPhoneNumber(string accountSid, string authToken, string twilioPhonenumberId, List<string> twilioStatusToCheck, int limit)
+        {
+            var result = new FunctionReturnResult<List<TwilioCallDetails>?>();
+
+            try
+            {
+                using (var client = CreateConfiguredHttpClient(accountSid, authToken))
+                {
+                    // Prepare request body
+                    var formContent = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("To", twilioPhonenumberId),
+                        new KeyValuePair<string, string>("Status", string.Join(",", twilioStatusToCheck)),
+                        new KeyValuePair<string, string>("limit", limit.ToString())
+                    });
+
+                    // Get calls
+                    var response = await client.PostAsync("Calls.json", formContent);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        result.Code = "GetCallsByStatusForPhoneNumber:1";
+                        result.Message = $"Error getting calls for phone number: {response.StatusCode}. Details: {errorContent}";
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        return result;
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var calls = JsonSerializer.Deserialize<List<TwilioCallDetails>>(content, _jsonOptions);
+
+                    if (calls == null)
+                    {
+                        result.Code = "GetCallsByStatusForPhoneNumber:2";
+                        result.Message = "Failed to deserialize calls list";
+                        _logger.LogError("Failed to deserialize Twilio calls response");
+                        return result;
+                    }
+
+                    result.Success = true;
+                    result.Data = calls;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Code = "GetCallsByStatusForPhoneNumber:3";
+                result.Message = $"Error getting calls for phone number: {ex.Message}";
+                _logger.LogError(ex, "Error getting Twilio calls for phone number");
             }
 
             return result;

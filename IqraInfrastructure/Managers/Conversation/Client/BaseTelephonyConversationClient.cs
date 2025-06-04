@@ -16,7 +16,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected bool _hasDiconnected;
         protected CancellationTokenSource? _connectionCts;
         protected TelephonyProviderEnum _clientTelephonyProviderType;
-        protected readonly string _clientTelephonyProviderPhoneNumberId;
+        protected string _clientTelephonyProviderPhoneNumberId;
 
         public string ClientId => _clientId;
         public bool IsConnected => _isConnected;
@@ -31,10 +31,11 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public event EventHandler<ConversationClientDisconnectedEventArgs>? Disconnected;
         public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFReceived;
 
-        protected BaseTelephonyConversationClient(string clientId, string phoneNumber, ILogger logger)
+        protected BaseTelephonyConversationClient(string clientId, string phoneNumber, string telephonyProviderPhoneNumberId, ILogger logger)
         {
             _clientId = clientId;
             _clientPhoneNumber = phoneNumber;
+            _clientTelephonyProviderPhoneNumberId = telephonyProviderPhoneNumberId;
             _logger = logger;
             _isConnected = false;
             _hasDiconnected = false;

@@ -372,12 +372,10 @@ namespace IqraInfrastructure.Managers.Conversation
             // Notify event subscribers
             ClientRemoved?.Invoke(this, new ConversationClientRemovedEventArgs(clientId, reason));
 
-            _logger.LogInformation("Removed client {ClientId} from session {SessionId}: {Reason}", clientId, _sessionId, reason);
-
             // If there are no more clients, end the session
-            if (_clients.Count == 0 && _state == ConversationSessionState.Active)
+            if (_clients.Count == 0)
             {
-                await EndAsync(reason+ ": All clients disconnected");
+                await EndAsync(reason + ": All clients disconnected");
             }
 
             return true;
@@ -391,11 +389,11 @@ namespace IqraInfrastructure.Managers.Conversation
             }
         }
 
-        public IConversationClient? GetTelephonyClientByProviderPhoneNumberId(TelephonyProviderEnum provider, string providerPhoneNumberId)
+        public IConversationClient? GetTelephonyClientByProviderPhoneNumberId(TelephonyProviderEnum provider, string businessPhoneNumberId)
         {
             lock (_clientsLock)
             {
-                return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientTelephonyProviderPhoneNumberId == providerPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyType == provider);
+                return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientId == businessPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyType == provider);
             }
         }
 
@@ -437,6 +435,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 agent.AgentTextResponse += OnAgentTextResponse;
                 agent.ClientTextQuery += OnClientTextReceived;
+                agent.ClearBufferedAudio += OnClearAgentsSentAudioWriteOnClient;
 
                 agent.Thinking += OnAgentThinking;
                 agent.ErrorOccurred += OnAgentErrorOccurred;
@@ -489,6 +488,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 agent.AgentTextResponse -= OnAgentTextResponse;
                 agent.ClientTextQuery -= OnClientTextReceived;
+                agent.ClearBufferedAudio -= OnClearAgentsSentAudioWriteOnClient;
 
                 agent.Thinking -= OnAgentThinking;
                 agent.ErrorOccurred -= OnAgentErrorOccurred;
@@ -666,7 +666,7 @@ namespace IqraInfrastructure.Managers.Conversation
 
         public async Task EndAsync(string reason, ConversationSessionState finalState = ConversationSessionState.Ended)
         {
-            if (_state == ConversationSessionState.Ended)
+            if (_state == ConversationSessionState.Ended || _state == ConversationSessionState.Ending)
             {
                 _logger.LogDebug("Session {SessionId} is already ended", _sessionId);
                 return;
@@ -824,6 +824,24 @@ namespace IqraInfrastructure.Managers.Conversation
             StateChanged?.Invoke(this, new ConversationSessionStateChangedEventArgs(oldState, newState, reason));
         }
 
+        private void OnClearAgentsSentAudioWriteOnClient(object? sender, object? data)
+        {
+            if (sender is string)
+            {
+                sender = _agents.Find(c => c.AgentId == (string)sender);
+            }
+
+            if (sender is not IConversationAgent agent)
+                return;
+
+            foreach (var client in _clients)
+            {
+                if (client is WebSocketCapableConversationClient websocketClient)
+                {
+                    websocketClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
+                }
+            }
+        }
         private void OnClientAudioReceived(object? sender, ConversationAudioReceivedEventArgs e)
         {
             if (sender is string)

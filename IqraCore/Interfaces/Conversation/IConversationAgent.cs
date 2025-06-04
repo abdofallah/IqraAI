@@ -24,6 +24,7 @@ namespace IqraCore.Interfaces.Conversation
 
         event EventHandler<ConversationTextGeneratedEventArgs> AgentTextResponse;
         event EventHandler<ConversationTextReceivedEventArgs>? ClientTextQuery;
+        event EventHandler<object?>? ClearBufferedAudio;
 
         event EventHandler<ConversationAgentThinkingEventArgs> Thinking;
         event EventHandler<ConversationAgentErrorEventArgs> ErrorOccurred;

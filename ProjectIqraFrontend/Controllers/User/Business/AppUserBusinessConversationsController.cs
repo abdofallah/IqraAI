@@ -138,9 +138,9 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         }
 
         [HttpGet("/app/user/business/{businessId}/conversations/state/{conversationSessionId}")]
-        public async Task<FunctionReturnResult<ConversationState?>> GetConversationState(long businessId, string conversationSessionId)
+        public async Task<FunctionReturnResult<ConversationStateViewModel?>> GetConversationState(long businessId, string conversationSessionId)
         {
-            var result = new FunctionReturnResult<ConversationState?>();
+            var result = new FunctionReturnResult<ConversationStateViewModel?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -222,7 +222,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result;
             }
 
-            var stateResult = await _businessManager.GetConversationsManager().GetConversationStateByIdAsync(businessId, conversationSessionId);
+            var stateResult = await _businessManager.GetConversationsManager().GetConversationStateViewModelByIdAsync(businessId, conversationSessionId);
             if (!stateResult.Success)
             {
                 result.Code = "GetConversationState:" + stateResult.Code;

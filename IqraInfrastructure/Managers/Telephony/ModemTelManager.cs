@@ -513,42 +513,43 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
-        public async Task<FunctionReturnResult<ModemTelMediaSession>> GetCallMediaSessionAsync(string apiKey, string apiBaseUrl, string callId)
+        public async Task<FunctionReturnResult<List<ModemTelCall>?>> GetCallsByStatusForPhoneNumber(string apiKey, string apiBaseUrl, string phoneNumberId, List<string> status, int limit = 100)
         {
-            var result = new FunctionReturnResult<ModemTelMediaSession>();
+            var result = new FunctionReturnResult<List<ModemTelCall>?>();
 
             try
             {
                 using (var client = CreateConfiguredHttpClient(apiKey))
                 {
-                    var response = await client.GetAsync($"{apiBaseUrl}/api/v1/calls/{callId}/media");
+                    var response = await client.GetAsync($"{apiBaseUrl}/api/v1/calls?phone_number_id={phoneNumberId}&status={string.Join(",", status)}&limit={limit}");
 
                     if (!response.IsSuccessStatusCode)
                     {
                         var errorContent = await response.Content.ReadAsStringAsync();
-                        result.Code = "GetCallMediaSession:1";
-                        result.Message = $"Error getting call media session: {response.StatusCode}. Details: {errorContent}";
+                        result.Code = "GetCallsByStatusForPhoneNumber:1";
+                        result.Message = $"Error getting calls for phone number: {response.StatusCode}. Details: {errorContent}";
                         return result;
                     }
 
-                    var content = await response.Content.ReadAsStringAsync();
-                    var apiResponse = JsonSerializer.Deserialize<ModemTelResponse<ModemTelMediaSession>>(content, _jsonOptions);
-
-                    if (apiResponse?.Data == null)
+                    
+                    List<ModemTelCall>? responseResult = null;
+                    try
                     {
-                        result.Code = "GetCallMediaSession:2";
-                        result.Message = "Invalid response format received from ModemTel API";
-                        return result;
+                        var content = await response.Content.ReadAsStringAsync();
+                        responseResult = JsonSerializer.Deserialize<List<ModemTelCall>>(content, _jsonOptions);
+                    }
+                    catch (Exception ex)
+                    {
+                        return result.SetFailureResult("GetCallsByStatusForPhoneNumber:RESPONSE_DESERIALIZATION_FAILED", $"Invalid response format received from ModemTel API: {ex.Message}");
                     }
 
-                    result.Success = true;
-                    result.Data = apiResponse.Data;
+                    return result.SetSuccessResult(responseResult);
                 }
             }
             catch (Exception ex)
             {
-                result.Code = "GetCallMediaSession:3";
-                result.Message = $"Error retrieving call media session: {ex.Message}";
+                result.Code = "GetCallsByStatusForPhoneNumber:EXCEPTION";
+                result.Message = $"Error retrieving calls for phone number: {ex.Message}";
             }
 
             return result;

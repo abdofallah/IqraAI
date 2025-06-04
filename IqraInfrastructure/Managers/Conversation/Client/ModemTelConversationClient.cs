@@ -20,12 +20,13 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public ModemTelConversationClient(
             string clientId,
             string clientPhoneNumber,
+            string telephonyProviderPhoneNumberId,
             string? providerCallId,
             string apiBaseUrl,
             string apiKey,
             ModemTelManager modemTelManager,
             ILogger<ModemTelConversationClient> logger
-        ) : base(clientId, clientPhoneNumber, logger)
+        ) : base(clientId, clientPhoneNumber, telephonyProviderPhoneNumberId, logger)
         {
             _providerCallId = providerCallId;
             _apiBaseUrl = apiBaseUrl;

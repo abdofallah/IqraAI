@@ -331,20 +331,32 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
         }
 
-        public async Task<bool> SetClientAudioStatusAsync(string conversationId, string clientId, ConversationMemberAudioCompilationStatus status, string? failedReason = null, CancellationToken cancellationToken = default)
+        public async Task<bool> SetMemberAudioStatusAsync(string conversationId, string memberId, ConversationMemberAudioCompilationStatus status, bool isAgent, string? failedReason = null, CancellationToken cancellationToken = default)
         {
             try
             {
                 var filter = Builders<ConversationState>.Filter.And(
                     Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId),
-                    Builders<ConversationState>.Filter.ElemMatch(c => c.Clients, client => client.ClientId == clientId)
+                    (
+                        isAgent == true ?
+                        Builders<ConversationState>.Filter.ElemMatch(c => c.Agents, agent => agent.AgentId == memberId)
+                            :
+                        Builders<ConversationState>.Filter.ElemMatch(c => c.Clients, client => client.ClientId == memberId)
+                    )
                 );
 
                 var update = Builders<ConversationState>.Update
                     .Set(c => c.Clients.FirstMatchingElement().AudioInfo.AudioCompilationStatus, status);
                 if (failedReason != null && status == ConversationMemberAudioCompilationStatus.Failed)
                 {
-                    update = update.Set(c => c.Clients.FirstMatchingElement().AudioInfo.FailedReason, failedReason);
+                    if (isAgent)
+                    {
+                        update = update.Set(c => c.Agents.FirstMatchingElement().AudioInfo.FailedReason, failedReason);
+                    }
+                    else
+                    {
+                        update = update.Set(c => c.Clients.FirstMatchingElement().AudioInfo.FailedReason, failedReason);
+                    }
                 }
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
@@ -353,7 +365,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating client {ClientId} audio compilation status in conversation {Id}", clientId, conversationId);
+                _logger.LogError(ex, "Error updating client {ClientId} audio compilation status in conversation {Id}", memberId, conversationId);
                 throw;
             }
         }

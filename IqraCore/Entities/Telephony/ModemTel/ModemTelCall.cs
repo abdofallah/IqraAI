@@ -33,8 +33,5 @@ namespace IqraCore.Entities.Telephony.ModemTel
 
         [JsonPropertyName("durationSeconds")]
         public int? DurationSeconds { get; set; }
-
-        [JsonPropertyName("mediaSession")]
-        public ModemTelMediaSession MediaSession { get; set; }
     }
 }

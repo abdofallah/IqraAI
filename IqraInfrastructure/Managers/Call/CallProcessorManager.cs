@@ -559,14 +559,14 @@ namespace IqraInfrastructure.Managers.Call
             if (queueData.Type == CallQueueTypeEnum.Inbound)
             {
                 var inboundCallQueueData = queueData as InboundCallQueueData;
-                clientId = $"client_{inboundCallQueueData.RouteNumberId}";
+                clientId = $"{inboundCallQueueData.RouteNumberId}";
                 numberId = inboundCallQueueData.RouteNumberId;
                 callId = inboundCallQueueData.ProviderCallId;
             }
             else if (queueData.Type == CallQueueTypeEnum.Outbound)
             {
                 var outboundCallQeueData = queueData as OutboundCallQueueData;
-                clientId = $"client_{outboundCallQeueData.CallingNumberId}";
+                clientId = $"{outboundCallQeueData.CallingNumberId}";
                 numberId = outboundCallQeueData.CallingNumberId;
                 callId = null;
             }
@@ -600,6 +600,7 @@ namespace IqraInfrastructure.Managers.Call
                         new ModemTelConversationClient(
                             clientId,
                             phoneNumberData,
+                            ((BusinessNumberModemTelData)businessNumberData).ModemTelPhoneNumberId,
                             callId,
                             integrationData.Data.Fields["endpoint"],
                             _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
@@ -613,6 +614,7 @@ namespace IqraInfrastructure.Managers.Call
                         new TwilioConversationClient(
                             clientId,
                             phoneNumberData,
+                            ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
                             callId,
                             integrationData.Data.Fields["accountsid"],
                             _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
@@ -630,7 +632,7 @@ namespace IqraInfrastructure.Managers.Call
             var result = new FunctionReturnResult<IConversationAgent?>();
 
             // Create agent ID
-            string agentId = $"ai_{sessionManager.SessionId}";
+            string agentId = $"{Guid.NewGuid().ToString()}";
             try
             {
                 var AIAgent = new ConversationAIAgent(

@@ -9,7 +9,6 @@ namespace IqraCore.Entities.User
         [BsonRepresentation(BsonType.Decimal128)]
         public decimal CreditBalance { get; set; } = 0.00m;
 
-        [BsonRepresentation(BsonType.ObjectId)]
         public string CurrentPlanId { get; set; }
 
         public int PurchasedAdditionalConcurrencySlots { get; set; } = 0;

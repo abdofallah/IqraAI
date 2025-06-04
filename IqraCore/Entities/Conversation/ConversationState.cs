@@ -22,7 +22,6 @@ namespace IqraCore.Entities.Conversation
         public DateTime? ExpectedEndTimeAt { get; set; }
 
         public DateTime LastActivityTime { get; set; }
-        public string LanguageCode { get; set; }
 
         public List<ConversationClientInfo> Clients { get; set; } = new List<ConversationClientInfo>();
         public List<ConversationAgentInfo> Agents { get; set; } = new List<ConversationAgentInfo>();
