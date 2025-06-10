@@ -99,7 +99,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     if (!string.IsNullOrWhiteSpace(messageToSpeak) && PlaySpeechRequested != null)
                         await PlaySpeechRequested.Invoke(messageToSpeak, cancellationToken);
 
-                    if (cancellationToken.IsCancellationRequested) return;
+                    // TODO make this based on telephony vs web For telephony higher and web low
+                    // somehow know estimate accurate of how much sound delay there is?
+                    await Task.Delay(2000);
 
                     if (EndConversationRequested != null)
                         await EndConversationRequested.Invoke(reason);

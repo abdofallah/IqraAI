@@ -493,8 +493,20 @@ namespace IqraInfrastructure.Managers.TTS
                     return result;
 
                 case InterfaceTTSProviderEnum.ElevenLabsTextToSpeech:
+                    string? pronunciationDictionaryId = null;
+                    if (agentIntegrationData.FieldValues.TryGetValue("pronunciationDictionaryId", out var pronunciationDictionaryIdObject))
+                    {
+                        pronunciationDictionaryId = pronunciationDictionaryIdObject.ToString();
+                    }
+
+                    string? applyTextNormalization = null;
+                    if (agentIntegrationData.FieldValues.TryGetValue("applyTextNormalization", out var applyTextNormalizationObject))
+                    {
+                        applyTextNormalization = applyTextNormalizationObject.ToString();
+                    }
+
                     return result.SetSuccessResult(
-                        new ElevenLabsTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model_id"], (string)agentIntegrationData.FieldValues["voice_id"], 0.5f, 0.5f, 0, false, 1.05f)
+                        new ElevenLabsTTSService(_integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]), (string)agentIntegrationData.FieldValues["model_id"], (string)agentIntegrationData.FieldValues["voice_id"], (float)agentIntegrationData.FieldValues["stability"], (float)agentIntegrationData.FieldValues["similarityBoost"], (float)agentIntegrationData.FieldValues["style"], bool.Parse((string)agentIntegrationData.FieldValues["speakerBoost"]), (float)agentIntegrationData.FieldValues["speed"], pronunciationDictionaryId, applyTextNormalization)
                     );
 
                 default:

@@ -1714,7 +1714,7 @@ namespace IqraInfrastructure.Managers.Business
                 targetNode.NodeType == BusinessAppAgentScriptNodeTypeENUM.AIResponse)
             {
                 result.Code = "1";
-                result.Message = "Start node cannot connect to AI Response node.";
+                result.Message = $"Start node cannot connect to AI Response node {targetNode.Id}.";
                 return result;
             }
 
@@ -1723,7 +1723,7 @@ namespace IqraInfrastructure.Managers.Business
                 targetNode.NodeType != BusinessAppAgentScriptNodeTypeENUM.UserQuery)
             {
                 result.Code = "2";
-                result.Message = "AI Response node can only connect to User Query node.";
+                result.Message = $"AI Response node {sourceNode.Id} can only connect to User Query node, but connected to {targetNode.NodeType} {targetNode.Id} node.";
                 return result;
             }
 

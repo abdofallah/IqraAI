@@ -19,10 +19,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private readonly int _sampleRate;
         private TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat _outputFormat;
+        private BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization _applyTextNormalization;
+        private List<PronunciationDictionaryVersionLocatorRequestModel> _pronunciationDictionaryId;
 
         private List<string>? _previousRequestIds = new List<string>();
 
-        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, int sampleRate = 8000)
+        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, string? pronunciationDictionaryId = null, string? applyTextNormalization = null, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
@@ -36,6 +38,27 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (speed.HasValue) _voiceSettings.Speed = speed.Value;
 
             _sampleRate = sampleRate;
+
+            _pronunciationDictionaryId = new List<PronunciationDictionaryVersionLocatorRequestModel>();
+            if (!string.IsNullOrEmpty(pronunciationDictionaryId))
+            {
+                _pronunciationDictionaryId.Add(new PronunciationDictionaryVersionLocatorRequestModel() { PronunciationDictionaryId = pronunciationDictionaryId });
+            }
+            if (!string.IsNullOrEmpty(applyTextNormalization))
+            {
+                if (applyTextNormalization == "on")
+                {
+                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.On;
+                }
+                else if (applyTextNormalization == "off")
+                {
+                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Off;
+                }
+                else if (applyTextNormalization == "auto")
+                {
+                    _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Auto;
+                }
+            }
         }
 
         public void Initialize()
@@ -72,7 +95,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var request = new BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPost(text, _modelData.ModelId, null, _voiceSettings, null, null, null, null, _previousRequestIds, null, null, null);
+            var request = new BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPost(text, _modelData.ModelId, null, _voiceSettings, _pronunciationDictionaryId, null, null, null, _previousRequestIds, null, _applyTextNormalization, null);
 
             try
             {
