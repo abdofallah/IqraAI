@@ -22,9 +22,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization _applyTextNormalization;
         private List<PronunciationDictionaryVersionLocatorRequestModel> _pronunciationDictionaryId;
 
-        private List<string>? _previousRequestIds = new List<string>();
+        private List<string> _previousRequestIds = new List<string>();
 
-        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, string? pronunciationDictionaryId = null, string? applyTextNormalization = null, int sampleRate = 8000)
+        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, int sampleRate, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, string? pronunciationDictionaryId = null, string? applyTextNormalization = null)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
@@ -100,14 +100,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             try
             {
                 var result = await _client.TextToSpeech.CreateTextToSpeechByVoiceIdWithTimestampsAsync(_voiceData.VoiceId, request, null, null, _outputFormat, null, cancellationToken);
-                
-                if (_previousRequestIds.Count >= 3)
-                {
-                    _previousRequestIds.RemoveAt(0);
-                }
+                  
                 if (!string.IsNullOrEmpty(result.Item2))
                 {
                     _previousRequestIds.Add(result.Item2);
+                }
+                if (_previousRequestIds.Count >= 3)
+                {
+                    _previousRequestIds.RemoveAt(0);
                 }
 
                 var audioData = Convert.FromBase64String(result.Item1.AudioBase64);

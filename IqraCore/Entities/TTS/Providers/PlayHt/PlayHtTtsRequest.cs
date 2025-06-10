@@ -10,6 +10,10 @@ namespace IqraCore.Entities.TTS.Providers.PlayHt
         [JsonPropertyName("voice")]
         public string Voice { get; set; } = string.Empty; // Voice ID/URL/Name
 
+        [JsonPropertyName("quality")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Quality { get; set; }
+
         [JsonPropertyName("output_format")]
         public string OutputFormat { get; set; } = "wav"; // Request WAV
 
@@ -24,11 +28,6 @@ namespace IqraCore.Entities.TTS.Providers.PlayHt
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Speed { get; set; } // 0.1 to 5.0
 
-        // Add other optional parameters like quality, seed, temperature, emotion, etc. if needed
-        [JsonPropertyName("quality")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Quality { get; set; } // e.g., "draft", "standard", "premium"
-
         [JsonPropertyName("temperature")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public double? Temperature { get; set; } // 0 to 2.0
@@ -36,5 +35,25 @@ namespace IqraCore.Entities.TTS.Providers.PlayHt
         [JsonPropertyName("emotion")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Emotion { get; set; }
+
+        //voice_guidance
+        [JsonPropertyName("voice_guidance")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? VoiceGuidance { get; set; }
+
+        //style_guidance
+        [JsonPropertyName("style_guidance")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? StyleGuidance { get; set; }
+
+        //text_guidance
+        [JsonPropertyName("text_guidance")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public float? TextGuidance { get; set; }
+
+        //language
+        [JsonPropertyName("language")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Language { get; set; }
     }
 }

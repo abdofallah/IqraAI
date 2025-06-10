@@ -13,20 +13,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _apiKey;
         private readonly string _voiceId;
         private readonly string _modelId;
-        private readonly string? _languageCode;
+        private readonly string _languageCode;
         private readonly int _sampleRate;
-        private readonly string _cartesiaVersion = "2024-11-13";
+        private readonly string _cartesiaVersion = "2025-04-16";
+        private readonly List<string> _pronunciationDictIds;
 
         private const string BaseUrl = "https://api.cartesia.ai";
-        private const int BytesPerSample = 2; // For pcm_s16le
+        private const int BytesPerSample = 2;
         private const int Channels = 1; // Assuming mono output
 
-        public CartesiaTTSService(string apiKey, string voiceId, string modelId, string? languageCode = null, int sampleRate = 8000)
+        public CartesiaTTSService(string apiKey, string voiceId, string modelId, string languageCode, List<string> pronunciationDictIds, int sampleRate)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
             _modelId = modelId;
-            _languageCode = languageCode; // Can be null
+            _languageCode = languageCode;
+            _pronunciationDictIds = pronunciationDictIds;
             _sampleRate = sampleRate;
         }
 
@@ -52,9 +54,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 OutputFormat = new CartesiaOutputFormatRequest
                 {
                     SampleRate = _sampleRate,
-                    Encoding = "pcm_s16le"
+                    Encoding = "pcm_s16le",
+                    BitRate = (_sampleRate * (BytesPerSample * 8))
                 },
-                Language = _languageCode
+                Language = _languageCode,
+                PronunciationDictIds = _pronunciationDictIds.ToArray()
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload);
@@ -62,7 +66,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/*"));
-            request.Headers.Add("X-API-Key", _apiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Headers.Add("Cartesia-Version", _cartesiaVersion);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 

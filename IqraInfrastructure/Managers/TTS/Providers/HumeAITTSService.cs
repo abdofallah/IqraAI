@@ -12,23 +12,27 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        private readonly string? _voiceId;
-        private readonly string? _voiceName;
-        private readonly string? _voiceProvider;
+        private readonly string _voiceId;
+        private readonly string _voiceProvider;
+        private readonly string _voiceDescription;
+        private readonly float _voiceSpeed;
 
         private const string ApiUrl = "https://api.hume.ai/v0/tts";
 
-        // pcm s16 le 48khz 16-bit mono
-        private readonly int _sampleRate = 48000; // can not be changed yet default by api
+        private readonly int _sampleRate;
         private readonly int _sampleSize = 16; // can not be changed default by api
         private readonly int _channels = 1; // can not be changed default by api
 
-        public HumeAITTSService(string apiKey, string? voiceId = null, string? voiceName = null, string? voiceProvider = null)
+        private string lastGenerationId = null;
+
+        public HumeAITTSService(string apiKey, string voiceId, string voiceProvider, string voiceDescription, float voiceSpeed, int sampleRate)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
-            _voiceName = voiceName;
             _voiceProvider = voiceProvider;
+            _sampleRate = sampleRate;
+            _voiceDescription = voiceDescription;
+            _voiceSpeed = voiceSpeed;
         }
 
         public void Initialize()
@@ -38,28 +42,37 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            HumeVoiceSpecifier? voiceSpec = null;
-            if (!string.IsNullOrEmpty(_voiceId) || !string.IsNullOrEmpty(_voiceName))
+            var voiceSpec = new HumeVoiceSpecifier
             {
-                voiceSpec = new HumeVoiceSpecifier
-                {
-                    Id = _voiceId,
-                    Name = _voiceName,
-                    Provider = _voiceProvider
-                };
-            }
+                Id = _voiceId,
+                Provider = _voiceProvider
+            };
 
             var utterance = new HumeUtteranceRequest
             {
                 Text = text,
-                Voice = voiceSpec
+                Voice = voiceSpec,
+                Description = _voiceDescription,
+                Speed = _voiceSpeed
             };
 
             var requestPayload = new HumeTtsRequest
             {
-                Utterances = new List<HumeUtteranceRequest> { utterance },
-                AudioFormat = new HumeTtsRequestAudioFormat() { Type = "pcm" }
+                Utterances = new List<HumeUtteranceRequest> {
+                    utterance
+                },
+                AudioFormat = new HumeTtsRequestAudioFormat() {
+                    Type = "pcm"
+                }
             };
+
+            if (!string.IsNullOrWhiteSpace(lastGenerationId))
+            {
+                requestPayload.Context = new HumeTtsRequestContext()
+                {
+                    GenerationId = lastGenerationId
+                };
+            }
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
             var requestUri = ApiUrl;
@@ -127,44 +140,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     duration = TimeSpan.FromSeconds(firstGeneration.Duration.Value);
                 }
+                
+                if (!string.IsNullOrWhiteSpace(firstGeneration.GenerationId))
+                {
+                    lastGenerationId = firstGeneration.GenerationId;
+                }
 
-                // --- Handling Output Format ---
-                // The interface expects raw PCM. Hume might return MP3, WAV, or PCM.
-                // If it returns WAV, we need to parse it like Fish Audio.
-                // If it returns MP3, we either return MP3 bytes (breaking consistency)
-                // or attempt transcoding (complex).
-                // Let's check the response encoding format.
-                string format = firstGeneration.Encoding?.Format?.ToLowerInvariant() ?? "unknown";
-                int? sampleRate = firstGeneration.Encoding?.SampleRate;
+                int actualSampleRate = 48000;         
+                if (firstGeneration.Encoding != null) // Optionally, check firstGeneration.Encoding if available and trust it more:
+                {
+                    if (firstGeneration.Encoding.SampleRate.HasValue)
+                        actualSampleRate = firstGeneration.Encoding.SampleRate.Value;
+                }
 
-                if (format == "wav")
-                {
-                    // todo logging
-                    Console.WriteLine($"Hume AI: Received WAV format (SampleRate: {sampleRate}). Parsing header...");
-                    // Use a WAV parser similar to the Fish Audio one
-                    return ParseWavAndExtractPcm(audioData, duration); // Pass known duration
-                }
-                else if (format == "pcm")
-                {
-                    // todo logging
-                    Console.WriteLine($"Hume AI: Received raw PCM format (SampleRate: {sampleRate}).");
-                    // Assume it matches our 16-bit expectation or check metadata further if available
-                    return (audioData, duration);
-                }
-                else if (format == "mp3")
-                {
-                    // todo logging
-                    Console.WriteLine($"Hume AI: Received MP3 format (SampleRate: {sampleRate}). Returning MP3 bytes directly.");
-                    // WARNING: This breaks the expectation of PCM from other providers.
-                    // Consider logging this or adding transcoding if PCM is strictly required.
-                    return (audioData, duration);
-                }
-                else
-                {
-                    // todo logging
-                    Console.WriteLine($"Hume AI: Received unknown audio format '{format}'. Returning raw bytes.");
-                    return (audioData, duration); // Return whatever bytes we got
-                }
+                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _sampleRate, _channels, _sampleSize);
+
+                return (resampledAudioData, duration);
             }
             catch (JsonException jsonEx)
             {
@@ -198,44 +189,90 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             }
         }
 
-        // Simple WAV parser (reuse or adapt from FishAudio service)
-        private (byte[]?, TimeSpan?) ParseWavAndExtractPcm(byte[] wavData, TimeSpan? knownDuration)
+        private static short[] PcmBytesToShorts(byte[] pcmData)
         {
-            try
+            if (pcmData.Length % 2 != 0) return Array.Empty<short>();
+            short[] samples = new short[pcmData.Length / 2];
+            Buffer.BlockCopy(pcmData, 0, samples, 0, pcmData.Length);
+            return samples;
+        }
+
+        private static byte[] PcmShortsToBytes(short[] samples)
+        {
+            byte[] pcmData = new byte[samples.Length * 2];
+            Buffer.BlockCopy(samples, 0, pcmData, 0, pcmData.Length);
+            return pcmData;
+        }
+
+        private byte[] ResamplePcm(byte[] pcmData, int originalSampleRate, int targetSampleRate, int numChannels, int bitsPerSample)
+        {
+            if (originalSampleRate == targetSampleRate || pcmData.Length == 0)
             {
-                if (wavData == null || wavData.Length < 44) { return (null, null); }
+                return pcmData;
+            }
 
-                using var reader = new BinaryReader(new MemoryStream(wavData));
-                // Basic WAV Header Parsing (adapt as needed from FishAudio implementation)
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (wavData, knownDuration); // Return original if not RIFF
-                reader.ReadInt32(); // ChunkSize
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (wavData, knownDuration);
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (wavData, knownDuration);
-                int fmtChunkSize = reader.ReadInt32();
-                reader.BaseStream.Seek(fmtChunkSize, SeekOrigin.Current); // Skip format chunk details for simplicity here
+            if (bitsPerSample != 16 || numChannels <= 0 || originalSampleRate <= 0)
+            {
+                // todo logging
+                Console.WriteLine($"Hume AI Resample: Unsupported PCM format for resampling (Bits: {bitsPerSample}, Channels: {numChannels}, OriginalRate: {originalSampleRate}). Returning original data.");
+                return pcmData;
+            }
 
-                // Find 'data' chunk
-                string dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < wavData.Length - 8)
+            short[] inputShorts = PcmBytesToShorts(pcmData);
+            if (inputShorts.Length == 0 && pcmData.Length > 0)
+            {
+                // todo logging
+                Console.WriteLine("Hume AI Resample: Failed to convert PCM bytes to shorts. Returning original data.");
+                return pcmData;
+            }
+
+
+            int inputFrames = inputShorts.Length / numChannels;
+            if (inputFrames == 0 && inputShorts.Length > 0)
+            {
+                // todo logging
+                Console.WriteLine("Hume AI Resample: Not enough samples for even one frame. Returning original data.");
+                return pcmData;
+            }
+
+
+            int outputFrames = (int)Math.Max(1, Math.Round(inputFrames * (double)targetSampleRate / originalSampleRate));
+            short[] outputShorts = new short[outputFrames * numChannels];
+
+            double step = (double)originalSampleRate / targetSampleRate;
+
+            for (int i = 0; i < outputFrames; i++)
+            {
+                double originalFrameIndexDouble = i * step;
+
+                for (int c = 0; c < numChannels; c++)
                 {
-                    int listChunkSize = reader.ReadInt32();
-                    reader.BaseStream.Seek(listChunkSize, SeekOrigin.Current);
-                    dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
+                    int baseInputFrameFloor = (int)Math.Floor(originalFrameIndexDouble);
+                    int inputIndex1 = (baseInputFrameFloor * numChannels) + c;
+
+                    if (inputIndex1 < 0) inputIndex1 = c;
+                    if (inputIndex1 >= inputShorts.Length) inputIndex1 = Math.Max(0, inputShorts.Length - numChannels + c);
+                    if (inputIndex1 < 0 && inputShorts.Length > 0) inputIndex1 = 0;
+
+
+                    short sample1 = (inputShorts.Length > 0 && inputIndex1 < inputShorts.Length) ? inputShorts[inputIndex1] : (short)0;
+
+                    if (originalSampleRate < targetSampleRate) // Upsampling
+                    {
+                        int inputIndex2 = ((baseInputFrameFloor + 1) * numChannels) + c;
+                        if (inputIndex2 >= inputShorts.Length) inputIndex2 = inputIndex1;
+
+                        short sample2 = (inputShorts.Length > 0 && inputIndex2 < inputShorts.Length) ? inputShorts[inputIndex2] : sample1;
+                        double fraction = originalFrameIndexDouble - baseInputFrameFloor;
+                        outputShorts[i * numChannels + c] = (short)(sample1 * (1.0 - fraction) + sample2 * fraction);
+                    }
+                    else // Downsampling (or no change, handled by outer if) - nearest neighbor
+                    {
+                        outputShorts[i * numChannels + c] = sample1;
+                    }
                 }
-                if (dataChunkId.ToLowerInvariant() != "data") return (wavData, knownDuration); // Return original if no data chunk
-
-                int dataChunkSize = reader.ReadInt32();
-                byte[] pcmData = reader.ReadBytes(dataChunkSize);
-
-                // Return extracted PCM data; keep the duration from the API response
-                return (pcmData, knownDuration);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Hume AI WAV Parsing Error: {ex.Message}. Returning original WAV data.");
-                // Return original data if parsing fails, use API duration
-                return (wavData, knownDuration);
-            }
+            return PcmShortsToBytes(outputShorts);
         }
 
         public Task StopTextSynthesisAsync()

@@ -466,24 +466,53 @@ namespace IqraInfrastructure.Managers.STT
         {
             var result = new FunctionReturnResult<ISTTService?>();
 
-            var sttProviderData = await GetProviderDataByIntegration(integrationData.Type);
-            if (!sttProviderData.Success)
+            try
             {
-                result.Code = "BuildProviderServiceByIntegration:1";
-                result.Message = "Provider not find by integration type";
-                return result;
+                var sttProviderData = await GetProviderDataByIntegration(integrationData.Type);
+                if (!sttProviderData.Success)
+                {
+                    result.Code = "BuildProviderServiceByIntegration:1";
+                    result.Message = "Provider not find by integration type";
+                    return result;
+                }
+
+                switch (sttProviderData.Data.Id)
+                {
+                    case InterfaceSTTProviderEnum.AzureSpeechServices:
+                        string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
+                        string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
+                        string speakerDiarizationString = (string)agentIntegrationData.FieldValues["speaker_diarization"];
+                        string? phrasesListString = (string?)agentIntegrationData.FieldValues["phrases_list"];
+
+                        List<string> continousLanguageIdentificationIds = new List<string>();
+                        if (!string.IsNullOrEmpty(continousLanguageIdentificationIdsString))
+                        {
+                            continousLanguageIdentificationIds.AddRange(continousLanguageIdentificationIdsString.Split(','));
+                        }
+
+                        bool speakerDiarization = (speakerDiarizationString == "on");
+
+                        List<string> phrasesList = new List<string>();
+                        if (!string.IsNullOrEmpty(phrasesListString))
+                        {
+                            phrasesList.AddRange(phrasesListString.Split(','));
+                        }
+
+                        var azureSTTService = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList);
+                        return result.SetSuccessResult(
+                            azureSTTService
+                        );
+
+                    default:
+                        _logger.LogError("Business app STT provider {ProviderType} not supported", sttProviderData.Data.Id);
+                        return result;
+                }
             }
-
-            switch (sttProviderData.Data.Id)
-            {
-                case InterfaceSTTProviderEnum.AzureSpeechServices:
-                    result.Success = true;
-                    result.Data = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], metaData["language"]);
-                    return result;
-
-                default:
-                    _logger.LogError("Business app STT provider {ProviderType} not supported", sttProviderData.Data.Id);
-                    return result;
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "BuildProviderServiceByIntegration:EXCEPTION",
+                    ("Failed to build provider service: " + ex.Message)
+                );
             }
         }
     }

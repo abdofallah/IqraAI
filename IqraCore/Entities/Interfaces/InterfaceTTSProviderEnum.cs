@@ -14,6 +14,8 @@
         PlayHtTextToSpeech = 9,
         SpeechifyTextToSpeech = 10,
         MurfAITextToSpeech = 11,
-        ZyphraZonosTextToSpeech = 12
+        ZyphraZonosTextToSpeech = 12,
+        HamsaAITextToSpeech = 13,
+        NeuphonicTextToSpeech = 14
     }
 }

@@ -12,5 +12,8 @@ namespace IqraCore.Entities.TTS.Providers.Cartesia
 
         [JsonPropertyName("sample_rate")]
         public int SampleRate { get; set; }
+
+        [JsonPropertyName("bit_rate")]
+        public int BitRate { get; set; }
     }
 }

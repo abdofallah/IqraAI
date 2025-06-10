@@ -25,6 +25,10 @@ namespace IqraCore.Entities.TTS.Providers.Minimax
         [JsonPropertyName("subtitle_enable")]
         public bool SubtitleEnable { get; set; } = false; // Explicitly false unless needed
 
-        // Add other top-level fields like pronunciation_dict, timber_weights, language_boost if needed
+        [JsonPropertyName("pronunciation_dict")]
+        public string PronunciationDict { get; set; } = string.Empty;
+
+        [JsonPropertyName("language_boost")]
+        public string LanguageBoost { get; set; } = string.Empty;
     }
 }

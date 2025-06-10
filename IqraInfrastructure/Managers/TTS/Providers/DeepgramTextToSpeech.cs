@@ -16,7 +16,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly int _channels = 1; // Mono
         private readonly int _bytesPerSample = 2; // 16 bits = 2 bytes
 
-        public DeepgramTTSService(string apiKey, string modelId, int sampleRate = 8000)
+        public DeepgramTTSService(string apiKey, string modelId, int sampleRate)
         {
             _apiKey = apiKey;
             _modelId = modelId;
@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Encoding = _encoding,
                 SampleRate = _sampleRate.ToString(),
                 Container = "none",
-                BitRate  = (_sampleRate * _bytesPerSample * _channels).ToString()
+                BitRate  = (_bytesPerSample * (_bytesPerSample * 8)).ToString()
             };
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

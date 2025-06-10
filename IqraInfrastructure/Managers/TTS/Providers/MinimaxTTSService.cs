@@ -15,18 +15,25 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _groupId;
         private readonly string _modelId;
         private readonly string _voiceId;
+        private readonly float _voiceSpeed;
+        private readonly string _languageBoostId;
+        private readonly string _pronunciationDict;
         private readonly int _sampleRate;
+        private readonly int _bytesPerSample = 2;
         private readonly int _channels = 1; // default to mono
 
         private const string BaseUrl = "https://api.minimaxi.chat/v1";
 
-        public MinimaxTTSService(string apiKey, string groupId, string modelId, string voiceId = "Wise_Woman", int sampleRate = 8000)
+        public MinimaxTTSService(string apiKey, string groupId, string modelId, string voiceId, float voiceSpeed, string langaugeBoostId, string pronunciationDict, int sampleRate)
         {
             _apiKey = apiKey;
             _groupId = groupId;
             _modelId = modelId;
             _voiceId = voiceId;
             _sampleRate = sampleRate;
+            _voiceSpeed = voiceSpeed;
+            _languageBoostId = langaugeBoostId;
+            _pronunciationDict = pronunciationDict;
         }
 
         public void Initialize()
@@ -47,14 +54,20 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 Stream = false,
                 OutputFormat = "hex",
-                VoiceSetting = new MinimaxVoiceSetting { VoiceId = _voiceId /* Add speed/vol/pitch if needed */ },
+                VoiceSetting = new MinimaxVoiceSetting {
+                    VoiceId = _voiceId,
+                    Speed = _voiceSpeed
+                },
                 AudioSetting = new MinimaxAudioSetting
                 {
                     Format = "pcm",
                     SampleRate = _sampleRate,
                     Channel = _channels,
+                    Bitrate = (_sampleRate * (_bytesPerSample * 8))
                 },
-                SubtitleEnable = false
+                SubtitleEnable = false,
+                PronunciationDict = _pronunciationDict,
+                LanguageBoost = _languageBoostId
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });

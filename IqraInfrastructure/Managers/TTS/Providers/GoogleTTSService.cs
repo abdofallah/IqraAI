@@ -1,6 +1,6 @@
 ﻿using Google.Cloud.TextToSpeech.V1;
-using Google.Apis.Auth.OAuth2; // Needed for GoogleCredential
-using Grpc.Auth; // Needed for ToChannelCredentials
+using Google.Apis.Auth.OAuth2;
+using Grpc.Auth;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 
@@ -15,12 +15,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _languageCode;
         private readonly string _voiceName;
         private readonly AudioEncoding _audioEncoding = AudioEncoding.Pcm;
-        private readonly int _bytesPerSample = 2;
+        private readonly int _bytesPerSample = 2; // default by google
         private readonly int _channels = 1;
 
         private readonly string _serviceAccountKeyJson;
 
-        public GoogleTTSService(string serviceAccountKeyJson, string languageCode, string voiceName, int sampleRate = 8000)
+        public GoogleTTSService(string serviceAccountKeyJson, string languageCode, string voiceName, float speakingRate, int sampleRate)
         {
             _serviceAccountKeyJson = serviceAccountKeyJson;
             _languageCode = languageCode;
@@ -35,7 +35,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _audioConfig = new AudioConfig
             {
                 AudioEncoding = _audioEncoding,
-                SampleRateHertz = sampleRate
+                SampleRateHertz = sampleRate,
+                SpeakingRate = speakingRate,
             };
         }
 

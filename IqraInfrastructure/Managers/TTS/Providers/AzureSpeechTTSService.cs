@@ -21,7 +21,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private bool _loggingEnabled = false;
 
-        public AzureSpeechTTSService(string subscriptionKey, string region, string langauge, string speakerName, int sampleRate = 8000)
+        public AzureSpeechTTSService(string subscriptionKey, string region, string langauge, string speakerName, int sampleRate)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;

@@ -15,6 +15,9 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private PushAudioInputStream _pushStream;
 
         private readonly int _sampleRate;
+        private List<string> _continousLanguageIdentificationIds;
+        private bool _speakerDiarization;
+        private List<string> _phrasesList;
 
         private event EventHandler<string> _transcriptionResultReceived;
 
@@ -26,7 +29,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public event EventHandler<object> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
-        public AzureSpeechSTTService(string subscriptionKey, string region, string language, int sampleRate = 8000)
+        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int sampleRate = 8000)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
@@ -38,22 +41,31 @@ namespace IqraInfrastructure.Managers.STT.Providers
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
 
-            // TODO MAKE THIS DYNAMICI IN STT PROVIDER TO MANUALLY SET LANGAUGES IDS FOR EACH LANGUAGE
-            if (_language == "en")
-            {
-                speechConfig.SpeechRecognitionLanguage = "en-US";
-            }
-            else if (_language == "ar")
-            {
-                speechConfig.SpeechRecognitionLanguage = "ar-SA";
-            }
-
+            speechConfig.SpeechRecognitionLanguage = _language;
+            speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
             speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300"); // make it dynamic with some kind of maths
 
             _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_sampleRate), 16, 1, AudioStreamWaveFormat.PCM));
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);
 
-            _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
+            if (_continousLanguageIdentificationIds.Count > 0)
+            {
+                speechConfig.SetProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous");
+                var autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig.FromLanguages(_continousLanguageIdentificationIds.ToArray());
+                _recognizer = new SpeechRecognizer(speechConfig, autoDetectSourceLanguageConfig, audioConfig);
+            }
+            else
+            {
+                _recognizer = new SpeechRecognizer(speechConfig, audioConfig);
+            }
+
+
+            var phraseList = PhraseListGrammar.FromRecognizer(_recognizer);
+            foreach (var phrase in _phrasesList)
+            {
+                phraseList.AddPhrase(phrase);
+            }
+
             _recognizer.Recognizing += OnRecognizing;
             _recognizer.Recognized += OnRecognized;
             _recognizer.Canceled += OnCanceled;

@@ -3,7 +3,6 @@ using IqraCore.Entities.TTS.Providers.FishAudio;
 using IqraCore.Interfaces.AI;
 using MessagePack;
 using System.Net.Http.Headers;
-using System.Text;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -20,7 +19,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private const string ApiUrl = "https://api.fish.audio/v1/tts";
 
-        public FishAudioTTSService(string apiKey, string referenceId, string model, int sampleRate = 8000)
+        public FishAudioTTSService(string apiKey, string referenceId, string model, int sampleRate)
         {
             _apiKey = apiKey;
             _referenceId = referenceId;
@@ -50,7 +49,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 ReferenceId = _referenceId,
                 Format = "pcm",
-                SampleRate = (_sampleRate / 100) // it expects 8 instead of 8000
+                SampleRate = (_sampleRate / 1000) // it expects 8 instead of 8000
             };
 
             byte[] messagePackData;

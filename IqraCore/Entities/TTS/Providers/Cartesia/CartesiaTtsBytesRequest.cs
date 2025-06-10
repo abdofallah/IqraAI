@@ -17,7 +17,10 @@ namespace IqraCore.Entities.TTS.Providers.Cartesia
         public CartesiaOutputFormatRequest OutputFormat { get; set; } = new();
 
         [JsonPropertyName("language")]
+        public string Language { get; set; } = string.Empty;
+
+        [JsonPropertyName("pronunciation_dict_ids")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Language { get; set; }
+        public string[]? PronunciationDictIds { get; set; }
     }
 }

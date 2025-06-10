@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Google.Protobuf.Reflection;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -14,26 +15,40 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _apiKey;
         private readonly string _userId;
         private readonly string _voiceId;
-        private readonly string? _voiceEngine;
+        private readonly string _voiceEngine;
+        private readonly string _voiceQuality;
+        private readonly float _voiceSpeed;
+        private readonly float _temperature;
+        private readonly string _emotion;
+        private readonly float _voiceGuidance;
+        private readonly float _styleGuidance;
+        private readonly float _textGuidance;
+        private readonly string _language;
 
         private readonly int _sampleRate;
         private string _audioFormat;
 
         private const string ApiUrl = "https://api.play.ht/api/v2/tts/stream";
 
-        public PlayHtTTSService(string apiKey, string userId, string voiceId, string voiceEngine, int sampleRate = 8000)
+        public PlayHtTTSService(string apiKey, string userId, string voiceId, string voiceEngine, string voiceQuality, float voiceSpeed, float temperature, string emotion, float voiceGuidance, float styleGuidance, float textGuidance, string language, int sampleRate)
         {
             _apiKey = apiKey;
             _userId = userId;
             _voiceId = voiceId;
             _voiceEngine = voiceEngine;
+            _voiceQuality = voiceQuality;
+            _voiceSpeed = voiceSpeed;
+            _temperature = temperature;
+            _emotion = emotion;
+            _voiceGuidance = voiceGuidance;
+            _styleGuidance = styleGuidance;
+            _textGuidance = textGuidance;
+            _language = language;
             _sampleRate = sampleRate;
         }
 
         public void Initialize()
         {
-            // Static HttpClient initialization is handled implicitly
-
             // make this dynamic within dashboard
             if (_voiceEngine == "PlayHT1.0")
             {
@@ -41,7 +56,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     throw new Exception("Unsupported sample rate for PlayHT1.0, supported are: 8000");
                 }
-                _audioFormat = "mulaw";
+                _audioFormat = "mulaw"; // todo maybe make it mp3 instead for higher quality unless its also 8000
 
             }
             else
@@ -51,7 +66,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             if (_sampleRate < 8000 || _sampleRate > 48000)
             {
-                throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
+                throw new Exception("Unsupported sample rate, supported are: 8000~48000");
             }
         }
 
@@ -67,8 +82,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 Voice = _voiceId,
                 VoiceEngine = _voiceEngine,
+                Quality = _voiceQuality,
                 OutputFormat = _audioFormat,
                 SampleRate = _sampleRate,
+                Speed = _voiceSpeed,
+                Temperature = _temperature,
+                Emotion = _emotion,
+                VoiceGuidance = _voiceGuidance,
+                StyleGuidance = _styleGuidance,
+                TextGuidance = _textGuidance,
+                Language = _language
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -91,6 +114,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     // Read the raw audio bytes directly from the response body
                     byte[] wavData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
+                    // todo confirm this is wav format not mulaw or mp3
                     // Parse the WAV header to extract PCM data and calculate duration
                     // todo logging
                     Console.WriteLine($"Play.ht: Received WAV format. Parsing header...");
