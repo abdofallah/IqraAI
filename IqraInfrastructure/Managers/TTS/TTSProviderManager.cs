@@ -607,36 +607,61 @@ namespace IqraInfrastructure.Managers.TTS
                             return result.SetSuccessResult(playHtTTSService);
                         }
 
-                    //case InterfaceTTSProviderEnum.SpeechifyTextToSpeech:
-                    //    {
-                    //        string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                    //        string voiceId = GetRequiredFieldValue<string>(agentIntegrationData, "voice_id");
-                    //        string model = GetRequiredFieldValue<string>(agentIntegrationData, "model");
+                    case InterfaceTTSProviderEnum.SpeechifyTextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
+                            string model = (string)agentIntegrationData.FieldValues["model"];
+                            string language = (string)agentIntegrationData.FieldValues["language"];
+                            string loudnessNormalizationString = (string)agentIntegrationData.FieldValues["loudness_normalization"];
+                            string textNormalizationString = (string)agentIntegrationData.FieldValues["text_normalization"];
 
-                    //        var speechifyTTSService = new SpeechifyTTSService(apiKey, voiceId, model);
-                    //        return result.SetSuccessResult(speechifyTTSService);
-                    //    }
+                            bool loudnessNormalization = loudnessNormalizationString == "true" ? true : false;
+                            bool textNormalization = textNormalizationString == "true" ? true : false;
 
-                    //case InterfaceTTSProviderEnum.MurfAITextToSpeech:
-                    //    {
-                    //        string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                    //        string model = GetRequiredFieldValue<string>(agentIntegrationData, "model");
-                    //        string voiceId = GetRequiredFieldValue<string>(agentIntegrationData, "voice_id");
-                    //        int murfAiSampleRate = GetOptionalFieldValue(agentIntegrationData, "sample_rate", 8000);
+                            var speechifyTTSService = new SpeechifyTTSService(apiKey, voiceId, model, language, loudnessNormalization, textNormalization, sampleRate);
+                            return result.SetSuccessResult(speechifyTTSService);
+                        }
 
-                    //        var murfAITTSService = new MurfAITTSService(apiKey, model, voiceId, murfAiSampleRate);
-                    //        return result.SetSuccessResult(murfAITTSService);
-                    //    }
+                    case InterfaceTTSProviderEnum.MurfAITextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string model = (string)agentIntegrationData.FieldValues["model"];
+                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
+                            string multiNativeLocale = (string)agentIntegrationData.FieldValues["multi_native_locale"];
+                            string pronunciationDictionaryString = (string)agentIntegrationData.FieldValues["pronunciation_dictionary"];
+                            int rate = (int)agentIntegrationData.FieldValues["rate"];
+                            string style = (string)agentIntegrationData.FieldValues["style"];
+                            int variation = (int)agentIntegrationData.FieldValues["variation"];
 
-                    //case InterfaceTTSProviderEnum.ZyphraZonosTextToSpeech:
-                    //    {
-                    //        string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                    //        string model = GetRequiredFieldValue<string>(agentIntegrationData, "model");
-                    //        string? defaultVoiceName = GetOptionalStringFieldValue(agentIntegrationData, "default_voice_name");
+                            var murfAITTSService = new MurfAITTSService(apiKey, model, voiceId, multiNativeLocale, pronunciationDictionaryString, rate, style, variation, sampleRate);
+                            return result.SetSuccessResult(murfAITTSService);
+                        }
 
-                    //        var zyphraZonosTTSService = new ZyphraZonosTTSService(apiKey, model, defaultVoiceName);
-                    //        return result.SetSuccessResult(zyphraZonosTTSService);
-                    //    }
+                    case InterfaceTTSProviderEnum.ZyphraZonosTextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+                            string model = (string)agentIntegrationData.FieldValues["model"];
+                            string defaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"];
+                            float speakingRate = (float)agentIntegrationData.FieldValues["speaking_rate"];
+                            string languageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"];
+                            string emotion = (string)agentIntegrationData.FieldValues["emotion"];
+                            float vqscore = (float)agentIntegrationData.FieldValues["vqscore"];
+
+                            var zyphraZonosTTSService = new ZyphraZonosTTSService(apiKey, model, defaultVoiceName, speakingRate, languageIsoCode, emotion, vqscore, sampleRate);
+                            return result.SetSuccessResult(zyphraZonosTTSService);
+                        }
+
+                    case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            string projectUuid = integrationData.Fields["project_uuid"];
+                            string voiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"];
+
+                            //var resembleAiTTSService = new ResembleAITTSService(apiKey, projectUuid, voiceUuid, sampleRate);
+                            return result.SetSuccessResult(resembleAiTTSService);
+                        }
 
                     case InterfaceTTSProviderEnum.HamsaAITextToSpeech:
                         {
@@ -657,8 +682,6 @@ namespace IqraInfrastructure.Managers.TTS
                             var neuphonicTTSService = new NeuphonicTTSService(apiKey, langCode, voiceId, sampleRate);
                             return result.SetSuccessResult(neuphonicTTSService);
                         }
-
-                    
 
                     default:
                         {

@@ -14,15 +14,24 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _apiKey;
         private readonly string _voiceId;
         private readonly string _model;
+        private readonly string _language;
+        private readonly bool _loudnessNormalization;
+        private readonly bool _textNormalization;
+
+        private readonly int _sampleRate;
 
         private const string ApiUrl = "https://api.sws.speechify.com/v1/audio/speech";
 
         // Constructor
-        public SpeechifyTTSService(string apiKey, string voiceId, string model)
+        public SpeechifyTTSService(string apiKey, string voiceId, string model, string language, bool loudnessNormalization, bool textNormalization, int sampleRate)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
             _model = model;
+            _language = language;
+            _loudnessNormalization = loudnessNormalization;
+            _textNormalization = textNormalization;
+            _sampleRate = sampleRate;
         }
 
         public void Initialize()
@@ -43,13 +52,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 VoiceId = _voiceId,
                 Model = _model,
                 AudioFormat = "wav",
+                Language = _language,
+                Options = new SpeechifyOptionsRequest()
+                {
+                    LoudnessNormalization = _loudnessNormalization,
+                    TextNormalization = _textNormalization
+                }
             };
-
-            // Allow overriding language from metaData
-            if (metaData?.TryGetValue("language", out var lang) == true && lang is string languageCode)
-            {
-                requestPayload.Language = languageCode;
-            }
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
             var requestUri = ApiUrl;
@@ -111,35 +120,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     duration = TimeSpan.FromSeconds(ttsResponse.SpeechMarks.EndTime.Value);
                 }
 
-                // Handle format
-                if (format == "wav")
+                // Parse WAV to get PCM and actual audio parameters
+                var (pcmData, originalSampleRate, originalChannels, originalBitsPerSample, calculatedDuration) = ParseWavAndExtractPcmDetails(audioData);
+
+                if (pcmData == null || pcmData.Length == 0 || originalSampleRate == 0)
                 {
-                    // todo logging
-                    Console.WriteLine($"Speechify: Received WAV format. Parsing header...");
-                    // Use a WAV parser similar to previous examples
-                    return ParseWavAndExtractPcm(audioData, duration); // Pass duration if we got it from speech marks
+                    Console.WriteLine("Speechify Error: Failed to parse WAV data or extract PCM.");
+                    return (Array.Empty<byte>(), TimeSpan.Zero);
                 }
-                else if (format == "pcm") // Unlikely based on docs, but handle
-                {
-                    // todo logging
-                    Console.WriteLine($"Speechify: Received raw PCM format.");
-                    // If we don't have duration from speech marks, calculate it
-                    if (!duration.HasValue)
-                    {
-                        // todo logging
-                        // Need sample rate, channels, bits per sample for calculation
-                        // These aren't directly in the main response, would need more info or make assumptions
-                        Console.WriteLine("Speechify: PCM received but cannot calculate duration without format details.");
-                    }
-                    return (audioData, duration);
-                }
-                else // mp3, ogg, aac, unknown
-                {
-                    // todo logging
-                    Console.WriteLine($"Speechify: Received '{format}' format. Returning raw bytes.");
-                    // Cannot reliably parse or calculate duration for compressed formats here
-                    return (audioData, duration); // Return bytes, duration might be null or from speech marks
-                }
+
+                // Use duration from API if available, otherwise use calculated duration
+                TimeSpan finalDuration = duration ?? calculatedDuration ?? TimeSpan.Zero;
+
+                // Resample the PCM data
+                byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _sampleRate, originalChannels, originalBitsPerSample);
+
+                return (finalPcmData, finalDuration);
             }
             catch (JsonException jsonEx)
             {
@@ -173,77 +169,196 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             }
         }
 
-        // WAV parser (reuse or adapt from other services)
-        private (byte[]?, TimeSpan?) ParseWavAndExtractPcm(byte[] wavData, TimeSpan? knownDuration)
+        private static short[] PcmBytesToShorts(byte[] pcmData, int bitsPerSample)
         {
+            if (bitsPerSample != 16) return Array.Empty<short>(); // Only support 16-bit for now
+            if (pcmData.Length % 2 != 0) return Array.Empty<short>();
+            short[] samples = new short[pcmData.Length / 2];
+            Buffer.BlockCopy(pcmData, 0, samples, 0, pcmData.Length);
+            return samples;
+        }
+
+        private static byte[] PcmShortsToBytes(short[] samples)
+        {
+            byte[] pcmData = new byte[samples.Length * 2];
+            Buffer.BlockCopy(samples, 0, pcmData, 0, pcmData.Length);
+            return pcmData;
+        }
+
+        private byte[] ResamplePcm(byte[] pcmData, int originalSampleRate, int targetSampleRate, int numChannels, int bitsPerSample)
+        {
+            if (originalSampleRate == targetSampleRate || pcmData.Length == 0)
+            {
+                return pcmData;
+            }
+
+            // We primarily support resampling 16-bit PCM.
+            if (bitsPerSample != 16)
+            {
+                // todo logging
+                Console.WriteLine($"Speechify Resample: Unsupported bits per sample ({bitsPerSample}). Only 16-bit is supported for resampling. Returning original data.");
+                return pcmData;
+            }
+            if (numChannels <= 0 || originalSampleRate <= 0)
+            {
+                // todo logging
+                Console.WriteLine($"Speechify Resample: Invalid audio parameters (Channels: {numChannels}, OriginalRate: {originalSampleRate}). Returning original data.");
+                return pcmData;
+            }
+
+
+            short[] inputShorts = PcmBytesToShorts(pcmData, bitsPerSample);
+            if (inputShorts.Length == 0 && pcmData.Length > 0)
+            {
+                // todo logging
+                Console.WriteLine("Speechify Resample: Failed to convert PCM bytes to shorts (possibly due to non-16-bit audio or odd length). Returning original data.");
+                return pcmData;
+            }
+
+
+            int inputFrames = inputShorts.Length / numChannels;
+            if (inputFrames == 0 && inputShorts.Length > 0)
+            {
+                // todo logging
+                Console.WriteLine("Speechify Resample: Not enough samples for even one frame. Returning original data.");
+                return pcmData;
+            }
+
+
+            int outputFrames = (int)Math.Max(1, Math.Round(inputFrames * (double)targetSampleRate / originalSampleRate));
+            short[] outputShorts = new short[outputFrames * numChannels];
+
+            double step = (double)originalSampleRate / targetSampleRate;
+
+            for (int i = 0; i < outputFrames; i++)
+            {
+                double originalFrameIndexDouble = i * step;
+                for (int c = 0; c < numChannels; c++)
+                {
+                    int baseInputFrameFloor = (int)Math.Floor(originalFrameIndexDouble);
+                    int inputIndex1 = (baseInputFrameFloor * numChannels) + c;
+
+                    if (inputIndex1 < 0) inputIndex1 = c;
+                    if (inputIndex1 >= inputShorts.Length) inputIndex1 = Math.Max(0, inputShorts.Length - numChannels + c);
+                    if (inputIndex1 < 0 && inputShorts.Length > 0) inputIndex1 = 0;
+
+                    short sample1 = (inputShorts.Length > 0 && inputIndex1 < inputShorts.Length) ? inputShorts[inputIndex1] : (short)0;
+
+                    if (originalSampleRate < targetSampleRate) // Upsampling
+                    {
+                        int inputIndex2 = ((baseInputFrameFloor + 1) * numChannels) + c;
+                        if (inputIndex2 >= inputShorts.Length) inputIndex2 = inputIndex1;
+                        short sample2 = (inputShorts.Length > 0 && inputIndex2 < inputShorts.Length) ? inputShorts[inputIndex2] : sample1;
+                        double fraction = originalFrameIndexDouble - baseInputFrameFloor;
+                        outputShorts[i * numChannels + c] = (short)(sample1 * (1.0 - fraction) + sample2 * fraction);
+                    }
+                    else // Downsampling
+                    {
+                        outputShorts[i * numChannels + c] = sample1;
+                    }
+                }
+            }
+            return PcmShortsToBytes(outputShorts);
+        }
+
+        private (byte[]? pcmData, int sampleRate, int channels, int bitsPerSample, TimeSpan? duration) ParseWavAndExtractPcmDetails(byte[] wavData)
+        {
+            if (wavData == null || wavData.Length < 44) return (null, 0, 0, 0, null);
+
+            using var memoryStream = new MemoryStream(wavData);
+            using var reader = new BinaryReader(memoryStream);
+
             try
             {
-                if (wavData == null || wavData.Length < 44) { return (null, null); }
-
-                using var reader = new BinaryReader(new MemoryStream(wavData));
-                // --- Basic WAV Header Parsing ---
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (wavData, knownDuration);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "RIFF") return (null, 0, 0, 0, null);
                 reader.ReadInt32(); // File size - 8
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (wavData, knownDuration);
-                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "fmt ") return (wavData, knownDuration);
+                if (Encoding.ASCII.GetString(reader.ReadBytes(4)) != "WAVE") return (null, 0, 0, 0, null);
 
-                int fmtChunkSize = reader.ReadInt32();
-                short audioFormat = reader.ReadInt16();
-                short channels = reader.ReadInt16();
-                int sampleRate = reader.ReadInt32();
-                reader.ReadInt32(); // Byte rate
-                reader.ReadInt16(); // Block align
-                short bitsPerSample = reader.ReadInt16();
+                string chunkId;
+                int chunkSize;
+                short numChannels = 0;
+                int sampleRateFromWav = 0;
+                short bitsPerSampleFromWav = 0;
+                int byteRate = 0;
+                bool fmtFound = false;
+                byte[]? pcmBuffer = null;
 
-                if (audioFormat != 1)
+                while (memoryStream.Position + 8 <= memoryStream.Length)
                 {
-                    Console.WriteLine("Speechify Error: Received WAV is not in PCM format.");
-                    return (wavData, knownDuration);
-                }
-                if (fmtChunkSize > 16)
-                    reader.BaseStream.Seek(fmtChunkSize - 16, SeekOrigin.Current);
+                    chunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
+                    chunkSize = reader.ReadInt32();
 
-                string dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
-                while (dataChunkId.ToLowerInvariant() != "data" && reader.BaseStream.Position < wavData.Length - 8)
+                    if (memoryStream.Position + chunkSize > memoryStream.Length || chunkSize < 0)
+                        return (null, 0, 0, 0, null);
+
+                    long nextChunkPos = memoryStream.Position + chunkSize;
+                    if (chunkSize % 2 != 0) nextChunkPos++; // RIFF chunk alignment
+
+                    if (chunkId.ToLowerInvariant() == "fmt ")
+                    {
+                        if (chunkSize < 16) return (null, 0, 0, 0, null);
+                        short audioFormat = reader.ReadInt16();
+                        if (audioFormat != 1) { Console.WriteLine("Speechify WAV Error: Not PCM format."); return (null, 0, 0, 0, null); } // PCM = 1
+
+                        numChannels = reader.ReadInt16();
+                        sampleRateFromWav = reader.ReadInt32();
+                        byteRate = reader.ReadInt32();
+                        reader.ReadInt16(); // Block align
+                        bitsPerSampleFromWav = reader.ReadInt16();
+                        fmtFound = true;
+
+                        if (numChannels <= 0 || sampleRateFromWav <= 0 || bitsPerSampleFromWav <= 0) return (null, 0, 0, 0, null);
+
+                        if (memoryStream.Position < nextChunkPos && nextChunkPos <= memoryStream.Length)
+                            reader.BaseStream.Seek(nextChunkPos - memoryStream.Position, SeekOrigin.Current);
+                        else if (nextChunkPos > memoryStream.Length) return (null, 0, 0, 0, null);
+                    }
+                    else if (chunkId.ToLowerInvariant() == "data")
+                    {
+                        if (!fmtFound) { Console.WriteLine("Speechify WAV Error: 'data' chunk found before 'fmt '."); return (null, 0, 0, 0, null); }
+
+                        if (chunkSize > memoryStream.Length - memoryStream.Position)
+                        {
+                            Console.WriteLine("Speechify WAV Error: data chunk size exceeds available data.");
+                            chunkSize = (int)(memoryStream.Length - memoryStream.Position);
+                            if (chunkSize < 0) chunkSize = 0;
+                        }
+                        pcmBuffer = reader.ReadBytes(chunkSize);
+                        break;
+                    }
+                    else // Skip other chunks
+                    {
+                        if (memoryStream.Position < nextChunkPos && nextChunkPos <= memoryStream.Length)
+                            reader.BaseStream.Seek(nextChunkPos - memoryStream.Position, SeekOrigin.Current);
+                        else if (nextChunkPos > memoryStream.Length) return (null, 0, 0, 0, null);
+                    }
+                }
+
+                if (pcmBuffer == null || !fmtFound)
                 {
-                    int listChunkSize = reader.ReadInt32();
-                    if (listChunkSize <= 0 || reader.BaseStream.Position + listChunkSize > wavData.Length)
-                        return (wavData, knownDuration);
-                    reader.BaseStream.Seek(listChunkSize, SeekOrigin.Current);
-                    dataChunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
+                    Console.WriteLine("Speechify WAV Error: 'data' or 'fmt ' chunk not found or PCM buffer is null.");
+                    return (null, 0, 0, 0, null);
                 }
-                if (dataChunkId.ToLowerInvariant() != "data")
+
+                TimeSpan? duration = null;
+                if (byteRate > 0 && pcmBuffer.Length > 0)
                 {
-                    Console.WriteLine("Speechify Error: 'data' chunk not found in WAV.");
-                    return (wavData, knownDuration);
+                    duration = TimeSpan.FromSeconds((double)pcmBuffer.Length / byteRate);
                 }
-
-                int dataChunkSize = reader.ReadInt32();
-                if (reader.BaseStream.Position + dataChunkSize > wavData.Length)
+                else if (sampleRateFromWav > 0 && numChannels > 0 && bitsPerSampleFromWav > 0 && pcmBuffer.Length > 0)
                 {
-                    Console.WriteLine("Speechify Error: WAV data chunk size exceeds available data.");
-                    dataChunkSize = (int)(wavData.Length - reader.BaseStream.Position);
-                    if (dataChunkSize < 0) dataChunkSize = 0;
+                    double bytesPerSampleCalc = bitsPerSampleFromWav / 8.0;
+                    if (bytesPerSampleCalc == 0) return (pcmBuffer, sampleRateFromWav, numChannels, bitsPerSampleFromWav, TimeSpan.Zero);
+                    double totalFrames = pcmBuffer.Length / (bytesPerSampleCalc * numChannels);
+                    duration = TimeSpan.FromSeconds(totalFrames / sampleRateFromWav);
                 }
 
-                byte[] pcmData = reader.ReadBytes(dataChunkSize);
-                // --- End Parsing ---
-
-                // Calculate duration if not already known from speech marks
-                TimeSpan? duration = knownDuration;
-                if (!duration.HasValue && sampleRate > 0 && bitsPerSample > 0 && channels > 0 && dataChunkSize > 0)
-                {
-                    double durationSeconds = (double)dataChunkSize / (sampleRate * channels * (bitsPerSample / 8));
-                    duration = TimeSpan.FromSeconds(durationSeconds);
-                    Console.WriteLine($"Speechify: Calculated duration from WAV header ({duration}).");
-                }
-
-                return (pcmData, duration);
+                return (pcmBuffer, sampleRateFromWav, numChannels, bitsPerSampleFromWav, duration);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Speechify WAV Parsing Error: {ex.Message}. Returning original WAV data.");
-                return (wavData, knownDuration); // Return original if parsing fails
+                Console.WriteLine($"Speechify WAV Parsing Detailed Error: {ex.Message}");
+                return (null, 0, 0, 0, null);
             }
         }
 

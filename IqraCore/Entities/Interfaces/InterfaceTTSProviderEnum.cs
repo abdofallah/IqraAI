@@ -16,6 +16,7 @@
         MurfAITextToSpeech = 11,
         ZyphraZonosTextToSpeech = 12,
         HamsaAITextToSpeech = 13,
-        NeuphonicTextToSpeech = 14
+        NeuphonicTextToSpeech = 14,
+        ResembleAITextToSpeech = 15
     }
 }

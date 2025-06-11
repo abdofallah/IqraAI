@@ -33,7 +33,7 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
         // Transformer model specific
         [JsonPropertyName("emotion")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public ZyphraEmotionWeights? Emotion { get; set; }
+        public Dictionary<string, float>? Emotion { get; set; }
 
         [JsonPropertyName("pitchStd")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

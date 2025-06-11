@@ -15,33 +15,46 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         
         private readonly string _voiceId;
         private readonly string _model;
+        private readonly string _multiNativeLocale;
+        private readonly Dictionary<string, MurfPronunciationEntry> _pronunciationDictionary;
+        private readonly int _rate;
+        private readonly string _style;
+        private readonly int _variation;
 
         private readonly int _sampleRate;
-        private string _audioFormat;
+        private readonly string _audioFormat = "WAV";
 
         private const string ApiUrl = "https://api.murf.ai/v1/speech/generate";
 
-        public MurfAITTSService(string apiKey, string model, string voiceId, int sampleRate = 8000)
+        public MurfAITTSService(string apiKey, string model, string voiceId, string multiNativeLocale, string pronunciationDictionaryString, int rate, string style, int variation, int sampleRate = 8000)
         {
             _apiKey = apiKey;
             _voiceId = voiceId;
             _model = model;
+            _multiNativeLocale = multiNativeLocale;
+            _pronunciationDictionary = new Dictionary<string, MurfPronunciationEntry>();
+            _rate = rate;
+            _style = style;
+            _variation = variation;
             _sampleRate = sampleRate;
+
+            foreach (var pronunciationEntry in pronunciationDictionaryString.Split(Environment.NewLine))
+            {
+                var split = pronunciationEntry.Split(";");
+                if (split.Length < 3) { continue; } // throw error until better solution is added
+
+                var entry = new MurfPronunciationEntry
+                {
+                    Type = split[1],
+                    Pronunciation = split[2]
+                };
+                _pronunciationDictionary.Add(split[0], entry);
+            }
         }
 
         public void Initialize()
         {
-            // Static HttpClient initialization is handled implicitly
-
-            if (_sampleRate == 8000)
-            {
-                _audioFormat = "ULAW";
-            }
-            else if (_sampleRate == 24000 || _sampleRate == 44100 || _sampleRate == 48000)
-            {
-                _audioFormat = "WAV";
-            }
-            else
+            if (!(_sampleRate == 8000 || _sampleRate == 24000 || _sampleRate == 44100 || _sampleRate == 48000))
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
             }
@@ -60,9 +73,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 VoiceId = _voiceId,
                 Format = _audioFormat,
                 SampleRate = _sampleRate,
-                EncodeAsBase64 = false,
+                EncodeAsBase64 = true,
                 ChannelType = "MONO",
-                ModelVersion = _model
+                ModelVersion = _model,
+                Rate = _rate,
+                Style = _style,
+                PronunciationDictionary = _pronunciationDictionary,
+                Variation = _variation
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -162,17 +179,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             try
             {
-                if (_audioFormat == "ULAW")
-                {
-                    var ulawDuration = knownDuration;
-                    if (ulawDuration == null)
-                    {
-                        double durationSeconds = (double)audioData.Length / _sampleRate;
-                        ulawDuration = TimeSpan.FromSeconds(durationSeconds);
-                    }
-                    return (audioData, ulawDuration);
-                }
-
                 if (audioData == null || audioData.Length < 44) { return (null, null); }
 
                 using var reader = new BinaryReader(new MemoryStream(audioData));
