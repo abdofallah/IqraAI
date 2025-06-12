@@ -18,6 +18,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private List<string> _continousLanguageIdentificationIds;
         private bool _speakerDiarization;
         private List<string> _phrasesList;
+        private readonly int _silenceTimeout;
 
         private event EventHandler<string> _transcriptionResultReceived;
 
@@ -29,12 +30,16 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public event EventHandler<object> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
-        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int sampleRate = 8000)
+        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int sampleRate)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
             _language = language;
             _sampleRate = sampleRate;
+            _continousLanguageIdentificationIds = continousLanguageIdentificationIds;
+            _speakerDiarization = speakerDiarization;
+            _phrasesList = phrasesList;
+            _silenceTimeout = silenceTimeout;
         }
 
         public void Initialize()
@@ -43,7 +48,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
             speechConfig.SpeechRecognitionLanguage = _language;
             speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
-            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300"); // make it dynamic with some kind of maths
+            speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _silenceTimeout.ToString());
 
             _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_sampleRate), 16, 1, AudioStreamWaveFormat.PCM));
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);

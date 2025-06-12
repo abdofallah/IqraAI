@@ -728,6 +728,7 @@ namespace IqraInfrastructure.Managers.Business
 
                     switch (integrationField.Type)
                     {
+                        case "text":
                         case "string":
                             var fieldValueString = fieldValueElement.GetString();
                             if (integrationField.Required && string.IsNullOrWhiteSpace(fieldValueString))

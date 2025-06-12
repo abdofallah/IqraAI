@@ -1180,6 +1180,7 @@ function createAgentIntegrationConfigurationField(field) {
 	let fieldHtml = "";
 
 	switch (field.type) {
+		case "text":
 		case "string":
 			fieldHtml = `
                 <div class="mb-3 config-field" data-field-id="${field.id}">

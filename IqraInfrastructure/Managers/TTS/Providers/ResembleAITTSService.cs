@@ -31,7 +31,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentNullException(nameof(apiKey));
             if (string.IsNullOrWhiteSpace(projectUuid)) throw new ArgumentNullException(nameof(projectUuid));
             if (string.IsNullOrWhiteSpace(voiceUuid)) throw new ArgumentNullException(nameof(voiceUuid));
-            if (targetSampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
+            if (!(new List<int>([8000, 22050, 32000, 44100])).Contains(targetSampleRate))
+            {
+                throw new Exception("Sample rate support are 8000, 22050, 32000 or 44100");
+            }
 
             _apiKey = apiKey;
             _projectUuid = projectUuid;
@@ -41,6 +44,68 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Initialize()
         {
+        }
+
+        public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
+        {
+            var apiRequestPayload = new ResembleTtsApiRequest
+            {
+                ProjectUuid = _projectUuid,
+                VoiceUuid = _voiceUuid,
+                Data = text,
+                Precision = _precision,
+                SampleRate = _targetSampleRate,
+                OutputFormat = "wav"
+            };
+
+            string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, _streamingEndpointUrl);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            try
+            {
+                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
+                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                    // Console.WriteLine($"Resemble AI HTTP Error ({response.StatusCode}): {errorBody}");
+                    return (Array.Empty<byte>(), TimeSpan.Zero);
+                }
+
+                var ttsResponse = JsonSerializer.Deserialize<ResembleTTSApiResponse>(responseBody, _jsonSerializerOptions);
+
+                if (ttsResponse == null || !ttsResponse.Success || string.IsNullOrWhiteSpace(ttsResponse.AudioContent))
+                {
+                    // Console.WriteLine($"Resemble AI Sync API Error or no audio content. Success: {ttsResponse?.Success}, Issues: {string.Join(", ", ttsResponse?.Issues ?? new List<string>())}");
+                    return (Array.Empty<byte>(), TimeSpan.Zero);
+                }
+
+                byte[] audioDataFromApi = Convert.FromBase64String(ttsResponse.AudioContent);
+                TimeSpan? durationFromApi = ttsResponse.Duration.HasValue ? TimeSpan.FromSeconds(ttsResponse.Duration.Value) : null;
+                string? actualOutputFormat = ttsResponse.OutputFormat?.ToLowerInvariant();
+                int actualSampleRateFromResponse = ttsResponse.SampleRate.HasValue ? (int)ttsResponse.SampleRate.Value : 0;
+
+                byte[]? pcmData = null;
+                int originalChannels = 1; // Assume mono for PCM or WAV
+                int originalBitsPerSample = 16; // Assume 16-bit for PCM or WAV as requested due to _precision being pcm_16
+
+                var wavParseResult = ParseWavAndExtractPcm(audioDataFromApi);
+                pcmData = wavParseResult.pcmData;
+                actualSampleRateFromResponse = wavParseResult.originalSampleRate; // Trust WAV header more
+                if (!durationFromApi.HasValue) durationFromApi = wavParseResult.duration;
+
+                byte[] finalPcmData = ResamplePcm(pcmData, actualSampleRateFromResponse, _targetSampleRate, originalChannels, originalBitsPerSample);
+
+                return (finalPcmData, durationFromApi ?? TimeSpan.Zero);
+            }
+            catch (HttpRequestException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
+            catch (JsonException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
+            catch (TaskCanceledException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
+            catch (Exception) { return (Array.Empty<byte>(), TimeSpan.Zero); }
         }
 
         private static short[] PcmBytesToShorts(byte[] pcmData)
@@ -210,67 +275,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             catch (EndOfStreamException) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
             catch (IOException) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
             catch (Exception) { return (Array.Empty<byte>(), TimeSpan.Zero, 0); }
-        }
-
-
-        public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
-        {
-            int? requestSampleRate = null;
-            int[] allowedResembleRates = { 8000, 16000, 22050, 32000, 44100, 48000 };
-            if (Array.Exists(allowedResembleRates, r => r == _targetSampleRate))
-            {
-                requestSampleRate = _targetSampleRate;
-            }
-
-            var apiRequestPayload = new ResembleTtsApiRequest
-            {
-                ProjectUuid = _projectUuid,
-                VoiceUuid = _voiceUuid,
-                Data = text,
-                Precision = _precision, // Always request PCM_16
-                SampleRate = _targetSampleRate // Request our target SR. Resemble will use its default if this is not supported.
-            };
-
-            string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, _streamingEndpointUrl);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            // Resemble doc says response is WAV, so we don't need specific Accept header for WAV, it's the default for this endpoint.
-
-            try
-            {
-                using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    // string errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                    // Console.WriteLine($"Resemble AI HTTP Error ({response.StatusCode}): {errorBody}");
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
-                }
-
-                byte[] wavData = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-                if (wavData == null || wavData.Length == 0)
-                {
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
-                }
-
-                var (pcmData, duration, originalSampleRate) = ParseWavAndExtractPcm(wavData);
-
-                if (pcmData == null || pcmData.Length == 0 || originalSampleRate == 0)
-                {
-                    return (Array.Empty<byte>(), TimeSpan.Zero);
-                }
-
-                // Resemble returns 16-bit mono when PCM_16 is requested.
-                byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _targetSampleRate, 1, 16);
-
-                return (finalPcmData, duration);
-            }
-            catch (HttpRequestException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (JsonException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (TaskCanceledException) { return (Array.Empty<byte>(), TimeSpan.Zero); }
-            catch (Exception) { return (Array.Empty<byte>(), TimeSpan.Zero); }
         }
 
         public Task StopTextSynthesisAsync()

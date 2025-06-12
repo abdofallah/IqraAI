@@ -476,13 +476,18 @@ namespace IqraInfrastructure.Managers.STT
                     return result;
                 }
 
+                int sampleRate = 8000;
+
                 switch (sttProviderData.Data.Id)
                 {
                     case InterfaceSTTProviderEnum.AzureSpeechServices:
+                        string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
+                        string resourceRegion = integrationData.Fields["resource_region"];
                         string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
                         string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
                         string speakerDiarizationString = (string)agentIntegrationData.FieldValues["speaker_diarization"];
                         string? phrasesListString = (string?)agentIntegrationData.FieldValues["phrases_list"];
+                        int silenceTimeout = (int)agentIntegrationData.FieldValues["silence_timeout"];
 
                         List<string> continousLanguageIdentificationIds = new List<string>();
                         if (!string.IsNullOrEmpty(continousLanguageIdentificationIdsString))
@@ -498,7 +503,7 @@ namespace IqraInfrastructure.Managers.STT
                             phrasesList.AddRange(phrasesListString.Split(','));
                         }
 
-                        var azureSTTService = new AzureSpeechSTTService(_integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]), integrationData.Fields["resource_region"], languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList);
+                        var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, sampleRate);
                         return result.SetSuccessResult(
                             azureSTTService
                         );

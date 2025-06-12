@@ -508,11 +508,11 @@ namespace IqraInfrastructure.Managers.TTS
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
                             string modelId = (string)agentIntegrationData.FieldValues["model_id"];
                             string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            float stability = (float)agentIntegrationData.FieldValues["stability"];
-                            float similarityBoost = (float)agentIntegrationData.FieldValues["similarityBoost"];
-                            float style = (float)agentIntegrationData.FieldValues["style"];
+                            float stability = (float)(double)agentIntegrationData.FieldValues["stability"];
+                            float similarityBoost = (float)(double)agentIntegrationData.FieldValues["similarityBoost"];
+                            float style = (float)(double)agentIntegrationData.FieldValues["style"];
                             bool speakerBoost = bool.Parse((string)agentIntegrationData.FieldValues["speakerBoost"]);
-                            float speed = (float)agentIntegrationData.FieldValues["speed"];
+                            float speed = (float)(double)agentIntegrationData.FieldValues["speed"];
                             string pronunciationDictionaryId = (string)agentIntegrationData.FieldValues["pronunciationDictionaryId"];
                             string applyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"];
 
@@ -525,7 +525,7 @@ namespace IqraInfrastructure.Managers.TTS
                             string serviceAccountKeyJson = _integrationsManager.DecryptField(integrationData.EncryptedFields["service_account_key_json"]);
                             string languageCode = (string)agentIntegrationData.FieldValues["language_code"];
                             string voiceName = (string)agentIntegrationData.FieldValues["voice_name"];
-                            float speakingRate = (float)agentIntegrationData.FieldValues["speaking_rate"];
+                            float speakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"];
 
                             var googleTTSService = new GoogleTTSService(serviceAccountKeyJson, languageCode, voiceName, speakingRate, sampleRate);
                             return result.SetSuccessResult(googleTTSService);
@@ -568,7 +568,7 @@ namespace IqraInfrastructure.Managers.TTS
                             string groupId = (string)agentIntegrationData.FieldValues["group_id"];
                             string modelId = (string)agentIntegrationData.FieldValues["model_id"];
                             string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            float voiceSpeed = (float)agentIntegrationData.FieldValues["voice_speed"];
+                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
                             string languageBoostId = (string)agentIntegrationData.FieldValues["language_boost_id"];
                             string pronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"];
 
@@ -582,7 +582,7 @@ namespace IqraInfrastructure.Managers.TTS
                             string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
                             string voiceProvider = (string)agentIntegrationData.FieldValues["voice_provider"];
                             string voiceDescription = (string)agentIntegrationData.FieldValues["voice_description"];
-                            float voiceSpeed = (float)agentIntegrationData.FieldValues["voice_speed"];
+                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
 
                             var humeAITTSService = new HumeAITTSService(apiKey, voiceId, voiceProvider, voiceDescription, voiceSpeed, sampleRate);
                             return result.SetSuccessResult(humeAITTSService);
@@ -595,12 +595,12 @@ namespace IqraInfrastructure.Managers.TTS
                             string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
                             string voiceEngine = (string)agentIntegrationData.FieldValues["voice_engine"];
                             string voiceQuality = (string)agentIntegrationData.FieldValues["voice_quality"];
-                            float voiceSpeed = (float)agentIntegrationData.FieldValues["voice_speed"];
-                            float temperature = (float)agentIntegrationData.FieldValues["temperature"];
+                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
+                            float temperature = (float)(double)agentIntegrationData.FieldValues["temperature"];
                             string emotion = (string)agentIntegrationData.FieldValues["emotion"];
-                            float voiceGuidance = (float)agentIntegrationData.FieldValues["voice_guidance"];
-                            float styleGuidance = (float)agentIntegrationData.FieldValues["style_guidance"];
-                            float textGuidance = (float)agentIntegrationData.FieldValues["text_guidance"];
+                            float voiceGuidance = (float)(double)agentIntegrationData.FieldValues["voice_guidance"];
+                            float styleGuidance = (float)(double)agentIntegrationData.FieldValues["style_guidance"];
+                            float textGuidance = (float)(double)agentIntegrationData.FieldValues["text_guidance"];
                             string language = (string)agentIntegrationData.FieldValues["language"];
 
                             var playHtTTSService = new PlayHtTTSService(apiKey, userId, voiceId, voiceEngine, voiceQuality, voiceSpeed, temperature, emotion, voiceGuidance, styleGuidance, textGuidance, language, sampleRate);
@@ -643,10 +643,10 @@ namespace IqraInfrastructure.Managers.TTS
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
                             string model = (string)agentIntegrationData.FieldValues["model"];
                             string defaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"];
-                            float speakingRate = (float)agentIntegrationData.FieldValues["speaking_rate"];
+                            float speakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"];
                             string languageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"];
                             string emotion = (string)agentIntegrationData.FieldValues["emotion"];
-                            float vqscore = (float)agentIntegrationData.FieldValues["vqscore"];
+                            float vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"];
 
                             var zyphraZonosTTSService = new ZyphraZonosTTSService(apiKey, model, defaultVoiceName, speakingRate, languageIsoCode, emotion, vqscore, sampleRate);
                             return result.SetSuccessResult(zyphraZonosTTSService);
@@ -655,11 +655,10 @@ namespace IqraInfrastructure.Managers.TTS
                     case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-
                             string projectUuid = integrationData.Fields["project_uuid"];
                             string voiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"];
 
-                            //var resembleAiTTSService = new ResembleAITTSService(apiKey, projectUuid, voiceUuid, sampleRate);
+                            var resembleAiTTSService = new ResembleAITTSService(apiKey, projectUuid, voiceUuid, sampleRate);
                             return result.SetSuccessResult(resembleAiTTSService);
                         }
 

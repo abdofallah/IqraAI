@@ -20,5 +20,9 @@ namespace IqraCore.Entities.TTS.Providers.ResembleAI
         [JsonPropertyName("sample_rate")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? SampleRate { get; set; } // 8000, 16000, 22050, 32000, 44100, 48000. Default 22050.
+
+        [JsonPropertyName("output_format")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? OutputFormat { get; set; }
     }
 }
