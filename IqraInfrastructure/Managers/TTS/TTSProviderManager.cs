@@ -677,8 +677,10 @@ namespace IqraInfrastructure.Managers.TTS
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
                             string langCode = (string)agentIntegrationData.FieldValues["lang_code"];
                             string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
+                            float speed = (float)(double)agentIntegrationData.FieldValues["speed"];
+                            string model = (string)agentIntegrationData.FieldValues["model"];
 
-                            var neuphonicTTSService = new NeuphonicTTSService(apiKey, langCode, voiceId, sampleRate);
+                            var neuphonicTTSService = new NeuphonicTTSService(apiKey, langCode, model, voiceId, speed, sampleRate);
                             return result.SetSuccessResult(neuphonicTTSService);
                         }
 

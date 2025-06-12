@@ -19,26 +19,28 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private readonly string _apiKey;
         private readonly string _langCode;
-        private readonly string? _voiceId;
-        private readonly int? _targetSampleRate;
-        private readonly float? _speed;
+        private readonly string _voiceId;
+        private readonly int _targetSampleRate;
+        private readonly float _speed;
+        private readonly string _model;
 
         private const string BaseApiUrl = "https://eu-west-1.api.neuphonic.com";
 
-        public NeuphonicTTSService(string apiKey, string langCode, string? voiceId = null, float? speed = 1.0f, int? targetSampleRate = 8000)
+        public NeuphonicTTSService(string apiKey, string langCode, string model, string voiceId, float speed, int targetSampleRate)
         {
             if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentNullException(nameof(apiKey));
             if (string.IsNullOrWhiteSpace(langCode)) throw new ArgumentNullException(nameof(langCode));
-            if (targetSampleRate.HasValue && (targetSampleRate.Value != 8000 && targetSampleRate.Value != 16000 && targetSampleRate.Value != 22050))
-                throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Supported sample rates are 8000, 16000, 22050.");
-            if (speed.HasValue && (speed.Value < 0.7f || speed.Value > 2.0f))
-                throw new ArgumentOutOfRangeException(nameof(speed), "Speed must be between 0.7 and 2.0.");
+            if (string.IsNullOrWhiteSpace(voiceId)) throw new ArgumentNullException(nameof(voiceId));
+            if (string.IsNullOrWhiteSpace(model)) throw new ArgumentNullException(nameof(model));
+            if (speed <= 0) throw new ArgumentOutOfRangeException(nameof(speed), "Speed must be positive.");
+            if (targetSampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
 
             _apiKey = apiKey;
             _langCode = langCode;
             _voiceId = voiceId;
             _targetSampleRate = targetSampleRate;
             _speed = speed;
+            _model = model;
         }
 
         public void Initialize()
@@ -54,7 +56,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 VoiceId = _voiceId,
                 SamplingRate = _targetSampleRate,
-                Speed = _speed
+                Speed = _speed,
+                Encoding = "pcm_linear",
+                Model = _model
             };
 
             string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
@@ -92,7 +96,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         try
                         {
                             var sseEventPayload = JsonSerializer.Deserialize<NeuphonicSseEventPayload>(currentJsonDataBuffer.ToString(), _jsonSerializerOptions);
-                            if (sseEventPayload?.AudioDetails?.Audio != null && sseEventPayload.StatusCode == "200")
+                            if (sseEventPayload?.AudioDetails?.Audio != null && sseEventPayload.StatusCode == 200)
                             {
                                 byte[] audioChunk = Convert.FromBase64String(sseEventPayload.AudioDetails.Audio);
                                 accumulatedAudioBytes.AddRange(audioChunk);
@@ -117,7 +121,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 byte[] finalAudioData = accumulatedAudioBytes.ToArray();
                 TimeSpan duration = TimeSpan.Zero;
 
-                int rateForDurationCalc = actualSampleRateFromResponse ?? _targetSampleRate ?? 22050;
+                int rateForDurationCalc = actualSampleRateFromResponse ?? _targetSampleRate;
                 const int channels = 1;
                 const int bitsPerSample = 16;
 

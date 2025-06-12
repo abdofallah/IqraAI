@@ -8,15 +8,18 @@ namespace IqraCore.Entities.TTS.Providers.Neuphonic
         public string Text { get; set; }
 
         [JsonPropertyName("voice_id")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? VoiceId { get; set; }
+        public string VoiceId { get; set; }
 
         [JsonPropertyName("sampling_rate")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? SamplingRate { get; set; }
+        public int SamplingRate { get; set; }
 
         [JsonPropertyName("speed")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public float? Speed { get; set; }
+        public float Speed { get; set; }
+
+        [JsonPropertyName("encoding")]
+        public string Encoding { get; set; }
+
+        [JsonPropertyName("model")]
+        public string Model { get; set; }
     }
 }
