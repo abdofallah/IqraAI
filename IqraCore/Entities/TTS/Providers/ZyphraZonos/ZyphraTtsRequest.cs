@@ -16,7 +16,7 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
         // Optional parameters
         [JsonPropertyName("speaking_rate")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public double? SpeakingRate { get; set; } // 5 to 35
+        public int? SpeakingRate { get; set; } // 5 to 35
 
         [JsonPropertyName("language_iso_code")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

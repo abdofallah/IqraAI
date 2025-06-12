@@ -11,8 +11,7 @@ namespace IqraCore.Entities.TTS.Providers.Hamsa
         public string Speaker { get; set; }
 
         [JsonPropertyName("dialect")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Dialect { get; set; }
+        public string Dialect { get; set; }
 
         [JsonPropertyName("mulaw")]
         public bool MuLaw { get; set; } = false;

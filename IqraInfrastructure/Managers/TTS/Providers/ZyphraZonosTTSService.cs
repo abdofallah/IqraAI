@@ -5,7 +5,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Google.Protobuf.Reflection;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -15,19 +14,19 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _apiKey;
         private readonly string _model;
         private readonly string _defaultVoiceName;
-        private readonly float _speakingRate;
+        private readonly int _speakingRate;
         private readonly string _languageIsoCode;
         private readonly Dictionary<string, float> _emotion;
         private readonly float _vqscore;
 
-        private const string ApiUrl = "https://api.zyphra.com/v1/audio/text-to-speech";
+        private const string ApiUrl = "http://api.zyphra.com/v1/audio/text-to-speech";
 
         private readonly int _sampleRate;
         private readonly int _sampleSize = 16; // can not be changed default by api
         private readonly int _channels = 1; // can not be changed default by api
 
         // Constructor
-        public ZyphraZonosTTSService(string apiKey, string model, string defaultVoiceName, float speakingRate, string languageIsoCode, string emotion, float vqscore, int sampleRate)
+        public ZyphraZonosTTSService(string apiKey, string model, string defaultVoiceName, int speakingRate, string languageIsoCode, string emotion, float vqscore, int sampleRate)
         {
             _apiKey = apiKey;
             _model = model;
@@ -38,9 +37,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _vqscore = vqscore;
             _sampleRate = sampleRate;
 
-            foreach (var emotionEntry in emotion.Split(Environment.NewLine))
+            foreach (var emotionEntry in emotion.Split(';'))
             {
-                var split = emotionEntry.Split(";");
+                var split = emotionEntry.Split(":");
                 if (split.Length < 2) { continue; }
                 _emotion.Add(split[0], float.Parse(split[1]));
             }
@@ -70,30 +69,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Vqscore = _vqscore,
                 Emotion = _emotion
             };
-
-            // Allow overriding default voice or setting custom voice via metaData
-            if (metaData?.TryGetValue("voice_name", out var voiceNameObj) == true && voiceNameObj is string voiceName && !string.IsNullOrWhiteSpace(voiceName))
-            {
-                requestPayload.VoiceName = voiceName;
-                requestPayload.DefaultVoiceName = null; // Ensure only one voice type is set
-            }
-            else if (metaData?.TryGetValue("default_voice_name", out var defaultVoiceObj) == true && defaultVoiceObj is string defaultVoice && !string.IsNullOrWhiteSpace(defaultVoice))
-            {
-                requestPayload.DefaultVoiceName = defaultVoice;
-                requestPayload.VoiceName = null; // Ensure only one voice type is set
-            }
-
-            // Add other optional params from metaData
-            if (metaData?.TryGetValue("speaking_rate", out var rateObj) == true && (rateObj is double || rateObj is int || rateObj is float))
-            {
-                requestPayload.SpeakingRate = Convert.ToDouble(rateObj);
-            }
-            if (metaData?.TryGetValue("language", out var langObj) == true && langObj is string langCode)
-            {
-                requestPayload.LanguageIsoCode = langCode;
-            }
-            // Add logic for emotion, pitchStd, vqscore, speaker_noised based on metaData if desired
-
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
             var requestUri = ApiUrl;
@@ -276,6 +251,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     chunkId = Encoding.ASCII.GetString(reader.ReadBytes(4));
                     chunkSize = reader.ReadInt32();
+
+                    // temp wav chunk size fix
+                    if (chunkId == "data" && chunkSize == -1)
+                    {
+                        chunkSize = (int)(memoryStream.Length - memoryStream.Position);
+                    }
 
                     if (memoryStream.Position + chunkSize > memoryStream.Length || chunkSize < 0)
                         return (null, 0, 0, 0, null);

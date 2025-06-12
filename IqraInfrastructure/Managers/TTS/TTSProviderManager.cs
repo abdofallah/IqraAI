@@ -643,7 +643,7 @@ namespace IqraInfrastructure.Managers.TTS
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
                             string model = (string)agentIntegrationData.FieldValues["model"];
                             string defaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"];
-                            float speakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"];
+                            int speakingRate = (int)agentIntegrationData.FieldValues["speaking_rate"];
                             string languageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"];
                             string emotion = (string)agentIntegrationData.FieldValues["emotion"];
                             float vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"];
