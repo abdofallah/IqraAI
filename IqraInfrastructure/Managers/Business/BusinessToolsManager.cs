@@ -51,7 +51,7 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
-        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateUserBusinessTools(long businessId, IFormCollection formData, string postType, string? exisitingToolId)
+        public async Task<FunctionReturnResult<BusinessAppTool?>> AddOrUpdateUserBusinessTools(long businessId, IFormCollection formData, string postType, BusinessAppTool? exisitingToolData)
         {
             var result = new FunctionReturnResult<BusinessAppTool?>();
 
@@ -479,94 +479,172 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Audio Tab
-            if (formData.Files.Count > 0)
+            if (!changes.RootElement.TryGetProperty("audio", out var audioTabRootElement))
             {
-                var beforeSpeakingAudio = formData.Files.GetFile("audioBeforeSpeaking");
-                var duringSpeakingAudio = formData.Files.GetFile("audioDuringSpeaking");
-                var afterSpeakingAudio = formData.Files.GetFile("audioAfterSpeaking");
-
-                if (beforeSpeakingAudio != null)
+                result.Code = "AddOrUpdateUserBusinessTools:27";
+                result.Message = "Audio tab root element not found.";
+                return result;
+            }
+            else
+            {
+                // During Execution Audio
+                if (!audioTabRootElement.TryGetProperty("duringExecutionAudioUrl", out var audioDuringExecutionUrlElement))
                 {
-                    var validationResult = await _audioProcessor.ValidateAudioFile(beforeSpeakingAudio);
-                    if (!validationResult.IsValid)
+                    result.Code = "AddOrUpdateUserBusinessTools:30";
+                    result.Message = "During execution audio URL type not found.";
+                    return result;
+                }
+                else
+                {
+                    var audioDuringExecutionUrlType = audioDuringExecutionUrlElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(audioDuringExecutionUrlType))
                     {
-                        result.Code = "AddOrUpdateUserBusinessTools:34";
-                        result.Message = $"Before speaking audio validation failed: {validationResult.ErrorMessage}.";
-                        return result;
-                    }
-
-                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
-                    if (!fileExists)
-                    {
-                        var metadata = new Dictionary<string, string>
+                        if (audioDuringExecutionUrlType == "custom")
                         {
-                            { "fileContentType", validationResult.ContentType }
-                        };
+                            var duringExecutionAudioFile = formData.Files.GetFile("audioDuringExecution");
+                            if (duringExecutionAudioFile == null)
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:31";
+                                result.Message = "During execution audio file not found for 'custom' type.";
+                                return result;
+                            }
 
-                        await _businessToolAudioRepository.PutFileAsByteData(
-                            validationResult.Hash,
-                            validationResult.FileBytes,
-                            metadata
-                        );
+                            var validationResult = await _audioProcessor.ValidateAudioFile(duringExecutionAudioFile);
+                            if (!validationResult.IsValid)
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:32";
+                                result.Message = $"During execution audio validation failed: {validationResult.ErrorMessage}.";
+                                return result;
+                            }
+
+                            bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
+                            if (!fileExists)
+                            {
+                                var metadata = new Dictionary<string, string>
+                                {
+                                    { "fileContentType", validationResult.ContentType }
+                                };
+
+                                await _businessToolAudioRepository.PutFileAsByteData(
+                                    validationResult.Hash,
+                                    validationResult.FileBytes,
+                                    metadata
+                                );
+                            }
+                            NewBusinessAppToolData.Audio.DuringExecutionAudioUrl = validationResult.Hash;
+                        }
+                        else if (audioDuringExecutionUrlType == "previous")
+                        {
+                            if (exisitingToolData == null || exisitingToolData.Audio == null || string.IsNullOrWhiteSpace(exisitingToolData.Audio.DuringExecutionAudioUrl))
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:33";
+                                result.Message = "Previous during execution audio URL not found.";
+                                return result;
+                            }
+                            NewBusinessAppToolData.Audio.DuringExecutionAudioUrl = exisitingToolData.Audio.DuringExecutionAudioUrl;
+                        }
+                        else
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:34";
+                            result.Message = "Invalid during execution audio url type (allowed custom or previous).";
+                            return result;
+                        }
+
+                        // Process volume for During Execution Audio
+                        if (!audioTabRootElement.TryGetProperty("duringExecutionAudioVolume", out var duringExecutionAudioVolumeElement))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:35";
+                            result.Message = "During execution audio volume not found.";
+                            return result;
+                        }
+                        if (!duringExecutionAudioVolumeElement.TryGetInt32(out var duringExecutionAudioVolumeInt))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:36";
+                            result.Message = "Invalid during execution audio volume value.";
+                            return result;
+                        }
+                        NewBusinessAppToolData.Audio.DuringExecutionAudioVolume = duringExecutionAudioVolumeInt;
                     }
-
-                    NewBusinessAppToolData.Audio.BeforeSpeaking = validationResult.Hash;
                 }
 
-                if (duringSpeakingAudio != null)
+                // After Execution Audio 
+                if (!audioTabRootElement.TryGetProperty("afterExecutionAudioUrl", out var audioAfterExecutionUrlElement))
                 {
-                    var validationResult = await _audioProcessor.ValidateAudioFile(duringSpeakingAudio);
-                    if (!validationResult.IsValid)
-                    {
-                        result.Code = "AddOrUpdateUserBusinessTools:35";
-                        result.Message = $"During speaking audio validation failed: {validationResult.ErrorMessage}.";
-                        return result;
-                    }
-
-                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
-                    if (!fileExists)
-                    {
-                        var metadata = new Dictionary<string, string>
-                        {
-                            { "ContentType", validationResult.ContentType }
-                        };
-
-                        await _businessToolAudioRepository.PutFileAsByteData(
-                            validationResult.Hash,
-                            validationResult.FileBytes,
-                            metadata
-                        );
-                    }
-
-                    NewBusinessAppToolData.Audio.DuringSpeaking = validationResult.Hash;
+                    result.Code = "AddOrUpdateUserBusinessTools:37";
+                    result.Message = "After execution audio URL type not found.";
+                    return result;
                 }
-
-                if (afterSpeakingAudio != null)
+                else
                 {
-                    var validationResult = await _audioProcessor.ValidateAudioFile(afterSpeakingAudio);
-                    if (!validationResult.IsValid)
+                    var audioAfterExecutionUrlType = audioAfterExecutionUrlElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(audioAfterExecutionUrlType))
                     {
-                        result.Code = "AddOrUpdateUserBusinessTools:36";
-                        result.Message = $"After speaking audio validation failed: {validationResult.ErrorMessage}.";
-                        return result;
-                    }
-
-                    bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
-                    if (!fileExists)
-                    {
-                        var metadata = new Dictionary<string, string>
+                        if (audioAfterExecutionUrlType == "custom")
                         {
-                            { "ContentType", validationResult.ContentType }
-                        };
+                            var afterExecutionAudioFile = formData.Files.GetFile("audioAfterExecution");
+                            if (afterExecutionAudioFile == null)
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:38";
+                                result.Message = "After execution audio file not found for 'custom' type.";
+                                return result;
+                            }
 
-                        await _businessToolAudioRepository.PutFileAsByteData(
-                            validationResult.Hash,
-                            validationResult.FileBytes,
-                            metadata
-                        );
+                            var validationResult = await _audioProcessor.ValidateAudioFile(afterExecutionAudioFile);
+                            if (!validationResult.IsValid)
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:39";
+                                result.Message = $"After execution audio validation failed: {validationResult.ErrorMessage}.";
+                                return result;
+                            }
+
+                            bool fileExists = await _businessToolAudioRepository.FileExists(validationResult.Hash);
+                            if (!fileExists)
+                            {
+                                var metadata = new Dictionary<string, string>
+                                {
+                                    { "fileContentType", validationResult.ContentType }
+                                };
+
+                                await _businessToolAudioRepository.PutFileAsByteData(
+                                    validationResult.Hash,
+                                    validationResult.FileBytes,
+                                    metadata
+                                );
+                            }
+                            NewBusinessAppToolData.Audio.AfterExecutionAudioUrl = validationResult.Hash;
+                        }
+                        else if (audioAfterExecutionUrlType == "previous")
+                        {
+                            if (exisitingToolData == null || exisitingToolData.Audio == null || string.IsNullOrWhiteSpace(exisitingToolData.Audio.AfterExecutionAudioUrl))
+                            {
+                                result.Code = "AddOrUpdateUserBusinessTools:40";
+                                result.Message = "Previous after execution audio URL not found.";
+                                return result;
+                            }
+                            NewBusinessAppToolData.Audio.AfterExecutionAudioUrl = exisitingToolData.Audio.AfterExecutionAudioUrl;
+                        }
+                        else
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:41";
+                            result.Message = "Invalid after execution audio url type (allowed custom or previous).";
+                            return result;
+                        }
+
+                        // Process volume for After Execution Audio
+                        if (!audioTabRootElement.TryGetProperty("afterExecutionAudioVolume", out var afterExecutionAudioVolumeElement))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:42";
+                            result.Message = "After execution audio volume not found.";
+                            return result;
+                        }
+                        if (!afterExecutionAudioVolumeElement.TryGetInt32(out var afterExecutionAudioVolumeInt))
+                        {
+                            result.Code = "AddOrUpdateUserBusinessTools:43";
+                            result.Message = "Invalid after execution audio volume value.";
+                            return result;
+                        }
+                        NewBusinessAppToolData.Audio.AfterExecutionAudioVolume = afterExecutionAudioVolumeInt;
                     }
-
-                    NewBusinessAppToolData.Audio.AfterSpeaking = validationResult.Hash;
                 }
             }
 
@@ -578,28 +656,25 @@ namespace IqraInfrastructure.Managers.Business
                 var addBusinessAppToolResult = await _businessAppRepository.AddBusinessAppTool(businessId, NewBusinessAppToolData);
                 if (!addBusinessAppToolResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessTools:37";
+                    result.Code = "AddOrUpdateUserBusinessTools:FAILED_SAVE_ADD_TOOL";
                     result.Message = "Failed to add business app tool.";
                     return result;
                 }
             }
             else if (postType == "edit")
             {
-                NewBusinessAppToolData.Id = exisitingToolId;
+                NewBusinessAppToolData.Id = exisitingToolData.Id;
 
                 var saveBusinessAppToolResult = await _businessAppRepository.UpdateBusinessAppTool(businessId, NewBusinessAppToolData);
                 if (!saveBusinessAppToolResult)
                 {
-                    result.Code = "AddOrUpdateUserBusinessTools:38";
+                    result.Code = "AddOrUpdateUserBusinessTools:FAILED_SAVE_EDIT_TOOL";
                     result.Message = "Failed to save business app tool.";
                     return result;
                 }
             }
 
-            result.Success = true;
-            result.Data = NewBusinessAppToolData;
-
-            return result;
+            return result.SetSuccessResult(NewBusinessAppToolData);
         }
 
     }

@@ -14,7 +14,7 @@
     <link href="~/css/style.css" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/img/favicon/favicon-96x96.png" sizes="96x96" />
-    <link rel="icon" type="image/svg+xml" href="/img/favicon/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/img/favicon/favicon.svg" /> 
     <link rel="shortcut icon" href="/img/favicon/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Iqra" />
@@ -2384,69 +2384,19 @@
                         <!-- Audio -->
                         <div class="tab-pane fade w-100" id="toolManager-inner-audio" role="tabpanel" aria-labelledby="toolManager-inner-audio-tab" tabindex="0">
                             <div class="mb-3">
-                                <label class="form-label btn-ic-span-align d-block" for="toolAudioBeforeSpeakingSelect">
-                                    <span>Audio Before Speaking </span>
-
-                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Audio to be played before the ai starts speaking.">
-                                        <i class="fa-regular fa-circle-question"></i>
-                                    </a>
-                                </label>
-                                <select class="form-select" id="toolAudioBeforeSpeakingSelect">
-                                    <option value="none" selected>None</option>
-                                    <option value="custom">Custom (Upload)</option>
-                                </select>
-                                <div class="toolAudioExtraOptionsBox d-none" id="toolAudioBeforeSpeakingBox">
-                                    <div id="toolAudioBeforeSpeakingInputBox">
-                                        <label class="form-label d-block">Audio</label>
-                                        <div class="mb-3 recording-container">
-                                            <div class="d-flex flex-row align-items-center justify-content-between w-100">
-                                                <div class="recording-container-waveform d-none" id="tool-audio-before-waveform">
-                                                </div>
-                                                <div class="no-audio-notice">
-                                                    <span>No audio uploaded yet...</span>
-                                                </div>
-                                                <button class="btn btn-sm btn-light mb-auto" id="tool-audio-before-upload-btn">Upload</button>
-                                                <input type="file" class="form-control d-none" id="toolAudioBeforeSpeakingUploadInput" accept="audio/mp3,audio/wav">
-                                            </div>
-                                            <div class="audio-controller d-none">
-                                                <div class="speed-controller me-5">
-                                                    <label for="slider-tool-audio-before-waveform">
-                                                        <i class="fa-regular fa-gauge"></i>
-                                                    </label>
-                                                    <input class="mx-1" type="slider" id="range-tool-audio-before-waveform" min="0.1" max="4" value="1" step="0.1">
-                                                </div>
-                                                <div class="volume-controller me-5">
-                                                    <label for="slider-tool-audio-before-waveform">
-                                                        <i class="fa-regular fa-volume"></i>
-                                                    </label>
-                                                    <input type="range" id="slider-tool-audio-before-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
-                                                </div>
-                                                <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
-                                                    <i class="fa-regular fa-play"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="form-label" for="toolAudioBeforeSpeakingVolumeInput">Volume</label>
-                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioBeforeSpeakingVolumeInput">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label btn-ic-span-align d-block" for="toolAudioDuringSpeakingSelect">
-                                    <span>Audio During Speaking </span>
+                                <label class="form-label btn-ic-span-align d-block" for="toolAudioDuringExecutionSelect">
+                                    <span>Audio During Execution </span>
 
                                     <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Audio to be played in the background while the ai is speaking.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <select class="form-select" id="toolAudioDuringSpeakingSelect">
+                                <select class="form-select" id="toolAudioDuringExecutionSelect">
                                     <option value="none">None</option>
                                     <option value="custom">Custom (Upload)</option>
                                 </select>
-                                <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringSpeakingBox">
-                                    <div id="toolAudioDuringSpeakingInputBox">
+                                <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringExecutionBox">
+                                    <div id="toolAudioDuringExecutionInputBox">
                                         <label class="form-label d-block">Audio</label>
                                         <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
@@ -2456,7 +2406,7 @@
                                                     <span>No audio uploaded yet...</span>
                                                 </div>
                                                 <button class="btn btn-sm btn-light mb-auto" id="tool-audio-durning-upload-btn">Upload</button>
-                                                <input type="file" class="form-control d-none" id="toolAudioDuringSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                                <input type="file" class="form-control d-none" id="toolAudioDuringExecutionUploadInput" accept="audio/mp3,audio/wav">
                                             </div>
                                             <div class="audio-controller d-none">
                                                 <div class="speed-controller me-5">
@@ -2478,25 +2428,25 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="form-label" for="toolAudioDuringSpeakingVolumeInput">Volume</label>
-                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioDuringSpeakingVolumeInput">
+                                        <label class="form-label" for="toolAudioDuringExecutionVolumeInput">Volume</label>
+                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioDuringExecutionVolumeInput">
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <label class="form-label btn-ic-span-align d-block" for="toolAudioAfterSpeakingSelect">
-                                    <span>Audio After Speaking </span>
+                                <label class="form-label btn-ic-span-align d-block" for="toolAudioAfterExecutionSelect">
+                                    <span>Audio After Execution </span>
 
                                     <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Audio to be played after the ai speaks.">
                                         <i class="fa-regular fa-circle-question"></i>
                                     </a>
                                 </label>
-                                <select class="form-select" id="toolAudioAfterSpeakingSelect">
+                                <select class="form-select" id="toolAudioAfterExecutionSelect">
                                     <option value="none">None</option>
                                     <option value="custom">Custom (Upload)</option>
                                 </select>
-                                <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterSpeakingBox">
-                                    <div id="toolAudioAfterSpeakingInputBox">
+                                <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterExecutionBox">
+                                    <div id="toolAudioAfterExecutionInputBox">
                                         <label class="form-label d-block">Audio</label>
                                         <div class="mb-3 recording-container">
                                             <div class="d-flex flex-row align-items-center justify-content-between w-100">
@@ -2506,7 +2456,7 @@
                                                     <span>No audio uploaded yet...</span>
                                                 </div>
                                                 <button class="btn btn-sm btn-light mb-auto" id="tool-audio-after-upload-btn">Upload</button>
-                                                <input type="file" class="form-control d-none" id="toolAudioAfterSpeakingUploadInput" accept="audio/mp3,audio/wav">
+                                                <input type="file" class="form-control d-none" id="toolAudioAfterExecutionUploadInput" accept="audio/mp3,audio/wav">
                                             </div>
                                             <div class="audio-controller d-none">
                                                 <div class="speed-controller me-5">
@@ -2528,8 +2478,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="form-label" for="toolAudioAfterSpeakingVolumeInput">Volume</label>
-                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioAfterSpeakingVolumeInput">
+                                        <label class="form-label" for="toolAudioAfterExecutionVolumeInput">Volume</label>
+                                        <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioAfterExecutionVolumeInput">
                                     </div>
                                 </div>
                             </div>

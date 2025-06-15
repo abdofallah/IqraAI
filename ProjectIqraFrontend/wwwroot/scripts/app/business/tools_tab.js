@@ -92,9 +92,8 @@ let ManageToolType = null;
 let CurrentManageToolData = null;
 let CurrentManageToolSchemeaListIndex = 0;
 
-let ToolAudioBeforeSpeakingWaveSurfer = null;
-let ToolAudioDuringSpeakingWaveSurfer = null;
-let ToolAudioAfterSpeakingWaveSurfer = null;
+let ToolAudioDuringExecutionWaveSurfer = null;
+let ToolAudioAfterExecutionWaveSurfer = null;
 
 let CurrentManageToolNameMultiLangData = {};
 let CurrentManageToolShortDescriptionMultiLangData = {};
@@ -161,26 +160,19 @@ const toolResponseStatusSelect = toolManagerTab.find("#toolResponseStatusSelect"
 const addToolResponseStatusTypeButton = toolManagerTab.find("#addToolResponseStatusType");
 
 // Audio
-const toolAudioBeforeSpeakingBox = toolManagerTab.find("#toolAudioBeforeSpeakingBox");
-const toolAudioBeforeSpeakingSelect = toolManagerTab.find("#toolAudioBeforeSpeakingSelect");
-const toolAudioBeforeSpeakingInputBox = toolAudioBeforeSpeakingBox.find("#toolAudioBeforeSpeakingInputBox");
-const toolAudioBeforeSpeakingUploadBtn = toolAudioBeforeSpeakingInputBox.find("#tool-audio-before-upload-btn");
-const toolAudioBeforeSpeakingUploadInput = toolAudioBeforeSpeakingInputBox.find("#toolAudioBeforeSpeakingUploadInput");
-const toolAudioBeforeSpeakingVolumeInput = toolAudioBeforeSpeakingBox.find("#toolAudioBeforeSpeakingVolumeInput");
+const toolAudioDuringExecutionBox = toolManagerTab.find("#toolAudioDuringExecutionBox");
+const toolAudioDuringExecutionSelect = toolManagerTab.find("#toolAudioDuringExecutionSelect");
+const toolAudioDuringExecutionInputBox = toolAudioDuringExecutionBox.find("#toolAudioDuringExecutionInputBox");
+const toolAudioDuringExecutionUploadBtn = toolAudioDuringExecutionInputBox.find("#tool-audio-durning-upload-btn");
+const toolAudioDuringExecutionUploadInput = toolAudioDuringExecutionInputBox.find("#toolAudioDuringExecutionUploadInput");
+const toolAudioDuringExecutionVolumeInput = toolAudioDuringExecutionBox.find("#toolAudioDuringExecutionVolumeInput");
 
-const toolAudioDuringSpeakingBox = toolManagerTab.find("#toolAudioDuringSpeakingBox");
-const toolAudioDuringSpeakingSelect = toolManagerTab.find("#toolAudioDuringSpeakingSelect");
-const toolAudioDuringSpeakingInputBox = toolAudioDuringSpeakingBox.find("#toolAudioDuringSpeakingInputBox");
-const toolAudioDuringSpeakingUploadBtn = toolAudioDuringSpeakingInputBox.find("#tool-audio-durning-upload-btn");
-const toolAudioDuringSpeakingUploadInput = toolAudioDuringSpeakingInputBox.find("#toolAudioDuringSpeakingUploadInput");
-const toolAudioDuringSpeakingVolumeInput = toolAudioDuringSpeakingBox.find("#toolAudioDuringSpeakingVolumeInput");
-
-const toolAudioAfterSpeakingBox = toolManagerTab.find("#toolAudioAfterSpeakingBox");
-const toolAudioAfterSpeakingSelect = toolManagerTab.find("#toolAudioAfterSpeakingSelect");
-const toolAudioAfterSpeakingInputBox = toolAudioAfterSpeakingBox.find("#toolAudioAfterSpeakingInputBox");
-const toolAudioAfterSpeakingUploadBtn = toolAudioAfterSpeakingInputBox.find("#tool-audio-after-upload-btn");
-const toolAudioAfterSpeakingUploadInput = toolAudioAfterSpeakingInputBox.find("#toolAudioAfterSpeakingUploadInput");
-const toolAudioAfterSpeakingVolumeInput = toolAudioAfterSpeakingBox.find("#toolAudioAfterSpeakingVolumeInput");
+const toolAudioAfterExecutionBox = toolManagerTab.find("#toolAudioAfterExecutionBox");
+const toolAudioAfterExecutionSelect = toolManagerTab.find("#toolAudioAfterExecutionSelect");
+const toolAudioAfterExecutionInputBox = toolAudioAfterExecutionBox.find("#toolAudioAfterExecutionInputBox");
+const toolAudioAfterExecutionUploadBtn = toolAudioAfterExecutionInputBox.find("#tool-audio-after-upload-btn");
+const toolAudioAfterExecutionUploadInput = toolAudioAfterExecutionInputBox.find("#toolAudioAfterExecutionUploadInput");
+const toolAudioAfterExecutionVolumeInput = toolAudioAfterExecutionBox.find("#toolAudioAfterExecutionVolumeInput");
 
 // Api Functions
 
@@ -402,45 +394,27 @@ function ResetAndEmptyToolsManageTab() {
 		toolResponseStatusSelect.append(`<option value="${element.code}">${element.code} | ${element.name}</option>`);
 	});
 
-	if (ToolAudioBeforeSpeakingWaveSurfer?.destroy) {
-		ToolAudioBeforeSpeakingWaveSurfer.destroy();
+	if (ToolAudioDuringExecutionWaveSurfer !== null) {
+		ToolAudioDuringExecutionWaveSurfer.destroy();
+		ToolAudioDuringExecutionWaveSurfer = null;
 	}
+	toolAudioDuringExecutionVolumeInput.val("100");
+	toolAudioDuringExecutionUploadInput.val("");
+	toolAudioDuringExecutionInputBox.find(".no-audio-notice").removeClass("d-none");
+	toolAudioDuringExecutionInputBox.find(".recording-container-waveform").addClass("d-none");
+	toolAudioDuringExecutionInputBox.find(".audio-controller").addClass("d-none");
+	toolAudioDuringExecutionSelect.val("none").change();
 
-	if (ToolAudioDuringSpeakingWaveSurfer?.destroy) {
-		ToolAudioDuringSpeakingWaveSurfer.destroy();
+	if (ToolAudioAfterExecutionWaveSurfer !== null) {
+		ToolAudioAfterExecutionWaveSurfer.destroy();
+        ToolAudioAfterExecutionWaveSurfer = null;
 	}
-
-	if (ToolAudioAfterSpeakingWaveSurfer?.destroy) {
-		ToolAudioAfterSpeakingWaveSurfer.destroy();
-	}
-
-	ToolAudioBeforeSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-before-waveform");
-	ToolAudioDuringSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-during-waveform");
-	ToolAudioAfterSpeakingWaveSurfer = CreateToolAudioWavesurfer("#tool-audio-after-waveform");
-
-	toolAudioBeforeSpeakingVolumeInput.val("100");
-	toolAudioDuringSpeakingVolumeInput.val("100");
-	toolAudioAfterSpeakingVolumeInput.val("100");
-
-	toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-	toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-	toolAudioBeforeSpeakingInputBox.find(".audio-controller").addClass("d-none");
-
-	toolAudioDuringSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-	toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-	toolAudioDuringSpeakingInputBox.find(".audio-controller").addClass("d-none");
-
-	toolAudioAfterSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-	toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-	toolAudioAfterSpeakingInputBox.find(".audio-controller").addClass("d-none");
-
-	toolAudioBeforeSpeakingUploadInput.val("");
-	toolAudioDuringSpeakingUploadInput.val("");
-	toolAudioAfterSpeakingUploadInput.val("");
-
-	toolAudioBeforeSpeakingSelect.val("none").change();
-	toolAudioDuringSpeakingSelect.val("none").change();
-	toolAudioAfterSpeakingSelect.val("none").change();
+    toolAudioAfterExecutionVolumeInput.val("100");
+	toolAudioAfterExecutionUploadInput.val("");
+	toolAudioAfterExecutionInputBox.find(".no-audio-notice").removeClass("d-none");
+	toolAudioAfterExecutionInputBox.find(".recording-container-waveform").addClass("d-none");
+    toolAudioAfterExecutionInputBox.find(".audio-controller").addClass("d-none");
+    toolAudioAfterExecutionSelect.val("none").change();
 
 	toolManagerInnerGeneralTab.click();
 
@@ -494,9 +468,10 @@ function CreateToolsDefaultToolObject() {
 		},
 		response: {},
 		audio: {
-			beforeSpeaking: null,
-			duringSpeaking: null,
-			afterSpeaking: null,
+			duringExecution: null,
+            duringExecutionVolume: 100,
+			afterExecution: null,
+            afterExecutionVolume: 100
 		},
 	};
 
@@ -761,37 +736,88 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	CheckResponseTabHasChanges();
 
 	// Audio
-	function CheckAudioTabHasChanges() {
-		changes.audio = {};
+	function CheckAudioTabChanges() {
+		const changes = {};
+		let hasChanges = false;
 
-		if (CurrentManageToolData.audio.beforeSpeaking != null && toolAudioBeforeSpeakingSelect.val() === "none") {
-			hasChanges = true;
-		} else if (CurrentManageToolData.audio.beforeSpeaking == null && toolAudioBeforeSpeakingSelect.val() === "custom") {
-			hasChanges = true;
+		// During Execution Audio
+		const duringAudioType = toolAudioDuringExecutionSelect.val();
+		if (duringAudioType === "none") {
+			changes.duringExecutionAudioUrl = null;
+			if (CurrentManageToolData.audio.duringExecution !== null) {
+				hasChanges = true;
+			}
 		}
-		if (toolAudioBeforeSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
-			hasChanges = true;
+		if (duringAudioType === "custom") {
+			if (
+				toolAudioDuringExecutionUploadInput[0].files.length === 1
+				||
+				(toolAudioDuringExecutionUploadInput[0].files.length === 0 && ToolDuringExecutionAudioWaveSurfer == null)
+			) {
+				changes.duringExecutionAudioUrl = "custom";
+				hasChanges = true;
+			}
+
+			if (
+				CurrentManageToolData.audio.duringExecution !== null &&
+				toolAudioDuringExecutionUploadInput[0].files.length === 0 &&
+				ToolDuringExecutionAudioWaveSurfer != null
+			) {
+				changes.duringExecutionAudioUrl = "previous";
+			}
+		}
+		if (duringAudioType !== "none") {
+			changes.duringExecutionAudioVolume = parseInt(toolAudioDuringExecutionVolumeInput.val());
+			if (CurrentManageToolData.audio.duringExecutionAudioVolume !== changes.duringExecutionAudioVolume)
+			{
+				hasChanges = true;
+			}
 		}
 
-		if (CurrentManageToolData.audio.duringSpeaking != null && toolAudioDuringSpeakingSelect.val() === "none") {
-			hasChanges = true;
-		} else if (CurrentManageToolData.audio.duringSpeaking == null && toolAudioDuringSpeakingSelect.val() === "custom") {
-			hasChanges = true;
+		// After Execution Audio
+		const afterAudioType = toolAudioAfterExecutionSelect.val();
+		if (afterAudioType === "none") {
+			changes.afterExecutionAudioUrl = null;
+			if (CurrentManageToolData.audio.afterExecution !== null) {
+				hasChanges = true;
+			}
 		}
-		if (toolAudioDuringSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
-			hasChanges = true;
+		if (afterAudioType === "custom") {
+			if (
+				toolAudioAfterExecutionUploadInput[0].files.length === 1
+				||
+				(toolAudioAfterExecutionUploadInput[0].files.length === 0 && ToolAfterExecutionAudioWaveSurfer == null)
+			) {
+				changes.afterExecutionAudioUrl = "custom";
+				hasChanges = true;
+			}
+
+			if (
+				CurrentManageToolData.audio.afterExecution !== null &&
+				toolAudioAfterExecutionUploadInput[0].files.length === 0 &&
+				ToolAfterExecutionAudioWaveSurfer != null
+			) {
+				changes.afterExecutionAudioUrl = "previous";
+			}
 		}
 
-		if (CurrentManageToolData.audio.afterSpeaking != null && toolAudioAfterSpeakingSelect.val() === "none") {
-			hasChanges = true;
-		} else if (CurrentManageToolData.audio.afterSpeaking == null && toolAudioAfterSpeakingSelect.val() === "custom") {
-			hasChanges = true;
+		if (afterAudioType !== "none") {
+			changes.afterExecutionAudioVolume = parseInt(toolAudioAfterExecutionVolumeInput.val());
+			if (CurrentManageToolData.audio.afterExecutionAudioVolume !== changes.afterExecutionAudioVolume) {
+				hasChanges = true;
+			}
 		}
-		if (toolAudioAfterSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
-			hasChanges = true;
-		}
+
+		return {
+			hasChanges,
+			changes,
+		};
 	}
-	CheckAudioTabHasChanges();
+	const audioTabChanges = CheckAudioTabChanges();
+	changes.audio = audioTabChanges.changes;
+	if (audioTabChanges.hasChanges) {
+		hasChanges = true;
+	}
 
 	if (enableDisableButton) {
 		confirmPublishToolButton.prop("disabled", !hasChanges);
@@ -920,7 +946,7 @@ function onToolsAudioUploadValidation(event) {
 	return true;
 }
 
-function CreateToolAudioWavesurfer(containerId) {
+function CreateAgentBackgroundAudioWavesurfer(containerId) {
 	const waveSurferConversation = WaveSurfer.create({
 		container: containerId,
 		waveColor: "#5f6833",
@@ -1175,35 +1201,25 @@ function FillToolsManageTab(toolData) {
 
 	// Audio
 	function fillAudioTab() {
-		if (toolData.audio.beforeSpeaking) {
-			toolAudioBeforeSpeakingSelect.val("custom").change();
+		if (toolData.audio.duringExecution) {
+			toolAudioDuringExecutionSelect.val("custom").change();
 
-			ToolAudioBeforeSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.beforeSpeaking}`);
-			toolAudioBeforeSpeakingVolumeInput.val(toolData.audio.beforeSpeakingVolume);
+			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecution}`);
+			toolAudioDuringExecutionVolumeInput.val(toolData.audio.duringExecutionVolume);
 
-			toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-			toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-			toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+			toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
+			toolAudioDuringExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
+			toolAudioDuringExecutionInputBox.find(".audio-controller").removeClass("d-none");
 		}
-		if (toolData.audio.duringSpeaking) {
-			toolAudioDuringSpeakingSelect.val("custom").change();
+		if (toolData.audio.afterExecution) {
+			toolAudioAfterExecutionSelect.val("custom").change();
 
-			ToolAudioDuringSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringSpeaking}`);
-			toolAudioDuringSpeakingVolumeInput.val(toolData.audio.duringSpeakingVolume);
+			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecution}`);
+			toolAudioAfterExecutionVolumeInput.val(toolData.audio.afterExecutionVolume);
 
-			toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-			toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-			toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
-		}
-		if (toolData.audio.afterSpeaking) {
-			toolAudioAfterSpeakingSelect.val("custom").change();
-
-			ToolAudioAfterSpeakingWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterSpeaking}`);
-			toolAudioAfterSpeakingVolumeInput.val(toolData.audio.afterSpeakingVolume);
-
-			toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-			toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-			toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+			toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
+			toolAudioAfterExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
+			toolAudioAfterExecutionInputBox.find(".audio-controller").removeClass("d-none");
 		}
 	}
 	fillAudioTab();
@@ -1485,38 +1501,55 @@ function ValidateToolsManageTab(onlyRemove = true) {
 
 	// Audio Tab Validation
 	function validateAudioTab() {
-		if (toolAudioBeforeSpeakingSelect.val() === "custom" && toolAudioBeforeSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.beforeSpeaking == null) {
+		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecution == null) {
 			validated = false;
-			errors.push("Audio file for before speaking is required.");
+			errors.push("Audio file for during execution is required.");
 
 			if (!onlyRemove) {
-				toolAudioBeforeSpeakingSelect.addClass("is-invalid");
+				toolAudioDuringExecutionSelect.addClass("is-invalid");
 			}
 		} else {
-			toolAudioBeforeSpeakingSelect.removeClass("is-invalid");
+			toolAudioDuringExecutionSelect.removeClass("is-invalid");
 		}
 
-		if (toolAudioDuringSpeakingSelect.val() === "custom" && toolAudioDuringSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringSpeaking == null) {
+		if (toolAudioDuringExecutionSelect.val() === "custom" || toolAudioDuringExecutionSelect.val() === "previous") {
+			const duringExecutionVolume = parseInt(toolAudioDuringExecutionVolumeInput.val());
+			if (isNaN(duringExecutionVolume) || duringExecutionVolume < 0 || duringExecutionVolume > 100) {
+                validated = false;
+				errors.push("During execution volume must be a number between 0 and 100.");
+
+				if (!onlyRemove) {
+                    toolAudioDuringExecutionVolumeInput.addClass("is-invalid");
+				}
+            } else {
+                toolAudioDuringExecutionVolumeInput.removeClass("is-invalid");
+            }
+		}
+
+		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecution == null) {
 			validated = false;
-			errors.push("Audio file for during speaking is required.");
+			errors.push("Audio file for after execution is required.");
 
 			if (!onlyRemove) {
-				toolAudioDuringSpeakingSelect.addClass("is-invalid");
+				toolAudioAfterExecutionSelect.addClass("is-invalid");
 			}
 		} else {
-			toolAudioDuringSpeakingSelect.removeClass("is-invalid");
+			toolAudioAfterExecutionSelect.removeClass("is-invalid");
 		}
 
-		if (toolAudioAfterSpeakingSelect.val() === "custom" && toolAudioAfterSpeakingUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterSpeaking == null) {
-			validated = false;
-			errors.push("Audio file for after speaking is required.");
+        if (toolAudioAfterExecutionSelect.val() === "custom" || toolAudioAfterExecutionSelect.val() === "previous") {
+            const afterExecutionVolume = parseInt(toolAudioAfterExecutionVolumeInput.val());
+			if (isNaN(afterExecutionVolume) || afterExecutionVolume < 0 || afterExecutionVolume > 100) {
+				validated = false;
+				errors.push("After execution volume must be a number between 0 and 100.");
 
-			if (!onlyRemove) {
-				toolAudioAfterSpeakingSelect.addClass("is-invalid");
-			}
-		} else {
-			toolAudioAfterSpeakingSelect.removeClass("is-invalid");
-		}
+                if (!onlyRemove) {
+                    toolAudioAfterExecutionVolumeInput.addClass("is-invalid");
+				}
+            } else {
+                toolAudioAfterExecutionVolumeInput.removeClass("is-invalid");
+            }
+        }
 	}
 
 	validateGeneralTab();
@@ -1859,109 +1892,113 @@ function initToolsTab() {
 				$(event.currentTarget).addClass("active");
 			});
 
-			toolAudioBeforeSpeakingSelect.on("change", (event) => {
+			toolAudioDuringExecutionUploadInput.on("input", () => {
+				ValidateToolsManageTab(true);
+				CheckToolsManageTabHasChanges();
+			});
+
+			toolAudioDuringExecutionSelect.on("change", (event) => {
 				const selectedValue = $(event.currentTarget).val();
 
 				if (selectedValue === "none") {
-					toolAudioBeforeSpeakingBox.addClass("d-none");
-					toolAudioBeforeSpeakingUploadInput.val("");
+					if (ToolAudioDuringExecutionWaveSurfer !== null) {
+						ToolAudioDuringExecutionWaveSurfer.destroy();
+						ToolAudioDuringExecutionWaveSurfer = null;
+					}
 
-					toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-					toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-					toolAudioBeforeSpeakingInputBox.find(".audio-controller").addClass("d-none");
+					toolAudioDuringExecutionBox.addClass("d-none");
+					toolAudioDuringExecutionUploadInput.val("");
+
+					toolAudioDuringExecutionInputBox.find(".no-audio-notice").removeClass("d-none");
+					toolAudioDuringExecutionInputBox.find(".recording-container-waveform").addClass("d-none");
+					toolAudioDuringExecutionInputBox.find(".audio-controller").addClass("d-none");
 				} else {
-					toolAudioBeforeSpeakingBox.removeClass("d-none");
+					toolAudioDuringExecutionBox.removeClass("d-none");
 				}
 
 				if (selectedValue === "custom") {
-					toolAudioBeforeSpeakingInputBox.removeClass("d-none");
+					toolAudioDuringExecutionInputBox.removeClass("d-none");
 				} else {
-					toolAudioBeforeSpeakingInputBox.addClass("d-none");
+					toolAudioDuringExecutionInputBox.addClass("d-none");
 				}
+
+				ValidateToolsManageTab(true);
+				CheckToolsManageTabHasChanges();
 			});
 
-			toolAudioDuringSpeakingSelect.on("change", (event) => {
+			toolAudioAfterExecutionVolumeInput.on("input", () => {
+				ValidateToolsManageTab(true);
+				CheckToolsManageTabHasChanges();
+			});
+
+			toolAudioAfterExecutionSelect.on("change", (event) => {
 				const selectedValue = $(event.currentTarget).val();
 
 				if (selectedValue === "none") {
-					toolAudioDuringSpeakingBox.addClass("d-none");
-					toolAudioDuringSpeakingUploadInput.val("");
+					if (ToolAudioAfterExecutionWaveSurfer !== null) {
+						ToolAudioAfterExecutionWaveSurfer.destroy();
+						ToolAudioAfterExecutionWaveSurfer = null;
+					}
 
-					toolAudioDuringSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-					toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-					toolAudioDuringSpeakingInputBox.find(".audio-controller").addClass("d-none");
+					toolAudioAfterExecutionBox.addClass("d-none");
+					toolAudioAfterExecutionUploadInput.val("");
+
+					toolAudioAfterExecutionInputBox.find(".no-audio-notice").removeClass("d-none");
+					toolAudioAfterExecutionInputBox.find(".recording-container-waveform").addClass("d-none");
+					toolAudioAfterExecutionInputBox.find(".audio-controller").addClass("d-none");
 				} else {
-					toolAudioDuringSpeakingBox.removeClass("d-none");
+					toolAudioAfterExecutionBox.removeClass("d-none");
 				}
 
 				if (selectedValue === "custom") {
-					toolAudioDuringSpeakingInputBox.removeClass("d-none");
+					toolAudioAfterExecutionInputBox.removeClass("d-none");
 				} else {
-					toolAudioDuringSpeakingInputBox.addClass("d-none");
-				}
-			});
-
-			toolAudioAfterSpeakingSelect.on("change", (event) => {
-				const selectedValue = $(event.currentTarget).val();
-
-				if (selectedValue === "none") {
-					toolAudioAfterSpeakingBox.addClass("d-none");
-					toolAudioAfterSpeakingUploadInput.val("");
-
-					toolAudioAfterSpeakingInputBox.find(".no-audio-notice").removeClass("d-none");
-					toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").addClass("d-none");
-					toolAudioAfterSpeakingInputBox.find(".audio-controller").addClass("d-none");
-				} else {
-					toolAudioAfterSpeakingBox.removeClass("d-none");
+					toolAudioAfterExecutionInputBox.addClass("d-none");
 				}
 
-				if (selectedValue === "custom") {
-					toolAudioAfterSpeakingInputBox.removeClass("d-none");
-				} else {
-					toolAudioAfterSpeakingInputBox.addClass("d-none");
-				}
+				ValidateToolsManageTab(true);
+				CheckToolsManageTabHasChanges();
 			});
 
-			toolAudioBeforeSpeakingUploadBtn.on("click", (event) => {
+			toolAudioDuringExecutionUploadBtn.on("click", (event) => {
 				event.preventDefault();
 
-				toolAudioBeforeSpeakingUploadInput.click();
+				toolAudioDuringExecutionUploadInput.click();
 			});
 
-			toolAudioDuringSpeakingUploadBtn.on("click", (event) => {
+			toolAudioAfterExecutionUploadBtn.on("click", (event) => {
 				event.preventDefault();
 
-				toolAudioDuringSpeakingUploadInput.click();
+				toolAudioAfterExecutionUploadInput.click();
 			});
 
-			toolAudioAfterSpeakingUploadBtn.on("click", (event) => {
-				event.preventDefault();
-
-				toolAudioAfterSpeakingUploadInput.click();
-			});
-
-			toolAudioBeforeSpeakingUploadInput.on("change", (event) => {
+			toolAudioDuringExecutionUploadInput.on("change", (event) => {
 				const resultValidate = onToolsAudioUploadValidation(event);
 
 				if (resultValidate) {
-					const file = toolAudioBeforeSpeakingUploadInput[0].files[0];
+					const file = toolAudioDuringExecutionUploadInput[0].files[0];
 
 					const reader = new FileReader();
 
 					reader.onload = (evt) => {
 						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-						ToolAudioBeforeSpeakingWaveSurfer.loadBlob(blob);
 
-						toolAudioBeforeSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-						toolAudioBeforeSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-						toolAudioBeforeSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+						if (ToolAudioDuringExecutionWaveSurfer !== null) {
+							ToolAudioDuringExecutionWaveSurfer.destroy();
+						}
+						ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
+						ToolAudioDuringExecutionWaveSurfer.loadBlob(blob);
+
+						toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
+						toolAudioDuringExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
+						toolAudioDuringExecutionInputBox.find(".audio-controller").removeClass("d-none");
 					};
 
 					reader.onerror = (evt) => {
 						AlertManager.createAlert({
 							type: "error",
-							message: "Error reading audio file for tool audio before speaking upload.",
-							enableDismiss: false,
+							message: "Error reading audio file for tool audio during execution upload.",
+							timeout: 6000
 						});
 					};
 
@@ -1970,58 +2007,33 @@ function initToolsTab() {
 				}
 			});
 
-			toolAudioDuringSpeakingUploadInput.on("change", (event) => {
+			toolAudioAfterExecutionUploadInput.on("change", (event) => {
 				const resultValidate = onToolsAudioUploadValidation(event);
 
 				if (resultValidate) {
-					const file = toolAudioDuringSpeakingUploadInput[0].files[0];
+					const file = toolAudioAfterExecutionUploadInput[0].files[0];
 
 					const reader = new FileReader();
 
 					reader.onload = (evt) => {
 						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-						ToolAudioDuringSpeakingWaveSurfer.loadBlob(blob);
 
-						toolAudioDuringSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-						toolAudioDuringSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-						toolAudioDuringSpeakingInputBox.find(".audio-controller").removeClass("d-none");
+						if (ToolAudioAfterExecutionWaveSurfer !== null) {
+							ToolAudioAfterExecutionWaveSurfer.destroy();
+						}
+						ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
+						ToolAudioAfterExecutionWaveSurfer.loadBlob(blob);
+
+						toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
+						toolAudioAfterExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
+						toolAudioAfterExecutionInputBox.find(".audio-controller").removeClass("d-none");
 					};
 
 					reader.onerror = (evt) => {
 						AlertManager.createAlert({
 							type: "error",
-							message: "Error reading audio file for tool audio during speaking upload.",
-							enableDismiss: false,
-						});
-					};
-
-					// Read File as an ArrayBuffer
-					reader.readAsArrayBuffer(file);
-				}
-			});
-
-			toolAudioAfterSpeakingUploadInput.on("change", (event) => {
-				const resultValidate = onToolsAudioUploadValidation(event);
-
-				if (resultValidate) {
-					const file = toolAudioAfterSpeakingUploadInput[0].files[0];
-
-					const reader = new FileReader();
-
-					reader.onload = (evt) => {
-						const blob = new window.Blob([new Uint8Array(evt.target.result)]);
-						ToolAudioAfterSpeakingWaveSurfer.loadBlob(blob);
-
-						toolAudioAfterSpeakingInputBox.find(".no-audio-notice").addClass("d-none");
-						toolAudioAfterSpeakingInputBox.find(".recording-container-waveform").removeClass("d-none");
-						toolAudioAfterSpeakingInputBox.find(".audio-controller").removeClass("d-none");
-					};
-
-					reader.onerror = (evt) => {
-						AlertManager.createAlert({
-							type: "error",
-							message: "Error reading audio file for tool audio after speaking upload.",
-							enableDismiss: false,
+							message: "Error reading audio file for tool audio after execution upload.",
+							timeout: 6000
 						});
 					};
 
@@ -2092,16 +2104,12 @@ function initToolsTab() {
 					formData.append("exisitingToolId", CurrentManageToolData.id);
 				}
 
-				if (toolAudioBeforeSpeakingUploadInput[0].files.length > 0) {
-					formData.append("audioBeforeSpeaking", toolAudioBeforeSpeakingUploadInput[0].files[0]);
+				if (changes.changes.audio.duringExecutionAudioUrl === "custom") {
+					formData.append("audioDuringExecution", toolAudioDuringExecutionUploadInput[0].files[0]);
 				}
 
-				if (toolAudioDuringSpeakingUploadInput[0].files.length > 0) {
-					formData.append("audioDuringSpeaking", toolAudioDuringSpeakingUploadInput[0].files[0]);
-				}
-
-				if (toolAudioAfterSpeakingUploadInput[0].files.length > 0) {
-					formData.append("audioAfterSpeaking", toolAudioAfterSpeakingUploadInput[0].files[0]);
+				if (changes.changes.audio.afterExecutionAudioUrl === "custom") {
+					formData.append("audioAfterExecution", toolAudioAfterExecutionUploadInput[0].files[0]);
 				}
 
 				SaveBusinessTool(

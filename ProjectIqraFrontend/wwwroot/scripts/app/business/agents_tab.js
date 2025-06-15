@@ -1845,6 +1845,20 @@ function validateAgentSettingsTab(onlyRemove = true) {
 		agentBackgroundAudioSelect.removeClass("is-invalid");
 	}
 
+	if (agentBackgroundAudioSelect.val() === "custom" || agentBackgroundAudioSelect.val() === "previous") {
+		const backgroundAudioVolume = parseInt(agentBackgroundAudioVolumeInput.val());
+		if (isNaN(backgroundAudioVolume) || backgroundAudioVolume < 0 || backgroundAudioVolume > 100) {
+			validated = false;
+			errors.push("Background audio volume must be a number between 0 and 100.");
+
+			if (!onlyRemove) {
+				agentBackgroundAudioVolumeInput.addClass("is-invalid");
+			}
+		} else {
+			agentBackgroundAudioVolumeInput.removeClass("is-invalid");
+		}
+	}
+
 	return {
 		isValid,
 		errors,

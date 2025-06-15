@@ -130,11 +130,12 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 result.Message = "Invalid post type.";
                 return result;
             }
-
-            formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue);
-            string? exisitingToolIdValue = exisitingToolIdStringValue.ToString();
+     
+            BusinessAppTool? exisitingTool = null;
             if (postType == "edit")
             {
+                formData.TryGetValue("exisitingToolId", out StringValues exisitingToolIdStringValue);
+                string? exisitingToolIdValue = exisitingToolIdStringValue.ToString();
                 if (string.IsNullOrWhiteSpace(exisitingToolIdValue))
                 {
                     result.Code = "SaveBusinessTools:8";
@@ -142,8 +143,8 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     return result;
                 }
 
-                bool toolExistsResult = await _businessManager.GetToolsManager().CheckBusinessToolExists(businessId, exisitingToolIdValue);
-                if (!toolExistsResult)
+                exisitingTool = await _businessManager.GetToolsManager().GetBusinessAppTool(businessId, exisitingToolIdValue);
+                if (exisitingTool == null)
                 {
                     result.Code = "SaveBusinessTools:9";
                     result.Message = "Exisiting tool not found.";
@@ -151,7 +152,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateUserBusinessTools(businessId, formData, postType, exisitingToolIdValue);
+            FunctionReturnResult<BusinessAppTool?> updateResult = await _businessManager.GetToolsManager().AddOrUpdateUserBusinessTools(businessId, formData, postType, exisitingTool);
             if (!updateResult.Success)
             {
                 result.Code = "SaveBusinessTools:" + updateResult.Code;

@@ -2,14 +2,10 @@
 {
     public class BusinessAppToolAudio
     {
-        public string? BeforeSpeaking { get; set; } = null;
-        public int? BeforeSpeakingVolume { get; set; } = null;
+        public string? DuringExecutionAudioUrl { get; set; } = null;
+        public int? DuringExecutionAudioVolume { get; set; } = null;
 
-        public string? DuringSpeaking { get; set; } = null;
-        public int? DuringSpeakingVolume { get; set; } = null;
-
-        public string? AfterSpeaking { get; set; } = null;
-        public int? AfterSpeakingVolume { get; set; } = null;
-
+        public string? AfterExecutionAudioUrl { get; set; } = null;
+        public int? AfterExecutionAudioVolume { get; set; } = null;
     }
 }

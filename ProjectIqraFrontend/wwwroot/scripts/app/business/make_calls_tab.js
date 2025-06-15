@@ -171,7 +171,12 @@ function captureInitialFormState() {
 	makeCallFormInitialState.interruptionType = makeCallAgentInterruptionTypeSelect.val();
 	// Capture specific interruption sub-settings based on type... (can get complex, maybe simplify change check)
 	// Timezone & Context
-	makeCallFormInitialState.timezones = [makeCallNumberTimezoneSelect.val()];
+	var timezoneValue = makeCallNumberTimezoneSelect.val();
+	var timezones = [];
+	if (timezoneValue && timezoneValue !== null) {
+		timezones = [timezoneValue];
+	}
+	makeCallFormInitialState.timezones = timezones;
 	makeCallFormInitialState.includeFromNumberInContext = makeCallAgentFromNumberInContextCheck.is(":checked");
 	makeCallFormInitialState.includeToNumberInContext = makeCallAgentToNumberInContextCheck.is(":checked");
 	// Actions (Just track if *any* tool is selected for simplicity)
@@ -213,7 +218,13 @@ function checkMakeCallTabHasChanges() {
 	if (makeCallFormInitialState.languageCode !== makeCallAgentLanguageSelect.val()) return true; // Added Language Check
 	if (makeCallFormInitialState.interruptionType !== makeCallAgentInterruptionTypeSelect.val()) return true;
 	// Add checks for interruption sub-settings if needed for more precise change detection
-	if (makeCallFormInitialState.timezones !== [makeCallNumberTimezoneSelect.val()]) return true;
+	var timezoneValue = makeCallNumberTimezoneSelect.val();
+	var timezones = [];
+	if (timezoneValue && timezoneValue !== null) {
+		timezones = [timezoneValue];
+	}
+	const timezonesEqual = timezones.length === makeCallFormInitialState.timezones.length && timezones.every((value, index) => value === makeCallFormInitialState.timezones[index]);
+	if (!timezonesEqual) return true;
 	if (makeCallFormInitialState.includeFromNumberInContext !== makeCallAgentFromNumberInContextCheck.is(":checked")) return true;
 	if (makeCallFormInitialState.includeToNumberInContext !== makeCallAgentToNumberInContextCheck.is(":checked")) return true;
 	if (makeCallFormInitialState.actionDeclinedTool !== makeCallActionToolDeclinedSelect.val()) return true;
