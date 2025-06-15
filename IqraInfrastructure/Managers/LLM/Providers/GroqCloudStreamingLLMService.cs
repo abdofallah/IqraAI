@@ -64,7 +64,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _systemPrompt = "You are Iqra. A helpful AI Assistant."; // Default
         }
 
-        public async Task ProcessInputAsync(CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
 
@@ -75,6 +75,26 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             }
             finalMessages.AddRange(_initialMessages);
             finalMessages.AddRange(_messagesMemory);
+
+            var lastMessage = finalMessages.LastOrDefault();
+            if (lastMessage != null && lastMessage.Role == "user")
+            {
+                var newText = "";
+
+                var textData = lastMessage.Content;
+                if (!string.IsNullOrEmpty(beforeMessageContext))
+                {
+                    newText = beforeMessageContext + "\n\n" + textData;
+                }
+                if (!string.IsNullOrEmpty(afterMessageContext))
+                {
+                    newText = newText + "\n\n" + afterMessageContext;
+                }
+
+                var newUserMessage = new GroqCloudMessage("user", newText);
+                finalMessages.RemoveAt(finalMessages.Count - 1);
+                finalMessages.Add(newUserMessage);
+            }
 
             if (!finalMessages.Any(m => m.Role == "user"))
             {

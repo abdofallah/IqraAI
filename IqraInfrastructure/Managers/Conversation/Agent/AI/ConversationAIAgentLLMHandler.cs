@@ -255,7 +255,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             }
             else
             {
-                messageToSend = $"customer_query: {text}{(currentDateTimeData.Success ? ("\n\n" + currentDateTimeData.Data) : "")}";
+                messageToSend = $"customer_query: {text}";
             }
 
             TextRecievedForLLMToProcess?.Invoke(messageToSend, clientId);
@@ -270,7 +270,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             _logger.LogInformation("Agent {AgentId}: Sending message to LLM.", _agentState.AgentId);
 
-            _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken);
+            _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
             await _llmTask;
         }
 

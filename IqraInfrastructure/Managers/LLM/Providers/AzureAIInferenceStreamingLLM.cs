@@ -48,7 +48,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             _systemPrompt = "You are Iqra. A helpful AI Assitant.";
         }
 
-        public async Task ProcessInputAsync(CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
 
@@ -56,6 +56,26 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                 .Concat(_messagesMemory)
                 .ToList();
             finalMessages.Prepend(new ChatRequestSystemMessage(_systemPrompt));
+
+            var lastMessage = finalMessages.LastOrDefault();
+            if (lastMessage != null && lastMessage is ChatRequestUserMessage userMessageLast)
+            {
+                var newText = "";
+
+                var textData = userMessageLast.Content;
+                if (!string.IsNullOrEmpty(beforeMessageContext))
+                {
+                    newText = beforeMessageContext + "\n\n" + textData;
+                }
+                if (!string.IsNullOrEmpty(afterMessageContext))
+                {
+                    newText = newText + "\n\n" + afterMessageContext;
+                }
+
+                var newUserMessage = new ChatRequestUserMessage(newText);
+                finalMessages.RemoveAt(finalMessages.Count - 1);
+                finalMessages.Add(newUserMessage);
+            }
 
             var parameters = new ChatCompletionsOptions()
             {

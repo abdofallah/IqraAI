@@ -1,5 +1,4 @@
-﻿using DnsClient.Internal;
-using GenerativeAI;
+﻿using GenerativeAI;
 using GenerativeAI.Types;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
@@ -50,11 +49,35 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             SetSystemPrompt("You are Iqra. A helpful AI Assitant.");
         }
 
-        public async Task ProcessInputAsync(CancellationToken cancellationToken)
+        public async Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, cancellationToken).Token;
 
             var finalMessages = _initialMessages.Concat(_messagesMemory).ToList();
+
+            var lastMessage = finalMessages.LastOrDefault();
+            if (lastMessage != null && lastMessage.Role == "user")
+            {
+                var lastMessageWithText = lastMessage.Parts.Find(x => !string.IsNullOrEmpty(x.Text));
+                if (lastMessageWithText != null)
+                {
+                    var newText = "";
+
+                    var textData = lastMessageWithText.Text;
+                    if (!string.IsNullOrEmpty(beforeMessageContext))
+                    {
+                        newText = beforeMessageContext + "\n\n" + textData;
+                    }
+                    if (!string.IsNullOrEmpty(afterMessageContext))
+                    {
+                        newText = newText + "\n\n" + afterMessageContext;
+                    }
+
+                    var newUserMessage = MakeContent("user", newText);
+                    finalMessages.RemoveAt(finalMessages.Count - 1);
+                    finalMessages.Add(newUserMessage);
+                }
+            }
 
             var generationConfig = new GenerationConfig
             {

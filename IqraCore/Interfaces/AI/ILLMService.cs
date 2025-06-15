@@ -8,7 +8,7 @@ namespace IqraCore.Interfaces.AI
         void ClearMessageStreamed();
 
         event EventHandler MessageStreamedCancelled;
-        Task ProcessInputAsync(CancellationToken cancellationToken);
+        Task ProcessInputAsync(CancellationToken cancellationToken, string? beforeMessageContext = null, string? afterMessageContext = null);
         void SetModel(string model);
         void SetTemperature(decimal temperature);
         void SetMaxTokens(int maxTokens);

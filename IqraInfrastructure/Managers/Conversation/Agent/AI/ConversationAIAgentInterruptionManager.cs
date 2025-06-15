@@ -267,15 +267,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
 
                 _agentState.InterruptingLLMService.ClearMessages();
-                string builtMessage = $"Here is the current response spoken by you (customer agent):\n```\n{spokenSoFar}\n```\n\nFurther unfinished response:\n```\n{unspokenSoFar}\n```\n\nHere is the respone of the customer:\n```\n{text}\n```";
+                string builtMessage = "customer_query: {text}";
+
+                var spokenSoFarCut = spokenSoFar.Length > 20 ? spokenSoFar.Substring(spokenSoFar.Length - 20) : spokenSoFar;
+                string context = $"response_from_system: You were interrupted by the user during speaking. You spoke as far as: ...{spokenSoFarCut}...";
                 _agentState.InterruptingLLMService.AddUserMessage(builtMessage);
+                // TODO should we not save this message or check if already saved
 
                 _agentState.InterruptingLLMService.MessageStreamed += async (sender, responseObj) => {
                     await CheckIfInterruptibleViaAIMessageStreamHandlerAsync(sender, responseObj, spokenSoFar, text, clientId, externalToken);
                 };
 
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken, externalToken); // Need agent master CTS access
-                _interruptLLMTask = _agentState.InterruptingLLMService.ProcessInputAsync(combinedCts.Token);
+                _interruptLLMTask = _agentState.InterruptingLLMService.ProcessInputAsync(combinedCts.Token, context);
 
                 return true;
             }
