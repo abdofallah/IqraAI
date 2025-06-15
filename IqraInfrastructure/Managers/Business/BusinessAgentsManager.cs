@@ -265,20 +265,6 @@ namespace IqraInfrastructure.Managers.Business
                     result.Message = greetingMessageValidationResult.Message;
                     return result;
                 }
-
-                var phrasesBeforeReplyValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
-                    businessLanguages,
-                    utterancesTabElement,
-                    "phrasesBeforeReply",
-                    newAgentData.Utterances.PhrasesBeforeReply,
-                    true
-                );
-                if (!phrasesBeforeReplyValidationResult.Success)
-                {
-                    result.Code = "AddOrUpdateAgent:" + phrasesBeforeReplyValidationResult.Code;
-                    result.Message = phrasesBeforeReplyValidationResult.Message;
-                    return result;
-                }
             }
 
             // Integrations Section

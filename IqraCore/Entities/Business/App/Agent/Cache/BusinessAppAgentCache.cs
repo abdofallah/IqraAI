@@ -5,7 +5,5 @@
         public List<string> Messages { get; set; } = new List<string>();
 
         public List<string> Audios { get; set; } = new List<string>();
-
-        public BusinessAppAgentAutoCacheAudioSettings AutoCacheAudioSettings { get; set; } = new BusinessAppAgentAutoCacheAudioSettings();
     }
 }

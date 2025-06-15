@@ -253,12 +253,23 @@ function initResponseCodeEditor(statusType, containerId) {
 
 			if (node.type === "ReturnStatement") {
 				result = node.argument !== null;
-				returnStatements.push(result);
+				return result;
 			}
 
-			if (node.type === "BlockStatement" || node.type === "TryStatement") {
+			if (node.type === "TryStatement") {
+				result = hasReturnStatement(node.block);
+				if (node.handler) {
+					result = hasReturnStatement(node.handler);
+                    returnStatements.push(result);
+				}
+			}
+
+			if (node.type === "BlockStatement") {
 				node.body.forEach((subNode) => {
 					result = hasReturnStatement(subNode);
+					if (result != null) {
+                        returnStatements.push(result);
+					}
 				});
 			}
 
@@ -269,9 +280,9 @@ function initResponseCodeEditor(statusType, containerId) {
 					result = hasReturnStatement(node.alternate);
 					returnStatements.push(result);
 				} else {
-					if (result !== null) {
-						returnStatements.push(false);
+					if (result === null) {
 						result = false;
+						returnStatements.push(result);
 					}
 				}
 			}
@@ -286,15 +297,15 @@ function initResponseCodeEditor(statusType, containerId) {
 
 	// Validate the code whenever the content changes
 	editor.onDidChangeModelContent((changes) => {
-		const isValid = validateCode();
+		//const isValid = validateCode();
 
-		const alert = $(`#${containerId} .error-result-container .returnAlert`);
+		//const alert = $(`#${containerId} .error-result-container .returnAlert`);
 
-		if (!isValid) {
-			alert.removeClass("d-none");
-		} else {
-			alert.addClass("d-none");
-		}
+		//if (!isValid) {
+		//	alert.removeClass("d-none");
+		//} else {
+		//	alert.addClass("d-none");
+		//}
 	});
 
 	monaco.editor.onDidChangeMarkers(([uri]) => {
@@ -486,6 +497,8 @@ function CreateToolsDefaultToolObject() {
 function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 	const changes = {};
 	let hasChanges = false;
+
+	if (ManageToolType === null) return { hasChanges, changes };
 
 	// General
 	function CheckGeneralTabHasChanges() {
@@ -744,7 +757,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		const duringAudioType = toolAudioDuringExecutionSelect.val();
 		if (duringAudioType === "none") {
 			changes.duringExecutionAudioUrl = null;
-			if (CurrentManageToolData.audio.duringExecution !== null) {
+			if (CurrentManageToolData.audio.duringExecutionAudioUrl !== null) {
 				hasChanges = true;
 			}
 		}
@@ -752,16 +765,16 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			if (
 				toolAudioDuringExecutionUploadInput[0].files.length === 1
 				||
-				(toolAudioDuringExecutionUploadInput[0].files.length === 0 && ToolDuringExecutionAudioWaveSurfer == null)
+				(toolAudioDuringExecutionUploadInput[0].files.length === 0 && ToolAudioDuringExecutionWaveSurfer == null)
 			) {
 				changes.duringExecutionAudioUrl = "custom";
 				hasChanges = true;
 			}
 
 			if (
-				CurrentManageToolData.audio.duringExecution !== null &&
+				CurrentManageToolData.audio.duringExecutionAudioUrl !== null &&
 				toolAudioDuringExecutionUploadInput[0].files.length === 0 &&
-				ToolDuringExecutionAudioWaveSurfer != null
+				ToolAudioDuringExecutionWaveSurfer != null
 			) {
 				changes.duringExecutionAudioUrl = "previous";
 			}
@@ -778,7 +791,7 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 		const afterAudioType = toolAudioAfterExecutionSelect.val();
 		if (afterAudioType === "none") {
 			changes.afterExecutionAudioUrl = null;
-			if (CurrentManageToolData.audio.afterExecution !== null) {
+			if (CurrentManageToolData.audio.afterExecutionAudioUrl !== null) {
 				hasChanges = true;
 			}
 		}
@@ -786,16 +799,16 @@ function CheckToolsManageTabHasChanges(enableDisableButton = true) {
 			if (
 				toolAudioAfterExecutionUploadInput[0].files.length === 1
 				||
-				(toolAudioAfterExecutionUploadInput[0].files.length === 0 && ToolAfterExecutionAudioWaveSurfer == null)
+				(toolAudioAfterExecutionUploadInput[0].files.length === 0 && ToolAudioAfterExecutionWaveSurfer == null)
 			) {
 				changes.afterExecutionAudioUrl = "custom";
 				hasChanges = true;
 			}
 
 			if (
-				CurrentManageToolData.audio.afterExecution !== null &&
+				CurrentManageToolData.audio.afterExecutionAudioUrl !== null &&
 				toolAudioAfterExecutionUploadInput[0].files.length === 0 &&
-				ToolAfterExecutionAudioWaveSurfer != null
+				ToolAudioAfterExecutionWaveSurfer != null
 			) {
 				changes.afterExecutionAudioUrl = "previous";
 			}
@@ -1201,21 +1214,23 @@ function FillToolsManageTab(toolData) {
 
 	// Audio
 	function fillAudioTab() {
-		if (toolData.audio.duringExecution) {
+		if (toolData.audio.duringExecutionAudioUrl) {
 			toolAudioDuringExecutionSelect.val("custom").change();
 
-			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecution}`);
-			toolAudioDuringExecutionVolumeInput.val(toolData.audio.duringExecutionVolume);
+			ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-during-waveform");
+			ToolAudioDuringExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.duringExecutionAudioUrl}`);
+			toolAudioDuringExecutionVolumeInput.val(toolData.audio.duringExecutionAudioVolume);
 
 			toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
 			toolAudioDuringExecutionInputBox.find(".audio-controller").removeClass("d-none");
 		}
-		if (toolData.audio.afterExecution) {
+		if (toolData.audio.afterExecutionAudioUrl) {
 			toolAudioAfterExecutionSelect.val("custom").change();
 
-			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecution}`);
-			toolAudioAfterExecutionVolumeInput.val(toolData.audio.afterExecutionVolume);
+            ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-after-waveform");
+			ToolAudioAfterExecutionWaveSurfer.load(`${BusinessToolAudioURL}/${toolData.audio.afterExecutionAudioUrl}`);
+			toolAudioAfterExecutionVolumeInput.val(toolData.audio.afterExecutionAudioVolume);
 
 			toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
 			toolAudioAfterExecutionInputBox.find(".recording-container-waveform").removeClass("d-none");
@@ -1501,7 +1516,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
 
 	// Audio Tab Validation
 	function validateAudioTab() {
-		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecution == null) {
+		if (toolAudioDuringExecutionSelect.val() === "custom" && toolAudioDuringExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.duringExecutionAudioUrl == null) {
 			validated = false;
 			errors.push("Audio file for during execution is required.");
 
@@ -1526,7 +1541,7 @@ function ValidateToolsManageTab(onlyRemove = true) {
             }
 		}
 
-		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecution == null) {
+		if (toolAudioAfterExecutionSelect.val() === "custom" && toolAudioAfterExecutionUploadInput[0].files.length === 0 && CurrentManageToolData.audio.afterExecutionAudioUrl == null) {
 			validated = false;
 			errors.push("Audio file for after execution is required.");
 
@@ -1986,7 +2001,7 @@ function initToolsTab() {
 						if (ToolAudioDuringExecutionWaveSurfer !== null) {
 							ToolAudioDuringExecutionWaveSurfer.destroy();
 						}
-						ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
+						ToolAudioDuringExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-during-waveform");
 						ToolAudioDuringExecutionWaveSurfer.loadBlob(blob);
 
 						toolAudioDuringExecutionInputBox.find(".no-audio-notice").addClass("d-none");
@@ -2021,7 +2036,7 @@ function initToolsTab() {
 						if (ToolAudioAfterExecutionWaveSurfer !== null) {
 							ToolAudioAfterExecutionWaveSurfer.destroy();
 						}
-						ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#agent-background-audio-waveform");
+						ToolAudioAfterExecutionWaveSurfer = CreateAgentBackgroundAudioWavesurfer("#tool-audio-after-waveform");
 						ToolAudioAfterExecutionWaveSurfer.loadBlob(blob);
 
 						toolAudioAfterExecutionInputBox.find(".no-audio-notice").addClass("d-none");
@@ -2104,11 +2119,11 @@ function initToolsTab() {
 					formData.append("exisitingToolId", CurrentManageToolData.id);
 				}
 
-				if (changes.changes.audio.duringExecutionAudioUrl === "custom") {
+				if (toolsManageTabChanges.changes.audio.duringExecutionAudioUrl === "custom") {
 					formData.append("audioDuringExecution", toolAudioDuringExecutionUploadInput[0].files[0]);
 				}
 
-				if (changes.changes.audio.afterExecutionAudioUrl === "custom") {
+				if (toolsManageTabChanges.changes.audio.afterExecutionAudioUrl === "custom") {
 					formData.append("audioAfterExecution", toolAudioAfterExecutionUploadInput[0].files[0]);
 				}
 
@@ -2136,6 +2151,13 @@ function initToolsTab() {
 						confirmPublishToolButtonSpinner.addClass("d-none");
 
 						IsSavingToolManageTab = false;
+
+						if (toolsManageTabChanges.changes.audio.duringExecutionAudioUrl === "custom") {
+							toolAudioDuringExecutionUploadInput.val("");
+						}
+						if (toolsManageTabChanges.changes.audio.afterExecutionAudioUrl === "custom") {
+                            toolAudioAfterExecutionUploadInput.val("");
+						}
 
 						AlertManager.createAlert({
 							type: "success",

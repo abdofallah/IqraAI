@@ -73,7 +73,6 @@ let CurrentAgentPersonalityEthicsMultiLangData = {};
 let CurrentAgentPersonalityToneMultiLangData = {};
 
 let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
-let CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 
 // Script
 let ManageCurrentScriptData = null;
@@ -399,8 +398,7 @@ function createDefaultAgentObject() {
 			openingType: {
 				value: 0,
 			},
-			greetingMessage: {},
-			phrasesBeforeReply: {},
+			greetingMessage: {}
 		},
 		scripts: [],
 		integrations: {
@@ -410,12 +408,7 @@ function createDefaultAgentObject() {
 		},
 		cache: {
 			messages: [],
-			audios: [],
-			autoCacheAudioSettings: {
-				autoCacheAudioResponses: false,
-				autoCacheAudioResponsesDefaultExpiryHours: 24,
-				autoCacheAudioResponseCacheGroupId: null,
-			},
+			audios: []
 		},
 		settings: {
 			backgroundAudioUrl: null,
@@ -438,7 +431,6 @@ function createDefaultAgentObject() {
 
 		// Utterances
 		agent.utterances.greetingMessage[language] = "";
-		agent.utterances.phrasesBeforeReply[language] = "";
 
 		// Initialize integrations for each language
 		agent.integrations.stt[language] = [];
@@ -546,7 +538,6 @@ function ResetAndEmptyAgentsManageTab() {
 
 	// Utterances Tab
 	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
-	CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData = {};
 
 	// Integration Tab
 	CurrentAgentIntegrationsSTT = {};
@@ -571,7 +562,6 @@ function ResetAndEmptyAgentsManageTab() {
 
 		// Utterances Tab
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = "";
-		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = "";
 
 		// Integration Tab
 		CurrentAgentIntegrationsSTT[language] = [];
@@ -1016,17 +1006,6 @@ function CheckAgentUtterancesTabChanges(enableDisableButton = true) {
 		}
 	});
 
-	// Phrases Before Reply (multi-language)
-	changes.phrasesBeforeReply = {};
-	BusinessFullData.businessData.languages.forEach((language) => {
-		changes.phrasesBeforeReply[language] = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
-
-		const originalValue = CurrentManageAgentData.utterances.phrasesBeforeReply[language];
-		if (originalValue !== changes.phrasesBeforeReply[language]) {
-			hasChanges = true;
-		}
-	});
-
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
@@ -1048,12 +1027,6 @@ function fillAgentUtterancesTab() {
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = CurrentManageAgentData.utterances.greetingMessage[language];
 	});
 	$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[currentLanguage]);
-
-	// Phrases Before Reply
-	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language] = CurrentManageAgentData.utterances.phrasesBeforeReply[language];
-	});
-	$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentLanguage]);
 }
 
 function validateAgentUtterancesTab(onlyRemove = true) {
@@ -1083,21 +1056,6 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 			$("#editAgentPersonalityGreetingInput").removeClass("is-invalid");
 		}
 	});
-
-	// Validate phrases before reply for all languages
-	/**
-	BusinessFullData.businessData.languages.forEach((language) => {
-		const phrases = CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language];
-		if (!phrases || phrases.length === 0) {
-			isValid = false;
-			errors.push(`At least one phrase before reply for language ${language} is required.`);
-
-			if (!onlyRemove) {
-				$("#editAgentPhrasesBeforeReply").addClass("is-invalid");
-			}
-		}
-	});
-	**/
 
 	return {
 		isValid,
@@ -1639,9 +1597,9 @@ function createCacheGroupSelectElement(type, index) {
 
 function fillCacheGroupsList(type) {
 	if (type === "message") {
-		CurrentAgentCacheMessages = CurrentManageAgentData.cache.messages;
+		CurrentAgentCacheMessages = structuredClone(CurrentManageAgentData.cache.messages);
 	} else if (type === "audio") {
-		CurrentAgentCacheAudios = CurrentManageAgentData.cache.audios;
+		CurrentAgentCacheAudios = structuredClone(CurrentManageAgentData.cache.audios);
 	}
 
 	const container = type === "message" ? messageCacheGroupsList : audioCacheGroupsList;
@@ -1671,17 +1629,6 @@ function CheckAgentCacheTabChanges(enableDisableButton = true) {
 	// Audios
 	changes.audios = CurrentAgentCacheAudios;
 	if (JSON.stringify(CurrentManageAgentData.cache.audios) !== JSON.stringify(changes.audios)) {
-		hasChanges = true;
-	}
-
-	// Auto Cache Audio Settings
-	changes.autoCacheAudioSettings = {
-		autoCacheAudioResponses: false, // Add appropriate element ID
-		autoCacheAudioResponsesDefaultExpiryHours: 24, // Add appropriate element ID
-		autoCacheAudioResponseCacheGroupId: null, // Add appropriate element ID
-	};
-
-	if (JSON.stringify(CurrentManageAgentData.cache.autoCacheAudioSettings) !== JSON.stringify(changes.autoCacheAudioSettings)) {
 		hasChanges = true;
 	}
 
@@ -4238,26 +4185,10 @@ function initAgentTab() {
 				CheckAgentTabHasChanges();
 			});
 
-			// Phrases Before Reply changes
-			$("#editAgentPhrasesBeforeReply").on("input", (event) => {
-				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
-				const phrasesText = $(event.currentTarget).val();
-
-				// Split by comma and clean up each phrase
-				CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[currentSelectedLanguage.id] = phrasesText;
-
-				validateAgentMultiLanguageElements();
-				validateAgentUtterancesTab(true);
-				CheckAgentTabHasChanges();
-			});
-
 			// Language change handler
 			manageAgentsLanguageDropdown.onLanguageChange((language) => {
 				// Update greeting message
 				$("#editAgentPersonalityGreetingInput").val(CurrentAgentUtterancesGreetingMessageMultiLangData[language.id] || "");
-
-				// Update phrases before reply
-				$("#editAgentPhrasesBeforeReply").val(CurrentAgentUtterancesPhrasesBeforeReplyMultiLangData[language.id]);
 
 				validateAgentMultiLanguageElements();
 				validateAgentUtterancesTab(true);
@@ -4291,6 +4222,7 @@ function initAgentTab() {
 						timeout: 6000,
 					});
 					currentElement.val("");
+					return;
 				}
 
 				const index = currentElement.closest(".cache-group-item").data("index");
@@ -4305,7 +4237,11 @@ function initAgentTab() {
 			});
 
 			messageCacheGroupsList.on("click", '[button-type="remove-cache-group"]', (event) => {
-				$(event.currentTarget).closest(".cache-group-item").remove();
+				const parent = $(event.currentTarget).closest(".cache-group-item");
+                const index = parent.data("index");
+                CurrentAgentCacheMessages.splice(index, 1);
+
+				parent.remove();
 
 				validateAgentCacheTab(true);
 				CheckAgentTabHasChanges();
@@ -4335,6 +4271,7 @@ function initAgentTab() {
 						timeout: 6000,
 					});
 					currentElement.val("");
+                    return;
 				}
 
 				const index = currentElement.closest(".cache-group-item").data("index");
