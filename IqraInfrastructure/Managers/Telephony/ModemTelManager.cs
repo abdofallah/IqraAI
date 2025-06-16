@@ -521,7 +521,24 @@ namespace IqraInfrastructure.Managers.Telephony
             {
                 using (var client = CreateConfiguredHttpClient(apiKey))
                 {
-                    var response = await client.GetAsync($"{apiBaseUrl}/api/v1/calls?phone_number_id={phoneNumberId}&status={string.Join(",", status)}&limit={limit}");
+                    var uri = new Uri(apiBaseUrl);
+                    var queryParams = new List<string>();
+
+                    if (!string.IsNullOrEmpty(phoneNumberId))
+                        queryParams.Add($"phoneNumberId={phoneNumberId}");
+
+                    // Add each status as a separate parameter
+                    foreach (var statusValue in status)
+                    {
+                        queryParams.Add($"status={statusValue}");
+                    }
+
+                    queryParams.Add($"limit={limit}");
+
+                    var queryString = string.Join("&", queryParams);
+                    uri = new Uri(uri, $"/api/v1/calls?{queryString}");
+
+                    var response = await client.GetAsync(uri);
 
                     if (!response.IsSuccessStatusCode)
                     {

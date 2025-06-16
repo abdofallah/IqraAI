@@ -1509,13 +1509,63 @@ namespace IqraInfrastructure.Managers.Business
                         {
                             Id = nodeId,
                             Position = position,
-                            ToolType = BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad,
+                            ToolType = BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad
                         };
                         
                         nodes.Add(pressDtmfKeypadNode);
                     }
+                    // Send SMS Tool
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS)
+                    {
+                        var sendSmsNode = new BusinessAppAgentScriptSendSMSToolNode()
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("phoneNumberId", out var phoneNumberIdElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:SEND_SMS_TOOL_PHONE_NUMBER_ID_NOT_FOUND";
+                            result.Message = "Phone number ID not found for send SMS node.";
+                            return result;
+                        }
+
+                        var phoneNumberId = phoneNumberIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(phoneNumberId))
+                        {
+                            result.Code = "ValidateAndCreateNodes:SEND_SMS_TOOL_PHONE_NUMBER_ID_INVALID";
+                            result.Message = "Phone number ID invalid for send SMS node.";
+                            return result;
+                        }
+
+                        var numberExists = await _parentBusinessManager.GetNumberManager().CheckBusinessNumberExistsById(phoneNumberId, businessId);
+                        if (!numberExists)
+                        {
+                            result.Code = "ValidateAndCreateNodes:SEND_SMS_TOOL_PHONE_NUMBER_NOT_FOUND";
+                            result.Message = "Phone number not found for send SMS node.";
+                            return result;
+                        }
+
+                        sendSmsNode.PhoneNumberId = phoneNumberId;
+                        sendSmsNode.Messages = new Dictionary<string, string>();
+
+                        var queryValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                            businessLanguages,
+                            nodeElement,
+                            "messages",
+                            sendSmsNode.Messages
+                        );
+                        if (!queryValidationResult.Success)
+                        {
+                            result.Code = "ValidateAndCreateNodes:" + queryValidationResult.Code;
+                            result.Message = queryValidationResult.Message;
+                            return result;
+                        }
+
+                        nodes.Add(sendSmsNode);
+                    }
                     // Unknown System Tool
-                    else 
+                    else
                     {
                         result.Code = "ValidateAndCreateNodes:28";
                         result.Message = $"Unknown system tool type: {toolType}";

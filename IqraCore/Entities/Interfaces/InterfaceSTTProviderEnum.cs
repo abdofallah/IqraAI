@@ -4,6 +4,6 @@
     {
         Unknown = 0,
         AzureSpeechServices = 1,
-       // DeepgramSTT = 2
+        DeepgramSTT = 2,
     }
 }

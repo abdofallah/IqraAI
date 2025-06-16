@@ -572,11 +572,13 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             switch (type)
             {
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall:
-                    var endCallNode = systemToolNode as BusinessAppAgentScriptEndCallToolNode;
-                    var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
+                    {
+                        var endCallNode = systemToolNode as BusinessAppAgentScriptEndCallToolNode;
+                        var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
 
-                    string originalFormat = $"end_call: \"reason for ending the call\", \"{((!string.IsNullOrEmpty(messageToSpeak)) ? messageToSpeak : "do not speak anything")}\", \"{nodeId}\"";
-                    return originalFormat;
+                        string originalFormat = $"end_call: \"reason for ending the call\", \"{((!string.IsNullOrEmpty(messageToSpeak)) ? messageToSpeak : "null")}\", \"{nodeId}\"";
+                        return originalFormat;
+                    }
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage:
                     return "change_language: \"reason for changing language\", \"true to play all list of languages if customer does not define language and false if customer defines an available language\", \"if customer defines the language that is available in this session/conversation/call\"";
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput:
@@ -589,6 +591,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     return $"transfer_to_human_agent: \"reason for transfering the call\", \"response to speak before agent transfer execution\", \"{nodeId}\"";
                 case BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext:
                     return "add_script_to_context";
+                case BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS:
+                    {
+                        var sendSMSNode = systemToolNode as BusinessAppAgentScriptSendSMSToolNode;
+                        var messageToSend = sendSMSNode.Messages?[currentLanguage] ?? null;
+                        // here it should never be null tho
+                        if (messageToSend == null) throw new Exception("Message to send is null");
+
+                        return $"send_sms: \"reason for sending the message\", \"{messageToSend}\", \"{nodeId}\"";
+                    }
                 default:
                     return type.ToString();
             }

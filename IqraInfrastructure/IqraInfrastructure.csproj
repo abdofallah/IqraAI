@@ -10,7 +10,7 @@
     <PackageReference Include="Anthropic.SDK" Version="5.4.1" />
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
-    <PackageReference Include="Deepgram" Version="6.1.0" />
+    <PackageReference Include="Deepgram" Version="6.2.1" />
     <PackageReference Include="FluentFTP" Version="52.1.0" />
     <PackageReference Include="Google.Cloud.TextToSpeech.V1" Version="3.12.0" />
     <PackageReference Include="Google_GenerativeAI" Version="2.7.0" />

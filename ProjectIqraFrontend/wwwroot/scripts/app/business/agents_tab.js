@@ -25,6 +25,7 @@ const AGENT_SCRIPT_SYSTEM_TOOLS = {
 	TRANSFER_TO_AGENT: 5,
 	TRANSFER_TO_HUMAN: 6,
 	ADD_SCRIPT_TO_CONTEXT: 7,
+	SEND_SMS: 8
 };
 
 const AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
@@ -2021,6 +2022,16 @@ function validateAgentScriptMultilanguageElements() {
 
 				continue;
 			}
+
+			// Check Send SMS Node
+			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+				BusinessFullData.businessData.languages.forEach((language) => {
+					const currentLanguageMessage = config.messages[language];
+					if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
+						areLanguagesIncompleteInConversationTab[language] = true;
+					}
+				});
+			}
 		}
 	}
 
@@ -2195,6 +2206,19 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 
 					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
 						if (oldNode.scriptId !== pushNewNode.config.scriptId) {
+							hasChanges = true;
+							if (!compileConversationChanges) break;
+						}
+					}
+				}
+
+				// Send SMS Tool
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+					pushNewNode.config.phoneNumberId = newScriptNodeData.config.phoneNumberId;
+					pushNewNode.config.messages = newScriptNodeData.config.messages;
+
+					if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
+						if (oldNode.phoneNumberId !== pushNewNode.config.phoneNumberId || JSON.stringify(oldNode.messages) !== JSON.stringify(pushNewNode.config.messages)) {
 							hasChanges = true;
 							if (!compileConversationChanges) break;
 						}
@@ -2480,6 +2504,11 @@ function fillAgentSriptManagerTab() {
 			// ADD SCRIPT TO CONTEXT DATA
 			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT) {
 				nodeBase.data.config.scriptId = node.scriptId;
+			}
+			// SEND SMS DATA
+			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+                nodeBase.data.config.phoneNumberId = node.phoneNumberId;
+				nodeBase.data.config.messages = node.messages;
 			}
 		}
 		// Custom Tool Data
@@ -2967,6 +2996,7 @@ function registerAgentScriptNodes() {
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT ? "selected" : ""}>Transfer to Agent</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN ? "selected" : ""}>Transfer to Human</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ? "selected" : ""}>Add Script to Context</option>
+                                <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS ? "selected" : ""}>Send SMS</option>
                             </select>
                         </div>
                     </div>
@@ -3559,6 +3589,25 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
             `;
 	}
 
+	// send sms
+    if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+		return `
+                <div class="tool-config-group">
+                    <label class="form-label">Send SMS Configuration</label>
+					<span>// TODO phone number id select </span>
+                    <div class="mb-2">
+                        <label class="form-label small">Message</label>
+                        <textarea 
+                            class="form-control" 
+                            data-input="send-sms-message"
+                            placeholder="Enter send sms message..."
+                            rows="2"
+                        >${config.messages?.[currentLanguage] || ""}</textarea>
+                    </div>
+                </div>
+            `;
+    }
+
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 		return `
                 <div class="tool-config-group">
@@ -3802,10 +3851,13 @@ function updateSystemToolConfig(newConfig) {
 function doesScriptSystemToolRequireConfig(toolType) {
 	return (
 		toolType &&
-		(toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL ||
+		(
+			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT ||
-			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT)
+			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ||
+			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS
+		)
 	);
 }
 
@@ -4968,6 +5020,11 @@ function initAgentTab() {
 						newData.config = {
 							type: AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE.IMMEDIATE,
 						};
+					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+						newData.config = {
+							phoneNumberId: null,
+							messages: {}
+						}
 					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 						newData.config = {
 							timeout: 5000,
@@ -5063,6 +5120,25 @@ function initAgentTab() {
 					const messages = config.messages;
 
 					$(`#nodeConfigOffcanvas [data-input="end-call-message"]`).val(messages[currentLanguage]);
+				});
+
+				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
+					const currentLanguage = language.id;
+
+					if (!CurrentCanvasConfigCell || !nodeConfigOffcanvas._element.classList.contains("show")) {
+						return;
+					}
+
+					const nodeData = CurrentCanvasConfigCell.getData() || {};
+
+					if (nodeData.type !== AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && nodeData.toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+						return;
+					}
+
+					const config = nodeData.config;
+					const messages = config.messages;
+
+					$(`#nodeConfigOffcanvas [data-input="send-sms-message"]`).val(messages[currentLanguage]);
 				});
 
 				// Get DTMF Keypad Input Node
