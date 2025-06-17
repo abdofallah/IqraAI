@@ -26,12 +26,12 @@ namespace IqraCore.Entities.Telephony.ModemTel
         public string Status { get; set; }
 
         [JsonPropertyName("createdAt")]
-        public DateTime CreatedAt { get; set; }
+        public string? CreatedAt { get; set; }
 
         [JsonPropertyName("sentAt")]
-        public DateTime? SentAt { get; set; }
+        public string? SentAt { get; set; }
 
         [JsonPropertyName("deliveredAt")]
-        public DateTime? DeliveredAt { get; set; }
+        public string? DeliveredAt { get; set; }
     }
 }

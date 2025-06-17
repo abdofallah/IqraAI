@@ -126,6 +126,47 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             return result;
         }
 
+        // Get Send SMS Tool Node Details
+        public FunctionReturnResult<BusinessAppAgentScriptSendSMSToolNode> GetSendSMSToolNodeDetails(string nodeId)
+        {
+            var result = new FunctionReturnResult<BusinessAppAgentScriptSendSMSToolNode>();
+            if (!IsScriptActive || _curentAgentActiveScript?.Nodes == null)
+            {
+                result.Code = "GetSendSMSToolNode:1";
+                result.Message = "Script is not active or loaded.";
+                _logger.LogWarning(result.Message);
+                return result;
+            }
+
+            _logger.LogDebug("Searching for Send SMS node with ID: {NodeId}", nodeId);
+            var nodeData = _curentAgentActiveScript.Nodes.FirstOrDefault(n => n.Id == nodeId);
+
+            if (nodeData == null)
+            {
+                result.Code = "GetSendSMSToolNode:2";
+                result.Message = $"Node with id {nodeId} not found in active script.";
+                _logger.LogWarning(result.Message);
+                return result;
+            }
+
+            if (nodeData.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ||
+                !(nodeData is BusinessAppAgentScriptSystemToolNode systemToolNode) ||
+                systemToolNode.ToolType != BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS ||
+                !(systemToolNode is BusinessAppAgentScriptSendSMSToolNode smsNode))
+            {
+                result.Code = "GetSendSMSToolNode:3";
+                result.Message = $"Node {nodeId} is not a valid 'SendSMS' system tool node. Actual type: {nodeData.NodeType}";
+                _logger.LogWarning(result.Message);
+                return result;
+            }
+
+            _logger.LogDebug("Found Send SMS node {NodeId}. Extracting configuration.", nodeId);
+
+            result.Data = smsNode;
+            result.Success = true;
+            return result;
+        }
+
         // Get Custom Tool Node Details (resolves Node ID to Tool Definition)
         public FunctionReturnResult<BusinessAppTool> GetCustomToolNodeDetails(string nodeId)
         {

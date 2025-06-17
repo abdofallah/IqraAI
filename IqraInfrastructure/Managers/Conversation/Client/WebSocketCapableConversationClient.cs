@@ -11,8 +11,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         protected Task? _receiveLoopTask;
         protected readonly int _receiveBufferSize = 8192;
 
-        protected WebSocketCapableConversationClient(string clientId, string phoneNumber, string telephonyProviderPhoneNumberId, ILogger logger)
-            : base(clientId, phoneNumber, telephonyProviderPhoneNumberId,  logger)
+        protected WebSocketCapableConversationClient(string clientId, string phoneNumber, string telephonyProviderPhoneNumberId, string customerPhoneNumber, ILogger logger)
+            : base(clientId, phoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, logger)
         {
         }
 

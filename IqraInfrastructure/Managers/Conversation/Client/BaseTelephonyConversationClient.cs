@@ -10,7 +10,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
     public abstract class BaseTelephonyConversationClient : IConversationClient
     {
         protected readonly string _clientId;
-        protected readonly string _clientPhoneNumber;
+        protected readonly string _clientTelephonyPhoneNumber;
+        protected readonly string _customerPhoneNumber;
         protected readonly ILogger _logger;
         protected bool _isConnected;
         protected bool _hasDiconnected;
@@ -21,7 +22,8 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public string ClientId => _clientId;
         public bool IsConnected => _isConnected;
         public bool HasDisconnected => _hasDiconnected;
-        public string ClientPhoneNumber => _clientPhoneNumber;
+        public string ClientPhoneNumber => _clientTelephonyPhoneNumber;
+        public string CustomerPhoneNumber => _customerPhoneNumber;
         public ConversationClientType ClientType => ConversationClientType.Telephony;
         public TelephonyProviderEnum ClientTelephonyType => _clientTelephonyProviderType;
         public string ClientTelephonyProviderPhoneNumberId => _clientTelephonyProviderPhoneNumberId;
@@ -31,11 +33,12 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         public event EventHandler<ConversationClientDisconnectedEventArgs>? Disconnected;
         public event EventHandler<ConversationDTMFReceivedEventArgs>? DTMFReceived;
 
-        protected BaseTelephonyConversationClient(string clientId, string phoneNumber, string telephonyProviderPhoneNumberId, ILogger logger)
+        protected BaseTelephonyConversationClient(string clientId, string telephonyPhoneNumber, string telephonyProviderPhoneNumberId, string customerPhoneNumber, ILogger logger)
         {
             _clientId = clientId;
-            _clientPhoneNumber = phoneNumber;
+            _clientTelephonyPhoneNumber = telephonyPhoneNumber;
             _clientTelephonyProviderPhoneNumberId = telephonyProviderPhoneNumberId;
+            _customerPhoneNumber = customerPhoneNumber;
             _logger = logger;
             _isConnected = false;
             _hasDiconnected = false;

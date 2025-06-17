@@ -109,6 +109,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 agentObject["ScriptAgents"] = CreateAgentScriptAgentsObject(openingAgentScriptNodesData.agents, languageCode);
                 agentObject["ScriptAddableScripts"] = CreateAgentScriptAddableScriptsObject(openingAgentScriptNodesData.scripts, languageCode);
                 agentObject["HasDTMFRequestTool"] = openingAgentScriptNodesData.hasDTMFRequestTool;
+                agentObject["HasSendSMSTool"] = openingAgentScriptNodesData.hasSendSMSTool;
                 modelObject["Agent"] = agentObject;
                 
                 // Add Context (company) data
@@ -595,10 +596,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     {
                         var sendSMSNode = systemToolNode as BusinessAppAgentScriptSendSMSToolNode;
                         var messageToSend = sendSMSNode.Messages?[currentLanguage] ?? null;
-                        // here it should never be null tho
-                        if (messageToSend == null) throw new Exception("Message to send is null");
+                        if (messageToSend == null) throw new Exception("Message to send is null"); // here it should never be null tho
 
-                        return $"send_sms: \"reason for sending the message\", \"{messageToSend}\", \"{nodeId}\"";
+                        return $"send_sms: \"reason for sending the message\", \"{messageToSend}\", \"phone number in E.164 format '+[country code][phone number]' or 'current_caller' if sending to the current caller without knowing their number\" \"{nodeId}\"";
                     }
                 default:
                     return type.ToString();
@@ -989,9 +989,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
 
         #region Helper Methods
 
-        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
+        private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
         {
-            var (tools, agents, scripts, hasDTMFRequestTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false);
+            var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false, false);
 
             foreach (var node in currentScriptToCheck.Nodes)
             {
@@ -1053,11 +1053,15 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                         {
                             hasDTMFRequestTool = true;
                         }
+                        else if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS)
+                        {
+                            hasSendSMSTool = true;
+                        }
                     }
                 }
             }
 
-            return (tools, agents, scripts, hasDTMFRequestTool);
+            return (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool);
         }
 
         private string GetLocalizedString(Dictionary<string, string> dictionary, string languageCode, string defaultValue)

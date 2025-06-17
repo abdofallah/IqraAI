@@ -337,7 +337,8 @@ namespace IqraInfrastructure.Managers.Telephony
                     var jsonContent = JsonSerializer.Serialize(messageRequest, _jsonOptions);
                     var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                    var response = await client.PostAsync($"{apiBaseUrl}/api/v1/messages", httpContent);
+                    var uri = new Uri(new Uri(apiBaseUrl), "/api/v1/messages");
+                    var response = await client.PostAsync(uri, httpContent);
 
                     if (!response.IsSuccessStatusCode)
                     {
@@ -349,7 +350,6 @@ namespace IqraInfrastructure.Managers.Telephony
 
                     var content = await response.Content.ReadAsStringAsync();
                     var apiResponse = JsonSerializer.Deserialize<ModemTelResponse<ModemTelMessage>>(content, _jsonOptions);
-
                     if (apiResponse?.Data == null)
                     {
                         result.Code = "SendSms:2";

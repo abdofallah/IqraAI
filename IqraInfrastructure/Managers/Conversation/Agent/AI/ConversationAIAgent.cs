@@ -7,13 +7,14 @@ using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
-using System.Threading;
 
 namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 {
@@ -45,6 +46,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private readonly ConversationAIAgentInterruptionManager _interruptionManager;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly CustomToolExecutionHelper _customToolHelper;
+        private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
@@ -77,7 +79,10 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             TTSProviderManager ttsProviderManager,
             LLMProviderManager llmProviderManager,
             LanguagesManager languagesManager,
-            BusinessAgentAudioRepository audioRepository
+            BusinessAgentAudioRepository audioRepository,
+            IntegrationsManager integrationManager,
+            ModemTelManager modemTelManager,
+            TwilioManager twilioManager
         )
         {
             _loggerFactory = loggerFactory;
@@ -102,12 +107,13 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             // Instantiate Helper Modules
             _scriptAccessor = new ScriptExecutionManager(loggerFactory.CreateLogger<ScriptExecutionManager>()); // Now primarily data access
             _customToolHelper = new CustomToolExecutionHelper(loggerFactory); // New helper for tool execution
+            _sendSMSToolExecutionHelper = new SendSMSToolExecutionHelper(loggerFactory, integrationManager, modemTelManager, twilioManager);
 
             // Instantiate Core Modules
             _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
-            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager);
+            _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             _interruptionManager = new ConversationAIAgentInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _audioOutputHandler, _llmHandler);

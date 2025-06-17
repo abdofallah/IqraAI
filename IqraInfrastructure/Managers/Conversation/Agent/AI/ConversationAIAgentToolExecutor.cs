@@ -1,5 +1,7 @@
 ﻿using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Conversation.Client;
 using Microsoft.Extensions.Logging;
+using PhoneNumbers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -20,27 +22,34 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public event Func<Task>? InitiateLanguageSelectionRequested;
 
         private readonly ILogger<ConversationAIAgentToolExecutor> _logger;
+        private readonly ConversationSession _conversationSession;
         private readonly ConversationAIAgentState _agentState;
         private readonly ScriptExecutionManager _scriptAccessor;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
+        private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
 
         // Static Regex for basic DTMF validation (0-9, *, #, A-D, W - W for pause if needed)
         private static readonly Regex ValidDtmfCharsRegex = new Regex("^[0-9*#A-DW]+$", RegexOptions.Compiled);
 
         public ConversationAIAgentToolExecutor(
             ILoggerFactory loggerFactory,
+            ConversationSession conversationSession,
             ConversationAIAgentState agentState,
             ScriptExecutionManager scriptAccessor,
             CustomToolExecutionHelper customToolHelper,
-            ConversationAIAgentDTMFSessionManager dtmfSessionManager
+            ConversationAIAgentDTMFSessionManager dtmfSessionManager,
+            SendSMSToolExecutionHelper sendSMSToolExecutionHelper
         )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentToolExecutor>();
+
+            _conversationSession = conversationSession;
             _agentState = agentState;
             _scriptAccessor = scriptAccessor;
             _customToolHelper = customToolHelper;
             _dtmfSessionManager = dtmfSessionManager;
+            _sendSMSToolExecutionHelper = sendSMSToolExecutionHelper;
         }
 
         public async Task InitializeAsync()
@@ -60,6 +69,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             // Initialize the helper (it needs business app data)
             _customToolHelper.Initialize(_agentState.BusinessApp, _agentState.CurrentLanguageCode);
+            _sendSMSToolExecutionHelper.Initalize(_agentState.BusinessApp);
         }
 
         public async Task ReInitializeForLanguageAsync()
@@ -389,6 +399,66 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 else if (toolName.Equals("acknowledge", StringComparison.OrdinalIgnoreCase))
                 {
                     // No action needed, internal ack.
+                }
+                else if (toolName.Equals("send_sms", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (arguments.Count != 4)
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: Send SMS requires 4 arguments but you provided {arguments.Count}. Format: send_sms: string <reason for sending>, string <message to send>, string <to number or current_caller>, string <node id>");
+                        return;
+                    }
+
+                    string? reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : null;
+                    string? message = arguments.Count > 1 ? UnescapeArgument(arguments[1]) : null;
+
+                    if (string.IsNullOrEmpty(message))
+                    {
+                        await ToolResultAvailable?.Invoke("Error: Send SMS requires a message.");
+                        return;
+                    }
+
+                    string? toNumber = arguments.Count > 2 ? UnescapeArgument(arguments[2]) : null;
+                    if (string.IsNullOrEmpty(toNumber))
+                    {
+                        await ToolResultAvailable?.Invoke("Error: Send SMS requires a to number which can either be in format E.164 (+[country code][phone number]) or if current calling number, then use 'current_caller'.");
+                        return;
+                    }
+
+                    if (toNumber == "current_caller")
+                    {
+                        if (_conversationSession.PrimaryClient is BaseTelephonyConversationClient telephonyClient)
+                        {
+                            toNumber = telephonyClient.CustomerPhoneNumber;
+                        }
+                        else
+                        {
+                            await ToolResultAvailable?.Invoke("Error: The primary client is not a telephony client so unable to figure out their phone number to send the sms to.");
+                            return;
+                        }
+                    }
+
+                    string? nodeId = arguments.Count > 3 ? UnescapeArgument(arguments[3]) : null;
+                    if (string.IsNullOrEmpty(nodeId))
+                    {
+                        await ToolResultAvailable?.Invoke("Error: Send SMS requires a node ID.");
+                        return;
+                    }
+
+                    var sendSmsNodeDetails = _scriptAccessor.GetSendSMSToolNodeDetails(nodeId);
+                    if (!sendSmsNodeDetails.Success)
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: {sendSmsNodeDetails.Message}.");
+                        return;
+                    }
+
+                    var sendSmsResult = await _sendSMSToolExecutionHelper.SendMessageAsync(sendSmsNodeDetails.Data, message, toNumber, cancellationToken);
+                    if (!sendSmsResult.Success)
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: {sendSmsResult.Message}.");
+                        return;
+                    }
+
+                    await ToolResultAvailable?.Invoke("Success: Successfully sent SMS.");
                 }
                 else
                 {

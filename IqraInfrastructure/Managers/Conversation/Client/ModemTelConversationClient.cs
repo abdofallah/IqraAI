@@ -16,17 +16,17 @@ namespace IqraInfrastructure.Managers.Conversation.Client
         private readonly string _apiBaseUrl;
         private bool _callAnsweredByProviderApi = false;
 
-
         public ModemTelConversationClient(
             string clientId,
-            string clientPhoneNumber,
+            string telephonyPhoneNumber,    
             string telephonyProviderPhoneNumberId,
+            string customerPhoneNumber,
             string? providerCallId,
             string apiBaseUrl,
             string apiKey,
             ModemTelManager modemTelManager,
             ILogger<ModemTelConversationClient> logger
-        ) : base(clientId, clientPhoneNumber, telephonyProviderPhoneNumberId, logger)
+        ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, logger)
         {
             _providerCallId = providerCallId;
             _apiBaseUrl = apiBaseUrl;

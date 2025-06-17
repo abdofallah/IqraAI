@@ -2574,6 +2574,8 @@ function fillAgentSriptManagerTab() {
 
 			if (sourceNodeCell.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
 				const systemToolType = sourceNodeCell.data.toolType;
+
+				// GET DTMF INPUT NODE
 				if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 					if (sourceNodePortId === "timeout") {
 						baseNodePort.attrs = {
@@ -2596,6 +2598,29 @@ function fillAgentSriptManagerTab() {
 								text: currentOutcomeValue,
 							},
 						};
+					}
+				}
+				// SEND SMS NODE
+				else if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+					if (sourceNodePortId === "error") {
+						baseNodePort.attrs = {
+							circle: {
+								fill: "#ffc107",
+							},
+							text: {
+								text: "Error",
+							},
+						};
+					}
+					else if (sourceNodePortId === "success") {
+						baseNodePort.attrs = {
+                            circle: {
+                                fill: "#fff",
+                            },
+                            text: {
+                                text: "Success",
+							},
+                        };
 					}
 				}
 			}
@@ -2662,7 +2687,38 @@ function fillAgentSriptManagerTab() {
 						});
 					}
 				});
-			} else if (toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN) {
+			}
+			else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+				const hasErrorPort = currentPorts.some((port) => port.id === "error");
+				if (!hasErrorPort) {
+                    currentNodeCell.addPort({
+                        id: "error",
+                        group: "output",
+                        attrs: {
+                            circle: {
+                                fill: "#ffc107",
+                            },
+                            text: {
+                                text: "Error",
+                            },
+                        },
+                    });
+				}
+
+				const hasSuccessPort = currentPorts.some((port) => port.id === "success");
+				if (!hasSuccessPort) {
+					currentNodeCell.addPort({
+                        id: "success",
+                        group: "output",
+                        attrs: {
+                            text: {
+                                text: "Success",
+                            },
+                        },
+                    });
+				}
+			}
+			else if (toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN) {
 				const hasOutputPort = currentPorts.some((port) => port.group === "output");
 				if (!hasOutputPort) {
 					currentNodeCell.addPort({ group: "output" });
@@ -3590,11 +3646,24 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
 	}
 
 	// send sms
-    if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+		const phoneNumbers = BusinessFullData.businessApp.numbers || [];
+		const numberOptions = phoneNumbers
+			.map((number) => {
+				const numberName = `${number.countryCode}-${number.number}`;
+				return `<option value="${number.id}" ${config.phoneNumberId === number.id ? "selected" : ""}>${numberName}</option>`;
+			})
+			.join("");
+
 		return `
                 <div class="tool-config-group">
                     <label class="form-label">Send SMS Configuration</label>
-					<span>// TODO phone number id select </span>
+					<div class="mb-2">
+                        <select class="form-select" data-input="send-sms-number">
+                            <option value="">Select Number</option>
+                            ${numberOptions}
+                        </select>
+                    </div>
                     <div class="mb-2">
                         <label class="form-label small">Message</label>
                         <textarea 
@@ -3825,6 +3894,37 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 						position: "bottom",
 					},
 				},
+			});
+			break;
+		}
+
+		case AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS: {
+			cell.addPort({
+				group: "output",
+				id: "error",
+				attrs: {
+					circle: {
+						fill: "#ffc107",
+					},
+					text: {
+						text: "Error",
+					},
+					label: {
+						position: "bottom",
+					},
+				},
+			});
+			cell.addPort({
+				group: "output",
+				id: "success",
+				attrs: {
+					text: {
+                        text: "Success",
+					},
+					label: {
+						position: "bottom",
+					}
+				}
 			});
 			break;
 		}
@@ -5121,7 +5221,22 @@ function initAgentTab() {
 
 					$(`#nodeConfigOffcanvas [data-input="end-call-message"]`).val(messages[currentLanguage]);
 				});
+				$("#nodeConfigOffcanvas").on("change", '[data-input="send-sms-number"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
+					const config = data.config;
 
+                    updateSystemToolConfig({ ...config, phoneNumberId: e.target.value });
+				});
+				$("#nodeConfigOffcanvas").on("input", '[data-input="send-sms-message"]', (e) => {
+					const data = CurrentCanvasConfigCell.getData();
+					const config = data.config;
+					const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
+
+					const messages = config.messages;
+					messages[currentLanguage] = e.target.value;
+
+					updateSystemToolConfig({ ...config, messages });
+				});
 				agentsScriptManagerLanguageDropdown.onLanguageChange((language) => {
 					const currentLanguage = language.id;
 

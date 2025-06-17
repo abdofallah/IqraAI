@@ -31,6 +31,7 @@ using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PhoneNumbers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 
@@ -556,12 +557,14 @@ namespace IqraInfrastructure.Managers.Call
             string clientId;
             string numberId;
             string? callId;
+            string customerNumber;
             if (queueData.Type == CallQueueTypeEnum.Inbound)
             {
                 var inboundCallQueueData = queueData as InboundCallQueueData;
                 clientId = $"{inboundCallQueueData.RouteNumberId}";
                 numberId = inboundCallQueueData.RouteNumberId;
                 callId = inboundCallQueueData.ProviderCallId;
+                customerNumber = inboundCallQueueData.CallerNumber;
             }
             else if (queueData.Type == CallQueueTypeEnum.Outbound)
             {
@@ -569,6 +572,7 @@ namespace IqraInfrastructure.Managers.Call
                 clientId = $"{outboundCallQeueData.CallingNumberId}";
                 numberId = outboundCallQeueData.CallingNumberId;
                 callId = null;
+                customerNumber = outboundCallQeueData.RecipientNumber;
             }
             else
             {
@@ -591,7 +595,7 @@ namespace IqraInfrastructure.Managers.Call
                 return result;
             }
 
-            string phoneNumberData = businessNumberData.CountryCode + businessNumberData.Number; // todo this is alphabet country code not number
+            string phoneNumberData = $"+{PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(businessNumberData.CountryCode)}{businessNumberData.Number}";
 
             switch (businessNumberData.Provider)
             {
@@ -601,6 +605,7 @@ namespace IqraInfrastructure.Managers.Call
                             clientId,
                             phoneNumberData,
                             ((BusinessNumberModemTelData)businessNumberData).ModemTelPhoneNumberId,
+                            customerNumber,
                             callId,
                             integrationData.Data.Fields["endpoint"],
                             _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
@@ -615,6 +620,7 @@ namespace IqraInfrastructure.Managers.Call
                             clientId,
                             phoneNumberData,
                             ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
+                            customerNumber,
                             callId,
                             integrationData.Data.Fields["accountsid"],
                             _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
@@ -646,7 +652,10 @@ namespace IqraInfrastructure.Managers.Call
                     _serviceProvider.GetRequiredService<TTSProviderManager>(),
                     _serviceProvider.GetRequiredService<LLMProviderManager>(),
                     _serviceProvider.GetRequiredService<LanguagesManager>(),
-                    _serviceProvider.GetRequiredService<BusinessAgentAudioRepository>()
+                    _serviceProvider.GetRequiredService<BusinessAgentAudioRepository>(),
+                    _serviceProvider.GetRequiredService<IntegrationsManager>(),
+                    _serviceProvider.GetRequiredService<ModemTelManager>(),
+                    _serviceProvider.GetRequiredService<TwilioManager>()
                 );
 
                 return result.SetSuccessResult(AIAgent);

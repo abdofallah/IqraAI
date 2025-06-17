@@ -19,14 +19,15 @@ namespace IqraInfrastructure.Managers.Conversation.Client
 
         public TwilioConversationClient(
             string clientId,
-            string clientPhoneNumber,
+            string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
+            string customerPhoneNumber,
             string? providerCallSid,
             string accountSid,
             string authToken,
             TwilioManager twilioManager,
             ILogger<TwilioConversationClient> logger
-        ) : base(clientId, clientPhoneNumber, telephonyProviderPhoneNumberId, logger)
+        ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, logger)
         {
             _providerCallSid = providerCallSid;
             _accountSid = accountSid;

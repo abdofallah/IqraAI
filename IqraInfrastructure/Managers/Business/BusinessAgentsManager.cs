@@ -1551,7 +1551,7 @@ namespace IqraInfrastructure.Managers.Business
 
                         var queryValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
                             businessLanguages,
-                            nodeElement,
+                            toolConfigElement,
                             "messages",
                             sendSmsNode.Messages
                         );
