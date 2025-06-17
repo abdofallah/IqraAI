@@ -140,7 +140,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _llmHandler.TextRecievedForLLMToProcess += (text, clientId) => ClientTextQuery?.Invoke(clientId, new ConversationTextReceivedEventArgs(text, _agentState.AgentId, true));
 
             _llmHandler.ResponseHandlingComplete += OnLLMResponseHandlingComplete; // May not be needed if SpeechPlaybackComplete is used
-            _llmHandler.SystemToolExecutionRequested += (content) => _toolExecutor.HandleSystemToolAsync(content, _conversationCTS.Token); // Use agent token
+            _llmHandler.SystemToolExecutionRequested += (content) => _toolExecutor.HandleSystemToolAsync(content, _conversationCTS.Token, _agentState.CurrentClientId); // Use agent token
             _llmHandler.CustomToolExecutionRequested += (content) => _toolExecutor.HandleCustomToolAsync(content, _conversationCTS.Token); // Use agent token
 
             // Tool Executor -> LLM / Audio / Orchestrator
@@ -552,7 +552,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return;
             }
             // --- Handle Regular DTMF Tool Results ---
-            else if (args.NodeId != "internal::language_selection")
+            else
             {
                 // Package the result and send it back to the LLM as a system message
                 string resultMessage;
@@ -560,14 +560,44 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 {
                     case DTMFSessionEndReason.CompletedTerminator:
                     case DTMFSessionEndReason.CompletedMaxLength:
-                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input received successfully: '{args.CollectedDigits}'";
-                        break;
+                        {
+                            var result = $"User entered: {args.CollectedDigits}";
+                            bool isEncrypted = _dtmfSessionManager.ActiveSessionConfig?.IsEncrypted ?? false;
+                            if (isEncrypted)
+                            {
+                                result = $"User entered value which is saved encrypted in variable name: {_dtmfSessionManager.ActiveSessionConfig?.SaveEncryptedToVariable}";
+                                // TODO SAVE IN VARIABLE
+                            }
+
+                            resultMessage = $"Tool result for '{args.NodeId}': DTMF input received successfully: {result}";
+                            break;
+                        }
                     case DTMFSessionEndReason.TimeoutInterDigit:
-                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Timed out waiting between digits. Received: '{args.CollectedDigits}'";
-                        break;
+                        {
+                            var result = $"User entered: {args.CollectedDigits}";
+                            bool isEncrypted = _dtmfSessionManager.ActiveSessionConfig?.IsEncrypted ?? false;
+                            if (isEncrypted)
+                            {
+                                result = $"User entered value which is saved encrypted in variable name: {_dtmfSessionManager.ActiveSessionConfig?.SaveEncryptedToVariable}";
+                                // TODO SAVE IN VARIABLE
+                            }
+
+                            resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Timed out waiting between digits. {result}";
+                            break;
+                        }
                     case DTMFSessionEndReason.TimeoutMaxDuration:
-                        resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Maximum session duration reached. Received: '{args.CollectedDigits}'";
-                        break;
+                        {
+                            var result = $"User entered: {args.CollectedDigits}";
+                            bool isEncrypted = _dtmfSessionManager.ActiveSessionConfig?.IsEncrypted ?? false;
+                            if (isEncrypted)
+                            {
+                                result = $"User entered value which is saved encrypted in variable name: {_dtmfSessionManager.ActiveSessionConfig?.SaveEncryptedToVariable}";
+                                // TODO SAVE IN VARIABLE
+                            }
+
+                            resultMessage = $"Tool result for '{args.NodeId}': DTMF input failed. Maximum session duration reached. {result}";
+                            break;
+                        }
                     case DTMFSessionEndReason.Cancelled:
                         resultMessage = $"Tool result for '{args.NodeId}': DTMF input session was cancelled.";
                         break;
@@ -577,7 +607,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                         break;
                 }
                 _logger.LogDebug("Agent {AgentId}: Sending DTMF result to LLM: {ResultMessage}", _agentState.AgentId, resultMessage);
-                await _llmHandler.ProcessSystemMessageAsync(resultMessage, "System", CancellationToken.None); // Use CancellationToken.None? Or master token?
+                await _llmHandler.ProcessSystemMessageAsync(resultMessage, args.ClientId, CancellationToken.None); // Use CancellationToken.None? Or master token?
             }
         }
 

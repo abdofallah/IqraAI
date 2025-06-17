@@ -119,7 +119,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 MaxSessionDurationSeconds = 10, //dtmfNode.MaxTimeSeconds, // todo make configurable
                 InterDigitTimeoutSeconds = dtmfNode.Timeout,
                 TerminatorChar = dtmfNode.RequireEndHash == true ? '#' : null,
-                StartChar = dtmfNode.RequireStartAsterisk ? '*' : null
+                StartChar = dtmfNode.RequireStartAsterisk ? '*' : null,
+                IsEncrypted = dtmfNode.EncryptInput,
+                SaveEncryptedToVariable = dtmfNode.EncryptInput ? dtmfNode.VariableName : null
             };
 
             result.Success = true;

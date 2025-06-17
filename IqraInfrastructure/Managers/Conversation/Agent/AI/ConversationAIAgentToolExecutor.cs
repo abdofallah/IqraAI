@@ -77,7 +77,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             await InitializeAsync();
         }
 
-        public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken)
+        public async Task HandleSystemToolAsync(string functionContent, CancellationToken cancellationToken, string? clientId = null)
         {
             try
             {
@@ -235,7 +235,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                     else
                     {
                         var dtmfConfig = dtmfNodeResult.Data;
-                        bool started = _dtmfSessionManager.StartSession(dtmfConfig);
+                        bool started = _dtmfSessionManager.StartSession(dtmfConfig, clientId);
                         if (!started)
                         {
                             _logger.LogWarning("Agent {AgentId}: Failed to start DTMF session for node {NodeId} (already active?).", _agentState.AgentId, nodeId);

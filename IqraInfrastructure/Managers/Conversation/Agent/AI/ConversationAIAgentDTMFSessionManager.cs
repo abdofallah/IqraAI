@@ -11,6 +11,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public char? TerminatorChar { get; set; } = null;
         public char? StartChar { get; set; } = null;
         public string AssociatedNodeId { get; set; } = string.Empty;
+        public bool IsEncrypted { get; set; } = false;
+        public string? SaveEncryptedToVariable { get; set; } = null;
     }
 
     // Event Args
@@ -19,12 +21,14 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         public string NodeId { get; }
         public string CollectedDigits { get; }
         public DTMFSessionEndReason Reason { get; }
+        public string? ClientId { get; }
 
-        public DTMFSessionEventArgs(string nodeId, string digits, DTMFSessionEndReason reason)
+        public DTMFSessionEventArgs(string nodeId, string digits, DTMFSessionEndReason reason, string? clientId)
         {
             NodeId = nodeId;
             CollectedDigits = digits;
             Reason = reason;
+            ClientId = clientId;
         }
     }
 
@@ -50,6 +54,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
         private bool _waitingForStartChar = false;
         private bool _disposed = false;
 
+        private string? _sessionStartedByClientId;
+
         private Timer? _maxDurationTimer;
         private Timer? _interDigitTimer;
 
@@ -62,10 +68,11 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
             _agentState = agentState;
         }
 
+        public DTMFSessionConfig? ActiveSessionConfig => _activeSessionConfig;
         public bool IsSessionActive => _isSessionActive;
         public string? ActiveSessionNodeId => _activeSessionConfig?.AssociatedNodeId;
 
-        public bool StartSession(DTMFSessionConfig config)
+        public bool StartSession(DTMFSessionConfig config, string? clientId = null)
         {
             if (_isSessionActive)
             {
@@ -74,7 +81,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 return false;
             }
 
-            
+            _sessionStartedByClientId = clientId;
             _activeSessionConfig = config;
             _digitBuffer.Clear();
             _isSessionActive = true;
@@ -201,7 +208,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
             try
             {
-                SessionEnded?.Invoke(this, new DTMFSessionEventArgs(nodeId, collectedDigits, reason));
+                SessionEnded?.Invoke(this, new DTMFSessionEventArgs(nodeId, collectedDigits, reason, _sessionStartedByClientId));
             }
             catch (Exception ex)
             {
