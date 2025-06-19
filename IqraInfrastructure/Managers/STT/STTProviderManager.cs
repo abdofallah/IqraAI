@@ -481,32 +481,72 @@ namespace IqraInfrastructure.Managers.STT
                 switch (sttProviderData.Data.Id)
                 {
                     case InterfaceSTTProviderEnum.AzureSpeechServices:
-                        string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
-                        string resourceRegion = integrationData.Fields["resource_region"];
-                        string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
-                        string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
-                        string speakerDiarizationString = (string)agentIntegrationData.FieldValues["speaker_diarization"];
-                        string? phrasesListString = (string?)agentIntegrationData.FieldValues["phrases_list"];
-                        int silenceTimeout = (int)agentIntegrationData.FieldValues["silence_timeout"];
-
-                        List<string> continousLanguageIdentificationIds = new List<string>();
-                        if (!string.IsNullOrEmpty(continousLanguageIdentificationIdsString))
                         {
-                            continousLanguageIdentificationIds.AddRange(continousLanguageIdentificationIdsString.Split(','));
+                            string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
+                            string resourceRegion = integrationData.Fields["resource_region"];
+                            string languageId = (string)agentIntegrationData.FieldValues["langauge_id"];
+                            string? continousLanguageIdentificationIdsString = (string?)agentIntegrationData.FieldValues["continous_language_identification_ids"];
+                            string speakerDiarizationString = (string)agentIntegrationData.FieldValues["speaker_diarization"];
+                            string? phrasesListString = (string?)agentIntegrationData.FieldValues["phrases_list"];
+                            int silenceTimeout = (int)agentIntegrationData.FieldValues["silence_timeout"];
+
+                            List<string> continousLanguageIdentificationIds = new List<string>();
+                            if (!string.IsNullOrEmpty(continousLanguageIdentificationIdsString))
+                            {
+                                continousLanguageIdentificationIds.AddRange(continousLanguageIdentificationIdsString.Split(','));
+                            }
+
+                            bool speakerDiarization = (speakerDiarizationString == "on");
+
+                            List<string> phrasesList = new List<string>();
+                            if (!string.IsNullOrEmpty(phrasesListString))
+                            {
+                                phrasesList.AddRange(phrasesListString.Split(','));
+                            }
+
+                            var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, sampleRate);
+                            return result.SetSuccessResult(
+                                azureSTTService
+                            );
                         }
 
-                        bool speakerDiarization = (speakerDiarizationString == "on");
-
-                        List<string> phrasesList = new List<string>();
-                        if (!string.IsNullOrEmpty(phrasesListString))
+                    case InterfaceSTTProviderEnum.DeepgramSTT:
                         {
-                            phrasesList.AddRange(phrasesListString.Split(','));
-                        }
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
-                        var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, sampleRate);
-                        return result.SetSuccessResult(
-                            azureSTTService
-                        );
+                            string language = (string)agentIntegrationData.FieldValues["language"];
+                            string model = (string)agentIntegrationData.FieldValues["model"];
+                            string speakerDiarizationStringDg = (string)agentIntegrationData.FieldValues["speaker_diarization"];
+                            string? keywordsListString = (string?)agentIntegrationData.FieldValues["keywords_list"];
+                            int silenceTimeoutDg = Convert.ToInt32(agentIntegrationData.FieldValues["silence_timeout"]);
+                            string punctuateString = (string)agentIntegrationData.FieldValues["punctuate"];
+                            string smartFormatString = (string)agentIntegrationData.FieldValues["smart_format"];
+                            string fillerWordsString = (string)agentIntegrationData.FieldValues["filler_words"];
+                            string profanityFilterString = (string)agentIntegrationData.FieldValues["profanity_filter"];
+
+                            bool speakerDiarizationDg = (speakerDiarizationStringDg.ToLower() == "on");
+                            bool punctuate = (punctuateString.ToLower() == "on");
+                            bool smartFormat = (smartFormatString.ToLower() == "on");
+                            bool fillerWords = (fillerWordsString.ToLower() == "on");
+                            bool profanityFilter = (profanityFilterString.ToLower() == "on");
+
+                            List<string> keywordsList = new List<string>();
+                            if (!string.IsNullOrEmpty(keywordsListString))
+                            {
+                                keywordsList.AddRange(keywordsListString.Split(',').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)));
+                            }
+
+                            var deepgramSTTService = new DeepgramSTTService(
+                                apiKey, language, model, speakerDiarizationDg, keywordsList, silenceTimeoutDg, sampleRate,
+                                punctuate: punctuate,
+                                smartFormat: smartFormat,
+                                fillerWords: fillerWords,
+                                profanityFilter: profanityFilter
+                            // Other parameters will use their default values from the constructor
+                            );
+
+                            return result.SetSuccessResult(deepgramSTTService);
+                        }
 
                     default:
                         _logger.LogError("Business app STT provider {ProviderType} not supported", sttProviderData.Data.Id);

@@ -49,7 +49,7 @@ namespace IqraInfrastructure.Managers.Conversation.Client
                     }
                     catch (OperationCanceledException) when (individualReceiveCts.IsCancellationRequested && !linkedCts.IsCancellationRequested)
                     {
-                        if (_activeWebSocket.State == WebSocketState.Open) // Still open, so it was our timeout
+                        if (_activeWebSocket != null && _activeWebSocket.State == WebSocketState.Open) // Still open, so it was our timeout
                         {
                             // Optional: Send PING if this client is responsible for initiating keep-alives
                             // await SendWebSocketDataAsync(new ArraySegment<byte>(Array.Empty<byte>()), WebSocketMessageType.Ping, linkedCts);

@@ -2,6 +2,7 @@
 using Deepgram.Clients.Interfaces.v2;
 using Deepgram.Models.Authenticate.v1;
 using Deepgram.Models.Listen.v2.WebSocket;
+using IqraCore.Entities.App.Configuration;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 
@@ -9,8 +10,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
 {
     public class DeepgramSTTService : ISTTService
     {
-        private static bool _isLibraryInitialized = false;
-
         private readonly string _apiKey;
         private string _language;
         private readonly bool _speakerDiarization;
@@ -45,12 +44,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
             bool punctuate = false, bool smartFormat = false, bool fillerWords = true,
             bool profanityFilter = false, bool numerals = false, bool dictation = false, bool multiChannel = false, bool noDelay = true)
         {
-            if (!_isLibraryInitialized)
-            {
-                Deepgram.Library.Initialize();
-                _isLibraryInitialized = true;
-            }
-
             _apiKey = apiKey;
             _language = language;
             _model = model;
@@ -70,8 +63,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public void Initialize()
         {
-            var options = new DeepgramWsClientOptions(apiKey: _apiKey);
-            _liveClient = ClientFactory.CreateListenWebSocketClient(options: options);
+            DeepgramWsClientOptions options = new DeepgramWsClientOptions(apiKey: _apiKey, keepAlive: true);
+            _liveClient = ClientFactory.CreateListenWebSocketClient(_apiKey, options);
 
             _liveClient.Subscribe(new EventHandler<OpenResponse>(OnConnectionOpened));
             _liveClient.Subscribe(new EventHandler<ResultResponse>(OnResultReceived));
@@ -91,10 +84,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 Model = _model,
                 Language = _language,
                 Diarize = _speakerDiarization,
-                Keywords = _keywordsList, // For nova-2 model
-                Keyterm = _keywordsList,  // For nova-3 model
                 Punctuate = _punctuate,
-                SmartFormat = _smartFormat,        
+                SmartFormat = _smartFormat,
                 FillerWords = _fillerWords,
                 ProfanityFilter = _profanityFilter,
                 Numerals = _numerals,
@@ -103,6 +94,15 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 NoDelay = _noDelay,
                 EndPointing = _silenceTimeout.ToString(),
             };
+
+            if (_model.Contains("nova-2"))
+            {
+                liveSchema.Keywords = _keywordsList;
+            }
+            else if (_model.Contains("nova-3"))
+            {
+                liveSchema.Keyterm = _keywordsList;
+            }
 
             _liveClient.Connect(liveSchema).Wait();
         }
