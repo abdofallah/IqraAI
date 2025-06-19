@@ -174,7 +174,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public static InterfaceSTTProviderEnum GetProviderTypeStatic()
         {
-            return InterfaceSTTProviderEnum.DeepgramSTT;
+            return InterfaceSTTProviderEnum.Deepgram;
         }
     }
 }

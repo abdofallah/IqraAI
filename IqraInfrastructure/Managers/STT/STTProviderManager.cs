@@ -510,7 +510,7 @@ namespace IqraInfrastructure.Managers.STT
                             );
                         }
 
-                    case InterfaceSTTProviderEnum.DeepgramSTT:
+                    case InterfaceSTTProviderEnum.Deepgram:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
 
@@ -546,6 +546,29 @@ namespace IqraInfrastructure.Managers.STT
                             );
 
                             return result.SetSuccessResult(deepgramSTTService);
+                        }
+
+                    case InterfaceSTTProviderEnum.AssemblyAI:
+                        {
+                            string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
+
+                            string formatTurnsString = (string)agentIntegrationData.FieldValues["format_turns"];
+                            float endOfTurnConfidenceThreshold = (float)(double)agentIntegrationData.FieldValues["end_of_turn_confidence_threshold"];
+                            int minEndOfTurnSilenceWhenConfident = (int)agentIntegrationData.FieldValues["min_end_of_turn_silence_when_confident"];
+                            int maxTurnSilence = (int)agentIntegrationData.FieldValues["max_turn_silence"];
+
+                            bool formatTurns = (formatTurnsString.ToLower() == "on");
+
+                            var assemblySTTService = new AssemblyAISpeechSTTService(
+                                apiKey,
+                                sampleRate,
+                                formatTurns,
+                                endOfTurnConfidenceThreshold,
+                                minEndOfTurnSilenceWhenConfident,
+                                maxTurnSilence
+                            );
+
+                            return result.SetSuccessResult(assemblySTTService);
                         }
 
                     default:

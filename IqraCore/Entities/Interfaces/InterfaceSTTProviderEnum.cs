@@ -4,6 +4,7 @@
     {
         Unknown = 0,
         AzureSpeechServices = 1,
-        DeepgramSTT = 2,
+        Deepgram = 2,
+        AssemblyAI = 3
     }
 }
