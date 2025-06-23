@@ -1,0 +1,305 @@
+﻿<div class="main-container fade d-none w-100" id="tools-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-wrench'></i> <span>Tools</span></h3>
+    <div class="inner-header-container d-none fade w-100 mb-3" id="tool-manager-header">
+        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#" id="switchBackToToolsTab">Tools</a></li>
+                    <li class="breadcrumb-item active" aria-current="page"><span id="currentToolName">Tool</span></li>
+                </ol>
+            </nav>
+            <div>
+                <button class="btn btn-light btn-sm btn-ic-span-align" data-bs-custom-class="toolDebugToolTip" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-title="<b>Debug coming soon!</b>">
+                    <i class='fa-regular fa-wrench text-dark'></i>
+                    <span> Debug</span>
+                </button>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="confirmPublishToolButton" disabled>
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span>Save</span>
+                    <div class="spinner-border save-button-spinner d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+        <div class="d-flex flex-row align-items-center justify-content-between">
+            <ul class="nav" id="toolManager-inner-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="toolManager-inner-general-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-general" type="button" role="tab" aria-controls="toolManager-inner-general" aria-selected="true">General</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="toolManager-inner-config-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-config" type="button" role="tab" aria-controls="toolManager-inner-config" aria-selected="true">Configuration</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="toolManager-inner-response-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-response" type="button" role="tab" aria-controls="toolManager-inner-response" aria-selected="true">Response</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="toolManager-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#toolManager-inner-audio" type="button" role="tab" aria-controls="toolManager-inner-audio" aria-selected="true">Audio</button>
+                </li>
+            </ul>
+            <div id="manageToolsLanguageDropdown" style="max-width: 300px">
+            </div>
+        </div>
+    </div>
+    <div class="">
+        <!-- Tools List Tab -->
+        <div class="fade show w-100 inner-container" id="toolListTab">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 200px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewToolButton">
+                        <span>+ Add New Tool</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Tool Name" aria-label="Tool Name" aria-describedby="searchToolButton">
+                    <button class="input-group-button btn btn-primary" id="searchToolButton">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div>
+                <table id="customToolsTable" class="table w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr tr-type="none-notice">
+                            <td colspan="2">No tools added yet...</td>
+                        </tr>
+                        <!-- Dynamically Generated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Tools Manager Tab -->
+        <div class="fade d-none w-100 inner-container" id="toolManagerTab">
+            <div class="tab-content" id="toolManager-inner-tabContent w-100">
+                <!-- General -->
+                <div class="tab-pane fade show active w-100" id="toolManager-inner-general" role="tabpanel" aria-labelledby="toolManager-inner-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label for="inputToolName" class="form-label">
+                            <span>Name</span>
+                            <i class="fa-regular fa-language"></i>
+                        </label>
+                        <input type="text" class="form-control" id="inputToolName" placeholder="Tool Name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputToolShortDescription" class="form-label">
+                            <span>Short Description</span>
+                            <i class="fa-regular fa-language"></i>
+                        </label>
+                        <input type="text" class="form-control" id="inputToolShortDescription" placeholder="Tool Description for AI">
+                    </div>
+                </div>
+                <!-- Configuration -->
+                <div class="tab-pane fade w-100" id="toolManager-inner-config" role="tabpanel" aria-labelledby="toolManager-inner-config-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label d-block">Input Schemea</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolInputArgument">
+                            <span>Add Input Argument</span>
+                        </button>
+                        <div id="toolInputArguementsList">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputToolType" class="form-label">Request Type</label>
+                        <select class="form-select mb-3" id="inputToolType">
+                            <option value="0" selected>GET</option>
+                            <option value="1">POST</option>
+                            <option value="2">PUT</option>
+                            <option value="3">DELETE</option>
+                            <option value="4">PATCH</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="inputToolURL" class="form-label btn-ic-span-align">
+                            <span>URL (Endpoint)</span>
+                        </label>
+                        <input type="text" class="form-control w-100" id="inputToolURL" placeholder="API Endpoint URL">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Headers</label>
+                        <button class="btn btn-light btn-sm m-0 mb-2" id="addToolHeader">
+                            <span>Add Header</span>
+                        </button>
+                        <div id="toolHeadersList">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align">
+                            <span>Body</span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="To use values of the input arguements in body, use the template {{Arguement Name}} (double bracket in start and end with argurment name in between), which will be replaced with its value automatically at runtime.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <div class="mb-2">
+                            <div class="form-check form-check-inline me-3">
+                                <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="0" id="toolBodyTypeNone" checked>
+                                <label class="form-check-label" for="toolBodyTypeNone">none</label>
+                            </div>
+                            <div class="form-check form-check-inline me-3">
+                                <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="1" id="toolBodyTypeFormData">
+                                <label class="form-check-label" for="toolBodyTypeFormData">form-data</label>
+                            </div>
+                            <div class="form-check form-check-inline me-3">
+                                <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="2" id="toolBodyTypeXWwwFormUrlEncoded">
+                                <label class="form-check-label" for="toolBodyTypeXWwwFormUrlEncoded">x-www-form-urlencoded</label>
+                            </div>
+                            <div class="form-check form-check-inline me-3">
+                                <input class="form-check-input" type="radio" name="toolBodyTypeCheckbox" value="3" id="toolBodyTypeRaw">
+                                <label class="form-check-label" for="toolBodyTypeRaw">raw</label>
+                            </div>
+                        </div>
+                        <div id="toolBodyNone">
+                            <label style="opacity: 0.7;">
+                                This request does not have a body. Change body
+                                type.
+                            </label>
+                        </div>
+                        <div id="toolBodyKeyValueView" class="d-none">
+                            <button class="btn btn-light btn-sm m-0 mb-2" id="addToolBodyKeyValue">
+                                <span>Add Key/Value</span>
+                            </button>
+                            <div id="toolBodyKeyValueViewList">
+                            </div>
+                        </div>
+                        <div id="toolBodyRawView" class="d-none">
+                            <textarea class="form-control" placeholder="" id="toolBodyRawTextarea" rows="5"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!-- Response -->
+                <div class="tab-pane fade w-100" id="toolManager-inner-response" role="tabpanel" aria-labelledby="toolManager-inner-response-tab" tabindex="0">
+                    <div class="">
+                        <label class="form-label btn-ic-span-align">
+                            <span>Response </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Javascript code to convert request response of each status type into AI readable format. Response data is available within predefined variable called 'responseData'.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <div class="input-group mb-2">
+                            <select class="form-select" id="toolResponseStatusSelect">
+                            </select>
+                            <button class="btn btn-light" id="addToolResponseStatusType">
+                                <span>Add Response Code</span>
+                            </button>
+                        </div>
+
+                        <div class="mb-2" id="toolResponseStatusTypeListButtons">
+                        </div>
+                        <div id="toolResponseStatusTypeList">
+                        </div>
+                    </div>
+                </div>
+                <!-- Audio -->
+                <div class="tab-pane fade w-100" id="toolManager-inner-audio" role="tabpanel" aria-labelledby="toolManager-inner-audio-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align d-block" for="toolAudioDuringExecutionSelect">
+                            <span>Audio During Execution </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Audio to be played in the background while the ai is speaking.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="toolAudioDuringExecutionSelect">
+                            <option value="none">None</option>
+                            <option value="custom">Custom (Upload)</option>
+                        </select>
+                        <div class="toolAudioExtraOptionsBox d-none" id="toolAudioDuringExecutionBox">
+                            <div id="toolAudioDuringExecutionInputBox">
+                                <label class="form-label d-block">Audio</label>
+                                <div class="mb-3 recording-container">
+                                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                        <div class="recording-container-waveform d-none" id="tool-audio-during-waveform">
+                                        </div>
+                                        <div class="no-audio-notice">
+                                            <span>No audio uploaded yet...</span>
+                                        </div>
+                                        <button class="btn btn-sm btn-light mb-auto" id="tool-audio-durning-upload-btn">Upload</button>
+                                        <input type="file" class="form-control d-none" id="toolAudioDuringExecutionUploadInput" accept="audio/mp3,audio/wav">
+                                    </div>
+                                    <div class="audio-controller d-none">
+                                        <div class="speed-controller me-5">
+                                            <label for="slider-tool-audio-durning-waveform">
+                                                <i class="fa-regular fa-gauge"></i>
+                                            </label>
+                                            <input class="mx-1" type="slider" id="range-tool-audio-durning-waveform" min="0.1" max="4" value="1" step="0.1">
+                                        </div>
+                                        <div class="volume-controller me-5">
+                                            <label for="slider-tool-audio-durning-waveform">
+                                                <i class="fa-regular fa-volume"></i>
+                                            </label>
+                                            <input type="range" id="slider-tool-audio-durning-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                        </div>
+                                        <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                            <i class="fa-regular fa-play"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label" for="toolAudioDuringExecutionVolumeInput">Volume</label>
+                                <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioDuringExecutionVolumeInput">
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label btn-ic-span-align d-block" for="toolAudioAfterExecutionSelect">
+                            <span>Audio After Execution </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Audio to be played after the ai speaks.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="toolAudioAfterExecutionSelect">
+                            <option value="none">None</option>
+                            <option value="custom">Custom (Upload)</option>
+                        </select>
+                        <div class="toolAudioExtraOptionsBox d-none" id="toolAudioAfterExecutionBox">
+                            <div id="toolAudioAfterExecutionInputBox">
+                                <label class="form-label d-block">Audio</label>
+                                <div class="mb-3 recording-container">
+                                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                                        <div class="recording-container-waveform d-none" id="tool-audio-after-waveform">
+                                        </div>
+                                        <div class="no-audio-notice">
+                                            <span>No audio uploaded yet...</span>
+                                        </div>
+                                        <button class="btn btn-sm btn-light mb-auto" id="tool-audio-after-upload-btn">Upload</button>
+                                        <input type="file" class="form-control d-none" id="toolAudioAfterExecutionUploadInput" accept="audio/mp3,audio/wav">
+                                    </div>
+                                    <div class="audio-controller d-none">
+                                        <div class="speed-controller me-5">
+                                            <label for="slider-tool-audio-after-waveform">
+                                                <i class="fa-regular fa-gauge"></i>
+                                            </label>
+                                            <input class="mx-1" type="slider" id="range-tool-audio-after-waveform" min="0.1" max="4" value="1" step="0.1">
+                                        </div>
+                                        <div class="volume-controller me-5">
+                                            <label for="slider-tool-audio-after-waveform">
+                                                <i class="fa-regular fa-volume"></i>
+                                            </label>
+                                            <input type="range" id="slider-tool-audio-after-waveform" min="0" max="1" value="1" step="0.1" style="width: 70px">
+                                        </div>
+                                        <button class="me-5" button-type="start-stop-audio" mode="play" disabled>
+                                            <i class="fa-regular fa-play"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label" for="toolAudioAfterExecutionVolumeInput">Volume</label>
+                                <input type="number" class="form-control" min="0" max="100" value="100" step="1" id="toolAudioAfterExecutionVolumeInput">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

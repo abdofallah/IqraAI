@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": [ "ES2023", "DOM", "DOM.Iterable" ],
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "outDir": "wwwroot/compiled-scripts",
+    "rootDir": "Scripts",
+
+    // Type checking enhancements
+    "noImplicitAny": false, // Start with false, gradually enable
+    "strictNullChecks": true, // Helps catch null/undefined errors
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Module and import settings
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Development experience
+    "sourceMap": true,
+    "removeComments": false,
+    "noEmitOnError": true,
+    "skipLibCheck": true, // Speeds up compilation
+
+    // Advanced options
+    "resolveJsonModule": true,
+    "declaration": true, // Generates .d.ts files for better IntelliSense
+    "declarationMap": true
+  },
+  "include": [
+    "Scripts/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "wwwroot"
+  ],
+  "compileOnSave": true
+}

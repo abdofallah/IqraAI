@@ -139,7 +139,7 @@ namespace ProjectIqraFrontend.Controllers
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
 
 
-            return View("Business");
+            return View("Business/Business");
         }
 
         [HttpGet("/admin")]

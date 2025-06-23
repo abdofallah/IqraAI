@@ -1,0 +1,223 @@
+﻿<div class="main-container fade w-100 d-none" id="phone-numbers-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-hashtag nav_icon'></i> <span>Numbers</span></h3>
+
+    <!-- Header Container -->
+    <div class="inner-header-container w-100 mb-3" id="phone-numbers-header">
+        <div class="" id="phone-numbers-inner-head">
+            <ul class="nav" id="inner-phone-numbers-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active me-2" id="inner-phone-numbers-customsim-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-customsim" type="button" role="tab" aria-controls="inner-phone-numbers-customsim" aria-selected="true">ModemTel</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link me-2 disabled" id="inner-phone-numbers-twilio-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-twilio" type="button" role="tab" aria-controls="inner-phone-numbers-twilio" aria-selected="true">Twilio</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link me-2 disabled" id="inner-phone-numbers-vonage-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-vonage" type="button" role="tab" aria-controls="inner-phone-numbers-vonage" aria-selected="true">Vonage</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link disabled" id="inner-phone-numbers-telnyx-tab" data-bs-toggle="pill" data-bs-target="#inner-phone-numbers-telnyx" type="button" role="tab" aria-controls="inner-phone-numbers-telnyx" aria-selected="true">Telnyx</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="inner-container">
+        <div class="tab-content w-100" id="inner-phone-numbers-tabContent">
+            <!-- ModemTel -->
+            <div class="tab-pane fade show active w-100" id="inner-phone-numbers-customsim" role="tabpanel" aria-labelledby="inner-phone-numbers-customsim-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCustomSimNumberButton">
+                            <span>+ Add ModemTel Number</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchCustomSimNumberButton">
+                        <button class="input-group-button btn btn-primary" id="searchCustomSimNumberButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <table id="physicalSimNumbersTable" class="table w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Country</th>
+                            <th scope="col">Number</th>
+                            <th scope="col">Route</th>
+                            <th scope="col">Route Server Region</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically Generated -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Twilio -->
+            <div class="tab-pane fade w-100" id="inner-phone-numbers-twilio" role="tabpanel" aria-labelledby="inner-phone-numbers-twilio-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTwilioNumberButton" data-bs-toggle="modal" data-bs-target="#addNewTwilioNumberModal">
+                            <span>+ Add Twilio Number</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchTwilioNumberButton">
+                        <button class="input-group-button btn btn-primary" id="searchTwilioNumberButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <table id="twilioNumbersTable" class="table w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Status</th>
+                            <th scope="col">Integration</th>
+                            <th scope="col">Country</th>
+                            <th scope="col">Number</th>
+                            <th scope="col">Route Server Region</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically Generated -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Vonage -->
+            <div class="tab-pane fade w-100" id="inner-phone-numbers-vonage" role="tabpanel" aria-labelledby="inner-phone-numbers-vonage-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewVonageSimNumberButton" data-bs-toggle="modal" data-bs-target="#addNewVonageSimNumberModal">
+                            <span>+ Add Vonage Sim Number</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchVonageSimNumberButton">
+                        <button class="input-group-button btn btn-primary" id="searchVonageSimNumberButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <table id="vonageNumbersTable" class="table w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Status</th>
+                            <th scope="col">Integration</th>
+                            <th scope="col">Country</th>
+                            <th scope="col">Number</th>
+                            <th scope="col">Route Server Region</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically Generated -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- Telnyx -->
+            <div class="tab-pane fade w-100" id="inner-phone-numbers-telnyx" role="tabpanel" aria-labelledby="inner-phone-numbers-telnyx-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTelnyxSimNumberButton" data-bs-toggle="modal" data-bs-target="#addNewTelnyxSimNumberModal">
+                            <span>+ Add Telnyx Sim Number</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Phone Number" aria-label="Phone Number" aria-describedby="searchTelnyxSimNumberButton">
+                        <button class="input-group-button btn btn-primary" id="searchTelnyxSimNumberButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <table id="telnyxNumbersTable" class="table w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Status</th>
+                            <th scope="col">Integration</th>
+                            <th scope="col">Country</th>
+                            <th scope="col">Number</th>
+                            <th scope="col">Route Server Region</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically Generated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add ModemTel Modal -->
+    <div class="modal modal-lg fade" id="addNewCustomSimNumberModal" tabindex="-1" aria-labelledby="addNewCustomSimNumberModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="addNewCustomSimNumberModalLabel">Add ModemTel Number</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="physicalNumberModalIntegrationSelect" class="form-label">Integration</label>
+                        <select class="form-select" id="physicalNumberModalIntegrationSelect">
+                            <!-- Dynamically Generated Once -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="physicalNumberModalCountrySelect" class="form-label">Country Code</label>
+                        <select class="form-select" id="physicalNumberModalCountrySelect">
+                            <!-- Dynamically Generated Once -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="physicalNumberModalNumberInput" class="form-label">Number</label>
+                        <input type="tel" class="form-control" id="physicalNumberModalNumberInput" placeholder="Number">
+                    </div>
+                    <div class="mb-3">
+                        <label for="physicalNumberModalRegionSelect" class="form-label">Route Server Region <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Iqra's server region that will be used to process the call (For low latency, match your TTS/STT/LLM/etc intergation's region closed to this region)."><i class="fa-regular fa-circle-question"></i></a></label>
+                        <select class="form-select" id="physicalNumberModalRegionSelect">
+                            <!-- Dynamically Generated Once -->
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="addNewPhysicalNumberButton" disabled>Save Number</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Twilio Number Modal -->
+        <div class="modal modal-lg fade" id="addNewTwilioNumberModal" tabindex="-1" aria-labelledby="addNewTwilioNumberModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="addNewTwilioNumberModalLabel">Add Twilio Number</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        todo
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Vonage Number Modal -->
+        <div class="modal modal-lg fade" id="addNewVonageSimNumberModal" tabindex="-1" aria-labelledby="addNewVonageSimNumberModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="addNewVonageSimNumberModalLabel">Add Vonage Sim Number</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        todo
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\ProjectIqraFrontend\node_modules\%40types\IqraCore\Entities\Business\BusinessAnalytics.d.ts" Link="BusinessAnalytics.d.ts">
+      <DependentUpon>BusinessAnalytics.cs</DependentUpon>
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="libphonenumber-csharp" Version="9.0.4" />
     <PackageReference Include="MessagePack" Version="3.1.3" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
@@ -20,6 +28,13 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
     <PackageReference Include="System.Data.HashFunction.xxHash" Version="2.0.0" />
     <PackageReference Include="System.IO.Hashing" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Entities\Business\BusinessAnalytics.cs">
+      <Generator>DtsGenerator</Generator>
+      <LastGenOutput>BusinessAnalytics.d.ts</LastGenOutput>
+    </Compile>
   </ItemGroup>
 
 </Project>

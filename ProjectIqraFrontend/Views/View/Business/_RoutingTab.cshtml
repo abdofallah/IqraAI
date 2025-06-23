@@ -1,0 +1,584 @@
+﻿<div class="main-container fade show w-100" id="routing-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-code-fork'></i> <span>Routing</span></h3>
+
+    <!-- Header Container -->
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="routing-header">
+        <div class="d-flex flex-column align-items-start justify-content-between" id="routing-manager-header-inner">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToRoutingTab">Routing</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentRouteName">Route</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveRouteButton" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+            </div>
+
+            <ul class="nav w-100" id="routing-manager-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="routing-manager-general-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-general" type="button" role="tab" aria-controls="routing-manager-general" aria-selected="true">General</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="routing-manager-language-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-language" type="button" role="tab" aria-controls="routing-manager-language" aria-selected="true">Language</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="routing-manager-number-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-number" type="button" role="tab" aria-controls="routing-manager-number" aria-selected="true">Number</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="routing-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-configuration" type="button" role="tab" aria-controls="routing-manager-configuration" aria-selected="true">Configuration</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="routing-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-agent" type="button" role="tab" aria-controls="routing-manager-agent" aria-selected="true">Agent</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="routing-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#routing-manager-actions" type="button" role="tab" aria-controls="routing-manager-actions" aria-selected="true">Actions</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="inner-container">
+        <!-- Routing List Tab -->
+        <div class="fade show w-100" id="routingListTab">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 200px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRouteButton">
+                        <span>+ Add New Route</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Route name" aria-label="Route Name" aria-describedby="searchRouteButton">
+                    <button class="input-group-button btn btn-primary" id="searchRouteButton">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="routingListTable">
+                <!-- Dynamically Generated-->
+            </div>
+        </div>
+        <!-- Routing Manager Tab -->
+        <div class="fade d-none w-100" id="routingManagerTab">
+
+            <div class="tab-content w-100" id="routing-manager-tabContent">
+                <!-- General -->
+                <div class="tab-pane fade show active w-100" id="routing-manager-general" role="tabpanel" aria-labelledby="routing-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="editRouteNameInput">Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="editRouteIconInput">📞</button>
+                            <input type="text" class="form-control" id="editRouteNameInput" placeholder="Route Name">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="editRouteDescriptionInput">Description</label>
+                        <input type="text" class="form-control" id="editRouteDescriptionInput" placeholder="Route Description">
+                    </div>
+                </div>
+                <!-- Language -->
+                <div class="tab-pane fade w-100" id="routing-manager-language" role="tabpanel" aria-labelledby="routing-manager-language-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="editRouteDefaultLanguageSelect">
+                            Default
+                            Language
+                        </label>
+                        <select class="form-select" id="editRouteDefaultLanguageSelect">
+                            <!-- Dynamically Generated -->
+                        </select>
+                    </div>
+                    <div class="routingMultiLanguageBox">
+                        <div class="form-check form-switch mb-3">
+                            <label class="form-label btn-ic-span-align" for="editRouteMultiLanguageCheck">
+                                <span>Multi Language </span>
+
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Enable multi-language selection at the start of the call by pressing DTMF number button on call keypad.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <input type="checkbox" class="form-check-input" role="switch" id="editRouteMultiLanguageCheck">
+                        </div>
+                        <div class="">
+                            <label class="form-label" for="editRouteAddMultiLanguageEnabledSelect">Enabled Languages</label>
+                            <select class="form-select" id="editRouteAddMultiLanguageEnabledSelect" disabled>
+                                <!-- Dynamically Generated -->
+                            </select>
+                            <table id="routeMultiLanguagesEnabledList" class="table mb-0 disabled">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;"></th>
+                                        <th style="width: 50px;">#</th>
+                                        <th style="width: 200px;">Name</th>
+                                        <th style="width: 200px;">Code</th>
+                                        <th>
+                                            <span>Message</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="These messages are spoken in order to let user know which number is language on, to press and select it.<br><strong>{number}</strong> variable will be replaced with order number.<br><strong>{name}</strong> variable will be replaced with name.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <!-- Number -->
+                <div class="tab-pane fade w-100" id="routing-manager-number" role="tabpanel" aria-labelledby="routing-manager-number-tab" tabindex="0">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="editChangeRouteNumberButton">
+                                <span>+ Add New Number</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Number" aria-label="Number" aria-describedby="searchRouteAddedNumber">
+                            <button class="input-group-button btn btn-primary" id="searchRouteAddedNumber">
+                                <i class="fa-regular fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <table id="routeNumbersList" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Country Code</th>
+                                    <th scope="col">Number</th>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Configuration -->
+                <div class="tab-pane fade w-100" id="routing-manager-configuration" role="tabpanel" aria-labelledby="routing-manager-configuration-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteNumberPickupDelay">
+                            <span>Pick up delay (ms) </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Miliseconds of delay to add before call is picked up.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <input type="number" class="form-control" id="editRouteNumberPickupDelay" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteNumberSilenceNotify">
+                            <span>Notify on silence (ms) </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Miliseconds of silence to wait before notifying the user that the call will end if they do not give an input.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <input type="number" class="form-control" id="editRouteNumberSilenceNotify" value="10000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteNumberSilenceEnd">
+                            <span>End call on silence (ms) </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Miliseconds of silence to wait for before ending the call.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <input type="number" class="form-control" id="editRouteNumberSilenceEnd" value="30000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteNumberTotalCallTime">
+                            <span>Max call time (s) </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Total max call time in seconds before its ended automatically.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <input type="number" class="form-control" id="editRouteNumberTotalCallTime" value="600">
+                    </div>
+                </div>
+                <!-- Agent -->
+                <div class="tab-pane fade w-100" id="routing-manager-agent" role="tabpanel" aria-labelledby="routing-manager-agent-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="editSelectedRouteAgentName">
+                            Route Agent
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="editSelectedRouteAgentIcon">-</span>
+                            <input type="text" class="form-control" id="editSelectedRouteAgentName" placeholder="Select Agent" disabled>
+                            <button class="btn btn-primary" id="editChangeRouteAgentButton" data-bs-toggle="modal" data-bs-target="#editChangeRouteAgentModal">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteAgentDefaultScriptSelect">
+                            <span>Opening Script </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation script to use for the initial opening conversation.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteAgentDefaultScriptSelect" disabled>
+                            <option value="" disabled selected>Select Script</option>
+                            <!-- Dynamically Generated -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteAgentConversationTypeSelect">
+                            <span>Interruption Type </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation type of the agent.<br><strong>Interruptible</strong>, Agent is interruptible by user.<br><strong>Turn by Turn</strong>, User and agent speak turn by turn.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteAgentInterruptionTypeSelect">
+                            <option value="0" selected>Turn by Turn</option>
+                            <option value="1">Interruptible via VAD (Voice Activity Detection)</option>
+                            <option value="2">Interruptible via AI (LLM decides)</option>
+                            <option value="3">Interruptible via Response (STT transcription)</option>
+                        </select>
+                        <div class="w-100 route-conversation-type-box" box-type="turnbyturn">
+                            <div class="form-check form-switch">
+                                <div style="display: inline-block; vertical-align: middle;">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                    <label class="form-label mb-0" for="editRouteAgentTurnByTurnUseInterruptedResponseInNextTurn">
+                                        <span>Use Interrupted Response in the Next Turn?</span>
+                                    </label>
+                                </div>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Any customer/user response spoken during the AI/Agent's turn will be used in the next turn.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="w-100 route-conversation-type-box" box-type="interruptibleviavad">
+                            <div class="">
+                                <label class="form-label btn-ic-span-align" for="editRouteAgentConversationTypeInterruptibleAudioActivityDuration">
+                                    <span>Voice Activity Duration (Miliseconds) </span>
+
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Duration of voice detected before interrupting.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="editRouteAgentConversationTypeInterruptibleAudioActivityDuration" value="300">
+                            </div>
+                        </div>
+                        <div class="w-100 route-conversation-type-box" box-type="interruptibleviaai">
+                            <div class="form-check form-switch">
+                                <div style="display: inline-block; vertical-align: middle;">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentInterruptViaAIUseAgentLLM">
+                                    <label class="form-label mb-0" for="editRouteAgentInterruptViaAIUseAgentLLM">
+                                        <span>Use Agent's LLM integration for checking for interruption?</span>
+                                    </label>
+                                </div>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the LLM integration of the agent to check for interruptions.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+
+                            <div class="mt-3" id="agentRouteInterruptionViaLLMIntegrationSelectBox">
+                                <label class="form-label">Interruption LLM Integration</label>
+                                <div class="input-group">
+                                    <select class="form-select" select-type="interrupt-integration-llm">
+                                        <!-- Dynamically Generated -->
+                                    </select>
+                                    <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration" disabled>
+                                        <i class="fa-regular fa-gear"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editRouteNumberTimezoneSelect">
+                            <span>Timezone </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Timezone to be used for the call. The agent will recieve the current date/time of this timezone.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteNumberTimezoneSelect">
+                            <option value="" selected disabled>Select Timezone</option>
+                            <option value="-12:00">(GMT -12:00) Eniwetok, Kwajalein</option>
+                            <option value="-11:00">(GMT -11:00) Midway Island, Samoa</option>
+                            <option value="-10:00">(GMT -10:00) Hawaii</option>
+                            <option value="-09:50">(GMT -9:30) Taiohae</option>
+                            <option value="-09:00">(GMT -9:00) Alaska</option>
+                            <option value="-08:00">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
+                            <option value="-07:00">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
+                            <option value="-06:00">
+                                (GMT -6:00) Central Time (US &amp; Canada), Mexico
+                                City
+                            </option>
+                            <option value="-05:00">
+                                (GMT -5:00) Eastern Time (US &amp; Canada), Bogota,
+                                Lima
+                            </option>
+                            <option value="-04:50">(GMT -4:30) Caracas</option>
+                            <option value="-04:00">
+                                (GMT -4:00) Atlantic Time (Canada), Caracas, La Paz
+                            </option>
+                            <option value="-03:50">(GMT -3:30) Newfoundland</option>
+                            <option value="-03:00">
+                                (GMT -3:00) Brazil, Buenos Aires, Georgetown
+                            </option>
+                            <option value="-02:00">(GMT -2:00) Mid-Atlantic</option>
+                            <option value="-01:00">(GMT -1:00) Azores, Cape Verde Islands</option>
+                            <option value="+00:00">
+                                (GMT 0/UTC) Western Europe Time,
+                                London, Lisbon, Casablanca
+                            </option>
+                            <option value="+01:00">
+                                (GMT +1:00) Brussels, Copenhagen, Madrid, Paris
+                            </option>
+                            <option value="+02:00">(GMT +2:00) Kaliningrad, South Africa</option>
+                            <option value="+03:00">
+                                (GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg
+                            </option>
+                            <option value="+03:50">(GMT +3:30) Tehran</option>
+                            <option value="+04:00">
+                                (GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi
+                            </option>
+                            <option value="+04:50">(GMT +4:30) Kabul</option>
+                            <option value="+05:00">
+                                (GMT +5:00) Ekaterinburg, Islamabad, Karachi,
+                                Tashkent
+                            </option>
+                            <option value="+05:50">
+                                (GMT +5:30) Bombay, Calcutta, Madras, New Delhi
+                            </option>
+                            <option value="+05:75">(GMT +5:45) Kathmandu, Pokhara</option>
+                            <option value="+06:00">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+                            <option value="+06:50">(GMT +6:30) Yangon, Mandalay</option>
+                            <option value="+07:00">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+                            <option value="+08:00">
+                                (GMT +8:00) Beijing, Perth, Singapore, Hong Kong
+                            </option>
+                            <option value="+08:75">(GMT +8:45) Eucla</option>
+                            <option value="+09:00">
+                                (GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk
+                            </option>
+                            <option value="+09:50">(GMT +9:30) Adelaide, Darwin</option>
+                            <option value="+10:00">
+                                (GMT +10:00) Eastern Australia, Guam, Vladivostok
+                            </option>
+                            <option value="+10:50">(GMT +10:30) Lord Howe Island</option>
+                            <option value="+11:00">
+                                (GMT +11:00) Magadan, Solomon Islands, New Caledonia
+                            </option>
+                            <option value="+11:50">(GMT +11:30) Norfolk Island</option>
+                            <option value="+12:00">
+                                (GMT +12:00) Auckland, Wellington, Fiji, Kamchatka
+                            </option>
+                            <option value="+12:75">(GMT +12:45) Chatham Islands</option>
+                            <option value="+13:00">(GMT +13:00) Apia, Nukualofa</option>
+                            <option value="+14:00">(GMT +14:00) Line Islands, Tokelau</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentCallerNumberInContextCheck" checked>
+                                <label class="form-label mb-0" for="editRouteAgentCallerNumberInContextCheck">
+                                    <span>Caller Number in Context</span>
+                                </label>
+                            </div>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Include the caller phone number in the agent's context.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <input type="checkbox" role="switch" class="form-check-input" id="editRouteAgentRouteNumberInContextCheck" checked>
+                                <label class="form-label mb-0" for="editRouteAgentRouteNumberInContextCheck">
+                                    <span>Route Number in Context</span>
+                                </label>
+                            </div>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Include the current route phone number in the agent's context.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="tab-pane fade w-100" id="routing-manager-actions" role="tabpanel" aria-labelledby="routing-manager-actions-tab" tabindex="0">
+                    <div class="mb-3" id="editRouteActionToolRingingContainer">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolRinging">
+                            <span>Ringing Action </span>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is ringing.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolRinging">
+                            <!-- Dynamically Generated -->
+                        </select>
+                        <div class="custom-tool-input-arguments d-none">
+                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolRingingInputArgumentsSelect">
+                                <span>Input Arguments </span>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <select class="form-select" id="editRouteActionToolRingingInputArgumentsSelect">
+                                <option value="-1">Select Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="editRouteActionToolRingingInputArgumentsList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="editRouteActionToolPickedContainer">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolPicked">
+                            <span>Call Picked Action </span>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call is picked up.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolPicked">
+                            <!-- Dynamically Generated -->
+                        </select>
+                        <div class="custom-tool-input-arguments d-none">
+                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolPickedInputArgumentsSelect">
+                                <span>Input Arguments </span>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <select class="form-select" id="editRouteActionToolPickedInputArgumentsSelect">
+                                <option value="-1">Select Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="editRouteActionToolPickedInputArgumentsList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="" id="editRouteActionToolEndedContainer">
+                        <label class="form-label btn-ic-span-align" for="editRouteActionToolEnded">
+                            <span>Call Ended Action </span>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The action to perform when the call has been finished.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editRouteActionToolEnded">
+                            <!-- Dynamically Generated -->
+                        </select>
+                        <div class="custom-tool-input-arguments d-none">
+                            <label class="form-label btn-ic-span-align d-block" for="editRouteActionToolEndedInputArgumentsSelect">
+                                <span>Input Arguments </span>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Input arguements to send to the action.<br>Available variables are: {caller_number}, {route_number}, {timezone_datetime}, {call_session_id}, {call_started}, {conversation}, {ended_by}.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <select class="form-select" id="editRouteActionToolEndedInputArgumentsSelect">
+                                <option value="-1">Select Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="editRouteActionToolEndedInputArgumentsList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Route Phone Number Modal -->
+    <div class="modal fade" id="editChangeRouteNumberModal" tabindex="-1" aria-labelledby="editChangeRouteNumberModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="editChangeRouteNumberModalLabel">
+                        Select Number
+                    </h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex flex-row align-items-center justify-content-between mb-2">
+                        <ul class="nav" id="routing-manager-assign-number-modal-tab" role="tablist">
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link active" id="routing-manager-assign-number-modal-physical-sim-tab" number-provider="1" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-physical-sim" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-physical-sim" aria-selected="true">
+                                    ModemTel
+                                </button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="routing-manager-assign-number-modal-twilio-tab" number-provider="2" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-twilio" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-twilio" aria-selected="true">Twilio</button>
+                            </li>
+                            <li class="nav-item me-2" role="presentation">
+                                <button class="nav-link" id="routing-manager-assign-number-modal-vonage-tab" number-provider="3" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-vonage" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-vonage" aria-selected="true">Vonage</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="routing-manager-assign-number-modal-telnyx-tab" number-provider="4" data-bs-toggle="pill" data-bs-target="#routing-manager-assign-number-modal-telnyx" type="button" role="tab" aria-controls="routing-manager-assign-number-modal-telnyx" aria-selected="true">Telnyx</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="tab-content w-100 mb-3" id="routing-manager-assign-number-modal-tabContent">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="inputRouteModalSearchNumberInput" placeholder="Phone Number">
+                            <button class="btn btn-primary" id="searchRouteManagerAssignNumberModalList">
+                                <i class="fa-regular fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+
+                        <!-- ModemTel -->
+                        <div class="tab-pane fade show active" id="routing-manager-assign-number-modal-physical-sim" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-physical-sim-tab">
+                            <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="1">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+
+                        <!-- Twilio -->
+                        <div class="tab-pane fade" id="routing-manager-assign-number-modal-twilio" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-twilio-tab">
+                            <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="2">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+
+                        <!-- Vonage -->
+                        <div class="tab-pane fade" id="routing-manager-assign-number-modal-vonage" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-vonage-tab">
+                            <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="3">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+
+                        <!-- Telnyx -->
+                        <div class="tab-pane fade" id="routing-manager-assign-number-modal-telnyx" role="tabpanel" aria-labelledby="routing-manager-assign-number-modal-telnyx-tab">
+                            <div class="list-group" id="routing-manager-assign-number-modal-list" number-provider="4">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveChangeRouteNumberButton" disabled>
+                        Select Number
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

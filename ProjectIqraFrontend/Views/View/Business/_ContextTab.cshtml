@@ -1,0 +1,453 @@
+﻿<div class="main-container fade d-none w-100" id="context-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-book'></i> <span>Context</span></h3>
+    <div class="inner-header-container mb-3">
+        <div class="d-flex flex-row align-items-center justify-content-between">
+
+            <!-- Left Side of Header with Buttons and Breadcrumbs -->
+            <div class="d-flex flex-column align-items-start justify-content-start">
+                <!-- Main Context Tab Header -->
+                <div class="w-100 fade show" id="contextTabButtonHeader">
+                    <ul class="nav" id="context-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="context-inner-branding-tab" data-bs-toggle="pill" data-bs-target="#context-inner-branding" type="button" role="tab" aria-controls="context-inner-branding" aria-selected="true">Branding</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="context-inner-branches-tab" data-bs-toggle="pill" data-bs-target="#context-inner-branches" type="button" role="tab" aria-controls="context-inner-branches" aria-selected="true">Branches</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="context-inner-services-tab" data-bs-toggle="pill" data-bs-target="#context-inner-services" type="button" role="tab" aria-controls="context-inner-services" aria-selected="true">Services</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="context-inner-products-tab" data-bs-toggle="pill" data-bs-target="#context-inner-products" type="button" role="tab" aria-controls="context-inner-products" aria-selected="true">Products</button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Branches Manage Tab Header -->
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between d-none w-100 fade" id="contextBranchesManageTabHeader">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><span>Context</span></li>
+                            <li class="breadcrumb-item"><a href="#" id="switchBackToBranchesTab">Branches</a></li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentBranchName">Branch</span></li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Services Manage Tab Header -->
+                <div class="d-flex flex-row align-items-center justify-content-between d-none w-100 fade" id="contextServicesManageTabHeader">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><span>Context</span></li>
+                            <li class="breadcrumb-item"><a href="#" id="switchBackToContextServicesTab">Services</a></li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentContextServiceName">Service</span></li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Products Manage Tab Header -->
+                <div class="d-flex flex-row align-items-center justify-content-between d-none w-100 fade" id="contextProductsManageTabHeader">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item"><span>Context</span></li>
+                            <li class="breadcrumb-item"><a href="#" id="switchBackToContextProductsTab">Products</a></li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentContextProductName">Product</span></li>
+                        </ol>
+                    </nav>
+                </div>
+
+                <!-- Branches Manager Tab Header -->
+                <div class="d-none fade w-100" id="contextBranchesManagerTabButtonHeader">
+                    <ul class="nav" id="branding-branch-manager-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="branding-branch-manager-general-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-general" type="button" role="tab" aria-controls="branding-branch-manager-general" aria-selected="true">General</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="branding-branch-manager-working-hours-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-working-hours" type="button" role="tab" aria-controls="branding-branch-manager-working-hours" aria-selected="true">Working Hours</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="branding-branch-manager-team-tab" data-bs-toggle="pill" data-bs-target="#branding-branch-manager-team" type="button" role="tab" aria-controls="branding-branch-manager-team" aria-selected="true">Team</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right Side of Header with Save and Language -->
+            <div class="d-flex flex-column align-items-end justify-content-center">
+                <div style="max-width: 300px;">
+                    <button class="btn btn-primary btn-ic-span-align w-100 fade show mb-4" id="saveContextBrandingButton" disabled>
+                        <i class="fa-regular fa-floppy-disk"></i>
+                        <span> Save</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+
+                    <button class="btn btn-primary btn-ic-span-align w-100 fade d-none mb-4" id="saveContextProductsButton" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+
+                    <button class="btn btn-primary btn-ic-span-align w-100 fade d-none mb-4" id="saveContextServicesButton" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+
+                    <button class="btn btn-primary btn-ic-span-align w-100 fade d-none mb-4" id="saveContextBranchesButton" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                        <div class="spinner-border save-button-spinner d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div id="contextTabMultiLanguageSelectContainer" class="fade show" style="max-width: 300px">
+                    <!-- Dynamically Generated -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="inner-container">
+        <div class="tab-content" id="context-inner-tabContent w-100">
+            <!-- Branding -->
+            <div class="tab-pane fade show active w-100" id="context-inner-branding" role="tabpanel" aria-labelledby="context-inner-branding-tab" tabindex="0">
+                <div class="mb-3">
+                    <div class="mb-3">
+                        <label for="brandingBrandNameInput" class="form-label">Name <i class="fa-regular fa-language"></i></label>
+                        <input type="text" class="form-control" id="brandingBrandNameInput" placeholder="Brand Name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="brandingBrandCountryInput" class="form-label">Country <i class="fa-regular fa-language"></i></label>
+                        <input type="text" class="form-control" id="brandingBrandCountryInput" placeholder="Brand Country">
+                    </div>
+                    <div class="mb-3">
+                        <label for="brandingGlobalContactInput" class="form-label">
+                            Global Contact Email <i class="fa-regular fa-language"></i>
+                        </label>
+                        <input type="email" class="form-control" id="brandingGlobalContactInput" placeholder="Brand Global Contact Email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="brandingGlobalPhoneInput" class="form-label">
+                            Global Contact Phone <i class="fa-regular fa-language"></i>
+                        </label>
+                        <input type="tel" class="form-control" id="brandingGlobalPhoneInput" placeholder="Brand Global Contact Phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="brandingGlobalWebsiteInput" class="form-label">
+                            Global Website <i class="fa-regular fa-language"></i>
+                        </label>
+                        <input type="text" class="form-control" id="brandingGlobalWebsiteInput" placeholder="Brand Global Website">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align d-block">
+                            <span>Brand Information <i class="fa-regular fa-language"></i> </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as about, mission, vision, etc.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <button class="btn btn-light btn-sm" id="addNewBrandInformation">
+                            <span>Add Information</span>
+                        </button>
+                        <div class="" id="brandingOtherInformationList">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Branches -->
+            <div class="tab-pane fade w-100" id="context-inner-branches" role="tabpanel" aria-labelledby="context-inner-branches-tab" tabindex="0">
+                <!-- Branches List Tab -->
+                <div class="fade show w-100" id="branchesListTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewBranchButton">
+                                <span>+ Add New Branch</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Branch Name" aria-label="Branch Name" aria-describedby="searchBranchButton">
+                            <button class="input-group-button btn btn-primary" id="searchBranchButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <table id="branchesTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated --->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Branches Manager Tab -->
+                <div class="fade d-none w-100" id="branchesManagerTab">
+                    <div class="tab-content w-100" id="branding-branch-manager-tabContent">
+                        <!-- General Edit -->
+                        <div class="tab-pane fade show active w-100" id="branding-branch-manager-general" role="tabpanel" aria-labelledby="branding-branch-manager-general-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label for="editBranchNameInput" class="form-label">
+                                    Name <i class="fa-regular fa-language"></i>
+                                </label>
+                                <input type="text" class="form-control" id="editBranchNameInput" placeholder="Branch Name">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align d-block" for="editBranchAddressInput">
+                                    <span>Address <i class="fa-regular fa-language"></i> </span>
+
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Avoid words like (no. instead of number) as AI will read them as (n o .). Use human readable format.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="text" class="form-control" id="editBranchAddressInput" placeholder="Branch Address">
+                            </div>
+                            <div class="mb-3">
+                                <label for="editBranchPhoneInput" class="form-label">
+                                    Phone <i class="fa-regular fa-language"></i>
+                                </label>
+                                <input type="tel" class="form-control" id="editBranchPhoneInput" placeholder="Branch Phone">
+                            </div>
+                            <div class="mb-3">
+                                <label for="editBranchEmailInput" class="form-label">
+                                    Email <i class="fa-regular fa-language"></i>
+                                </label>
+                                <input type="text" class="form-control" id="editBranchEmailInput" placeholder="Branch Email">
+                            </div>
+                            <div class="mb-3">
+                                <label for="editBranchWebsiteInput" class="form-label">
+                                    Website <i class="fa-regular fa-language"></i>
+                                </label>
+                                <input type="text" class="form-control" id="editBranchWebsiteInput" placeholder="Branch Website">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align d-block">
+                                    <span>Branch Information <i class="fa-regular fa-language"></i> </span>
+
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as about, opening year, etc.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <button class="btn btn-light btn-sm" id="addContextBranchInformation">
+                                    <span>Add Information</span>
+                                </button>
+                                <div class="" id="contextBranchInformationList">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Working Hours Edit -->
+                        <div class="tab-pane fade w-100" id="branding-branch-manager-working-hours" role="tabpanel" aria-labelledby="branding-branch-manager-working-hours-tab" tabindex="0">
+                            <div>
+                                <label class="form-label">Branch Opening Hours</label>
+                                <div id="editBranchOpeningHoursInputs" class="row">
+                                    <!-- dynamically generated -->
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Team Edit -->
+                        <div class="tab-pane fade w-100" id="branding-branch-manager-team" role="tabpanel" aria-labelledby="branding-branch-manager-team-tab" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label d-block mb-1">Branch Team</label>
+                                <button class="btn btn-light btn-sm mb-0" id="editBranchAddTeamMember">
+                                    <span>Add Team Member</span>
+                                </button>
+                                <div id="editBranchTeamInputs" class="row">
+                                    <!-- dynamically generated -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Services -->
+            <div class="tab-pane fade w-100" id="context-inner-services" role="tabpanel" aria-labelledby="context-inner-services-tab" tabindex="0">
+                <!-- Services List Tab -->
+                <div class="fade show w-100" id="contextServicesListTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewServiceButton">
+                                <span>+ Add New Service</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Service Name" aria-label="Service Name" aria-describedby="searchServiceButton">
+                            <button class="input-group-button btn btn-primary" id="searchServiceButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <table id="contextServicesTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated --->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Services Manager Tab -->
+                <div class="fade d-none w-100" id="contextServicesManagerTab">
+                    <div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextServiceName">Name <i class="fa-regular fa-language"></i></label>
+                            <input type="text" class="form-control" id="inputContextServiceName" placeholder="Service Name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextServiceShortDescription">
+                                Short Description <i class="fa-regular fa-language"></i>
+                            </label>
+                            <input type="text" class="form-control" id="inputContextServiceShortDescription" placeholder="Summarized Description">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextServiceFullDescription">
+                                Full Description <i class="fa-regular fa-language"></i>
+                            </label>
+                            <textarea class="form-control" id="inputContextServiceFullDescription" placeholder="Detailed Description"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block" for="linkContextServiceBranchSelect">Available At Branches <i class="fa-regular fa-language"></i></label>
+                            <div class="input-group">
+                                <select class="form-select" id="linkContextServiceBranchSelect">
+                                    <!-- Dynamically Generated -->
+                                </select>
+                                <button class="btn btn-light btn-sm" id="linkContextServiceBranch">
+                                    <span>Add Branch</span>
+                                </button>
+                            </div>
+                            <ul class="list-group mt-1" id="linkedContextServiceBranchesList">
+                                <!-- Dynamically Generated -->
+                            </ul>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block" for="linkContextServiceProductSelect">Related Products <i class="fa-regular fa-language"></i></label>
+                            <div class="input-group">
+                                <select class="form-select" id="linkContextServiceProductSelect">
+                                    <!-- Dynamically Generated -->
+                                </select>
+                                <button class="btn btn-light btn-sm" id="linkContextServiceProduct">
+                                    <span>Add Product</span>
+                                </button>
+                            </div>
+                            <ul class="list-group mt-1" id="linkedContextServiceProductsList">
+                                <!-- Dynamically Generated -->
+                            </ul>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label btn-ic-span-align d-block">
+                                <span>Additional Information <i class="fa-regular fa-language"></i> </span>
+
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <button class="btn btn-light btn-sm" id="addNewContextServiceInformation">
+                                <span>Add Information</span>
+                            </button>
+                            <div class="" id="contextServiceInformationList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Products -->
+            <div class="tab-pane fade w-100" id="context-inner-products" role="tabpanel" aria-labelledby="context-inner-products-tab" tabindex="0">
+                <!-- Products List Tab -->
+                <div class="fade show w-100" id="contextProductsListTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewProductButton">
+                                <span>+ Add New Product</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Product Name" aria-label="Product Name" aria-describedby="searchProductButton">
+                            <button class="input-group-button btn btn-primary" id="searchProductButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <table id="contextProductsTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated --->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Products Manager Tab -->
+                <div class="fade d-none w-100" id="contextProductsManagerTab">
+                    <div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextProductName">Name <i class="fa-regular fa-language"></i></label>
+                            <input type="text" class="form-control" id="inputContextProductName" placeholder="Product Name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextProductShortDescription">
+                                Short Description <i class="fa-regular fa-language"></i>
+                            </label>
+                            <input type="text" class="form-control" id="inputContextProductShortDescription" placeholder="Summarized Description">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="inputContextProductFullDescription">
+                                Full Description <i class="fa-regular fa-language"></i>
+                            </label>
+                            <textarea class="form-control" id="inputContextProductFullDescription" placeholder="Detailed Description"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block" for="linkContextProductBranchSelect">Available At Branches <i class="fa-regular fa-language"></i></label>
+                            <div class="input-group">
+                                <select class="form-select" id="linkContextProductBranchSelect">
+                                    <!-- Dynamically Generated -->
+                                </select>
+                                <button class="btn btn-light btn-sm" id="linkContextProductBranch">
+                                    <span>Add Branch</span>
+                                </button>
+                            </div>
+                            <ul class="list-group mt-1" id="linkedContextProductBranchesList">
+                                <!-- Dynamically Generated -->
+                            </ul>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label btn-ic-span-align d-block">
+                                <span>Additional Information <i class="fa-regular fa-language"></i> </span>
+
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Add information such as pricing, process, etc.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                            <button class="btn btn-light btn-sm" id="addNewContextProductInformation">
+                                <span>Add Information</span>
+                            </button>
+                            <div class="" id="contextProductInformationList">
+                                <!-- Dynamically Generated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

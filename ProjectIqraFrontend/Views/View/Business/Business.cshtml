@@ -1,0 +1,873 @@
+﻿<html data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Iqra AI</title>
+
+    <link href="~/libs/jquery-ui-1.13.3-dist/jquery-ui.min.css" rel="stylesheet">
+    <link href="~/libs/bootstrap-5.3.3-dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web-dist/css/fontawesome.min.css" rel="stylesheet">
+    <link href="~/libs/fontawesome-pro-6.5.1-web-dist/css/regular.min.css" rel="stylesheet">
+
+    <link href="~/css/structure.css" rel="stylesheet">
+    <link href="~/css/style.css" rel="stylesheet">
+
+    <link rel="icon" type="image/png" href="/img/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/img/favicon/favicon.svg" /> 
+    <link rel="shortcut icon" href="/img/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Iqra" />
+    <link rel="manifest" href="/img/favicon/site.webmanifest" />
+</head>
+
+<body id="body-pd" class="body-pd">
+    <div id="page-loader">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <header class="header header-body-pd" id="header">
+        <div class="header_toggle"> <i class='fa-regular fa-bars fa-bars' id="header-toggle"></i> </div>
+    </header>
+
+    <div id="tutorialChatPopupContainer"></div>
+
+    <!-- Sidebar -->
+    <div class="l-navbar show" id="nav-bar">
+        <nav class="nav">
+            <div class="upper-navigation">
+                <a href="/" class="nav_logo">
+                    <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
+                </a>
+                <div class="nav_list">
+                    <a class="nav_link" for="overview-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-chalkboard nav_icon'></i>
+                        <span class="nav_name">Overview</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Routing</span>
+                    <a class="nav_link active" for="routing-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-code-fork nav_icon'></i>
+                        <span class="nav_name">Routing</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Setup</span>
+                    <a class="nav_link" for="agents-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-headset nav_icon'></i>
+                        <span class="nav_name">Agents</span>
+                    </a>
+                    <a class="nav_link" for="cache-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-recycle nav_icon'></i>
+                        <span class="nav_name">Cache</span>
+                    </a>
+                    <a class="nav_link" for="tools-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-wrench nav_icon'></i>
+                        <span class="nav_name">Tools</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Data</span>
+                    <a class="nav_link" for="context-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-book nav_icon'></i>
+                        <span class="nav_name">Context</span>
+                    </a>
+                    <a class="nav_link disabled" for="knowledge-base-tab">
+                        <i class='fa-regular fa-database nav_icon'></i>
+                        <span class="nav_name">Knowledge Base</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Connections</span>
+                    <a class="nav_link" for="integrations-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-cube nav_icon'></i>
+                        <span class="nav_name">Integrations</span>
+                    </a>
+                    <a class="nav_link" for="phone-numbers-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-hashtag nav_icon'></i>
+                        <span class="nav_name">Numbers</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Actions</span>
+                    <a class="nav_link" for="make-calls-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-phone nav_icon'></i>
+                        <span class="nav_name">Make Calls</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Analytics</span>
+                    <a class="nav_link" for="conversations-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-messages nav_icon'></i>
+                        <span class="nav_name">Conversations</span>
+                    </a>
+                    <span class="mt-4 nav-category-label">Other</span>
+                    <a class="nav_link mb-0" for="settings-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-gear nav_icon'></i>
+                        <span class="nav_name">Settings</span>
+                    </a>
+                </div>
+            </div>
+            <div class="bottom-navigation">
+                <a href="/logout" class="nav_link mt-0">
+                    <i class='fa-regular fa-right-from-bracket nav_icon'></i>
+                    <span class="nav_name">Log out</span>
+                </a>
+            </div>
+
+        </nav>
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-100 main-container-wrapper" id="tabs-list">
+        <!-- Overview Container -->
+        <partial name="_OverviewTab.cshtml" />
+
+        <!--
+
+            Routing
+
+        -->
+        <!-- Routing Container -->
+        <partial name="_RoutingTab.cshtml" />
+
+        <!--
+
+            Setup
+
+        -->
+        <!-- Agents Container -->
+        <partial name="_AgentsTab.cshtml" />
+
+        <!-- Integrations Container -->
+        <partial name="_IntegrationsTab.cshtml" />
+
+        <!-- Cache Container -->
+        <partial name="_CacheTab.cshtml" />
+
+        <!-- Context Container -->
+        <partial name="_ContextTab.cshtml" />
+
+        <!-- Knowledge Base Container -->
+        <partial name="_KnowledgeBaseTab.cshtml" />
+
+        <!-- Tools Container -->
+        <partial name="_ToolsTab.cshtml" />
+
+        <!-- Phone Numbers Container -->
+        <partial name="_PhoneNumbersTab.cshtml" />
+
+        <!--
+
+            Actions
+
+        -->
+        <!-- Make Calls Container -->
+        <partial name="_MakeCallsTab.cshtml" />
+
+        <!--
+
+            Analytics
+
+        -->
+        <!-- Conversations Container -->
+        <partial name="_ConversationsTab.cshtml" />
+
+        <!--
+
+            Other 
+
+        -->
+        <!-- Settings Container -->
+        <partial name="_SettingsTab.cshtml" />
+
+        <!--
+
+            Modals 
+
+        -->
+        <!-- Add New Integration Modal -->
+        <div class="modal modal-lg fade" id="addNewIntegrationModal" tabindex="-1" aria-labelledby="addNewIntegrationModalLabel">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title d-none" id="addNewIntegrationModalLabel">Add New Integration</h5>
+                        <h5 class="modal-title d-none" id="editIntegrationModalLabel">Edit Integration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <!-- Available Integrations List -->
+                    <div class="modal-body fade show" id="availableIntegrationsContainer">
+                        <div class="row" id="availableIntegrationsList">
+                            <!-- Available integration cards will be added here dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Integration Manager Form -->
+                    <div class="modal-body fade d-none" id="integrationManagerContainer">
+                        <div class="mb-3">
+                            <label for="integrationFriendlyNameInput" class="form-label">Friendly Name</label>
+                            <input type="text" class="form-control" id="integrationFriendlyNameInput" placeholder="Enter a name for this integration">
+                        </div>
+                        <div id="integrationFieldsContainer">
+                            <!-- Dynamic fields will be added here based on selected integration -->
+                        </div>
+                        <div id="integrationHelpContainer" class="mt-3">
+                            <!-- Help link will be added here -->
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <!-- Back button shown only in manager view -->
+                        <button type="button" class="btn btn-secondary d-none mb-3" id="backToIntegrationsListButton">
+                            Back to List
+                        </button>
+                        <button type="button" class="btn btn-primary d-none mb-3" id="saveIntegrationButton">
+                            Save Integration
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Integration Configuration Modal -->
+        <div class="modal modal-lg fade" id="integrationConfigurationModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Integration Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="integrationConfigurationFieldsContainer">
+                            <!-- Dynamic configuration fields will be added here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="saveIntegrationConfigButton" disabled>
+                            <span>Save Configuration</span>
+                            <div class="spinner-border spinner-border-sm d-none" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Select Route Agent Modal -->
+        <div class="modal fade" id="editChangeRouteAgentModal" tabindex="-1" aria-labelledby="editChangeRouteAgentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="editChangeRouteAgentModalLabel">Select Agent</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="inputRouteManagerSelectAgent" placeholder="Agent Name">
+                            <button class="btn btn-primary" id="searchRouteManagerSelectAgentList">
+                                <i class="fa-regular fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                        <div class="list-group" id="routing-manager-select-agent-modal-list">
+                            <!-- Dynamically Generated -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="saveChangeRouteAgentButton" disabled>
+                            Select Agent
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ASP -->
+    <script>
+        const BusinessLogoURL = "@(TempData["BusinessLogoURL"])";
+        const BusinessToolAudioURL = "@(TempData["BusinessToolAudioURL"])";
+        const BusinessAgentBackgroundAudioURL = "@(TempData["BusinessAgentBackgroundAudioURL"])";
+        const IntegrationLogoURL = "@(TempData["IntegrationLogoURL"])";
+    </script>
+
+    <!-- Libraries -->
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    <script src="~/libs/jquery-ui-1.13.3-dist/jquery-ui.min.js"></script>
+    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
+    <script src="~/libs/esprima-4.0.1-dist/esprima.js"></script>
+    <script src="~/libs/chart.js-4.4.2-dist/chart.umd.js"></script>
+    <script src="~/js/vanillaEmojiPicker.js"></script>
+    <script src="~/js/moment-with-locales.js"></script>
+    <script src="~/js/moment-timezone-with-data.js"></script>
+
+    <script src="~/libs/wavesurfer.js-7.8.10-dist/wavesurfer.min.js"></script>
+    <script src="~/libs/wavesurfer.js-7.8.10-dist/plugins/hover.min.js"></script>
+
+    <script src="~/libs/X6-dist/x6/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-history/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-clipboard/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-minimap/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-snapline/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-keyboard/index.js"></script>
+    <script src="~/libs/X6-dist/x6-plugin-selection/index.js"></script>
+
+    <script src="~/libs/monaco-editor-0.48.0-dist/package/min/vs/loader.js"></script>
+
+    <!-- Scripts -->
+    <script>
+        function GetIdFromURLPath() {
+            let urlPath = window.location.pathname;
+
+            if (urlPath.endsWith("/")) {
+                urlPath = urlPath.substring(0, urlPath.length - 1);
+            }
+
+            return urlPath.split("/").pop();
+        }
+
+        function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
+            if (disabledAt) {
+                checkboxElement.prop("checked", true).change();
+                if (disabledReason) {
+                    reasonInputElement.val(disabledReason);
+                }
+            } else {
+                checkboxElement.prop("checked", false).change();
+                reasonInputElement.val("");
+            }
+        }
+
+        function EnableFullPermissionHelper(enableFullElement, subEnableElementsArray) {
+            enableFullElement.on("change", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                let current = $(event.currentTarget);
+
+                let isChecked = current.is(':checked');
+                if (isChecked) {
+                    subEnableElementsArray.forEach((element) => {
+                        element.prop("disabled", false).change();
+                    })
+                    enableFullElement.parent().parent().find("input[type=text]").removeClass("d-none");
+                }
+                else {
+                    subEnableElementsArray.forEach((element) => {
+                        element.prop("checked", false).prop("disabled", true).change();
+                    });
+                    enableFullElement.parent().parent().find("input[type=text]").val("").addClass("d-none");
+                }
+            });
+        }
+    </script>
+
+    <script src="~/js/multilanguage_dropdown.js"></script>
+    <script src="~/js/countries_list.js"></script>
+    <script src="~/js/alert_manager.js"></script>
+    <script src="~/js/confirm_dialog.js"></script>
+    <script src="~/js/chat_popup.js"></script>
+    <script src="~/js/script.js"></script>
+
+    <!-- Global -->
+    <script>
+        var AlertManager = new BootstrapAlertManager();
+
+        const CurrentBusinessId = GetIdFromURLPath();
+
+        var BusinessFullData = null;
+
+        var BusinessFullLanguagesData = null;
+        var BusinessDefaultLanguage = null;
+
+        var SpecificationLanguagesListData = null;
+        var SpecificationRegionsListData = null;
+        var SpecificationIntegrationsListData = null;
+
+        var BusinessLLMProvidersForIntegrations = null;
+        var BusinessSTTProvidersForIntegrations = null;
+        var BusinessTTSProvidersForIntegrations = null;
+
+        // API Related Functions
+
+        function FetchBusinessDataFromAPI(businessId, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/user/business/' + businessId,
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/languages/',
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationRegionsDataFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/regions/',
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationIntegrationsDataFromAPI(successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/integrations/',
+                type: 'POST',
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/llmproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/sttproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/ttsproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+    </script>
+
+    <!-- New Business Tutorial -->
+    <script>
+        async function InitalizeNewBusinessTutorial() {
+            let hasUserAsked = false;
+            let currentMessage = null;
+            let chatPopup;
+
+            async function onUserMessageBusinessTutorial(message) {
+                hasUserAsked = true;
+                currentMessage = message;
+
+                // Handle user question
+                await handleUserQuestion(message);
+            }
+
+            async function handleUserQuestion(question) {
+                // Here you would implement logic to answer the user's question
+                // For now, we'll just echo the question back
+                await chatPopup.SendResponseMessage(`You asked: "${question}". [Your answer here]`, 1000);
+
+                // After answering, remind the user to continue with the tutorial
+                if (chatPopup.continueButtonVisible) {
+                    await chatPopup.SendResponseMessage("Don't forget to select a language and click 'Continue' when you're ready to move on.", 1000);
+                }
+            }
+
+            async function sendTutorialMessage(message, delay, startDelay, disableInput = true) {
+                await chatPopup.SendResponseMessage(message, delay, startDelay);
+                chatPopup.disableInputState(disableInput);
+            }
+
+            async function sendTutorialMessageWithContinue(message, delay, startDelay, continueButtonText = 'Continue', validationFunc = null) {
+                await chatPopup.SendResponseMessageWithContinue(message, delay, startDelay, continueButtonText, validationFunc);
+            }
+
+            function startSettingsTutorial() {
+                $(".nav_list .nav_link").addClass("disabled");
+                $(".nav_list .nav_link[for='settings-tab']").removeClass("disabled").click();
+                $("#settings-tab #settings-inner-tab #settings-inner-languages-tab").click();
+            }
+
+            var tutorialConfirmDialog = new BootstrapConfirmDialog(
+                {
+                    title: 'Getting Started Tutorial',
+                    message: 'Would you like Iqra AI to help you get started and get familar with the Iqra platform?<br><br>Iqra will guide you using through a chat-interface to set-up the necessary before you can create the agents for calls.',
+                    confirmText: 'Yes please!',
+                    cancelText: 'No, I got this!',
+                    confirmButtonClass: 'btn-success',
+                    modalClass: '',
+                }
+            );
+
+            var tutorialConfirmDialogResult = await tutorialConfirmDialog.show();
+            if (!tutorialConfirmDialogResult) {
+                return;
+            }
+
+            chatPopup = new ModernChatPopup('tutorialChatPopupContainer', {
+                headerText: 'Getting Started',
+                sendButtonText: 'Ask',
+                placeholderText: 'Ask IqraAI for more explanation.',
+                onUserMessage: onUserMessageBusinessTutorial
+            });
+
+            startSettingsTutorial();
+
+            await sendTutorialMessage('Hey 👋!', 1000, 100);
+            await sendTutorialMessage('My name is Iqra.', 1300);
+            await sendTutorialMessage('I am here to help you get familiar with the Iqra platform.', 1300);
+            await sendTutorialMessage('If you have any questions, I will be here to answer them throughout the journey 😊.', 1300);
+
+            await sendTutorialMessage('The first thing you need to do is set up your language preferences.', 2300);
+            await sendTutorialMessage('Since Iqra is the only platform with full multi-language support, we found that it is best to add all your preferred languages at the very beginning so before adding any business information, you may enable the languages you require.', 4000);
+            await sendTutorialMessage('Remember, this language tab is only to enable languages for the business. You may specify the languages that are allowed for inbound calls in routings and outbound calls when making a call 😉.', 4000, 8000);
+
+            async function validateLanguageSelection() {
+                if ($("#settingsLanguageAddSelect").val() === "none") {
+                    await sendTutorialMessage('Please make sure to select a language before continuing.', 2000);
+                    return false;
+                }
+                return true;
+            }
+
+            await sendTutorialMessageWithContinue(
+                'Add your very first language which would be your default, and add multiple languages if you have more than one. If you have any questions, feel free to ask!',
+                2000,
+                7000,
+                'Continue',
+                validateLanguageSelection
+            );
+
+            await sendTutorialMessage('Great! Now let\'s move on to the next step.', 1300);
+        }
+    </script>
+
+    <!-- PageLoader -->
+    <script>
+        const pageLoader = $("#page-loader");
+        var HasNumbersLoaded = false;
+
+        var PageLoaderInterval = setInterval(
+            () => {
+                if (
+                    SpecificationIntegrationsListData != null
+                    &&
+                    SpecificationLanguagesListData != null
+                    &&
+                    BusinessFullData != null
+                    &&
+                    BusinessLLMProvidersForIntegrations != null
+                    &&
+                    BusinessSTTProvidersForIntegrations != null
+                    &&
+                    BusinessTTSProvidersForIntegrations != null
+                ) {
+                    clearInterval(PageLoaderInterval);
+
+                    pageLoader.css("opacity", "0");
+                    setTimeout(() => {
+                        pageLoader.addClass("d-none");
+                    }, 300);
+                }
+            }
+            , 100);
+
+        function RunActionAfterBusinessDataLoad(action) {
+            var businessDataCheckInterval = setInterval(
+                () => {
+                    if (BusinessFullData != null) {
+                        clearInterval(businessDataCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterLanguagesSpecificationLoad(action) {
+            var specificationLanguagesCheckInterval = setInterval(
+                () => {
+                    if (SpecificationLanguagesListData != null) {
+                        clearInterval(specificationLanguagesCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+    </script>
+
+    <!-- Initalizers -->
+    <script src="~/scripts/app/business/settings_tab.js"></script>
+    <script src="~/scripts/app/business/tools_tab.js"></script>
+    <script src="~/scripts/app/business/context_tab.js"></script>
+    <script src="~/scripts/app/business/cache_tab.js"></script>
+    <script src="~/scripts/app/business/integrations_tab.js"></script>
+    <script src="~/scripts/app/business/numbers_tab.js"></script>
+
+    <script src="~/scripts/app/business/agents_tab.js"></script>
+    <script src="~/scripts/app/business/overview_tab.js"></script>
+    <script src="~/scripts/app/business/routing_tab.js"></script>
+    <script src="~/scripts/app/business/make_calls_tab.js"></script>
+    <script src="~/scripts/app/business/conversations_tab.js"></script>
+
+    <!-- Main Init Script -->
+    <script>
+        $(window).on('load', () => {
+
+            FetchSpecificationLanguagesDataFromAPI(
+                (langaugesListData) => {
+                    SpecificationLanguagesListData = langaugesListData;
+
+                    FetchSpecificationRegionsDataFromAPI(
+                        (regionsListData) => {
+                            SpecificationRegionsListData = regionsListData;
+
+                            FetchSpecificationIntegrationsDataFromAPI(
+                                (integrationsListData) => {
+                                    SpecificationIntegrationsListData = integrationsListData;
+
+                                    const temporaryLLMProvidersForIntegrations = [];
+                                    const temporarySTTProvidersForIntegrations = [];
+                                    const temporaryTTSProvidersForIntegrations = [];
+                                    let LLMProviderFail = false;
+                                    let STTProviderFail = false;
+                                    let TTSProviderFail = false;
+
+                                    SpecificationIntegrationsListData.forEach((integration) => {
+                                        if (integration.type.includes("LLM")) {
+                                            const formData = new FormData();
+                                            formData.append("integrationtype", integration.id);
+                                            FetchSpecificationLLMProviderDataByIntegrationTypeFromAPI(
+                                                formData,
+                                                (LLMProviderResult) => {
+                                                    temporaryLLMProvidersForIntegrations.push(LLMProviderResult);
+                                                },
+                                                (LLMProviderError) => {
+                                                    AlertManager.createAlert({
+                                                        type: 'danger',
+                                                        message: 'Error occured while fetching LLM Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                        enableDismiss: false
+                                                    });
+
+                                                    console.log('Error occured while fetching LLM Provider data for integration with id ' + integration.id + ': ', LLMProviderError);
+
+                                                    LLMProviderFail = true;
+                                                }
+                                            );
+                                        }
+
+                                        if (integration.type.includes("STT") || integration.type.includes("SPEECH2TEXT")) {
+                                            const formData = new FormData();
+                                            formData.append("integrationtype", integration.id);
+                                            FetchSpecificationSTTProviderDataByIntegrationTypeFromAPI(
+                                                formData,
+                                                (STTProviderResult) => {
+                                                    temporarySTTProvidersForIntegrations.push(STTProviderResult);
+                                                },
+                                                (STTProviderError) => {
+                                                    AlertManager.createAlert({
+                                                        type: 'danger',
+                                                        message: 'Error occured while fetching STT Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                        enableDismiss: false
+                                                    });
+
+                                                    console.log('Error occured while fetching STT Provider data for integration with id ' + integration.id + ': ', STTProviderError);
+
+                                                    STTProviderFail = true;
+                                                }
+                                            );
+                                        }
+
+                                        if (integration.type.includes("TTS") || integration.type.includes("TEXT2SPEECH")) {
+                                            const formData = new FormData();
+                                            formData.append("integrationtype", integration.id);
+                                            FetchSpecificationTTSProviderDataByIntegrationTypeFromAPI(
+                                                formData,
+                                                (TTSProviderResult) => {
+                                                    temporaryTTSProvidersForIntegrations.push(TTSProviderResult);
+                                                },
+                                                (TTSProviderError) => {
+                                                    AlertManager.createAlert({
+                                                        type: 'danger',
+                                                        message: 'Error occured while fetching TTS Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                        enableDismiss: false
+                                                    });
+
+                                                    console.log('Error occured while fetching TTS Provider data for integration with id ' + integration.id + ': ', TTSProviderError);
+
+                                                    TTSProviderFail = true;
+                                                }
+                                            );
+                                        }
+                                    });
+
+                                    if (!LLMProviderFail) {
+                                        BusinessLLMProvidersForIntegrations = temporaryLLMProvidersForIntegrations;
+                                    }
+
+                                    if (!STTProviderFail) {
+                                        BusinessSTTProvidersForIntegrations = temporarySTTProvidersForIntegrations;
+                                    }
+
+                                    if (!TTSProviderFail) {
+                                        BusinessTTSProvidersForIntegrations = temporaryTTSProvidersForIntegrations;
+                                    }
+
+                                    if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail) {
+                                        FetchBusinessDataFromAPI(CurrentBusinessId,
+                                            (businessData) => {
+                                                BusinessFullData = businessData;
+
+                                                BusinessFullLanguagesData = [];
+                                                BusinessFullData.businessData.languages.forEach((value, index) => {
+                                                    const countryCodeLanguage = SpecificationLanguagesListData.find((data, index) => {
+                                                        return data.id === value;
+                                                    });
+
+                                                    if (countryCodeLanguage) {
+                                                        BusinessFullLanguagesData.push(countryCodeLanguage);
+                                                    }
+                                                });
+                                                BusinessDefaultLanguage = BusinessFullData.businessData.defaultLanguage;
+
+                                                initSettingsTab();
+                                                initToolsTab();
+                                                initContextTab();
+                                                initCacheTab();
+                                                initIntegrationsTab();
+                                                initAgentTab();
+                                                initRoutingTab();
+                                                initNumbersTab();
+                                                initConversationsTab();
+                                                initMakeCallsTab();
+
+                                                let businessTutorials = BusinessFullData.businessData.tutorials;
+                                                if (businessTutorials) {
+                                                    if (businessTutorials.newBusinessTutorial) {
+                                                        // todo enable again
+                                                        //InitalizeNewBusinessTutorial();
+                                                    }
+                                                }
+                                            },
+                                            (businessDataError) => {
+                                                AlertManager.createAlert({
+                                                    type: 'danger',
+                                                    message: 'Error occured while fetching business data. Check browser console for logs.',
+                                                    enableDismiss: false
+                                                });
+
+                                                console.log('Error occured while fetching business data: ', businessDataError);
+                                            }
+                                        );
+                                    }
+                                },
+                                (integrationsListError) => {
+                                    AlertManager.createAlert({
+                                        type: 'danger',
+                                        message: 'Error occured while fetching specification integrations data. Check browser console for logs.',
+                                        enableDismiss: false
+                                    });
+
+                                    console.log('Error occured while fetching specification integrations data: ', integrationsListError);
+                                }
+                            );
+                        },
+                        (regionsListError) => {
+                            AlertManager.createAlert({
+                                type: 'danger',
+                                message: 'Error occured while fetching specification regions data. Check browser console for logs.',
+                                enableDismiss: false
+                            });
+
+                            console.log('Error occured while fetching specification regions data: ', regionsListError);
+                        }
+                    );
+
+                },
+                (langaugesListDataError) => {
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Error occured while fetching specification languages data. Check browser console for logs.',
+                        enableDismiss: false
+                    });
+
+                    console.log('Error occured while fetching specification languages data: ', langaugesListDataError);
+                }
+            );
+        });
+    </script>
+</body>
+
+</html>
