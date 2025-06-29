@@ -2249,12 +2249,20 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 	changes.edges = [];
 	if (!hasChanges || (hasChanges && compileConversationChanges)) {
 		for (let i = 0; i < edgeNodes.length; i++) {
+			var sourceCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].source.cell);
+			var sourceCellNodePort = sourceCellNode.ports.items.find((port) => port.id === edgeNodes[i].source.port);
+
+			var targetCellNode = scriptNodes.find((node) => node.id === edgeNodes[i].target.cell);
+			var targetCellNodePort = targetCellNode.ports.items.find((port) => port.id === edgeNodes[i].target.port);
+
+			var isSourceNodeOutput = sourceCellNodePort.group === "output";
+
 			const pushNewEdgeNode = {
 				id: edgeNodes[i].id,
-				sourceNodeId: edgeNodes[i].source.cell,
-				sourceNodePortId: edgeNodes[i].source.port,
-				targetNodeId: edgeNodes[i].target.cell,
-				targetNodePortId: edgeNodes[i].target.port,
+				sourceNodeId: isSourceNodeOutput ? edgeNodes[i].source.cell : edgeNodes[i].target.cell,
+				sourceNodePortId: isSourceNodeOutput ? edgeNodes[i].source.port : edgeNodes[i].target.port,
+				targetNodeId: isSourceNodeOutput ? edgeNodes[i].target.cell : edgeNodes[i].source.cell,
+				targetNodePortId: isSourceNodeOutput ? edgeNodes[i].target.port : edgeNodes[i].source.port,
 			};
 
 			if (compileConversationChanges) {
@@ -2630,6 +2638,12 @@ function fillAgentSriptManagerTab() {
 
 		// Add Missing Ports if needed
 		const currentPorts = currentNodeCell.getPorts();
+		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.START) {
+			const hasOutputPort = currentPorts.some((port) => port.group === "output");
+			if (!hasOutputPort) {
+				currentNodeCell.addPort({ group: "output" });
+			}
+		}
 		if (nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY || nodeBase.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
 			const hasInputPort = currentPorts.some((port) => port.group === "input");
 			if (!hasInputPort) {
@@ -3187,8 +3201,12 @@ function initializeAgentScriptGraph(isNew = true) {
 				enabled: true,
 				modifiers: [],
 				factor: 1.1,
-				maxScale: 2,
-				minScale: 0.5,
+				maxScale: 16,
+				minScale: 0.01,
+			},
+			scaling: {
+				min: 0.01,
+				max: 16
 			},
 			panning: {
 				enabled: true,
@@ -3381,8 +3399,8 @@ function initializeAgentScriptGraph(isNew = true) {
 		// Event Listeners
 		graph.on("scale", ({ sx, sy }) => {
 			const scale = sx;
-			$("#agent-script-graph-zoom-in").prop("disabled", scale >= 2);
-			$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.5);
+			$("#agent-script-graph-zoom-in").prop("disabled", scale >= 16);
+			$("#agent-script-graph-zoom-out").prop("disabled", scale <= 0.01);
 		});
 
 		graph.on("history:change", () => {
@@ -3426,7 +3444,9 @@ function initializeAgentScriptGraph(isNew = true) {
 		});
 
 		graph.on("cell:click", ({ cell, e }) => {
-			
+			// temporary fix for the overlay of node selection taht is used to move it from everywhere on node
+			// the overlay causes the inputs to not be selected
+			CurrentAgentScriptGraph.cleanSelection();
 		});
 
 		graph.on("blank:click", () => {
@@ -5562,14 +5582,14 @@ function initAgentTab() {
 			// Graph Toolbar Bottom
 			$("#agent-script-graph-zoom-in").on("click", () => {
 				const zoom = CurrentAgentScriptGraph.zoom();
-				if (zoom < 2) {
+				if (zoom < 16) {
 					CurrentAgentScriptGraph.zoom(0.1);
 				}
 			});
 
 			$("#agent-script-graph-zoom-out").on("click", () => {
 				const zoom = CurrentAgentScriptGraph.zoom();
-				if (zoom > 0.5) {
+				if (zoom > 0.01) {
 					CurrentAgentScriptGraph.zoom(-0.1);
 				}
 			});

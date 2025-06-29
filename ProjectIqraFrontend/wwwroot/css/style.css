@@ -1484,7 +1484,8 @@ table.table > thead > * > * {
 
 /** Config canvas **/
 .x6-widget-selection-box {
-	display: none !important;
+	border: none;
+	box-shadow: none;
 }
 
 .agent-script-graph-container .offcanvas

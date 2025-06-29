@@ -551,7 +551,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
                 short speechSample = i < speechShortSpan.Length ? (short)((float)speechShortSpan[i] * (float)agentVolume) : (short)0;
                 short backgroundSample = i < backgroundShortSpan.Length ? (short)((float)backgroundShortSpan[i] * (float)backgroundVolume) : (short)0;
 
-                int mixedSample = (speechSample / 2) + (backgroundSample / 2); // clip agent audio a bit
+                int mixedSample = speechSample + (backgroundSample / 2); // clip agent audio a bit
                 mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
             }
 
@@ -560,6 +560,9 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI
 
         public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration, CancellationToken cancellationToken)
         {
+            // this causes more issues than it solves
+            return Task.CompletedTask;
+
             float target = Math.Clamp(targetFactor, 0.0f, 1.0f);
 
             if (duration <= TimeSpan.Zero)

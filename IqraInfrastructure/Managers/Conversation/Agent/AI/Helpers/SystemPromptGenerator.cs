@@ -269,8 +269,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             return result;
         }
 
-        #region Template object creation methods
-
         private ScriptObject CreateAgentPersonalityObject(BusinessAppAgentPersonality personality, string languageCode)
         {
             var personalityObject = new ScriptObject();
@@ -307,8 +305,8 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                 scriptObject["Name"] = GetLocalizedString(script.General.Name, languageCode, "");
                 scriptObject["Description"] = GetLocalizedString(script.General.Description, languageCode, "");
 
-                // Convert the conversation graph to a human-readable format
-                scriptObject["ConversationFlow"] = ConvertScriptToHumanReadable(scriptCustomTools, script, languageCode);
+                ConversationFlowMDBuilderHelper scriptBuilder = new ConversationFlowMDBuilderHelper(script, languageCode, scriptCustomTools);
+                scriptObject["ConversationFlow"] = scriptBuilder.ConvertScriptToHumanReadable();
 
                 scriptsArray.Add(scriptObject);
             }
@@ -316,302 +314,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             return scriptsArray;
         }
 
-        private string ConvertScriptToHumanReadable(List<BusinessAppTool> scriptCustomTools, BusinessAppAgentScript script, string languageCode)
-        {
-            if (script.Nodes == null || !script.Nodes.Any())
-            {
-                return "No conversation flow defined.";
-            }
-
-            var result = new StringBuilder();
-
-            // Build node and edge maps
-            var nodesMap = new Dictionary<string, BusinessAppAgentScriptNode>();
-            var edgesMap = new Dictionary<string, List<ScriptEdge>>();
-
-            foreach (var node in script.Nodes)
-            {
-                nodesMap[node.Id] = node;
-            }
-
-            foreach (var edge in script.Edges)
-            {
-                if (!edgesMap.ContainsKey(edge.SourceNodeId))
-                {
-                    edgesMap[edge.SourceNodeId] = new List<ScriptEdge>();
-                }
-                edgesMap[edge.SourceNodeId].Add(new ScriptEdge
-                {
-                    TargetId = edge.TargetNodeId,
-                    SourcePort = edge.SourceNodePortId,
-                    TargetPort = edge.TargetNodePortId
-                });
-            }
-
-            // Find start node
-            var startNode = script.Nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);
-            if (startNode == null)
-            {
-                return "Script has no start node.";
-            }
-
-            // Process child nodes of start node
-            var startNodeChildren = GetNodeChildren(startNode.Id, edgesMap);
-
-            if (startNodeChildren.Count > 1)
-            {
-                for (int i = 0; i < startNodeChildren.Count; i++)
-                {
-                    string scenarioNumber = (i + 1).ToString();
-                    result.AppendLine($"## Main Scenario {scenarioNumber}");
-                    result.Append(ProcessNodeRecursively(startNodeChildren[i].TargetId, nodesMap, edgesMap, scenarioNumber, 0, null, languageCode, scriptCustomTools));
-                    if (i < startNodeChildren.Count - 1)
-                    {
-                        result.AppendLine();
-                    }
-                }
-            }
-            else if (startNodeChildren.Count == 1)
-            {
-                result.AppendLine("# Conversation Flow");
-                result.AppendLine();
-                result.Append(ProcessNodeRecursively(startNodeChildren[0].TargetId, nodesMap, edgesMap, "1", 0, null, languageCode, scriptCustomTools));
-            }
-
-            return result.ToString();
-        }
-
-        private List<ScriptEdge> GetNodeChildren(string nodeId, Dictionary<string, List<ScriptEdge>> edgesMap)
-        {
-            if (!edgesMap.ContainsKey(nodeId))
-            {
-                return new List<ScriptEdge>();
-            }
-
-            return edgesMap[nodeId];
-        }
-
-        private string ProcessNodeRecursively(
-            string nodeId,
-            Dictionary<string, BusinessAppAgentScriptNode> nodesMap,
-            Dictionary<string, List<ScriptEdge>> edgesMap,
-            string scenarioPath,
-            int depth,
-            string lastNodeType,
-            string languageCode,
-            List<BusinessAppTool> scriptCustomTools
-        )
-        {
-            if (!nodesMap.ContainsKey(nodeId))
-            {
-                return "";
-            }
-
-            var node = nodesMap[nodeId];
-            var result = new StringBuilder();
-            var indent = new string(' ', depth * 2);
-            var currentNodeType = GetNodeTypeLabel(node);
-
-            // Handle node content based on type
-            if (currentNodeType != lastNodeType || currentNodeType != "customer_query")
-            {
-                switch (node.NodeType)
-                {
-                    case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
-                        var userQueryNode = node as BusinessAppAgentScriptUserQueryNode;
-                        if (userQueryNode != null)
-                        {
-                            result.AppendLine($"{indent}customer_query: NodeId={nodeId} CustomerQuery=\"{GetLocalizedString(userQueryNode.Query, languageCode, "Customer query")}\"");
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
-                        var aiResponseNode = node as BusinessAppAgentScriptAIResponseNode;
-                        if (aiResponseNode != null)
-                        {
-                            result.AppendLine($"{indent}response_to_customer: NodeId={nodeId} AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, languageCode, "AI response")}\"");
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
-                        var systemToolNode = node as BusinessAppAgentScriptSystemToolNode;
-                        if (systemToolNode != null)
-                        {
-                            string toolTypeFormat = GetSystemToolTypeFormat(systemToolNode.ToolType, systemToolNode, languageCode);
-                            result.AppendLine($"{indent}execute_system_function: {toolTypeFormat}");
-
-                            // Special handling for DTMF keypad input
-                            if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput)
-                            {
-                                var dtmfNode = node as BusinessAppAgentScriptDTMFInputToolNode;
-                                var childDTMFEdges = GetNodeChildren(nodeId, edgesMap);
-
-                                if (childDTMFEdges.Any())
-                                {
-                                    result.AppendLine($"{indent}possible tool result scenarios:");
-
-                                    foreach (var edge in childDTMFEdges)
-                                    {
-                                        string outcomeValue = "unknown";
-
-                                        // Handle timeout port
-                                        if (edge.SourcePort == "timeout")
-                                        {
-                                            outcomeValue = "timeout";
-                                        }
-                                        // Handle outcome ports
-                                        else if (edge.SourcePort.StartsWith("outcome-") && dtmfNode?.Outcomes != null)
-                                        {
-                                            // Find the outcome by portId
-                                            var outcome = dtmfNode.Outcomes.FirstOrDefault(o => o.PortId == edge.SourcePort);
-                                            if (outcome != null)
-                                            {
-                                                outcomeValue = GetLocalizedString(outcome.Value, languageCode, edge.SourcePort);
-                                            }
-                                        }
-
-                                        result.AppendLine($"{indent}scenario ({outcomeValue}):");
-                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode, scriptCustomTools));
-                                    }
-
-                                    return result.ToString();
-                                }
-                            }
-                        }
-                        break;
-
-                    case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
-                        var customToolNode = node as BusinessAppAgentScriptCustomToolNode;
-                        var nodeCustomTool = scriptCustomTools.FirstOrDefault(t => t.Id == customToolNode.ToolId);
-                        if (customToolNode != null && nodeCustomTool != null)
-                        {
-                            var variablesScehema = BusinessAppToolArgumentsToJsonSchemea.ConvertToJsonSchema(nodeCustomTool.Configuration.InputSchemea, languageCode, true);
-                            result.AppendLine($"{indent}execute_custom_function: \"reason for execution\", \"message if any to speak before execution begins\", \"{nodeId}\", {variablesScehema}");
-
-                            // Special handling for custom tool outcomes
-                            var childCustomEdges = GetNodeChildren(nodeId, edgesMap);
-
-                            if (childCustomEdges.Any())
-                            {
-                                bool hasMultipleOutcomes = childCustomEdges.Count > 1;
-
-                                if (hasMultipleOutcomes)
-                                {
-                                    result.AppendLine($"{indent}possible tool result scenarios:");
-
-                                    foreach (var edge in childCustomEdges)
-                                    {
-                                        string outcomeValue = "unknown";
-
-                                        // Handle default outcome
-                                        if (edge.SourcePort == "outcome-default")
-                                        {
-                                            outcomeValue = "default";
-                                        }
-                                        // Handle specific response outcomes
-                                        else if (edge.SourcePort.StartsWith("outcome-"))
-                                        {
-                                            string responseCode = edge.SourcePort.Replace("outcome-", "");
-                                            outcomeValue = $"Response {responseCode}";
-                                        }
-
-                                        result.AppendLine($"{indent}scenario ({outcomeValue}):");
-                                        result.Append(ProcessNodeRecursively(edge.TargetId, nodesMap, edgesMap, $"{scenarioPath}.{outcomeValue}", depth + 1, null, languageCode, scriptCustomTools));
-                                    }
-
-                                    return result.ToString();
-                                }
-                            }
-                        }
-                        break;
-                }
-            }
-
-            // Process child nodes
-            var childEdges = GetNodeChildren(nodeId, edgesMap);
-
-            if (childEdges.Count > 1)
-            {
-                result.AppendLine($"{indent}possible scenarios:");
-
-                for (int i = 0; i < childEdges.Count; i++)
-                {
-                    string subScenarioPath = $"{scenarioPath}.{i + 1}";
-                    result.AppendLine($"{indent}### Scenario {subScenarioPath}");
-                    result.Append(ProcessNodeRecursively(childEdges[i].TargetId, nodesMap, edgesMap, subScenarioPath, depth + 1, null, languageCode, scriptCustomTools));
-                }
-            }
-            else if (childEdges.Count == 1)
-            {
-                result.Append(ProcessNodeRecursively(childEdges[0].TargetId, nodesMap, edgesMap, scenarioPath, depth, currentNodeType, languageCode, scriptCustomTools));
-            }
-
-            return result.ToString();
-        }
-
-        private string GetNodeTypeLabel(BusinessAppAgentScriptNode node)
-        {
-            switch (node.NodeType)
-            {
-                case BusinessAppAgentScriptNodeTypeENUM.UserQuery:
-                    return "customer_query";
-                case BusinessAppAgentScriptNodeTypeENUM.AIResponse:
-                    return "response_to_customer";
-                case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
-                    return "execute_system_function";
-                case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
-                    return "execute_custom_function";
-                default:
-                    return node.NodeType.ToString();
-            }
-        }
-
-        private string GetSystemToolTypeFormat(BusinessAppAgentScriptNodeSystemToolTypeENUM type, BusinessAppAgentScriptSystemToolNode systemToolNode, string currentLanguage)
-        {
-            string nodeId = systemToolNode.Id;
-
-            switch (type)
-            {
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.EndCall:
-                    {
-                        var endCallNode = systemToolNode as BusinessAppAgentScriptEndCallToolNode;
-                        var messageToSpeak = endCallNode.Messages?[currentLanguage] ?? null;
-
-                        string originalFormat = $"end_call: \"reason for ending the call\", \"{((!string.IsNullOrEmpty(messageToSpeak)) ? messageToSpeak : "null")}\", \"{nodeId}\"";
-                        return originalFormat;
-                    }
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.ChangeLanguage:
-                    return "change_language: \"reason for changing language\", \"true to play all list of languages if customer does not define language and false if customer defines an available language\", \"if customer defines the language that is available in this session/conversation/call\"";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.GetDTMFKeypadInput:
-                    return $"recieve_dtmf_input: \"reason for requesting dtmf input\", \"response to speak before requesting dtmf input\", \"{nodeId}\"";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.PressDTMFKeypad:
-                    return "press_dtmf_keypad: \"array of keypad dtmf input you would like to press, can be one or many at once\"";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToAgent:
-                    return $"transfer_to_ai_agent: \"reason for transfering the call\", \"response to speak before agent transfer execution\", \"{nodeId}\"";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.TransferToHuman:
-                    return $"transfer_to_human_agent: \"reason for transfering the call\", \"response to speak before agent transfer execution\", \"{nodeId}\"";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.AddScriptToContext:
-                    return "add_script_to_context";
-                case BusinessAppAgentScriptNodeSystemToolTypeENUM.SendSMS:
-                    {
-                        var sendSMSNode = systemToolNode as BusinessAppAgentScriptSendSMSToolNode;
-                        var messageToSend = sendSMSNode.Messages?[currentLanguage] ?? null;
-                        if (messageToSend == null) throw new Exception("Message to send is null"); // here it should never be null tho
-
-                        return $"send_sms: \"reason for sending the message\", \"{messageToSend}\", \"phone number in E.164 format '+[country code][phone number]' or 'current_caller' if sending to the current caller without knowing their number\" \"{nodeId}\"";
-                    }
-                default:
-                    return type.ToString();
-            }
-        }
-
-        // Helper class to represent an edge in the script graph
-        private class ScriptEdge
-        {
-            public string TargetId { get; set; }
-            public string SourcePort { get; set; }
-            public string TargetPort { get; set; }
-        }
+        // Helper class to represent an edge in the script graph  
 
         private ScriptArray CreateAgentScriptToolsObject(List<BusinessAppTool> tools, string languageCode)
         {
@@ -985,10 +688,6 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             return languageContainerObject;
         }
 
-        #endregion
-
-        #region Helper Methods
-
         private (List<BusinessAppTool> tools, List<BusinessAppAgent> agents, List<BusinessAppAgentScript> scripts, bool hasDTMFRequestTool, bool hasSendSMSTool) GetScriptNodesData(BusinessAppAgentScript currentScriptToCheck, BusinessApp businessApp, BusinessAppAgent sessionRouteAgent)
         {
             var (tools, agents, scripts, hasDTMFRequestTool, hasSendSMSTool) = (new List<BusinessAppTool>(), new List<BusinessAppAgent>(), new List<BusinessAppAgentScript>(), false, false);
@@ -1136,7 +835,5 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             // Return first available dictionary
             return dictionary.Values.FirstOrDefault(v => v != null) ?? new Dictionary<string, string>();
         }
-
-        #endregion
     }
 }

@@ -28,7 +28,9 @@
     // Advanced options
     "resolveJsonModule": true,
     "declaration": true, // Generates .d.ts files for better IntelliSense
-    "declarationMap": true
+    "declarationMap": true,
+
+    "types": []
   },
   "include": [
     "Scripts/**/*"

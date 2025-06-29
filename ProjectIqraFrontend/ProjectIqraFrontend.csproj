@@ -19,8 +19,4 @@
     <ProjectReference Include="..\IqraStatic\IqraStatic.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\compiled-scripts\" />
-  </ItemGroup>
-
 </Project>
