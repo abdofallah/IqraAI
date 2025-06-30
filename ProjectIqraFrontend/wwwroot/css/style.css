@@ -1653,12 +1653,29 @@ table.table > thead > * > * {
 	box-shadow: -1px 1px 2px 0px rgb(236 254 143 / 70%);
 }
 
-.agent-script-node-header {
+.agent-script-node.invalid-multilang
+{
+	border: 1px solid var(--bs-danger) !important;
+	box-shadow: -1px 1px 2px 0px var(--bs-danger) !important;
+}
+
+.agent-script-node-header
+{
 	background: #1a1a1a;
 	padding: 8px;
 	border-bottom: 1px solid var(--tcolor-darker-green) !important;
 	display: flex;
 	justify-content: flex-end;
+}
+
+.agent-script-node-header .node-title {
+	margin-bottom: 6px;
+}
+
+
+.agent-script-node-header .node-id {
+	opacity: 0.5;
+    font-size: 0.8rem;
 }
 
 .agent-script-node-delete-btn {
@@ -1746,6 +1763,12 @@ table.table > thead > * > * {
 	gap: 5px;
 }
 
+.agent-script-user-query-node.invalid-multilang [data-input="user-query"]
+{
+	border: 1px solid var(--bs-danger) !important;
+	box-shadow: -1px 1px 2px 0px var(--bs-danger) !important;
+}
+
 /* AI Response Node Specific */
 .agent-script-ai-response-node {
 	border: 1px solid #e9ecef;
@@ -1768,6 +1791,12 @@ table.table > thead > * > * {
 .agent-script-ai-response-node .node-actions {
 	display: flex;
 	gap: 5px;
+}
+
+.agent-script-ai-response-node.invalid-multilang [data-input="ai-response"]
+{
+	border: 1px solid var(--bs-danger) !important;
+	box-shadow: -1px 1px 2px 0px var(--bs-danger) !important;
 }
 
 /* System Tool Node Specific */

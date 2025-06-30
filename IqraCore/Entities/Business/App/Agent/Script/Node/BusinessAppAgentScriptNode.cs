@@ -9,7 +9,8 @@ namespace IqraCore.Entities.Business
         typeof(BusinessAppAgentScriptUserQueryNode),
         typeof(BusinessAppAgentScriptAIResponseNode),
         typeof(BusinessAppAgentScriptSystemToolNode),
-        typeof(BusinessAppAgentScriptCustomToolNode)
+        typeof(BusinessAppAgentScriptCustomToolNode),
+        typeof(BusinessAppAgentScriptGoToNodeToolNode)
     )]
     public class BusinessAppAgentScriptNode
     {

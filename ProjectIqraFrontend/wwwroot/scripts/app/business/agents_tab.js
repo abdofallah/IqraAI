@@ -25,7 +25,8 @@ const AGENT_SCRIPT_SYSTEM_TOOLS = {
 	TRANSFER_TO_AGENT: 5,
 	TRANSFER_TO_HUMAN: 6,
 	ADD_SCRIPT_TO_CONTEXT: 7,
-	SEND_SMS: 8
+	SEND_SMS: 8,
+	GOTONODE: 9
 };
 
 const AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
@@ -1954,6 +1955,8 @@ function validateAgentScriptMultilanguageElements() {
 		areLanguagesIncompleteInConversationTab[language] = false;
 	});
 
+	$(CurrentAgentScriptGraph.view.container).find(`.agent-script-node.invalid-multilang`).removeClass('invalid-multilang');
+
 	const currentNodesArray = CurrentAgentScriptGraph.toJSON();
 	for (let i = 0; i < currentNodesArray.cells.length; i++) {
 		const node = currentNodesArray.cells[i];
@@ -1969,6 +1972,8 @@ function validateAgentScriptMultilanguageElements() {
 
 				if (!currentLanguageQuery || currentLanguageQuery === "" || currentLanguageQuery.trim() === "") {
 					areLanguagesIncompleteInConversationTab[language] = true;
+
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
 				}
 			});
 
@@ -1984,6 +1989,8 @@ function validateAgentScriptMultilanguageElements() {
 
 				if (!currentLanguageResponse || currentLanguageResponse === "" || currentLanguageResponse.trim() === "") {
 					areLanguagesIncompleteInConversationTab[language] = true;
+
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
 				}
 			});
 
@@ -2002,6 +2009,8 @@ function validateAgentScriptMultilanguageElements() {
 						const currentLanguageMessage = config.messages[language];
 						if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
 							areLanguagesIncompleteInConversationTab[language] = true;
+
+							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
 						}
 					});
 				}
@@ -2016,6 +2025,8 @@ function validateAgentScriptMultilanguageElements() {
 						const currentLanguageOutcomeText = outcome.value[language];
 						if (!currentLanguageOutcomeText || currentLanguageOutcomeText === "" || currentLanguageOutcomeText.trim() === "") {
 							areLanguagesIncompleteInConversationTab[language] = true;
+
+							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
 						}
 					});
 				});
@@ -2029,6 +2040,8 @@ function validateAgentScriptMultilanguageElements() {
 					const currentLanguageMessage = config.messages[language];
 					if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
 						areLanguagesIncompleteInConversationTab[language] = true;
+
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
 					}
 				});
 			}
@@ -2887,10 +2900,13 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center btn-ic-span-align">
-                        <i class="fa-regular fa-message me-2"></i>
-                        <span>User Query</span>
-                    </div>
+                    <div>
+						<div class="d-flex align-items-center btn-ic-span-align node-title">
+							<i class="fa-regular fa-message me-2"></i>
+							<span>User Query</span>
+						</div>
+						<span class="node-id">${cell.id}</span>
+					</div>
                     <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm me-2" data-action="configure-user-query">
                             <i class="fa-regular fa-gear"></i>
@@ -2961,10 +2977,13 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center btn-ic-span-align">
-                        <i class="fa-regular fa-robot me-2"></i>
-                        <span>AI Response</span>
-                    </div>
+                    <div>
+						<div class="d-flex align-items-center btn-ic-span-align node-title">
+							<i class="fa-regular fa-robot me-2"></i>
+							<span>AI Response</span>
+						</div>
+						<span class="node-id">${cell.id}</span>
+					</div>
                     <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm me-2" data-action="configure-ai-response">
                             <i class="fa-regular fa-gear"></i>
@@ -3041,10 +3060,13 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center btn-ic-span-align">
-                        <i class="fa-regular fa-toolbox me-2"></i>
-                        <span>System Tool</span>
-                    </div>
+                    <div>
+						<div class="d-flex align-items-center btn-ic-span-align node-title">
+							<i class="fa-regular fa-toolbox me-2"></i>
+							<span>System Tool</span>
+						</div>
+						<span class="node-id">${cell.id}</span>
+					</div>
                     <div class="node-actions html-shape-immovable">
 						<button class="btn btn-light btn-sm me-2" data-action="configure-system-tool" ${doesScriptSystemToolRequireConfig(data.toolType) ? "" : "disabled"}>
 							<i class="fa-regular fa-gear"></i>
@@ -3139,10 +3161,13 @@ function registerAgentScriptNodes() {
 
 			div.innerHTML = `
                 <div class="agent-script-node-header">
-                    <div class="d-flex align-items-center btn-ic-span-align">
-                        <i class="fa-regular fa-wrench me-2"></i>
-                        <span>Custom Tool</span>
-                    </div>
+                    <div>
+						<div class="d-flex align-items-center btn-ic-span-align node-title">
+							<i class="fa-regular fa-wrench me-2"></i>
+							<span>Custom Tool</span>
+						</div>
+						<span class="node-id">${cell.id}</span>
+					</div>
                     <div class="node-actions html-shape-immovable">
                         <button class="btn btn-light btn-sm" data-action="configure-custom-tool" disabled>
 							<i class="fa-regular fa-gear"></i>
@@ -3312,7 +3337,18 @@ function initializeAgentScriptGraph(isNew = true) {
 			},
 			interacting: true,
 			// Prevent node text selection
-			preventDefaultContextMenu: true,
+			preventDefaultContextMenu: ({view, event}) => {
+				if (!view || view == null) {
+					return true;
+				}
+
+				// if event.target is textarea, then reutrn flase
+				if ($(event.target).is("textarea")) {
+					return false;
+				}
+
+				return true;
+			},
 			preventDefaultBlankAction: true,
 		});
 

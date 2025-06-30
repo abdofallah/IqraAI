@@ -10,6 +10,7 @@
         TransferToAgent = 5,
         TransferToHuman = 6,
         AddScriptToContext = 7,
-        SendSMS = 8
+        SendSMS = 8,
+        GoToNode = 9
     }
 }
