@@ -1564,6 +1564,34 @@ namespace IqraInfrastructure.Managers.Business
 
                         nodes.Add(sendSmsNode);
                     }
+                    // Go To Node
+                    else if (toolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GoToNode)
+                    {
+                        var goToNode = new BusinessAppAgentScriptGoToNodeToolNode()
+                        {
+                            Id = nodeId,
+                            Position = position
+                        };
+
+                        if (!toolConfigElement.TryGetProperty("goToNodeId", out var goToNodeIdElement))
+                        {
+                            result.Code = "ValidateAndCreateNodes:GO_TO_NODE_GO_TO_NODE_ID_NOT_FOUND";
+                            result.Message = "Go to node ID not found for go to node node.";
+                            return result;
+                        }
+
+                        var goToNodeId = goToNodeIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(goToNodeId))
+                        {
+                            result.Code = "ValidateAndCreateNodes:GO_TO_NODE_GO_TO_NODE_ID_INVALID";
+                            result.Message = "Go to node ID invalid for go to node node.";
+                            return result;
+                        }
+
+                        goToNode.GoToNodeId = goToNodeId;
+
+                        nodes.Add(goToNode);
+                    }
                     // Unknown System Tool
                     else
                     {
@@ -1625,6 +1653,21 @@ namespace IqraInfrastructure.Managers.Business
                     result.Code = "ValidateAndCreateNodes:35";
                     result.Message = $"Unknown node type: {nodeType}";
                     return result;
+                }
+            }
+
+            // Nodes that mention other nodes (required complilation of other nodes first)
+            foreach (var node in nodes)
+            {
+                if (node is BusinessAppAgentScriptGoToNodeToolNode goToNode)
+                {
+                    var linkedGoToNode = nodes.FirstOrDefault(x => x.Id == goToNode.GoToNodeId);
+                    if (linkedGoToNode == null || linkedGoToNode.Id == goToNode.Id || linkedGoToNode is BusinessAppAgentScriptGoToNodeToolNode)
+                    {
+                        result.Code = "ValidateAndCreateNodes:GO_TO_NODE_GO_TO_NODE_INVALID_SELECTION";
+                        result.Message = $"Go to node ({goToNode.Id}) invalid node selection.";
+                        return result;
+                    }
                 }
             }
 

@@ -1933,7 +1933,7 @@ function createDefaultAgentScriptObject() {
 	return data;
 }
 
-function validateAgentScriptMultilanguageElements() {
+function validateAgentScriptMultilanguageElements(onlyRemoveInvalid = true) {
 	if (ManageCurrentAgentScriptType === null) return;
 
 	// General Tab
@@ -1955,8 +1955,6 @@ function validateAgentScriptMultilanguageElements() {
 		areLanguagesIncompleteInConversationTab[language] = false;
 	});
 
-	$(CurrentAgentScriptGraph.view.container).find(`.agent-script-node.invalid-multilang`).removeClass('invalid-multilang');
-
 	const currentNodesArray = CurrentAgentScriptGraph.toJSON();
 	for (let i = 0; i < currentNodesArray.cells.length; i++) {
 		const node = currentNodesArray.cells[i];
@@ -1967,15 +1965,23 @@ function validateAgentScriptMultilanguageElements() {
 		if (node.shape === AGENT_SCRIPT_NODE_TYPES.USER_QUERY) {
 			const userQueryData = node.data.query;
 
+			var anyLanguageMissing = false;
 			BusinessFullData.businessData.languages.forEach((language) => {
 				const currentLanguageQuery = userQueryData[language];
 
 				if (!currentLanguageQuery || currentLanguageQuery === "" || currentLanguageQuery.trim() === "") {
 					areLanguagesIncompleteInConversationTab[language] = true;
-
-					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+					anyLanguageMissing = true;
 				}
 			});
+			if (anyLanguageMissing) {
+				if (!onlyRemoveInvalid) {
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+				}
+			}
+			else {
+				$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+			}
 
 			continue;
 		}
@@ -1984,15 +1990,23 @@ function validateAgentScriptMultilanguageElements() {
 		if (node.shape === AGENT_SCRIPT_NODE_TYPES.AI_RESPONSE) {
 			const aiResponseData = node.data.response;
 
+			var anyLanguageMissing = false;
 			BusinessFullData.businessData.languages.forEach((language) => {
 				const currentLanguageResponse = aiResponseData[language];
 
 				if (!currentLanguageResponse || currentLanguageResponse === "" || currentLanguageResponse.trim() === "") {
 					areLanguagesIncompleteInConversationTab[language] = true;
-
-					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+					anyLanguageMissing = true;
 				}
 			});
+			if (anyLanguageMissing) {
+				if (!onlyRemoveInvalid) {
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+				}
+			}
+			else {
+				$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+			}
 
 			continue;
 		}
@@ -2005,14 +2019,22 @@ function validateAgentScriptMultilanguageElements() {
 			// Check End Call Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
 				if (config.type === AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE.WITH_MESSAGE) {
+					var anyLanguageMissing = false;
 					BusinessFullData.businessData.languages.forEach((language) => {
 						const currentLanguageMessage = config.messages[language];
 						if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
 							areLanguagesIncompleteInConversationTab[language] = true;
-
-							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+							anyLanguageMissing = true;
 						}
 					});
+					if (anyLanguageMissing) {
+						if (!onlyRemoveInvalid) {
+							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+						}
+					}
+					else {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+					}
 				}
 
 				continue;
@@ -2020,30 +2042,46 @@ function validateAgentScriptMultilanguageElements() {
 
 			// Check Get DTMF Input Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+				var anyLanguageMissing = false;
 				BusinessFullData.businessData.languages.forEach((language) => {
 					config.outcomes.forEach((outcome) => {
 						const currentLanguageOutcomeText = outcome.value[language];
 						if (!currentLanguageOutcomeText || currentLanguageOutcomeText === "" || currentLanguageOutcomeText.trim() === "") {
 							areLanguagesIncompleteInConversationTab[language] = true;
-
-							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+							anyLanguageMissing = true;
 						}
 					});
 				});
+				if (anyLanguageMissing) {
+					if (!onlyRemoveInvalid) {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+					}
+				}
+				else {
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+				}
 
 				continue;
 			}
 
 			// Check Send SMS Node
 			if (systemToolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
+				var anyLanguageMissing = false;
 				BusinessFullData.businessData.languages.forEach((language) => {
 					const currentLanguageMessage = config.messages[language];
 					if (!currentLanguageMessage || currentLanguageMessage === "" || currentLanguageMessage.trim() === "") {
 						areLanguagesIncompleteInConversationTab[language] = true;
-
-						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+						anyLanguageMissing = true;
 					}
 				});
+				if (anyLanguageMissing) {
+					if (!onlyRemoveInvalid) {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).addClass('invalid-multilang');
+					}
+				}
+				else {
+					$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${node.id}"] .agent-script-node`).removeClass('invalid-multilang');
+				}
 			}
 		}
 	}
@@ -2236,6 +2274,18 @@ function checkAgentScriptTabHasChanges(enableDisableButton = true, compileConver
 							if (!compileConversationChanges) break;
 						}
 					}
+				}
+
+				// Go To Node
+				if (newScriptNodeData.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+					pushNewNode.config.goToNodeId = newScriptNodeData.config.goToNodeId;
+
+                    if (oldNodeIndex !== -1 && oldNode.toolType.value === pushNewNode.toolType) {
+                        if (oldNode.goToNodeId !== pushNewNode.config.goToNodeId) {
+                            hasChanges = true;
+                            if (!compileConversationChanges) break;
+                        }
+                    }
 				}
 			}
 
@@ -2440,6 +2490,52 @@ function validateAgentScriptConnections() {
 	return { isValid, errors };
 }
 
+function validateAgentScriptNodes(onlyRemove = true) {
+	let isValid = true;
+	const errors = [];
+
+	const currentNodesEdgesArray = CurrentAgentScriptGraph.toJSON().cells;
+	if (currentNodesEdgesArray.length > 0) {
+		currentNodesEdgesArray.forEach((nodeData) => {
+
+			if (nodeData.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL) {
+				if (!nodeData.data.toolType || nodeData.data.toolType === null) {
+					isValid = false;
+					errors.push("System tool does not have a valid tool type.");
+
+					if (!onlyRemove) {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${nodeData.id}"] .agent-script-node`).addClass('invalid-multilang');
+					}
+				}
+				else {
+                    $(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${nodeData.id}"] .agent-script-node`).removeClass('invalid-multilang');
+				}
+
+				// GOTO NODE
+				if (nodeData.data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+					var foundNode = currentNodesEdgesArray.find((node) => node.id === nodeData.data.config.goToNodeId);
+					if (!foundNode || foundNode.shape === "edge" || foundNode.id === nodeData.id || (foundNode.SYSTEM_TOOL === AGENT_SCRIPT_NODE_TYPES.GOTONODE && foundNode.data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE)) {
+						isValid = false;
+						errors.push("Go to node does not have a valid node selection.");
+
+						if (!onlyRemove) {
+							$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${nodeData.id}"] .agent-script-node`).addClass('invalid-multilang');
+						}
+					}
+					else {
+						$(CurrentAgentScriptGraph.view.container).find(`g[data-cell-id="${nodeData.id}"] .agent-script-node`).removeClass('invalid-multilang');
+					}
+
+					return;
+				}
+			}
+			
+		});	
+	}
+
+	return { isValid, errors };
+}
+
 function fillAgentSriptManagerTab() {
 	const currentSelectedLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
@@ -2528,8 +2624,12 @@ function fillAgentSriptManagerTab() {
 			}
 			// SEND SMS DATA
 			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS) {
-                nodeBase.data.config.phoneNumberId = node.phoneNumberId;
+				nodeBase.data.config.phoneNumberId = node.phoneNumberId;
 				nodeBase.data.config.messages = node.messages;
+			}
+			// Go To Node Data
+			else if (node.toolType.value === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+                nodeBase.data.config.goToNodeId = node.goToNodeId;
 			}
 		}
 		// Custom Tool Data
@@ -2745,7 +2845,12 @@ function fillAgentSriptManagerTab() {
                     });
 				}
 			}
-			else if (toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT && toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN) {
+			else if (
+				toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL
+				&& toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT
+				&& toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN
+				&& toolType !== AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE
+			) {
 				const hasOutputPort = currentPorts.some((port) => port.group === "output");
 				if (!hasOutputPort) {
 					currentNodeCell.addPort({ group: "output" });
@@ -3089,6 +3194,7 @@ function registerAgentScriptNodes() {
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN ? "selected" : ""}>Transfer to Human</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ? "selected" : ""}>Add Script to Context</option>
                                 <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS ? "selected" : ""}>Send SMS</option>
+                                <option value="${AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE}" ${data.toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE ? "selected" : ""}>Go To Node</option>
                             </select>
                         </div>
                     </div>
@@ -3672,10 +3778,10 @@ function generateSystemToolConfig(cell) {
 	const data = cell.getData() || {};
 	const currentLanguage = agentsScriptManagerLanguageDropdown.getSelectedLanguage().id;
 
-	return getAgentScriptSystemToolConfig(data.toolType, currentLanguage, data);
+	return getAgentScriptSystemToolConfig(cell.id, data.toolType, currentLanguage, data);
 }
 
-function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
+function getAgentScriptSystemToolConfig(cellId, toolType, currentLanguage, data = {}) {
 	const config = data.config || {};
 
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL) {
@@ -3731,7 +3837,32 @@ function getAgentScriptSystemToolConfig(toolType, currentLanguage, data = {}) {
                     </div>
                 </div>
             `;
-    }
+	}
+
+	// go to node
+	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+		// select with all the nodes in the graph todo gotonode
+		const nodes = CurrentAgentScriptGraph.getNodes();
+		const nodesOptions = nodes
+			.map((node) => {
+				if (node.id == cellId) return "";
+				if (node.shape === AGENT_SCRIPT_NODE_TYPES.SYSTEM_TOOL && node.getData().toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) return "";
+				return `<option value="${node.id}" ${config.goToNodeId === node.id ? "selected" : ""}>${node.id}</option>`;
+            })
+            .join("");
+
+		return `
+			<div class="tool-config-group">
+				<label>Go To Node Configuration</label>
+				<div>
+					<select class="form-select" data-input="go-to-node">
+						<option value="">Select Node</option>
+						${nodesOptions}
+                    </select>
+				</div>
+			</div>
+		`;
+	}
 
 	if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 		return `
@@ -3931,6 +4062,7 @@ function UpdateSystemToolNodePorts(cell, toolType) {
 		case AGENT_SCRIPT_SYSTEM_TOOLS.END_CALL:
 		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT:
 		case AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_HUMAN:
+		case AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE:
 			// These are end nodes, no output ports needed
 			break;
 
@@ -4012,7 +4144,8 @@ function doesScriptSystemToolRequireConfig(toolType) {
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.TRANSFER_TO_AGENT ||
 			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.ADD_SCRIPT_TO_CONTEXT ||
-			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS
+			toolType === AGENT_SCRIPT_SYSTEM_TOOLS.SEND_SMS ||
+            toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE
 		)
 	);
 }
@@ -4820,7 +4953,8 @@ function initAgentTab() {
 				if (ManageCurrentAgentScriptType === null) return;
 				if (isSavingAgentScript) return;
 
-				validateAgentScriptMultilanguageElements();
+				validateAgentScriptMultilanguageElements(true);
+				validateAgentScriptNodes(true);
 				checkAgentScriptTabHasChanges(true, false); // todo remove out of here later
 			}, 500);
 
@@ -5181,7 +5315,13 @@ function initAgentTab() {
 							phoneNumberId: null,
 							messages: {}
 						}
-					} else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
+					}
+					else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GOTONODE) {
+						newData.config = {
+							goToNodeId: null
+						}
+					}
+					else if (toolType === AGENT_SCRIPT_SYSTEM_TOOLS.GET_DTMF_INPUT) {
 						newData.config = {
 							timeout: 5000,
 							requireStartAsterisk: false,
@@ -5283,6 +5423,7 @@ function initAgentTab() {
 
                     updateSystemToolConfig({ ...config, phoneNumberId: e.target.value });
 				});
+				// SEND Sms Node
 				$("#nodeConfigOffcanvas").on("input", '[data-input="send-sms-message"]', (e) => {
 					const data = CurrentCanvasConfigCell.getData();
 					const config = data.config;
@@ -5310,6 +5451,16 @@ function initAgentTab() {
 					const messages = config.messages;
 
 					$(`#nodeConfigOffcanvas [data-input="send-sms-message"]`).val(messages[currentLanguage]);
+				});
+				// Go To Node
+				$("#nodeConfigOffcanvas").on("change", '[data-input="go-to-node"]', (e) => {
+					const value = e.target.value;
+
+					const newConfig = {
+						goToNodeId: value,
+					};
+
+					updateSystemToolConfig(newConfig);
 				});
 
 				// Get DTMF Keypad Input Node
@@ -5669,7 +5820,7 @@ function initAgentTab() {
 			saveAgentScriptButton.on("click", (event) => {
 				event.preventDefault();
 
-				const isMultiLanguageValidated = validateAgentScriptMultilanguageElements();
+				const isMultiLanguageValidated = validateAgentScriptMultilanguageElements(false);
 				if (!isMultiLanguageValidated.isValid) {
 					const errors = [];
 					Object.keys(isMultiLanguageValidated.areLanguagesIncompleteInGeneralTab).forEach((lang) => {
@@ -5697,6 +5848,17 @@ function initAgentTab() {
 					AlertManager.createAlert({
 						type: "danger",
 						message: `Script nodes connection error:<br><br>${scriptConnectionValidation.errors.join("<br>")}`,
+						timeout: 6000,
+					});
+
+					return;
+				}
+
+				const scriptNodesValidation = validateAgentScriptNodes(false);
+				if (!scriptNodesValidation.isValid) {
+					AlertManager.createAlert({
+						type: "danger",
+						message: `Script nodes error:<br><br>${scriptNodesValidation.errors.join("<br>")}`,
 						timeout: 6000,
 					});
 

@@ -103,7 +103,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                   
                 if (!string.IsNullOrEmpty(result.Item2))
                 {
-                    _previousRequestIds.Add(result.Item2);
+                    //_previousRequestIds.Add(result.Item2);
                 }
                 if (_previousRequestIds.Count >= 3)
                 {

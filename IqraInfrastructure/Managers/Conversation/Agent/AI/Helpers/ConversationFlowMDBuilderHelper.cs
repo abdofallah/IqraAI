@@ -180,8 +180,19 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
                     return $"response_to_customer: NodeId=\"{node.Id}\" AgentResponse=\"{GetLocalizedString(aiResponseNode.Response, _selectedLanguageCode, "AI response")}\"";
 
                 case BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool:
-                    var systemToolNode = (BusinessAppAgentScriptSystemToolNode)node;
-                    return $"execute_system_function: {GetSystemToolTypeFormat(systemToolNode.ToolType, systemToolNode, _selectedLanguageCode)}";
+                    {
+                        var systemToolNode = (BusinessAppAgentScriptSystemToolNode)node;
+
+                        if (systemToolNode.ToolType == BusinessAppAgentScriptNodeSystemToolTypeENUM.GoToNode)
+                        {
+                            var goToNode = (BusinessAppAgentScriptGoToNodeToolNode)systemToolNode;
+                            return $"--> Flow continues at ({_nodeLabelMap[goToNode.GoToNodeId]})";
+                        }
+                        else
+                        {
+                            return $"execute_system_function: {GetSystemToolTypeFormat(systemToolNode.ToolType, systemToolNode, _selectedLanguageCode)}";
+                        }
+                    }
 
                 case BusinessAppAgentScriptNodeTypeENUM.ExecuteCustomTool:
                     var customToolNode = (BusinessAppAgentScriptCustomToolNode)node;
