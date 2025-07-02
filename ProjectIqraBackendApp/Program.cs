@@ -2,6 +2,7 @@ using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Server;
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
@@ -13,6 +14,8 @@ using IqraInfrastructure.Managers.Server.Metrics;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -24,7 +27,11 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
+using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
+using Minio;
+using MongoDB.Driver;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -175,163 +182,220 @@ namespace ProjectIqraBackendApp
 
         private static void SetupRepositories(WebApplicationBuilder builder, IConfiguration appConfig)
         {
+            // Build Base Services
+            builder.Services.AddSingleton<IMongoClient>((sp) =>
+            {
+                return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
+            });
+
+            builder.Services.AddSingleton<IMinioClient>((sp) =>
+            {
+                return new MinioClient()
+                    .WithEndpoint(appConfig["MinioStorage:Endpoint"], int.Parse(appConfig["MinioStorage:Port"]))
+                    .WithCredentials(appConfig["MinioStorage:AccessKey"], appConfig["MinioStorage:SecretKey"])
+                    .WithSSL(bool.Parse(appConfig["MinioStorage:IsSecure"]))
+                    .Build();
+            });
+
+            // Repositories
             builder.Services.AddSingleton<RegionRepository>((sp) => {
                 return new RegionRepository(
                     sp.GetRequiredService<ILogger<RegionRepository>>(),
-                    appConfig["AppDatabase:ConnectionString"],
-                    appConfig["AppDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<LanguagesRepository>((sp) =>
             {
                 return new LanguagesRepository(
                     sp.GetRequiredService<ILogger<LanguagesRepository>>(),
-                    appConfig["LanguagesDatabase:ConnectionString"],
-                    appConfig["LanguagesDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:LanguagesRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<InboundCallQueueRepository>(sp =>
             {
                 return new InboundCallQueueRepository(
-                    appConfig["CallQueueRepository:ConnectionString"],
-                    appConfig["CallQueueRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<InboundCallQueueRepository>>()
+                    sp.GetRequiredService<ILogger<InboundCallQueueRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<OutboundCallQueueRepository>(sp =>
             {
                 return new OutboundCallQueueRepository(
-                    appConfig["CallQueueRepository:ConnectionString"],
-                    appConfig["CallQueueRepository:DatabaseName"],
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:CallQueueRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<OutboundCallQueueRepository>>()
                 );
             });
+
             builder.Services.AddSingleton<OutboundCallCampaignRepository>(sp =>
             {
                 return new OutboundCallCampaignRepository(
-                    appConfig["OutboundCallCampaignRepository:ConnectionString"],
-                    appConfig["OutboundCallCampaignRepository:DatabaseName"],
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:OutboundCallCampaignRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<OutboundCallCampaignRepository>>()
                 );
             });
+
             builder.Services.AddSingleton<ServerStatusRepository>(sp =>
             {
                 return new ServerStatusRepository(
-                    appConfig["ServerStatusRepository:ConnectionString"],
-                    appConfig["ServerStatusRepository:DatabaseName"],
-                    sp.GetRequiredService<ILogger<ServerStatusRepository>>()
+                    sp.GetRequiredService<ILogger<ServerStatusRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ServerStatusRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<ServerLiveStatusChannelRepository>((sp) =>
             {
                 return new ServerLiveStatusChannelRepository(
                     new RedisConnectionFactory(
-                        appConfig["ServerLiveStatusChannelRepository:ConnectionString"],
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:ServerLiveStatusChannelDatabaseIndex"]}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<ServerLiveStatusChannelRepository>>()
                 );
             });
+
             builder.Services.AddSingleton<DistributedLockRepository>((sp) =>
             {
                 return new DistributedLockRepository(
                     new RedisConnectionFactory(
-                        appConfig["DistributedLockRepository:ConnectionString"],
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:DistributedLockDatabaseIndex"]}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     ),
                     sp.GetRequiredService<ILogger<DistributedLockRepository>>()
                 );
             });
+
             builder.Services.AddSingleton<ConversationStateRepository>(sp =>
             {
                 return new ConversationStateRepository(
-                    appConfig["ConversationStateRepository:ConnectionString"],
-                    appConfig["ConversationStateRepository:DatabaseName"],
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ConversationStateRepositoryDatabaseName"],
                     sp.GetRequiredService<ILogger<ConversationStateRepository>>()
                 );
             });
+
             builder.Services.AddSingleton<ConversationAudioRepository>(sp =>
             {
                 return new ConversationAudioRepository(
-                    appConfig["ConversationAudioRepository:Endpoint"],
-                    int.Parse(appConfig["ConversationAudioRepository:Port"]),
-                    appConfig["ConversationAudioRepository:AccessKey"],
-                    appConfig["ConversationAudioRepository:SecretKey"],
-                    appConfig["ConversationAudioRepository:BucketName"],
-                    bool.Parse(appConfig["ConversationAudioRepository:IsSecure"]),
-                    sp.GetRequiredService<ILogger<ConversationAudioRepository>>()
+                    sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
+                    sp.GetRequiredService<IMinioClient>(),
+                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
                 );
             });
+
             builder.Services.AddSingleton<IntegrationsRepository>((sp) =>
             {
                 return new IntegrationsRepository(
                     sp.GetRequiredService<ILogger<IntegrationsRepository>>(),
-                    appConfig["IntegrationsDatabase:ConnectionString"],
-                    appConfig["IntegrationsDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:IntegrationsRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<BusinessRepository>((sp) =>
             {
                 return new BusinessRepository(
                     sp.GetRequiredService<ILogger<BusinessRepository>>(),
-                    appConfig["BusinessDatabase:ConnectionString"],
-                    appConfig["BusinessDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:BusinessRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<BusinessAppRepository>((sp) =>
             {
                 return new BusinessAppRepository(
                     sp.GetRequiredService<ILogger<BusinessAppRepository>>(),
-                    appConfig["BusinessAppDatabase:ConnectionString"],
-                    appConfig["BusinessAppDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:BusinessAppRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<BusinessToolAudioRepository>((sp) =>
             {
                 return new BusinessToolAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    appConfig["BusinessToolAudioRepository:Endpoint"],
-                    int.Parse(appConfig["BusinessToolAudioRepository:Port"]),
-                    appConfig["BusinessToolAudioRepository:AccessKey"],
-                    appConfig["BusinessToolAudioRepository:SecretKey"],
-                    appConfig["BusinessToolAudioRepository:BucketName"],
-                    bool.Parse(appConfig["BusinessToolAudioRepository:IsSecure"])
+                    sp.GetRequiredService<IMinioClient>(),
+                    appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"]
                 );
             });
+
             builder.Services.AddSingleton<BusinessAgentAudioRepository>((sp) =>
             {
                 return new BusinessAgentAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    appConfig["BusinessAgentAudioRepository:Endpoint"],
-                    int.Parse(appConfig["BusinessAgentAudioRepository:Port"]),
-                    appConfig["BusinessAgentAudioRepository:AccessKey"],
-                    appConfig["BusinessAgentAudioRepository:SecretKey"],
-                    appConfig["BusinessAgentAudioRepository:BucketName"],
-                    bool.Parse(appConfig["BusinessAgentAudioRepository:IsSecure"])
+                    sp.GetRequiredService<IMinioClient>(),
+                    appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
                 );
             });
+
             builder.Services.AddSingleton<LLMProviderRepository>((sp) =>
             {
                 return new LLMProviderRepository(
                     sp.GetRequiredService<ILogger<LLMProviderRepository>>(),
-                    appConfig["LLMProviderDatabase:ConnectionString"],
-                    appConfig["LLMProviderDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:LLMProviderRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<STTProviderRepository>((sp) =>
             {
                 return new STTProviderRepository(
                     sp.GetRequiredService<ILogger<STTProviderRepository>>(),
-                    appConfig["STTProviderDatabase:ConnectionString"],
-                    appConfig["STTProviderDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:STTProviderRepositoryDatabaseName"]
                 );
             });
+
             builder.Services.AddSingleton<TTSProviderRepository>((sp) =>
             {
                 return new TTSProviderRepository(
                     sp.GetRequiredService<ILogger<TTSProviderRepository>>(),
-                    appConfig["TTSProviderDatabase:ConnectionString"],
-                    appConfig["TTSProviderDatabase:DatabaseName"]
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:TTSProviderRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<UsageRepository>((sp) =>
+            {
+                return new UsageRepository(
+                    sp.GetRequiredService<ILogger<UsageRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:UsageRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<UserRepository>((sp) =>
+            {
+                return new UserRepository(
+                    sp.GetRequiredService<ILogger<UserRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:UserRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<PlanRepository>((sp) =>
+            {
+                return new PlanRepository(
+                    sp.GetRequiredService<ILogger<PlanRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:PlanRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<AppRepository>((sp) =>
+            {
+                return new AppRepository(
+                    sp.GetRequiredService<ILogger<AppRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
             });
         }
@@ -491,10 +555,28 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
-                    sp.GetRequiredService<RegionManager>()
+                    sp.GetRequiredService<RegionManager>(),
+                    sp.GetRequiredService<BillingProcessingManager>()
                 );
             });
-
+            builder.Services.AddSingleton<BillingProcessingManager>((sp) =>
+            {
+                return new BillingProcessingManager(
+                    sp.GetRequiredService<ILogger<BillingProcessingManager>>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<UsageRepository>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<IMongoClient>()
+                );
+            });
+            builder.Services.AddSingleton<PlanManager>((sp) =>
+            {
+                return new PlanManager(
+                    sp.GetRequiredService<ILogger<PlanManager>>(),
+                    sp.GetRequiredService<PlanRepository>()
+                );
+            });
             // Background services
             builder.Services.AddHostedService<ServerMetricsManager>((sp) =>
             {

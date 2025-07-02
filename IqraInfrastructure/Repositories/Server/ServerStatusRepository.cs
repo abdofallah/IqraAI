@@ -10,17 +10,12 @@ namespace IqraInfrastructure.Repositories.Server
         private readonly IMongoCollection<ServerHistoricalStatusData> _historicalStatusCollection;
         private readonly ILogger<ServerStatusRepository> _logger;
 
-        public ServerStatusRepository(
-            string connectionString,
-            string databaseName,
-            ILogger<ServerStatusRepository> logger)
+        public ServerStatusRepository(ILogger<ServerStatusRepository> logger, IMongoClient client, string databaseName)
         {
-            var client = new MongoClient(connectionString);
-            var database = client.GetDatabase(databaseName);
-
-            _historicalStatusCollection = database.GetCollection<ServerHistoricalStatusData>("ServerHistoricalStatus");
-
             _logger = logger;
+
+            var database = client.GetDatabase(databaseName);
+            _historicalStatusCollection = database.GetCollection<ServerHistoricalStatusData>("ServerHistoricalStatus");        
 
             CreateIndexes();
         }

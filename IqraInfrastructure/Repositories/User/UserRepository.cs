@@ -48,6 +48,13 @@ namespace IqraInfrastructure.Repositories.User
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> UpdateUser(string email, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
+        {
+            var filter = Builders<UserData>.Filter.Eq(b => b.Email, email);
+            var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
+            return result.IsAcknowledged;
+        }
+
         public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
         {
             var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
