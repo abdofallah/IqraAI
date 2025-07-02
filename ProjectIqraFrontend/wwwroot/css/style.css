@@ -176,6 +176,21 @@ a:focus {
 	color: rgb(219, 219, 219);
 }
 
+@media screen and (max-width: 768px)
+{
+	#businessesListActions
+	{
+		flex-direction: column !important;
+	}
+
+	#AddNewBusinessButton
+	{
+		margin: 0 !important;
+		margin-bottom: 12px !important;
+		width: 100% !important;
+	}
+}
+
 .business-card {
 	padding: 2em;
 	background-color: var(--tcolor-light-green);

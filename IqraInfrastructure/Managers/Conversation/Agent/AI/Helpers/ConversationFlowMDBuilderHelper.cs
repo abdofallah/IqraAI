@@ -59,8 +59,7 @@ namespace IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers
             foreach (var node in _script.Nodes)
             {
                 _nodeContentMap[node.Id] = GenerateNodeContent(node);
-                // Assign a default, unique label. Useful for any node that might be a "goto" target.
-                _nodeLabelMap[node.Id] = $"Node-{node.Id.Substring(0, 8)}";
+                _nodeLabelMap[node.Id] = $"Node {(node.NodeType != BusinessAppAgentScriptNodeTypeENUM.ExecuteSystemTool ? node.NodeType : (node.NodeType + " " + ((BusinessAppAgentScriptSystemToolNode)node).ToolType))} ({node.Id})";
             }
 
             var startNode = _script.Nodes.FirstOrDefault(n => n.NodeType == BusinessAppAgentScriptNodeTypeENUM.Start);

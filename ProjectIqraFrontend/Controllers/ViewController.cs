@@ -106,7 +106,7 @@ namespace ProjectIqraFrontend.Controllers
 
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
 
-            return View("Index");
+            return View("Home/Home");
         }
 
         [HttpGet("/business")]

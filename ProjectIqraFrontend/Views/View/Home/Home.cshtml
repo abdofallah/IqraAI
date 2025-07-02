@@ -20,20 +20,6 @@
     <meta name="apple-mobile-web-app-title" content="Iqra" />
     <link rel="manifest" href="/img/favicon/site.webmanifest" />
 
-    <style>
-        @@media screen and (max-width: 768px) {
-            #businessesListActions {
-                flex-direction: column !important;
-            }
-
-            #AddNewBusinessButton {
-                margin: 0 !important;
-                margin-bottom: 12px !important;
-                width: 100% !important;
-            }
-        }
-    </style>
-
     <style id="dynamicCSS"></style>
     <style id="dynamicBusinessCardH4CSS"></style>
 </head>
@@ -61,9 +47,9 @@
                         <i class='fa-regular fa-briefcase nav_icon'></i>
                         <span class="nav_name">Businesses</span>
                     </a>
-                    <a class="nav_link disabled" for="billing-tab">
+                    <a class="nav_link" for="billing-tab">
                         <i class='fa-regular fa-credit-card nav_icon'></i>
-                        <span class="nav_name">Billing</span>
+                        <span class="nav_name">Billing & Usage</span>
                     </a>
                     <a class="nav_link disabled mb-0" for="settings-tab">
                         <i class='fa-regular fa-gear nav_icon'></i>
@@ -103,64 +89,156 @@
             </div>
         </div>
 
-        <!-- Billing Container -->
+        <!-- Billing & Usage Container -->
         <div class="main-container fade w-100 d-none" id="billing-tab">
-            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
+            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing & Usage</span></h3>
             <div class="inner-container">
+                <!-- Main Navigation for Billing & Usage -->
                 <nav class="mb-4">
                     <ul class="nav" id="billing-inner-tabs" role="tablist">
                         <li class="nav-item me-2" role="presentation">
-                            <button class="nav-link active" id="nav-invoice-tab" data-bs-toggle="tab" data-bs-target="#nav-invoice" type="button" role="tab" aria-controls="nav-invoice" aria-selected="true">
-                                Invoice
-                            </button>
+                            <button class="nav-link active" id="nav-overview-tab" data-bs-toggle="tab" data-bs-target="#nav-overview" type="button" role="tab" aria-selected="true">Overview</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="nav-usage-tab" data-bs-toggle="tab" data-bs-target="#nav-usage" type="button" role="tab" aria-selected="false">Usage Details</button>
+                        </li>
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-selected="false">Payment Methods</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-controls="nav-method" aria-selected="false">
-                                Method
-                            </button>
+                            <button class="nav-link" id="nav-history-tab" data-bs-toggle="tab" data-bs-target="#nav-history" type="button" role="tab" aria-selected="false">Billing History</button>
                         </li>
                     </ul>
                 </nav>
+
                 <div class="tab-content w-100" id="billing-inner-tabContent">
-                    <div class="tab-pane fade show active w-100" id="nav-invoice" role="tabpanel" aria-labelledby="nav-invoice-tab" tabindex="0">
-                        <table class="table table-selectable w-100" id="billing-invoices-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Date</th>
-                                    <th scope="col">Invoice-Number</th>
-                                    <th scope="col">Cost</th>
-                                    <th scope="col">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="invoice-unpaid selectable">
-                                    <td>4/27/2024</td>
-                                    <td>112512</td>
-                                    <td>$504.23</td>
-                                    <td class="invoice-unpaid">
-                                        <span>Unpaid</span>
-                                    </td>
-                                </tr>
-                                <tr class="invoice-paid selectable">
-                                    <td>3/26/2024</td>
-                                    <td>523324</td>
-                                    <td>$204.23</td>
-                                    <td class="invoice-paid">
-                                        <span>Paid</span>
-                                    </td>
-                                </tr>
-                                <tr class="invoice-paid selectable">
-                                    <td>2/24/2024</td>
-                                    <td>967545</td>
-                                    <td>$14.23</td>
-                                    <td class="invoice-paid">
-                                        <span>Paid</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <!-- 1. Overview Tab -->
+                    <div class="tab-pane fade show active" id="nav-overview" role="tabpanel" aria-labelledby="nav-overview-tab">
+                        <div class="row">
+                            <!-- Column 1: Balance and Plan -->
+                            <div class="col-lg-7 col-md-12">
+                                <!-- Current Balance Card -->
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Current Balance</h5>
+                                        <!-- Main credit balance -->
+                                        <h2 class="fw-bold display-5 text-success mb-1">${{userBilling.creditBalance}}</h2>
+                                        <!-- Unpaid Overage Balance (conditional) -->
+                                        <!-- if (userBilling.unpaidOverageBalance > 0) { -->
+                                        <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                                            <span>Outstanding Overage: ${{userBilling.unpaidOverageBalance}}</span>
+                                            <button class="btn btn-warning btn-sm">Pay Now</button>
+                                        </div>
+                                        <!-- } -->
+                                        <button class="btn btn-primary w-100 mt-2">
+                                            <i class="fa-solid fa-plus me-1"></i> Add Funds
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Current Plan Card -->
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 class="card-title mb-0">Current Plan</h5>
+                                            <button class="btn btn-outline-secondary btn-sm">Change Plan</button>
+                                        </div>
+                                        <!-- Plan Name -->
+                                        <h4 class="fw-bold">{{plan.name}}</h4>
+                                        <p class="text-muted">Next bill on {{subscription.currentPeriodEnd | date}} for ${{plan.monthlyPrice}}</p>
+
+                                        <!-- Plan-specific details section -->
+                                        <!-- if (plan.type === 'FixedPackage') { -->
+                                        <div class="mt-3">
+                                            <label class="form-label">Monthly Included Minutes</label>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar" role="progressbar" style="width: {{usage.minutesUsed / plan.includedMinutes * 100}}%;" aria-valuenow="{{usage.minutesUsed}}" aria-valuemin="0" aria-valuemax="{{plan.includedMinutes}}">
+                                                    {{usage.minutesUsed}} / {{plan.includedMinutes}}
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted mt-1">Overage: ${{plan.overageMinutePrice}} per minute.</small>
+                                        </div>
+                                        <!-- } else if (plan.type === 'Standard' || plan.type === 'VolumeTiered') { -->
+                                        <div class="mt-3">
+                                            <p>
+                                                Your current price is <strong>${{plan.effectiveMinutePrice}} per minute</strong>.
+                                                <!-- Optional: message for volume plans -->
+                                                <small class="d-block text-muted">Your rate gets lower with higher usage.</small>
+                                            </p>
+                                        </div>
+                                        <!-- } -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Column 2: Concurrency and Auto-Refill -->
+                            <div class="col-lg-5 col-md-12">
+                                <!-- Concurrency Card -->
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Concurrency</h5>
+                                        <h3 class="fw-bold">{{plan.baseConcurrency + userBilling.additionalConcurrencySlots.length}} Total Slots</h3>
+                                        <p class="text-muted mb-3">{{plan.baseConcurrency}} from plan + {{userBilling.additionalConcurrencySlots.length}} purchased</p>
+
+                                        <h6 class="fw-bold">Purchased Slots</h6>
+                                        <!-- Loop through additional slots -->
+                                        <ul class="list-group list-group-flush">
+                                            <!-- if (userBilling.additionalConcurrencySlots.length === 0) { -->
+                                            <li class="list-group-item">No additional slots purchased.</li>
+                                            <!-- } else { loop over slots -->
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>Renews on {{slot.nextBillingDate | date}}</div>
+                                                <span class="badge bg-primary rounded-pill">${{slot.priceWhenPurchased}}/mo</span>
+                                                <button class="btn btn-outline-danger btn-sm p-1">
+                                                    <i class="fa-solid fa-xmark"></i>
+                                                </button>
+                                            </li>
+                                            <!-- } -->
+                                        </ul>
+                                        <button class="btn btn-outline-primary btn-sm w-100 mt-3">Buy More Slots</button>
+                                    </div>
+                                </div>
+
+                                <!-- Auto Refill Card -->
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <h5 class="card-title mb-0">Auto-Refill</h5>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="autoRefillSwitch" {{userBilling.autoRefill.status= = ='Enabled' ? 'checked' : '' }}>
+                                            </div>
+                                        </div>
+                                        <!-- Conditional display based on switch -->
+                                        <div id="autoRefillSettings" class="{{userBilling.autoRefill.status === 'Enabled' ? '' : 'd-none'}}">
+                                            <p class="mb-1">When balance is below <strong>${{userBilling.autoRefill.refillWhenBalanceBelow}}</strong>, refill with <strong>${{userBilling.autoRefill.refillAmount}}</strong>.</p>
+                                            <small class="text-muted">Using Visa •••• 1539</small>
+                                        </div>
+                                        <button class="btn btn-outline-secondary btn-sm w-100 mt-3">Edit Settings</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="tab-pane fade w-100" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab" tabindex="0">
+
+                    <!-- 2. Usage Details Tab -->
+                    <div class="tab-pane fade" id="nav-usage" role="tabpanel" aria-labelledby="nav-usage-tab">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Usage this Period ({{subscription.currentPeriodStart | date}} - {{subscription.currentPeriodEnd | date}})</h5>
+                                <!-- A canvas for a chart library like Chart.js -->
+                                <canvas id="usageChart"></canvas>
+                                <p class="text-center text-muted mt-2">Chart showing daily minute usage.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Payment Methods Tab -->
+                    <div class="tab-pane fade" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab">
+                        <!-- This will be your existing payment method UI, with an "Add New Method" button -->
+                        <div class="d-flex justify-content-end mb-3">
+                            <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Add New Method</button>
+                        </div>
+                        
                         <div class="row">
                             <div class="col-md-6 col-12">
                                 <div class="billing-method-card d-flex flex-column align-items-center justify-content-center mb-2">
@@ -207,6 +285,39 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- 4. Billing History Tab -->
+                    <div class="tab-pane fade" id="nav-history" role="tabpanel" aria-labelledby="nav-history-tab">
+                        <table class="table table-hover w-100" id="billing-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Invoice</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Example Row: Subscription -->
+                                <tr>
+                                    <td>5/1/2024</td>
+                                    <td>Monthly Subscription (Fixed Package)</td>
+                                    <td>$50.00</td>
+                                    <td><span class="badge bg-success">Paid</span></td>
+                                    <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
+                                </tr>
+                                <!-- Example Row: Top-up -->
+                                <tr>
+                                    <td>4/28/2024</td>
+                                    <td>Credit Top-up</td>
+                                    <td>$25.00</td>
+                                    <td><span class="badge bg-success">Paid</span></td>
+                                    <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
