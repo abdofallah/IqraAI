@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Languages;
+using IqraInfrastructure.Repositories.App;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
@@ -12,11 +13,9 @@ namespace IqraInfrastructure.Repositories.Languages
 
         private readonly IMongoCollection<LanguagesData> _languagesCollection;
 
-        public LanguagesRepository(ILogger<LanguagesRepository> logger, string connectionString, string databaseName)
+        public LanguagesRepository(ILogger<LanguagesRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
-
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _languagesCollection = database.GetCollection<LanguagesData>(CollectionName);
         }

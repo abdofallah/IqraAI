@@ -14,11 +14,10 @@ namespace IqraInfrastructure.Repositories.TTS
         private readonly string CollectionName = "TTSProvider";
         private readonly IMongoCollection<TTSProviderData> _ttsProviderCollection;
 
-        public TTSProviderRepository(ILogger<TTSProviderRepository> logger, string connectionString, string databaseName)
+        public TTSProviderRepository(ILogger<TTSProviderRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            var client = new MongoClient(connectionString);
             var database = client.GetDatabase(databaseName);
             _ttsProviderCollection = database.GetCollection<TTSProviderData>(CollectionName);
         }

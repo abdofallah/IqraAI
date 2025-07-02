@@ -9,9 +9,8 @@ namespace IqraInfrastructure.Repositories.Call
         private readonly IMongoCollection<OutboundCallCampaignData> _callQueueCollection;
         private readonly ILogger<OutboundCallCampaignRepository> _logger;
 
-        public OutboundCallCampaignRepository(string connectionString, string databaseName, ILogger<OutboundCallCampaignRepository> logger)
+        public OutboundCallCampaignRepository(IMongoClient client, string databaseName, ILogger<OutboundCallCampaignRepository> logger)
         {
-            var client = new MongoClient(connectionString);
             var database = client.GetDatabase(databaseName);
             _callQueueCollection = database.GetCollection<OutboundCallCampaignData>("OutboundCallCampaign");
             _logger = logger;

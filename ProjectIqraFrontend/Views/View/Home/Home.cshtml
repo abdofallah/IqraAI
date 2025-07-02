@@ -121,16 +121,12 @@
                                 <div class="card mb-4">
                                     <div class="card-body">
                                         <h5 class="card-title">Current Balance</h5>
-                                        <!-- Main credit balance -->
-                                        <h2 class="fw-bold display-5 text-success mb-1">${{userBilling.creditBalance}}</h2>
-                                        <!-- Unpaid Overage Balance (conditional) -->
-                                        <!-- if (userBilling.unpaidOverageBalance > 0) { -->
-                                        <div class="alert alert-warning d-flex justify-content-between align-items-center">
-                                            <span>Outstanding Overage: ${{userBilling.unpaidOverageBalance}}</span>
-                                            <button class="btn btn-warning btn-sm">Pay Now</button>
+                                        <h2 class="fw-bold display-5 text-success mb-1" id="balanceValue">$0.00</h2>
+                                        <div class="alert alert-warning d-flex justify-content-between align-items-center d-none" id="unpaidOverageAlert">
+                                            <span>Outstanding Overage: <span id="unpaidOverageValue">$0.00</span></span>
+                                            <button class="btn btn-warning btn-sm" id="unpaidOveragePayBtn">Pay Now</button>
                                         </div>
-                                        <!-- } -->
-                                        <button class="btn btn-primary w-100 mt-2">
+                                        <button class="btn btn-primary w-100 mt-2" id="addFundsBtn">
                                             <i class="fa-solid fa-plus me-1"></i> Add Funds
                                         </button>
                                     </div>
@@ -141,32 +137,25 @@
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <h5 class="card-title mb-0">Current Plan</h5>
-                                            <button class="btn btn-outline-secondary btn-sm">Change Plan</button>
+                                            <button class="btn btn-outline-secondary btn-sm" id="changePlanBtn">Change Plan</button>
                                         </div>
-                                        <!-- Plan Name -->
-                                        <h4 class="fw-bold">{{plan.name}}</h4>
-                                        <p class="text-muted">Next bill on {{subscription.currentPeriodEnd | date}} for ${{plan.monthlyPrice}}</p>
+                                        <h4 class="fw-bold" id="planName">Loading...</h4>
+                                        <p class="text-muted" id="planNextBill">...</p>
 
-                                        <!-- Plan-specific details section -->
-                                        <!-- if (plan.type === 'FixedPackage') { -->
-                                        <div class="mt-3">
+                                        <!-- Plan-specific details: Fixed Package -->
+                                        <div class="mt-3 d-none" id="fixedPackageDetails">
                                             <label class="form-label">Monthly Included Minutes</label>
                                             <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar" role="progressbar" style="width: {{usage.minutesUsed / plan.includedMinutes * 100}}%;" aria-valuenow="{{usage.minutesUsed}}" aria-valuemin="0" aria-valuemax="{{plan.includedMinutes}}">
-                                                    {{usage.minutesUsed}} / {{plan.includedMinutes}}
+                                                <div class="progress-bar" role="progressbar" id="usageProgressBar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                                    <span id="usageProgressText">0 / 0</span>
                                                 </div>
                                             </div>
-                                            <small class="form-text text-muted mt-1">Overage: ${{plan.overageMinutePrice}} per minute.</small>
+                                            <small class="form-text text-muted mt-1" id="overagePriceText">Overage: $0.00 per minute.</small>
                                         </div>
-                                        <!-- } else if (plan.type === 'Standard' || plan.type === 'VolumeTiered') { -->
-                                        <div class="mt-3">
-                                            <p>
-                                                Your current price is <strong>${{plan.effectiveMinutePrice}} per minute</strong>.
-                                                <!-- Optional: message for volume plans -->
-                                                <small class="d-block text-muted">Your rate gets lower with higher usage.</small>
-                                            </p>
+                                        <!-- Plan-specific details: Pay-As-You-Go / Volume -->
+                                        <div class="mt-3 d-none" id="payAsYouGoDetails">
+                                            <p id="effectivePriceText">Your current price is <strong>$0.00 per minute</strong>.</p>
                                         </div>
-                                        <!-- } -->
                                     </div>
                                 </div>
                             </div>
@@ -177,25 +166,13 @@
                                 <div class="card mb-4">
                                     <div class="card-body">
                                         <h5 class="card-title">Concurrency</h5>
-                                        <h3 class="fw-bold">{{plan.baseConcurrency + userBilling.additionalConcurrencySlots.length}} Total Slots</h3>
-                                        <p class="text-muted mb-3">{{plan.baseConcurrency}} from plan + {{userBilling.additionalConcurrencySlots.length}} purchased</p>
-
+                                        <h3 class="fw-bold" id="concurrencyTotal">0 Total Slots</h3>
+                                        <p class="text-muted mb-3" id="concurrencyBreakdown">0 from plan + 0 purchased</p>
                                         <h6 class="fw-bold">Purchased Slots</h6>
-                                        <!-- Loop through additional slots -->
-                                        <ul class="list-group list-group-flush">
-                                            <!-- if (userBilling.additionalConcurrencySlots.length === 0) { -->
-                                            <li class="list-group-item">No additional slots purchased.</li>
-                                            <!-- } else { loop over slots -->
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div>Renews on {{slot.nextBillingDate | date}}</div>
-                                                <span class="badge bg-primary rounded-pill">${{slot.priceWhenPurchased}}/mo</span>
-                                                <button class="btn btn-outline-danger btn-sm p-1">
-                                                    <i class="fa-solid fa-xmark"></i>
-                                                </button>
-                                            </li>
-                                            <!-- } -->
+                                        <ul class="list-group list-group-flush" id="purchasedSlotsList">
+                                            <!-- Dynamically populated -->
                                         </ul>
-                                        <button class="btn btn-outline-primary btn-sm w-100 mt-3">Buy More Slots</button>
+                                        <button class="btn btn-outline-primary btn-sm w-100 mt-3" id="buyMoreSlotsBtn">Buy More Slots</button>
                                     </div>
                                 </div>
 
@@ -205,15 +182,14 @@
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <h5 class="card-title mb-0">Auto-Refill</h5>
                                             <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" role="switch" id="autoRefillSwitch" {{userBilling.autoRefill.status= = ='Enabled' ? 'checked' : '' }}>
+                                                <input class="form-check-input" type="checkbox" role="switch" id="autoRefillSwitch">
                                             </div>
                                         </div>
-                                        <!-- Conditional display based on switch -->
-                                        <div id="autoRefillSettings" class="{{userBilling.autoRefill.status === 'Enabled' ? '' : 'd-none'}}">
-                                            <p class="mb-1">When balance is below <strong>${{userBilling.autoRefill.refillWhenBalanceBelow}}</strong>, refill with <strong>${{userBilling.autoRefill.refillAmount}}</strong>.</p>
-                                            <small class="text-muted">Using Visa •••• 1539</small>
+                                        <div id="autoRefillSettings" class="d-none">
+                                            <p class="mb-1" id="autoRefillDetailsText">...</p>
+                                            <small class="text-muted" id="autoRefillPaymentMethod">...</small>
                                         </div>
-                                        <button class="btn btn-outline-secondary btn-sm w-100 mt-3">Edit Settings</button>
+                                        <button class="btn btn-outline-secondary btn-sm w-100 mt-3" id="editAutoRefillBtn">Edit Settings</button>
                                     </div>
                                 </div>
                             </div>
@@ -238,52 +214,9 @@
                         <div class="d-flex justify-content-end mb-3">
                             <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Add New Method</button>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 col-12">
-                                <div class="billing-method-card d-flex flex-column align-items-center justify-content-center mb-2">
-                                    <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
-                                        <div class="method-type-icon icon-visa">
-                                            <img src="~/img/visa-svgrepo-com.svg">
-                                        </div>
 
-                                        <button class="btn btn-outline-light" type="button" disabled>Primary</button>
-                                    </div>
-                                    <div class="d-flex flex-row align-items-center justify-content-between w-100 mb-3">
-                                        <div>
-                                            <h6 class="label">Card Number</h6>
-                                            <h6>•••• •••• •••• 1539</h6>
-                                        </div>
-
-                                        <div>
-                                            <h6 class="label">Expires</h6>
-                                            <h6>04/24</h6>
-                                        </div>
-
-                                        <div>
-                                            <h6 class="label">CVV</h6>
-                                            <h6>•••</h6>
-                                        </div>
-                                    </div>
-                                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
-                                        <div>
-                                            <h6 class="label">Card Name</h6>
-                                            <h6>John Doe</h6>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-flex flex-row align-items-center justify-content-between w-100 payment-method-cards-buttons">
-                                    <button class="btn btn-light w-100 me-3">
-                                        <i class="fa-regular fa-trash"></i>
-                                        <span>Delete</span>
-                                    </button>
-
-                                    <button class="btn btn-light w-100">
-                                        <i class="fa-regular fa-pen-to-square"></i>
-                                        <span>Edit</span>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="row" id="paymentMethodsContainer">
+                            <!-- Payment Methods will be dynamically inserted here -->
                         </div>
                     </div>
 
@@ -332,11 +265,10 @@
         </div>
 
         <!-------------------
-        
-                MODALS
-        
-        --------------------->
 
+                MODALS
+
+        --------------------->
         <!-- Add New Business Modal -->
         <div class="modal modal-lg fade" id="addNewBusinessModal" tabindex="-1" aria-labelledby="addNewBusinessModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -384,6 +316,7 @@
         <!-- libs -->
         <script src="~/js/jquery-3.7.1.min.js"></script>
         <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <!-- Custom Scripts -->
         <script src="~/js/countries_list.js"></script>
@@ -400,17 +333,17 @@
         <script>
             var AlertManager = new BootstrapAlertManager();
 
+            var MasterUserData = null;
+            var UserPlanData = null;
             var SpecificationLanguagesListData = null;
-
-            var CurrentUserBusinessPermission = null;
-
             var CurrentBusinessesList = null;
 
             // API Related Calls
-            function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
+            function FetchMasterUserDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
-                    url: '/app/specification/languages/',
+                    url: '/app/user',
                     type: 'POST',
+                    dataType: "json",
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);
@@ -425,11 +358,28 @@
                 });
             }
 
-            function FetchUserBusinessPermissionsFromAPI(successCallback, errorCallback) {
+            function FetchUserPlanDataFromAPI(successCallback, errorCallback) {
                 $.ajax({
-                    url: '/app/user/permissions/business',
+                    url: '/app/user/plan',
                     type: 'POST',
                     dataType: "json",
+                    success: (response) => {
+                        if (!response.success) {
+                            errorCallback(response);
+                            return;
+                        }
+                        successCallback(response.data);
+                    },
+                    error: (error) => {
+                        errorCallback(error);
+                    }
+                });
+            }
+
+            function FetchSpecificationLanguagesDataFromAPI(successCallback, errorCallback) {
+                $.ajax({
+                    url: '/app/specification/languages/',
+                    type: 'POST',
                     success: (response) => {
                         if (!response.success) {
                             errorCallback(response);
@@ -493,6 +443,10 @@
             var PageLoaderInterval = setInterval(
                 () => {
                     if (
+                        MasterUserData != null
+                        &&
+                        UserPlanData != null
+                        &&
                         CurrentBusinessesList != null
                         &&
                         SpecificationLanguagesListData != null
@@ -520,7 +474,8 @@
         </script>
 
         <!-- Scripts -->
-        <script src="~/scripts/app/index/businesses_tab.js"></script>
+        <script src="~/scripts/app/home/businesses_tab.js"></script>
+        <script src="~/scripts/app/home/billing_tab.js"></script>
 
         <!-- Init -->
         <script>
@@ -530,15 +485,15 @@
                     (specLanguagesDataResult) => {
                         SpecificationLanguagesListData = specLanguagesDataResult;
 
-                        FetchUserBusinessPermissionsFromAPI(
-                            (userBusinessPermission) => {
+                        FetchMasterUserDataFromAPI(
+                            (masterUserData) => {
+                                MasterUserData = masterUserData;
 
-                                CurrentUserBusinessPermission = userBusinessPermission;
-
-                                if (userBusinessPermission.disableBusinessesAt == null) {
+                                if (!MasterUserData.businessPermission.disableBusinesses) {
                                     searchBusinessInput.prop("disabled", false);
                                     searchBusinessButton.prop("disabled", false);
 
+                                    // Fetch and Init Businesses Tab
                                     FetchUserBusinessesFromAPI(
                                         (userBusinesses) => {
                                             CurrentBusinessesList = userBusinesses;
@@ -556,12 +511,30 @@
                                             console.error("Error occured while fetching user businesses: ", userBusinessesError);
                                         },
                                     );
+
+                                    // Fetch and init Billing & Usage Tab
+                                    FetchUserPlanDataFromAPI(
+                                        (userPlanData) => {
+                                            UserPlanData = userPlanData;
+
+                                            // Init Billing & Usage Tab
+                                            InitBillingTab();
+                                        },
+                                        (userPlanDataError) => {
+                                            AlertManager.createAlert({
+                                                type: "danger",
+                                                message: "Error occured while fetching user plan data. Check browser console for logs.",
+                                                enableDismiss: false,
+                                            });
+                                            console.error("Error occured while fetching user plan data: ", userPlanDataError);
+                                        },
+                                    );
                                 } else {
                                     CurrentBusinessesList = [];
 
                                     let alertMessage = "Bussiness Viewing, Adding, Editing and Deleting are disabled for your account.";
-                                    if (userBusinessPermission.disableBusinessesReason != null) {
-                                        alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.disableBusinessesReason}`;
+                                    if (MasterUserData.businessPermission.disableBusinessesReason != null) {
+                                        alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.disableBusinessesReason}`;
                                     } else {
                                         alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                     }
@@ -573,12 +546,15 @@
                                     });
                                 }
 
-                                if (userBusinessPermission.addBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                // Check sub business permissions
+                                if (!MasterUserData.businessPermission.disableBusinesses)
+                                {
+                                    // check business add allowed
+                                    if (MasterUserData.businessPermission.addBusinessDisabled) {
                                         let alertMessage = "Bussiness Adding is disabled for your account.";
 
-                                        if (userBusinessPermission.addBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.addBusinessDisableReason}`;
+                                        if (MasterUserData.businessPermission.addBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.addBusinessDisableReason}`;
                                         } else {
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
@@ -588,17 +564,16 @@
                                             message: alertMessage,
                                             enableDismiss: false,
                                         });
+                                    } else {
+                                        AddNewBusinessButton.prop("disabled", false);
                                     }
-                                } else {
-                                    AddNewBusinessButton.prop("disabled", false);
-                                }
 
-                                if (userBusinessPermission.editBusinessDisabledAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                    // check business edit allowed
+                                    if (MasterUserData.businessPermission.editBusinessDisabled) {
                                         let alertMessage = "Bussiness Editing is disabled for your account.";
 
-                                        if (userBusinessPermission.editBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.editBusinessDisableReason}`;
+                                        if (MasterUserData.businessPermission.editBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.editBusinessDisableReason}`;
                                         } else {
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
@@ -609,14 +584,13 @@
                                             enableDismiss: false,
                                         });
                                     }
-                                }
 
-                                if (userBusinessPermission.deleteBusinessDisableAt != null || userBusinessPermission.disableBusinessesAt != null) {
-                                    if (userBusinessPermission.disableBusinessesAt == null) {
+                                    // check business delete allowed
+                                    if (MasterUserData.businessPermission.deleteBusinessDisable) {
                                         let alertMessage = "Bussiness Deleting is disabled for your account.";
 
-                                        if (userBusinessPermission.deleteBusinessDisableReason != null) {
-                                            alertMessage = `${alertMessage}<br>Reason: ${userBusinessPermission.deleteBusinessDisableReason}`;
+                                        if (MasterUserData.businessPermission.deleteBusinessDisableReason != null) {
+                                            alertMessage = `${alertMessage}<br>Reason: ${MasterUserData.businessPermission.deleteBusinessDisableReason}`;
                                         } else {
                                             alertMessage = `${alertMessage}<br>Please contact support for more information.`;
                                         }
@@ -628,15 +602,16 @@
                                         });
                                     }
                                 }
+
                             },
-                            (userBusinessPermissionError) => {
+                            (masterUserDataError) => {
                                 AlertManager.createAlert({
                                     type: "danger",
-                                    message: "Error occured while fetching user businesses. Check browser console for logs.",
+                                    message: "Error occured while fetching user data. Check browser console for logs.",
                                     enableDismiss: false,
                                 });
 
-                                console.error("Error occured while fetching user businesses: ", userBusinessPermissionError);
+                                console.error("Error occured while fetching user data: ", masterUserDataError);
                             },
                         );
                     },
@@ -649,10 +624,9 @@
 
                         console.error("Error occured while fetching specification languages: ", specLanguagesListError);
                     }
-                ); 
+                );
             });
         </script>
-        <script src="~/compiled-scripts/app.js"></script>
 </body>
 
 </html>

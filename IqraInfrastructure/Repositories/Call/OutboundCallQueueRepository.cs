@@ -15,12 +15,11 @@ namespace IqraInfrastructure.Repositories.Call
         private const string ActiveCollectionName = "OutboundCallQueue_Active";
         private const string ArchivedCollectionName = "OutboundCallQueue_Archived";
 
-        public OutboundCallQueueRepository(string connectionString, string databaseName, ILogger<OutboundCallQueueRepository> logger)
+        public OutboundCallQueueRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueRepository> logger)
         {
             _logger = logger;
             try
             {
-                var client = new MongoClient(connectionString);
                 var database = client.GetDatabase(databaseName);
                 _outboundActiveQueueCollection = database.GetCollection<OutboundCallQueueData>(ActiveCollectionName);
                 _outboundArchivedQueueCollection = database.GetCollection<OutboundCallQueueData>(ArchivedCollectionName);

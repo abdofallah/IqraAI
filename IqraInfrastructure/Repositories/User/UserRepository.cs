@@ -11,11 +11,10 @@ namespace IqraInfrastructure.Repositories.User
         private readonly string CollectionName = "Users";
         private readonly IMongoCollection<UserData> _usersCollection;
 
-        public UserRepository(ILogger<UserRepository> logger, string connectionString, string databaseName)
+        public UserRepository(ILogger<UserRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _usersCollection = database.GetCollection<UserData>(CollectionName);
         }
@@ -46,6 +45,12 @@ namespace IqraInfrastructure.Repositories.User
         public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition)
         {
             var result = await _usersCollection.UpdateOneAsync(filter, updateDefinition);
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> UpdateUser(FilterDefinition<UserData> filter, UpdateDefinition<UserData> updateDefinition, IClientSessionHandle session)
+        {
+            var result = await _usersCollection.UpdateOneAsync(session, filter, updateDefinition);
             return result.IsAcknowledged;
         }
 

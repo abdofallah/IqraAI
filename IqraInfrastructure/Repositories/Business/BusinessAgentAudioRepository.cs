@@ -13,17 +13,11 @@ namespace IqraInfrastructure.Repositories.Business
         private IMinioClient MinioClient;
         public string BucketName;
 
-        public BusinessAgentAudioRepository(ILogger<BusinessAgentAudioRepository> logger, string endpoint, int port, string accessKey, string secretKey, string bucketName, bool isSecure)
+        public BusinessAgentAudioRepository(ILogger<BusinessAgentAudioRepository> logger, IMinioClient client, string bucketName)
         {
             _logger = logger;
-
+            MinioClient = client;
             BucketName = bucketName;
-
-            MinioClient = new MinioClient()
-            .WithEndpoint(endpoint, port)
-            .WithCredentials(accessKey, secretKey)
-            .WithSSL(isSecure)
-            .Build();
 
             bool bucketExists = MinioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
             if (!bucketExists)

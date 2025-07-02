@@ -17,11 +17,10 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly IMongoCollection<BusinessWhiteLabelDomain> _businessWhiteLabelDomainCollection;
         private readonly IMongoCollection<BsonDocument> _businessWhiteLabelDomainCounterCollection;
 
-        public BusinessWhiteLabelDomainRepository(ILogger<BusinessWhiteLabelDomainRepository> logger, string connectionString, string databaseName)
+        public BusinessWhiteLabelDomainRepository(ILogger<BusinessWhiteLabelDomainRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessWhiteLabelDomainCollection = database.GetCollection<BusinessWhiteLabelDomain>(CollectionName);
             _businessWhiteLabelDomainCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);

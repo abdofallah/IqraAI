@@ -1,11 +1,9 @@
 ﻿using CommunityToolkit.HighPerformance;
 using Microsoft.Extensions.Logging;
 using Minio;
-using Minio.ApiEndpoints;
 using Minio.DataModel;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
-using System.Threading;
 
 namespace IqraInfrastructure.Repositories.Conversation
 {
@@ -15,23 +13,12 @@ namespace IqraInfrastructure.Repositories.Conversation
         private readonly string _bucketName;
         private readonly ILogger<ConversationAudioRepository> _logger;
 
-        public ConversationAudioRepository(
-            string endpoint,
-            int port,
-            string accessKey,
-            string secretKey,
-            string bucketName,
-            bool isSecure,
-            ILogger<ConversationAudioRepository> logger)
+        public ConversationAudioRepository(ILogger<ConversationAudioRepository> logger, IMinioClient client, string bucketName)
         {
-            _bucketName = bucketName;
             _logger = logger;
 
-            _minioClient = new MinioClient()
-                .WithEndpoint(endpoint, port)
-                .WithCredentials(accessKey, secretKey)
-                .WithSSL(isSecure)
-                .Build();
+            _minioClient = client;
+            _bucketName = bucketName;
 
             // Ensure the bucket exists
             EnsureBucketExistsAsync().GetAwaiter().GetResult();

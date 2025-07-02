@@ -1,14 +1,16 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.WhiteLabelDomain;
-using IqraCore.Entities.Helper.Business;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Models.User;
+using IqraCore.Models.User.GetMasterUserDataModel;
+using IqraCore.Models.User.GetUserPlanDetailsModel;
 using IqraCore.Utilities;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Languages;
-using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
 using PhoneNumbers;
 
@@ -16,15 +18,19 @@ namespace ProjectIqraFrontend.Controllers.User
 {
     public class AppUserController : Controller
     {
+        private readonly AppRepository _appRepository;
         private readonly UserManager _userManager;
+        private readonly PlanManager _planManager;
         private readonly BusinessManager _businessManager;
         private readonly LanguagesManager _languageManager;
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(UserManager userManager, BusinessManager businessManager, LanguagesManager languageManager)
+        public AppUserController(AppRepository appRepository, UserManager userManager, PlanManager planManager, BusinessManager businessManager, LanguagesManager languageManager)
         {
+            _appRepository = appRepository;
             _userManager = userManager;
+            _planManager = planManager;
             _businessManager = businessManager;
             _languageManager = languageManager;
         }
@@ -34,11 +40,10 @@ namespace ProjectIqraFrontend.Controllers.User
          * User
          * 
         **/
-
-        [HttpPost("/app/user/permissions/business")]
-        public async Task<FunctionReturnResult<UserPermissionBusiness?>> GetUserBussinessPermissions()
+        [HttpPost("/app/user")]
+        public async Task<FunctionReturnResult<GetMasterUserDataModel?>> GetMasterUserDataModel()
         {
-            var result = new FunctionReturnResult<UserPermissionBusiness?>();
+            var result = new FunctionReturnResult<GetMasterUserDataModel?>();
 
             string? sessionId = Request.Cookies["sessionId"];
             string? authKey = Request.Cookies["authKey"];
@@ -46,14 +51,14 @@ namespace ProjectIqraFrontend.Controllers.User
 
             if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
             {
-                result.Code = "GetUserBussinessPermissions:1";
+                result.Code = "GetUser:1";
                 result.Message = "Invalid session data";
                 return result;
             }
 
             if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
             {
-                result.Code = "GetUserBussinessPermissions:2";
+                result.Code = "GetUser:2";
                 result.Message = "Session validation failed";
                 return result;
             }
@@ -61,15 +66,82 @@ namespace ProjectIqraFrontend.Controllers.User
             UserData? user = await _userManager.GetUserByEmail(userEmail);
             if (user == null)
             {
-                result.Code = "GetUserBussinessPermissions:3";
+                result.Code = "GetUser:3";
                 result.Message = "User not found";
                 return result;
             }
 
-            result.Success = true;
-            result.Data = user.Permission.Business;
+            GetMasterUserDataModel userDataModel = new GetMasterUserDataModel(user);
 
-            return result;
+            return result.SetSuccessResult(userDataModel);
+        }
+
+        /**
+         * 
+         * User Plan Details
+         * 
+        **/ 
+
+        [HttpPost("/app/user/plan")]
+        public async Task<FunctionReturnResult<GetUserPlanDetailsModel?>> GetUserPlanDetailsModel()
+        {
+            var result = new FunctionReturnResult<GetUserPlanDetailsModel?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetUserPlanDetails:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "GetUserPlanDetails:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetUserPlanDetails:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            string userPlanId = "";
+            if (user.Billing.Subscription == null)
+            {
+                var billingConfigData = await _appRepository.GetBillingPlanConfig();
+                if (billingConfigData == null || string.IsNullOrWhiteSpace(billingConfigData.NewUserPlanId))
+                {
+                    result.Code = "GetUserPlanDetails:APP_BILLING_PLAN_NOT_FOUND";
+                    result.Message = "App billing configuration not found";
+                    return result;
+                }
+
+                userPlanId = billingConfigData.NewUserPlanId;
+            }
+            else
+            {
+                userPlanId = user.Billing.Subscription.PlanId;
+            }
+
+            var planData = await _planManager.GetPlanByIdAsync(userPlanId);
+            if (!planData.Success)
+            {
+                result.Code = "GetUserPlanDetails:" + planData.Code;
+                result.Message = planData.Message;
+                return result;
+            }
+
+            GetUserPlanDetailsModel planDetailsModel = new GetUserPlanDetailsModel(planData.Data);
+
+            return result.SetSuccessResult(planDetailsModel);
         }
 
         /**

@@ -12,6 +12,7 @@ using IqraCore.Entities.Region;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Conversation;
 using IqraCore.Models.Server;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call.Helper;
 using IqraInfrastructure.Managers.Conversation;
@@ -51,6 +52,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
+        private readonly BillingProcessingManager _billingProcessingManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSession> _activeSessions = new();
@@ -71,7 +73,8 @@ namespace IqraInfrastructure.Managers.Call
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
-            RegionManager regionManager
+            RegionManager regionManager,
+            BillingProcessingManager billingProcessingManager
         )
         {
             _logger = logger;
@@ -85,6 +88,7 @@ namespace IqraInfrastructure.Managers.Call
             _businessManager = businessManager;
             _integrationsManager = integrationsManager;
             _regionManager = regionManager;
+            _billingProcessingManager = billingProcessingManager;
         }
 
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId)
@@ -530,7 +534,8 @@ namespace IqraInfrastructure.Managers.Call
                     _outboundCallCampaignRepository,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
-                    _serviceProvider.GetRequiredService<ILoggerFactory>()                  
+                    _billingProcessingManager,
+                    _serviceProvider.GetRequiredService<ILoggerFactory>()
                 );
 
                 _activeSessions[sessionId] = conversationSession;

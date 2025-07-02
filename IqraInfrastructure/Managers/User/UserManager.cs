@@ -1,16 +1,18 @@
-﻿using MongoDB.Driver;
+﻿using Deepgram.Models.Manage.v1;
+using IqraCore.Entities.Helpers;
+using IqraCore.Entities.User;
+using IqraCore.Entities.User.Billing;
+using IqraCore.Models.Authentication;
+using IqraInfrastructure.Managers.Mail;
+using IqraInfrastructure.Repositories.App;
+using IqraInfrastructure.Repositories.User;
+using Konscious.Security.Cryptography;
+using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using IqraCore.Entities.User;
 using UserData = IqraCore.Entities.User.UserData;
-using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Repositories.User;
-using IqraCore.Models.Authentication;
-using Microsoft.Extensions.Logging;
-using MongoDB.Driver.Linq;
-using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Managers.Mail;
-using Deepgram.Models.Manage.v1;
 
 namespace IqraInfrastructure.Managers.User
 {
@@ -55,7 +57,7 @@ namespace IqraInfrastructure.Managers.User
                 Email = model.Email,
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                PasswordSHA = HashPassword(model.Password),
+                PasswordSHA = HashPassword(model.Email, model.Password),
                 Billing = new UserBillingData()
                 {
                     CreditBalance = defaultCreditBalance,
@@ -70,7 +72,7 @@ namespace IqraInfrastructure.Managers.User
 
         public async Task<bool> ResetPassword(string userEmail, string newPassword)
         {
-            string hashedPassword = HashPassword(newPassword);
+            string hashedPassword = HashPassword(userEmail, newPassword);
             var updateDefinition = Builders<UserData>.Update
                 .Set(u => u.PasswordSHA, hashedPassword);
 
@@ -164,18 +166,61 @@ namespace IqraInfrastructure.Managers.User
             return await _userSessionDatabase.ValidateSession(userEmail, sessionId, authKey);
         }
 
-        public bool ValidatePassword(UserData user, string password)
+        private byte[] ComputeArgon2Hash(string password, string email, byte[] salt)
         {
-            string hashedPassword = HashPassword(password);
-            return user.PasswordSHA == hashedPassword;
+            var passwordBytes = Encoding.UTF8.GetBytes(password);
+            using (var hasher = new Argon2id(passwordBytes))
+            {
+                hasher.DegreeOfParallelism = 8;
+                hasher.MemorySize = 12000;          // 12 MB (OWASP recommended minimum)
+                hasher.Iterations = 10;              // 10 iterations with higher memory
+                hasher.Salt = salt;
+                hasher.AssociatedData = Encoding.UTF8.GetBytes(email);
+                return hasher.GetBytes(32);         // 32 bytes output
+            }
         }
 
-        public string HashPassword(string password)
+        public string HashPassword(string userEmail, string password)
         {
-            using (SHA256 sha256 = SHA256.Create())
+            // Generate unique salt for each password
+            var salt = new byte[16];
+            using (var rng = RandomNumberGenerator.Create())
             {
-                byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return Convert.ToBase64String(hashedBytes);
+                rng.GetBytes(salt);
+            }
+
+            var passwordHash = ComputeArgon2Hash(password, userEmail, salt);
+
+            // Store both salt and hash together
+            var result = new byte[salt.Length + passwordHash.Length];
+            Array.Copy(salt, 0, result, 0, salt.Length);
+            Array.Copy(passwordHash, 0, result, salt.Length, passwordHash.Length);
+
+            return Convert.ToBase64String(result);
+        }
+
+        public bool ValidatePassword(UserData user, string password)
+        {
+            try
+            {
+                // Decode the stored hash+salt
+                var storedBytes = Convert.FromBase64String(user.PasswordSHA);
+
+                // Extract salt (first 16 bytes) and hash (remaining bytes)
+                var salt = new byte[16];
+                var storedHash = new byte[storedBytes.Length - 16];
+                Array.Copy(storedBytes, 0, salt, 0, 16);
+                Array.Copy(storedBytes, 16, storedHash, 0, storedHash.Length);
+
+                // Hash the provided password with the stored salt
+                var computedHash = ComputeArgon2Hash(password, user.Email, salt);
+
+                // Constant-time comparison to prevent timing attacks
+                return CryptographicOperations.FixedTimeEquals(storedHash, computedHash);
+            }
+            catch
+            {
+                return false; // Invalid format or other error
             }
         }
 

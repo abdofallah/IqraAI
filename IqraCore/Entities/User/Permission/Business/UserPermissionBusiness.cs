@@ -1,6 +1,6 @@
 ﻿namespace IqraCore.Entities.User
 {
-    public class UserPermissionBusiness
+    public class UserPermissionBusiness 
     {
         public DateTime? DisableBusinessesAt { get; set; } = null;
         public string? DisableBusinessesReason { get; set; } = null;

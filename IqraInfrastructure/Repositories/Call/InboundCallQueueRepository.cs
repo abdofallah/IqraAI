@@ -15,13 +15,12 @@ namespace IqraInfrastructure.Repositories.Call
 
         private const string InboundCollectionName = "InboundCallQueue"; 
 
-        public InboundCallQueueRepository(string connectionString, string databaseName, ILogger<InboundCallQueueRepository> logger)
+        public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, string databaseName)
         {
-            var client = new MongoClient(connectionString);
+            _logger = logger;
+
             var database = client.GetDatabase(databaseName);
             _inboundCallQueueCollection = database.GetCollection<InboundCallQueueData>(InboundCollectionName);
-
-            _logger = logger;
 
             CreateIndexes();
         }

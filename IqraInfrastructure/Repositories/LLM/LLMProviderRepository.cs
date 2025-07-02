@@ -14,11 +14,10 @@ namespace IqraInfrastructure.Repositories.LLM
 
         private readonly IMongoCollection<LLMProviderData> _llmProviderCollection;
 
-        public LLMProviderRepository(ILogger<LLMProviderRepository> logger, string connectionString, string databaseName)
+        public LLMProviderRepository(ILogger<LLMProviderRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _llmProviderCollection = database.GetCollection<LLMProviderData>(CollectionName);
         }

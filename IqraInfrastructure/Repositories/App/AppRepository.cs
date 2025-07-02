@@ -14,11 +14,10 @@ namespace IqraInfrastructure.Repositories.App
 
         private readonly IMongoCollection<BsonDocument> _applicationConfigurationCollection;
 
-        public AppRepository(ILogger<AppRepository> logger, string connectionString, string databaseName)
+        public AppRepository(ILogger<AppRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _applicationConfigurationCollection = database.GetCollection<BsonDocument>(CollectionName);
         }

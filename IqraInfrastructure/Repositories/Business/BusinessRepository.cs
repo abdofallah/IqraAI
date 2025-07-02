@@ -19,11 +19,10 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly IMongoCollection<BusinessData> _businessCollection;
         private readonly IMongoCollection<BsonDocument> _businessCounterCollection;
 
-        public BusinessRepository(ILogger<BusinessRepository> logger, string connectionString, string databaseName)
+        public BusinessRepository(ILogger<BusinessRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);
             _businessCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);

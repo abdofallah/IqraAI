@@ -12,11 +12,10 @@ namespace IqraInfrastructure.Repositories.Region
 
         private readonly IMongoCollection<RegionData> _regionCollection;
 
-        public RegionRepository(ILogger<RegionRepository> logger, string connectionString, string databaseName)
+        public RegionRepository(ILogger<RegionRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _regionCollection = database.GetCollection<RegionData>(CollectionName);
         }

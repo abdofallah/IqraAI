@@ -10,6 +10,7 @@ using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.Conversation;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Client;
@@ -28,6 +29,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
+        private readonly BillingProcessingManager _billingProcessingManager;
 
         private readonly string _sessionId;
         private CallQueueData _sessionCallQueueData;
@@ -84,6 +86,7 @@ namespace IqraInfrastructure.Managers.Conversation
             OutboundCallCampaignRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
+            BillingProcessingManager billingProcessingManager,
             ILoggerFactory loggerFactory
         )
         {
@@ -96,6 +99,7 @@ namespace IqraInfrastructure.Managers.Conversation
             _outboundCallCampaignRepository = outboundCallCampaignRepository;
             _conversationStateRepository = conversationStateRepository;
             _audioStorageManager = audioStorageManager;
+            _billingProcessingManager = billingProcessingManager;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger<ConversationSession>();
         }
@@ -717,7 +721,15 @@ namespace IqraInfrastructure.Managers.Conversation
             await UpdateStateAsync(finalState, reason);
 
             // Calculate final metrics
-            await UpdateFinalMetricsAsync();
+            double? durationSeconds = await UpdateFinalMetricsAsync();
+            if (durationSeconds == null)
+            {
+                _logger.LogError("Failed to update final metrics for session {SessionId}", _sessionId);
+                durationSeconds = 0;
+            }
+
+            // Add Minutes Usage to the Account
+            await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
 
             // Run Audio Compilation in the background
             RunAudioCompilationAsync();
@@ -728,12 +740,12 @@ namespace IqraInfrastructure.Managers.Conversation
             Dispose();
         }
 
-        private async Task UpdateFinalMetricsAsync()
+        private async Task<double?> UpdateFinalMetricsAsync()
         {
             try
             {
                 var state = await _conversationStateRepository.GetByIdAsync(_sessionId);
-                if (state == null) return;
+                if (state == null) return null;
 
                 var metrics = state.Metrics;
 
@@ -745,10 +757,13 @@ namespace IqraInfrastructure.Managers.Conversation
 
                 // Update metrics in the repository
                 await _conversationStateRepository.UpdateMetricsAsync(_sessionId, metrics);
+
+                return metrics.DurationSeconds;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating final metrics for session {SessionId}", _sessionId);
+                return null;
             }
         }
         private void RunAudioCompilationAsync()

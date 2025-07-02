@@ -12,11 +12,10 @@ namespace IqraInfrastructure.Repositories.Integrations
         private readonly string CollectionName = "Integrations";
         private readonly IMongoCollection<IntegrationData> _integrationsCollection;
 
-        public IntegrationsRepository(ILogger<IntegrationsRepository> logger, string connectionString, string databaseName)
+        public IntegrationsRepository(ILogger<IntegrationsRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _integrationsCollection = database.GetCollection<IntegrationData>(CollectionName);
         }

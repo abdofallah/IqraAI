@@ -14,11 +14,10 @@ namespace IqraInfrastructure.Repositories.Business
 
         private readonly IMongoCollection<BusinessApp> _businessAppCollection;
 
-        public BusinessAppRepository(ILogger<BusinessAppRepository> logger, string connectionString, string databaseName)
+        public BusinessAppRepository(ILogger<BusinessAppRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessAppCollection = database.GetCollection<BusinessApp>(CollectionName);
         }

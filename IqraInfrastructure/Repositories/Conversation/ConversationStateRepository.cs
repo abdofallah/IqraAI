@@ -11,14 +11,10 @@ namespace IqraInfrastructure.Repositories.Conversation
         private readonly IMongoCollection<ConversationState> _conversationStateCollection;
         private readonly ILogger<ConversationStateRepository> _logger;
 
-        public ConversationStateRepository(
-            string connectionString,
-            string databaseName,
-            ILogger<ConversationStateRepository> logger)
+        public ConversationStateRepository(IMongoClient client, string databaseName, ILogger<ConversationStateRepository> logger)
         {
             _logger = logger;
 
-            var client = new MongoClient(connectionString);
             var database = client.GetDatabase(databaseName);
             _conversationStateCollection = database.GetCollection<ConversationState>("ConversationStates");
 

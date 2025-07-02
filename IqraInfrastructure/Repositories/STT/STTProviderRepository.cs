@@ -14,11 +14,10 @@ namespace IqraInfrastructure.Repositories.STT
         private readonly string CollectionName = "STTProvider";
         private readonly IMongoCollection<STTProviderData> _sttProviderCollection;
 
-        public STTProviderRepository(ILogger<STTProviderRepository> logger, string connectionString, string databaseName)
+        public STTProviderRepository(ILogger<STTProviderRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
-            IMongoClient client = new MongoClient(connectionString);
             IMongoDatabase database = client.GetDatabase(databaseName);
             _sttProviderCollection = database.GetCollection<STTProviderData>(CollectionName);
         }
