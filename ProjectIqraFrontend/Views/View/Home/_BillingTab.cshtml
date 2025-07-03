@@ -1,0 +1,271 @@
+﻿<div class="main-container fade w-100 d-none" id="billing-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
+
+    <!-- Main Navigation Header -->
+    <div class="inner-header-container w-100 mb-3" id="cache-header">
+        <!-- Main Navigation for Billing -->
+        <ul class="nav" id="billing-inner-tabs" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="nav-overview-tab" data-bs-toggle="tab" data-bs-target="#nav-overview" type="button" role="tab" aria-selected="true">Overview</button>
+            </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-selected="false">Payment Methods</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="nav-history-tab" data-bs-toggle="tab" data-bs-target="#nav-history" type="button" role="tab" aria-selected="false">Billing History</button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="inner-container">
+        <div class="tab-content w-100" id="billing-inner-tabContent">
+            <!-- 1. Overview Tab -->
+            <div class="tab-pane fade show active" id="nav-overview" role="tabpanel" aria-labelledby="nav-overview-tab">
+
+                <!-- NEW: Balance & Plan Side-by-Side Card -->
+                <div class="card mb-4">
+                    <div class="card-body d-flex flex-column flex-md-row p-0">
+                        <!-- Left Side: Balance -->
+                        <div class="p-4 w-100 w-md-50 d-flex flex-column justify-content-between">
+                            <h5 class="card-title m-0">Current Balance</h5>
+                            <!-- The color of this text will be changed by JS based on value -->
+                            <h2 class="fw-bold display-5 my-3" id="balanceValue">$0.00</h2>
+                            <button class="btn btn-primary w-100 m-0" id="addFundsBtn" data-bs-toggle="modal" data-bs-target="#addFundsModal">
+                                <i class="fa-solid fa-plus me-1"></i> Add Funds
+                            </button>
+                        </div>
+                        <!-- Right Side: Plan -->
+                        <div class="p-4 w-100 w-md-50 d-flex flex-column justify-content-between border-top border-md-top-0 border-md-start">
+                            <h5 class="card-title m-0">Current Plan</h5>
+                            
+                            <div class="my-3">
+                                <h4 class="fw-bold mb-0" id="planName">Loading...</h4>
+                                <p class="text-muted mb-0" id="planNextBill">...</p>
+                            </div>
+
+                            <!-- Plan-specific details will be shown here by JS -->
+                            <div class="mt-3 d-none" id="fixedPackageDetails">
+                                <label class="form-label">Monthly Included Minutes:</label>
+                                <span class="form-label fw-bold" id="usageProgressText">0 / 0</span>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" id="usageProgressBar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small class="form-text text-muted mt-1" id="overagePriceText">Overage: ...</small>
+                            </div>
+                            <div class="d-none" id="payAsYouGoDetails">
+                                <!-- This section is for Standard Pay-As-You-Go -->
+                                <div id="standardPlanInfo">
+                                    <p class="mb-0">Your current price is <strong id="standardEffectivePrice">...</strong>.</p>
+                                </div>
+                                <!-- This section is for Volume-Tiered plans and will be shown/hidden by JS -->
+                                <div id="volumePlanInfo" class="d-none mt-3">
+                                    <ul class="list-group list-group-flush mt-2" id="volumeTiersList">
+                                        <!-- Tiers will be dynamically inserted here by JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Concurrency Card -->
+                <div class="card mb-4">
+                    <div class="card-body d-flex flex-column flex-md-row p-0">
+                        <!-- Left Side: Details -->
+                        <div class="p-4">
+                            <h5 class="card-title">Concurrency</h5>
+                            <h3 class="fw-bold" id="concurrencyTotal">0 Total Slots</h3>
+                            <p class="text-muted mb-0" id="concurrencyBreakdown">0 from plan + 0 purchased</p>
+                        </div>
+                        <!-- Right Side: Addons -->
+                        <div class="p-4 border-top border-md-top-0 border-md-start">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">Purchased Slots</h6>
+                                <button class="btn btn-outline-primary btn-sm" id="buyMoreSlotsBtn" data-bs-toggle="modal" data-bs-target="#buySlotsModal">
+                                    Buy More Slots
+                                </button>
+                            </div>
+                            <ul class="list-group list-group-flush" id="purchasedSlotsList">
+                                <!-- Dynamically populated -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW: Auto-Refill Card -->
+                <div class="card mb-4">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Auto-Refill</h5>
+                            <div id="autoRefillSettings" class="d-none">
+                                <p class="mb-1 mt-2" id="autoRefillDetailsText">...</p>
+                                <small class="text-muted" id="autoRefillPaymentMethod">...</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="autoRefillSwitch" style="transform: scale(1.4);">
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" id="editAutoRefillBtn" data-bs-toggle="modal" data-bs-target="#editAutoRefillModal">Edit Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div> 
+
+            <!-- 3. Payment Methods Tab -->
+            <div class="tab-pane fade" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab">
+                <!-- This will be your existing payment method UI, with an "Add New Method" button -->
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Add New Method</button>
+                </div>
+
+                <div class="row" id="paymentMethodsContainer">
+                    <!-- Payment Methods will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- 4. Billing History Tab -->
+            <div class="tab-pane fade" id="nav-history" role="tabpanel" aria-labelledby="nav-history-tab">
+                <table class="table table-hover w-100" id="billing-history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Invoice</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Example Row: Subscription -->
+                        <tr>
+                            <td>5/1/2024</td>
+                            <td>Monthly Subscription (Fixed Package)</td>
+                            <td>$50.00</td>
+                            <td><span class="badge bg-success">Paid</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
+                        </tr>
+                        <!-- Example Row: Top-up -->
+                        <tr>
+                            <td>4/28/2024</td>
+                            <td>Credit Top-up</td>
+                            <td>$25.00</td>
+                            <td><span class="badge bg-success">Paid</span></td>
+                            <td><a href="#" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-download"></i> Download</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- =================================================================
+                        MODALS FOR BILLING
+================================================================== -->
+
+<!-- Add Funds Modal -->
+<div class="modal fade" id="addFundsModal" tabindex="-1" aria-labelledby="addFundsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFundsModalLabel">Add Funds</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Top up your account balance to pay for usage and services.</p>
+                <div class="mb-3">
+                    <label for="addFundsAmountInput" class="form-label">Amount (USD)</label>
+                    <input type="number" class="form-control" id="addFundsAmountInput" placeholder="e.g., 25.00" min="5.00" step="0.01">
+                    <small class="text-muted" id="addFundsMinAmountText">Minimum amount: $5.00</small>
+                </div>
+                <div class="mb-3">
+                    <label for="addFundsPaymentMethodSelect" class="form-label">Payment Method</label>
+                    <select class="form-select" id="addFundsPaymentMethodSelect">
+                        <!-- Options will be populated by JS -->
+                        <option value="">Select a payment method...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addFundsConfirmBtn" disabled>
+                    Pay & Add <span id="addFundsButtonAmount">$0.00</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Buy More Concurrency Slots Modal -->
+<div class="modal fade" id="buySlotsModal" tabindex="-1" aria-labelledby="buySlotsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="buySlotsModalLabel">Buy More Concurrency Slots</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Each additional slot allows one more concurrent call. You will be billed monthly for each slot you purchase.</p>
+                <div class="mb-3">
+                    <label for="buySlotsQuantityInput" class="form-label">How many additional slots?</label>
+                    <input type="number" class="form-control" id="buySlotsQuantityInput" value="1" min="1" max="100">
+                </div>
+                <div class="alert alert-info">
+                    <h6 class="fw-bold">Summary</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li>Price per slot: <strong id="buySlotsPricePerSlotText">$7.00/month</strong></li>
+                        <li>Total new monthly cost: <strong id="buySlotsTotalCostText">$7.00</strong></li>
+                    </ul>
+                    <hr>
+                    <small>You will be charged immediately for the first month. This purchase is non-refundable.</small>
+                </div>
+                <div class="mb-3">
+                    <label for="buySlotsPaymentMethodSelect" class="form-label">Payment Method</label>
+                    <select class="form-select" id="buySlotsPaymentMethodSelect">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="buySlotsConfirmBtn">Purchase for <span id="buySlotsButtonAmount">$7.00</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Auto-Refill Modal -->
+<div class="modal fade" id="editAutoRefillModal" tabindex="-1" aria-labelledby="editAutoRefillModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAutoRefillModalLabel">Auto-Refill Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>When your balance drops, we can automatically top it up for you so your service is never interrupted.</p>
+                <div class="mb-3">
+                    <label for="autoRefillThresholdInput" class="form-label">When balance falls below:</label>
+                    <input type="number" class="form-control" id="autoRefillThresholdInput" placeholder="e.g., 10.00">
+                </div>
+                <div class="mb-3">
+                    <label for="autoRefillAmountInput" class="form-label">Automatically add:</label>
+                    <input type="number" class="form-control" id="autoRefillAmountInput" placeholder="e.g., 25.00">
+                </div>
+                <div class="mb-3">
+                    <label for="autoRefillPaymentMethodSelect" class="form-label">Using payment method:</label>
+                    <select class="form-select" id="autoRefillPaymentMethodSelect">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="autoRefillSaveChangesBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>

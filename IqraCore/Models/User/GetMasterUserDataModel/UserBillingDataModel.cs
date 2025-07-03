@@ -8,7 +8,6 @@ namespace IqraCore.Models.User.Billing
         public UserBillingDataModel (UserBillingData userBillingData)
         {
             CreditBalance = userBillingData.CreditBalance;
-            UnpaidOverageBalance = userBillingData.UnpaidOverageBalance;
             Subscription = userBillingData.Subscription != null ? new UserBillingDataSubscriptionDetailsModel(userBillingData.Subscription) : null;
             AdditionalConcurrencySlots = userBillingData.AdditionalConcurrencySlots
                 .Select(slot => new UserBillingDataPurchasedConcurrencySlotModel(slot))
@@ -18,7 +17,6 @@ namespace IqraCore.Models.User.Billing
         }
 
         public decimal CreditBalance { get; set; } = 0.00m;
-        public decimal UnpaidOverageBalance { get; set; } = 0.00m;
 
         public UserBillingDataSubscriptionDetailsModel? Subscription { get; set; } = null;
 

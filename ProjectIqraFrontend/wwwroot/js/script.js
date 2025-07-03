@@ -5,6 +5,41 @@ let lastRecordedHeight = $(window).height();
 
 let resizeTimeout;
 
+function setDynamicNavHeight() {
+	const navList = $(".nav_list");
+	const navLogo = $('.nav_logo');
+	const navBottom = $('.bottom-navigation');
+	
+	var navLogoHeight = navLogo.outerHeight() * 1.5;
+	var navListHeight = navList[0].scrollHeight;
+	var navBottomHeight = navBottom.height() * 1.5;
+
+	var totalAboveHeight = navLogoHeight + navListHeight + navBottomHeight;
+
+	var windowHeight = window.innerHeight;
+
+	if (totalAboveHeight > windowHeight) {
+		var giveHeight = (windowHeight - (navBottomHeight + navLogoHeight));
+
+		navList.css("overflow-y", "scroll").css("box-shadow", "inset rgb(203 229 78 / 10%) 0px -20px 10px -10px");
+		navList.animate(
+			{ "height": giveHeight },
+			{
+				duration: 300,
+			}
+		);
+	}
+	else {
+		navList.css("overflow-y", "hidden").css("box-shadow", "");
+		navList.animate(
+			{ "height": "100%" },
+			{
+				duration: 300,
+			}
+		);
+	}
+}
+
 function setDynamicBodyHeight(containerId = null) {
 	// Cache DOM lookups and jQuery objects
 	const $body = $("body");
@@ -68,30 +103,6 @@ function setDynamicBodyHeight(containerId = null) {
 			},
 		},
 	);
-}
-
-function setDynamicSidebarHeight() {
-	$("body").css("overflow", "hidden");
-
-	setTimeout(() => {
-		const windowHeight = $(window)[0].innerHeight;
-		const upperNavHeight = $(".upper-navigation")[0].clientHeight;
-		const lowerNavHeight = $(".bottom-navigation")[0].clientHeight;
-
-		const totalNavHeight = upperNavHeight + lowerNavHeight;
-
-		if (totalNavHeight > windowHeight) {
-			$(".l-navbar").css("max-height", `${windowHeight}px`).css("height", "").css("overflow-y", "scroll");
-
-			$(".bottom-navigation").css("margin-top", "2em");
-		} else {
-			$(".l-navbar").css("max-height", "").css("height", "100vh").css("overflow-y", "hidden");
-
-			$(".bottom-navigation").css("margin-top", "");
-		}
-
-		$("body").css("overflow", "initial");
-	}, 10);
 }
 
 function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
@@ -234,6 +245,7 @@ $(document).ready(() => {
 
 				const currentActiveTabId = $(".l-navbar .nav_link.active").attr("for");
 				setDynamicBodyHeight(currentActiveTabId);
+				setDynamicNavHeight();
 			}
 		}, 250); // Wait for 250ms of no resize events before executing
 	});
@@ -241,6 +253,7 @@ $(document).ready(() => {
 	// Init
 	changeActiveSidebarLink("header-toggle", "nav-bar", "body-pd", "header");
 	makeSureNavToggleIconIsCorrect();
+	setDynamicNavHeight();
 
 	$(document)
 		.find(".l-navbar .nav_link")

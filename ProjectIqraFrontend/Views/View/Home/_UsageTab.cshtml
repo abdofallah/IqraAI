@@ -1,0 +1,65 @@
+﻿<div class="main-container fade w-100 d-none" id="usage-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-chart-line nav_icon'></i> <span>Usage</span></h3>
+    <div class="inner-container">
+
+        <!-- Chart Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0" id="usageChartTitle">Usage Summary</h5>
+                    <div class="btn-group" role="group" aria-label="Usage Time Range">
+                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeMonth" autocomplete="off" value="0" checked>
+                        <label class="btn btn-outline-primary" for="timeRangeMonth">This Month</label>
+
+                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeWeek" autocomplete="off" value="1">
+                        <label class="btn btn-outline-primary" for="timeRangeWeek">Last 7 Days</label>
+
+                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeDay" autocomplete="off" value="2">
+                        <label class="btn btn-outline-primary" for="timeRangeDay">Today</label>
+                    </div>
+                </div>
+                <div style="height: 300px; position: relative;">
+                    <div id="usageChartSpinner" class="d-flex justify-content-center align-items-center h-100">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <canvas id="usageChart" class="d-none"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage History Table Card -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Detailed Usage History</h5>
+                <div class="table-responsive">
+                    <table id="usageHistoryTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Business</th>
+                                <th>Minutes Used</th>
+                                <th>Cost</th>
+                                <th>Session ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamically Generated -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination Controls -->
+                <div class="d-flex justify-content-center align-items-center mt-3" id="usagePaginationControls">
+                    <button class="btn btn-primary me-2" id="usagePrevButton" disabled>
+                        <i class="fa-regular fa-arrow-left me-1"></i> Prev
+                    </button>
+                    <span class="text-muted mx-2" id="usagePageInfo">Page 1</span>
+                    <button class="btn btn-primary ms-2" id="usageNextButton" disabled>
+                        Next <i class="fa-regular fa-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

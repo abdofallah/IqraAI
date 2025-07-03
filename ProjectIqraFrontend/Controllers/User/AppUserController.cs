@@ -20,16 +20,18 @@ namespace ProjectIqraFrontend.Controllers.User
     {
         private readonly AppRepository _appRepository;
         private readonly UserManager _userManager;
+        private readonly UserUsageManager _userUsageManager;
         private readonly PlanManager _planManager;
         private readonly BusinessManager _businessManager;
         private readonly LanguagesManager _languageManager;
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(AppRepository appRepository, UserManager userManager, PlanManager planManager, BusinessManager businessManager, LanguagesManager languageManager)
+        public AppUserController(AppRepository appRepository, UserManager userManager, UserUsageManager userUsageManager,  PlanManager planManager, BusinessManager businessManager, LanguagesManager languageManager)
         {
             _appRepository = appRepository;
             _userManager = userManager;
+            _userUsageManager = userUsageManager;
             _planManager = planManager;
             _businessManager = businessManager;
             _languageManager = languageManager;
@@ -40,6 +42,7 @@ namespace ProjectIqraFrontend.Controllers.User
          * User
          * 
         **/
+
         [HttpPost("/app/user")]
         public async Task<FunctionReturnResult<GetMasterUserDataModel?>> GetMasterUserDataModel()
         {
@@ -142,6 +145,97 @@ namespace ProjectIqraFrontend.Controllers.User
             GetUserPlanDetailsModel planDetailsModel = new GetUserPlanDetailsModel(planData.Data);
 
             return result.SetSuccessResult(planDetailsModel);
+        }
+
+        /**
+         * 
+         * User Usage
+         * 
+        **/
+
+        [HttpPost("/app/user/usage/summary")]
+        public async Task<FunctionReturnResult<GetUsageSummaryModel?>> GetUsageSummary([FromBody] GetUsageSummaryRequestModel request)
+        {
+            var result = new FunctionReturnResult<GetUsageSummaryModel?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetUsageSummary:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "GetUsageSummary:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetUsageSummary:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            var usageSummaryResult = await _userUsageManager.GetUsageSummaryAsync(userEmail, request.TimeRange);
+            if (!usageSummaryResult.Success)
+            {
+                result.Code = "GetUsageSummary:" + usageSummaryResult.Code;
+                result.Message = usageSummaryResult.Message;
+                return result;
+            }
+
+            return result.SetSuccessResult(usageSummaryResult.Data);
+        }
+
+        [HttpPost("/app/user/usage/history")]
+        public async Task<FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>> GetUsageHistory([FromBody] GetUsageHistoryRequestModel request)
+        {
+            var result = new FunctionReturnResult<PaginatedResult<MinuteUsageRecordModel>?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetUsageHistory:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "GetUsageHistory:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetUsageHistory:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            var limit = Math.Clamp(request.Limit, 10, 50);
+            var usaheHistoryResult = await _userUsageManager.GetUsageHistoryAsync(userEmail, limit, request.NextCursor, request.PreviousCursor);
+            if (!usaheHistoryResult.Success)
+            {
+                result.Code = "GetUsageHistory:" + usaheHistoryResult.Code;
+                result.Message = usaheHistoryResult.Message;
+                return result;
+            }
+
+            return result.SetSuccessResult(usaheHistoryResult.Data);
         }
 
         /**

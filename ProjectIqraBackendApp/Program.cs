@@ -363,12 +363,12 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<UsageRepository>((sp) =>
+            builder.Services.AddSingleton<ConversationUsageRepository>((sp) =>
             {
-                return new UsageRepository(
-                    sp.GetRequiredService<ILogger<UsageRepository>>(),
+                return new ConversationUsageRepository(
+                    sp.GetRequiredService<ILogger<ConversationUsageRepository>>(),
                     sp.GetRequiredService<IMongoClient>(),
-                    appConfig["MongoDatabase:UsageRepositoryDatabaseName"]
+                    appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
                 );
             });
 
@@ -556,16 +556,16 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<BillingProcessingManager>()
+                    sp.GetRequiredService<BillingUsageManager>()
                 );
             });
-            builder.Services.AddSingleton<BillingProcessingManager>((sp) =>
+            builder.Services.AddSingleton<BillingUsageManager>((sp) =>
             {
-                return new BillingProcessingManager(
-                    sp.GetRequiredService<ILogger<BillingProcessingManager>>(),
+                return new BillingUsageManager(
+                    sp.GetRequiredService<ILogger<BillingUsageManager>>(),
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<UsageRepository>(),
+                    sp.GetRequiredService<ConversationUsageRepository>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<IMongoClient>()
                 );

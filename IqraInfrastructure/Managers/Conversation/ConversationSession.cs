@@ -29,7 +29,7 @@ namespace IqraInfrastructure.Managers.Conversation
         private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly ConversationAudioRepository _audioStorageManager;
-        private readonly BillingProcessingManager _billingProcessingManager;
+        private readonly BillingUsageManager _billingProcessingManager;
 
         private readonly string _sessionId;
         private CallQueueData _sessionCallQueueData;
@@ -86,7 +86,7 @@ namespace IqraInfrastructure.Managers.Conversation
             OutboundCallCampaignRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
             ConversationAudioRepository audioStorageManager,
-            BillingProcessingManager billingProcessingManager,
+            BillingUsageManager billingProcessingManager,
             ILoggerFactory loggerFactory
         )
         {

@@ -45,10 +45,10 @@ namespace ProjectIqraFrontend
             {
                 return new ViewLinkConfiguration()
                 {
-                    BusinessLogoURL = appConfig["BusinessLogoRepository:PublicURL"] + "/" + appConfig["BusinessLogoRepository:BucketName"],
-                    BusinessToolAudioURL = appConfig["BusinessToolAudioRepository:PublicURL"] + "/" + appConfig["BusinessToolAudioRepository:BucketName"],
-                    IntegrationLogoURL = appConfig["IntegrationsLogoRepository:PublicURL"] + "/" + appConfig["IntegrationsLogoRepository:BucketName"],
-                    BusinessAgentBackgroundAudioURL = appConfig["BusinessAgentAudioRepository:PublicURL"] + "/" + appConfig["BusinessAgentAudioRepository:BucketName"]
+                    BusinessLogoURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessLogoRepositoryBucketName"],
+                    BusinessToolAudioURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"],
+                    IntegrationLogoURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:IntegrationsLogoRepositoryBucketName"],
+                    BusinessAgentBackgroundAudioURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
                 };
             });
 
@@ -341,6 +341,15 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<AppRepository>()
                 );
             });
+
+            builder.Services.AddSingleton<ConversationUsageRepository>((sp) =>
+            {
+                return new ConversationUsageRepository(
+                    sp.GetRequiredService<ILogger<ConversationUsageRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -476,6 +485,14 @@ namespace ProjectIqraFrontend
                 return new PlanManager(
                     sp.GetRequiredService<ILogger<PlanManager>>(),
                     sp.GetRequiredService<PlanRepository>()
+                );
+            });
+            builder.Services.AddSingleton<UserUsageManager>((sp) =>
+            {
+                return new UserUsageManager(
+                    sp.GetRequiredService<ILogger<UserUsageManager>>(),
+                    sp.GetRequiredService<ConversationUsageRepository>(),
+                    sp.GetRequiredService<BusinessRepository>()
                 );
             });
         }

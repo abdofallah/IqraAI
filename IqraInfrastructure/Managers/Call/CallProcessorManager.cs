@@ -52,7 +52,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
         private readonly RegionManager _regionManager;
-        private readonly BillingProcessingManager _billingProcessingManager;
+        private readonly BillingUsageManager _billingProcessingManager;
 
         // combine the two
         private readonly ConcurrentDictionary<string, ConversationSession> _activeSessions = new();
@@ -74,7 +74,7 @@ namespace IqraInfrastructure.Managers.Call
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
             RegionManager regionManager,
-            BillingProcessingManager billingProcessingManager
+            BillingUsageManager billingProcessingManager
         )
         {
             _logger = logger;
