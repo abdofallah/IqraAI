@@ -40,8 +40,4 @@
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Managers\Usage\" />
-  </ItemGroup>
-
 </Project>

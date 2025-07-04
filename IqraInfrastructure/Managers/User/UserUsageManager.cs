@@ -25,69 +25,154 @@ namespace IqraInfrastructure.Managers.User
             _businessRepository = businessRepository;
         }
 
-        public async Task<FunctionReturnResult<GetUsageSummaryModel>> GetUsageSummaryAsync(string masterUserEmail, UsageTimeRange timeRange)
+        public async Task<FunctionReturnResult<GetUsageSummaryModel?>> GetUsageSummaryAsync(string masterUserEmail, GetUsageSummaryRequestModel request)
         {
-            var result = new FunctionReturnResult<GetUsageSummaryModel>();
-            var summary = new GetUsageSummaryModel();
+            var result = new FunctionReturnResult<GetUsageSummaryModel?>();
 
-            DateTime startDate;
-            string groupByFormat;
-            string chartTitlePrefix;
+            var startDate = request.StartDate.ToUniversalTime().Date;
+            var endDate = request.EndDate.ToUniversalTime().Date.AddDays(1);
 
-            switch (timeRange)
+            var inclusiveEndDate = request.EndDate.ToUniversalTime().Date;
+
+            var minAllowedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var maxAllowedDate = DateTime.UtcNow.Date;
+
+            if (startDate < minAllowedDate || inclusiveEndDate > maxAllowedDate || startDate >= endDate)
             {
-                case UsageTimeRange.Last7Days:
-                    startDate = DateTime.UtcNow.Date.AddDays(-6);
-                    groupByFormat = "%Y-%m-%d"; // Group by Year-Month-Day
-                    chartTitlePrefix = "Usage in the Last 7 Days";
-                    break;
-                case UsageTimeRange.Today:
-                    startDate = DateTime.UtcNow.Date;
-                    groupByFormat = "%H"; // Group by Hour
-                    chartTitlePrefix = "Usage Today";
-                    break;
-                case UsageTimeRange.CurrentMonth:
-                default:
-                    startDate = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-                    groupByFormat = "%Y-%m-%d"; // Group by Year-Month-Day
-                    chartTitlePrefix = $"Usage for {DateTime.UtcNow:MMMM yyyy}";
-                    break;
+                return result.SetFailureResult("INVALID_DATE_RANGE", "The selected date range is invalid.");
             }
 
+            var totalDaysInRange = (inclusiveEndDate - startDate).TotalDays;
+            switch (request.GroupBy)
+            {
+                case UsageGroupBy.Hour:
+                    if (totalDaysInRange > 1)
+                    {
+                        return result.SetFailureResult("INVALID_GROUPING", "Grouping by hour is only permitted for a single-day range.");
+                    }
+                    break;
+                case UsageGroupBy.Month:
+                    if (startDate.Year == inclusiveEndDate.Year && startDate.Month == inclusiveEndDate.Month)
+                    {
+                        return result.SetFailureResult("INVALID_GROUPING", "Grouping by month requires a date range that spans across multiple months.");
+                    }
+                    break;
+            }
+            // END: VALIDATION
+
+            var summary = new GetUsageSummaryModel();
             try
             {
-                var aggregatedData = await _conversationUsageRepository.GetAggregatedUsageAsync(masterUserEmail, startDate, groupByFormat);
-
-                // Now, we need to fill in the gaps for days/hours with no usage.
-                var usageDict = aggregatedData.ToDictionary(d => d.Id, d => d.TotalMinutes);
-
-                if (timeRange == UsageTimeRange.Today)
+                // 2. Get Overall Summary Stats
+                var overallStats = await _conversationUsageRepository.GetOverallUsageStatsAsync(masterUserEmail, startDate, endDate);
+                if (overallStats != null)
                 {
-                    for (int i = 0; i < 24; i++)
-                    {
-                        var hourKey = i.ToString("D2"); // "00", "01", ..., "23"
-
-                        int displayHour = i % 12;
-                        if (displayHour == 0) displayHour = 12;
-                        string ampm = i < 12 ? "AM" : "PM";
-                        string finalLabel = $"{displayHour} {ampm}";
-
-                        summary.Labels.Add(finalLabel);
-                        summary.Data.Add(usageDict.TryGetValue(hourKey, out var value) ? value : 0);
-                    }
-                }
-                else // Month or Week
-                {
-                    DateTime endDate = DateTime.UtcNow.Date;
-                    for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
-                    {
-                        var dateKey = date.ToString("yyyy-MM-dd");
-                        summary.Labels.Add(date.ToString("MMM d")); // "Oct 26"
-                        summary.Data.Add(usageDict.TryGetValue(dateKey, out var value) ? value : 0);
-                    }
+                    summary.TotalCalls = overallStats.TotalCalls;
+                    summary.TotalDurationMinutes = overallStats.TotalMinutes;
+                    summary.TotalCost = overallStats.TotalCost;
+                    summary.AverageDurationSeconds = (overallStats.TotalCalls > 0) ? (overallStats.TotalMinutes * 60) / overallStats.TotalCalls : 0;
+                    summary.AverageCallCost = (overallStats.TotalCalls > 0) ? overallStats.TotalCost / overallStats.TotalCalls : 0;
                 }
 
-                summary.ChartTitle = chartTitlePrefix;
+                // 3. Get Aggregated Data for Charts
+                string groupByFormat;
+                string labelFormat;
+                switch (request.GroupBy)
+                {
+                    case UsageGroupBy.Hour:
+                        groupByFormat = "%H";
+                        labelFormat = "h tt";
+                        break;
+                    case UsageGroupBy.Month:
+                        groupByFormat = "%Y-%m";
+                        labelFormat = "MMM yyyy";
+                        break;
+                    case UsageGroupBy.Day:
+                    default:
+                        groupByFormat = "%Y-%m-%d";
+                        labelFormat = "MMM d";
+                        break;
+                }
+
+                var aggregatedData = await _conversationUsageRepository.GetAggregatedUsageByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat);
+                var usageDict = aggregatedData.ToDictionary(d => d.Id, d => d);
+
+                switch (request.GroupBy)
+                {
+                    case UsageGroupBy.Hour:
+                        // Loop 24 times for each hour of the selected day.
+                        for (int i = 0; i < 24; i++)
+                        {
+                            var currentHour = startDate.AddHours(i);
+                            var key = currentHour.Hour.ToString("D2"); // "00", "01", ... "23"
+
+                            summary.DurationChart.Labels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            summary.CallsChart.Labels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
+
+                            if (usageDict.TryGetValue(key, out var stats))
+                            {
+                                summary.DurationChart.Data.Add(stats.TotalMinutes);
+                                summary.CallsChart.Data.Add(stats.TotalCalls);
+                            }
+                            else
+                            {
+                                summary.DurationChart.Data.Add(0);
+                                summary.CallsChart.Data.Add(0);
+                            }
+                        }
+                        break;
+
+                    case UsageGroupBy.Month:
+                        // Loop from the start month to the end month.
+                        var currentMonth = new DateTime(startDate.Year, startDate.Month, 1);
+                        while (currentMonth <= inclusiveEndDate)
+                        {
+                            var key = currentMonth.ToString("yyyy-MM");
+
+                            summary.DurationChart.Labels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            summary.CallsChart.Labels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
+
+                            if (usageDict.TryGetValue(key, out var stats))
+                            {
+                                summary.DurationChart.Data.Add(stats.TotalMinutes);
+                                summary.CallsChart.Data.Add(stats.TotalCalls);
+                            }
+                            else
+                            {
+                                summary.DurationChart.Data.Add(0);
+                                summary.CallsChart.Data.Add(0);
+                            }
+
+                            // Increment to the next month for the next iteration.
+                            currentMonth = currentMonth.AddMonths(1);
+                        }
+                        break;
+
+                    case UsageGroupBy.Day:
+                    default:
+                        // Loop from the start day to the end day.
+                        for (var currentDay = startDate; currentDay <= inclusiveEndDate; currentDay = currentDay.AddDays(1))
+                        {
+                            var key = currentDay.ToString("yyyy-MM-dd");
+
+                            summary.DurationChart.Labels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            summary.CallsChart.Labels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
+
+                            if (usageDict.TryGetValue(key, out var stats))
+                            {
+                                summary.DurationChart.Data.Add(stats.TotalMinutes);
+                                summary.CallsChart.Data.Add(stats.TotalCalls);
+                            }
+                            else
+                            {
+                                summary.DurationChart.Data.Add(0);
+                                summary.CallsChart.Data.Add(0);
+                            }
+                        }
+                        break;
+                }
+
+                summary.ChartTitle = $"Usage from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
                 return result.SetSuccessResult(summary);
             }
             catch (Exception ex)

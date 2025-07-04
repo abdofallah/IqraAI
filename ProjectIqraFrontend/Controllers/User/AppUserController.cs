@@ -184,7 +184,14 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            var usageSummaryResult = await _userUsageManager.GetUsageSummaryAsync(userEmail, request.TimeRange);
+            if (request == null)
+            {
+                result.Code = "GetUsageSummary:INVALID_REQUEST_DATA";
+                result.Message = "Invalid request data";
+                return result;
+            }
+
+            var usageSummaryResult = await _userUsageManager.GetUsageSummaryAsync(userEmail, request);
             if (!usageSummaryResult.Success)
             {
                 result.Code = "GetUsageSummary:" + usageSummaryResult.Code;

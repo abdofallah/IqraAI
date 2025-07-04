@@ -49,7 +49,8 @@ namespace IqraInfrastructure.Repositories.Conversation
             return _usageCollection.InsertOneAsync(session, record);
         }
 
-        public Task<List<AggregatedUsageResult>> GetAggregatedUsageAsync(string masterUserEmail, DateTime startDate, string groupByFormat)
+        // get overall stats for the entire period
+        public async Task<OverallUsageStatsResult?> GetOverallUsageStatsAsync(string masterUserEmail, DateTime startDate, DateTime endDate)
         {
             var pipeline = new BsonDocument[]
             {
@@ -57,24 +58,53 @@ namespace IqraInfrastructure.Repositories.Conversation
                 new BsonDocument("$match", new BsonDocument
                 {
                     { "MasterUserEmail", masterUserEmail },
-                    { "CreatedAt", new BsonDocument("$gte", startDate) }
+                    { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
                 }),
-                // 2. Group by the specified date format and sum the minutes
+                // 2. Group all matched documents into a single result
+                new BsonDocument("$group", new BsonDocument
+                {
+                    { "_id", BsonNull.Value }, // Group everything together
+                    { "TotalMinutes", new BsonDocument("$sum", "$TotalMinutesUsed") },
+                    { "TotalCost", new BsonDocument("$sum", "$TotalCost") },
+                    { "TotalCalls", new BsonDocument("$sum", 1) } // Count each document as one call
+                })
+            };
+
+            var result = await _usageCollection.Aggregate<OverallUsageStatsResult>(pipeline).FirstOrDefaultAsync();
+            return result;
+        }
+
+
+        // get stats grouped by a time unit (hour, day, etc.)
+        public Task<List<AggregatedUsageStatsResult>> GetAggregatedUsageByPeriodAsync(string masterUserEmail, DateTime startDate, DateTime endDate, string groupByFormat)
+        {
+            var pipeline = new BsonDocument[]
+            {
+                // 1. Match documents for the user and time frame
+                new BsonDocument("$match", new BsonDocument
+                {
+                    { "MasterUserEmail", masterUserEmail },
+                    { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
+                }),
+                // 2. Group by the specified date format and calculate sums
                 new BsonDocument("$group", new BsonDocument
                 {
                     { "_id", new BsonDocument("$dateToString", new BsonDocument
                         {
                             { "format", groupByFormat },
-                            { "date", "$CreatedAt" }
+                            { "date", "$CreatedAt" },
+                            { "timezone", "UTC" } // Important for consistency
                         })
                     },
-                    { "TotalMinutes", new BsonDocument("$sum", "$TotalMinutesUsed") }
+                    { "TotalMinutes", new BsonDocument("$sum", "$TotalMinutesUsed") },
+                    { "TotalCost", new BsonDocument("$sum", "$TotalCost") },
+                    { "TotalCalls", new BsonDocument("$sum", 1) }
                 }),
                 // 3. Sort by the group key (date/hour)
                 new BsonDocument("$sort", new BsonDocument("_id", 1))
             };
 
-            return _usageCollection.Aggregate<AggregatedUsageResult>(pipeline).ToListAsync();
+            return _usageCollection.Aggregate<AggregatedUsageStatsResult>(pipeline).ToListAsync();
         }
 
 

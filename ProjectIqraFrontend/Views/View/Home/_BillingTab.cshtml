@@ -2,25 +2,25 @@
     <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-credit-card nav_icon'></i> <span>Billing</span></h3>
 
     <!-- Main Navigation Header -->
-    <div class="inner-header-container w-100 mb-3" id="cache-header">
+    <div class="inner-header-container w-100 mb-3" id="billing-header">
         <!-- Main Navigation for Billing -->
         <ul class="nav" id="billing-inner-tabs" role="tablist">
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link active" id="nav-overview-tab" data-bs-toggle="tab" data-bs-target="#nav-overview" type="button" role="tab" aria-selected="true">Overview</button>
+                <button class="nav-link active" id="billing-overview-tab" data-bs-toggle="tab" data-bs-target="#billing-overview" type="button" role="tab" aria-selected="true">Overview</button>
             </li>
             <li class="nav-item me-2" role="presentation">
-                <button class="nav-link" id="nav-method-tab" data-bs-toggle="tab" data-bs-target="#nav-method" type="button" role="tab" aria-selected="false">Payment Methods</button>
+                <button class="nav-link" id="billing-method-tab" data-bs-toggle="tab" data-bs-target="#billing-method" type="button" role="tab" aria-selected="false">Payment Methods</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="nav-history-tab" data-bs-toggle="tab" data-bs-target="#nav-history" type="button" role="tab" aria-selected="false">Billing History</button>
+                <button class="nav-link" id="billing-history-tab" data-bs-toggle="tab" data-bs-target="#billing-history" type="button" role="tab" aria-selected="false">Billing History</button>
             </li>
         </ul>
     </div>
 
     <div class="inner-container">
         <div class="tab-content w-100" id="billing-inner-tabContent">
-            <!-- 1. Overview Tab -->
-            <div class="tab-pane fade show active" id="nav-overview" role="tabpanel" aria-labelledby="nav-overview-tab">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="billing-overview" role="tabpanel" aria-labelledby="billing-overview-tab">
 
                 <!-- NEW: Balance & Plan Side-by-Side Card -->
                 <div class="card mb-4">
@@ -113,8 +113,8 @@
 
             </div> 
 
-            <!-- 3. Payment Methods Tab -->
-            <div class="tab-pane fade" id="nav-method" role="tabpanel" aria-labelledby="nav-method-tab">
+            <!-- Payment Methods Tab -->
+            <div class="tab-pane fade" id="billing-method" role="tabpanel" aria-labelledby="billing-method-tab">
                 <!-- This will be your existing payment method UI, with an "Add New Method" button -->
                 <div class="d-flex justify-content-end mb-3">
                     <button class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i> Add New Method</button>
@@ -125,8 +125,8 @@
                 </div>
             </div>
 
-            <!-- 4. Billing History Tab -->
-            <div class="tab-pane fade" id="nav-history" role="tabpanel" aria-labelledby="nav-history-tab">
+            <!-- Billing History Tab -->
+            <div class="tab-pane fade" id="billing-history" role="tabpanel" aria-labelledby="billing-history-tab">
                 <table class="table table-hover w-100" id="billing-history-table">
                     <thead>
                         <tr>

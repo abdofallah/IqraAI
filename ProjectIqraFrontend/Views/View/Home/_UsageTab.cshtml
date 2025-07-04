@@ -1,63 +1,148 @@
 ﻿<div class="main-container fade w-100 d-none" id="usage-tab">
     <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-chart-line nav_icon'></i> <span>Usage</span></h3>
+    
+    <!-- Main Navigation Header -->
+    <div class="inner-header-container w-100 mb-3" id="usage-header">
+        <!-- Main Navigation for Usage -->
+        <ul class="nav" id="usage-inner-tabs" role="tablist">
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link active" id="usage-overview-tab" data-bs-toggle="tab" data-bs-target="#usage-overview" type="button" role="tab" aria-selected="true">Overview</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="usage-history-tab" data-bs-toggle="tab" data-bs-target="#usage-history" type="button" role="tab" aria-selected="false">Usage History</button>
+            </li>
+        </ul>
+    </div>
+    
     <div class="inner-container">
-
-        <!-- Chart Card -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="card-title mb-0" id="usageChartTitle">Usage Summary</h5>
-                    <div class="btn-group" role="group" aria-label="Usage Time Range">
-                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeMonth" autocomplete="off" value="0" checked>
-                        <label class="btn btn-outline-primary" for="timeRangeMonth">This Month</label>
-
-                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeWeek" autocomplete="off" value="1">
-                        <label class="btn btn-outline-primary" for="timeRangeWeek">Last 7 Days</label>
-
-                        <input type="radio" class="btn-check" name="timeRange" id="timeRangeDay" autocomplete="off" value="2">
-                        <label class="btn btn-outline-primary" for="timeRangeDay">Today</label>
-                    </div>
-                </div>
-                <div style="height: 300px; position: relative;">
-                    <div id="usageChartSpinner" class="d-flex justify-content-center align-items-center h-100">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+        <div class="tab-content w-100" id="usage-inner-tabContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="usage-overview" role="tabpanel" aria-labelledby="usage-overview-tab">
+                <!-- Controls with Date Range Picker and Group By -->
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3">
+                    <h5 class="mb-2 mb-lg-0 w-100 w-lg-40">Usage Summary</h5>
+                    <div class="w-100 d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center">
+                        <!-- Date Range Picker -->
+                        <div id="usageDateRangePicker" class="form-control me-2 mb-2 mb-lg-0" style="cursor: pointer;width: 100%;display: flex;flex-direction: row;align-items: center;justify-content: space-between;">
+                            <div>
+                                <i class="fa fa-calendar me-2"></i>
+                                <span></span>
+                            </div>
+                            <i class="fa fa-caret-down ms-1"></i>
+                        </div>
+                        <!-- Group By Dropdown -->
+                        <div class="input-group w-100 w-lg-auto flex-nowrap">
+                            <label class="input-group-text" for="usageGroupBySelect">Group By</label>
+                            <select class="form-select" id="usageGroupBySelect">
+                                <option value="0" disabled>Hour</option>
+                                <option value="1" selected>Day</option>
+                                <option value="2" disabled>Month</option>
+                            </select>
                         </div>
                     </div>
-                    <canvas id="usageChart" class="d-none"></canvas>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mb-3">
+                    <div class="col-12 col-md-12 col-lg-6 mb-2 mb-md-2 mb-lg-0">
+                        <!-- Total Calls-->
+                        <div class="analytics-card half-card mb-2">
+                            <h6 class="w-100 mb-0">Total Calls</h6>
+                            <div class="d-flex flex-row justify-content-end">
+                                <h4 class="m-0" id="usageTotalCallText">...</h4>
+                            </div>
+                        </div>
+                        <!-- Total Call Duration -->
+                        <div class="analytics-card half-card mb-0">
+                            <h6 class="w-100 mb-0">Total Call Duration</h6>
+                            <div class="d-flex flex-row justify-content-end">
+                                <h4 class="m-0" id="usageTotalCallDurationText">...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-12 col-lg-6 mb-0">
+                        <!-- Average Call Duration -->
+                        <div class="analytics-card half-card mb-2">
+                            <h6 class="w-100 mb-0">Average Call Duration</h6>
+                            <div class="d-flex flex-row justify-content-end">
+                                <h4 class="m-0" id="usageAverageCallDurationText">...</h4>
+                            </div>
+                        </div>
+                        <!-- Average Call Cost -->
+                        <div class="analytics-card half-card mb-0">
+                            <h6 class="w-100 mb-0">Average Call Cost</h6>
+                            <div class="d-flex flex-row justify-content-end">
+                                <h4 class="m-0" id="usageAverageCallCostText">...</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Duration Chart Card -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Total Duration Summary</h5>
+                        <div style="height: 300px; position: relative;">
+                            <div id="usageChartSpinner" class="d-flex justify-content-center align-items-center h-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <canvas id="usageChart" class="d-none"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calls Chart Card -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Total Calls Summary</h5>
+                        <div style="height: 300px; position: relative;">
+                            <div id="usageCallsChartSpinner" class="d-flex justify-content-center align-items-center h-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <canvas id="usageCallsChart" class="d-none"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Usage History Table Card -->
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Detailed Usage History</h5>
-                <div class="table-responsive">
-                    <table id="usageHistoryTable" class="table w-100">
-                        <thead>
-                            <tr>
-                                <th>Date & Time</th>
-                                <th>Business</th>
-                                <th>Minutes Used</th>
-                                <th>Cost</th>
-                                <th>Session ID</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Dynamically Generated -->
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination Controls -->
-                <div class="d-flex justify-content-center align-items-center mt-3" id="usagePaginationControls">
-                    <button class="btn btn-primary me-2" id="usagePrevButton" disabled>
-                        <i class="fa-regular fa-arrow-left me-1"></i> Prev
-                    </button>
-                    <span class="text-muted mx-2" id="usagePageInfo">Page 1</span>
-                    <button class="btn btn-primary ms-2" id="usageNextButton" disabled>
-                        Next <i class="fa-regular fa-arrow-right ms-1"></i>
-                    </button>
+            <!-- Usage History Tab -->
+            <div class="tab-pane fade" id="usage-history" role="tabpanel" aria-labelledby="usage-history-tab">
+                <!-- Usage History Table Card -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Detailed Usage History</h5>
+                        <div class="table-responsive">
+                            <table id="usageHistoryTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Business</th>
+                                        <th>Minutes Used</th>
+                                        <th>Cost</th>
+                                        <th>Session ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Pagination Controls -->
+                        <div class="d-flex justify-content-center align-items-center mt-3" id="usagePaginationControls">
+                            <button class="btn btn-primary me-2" id="usagePrevButton" disabled>
+                                <i class="fa-regular fa-arrow-left me-1"></i> Prev
+                            </button>
+                            <span class="text-muted mx-2" id="usagePageInfo">Page 1</span>
+                            <button class="btn btn-primary ms-2" id="usageNextButton" disabled>
+                                Next <i class="fa-regular fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

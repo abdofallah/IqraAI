@@ -25,7 +25,7 @@ function MoveToBusinessPage(BusinessId) {
 function CreateUserBusinessCard(businessData) {
 	let element = `
                 <div class="col-lg-4 col-md-6 col-12">
-                    <a href="/app/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
+                    <a href="/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
                         <div class="d-flex flex-row align-items-center justify-content-start">
                             <img src="${BusinessLogoURL + "/" + businessData.logoURL}.webp">
                             <h4>${businessData.name}</h4>

@@ -1,5 +1,6 @@
 ﻿// --- Global Variables for Usage Tab ---
 let usageChartInstance = null;
+let usageCallsChartInstance = null;
 let currentUsagePage = 1;
 let currentUsageNextCursor = null;
 let currentUsagePrevCursor = null;
@@ -8,10 +9,21 @@ const USAGE_PAGE_SIZE = 10;
 
 // --- Element Variables ---
 const usageTab = $("#usage-tab");
-const usageChartTitle = usageTab.find("#usageChartTitle");
+// New Controls
+const usageDateRangePicker = usageTab.find("#usageDateRangePicker");
+const usageGroupBySelect = usageTab.find("#usageGroupBySelect");
+// Duration Chart
 const usageChartCanvas = usageTab.find("#usageChart");
 const usageChartSpinner = usageTab.find("#usageChartSpinner");
-const timeRangeButtons = usageTab.find('input[name="timeRange"]');
+// Calls Chart
+const usageCallsChartCanvas = usageTab.find("#usageCallsChart");
+const usageCallsChartSpinner = usageTab.find("#usageCallsChartSpinner");
+// Summary Cards
+const usageTotalCallText = usageTab.find("#usageTotalCallText");
+const usageTotalCallDurationText = usageTab.find("#usageTotalCallDurationText");
+const usageAverageCallDurationText = usageTab.find("#usageAverageCallDurationText");
+const usageAverageCallCostText = usageTab.find("#usageAverageCallCostText");
+// History Table (unchanged)
 const usageHistoryTableBody = usageTab.find("#usageHistoryTable tbody");
 const usagePagination = {
     controls: usageTab.find("#usagePaginationControls"),
@@ -21,13 +33,15 @@ const usagePagination = {
 };
 
 // API Functions
-function FetchUsageSummaryFromAPI(timeRange, successCallback, errorCallback) {
+function FetchUsageSummaryFromAPI(startDate, endDate, groupBy, successCallback, errorCallback) {
     $.ajax({
         url: '/app/user/usage/summary',
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({
-            timeRange: timeRange
+            startDate: startDate,
+            endDate: endDate,
+            groupBy: groupBy
         }),
         success: (response) => {
             if (!response.success) return errorCallback(response);
@@ -57,18 +71,17 @@ function FetchUsageHistoryFromAPI(pageSize, nextCursor, prevCursor, successCallb
 
 
 // --- Chart Functions ---
-
-function initializeUsageChart() {
-    const ctx = usageChartCanvas[0].getContext('2d');
-    usageChartInstance = new Chart(ctx, {
+function createUsageChart(canvas, datasetLabel, yAxisCallback) {
+    const ctx = canvas[0].getContext('2d');
+    return new Chart(ctx, {
         type: 'bar',
         data: {
             labels: [],
             datasets: [{
-                label: 'Minutes Used',
+                label: datasetLabel,
                 data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgb(231 248 143 / 80%)',
+                borderColor: '#e7f88f',
                 borderWidth: 1,
                 borderRadius: 4,
                 barThickness: 'flex'
@@ -78,46 +91,82 @@ function initializeUsageChart() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function (value) { return value + ' min' }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
+                y: { beginAtZero: true, ticks: { callback: yAxisCallback } },
+                x: { grid: { display: false } }
             },
             plugins: {
-                legend: {
-                    display: false
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return `${context.dataset.label}: ${context.formattedValue}`;
+                        }
+                    }
                 }
             }
         }
     });
 }
 
-function loadUsageChart(timeRange = 0) {
+function loadUsageOverview() {
+    // 1. Show loading state
     usageChartSpinner.removeClass('d-none');
     usageChartCanvas.addClass('d-none');
+    usageCallsChartSpinner.removeClass('d-none');
+    usageCallsChartCanvas.addClass('d-none');
+    usageTotalCallText.text("...");
+    usageTotalCallDurationText.text("...");
+    usageAverageCallDurationText.text("...");
+    usageAverageCallCostText.text("...");
 
-    // Call the REAL API function now
-    FetchUsageSummaryFromAPI(timeRange,
+    // 2. Get parameters from controls
+    const picker = usageDateRangePicker.data('daterangepicker');
+
+    var startDate = picker.startDate.toISOString();
+    const startDateUTCOffset = picker.startDate.utcOffset();
+    if (startDateUTCOffset != 0) {
+        startDate = moment.utc(startDate).add(startDateUTCOffset, 'minutes');
+    }
+
+    var endDate = picker.endDate.toISOString();
+    const endDateUTCOffset = picker.endDate.utcOffset();
+    if (endDateUTCOffset != 0) {
+        endDate = moment.utc(endDate).add(endDateUTCOffset, 'minutes');
+    }
+
+    const groupBy = parseInt(usageGroupBySelect.val());
+
+    // 3. Call the updated API function
+    FetchUsageSummaryFromAPI(startDate, endDate, groupBy,
         (data) => {
-            usageChartTitle.text(data.chartTitle);
-            usageChartInstance.data.labels = data.labels;
-            usageChartInstance.data.datasets[0].data = data.data;
+            // 4. Update Summary Cards
+            usageTotalCallText.text(data.totalCalls.toLocaleString());
+            usageTotalCallDurationText.text(`${data.totalDurationMinutes.toFixed(2)} min`);
+            usageAverageCallDurationText.text(`${data.averageDurationSeconds.toFixed(1)} sec`);
+            usageAverageCallCostText.text(formatCurrency(data.averageCallCost)); // Assumes you have a formatCurrency helper
+
+            // 5. Update Duration Chart
+            usageChartInstance.data.labels = data.durationChart.labels;
+            usageChartInstance.data.datasets[0].data = data.durationChart.data;
             usageChartInstance.update();
 
+            // 6. Update Calls Chart
+            usageCallsChartInstance.data.labels = data.callsChart.labels;
+            usageCallsChartInstance.data.datasets[0].data = data.callsChart.data;
+            usageCallsChartInstance.update();
+
+            // 7. Hide loading state
             usageChartSpinner.addClass('d-none');
             usageChartCanvas.removeClass('d-none');
+            usageCallsChartSpinner.addClass('d-none');
+            usageCallsChartCanvas.removeClass('d-none');
         },
         (error) => {
-            console.error("Failed to load chart data", error);
+            console.error("Failed to load usage overview data", error);
             usageChartSpinner.addClass('d-none');
+            usageCallsChartSpinner.addClass('d-none');
             usageChartCanvas.parent().html('<p class="text-center text-danger">Could not load chart data.</p>');
+            usageCallsChartCanvas.parent().html('<p class="text-center text-danger">Could not load chart data.</p>');
         }
     );
 }
@@ -229,12 +278,75 @@ function loadUsageHistory(cursor = null, direction = 'next') {
 
 
 // --- Event Handlers ---
+function initializeUsageControls() {
+    const start = moment.utc().startOf('month');
+    const end = moment.utc();
+
+    const minDate = moment.utc('2025-01-01');
+    const maxDate = moment.utc();
+
+    function updatePickerText(start, end) {
+        usageDateRangePicker.find('span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+    }
+
+    usageDateRangePicker.daterangepicker({
+        startDate: start,
+        endDate: end,
+        minDate: minDate,
+        maxDate: maxDate,
+        showDropdowns: true,
+        alwaysShowCalendars: true,
+        timeZone: "+04:00",
+        opens:"auto",
+        ranges: {
+            'Today': [moment.utc(), moment.utc()],
+            'Last 7 Days': [moment.utc().subtract(6, 'days'), moment.utc()],
+            'This Month': [moment.utc().startOf('month'), moment.utc()],
+            'Last 30 Days': [moment.utc().subtract(29, 'days'), moment.utc()],
+            'Last Month': [moment.utc().subtract(1, 'month').startOf('month'), moment.utc().subtract(1, 'month').endOf('month')]
+        }
+    }, updatePickerText);
+
+    updatePickerText(start, end); // Initial text
+}
 
 function bindUsageTabEventHandlers() {
-    // Chart time range change
-    timeRangeButtons.on('change', function () {
-        const selectedTimeRange = parseInt($(this).val()); // Ensure it's a number
-        loadUsageChart(selectedTimeRange);
+    // Date Range Picker Change
+    usageDateRangePicker.on('apply.daterangepicker', function (ev, picker) {
+        const diffDays = picker.endDate.diff(picker.startDate, 'days');
+
+        usageGroupBySelect.find('option').prop('disabled', true);
+
+        if (diffDays === 0) {
+            usageGroupBySelect.find('option[value="0"]').prop('disabled', false);
+        }
+
+        if (diffDays >= 0) {
+            usageGroupBySelect.find('option[value="1"]').prop('disabled', false);
+        }
+
+        if (picker.startDate.year() !== picker.endDate.year() || picker.startDate.month() !== picker.endDate.month()) {
+            usageGroupBySelect.find('option[value="2"]').prop('disabled', false);
+        }
+
+        if (diffDays === 0) {
+            usageGroupBySelect.val('0');
+        } else if (diffDays > 31) {
+            usageGroupBySelect.val('1');
+        } else {
+            usageGroupBySelect.val('1');
+        }
+
+        if (usageGroupBySelect.find('option:selected').is(':disabled')) {
+            usageGroupBySelect.val(usageGroupBySelect.find('option:not(:disabled)').first().val());
+        }
+
+        loadUsageOverview();
+    });
+
+    // Group By Dropdown Change
+    usageGroupBySelect.on('change', function () {
+        loadUsageOverview();
     });
 
     // Pagination
@@ -262,17 +374,22 @@ function InitUsageTab() {
         return;
     }
 
-    // Check if Chart.js is loaded
-    if (typeof Chart === 'undefined') {
-        console.error("Chart.js is not loaded. Cannot initialize Usage Tab chart.");
-        usageChartCanvas.parent().html('<p class="text-center text-danger">Error: Chart library failed to load.</p>');
+    if (typeof Chart === 'undefined' || typeof moment === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
+        console.error("A required library (Chart.js, Moment.js, or Daterangepicker) is not loaded.");
+        // Display a more comprehensive error message
+        usageTab.find('.inner-container').html('<p class="text-center text-danger p-5">Error: A required library failed to load. The usage dashboard cannot be displayed.</p>');
         return;
     }
 
-    initializeUsageChart();
-    loadUsageChart(); // Load default (monthly) view
-    loadUsageHistory(); // Load first page of history
+    usageChartInstance = createUsageChart(usageChartCanvas, 'Minutes Used', (value) => value + ' min');
+    usageCallsChartInstance = createUsageChart(usageCallsChartCanvas, 'Total Calls', (value) => Number.isInteger(value) ? value : '');
+
+    initializeUsageControls();
+
     bindUsageTabEventHandlers();
+
+    loadUsageOverview();
+    loadUsageHistory();
 
     console.log("Usage Tab Initialized successfully.");
 }

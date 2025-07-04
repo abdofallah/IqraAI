@@ -1,14 +1,16 @@
 ﻿namespace IqraCore.Models.User
 {
-    public class GetUsageSummaryRequestModel
+    public enum UsageGroupBy
     {
-        public UsageTimeRange TimeRange { get; set; }
+        Hour = 0,
+        Day = 1,
+        Month = 2
     }
 
-    public enum UsageTimeRange
+    public class GetUsageSummaryRequestModel
     {
-        CurrentMonth = 0,
-        Last7Days = 1,
-        Today = 2
+        public DateTime StartDate { get; set; } = DateTime.UtcNow.Date;
+        public DateTime EndDate { get; set; } = DateTime.UtcNow.AddMonths(-1).Date;
+        public UsageGroupBy GroupBy { get; set; } = UsageGroupBy.Day;
     }
 }
