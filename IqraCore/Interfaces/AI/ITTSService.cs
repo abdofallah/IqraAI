@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Interfaces.AI
 {
@@ -14,5 +15,6 @@ namespace IqraCore.Interfaces.AI
         {
             return InterfaceTTSProviderEnum.Unknown;
         }
+        //ITtsConfig GetCacheableConfig();
     }
 }

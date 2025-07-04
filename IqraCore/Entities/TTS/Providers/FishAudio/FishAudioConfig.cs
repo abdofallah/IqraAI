@@ -1,0 +1,12 @@
+﻿using IqraCore.Interfaces.TTS;
+
+namespace IqraCore.Entities.TTS.Providers.FishAudio
+{
+    public class FishAudioConfig : ITtsConfig
+    {
+        public int ConfigVersion => 1;
+        public string ReferenceId { get; set; }
+        public string Model { get; set; }
+        public int SampleRate { get; set; }
+    }
+}

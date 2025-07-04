@@ -2,12 +2,7 @@
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -416,6 +411,5 @@ namespace IqraInfrastructure.Managers.Business
             var result = await _businessAppRepository.CheckCacheAudioGroupAudioExists(businessId, groupId, language, existingCacheId);
             return result;
         }
-
     }
 }

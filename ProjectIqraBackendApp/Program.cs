@@ -5,7 +5,7 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
-using IqraInfrastructure.Managers.Conversation.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
