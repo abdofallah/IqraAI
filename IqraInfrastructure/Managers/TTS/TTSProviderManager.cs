@@ -1,16 +1,31 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.TTS;
+using IqraCore.Entities.TTS.Providers.AzureSpeech;
+using IqraCore.Entities.TTS.Providers.Cartesia;
+using IqraCore.Entities.TTS.Providers.Deepgram;
+using IqraCore.Entities.TTS.Providers.ElevenLabs;
+using IqraCore.Entities.TTS.Providers.FishAudio;
+using IqraCore.Entities.TTS.Providers.Google;
+using IqraCore.Entities.TTS.Providers.Hamsa;
+using IqraCore.Entities.TTS.Providers.HumeAI;
+using IqraCore.Entities.TTS.Providers.Minimax;
+using IqraCore.Entities.TTS.Providers.MurfAI;
+using IqraCore.Entities.TTS.Providers.Neuphonic;
+using IqraCore.Entities.TTS.Providers.PlayHt;
+using IqraCore.Entities.TTS.Providers.ResembleAI;
+using IqraCore.Entities.TTS.Providers.Speechify;
+using IqraCore.Entities.TTS.Providers.ZyphraZonos;
 using IqraCore.Interfaces.AI;
-using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.TTS.Providers;
+using IqraInfrastructure.Repositories.TTS;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
-using IqraCore.Entities.Business;
-using IqraInfrastructure.Managers.TTS.Providers;
-using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.TTS
 {
@@ -488,7 +503,7 @@ namespace IqraInfrastructure.Managers.TTS
                     );
                 }
 
-                int sampleRate = 8000;
+                int sampleRate = metaData.TryGetValue("sampleRate", out var rateStr) && int.TryParse(rateStr, out var rate) ? rate : 8000;
 
                 switch (ttsProviderData.Data.Id)
                 {
@@ -496,192 +511,272 @@ namespace IqraInfrastructure.Managers.TTS
                         {
                             string resourceKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["resource_key"]);
                             string resourceRegion = integrationData.Fields["resource_region"];
-                            string speakerLanguage = (string)agentIntegrationData.FieldValues["speaker_language"];
-                            string speakerName = (string)agentIntegrationData.FieldValues["speaker"];
 
-                            var azureSpeechTTSService = new AzureSpeechTTSService(resourceKey, resourceRegion, speakerLanguage, speakerName, sampleRate);
-                            return result.SetSuccessResult(azureSpeechTTSService);
+                            var config = new AzureSpeechConfig
+                            {
+                                Language = (string)agentIntegrationData.FieldValues["speaker_language"],
+                                VoiceName = (string)agentIntegrationData.FieldValues["speaker"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new AzureSpeechTTSService(resourceKey, resourceRegion, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.ElevenLabsTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string modelId = (string)agentIntegrationData.FieldValues["model_id"];
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            float stability = (float)(double)agentIntegrationData.FieldValues["stability"];
-                            float similarityBoost = (float)(double)agentIntegrationData.FieldValues["similarityBoost"];
-                            float style = (float)(double)agentIntegrationData.FieldValues["style"];
-                            bool speakerBoost = bool.Parse((string)agentIntegrationData.FieldValues["speakerBoost"]);
-                            float speed = (float)(double)agentIntegrationData.FieldValues["speed"];
-                            string pronunciationDictionaryId = (string)agentIntegrationData.FieldValues["pronunciationDictionaryId"];
-                            string applyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"];
 
-                            var elevenLabsTTSService = new ElevenLabsTTSService(apiKey, modelId, voiceId, sampleRate, stability, similarityBoost, style, speakerBoost, speed, pronunciationDictionaryId, applyTextNormalization);
-                            return result.SetSuccessResult(elevenLabsTTSService);
+                            var config = new ElevenLabsConfig
+                            {
+                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                SampleRate = sampleRate,
+                                Stability = (float)(double)agentIntegrationData.FieldValues["stability"],
+                                SimilarityBoost = (float)(double)agentIntegrationData.FieldValues["similarityBoost"],
+                                Style = (float)(double)agentIntegrationData.FieldValues["style"],
+                                UseSpeakerBoost = bool.Parse((string)agentIntegrationData.FieldValues["speakerBoost"]),
+                                Speed = (float)(double)agentIntegrationData.FieldValues["speed"],
+                                PronunciationDictionaryId = (string)agentIntegrationData.FieldValues["pronunciationDictionaryId"],
+                                ApplyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"]
+                            };
+
+                            var service = new ElevenLabsTTSService(apiKey, config); // Assuming constructor is updated
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.GoogleCloudTextToSpeech:
                         {
                             string serviceAccountKeyJson = _integrationsManager.DecryptField(integrationData.EncryptedFields["service_account_key_json"]);
-                            string languageCode = (string)agentIntegrationData.FieldValues["language_code"];
-                            string voiceName = (string)agentIntegrationData.FieldValues["voice_name"];
-                            float speakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"];
 
-                            var googleTTSService = new GoogleTTSService(serviceAccountKeyJson, languageCode, voiceName, speakingRate, sampleRate);
-                            return result.SetSuccessResult(googleTTSService);
+                            var config = new GoogleConfig
+                            {
+                                LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
+                                VoiceName = (string)agentIntegrationData.FieldValues["voice_name"],
+                                SpeakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new GoogleTTSService(serviceAccountKeyJson, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.CartesiaTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            string modelId = (string)agentIntegrationData.FieldValues["model_id"];
-                            string languageCode = (string)agentIntegrationData.FieldValues["language_code"];
-                            List<string> pronunciationDictIds = ((string)agentIntegrationData.FieldValues["pronunciationDictIds"]).Split(',').ToList();
 
-                            var cartesiaTTSService = new CartesiaTTSService(apiKey, voiceId, modelId, languageCode, pronunciationDictIds, sampleRate);
-                            return result.SetSuccessResult(cartesiaTTSService);
+                            var config = new CartesiaConfig
+                            {
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
+                                LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
+                                PronunciationDictIds = ((string)agentIntegrationData.FieldValues["pronunciationDictIds"]).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new CartesiaTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.FishAudioTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string referenceId = (string)agentIntegrationData.FieldValues["reference_id"];
-                            string model = (string)agentIntegrationData.FieldValues["model"];
 
-                            var fishAudioTTSService = new FishAudioTTSService(apiKey, referenceId, model, sampleRate);
-                            return result.SetSuccessResult(fishAudioTTSService);
+                            var config = new FishAudioConfig
+                            {
+                                ReferenceId = (string)agentIntegrationData.FieldValues["reference_id"],
+                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new FishAudioTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.DeepgramTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string modelId = (string)agentIntegrationData.FieldValues["model_id"];
 
-                            var deepgramTTSService = new DeepgramTTSService(apiKey, modelId, sampleRate);
-                            return result.SetSuccessResult(deepgramTTSService);
+                            var config = new DeepgramConfig
+                            {
+                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new DeepgramTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.MinimaxTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string groupId = (string)agentIntegrationData.FieldValues["group_id"];
-                            string modelId = (string)agentIntegrationData.FieldValues["model_id"];
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
-                            string languageBoostId = (string)agentIntegrationData.FieldValues["language_boost_id"];
-                            string pronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"];
+                            string groupId = (string)agentIntegrationData.FieldValues["group_id"]; // Auth related, not config
 
-                            var minimaxTTSService = new MinimaxTTSService(apiKey, groupId, modelId, voiceId, voiceSpeed, languageBoostId, pronunciationDict, sampleRate);
-                            return result.SetSuccessResult(minimaxTTSService);
+                            var config = new MinimaxConfig
+                            {
+                                ModelId = (string)agentIntegrationData.FieldValues["model_id"],
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
+                                LanguageBoostId = (string)agentIntegrationData.FieldValues["language_boost_id"],
+                                PronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new MinimaxTTSService(apiKey, groupId, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.HumeAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            string voiceProvider = (string)agentIntegrationData.FieldValues["voice_provider"];
-                            string voiceDescription = (string)agentIntegrationData.FieldValues["voice_description"];
-                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
 
-                            var humeAITTSService = new HumeAITTSService(apiKey, voiceId, voiceProvider, voiceDescription, voiceSpeed, sampleRate);
-                            return result.SetSuccessResult(humeAITTSService);
+                            var config = new HumeAiConfig
+                            {
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                VoiceProvider = (string)agentIntegrationData.FieldValues["voice_provider"],
+                                VoiceDescription = (string)agentIntegrationData.FieldValues["voice_description"],
+                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new HumeAITTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.PlayHtTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string userId = _integrationsManager.DecryptField(integrationData.EncryptedFields["user_id"]);
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            string voiceEngine = (string)agentIntegrationData.FieldValues["voice_engine"];
-                            string voiceQuality = (string)agentIntegrationData.FieldValues["voice_quality"];
-                            float voiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"];
-                            float temperature = (float)(double)agentIntegrationData.FieldValues["temperature"];
-                            string emotion = (string)agentIntegrationData.FieldValues["emotion"];
-                            float voiceGuidance = (float)(double)agentIntegrationData.FieldValues["voice_guidance"];
-                            float styleGuidance = (float)(double)agentIntegrationData.FieldValues["style_guidance"];
-                            float textGuidance = (float)(double)agentIntegrationData.FieldValues["text_guidance"];
-                            string language = (string)agentIntegrationData.FieldValues["language"];
+                            string userId = _integrationsManager.DecryptField(integrationData.EncryptedFields["user_id"]); // Auth related
 
-                            var playHtTTSService = new PlayHtTTSService(apiKey, userId, voiceId, voiceEngine, voiceQuality, voiceSpeed, temperature, emotion, voiceGuidance, styleGuidance, textGuidance, language, sampleRate);
-                            return result.SetSuccessResult(playHtTTSService);
+                            var config = new PlayHtConfig
+                            {
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                VoiceEngine = (string)agentIntegrationData.FieldValues["voice_engine"],
+                                VoiceQuality = (string)agentIntegrationData.FieldValues["voice_quality"],
+                                VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
+                                Temperature = (float)(double)agentIntegrationData.FieldValues["temperature"],
+                                Emotion = (string)agentIntegrationData.FieldValues["emotion"],
+                                VoiceGuidance = (float)(double)agentIntegrationData.FieldValues["voice_guidance"],
+                                StyleGuidance = (float)(double)agentIntegrationData.FieldValues["style_guidance"],
+                                TextGuidance = (float)(double)agentIntegrationData.FieldValues["text_guidance"],
+                                Language = (string)agentIntegrationData.FieldValues["language"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new PlayHtTTSService(apiKey, userId, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.SpeechifyTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            string model = (string)agentIntegrationData.FieldValues["model"];
-                            string language = (string)agentIntegrationData.FieldValues["language"];
-                            string loudnessNormalizationString = (string)agentIntegrationData.FieldValues["loudness_normalization"];
-                            string textNormalizationString = (string)agentIntegrationData.FieldValues["text_normalization"];
 
-                            bool loudnessNormalization = loudnessNormalizationString == "true" ? true : false;
-                            bool textNormalization = textNormalizationString == "true" ? true : false;
+                            var config = new SpeechifyConfig
+                            {
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                Language = (string)agentIntegrationData.FieldValues["language"],
+                                LoudnessNormalization = bool.Parse((string)agentIntegrationData.FieldValues["loudness_normalization"]),
+                                TextNormalization = bool.Parse((string)agentIntegrationData.FieldValues["text_normalization"]),
+                                SampleRate = sampleRate
+                            };
 
-                            var speechifyTTSService = new SpeechifyTTSService(apiKey, voiceId, model, language, loudnessNormalization, textNormalization, sampleRate);
-                            return result.SetSuccessResult(speechifyTTSService);
+                            var service = new SpeechifyTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.MurfAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string model = (string)agentIntegrationData.FieldValues["model"];
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            string multiNativeLocale = (string)agentIntegrationData.FieldValues["multi_native_locale"];
-                            string pronunciationDictionaryString = (string)agentIntegrationData.FieldValues["pronunciation_dictionary"];
-                            int rate = (int)agentIntegrationData.FieldValues["rate"];
-                            string style = (string)agentIntegrationData.FieldValues["style"];
-                            int variation = (int)agentIntegrationData.FieldValues["variation"];
 
-                            var murfAITTSService = new MurfAITTSService(apiKey, model, voiceId, multiNativeLocale, pronunciationDictionaryString, rate, style, variation, sampleRate);
-                            return result.SetSuccessResult(murfAITTSService);
+                            var config = new MurfAiConfig
+                            {
+                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                MultiNativeLocale = (string)agentIntegrationData.FieldValues["multi_native_locale"],
+                                PronunciationDictionaryString = (string)agentIntegrationData.FieldValues["pronunciation_dictionary"],
+                                Rate = (int)(long)agentIntegrationData.FieldValues["rate"], // JSON deserializes numbers to long by default
+                                Style = (string)agentIntegrationData.FieldValues["style"],
+                                Variation = (int)(long)agentIntegrationData.FieldValues["variation"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new MurfAITTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.ZyphraZonosTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string model = (string)agentIntegrationData.FieldValues["model"];
-                            string defaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"];
-                            int speakingRate = (int)agentIntegrationData.FieldValues["speaking_rate"];
-                            string languageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"];
-                            string emotion = (string)agentIntegrationData.FieldValues["emotion"];
-                            float vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"];
 
-                            var zyphraZonosTTSService = new ZyphraZonosTTSService(apiKey, model, defaultVoiceName, speakingRate, languageIsoCode, emotion, vqscore, sampleRate);
-                            return result.SetSuccessResult(zyphraZonosTTSService);
+                            // Emotion dictionary needs to be parsed
+                            var emotionDict = ((string)agentIntegrationData.FieldValues["emotion"])
+                                .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                                .Select(part => part.Split(':'))
+                                .Where(parts => parts.Length == 2)
+                                .ToDictionary(parts => parts[0], parts => float.Parse(parts[1]));
+
+                            var config = new ZyphraZonosConfig
+                            {
+                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                DefaultVoiceName = (string)agentIntegrationData.FieldValues["default_voice_name"],
+                                SpeakingRate = (int)(long)agentIntegrationData.FieldValues["speaking_rate"],
+                                LanguageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"],
+                                Emotion = emotionDict,
+                                Vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"],
+                                SampleRate = sampleRate
+                            };
+
+                            var service = new ZyphraZonosTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string projectUuid = integrationData.Fields["project_uuid"];
-                            string voiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"];
+                            string projectUuid = integrationData.Fields["project_uuid"]; // Auth/Scoping related
 
-                            var resembleAiTTSService = new ResembleAITTSService(apiKey, projectUuid, voiceUuid, sampleRate);
-                            return result.SetSuccessResult(resembleAiTTSService);
+                            var config = new ResembleAiConfig
+                            {
+                                ProjectUuid = projectUuid,
+                                VoiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"],
+                                TargetSampleRate = sampleRate
+                            };
+
+                            var service = new ResembleAITTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.HamsaAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string speaker = (string)agentIntegrationData.FieldValues["speaker"];
-                            string dialect = (string)agentIntegrationData.FieldValues["dialect"];
 
-                            var hamsaTTSService = new HamsaAITTSService(apiKey, speaker, dialect, sampleRate);
-                            return result.SetSuccessResult(hamsaTTSService);
+                            var config = new HamsaAiConfig
+                            {
+                                Speaker = (string)agentIntegrationData.FieldValues["speaker"],
+                                Dialect = (string)agentIntegrationData.FieldValues["dialect"],
+                                TargetSampleRate = sampleRate
+                            };
+
+                            var service = new HamsaAITTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     case InterfaceTTSProviderEnum.NeuphonicTextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string langCode = (string)agentIntegrationData.FieldValues["lang_code"];
-                            string voiceId = (string)agentIntegrationData.FieldValues["voice_id"];
-                            float speed = (float)(double)agentIntegrationData.FieldValues["speed"];
-                            string model = (string)agentIntegrationData.FieldValues["model"];
 
-                            var neuphonicTTSService = new NeuphonicTTSService(apiKey, langCode, model, voiceId, speed, sampleRate);
-                            return result.SetSuccessResult(neuphonicTTSService);
+                            var config = new NeuphonicConfig
+                            {
+                                LanguageCode = (string)agentIntegrationData.FieldValues["lang_code"],
+                                Model = (string)agentIntegrationData.FieldValues["model"],
+                                VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
+                                Speed = (float)(double)agentIntegrationData.FieldValues["speed"],
+                                TargetSampleRate = sampleRate
+                            };
+
+                            var service = new NeuphonicTTSService(apiKey, config);
+                            return result.SetSuccessResult(service);
                         }
 
                     default:

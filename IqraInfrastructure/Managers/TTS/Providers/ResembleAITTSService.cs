@@ -1,15 +1,24 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.ResembleAI;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ResembleAITTSService : ITTSService, IDisposable
     {
+        private readonly string _apiKey;
+        private readonly ResembleAiConfig _serviceConfig;
+
+        // Hardcoded values for Resemble AI
+        private readonly string _precision = "PCM_16";
+        private const string _streamingEndpointUrl = "https://f.cluster.resemble.ai/synthesize";
+
         private static readonly HttpClient _httpClient = new();
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
@@ -17,44 +26,29 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             PropertyNameCaseInsensitive = true
         };
 
-        private readonly string _apiKey;
-        private readonly string _projectUuid;
-        private readonly string _voiceUuid;
-        
-        private readonly int _targetSampleRate;
-        private readonly string _precision = "PCM_16";
-
-        private const string _streamingEndpointUrl = "https://f.cluster.resemble.ai/synthesize";
-
-        public ResembleAITTSService(string apiKey, string projectUuid, string voiceUuid, int targetSampleRate)
+        public ResembleAITTSService(string apiKey, ResembleAiConfig config)
         {
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentNullException(nameof(apiKey));
-            if (string.IsNullOrWhiteSpace(projectUuid)) throw new ArgumentNullException(nameof(projectUuid));
-            if (string.IsNullOrWhiteSpace(voiceUuid)) throw new ArgumentNullException(nameof(voiceUuid));
-            if (!(new List<int>([8000, 22050, 32000, 44100])).Contains(targetSampleRate))
-            {
-                throw new Exception("Sample rate support are 8000, 22050, 32000 or 44100");
-            }
-
             _apiKey = apiKey;
-            _projectUuid = projectUuid;
-            _voiceUuid = voiceUuid;
-            _targetSampleRate = targetSampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
         {
+            if (!(new List<int>([8000, 22050, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
+            {
+                throw new Exception("Sample rate support are 8000, 22050, 32000 or 44100");
+            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
             var apiRequestPayload = new ResembleTtsApiRequest
             {
-                ProjectUuid = _projectUuid,
-                VoiceUuid = _voiceUuid,
+                ProjectUuid = _serviceConfig.ProjectUuid,
+                VoiceUuid = _serviceConfig.VoiceUuid,
                 Data = text,
                 Precision = _precision,
-                SampleRate = _targetSampleRate,
+                SampleRate = _serviceConfig.TargetSampleRate,
                 OutputFormat = "wav"
             };
 
@@ -98,7 +92,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 actualSampleRateFromResponse = wavParseResult.originalSampleRate; // Trust WAV header more
                 if (!durationFromApi.HasValue) durationFromApi = wavParseResult.duration;
 
-                byte[] finalPcmData = ResamplePcm(pcmData, actualSampleRateFromResponse, _targetSampleRate, originalChannels, originalBitsPerSample);
+                byte[] finalPcmData = ResamplePcm(pcmData, actualSampleRateFromResponse, _serviceConfig.TargetSampleRate, originalChannels, originalBitsPerSample);
 
                 return (finalPcmData, durationFromApi ?? TimeSpan.Zero);
             }
@@ -297,6 +291,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.ResembleAITextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             GC.SuppressFinalize(this);

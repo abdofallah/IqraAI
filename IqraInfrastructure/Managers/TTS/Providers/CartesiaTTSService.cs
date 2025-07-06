@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.Cartesia;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,26 +11,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     public class CartesiaTTSService : ITTSService, IDisposable
     {
         private static readonly HttpClient _httpClient = new();
+
         private readonly string _apiKey;
-        private readonly string _voiceId;
-        private readonly string _modelId;
-        private readonly string _languageCode;
-        private readonly int _sampleRate;
+
         private readonly string _cartesiaVersion = "2025-04-16";
-        private readonly List<string> _pronunciationDictIds;
-
         private const string BaseUrl = "https://api.cartesia.ai";
-        private const int BytesPerSample = 2;
-        private const int Channels = 1; // Assuming mono output
 
-        public CartesiaTTSService(string apiKey, string voiceId, string modelId, string languageCode, List<string> pronunciationDictIds, int sampleRate)
+        // Hard coded by the api, these values are not configurable
+        private const int BytesPerSample = 2;
+        private const int Channels = 1;
+
+        private readonly CartesiaConfig _serviceConfig;
+
+        public CartesiaTTSService(string apiKey, CartesiaConfig config)
         {
             _apiKey = apiKey;
-            _voiceId = voiceId;
-            _modelId = modelId;
-            _languageCode = languageCode;
-            _pronunciationDictIds = pronunciationDictIds;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -48,17 +45,17 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
             var requestPayload = new CartesiaTtsBytesRequest
             {
-                ModelId = _modelId,
+                ModelId = _serviceConfig.ModelId,
                 Transcript = text,
-                Voice = new CartesiaVoiceRequest { Id = _voiceId },
+                Voice = new CartesiaVoiceRequest { Id = _serviceConfig.VoiceId },
                 OutputFormat = new CartesiaOutputFormatRequest
                 {
-                    SampleRate = _sampleRate,
+                    SampleRate = _serviceConfig.SampleRate,
                     Encoding = "pcm_s16le",
-                    BitRate = (_sampleRate * (BytesPerSample * 8))
+                    BitRate = (_serviceConfig.SampleRate * (BytesPerSample * 8))
                 },
-                Language = _languageCode,
-                PronunciationDictIds = _pronunciationDictIds.ToArray()
+                Language = _serviceConfig.LanguageCode,
+                PronunciationDictIds = _serviceConfig.PronunciationDictIds.ToArray()
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload);
@@ -78,7 +75,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     byte[] audioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-                    double durationSeconds = (double)audioData.Length / (_sampleRate * BytesPerSample * Channels);
+                    double durationSeconds = (double)audioData.Length / (_serviceConfig.SampleRate * BytesPerSample * Channels);
                     TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
                     return (audioData, duration);
                 }
@@ -130,6 +127,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.CartesiaTextToSpeech;
+        }
+
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
         }
 
         public void Dispose()

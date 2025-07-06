@@ -1,7 +1,9 @@
-﻿using Deepgram.Models.Speak.v1.REST;
-using Deepgram.Clients.Interfaces.v1;
+﻿using Deepgram.Clients.Interfaces.v1;
+using Deepgram.Models.Speak.v1.REST;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.Deepgram;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -9,18 +11,18 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private ISpeakRESTClient? _speakClient;
         private readonly string _apiKey;
-        private readonly string _modelId;
 
-        private readonly string _encoding = "linear16"; // For raw PCM 16-bit
-        private readonly int _sampleRate; // Target sample rate
-        private readonly int _channels = 1; // Mono
-        private readonly int _bytesPerSample = 2; // 16 bits = 2 bytes
+        // Hardcoded values based on Deepgram's requirements
+        private readonly string _encoding = "linear16";
+        private readonly int _channels = 1;
+        private readonly int _bytesPerSample = 2;
 
-        public DeepgramTTSService(string apiKey, string modelId, int sampleRate)
+        private readonly DeepgramConfig _serviceConfig;
+
+        public DeepgramTTSService(string apiKey, DeepgramConfig config)
         {
             _apiKey = apiKey;
-            _modelId = modelId;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -42,9 +44,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var textSource = new TextSource(text);
             var speakSchema = new SpeakSchema()
             {
-                Model = _modelId,
+                Model = _serviceConfig.ModelId,
                 Encoding = _encoding,
-                SampleRate = _sampleRate.ToString(),
+                SampleRate = _serviceConfig.SampleRate.ToString(),
                 Container = "none",
                 BitRate  = (_bytesPerSample * (_bytesPerSample * 8)).ToString()
             };
@@ -60,7 +62,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     byte[] audioData = response.Stream.ToArray();
                     response.Stream.Dispose();
 
-                    double durationSeconds = (double)audioData.Length / (_sampleRate * _channels * _bytesPerSample);
+                    double durationSeconds = (double)audioData.Length / (_serviceConfig.SampleRate * _channels * _bytesPerSample);
                     TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
                     return (audioData, duration);
                 }
@@ -106,6 +108,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.DeepgramTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             (_speakClient as IDisposable)?.Dispose();

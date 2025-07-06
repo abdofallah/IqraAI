@@ -1,6 +1,7 @@
-﻿using IqraCore.Entities.TTS.Providers.ZyphraZonos;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.ZyphraZonos;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,39 +11,22 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ZyphraZonosTTSService : ITTSService, IDisposable
     {
-        private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        private readonly string _model;
-        private readonly string _defaultVoiceName;
-        private readonly int _speakingRate;
-        private readonly string _languageIsoCode;
-        private readonly Dictionary<string, float> _emotion;
-        private readonly float _vqscore;
+        private readonly ZyphraZonosConfig _serviceConfig;
 
         private const string ApiUrl = "http://api.zyphra.com/v1/audio/text-to-speech";
 
-        private readonly int _sampleRate;
-        private readonly int _sampleSize = 16; // can not be changed default by api
-        private readonly int _channels = 1; // can not be changed default by api
+        // Hardcoded defaults as per API documentation
+        private readonly int _sampleSize = 16;
+        private readonly int _channels = 1;
+
+        private static readonly HttpClient _httpClient = new();
 
         // Constructor
-        public ZyphraZonosTTSService(string apiKey, string model, string defaultVoiceName, int speakingRate, string languageIsoCode, string emotion, float vqscore, int sampleRate)
+        public ZyphraZonosTTSService(string apiKey, ZyphraZonosConfig config)
         {
             _apiKey = apiKey;
-            _model = model;
-            _defaultVoiceName = defaultVoiceName;
-            _speakingRate = speakingRate;
-            _languageIsoCode = languageIsoCode;
-            _emotion = new Dictionary<string, float>();
-            _vqscore = vqscore;
-            _sampleRate = sampleRate;
-
-            foreach (var emotionEntry in emotion.Split(';'))
-            {
-                var split = emotionEntry.Split(":");
-                if (split.Length < 2) { continue; }
-                _emotion.Add(split[0], float.Parse(split[1]));
-            }
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -61,13 +45,13 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new ZyphraTtsRequest
             {
                 Text = text,
-                Model = _model,
+                Model = _serviceConfig.Model,
                 MimeType = "audio/wav",
-                DefaultVoiceName = _defaultVoiceName,
-                SpeakingRate = _speakingRate,
-                LanguageIsoCode = _languageIsoCode,
-                Vqscore = _vqscore,
-                Emotion = _emotion
+                DefaultVoiceName = _serviceConfig.DefaultVoiceName,
+                SpeakingRate = _serviceConfig.SpeakingRate,
+                LanguageIsoCode = _serviceConfig.LanguageIsoCode,
+                Vqscore = _serviceConfig.Vqscore,
+                Emotion = _serviceConfig.Emotion
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -100,7 +84,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     TimeSpan finalDuration = calculatedDuration ?? TimeSpan.Zero;
 
                     // Resample the PCM data
-                    byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _sampleRate, originalChannels, originalBitsPerSample);
+                    byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _serviceConfig.SampleRate, originalChannels, originalBitsPerSample);
 
                     return (finalPcmData, finalDuration);
                 }
@@ -353,6 +337,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.ZyphraZonosTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             // Static HttpClient doesn't need instance disposal

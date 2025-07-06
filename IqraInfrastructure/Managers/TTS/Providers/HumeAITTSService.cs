@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.HumeAI;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,29 +11,23 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class HumeAITTSService : ITTSService, IDisposable
     {
-        private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        private readonly string _voiceId;
-        private readonly string _voiceProvider;
-        private readonly string _voiceDescription;
-        private readonly float _voiceSpeed;
+        private readonly HumeAiConfig _serviceConfig;
+
+        private static readonly HttpClient _httpClient = new();
 
         private const string ApiUrl = "https://api.hume.ai/v0/tts";
 
-        private readonly int _sampleRate;
-        private readonly int _sampleSize = 16; // can not be changed default by api
-        private readonly int _channels = 1; // can not be changed default by api
+        // Hardcoded values based on Hume AI's requirements
+        private readonly int _sampleSize = 16;
+        private readonly int _channels = 1; 
 
         private string lastGenerationId = null;
 
-        public HumeAITTSService(string apiKey, string voiceId, string voiceProvider, string voiceDescription, float voiceSpeed, int sampleRate)
+        public HumeAITTSService(string apiKey, HumeAiConfig config)
         {
             _apiKey = apiKey;
-            _voiceId = voiceId;
-            _voiceProvider = voiceProvider;
-            _sampleRate = sampleRate;
-            _voiceDescription = voiceDescription;
-            _voiceSpeed = voiceSpeed;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -44,16 +39,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var voiceSpec = new HumeVoiceSpecifier
             {
-                Id = _voiceId,
-                Provider = _voiceProvider
+                Id = _serviceConfig.VoiceId,
+                Provider = _serviceConfig.VoiceProvider
             };
 
             var utterance = new HumeUtteranceRequest
             {
                 Text = text,
                 Voice = voiceSpec,
-                Description = _voiceDescription,
-                Speed = _voiceSpeed
+                Description = _serviceConfig.VoiceDescription,
+                Speed = _serviceConfig.VoiceSpeed
             };
 
             var requestPayload = new HumeTtsRequest
@@ -153,7 +148,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         actualSampleRate = firstGeneration.Encoding.SampleRate.Value;
                 }
 
-                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _sampleRate, _channels, _sampleSize);
+                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _serviceConfig.SampleRate, _channels, _sampleSize);
 
                 return (resampledAudioData, duration);
             }
@@ -296,6 +291,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.HumeAITextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             // Static HttpClient doesn't need instance disposal

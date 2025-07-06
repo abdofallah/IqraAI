@@ -1,11 +1,16 @@
 ﻿using ElevenLabs;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.ElevenLabs;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class ElevenLabsTTSService : ITTSService
     {
+        private readonly string _apiKey;
+        private readonly ElevenLabsConfig _serviceConfig;
+
         private ElevenLabsClient _client;
 
         private VoiceResponseModel? _voiceData;
@@ -13,48 +18,43 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         private VoiceSettingsResponseModel _voiceSettings;
 
-        private readonly string _apiKey;
-        private readonly string _modelId;
-        private readonly string _voiceId;
-
-        private readonly int _sampleRate;
         private TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat _outputFormat;
         private BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization _applyTextNormalization;
         private List<PronunciationDictionaryVersionLocatorRequestModel> _pronunciationDictionaryId;
 
         private List<string> _previousRequestIds = new List<string>();
 
-        public ElevenLabsTTSService(string apiKey, string modelId, string voiceId, int sampleRate, float? stability = null, float? similarityBoost = null, float? style = null, bool? speakerBoost = null, float? speed = null, string? pronunciationDictionaryId = null, string? applyTextNormalization = null)
+        
+
+        public ElevenLabsTTSService(string apiKey, ElevenLabsConfig config)
         {
             _apiKey = apiKey;
-            _voiceId = voiceId;
-            _modelId = modelId;
+            
+            _serviceConfig = config;
 
             _voiceSettings = new VoiceSettingsResponseModel();
-            if (stability.HasValue) _voiceSettings.Stability = stability.Value;
-            if (similarityBoost.HasValue) _voiceSettings.SimilarityBoost = similarityBoost.Value;
-            if (style.HasValue) _voiceSettings.Style = style.Value;
-            if (speakerBoost.HasValue) _voiceSettings.UseSpeakerBoost = speakerBoost.Value;
-            if (speed.HasValue) _voiceSettings.Speed = speed.Value;
-
-            _sampleRate = sampleRate;
+            if (_serviceConfig.Stability.HasValue) _voiceSettings.Stability = _serviceConfig.Stability.Value;
+            if (_serviceConfig.SimilarityBoost.HasValue) _voiceSettings.SimilarityBoost = _serviceConfig.SimilarityBoost.Value;
+            if (_serviceConfig.Style.HasValue) _voiceSettings.Style = _serviceConfig.Style.Value;
+            if (_serviceConfig.UseSpeakerBoost.HasValue) _voiceSettings.UseSpeakerBoost = _serviceConfig.UseSpeakerBoost.Value;
+            if (_serviceConfig.Speed.HasValue) _voiceSettings.Speed = _serviceConfig.Speed.Value;
 
             _pronunciationDictionaryId = new List<PronunciationDictionaryVersionLocatorRequestModel>();
-            if (!string.IsNullOrEmpty(pronunciationDictionaryId))
+            if (!string.IsNullOrEmpty(_serviceConfig.PronunciationDictionaryId))
             {
-                _pronunciationDictionaryId.Add(new PronunciationDictionaryVersionLocatorRequestModel() { PronunciationDictionaryId = pronunciationDictionaryId });
+                _pronunciationDictionaryId.Add(new PronunciationDictionaryVersionLocatorRequestModel() { PronunciationDictionaryId = _serviceConfig.PronunciationDictionaryId });
             }
-            if (!string.IsNullOrEmpty(applyTextNormalization))
+            if (!string.IsNullOrEmpty(_serviceConfig.ApplyTextNormalization))
             {
-                if (applyTextNormalization == "on")
+                if (_serviceConfig.ApplyTextNormalization == "on")
                 {
                     _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.On;
                 }
-                else if (applyTextNormalization == "off")
+                else if (_serviceConfig.ApplyTextNormalization == "off")
                 {
                     _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Off;
                 }
-                else if (applyTextNormalization == "auto")
+                else if (_serviceConfig.ApplyTextNormalization == "auto")
                 {
                     _applyTextNormalization = BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization.Auto;
                 }
@@ -65,25 +65,25 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             _client = new ElevenLabsClient(_apiKey);
 
-            _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_voiceId).GetAwaiter().GetResult();
+            _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
 
             var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
-            _modelData = allModels.Find(d => d.ModelId == _modelId);
+            _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
             if (_modelData == null) throw new Exception("Model not found");
 
-            if (_sampleRate == 8000)
+            if (_serviceConfig.SampleRate == 8000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000;
             }
-            else if (_sampleRate == 16000)
+            else if (_serviceConfig.SampleRate == 16000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000;
             }
-            else if (_sampleRate == 24000)
+            else if (_serviceConfig.SampleRate == 24000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000;
             }
-            else if (_sampleRate == 44100)
+            else if (_serviceConfig.SampleRate == 44100)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100;
             }
@@ -136,6 +136,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         public InterfaceTTSProviderEnum GetProviderType()
         {
             return GetProviderTypeStatic();
+        }
+
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
         }
 
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()

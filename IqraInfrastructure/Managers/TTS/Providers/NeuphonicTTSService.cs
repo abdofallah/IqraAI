@@ -1,15 +1,19 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.Neuphonic;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class NeuphonicTTSService : ITTSService, IDisposable
     {
+        private readonly NeuphonicConfig _serviceConfig;
+        private readonly string _apiKey;
+
         private static readonly HttpClient _httpClient = new();
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
@@ -17,30 +21,12 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             PropertyNameCaseInsensitive = true
         };
 
-        private readonly string _apiKey;
-        private readonly string _langCode;
-        private readonly string _voiceId;
-        private readonly int _targetSampleRate;
-        private readonly float _speed;
-        private readonly string _model;
-
         private const string BaseApiUrl = "https://eu-west-1.api.neuphonic.com";
 
-        public NeuphonicTTSService(string apiKey, string langCode, string model, string voiceId, float speed, int targetSampleRate)
+        public NeuphonicTTSService(string apiKey, NeuphonicConfig config)
         {
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentNullException(nameof(apiKey));
-            if (string.IsNullOrWhiteSpace(langCode)) throw new ArgumentNullException(nameof(langCode));
-            if (string.IsNullOrWhiteSpace(voiceId)) throw new ArgumentNullException(nameof(voiceId));
-            if (string.IsNullOrWhiteSpace(model)) throw new ArgumentNullException(nameof(model));
-            if (speed <= 0) throw new ArgumentOutOfRangeException(nameof(speed), "Speed must be positive.");
-            if (targetSampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
-
             _apiKey = apiKey;
-            _langCode = langCode;
-            _voiceId = voiceId;
-            _targetSampleRate = targetSampleRate;
-            _speed = speed;
-            _model = model;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -49,16 +35,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var requestUrl = $"{BaseApiUrl}/sse/speak/{_langCode}";
+            var requestUrl = $"{BaseApiUrl}/sse/speak/{_serviceConfig.LanguageCode}";
 
             var apiRequestPayload = new NeuphonicTtsApiRequest
             {
                 Text = text,
-                VoiceId = _voiceId,
-                SamplingRate = _targetSampleRate,
-                Speed = _speed,
+                VoiceId = _serviceConfig.VoiceId,
+                SamplingRate = _serviceConfig.TargetSampleRate,
+                Speed = _serviceConfig.Speed,
                 Encoding = "pcm_linear",
-                Model = _model
+                Model = _serviceConfig.Model
             };
 
             string jsonPayload = JsonSerializer.Serialize(apiRequestPayload, _jsonSerializerOptions);
@@ -121,7 +107,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 byte[] finalAudioData = accumulatedAudioBytes.ToArray();
                 TimeSpan duration = TimeSpan.Zero;
 
-                int rateForDurationCalc = actualSampleRateFromResponse ?? _targetSampleRate;
+                int rateForDurationCalc = actualSampleRateFromResponse ?? _serviceConfig.TargetSampleRate;
                 const int channels = 1;
                 const int bitsPerSample = 16;
 
@@ -166,6 +152,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.NeuphonicTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             GC.SuppressFinalize(this);

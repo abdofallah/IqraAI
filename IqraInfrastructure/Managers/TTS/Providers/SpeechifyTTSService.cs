@@ -1,6 +1,7 @@
-﻿using IqraCore.Entities.TTS.Providers.Speechify;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.Speechify;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,28 +11,18 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class SpeechifyTTSService : ITTSService, IDisposable
     {
-        private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        private readonly string _voiceId;
-        private readonly string _model;
-        private readonly string _language;
-        private readonly bool _loudnessNormalization;
-        private readonly bool _textNormalization;
-
-        private readonly int _sampleRate;
+        private readonly SpeechifyConfig _serviceConfig;
 
         private const string ApiUrl = "https://api.sws.speechify.com/v1/audio/speech";
 
+        private static readonly HttpClient _httpClient = new();
+
         // Constructor
-        public SpeechifyTTSService(string apiKey, string voiceId, string model, string language, bool loudnessNormalization, bool textNormalization, int sampleRate)
+        public SpeechifyTTSService(string apiKey, SpeechifyConfig config)
         {
             _apiKey = apiKey;
-            _voiceId = voiceId;
-            _model = model;
-            _language = language;
-            _loudnessNormalization = loudnessNormalization;
-            _textNormalization = textNormalization;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -49,14 +40,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new SpeechifyTtsRequest
             {
                 Input = text,
-                VoiceId = _voiceId,
-                Model = _model,
+                VoiceId = _serviceConfig.VoiceId,
+                Model = _serviceConfig.Model,
                 AudioFormat = "wav",
-                Language = _language,
+                Language = _serviceConfig.Language,
                 Options = new SpeechifyOptionsRequest()
                 {
-                    LoudnessNormalization = _loudnessNormalization,
-                    TextNormalization = _textNormalization
+                    LoudnessNormalization = _serviceConfig.LoudnessNormalization,
+                    TextNormalization = _serviceConfig.TextNormalization
                 }
             };
 
@@ -133,7 +124,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 TimeSpan finalDuration = duration ?? calculatedDuration ?? TimeSpan.Zero;
 
                 // Resample the PCM data
-                byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _sampleRate, originalChannels, originalBitsPerSample);
+                byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _serviceConfig.SampleRate, originalChannels, originalBitsPerSample);
 
                 return (finalPcmData, finalDuration);
             }
@@ -383,6 +374,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.SpeechifyTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             // Static HttpClient doesn't need instance disposal

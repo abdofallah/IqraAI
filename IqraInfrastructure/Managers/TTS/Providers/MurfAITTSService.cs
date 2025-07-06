@@ -1,6 +1,7 @@
-﻿using IqraCore.Entities.TTS.Providers.MurfAI;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.MurfAI;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,35 +11,23 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class MurfAITTSService : ITTSService, IDisposable
     {
-        private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        
-        private readonly string _voiceId;
-        private readonly string _model;
-        private readonly string _multiNativeLocale;
-        private readonly Dictionary<string, MurfPronunciationEntry> _pronunciationDictionary;
-        private readonly int _rate;
-        private readonly string _style;
-        private readonly int _variation;
+        private readonly MurfAiConfig _serviceConfig;
 
-        private readonly int _sampleRate;
+        // hardcoded values based on Murf AI's requirements
         private readonly string _audioFormat = "WAV";
-
         private const string ApiUrl = "https://api.murf.ai/v1/speech/generate";
 
-        public MurfAITTSService(string apiKey, string model, string voiceId, string multiNativeLocale, string pronunciationDictionaryString, int rate, string style, int variation, int sampleRate = 8000)
+        private static readonly HttpClient _httpClient = new();
+
+        private readonly Dictionary<string, MurfPronunciationEntry> _pronunciationDictionary;
+
+        public MurfAITTSService(string apiKey, MurfAiConfig config)
         {
             _apiKey = apiKey;
-            _voiceId = voiceId;
-            _model = model;
-            _multiNativeLocale = multiNativeLocale;
-            _pronunciationDictionary = new Dictionary<string, MurfPronunciationEntry>();
-            _rate = rate;
-            _style = style;
-            _variation = variation;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
 
-            foreach (var pronunciationEntry in pronunciationDictionaryString.Split(Environment.NewLine))
+            foreach (var pronunciationEntry in _serviceConfig.PronunciationDictionaryString.Split(Environment.NewLine))
             {
                 var split = pronunciationEntry.Split(";");
                 if (split.Length < 3) { continue; } // throw error until better solution is added
@@ -54,7 +43,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Initialize()
         {
-            if (!(_sampleRate == 8000 || _sampleRate == 24000 || _sampleRate == 44100 || _sampleRate == 48000))
+            if (!(_serviceConfig.SampleRate == 8000 || _serviceConfig.SampleRate == 24000 || _serviceConfig.SampleRate == 44100 || _serviceConfig.SampleRate == 48000))
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
             }
@@ -70,16 +59,16 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new MurfTtsGenerateRequest
             {
                 Text = text,
-                VoiceId = _voiceId,
+                VoiceId = _serviceConfig.VoiceId,
                 Format = _audioFormat,
-                SampleRate = _sampleRate,
+                SampleRate = _serviceConfig.SampleRate,
                 EncodeAsBase64 = true,
                 ChannelType = "MONO",
-                ModelVersion = _model,
-                Rate = _rate,
-                Style = _style,
+                ModelVersion = _serviceConfig.Model,
+                Rate = _serviceConfig.Rate,
+                Style = _serviceConfig.Style,
                 PronunciationDictionary = _pronunciationDictionary,
-                Variation = _variation
+                Variation = _serviceConfig.Variation
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -273,6 +262,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.MurfAITextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             // Static HttpClient doesn't need instance disposal

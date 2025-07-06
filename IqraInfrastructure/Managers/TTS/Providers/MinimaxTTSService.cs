@@ -1,6 +1,8 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.Minimax;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -10,37 +12,29 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class MinimaxTTSService : ITTSService, IDisposable
     {
-        private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
         private readonly string _groupId;
-        private readonly string _modelId;
-        private readonly string _voiceId;
-        private readonly float _voiceSpeed;
-        private readonly string _languageBoostId;
-        private readonly string _pronunciationDict;
-        private readonly int _sampleRate;
+        private readonly MinimaxConfig _serviceConfig;
+        
+        // Hardcoded values based on MiniMax's requirements
         private readonly int _bytesPerSample = 2;
-        private readonly int _channels = 1; // default to mono
-
+        private readonly int _channels = 1;
         private const string BaseUrl = "https://api.minimaxi.chat/v1";
 
-        public MinimaxTTSService(string apiKey, string groupId, string modelId, string voiceId, float voiceSpeed, string langaugeBoostId, string pronunciationDict, int sampleRate)
+        private static readonly HttpClient _httpClient = new();
+
+        public MinimaxTTSService(string apiKey, string groupId, MinimaxConfig config)
         {
             _apiKey = apiKey;
             _groupId = groupId;
-            _modelId = modelId;
-            _voiceId = voiceId;
-            _sampleRate = sampleRate;
-            _voiceSpeed = voiceSpeed;
-            _languageBoostId = langaugeBoostId;
-            _pronunciationDict = pronunciationDict;
+            _serviceConfig = config;
         }
 
         public void Initialize()
         {
             // Static HttpClient initialization is handled implicitly
 
-            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_sampleRate))
+            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_serviceConfig.SampleRate))
             {
                 throw new Exception("Sample rate support are 8000, 16000, 22050, 24000, 32000 or 44100");
             }
@@ -50,24 +44,24 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             var requestPayload = new MinimaxTtsRequest
             {
-                Model = _modelId,
+                Model = _serviceConfig.ModelId,
                 Text = text,
                 Stream = false,
                 OutputFormat = "hex",
                 VoiceSetting = new MinimaxVoiceSetting {
-                    VoiceId = _voiceId,
-                    Speed = _voiceSpeed
+                    VoiceId = _serviceConfig.VoiceId,
+                    Speed = _serviceConfig.VoiceSpeed
                 },
                 AudioSetting = new MinimaxAudioSetting
                 {
                     Format = "pcm",
-                    SampleRate = _sampleRate,
+                    SampleRate = _serviceConfig.SampleRate,
                     Channel = _channels,
-                    Bitrate = (_sampleRate * (_bytesPerSample * 8))
+                    Bitrate = (_serviceConfig.SampleRate * (_bytesPerSample * 8))
                 },
                 SubtitleEnable = false,
-                PronunciationDict = _pronunciationDict,
-                LanguageBoost = _languageBoostId
+                PronunciationDict = _serviceConfig.PronunciationDict,
+                LanguageBoost = _serviceConfig.LanguageBoostId
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -136,9 +130,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     // Fallback: Calculate duration manually if ExtraInfo isn't present/valid
                     // This requires knowing the BytesPerSample and Channels from the *response* (ExtraInfo)
                     // or assuming they match the request (less reliable).
-                    int bytesPerSample = 2; // Assuming PCM 16-bit based on common practice
+                    int bytesPerSample = _bytesPerSample; // Assuming PCM 16-bit based on common practice
                     int channels = _channels; // Use response channel if available, else assume 1
-                    int sampleRate = _sampleRate; // Use response rate if available
+                    int sampleRate = _serviceConfig.SampleRate; // Use response rate if available
 
                     if (sampleRate > 0 && bytesPerSample > 0 && channels > 0 && audioData.Length > 0)
                     {
@@ -214,6 +208,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.MinimaxTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             // Static HttpClient doesn't need instance disposal

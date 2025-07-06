@@ -1,42 +1,43 @@
-﻿using Google.Cloud.TextToSpeech.V1;
-using Google.Apis.Auth.OAuth2;
+﻿using Google.Apis.Auth.OAuth2;
+using Google.Cloud.TextToSpeech.V1;
 using Grpc.Auth;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.Google;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class GoogleTTSService : ITTSService
     {
+        private readonly string _serviceAccountKeyJson;
+        private readonly GoogleConfig _serviceConfig;
+
         private TextToSpeechClient? _client;
         private VoiceSelectionParams _voiceSelectionParams;
         private AudioConfig _audioConfig;
 
-        private readonly string _languageCode;
-        private readonly string _voiceName;
+        // Hardcoded values based on Google TTS defaults
         private readonly AudioEncoding _audioEncoding = AudioEncoding.Pcm;
-        private readonly int _bytesPerSample = 2; // default by google
+        private readonly int _bytesPerSample = 2;
         private readonly int _channels = 1;
 
-        private readonly string _serviceAccountKeyJson;
-
-        public GoogleTTSService(string serviceAccountKeyJson, string languageCode, string voiceName, float speakingRate, int sampleRate)
+        public GoogleTTSService(string serviceAccountKeyJson, GoogleConfig config)
         {
             _serviceAccountKeyJson = serviceAccountKeyJson;
-            _languageCode = languageCode;
-            _voiceName = voiceName;
+            _serviceConfig = config;
 
             _voiceSelectionParams = new VoiceSelectionParams
             {
-                LanguageCode = _languageCode,
-                Name = _voiceName
+                LanguageCode = _serviceConfig.LanguageCode,
+                Name = _serviceConfig.VoiceName
             };
 
             _audioConfig = new AudioConfig
             {
                 AudioEncoding = _audioEncoding,
-                SampleRateHertz = sampleRate,
-                SpeakingRate = speakingRate,
+                SampleRateHertz = _serviceConfig.SampleRate,
+                SpeakingRate = _serviceConfig.SpeakingRate,
             };
         }
 
@@ -110,6 +111,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return GetProviderTypeStatic();
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.GoogleCloudTextToSpeech;

@@ -1,10 +1,11 @@
 ﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.Hamsa;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.Json;
-using IqraCore.Entities.TTS.Providers.Hamsa;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -14,23 +15,15 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
         private readonly string _apiKey;
-        private readonly string _speaker;
-        private readonly string? _dialect;
-        private readonly int _targetSampleRate;
 
         private const string ApiUrl = "https://api.tryhamsa.com/v1/realtime/tts";
 
-        public HamsaAITTSService(string apiKey, string speaker, string dialect, int targetSampleRate = 8000)
-        {
-            if (string.IsNullOrWhiteSpace(apiKey)) throw new ArgumentNullException(nameof(apiKey));
-            if (string.IsNullOrWhiteSpace(speaker)) throw new ArgumentNullException(nameof(speaker));
-            if (string.IsNullOrWhiteSpace(dialect)) throw new ArgumentNullException(nameof(dialect));
-            if (targetSampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(targetSampleRate), "Target sample rate must be positive.");
+        private readonly HamsaAiConfig _serviceConfig;
 
+        public HamsaAITTSService(string apiKey, HamsaAiConfig config)
+        {
             _apiKey = apiKey;
-            _speaker = speaker;
-            _dialect = dialect;
-            _targetSampleRate = targetSampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
@@ -42,8 +35,8 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new HamsaTtsApiRequest
             {
                 Text = text,
-                Speaker = _speaker,
-                Dialect = _dialect
+                Speaker = _serviceConfig.Speaker,
+                Dialect = _serviceConfig.Dialect
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
@@ -71,7 +64,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 var wavParseResult = ParseWavAndExtractPcm(wavData);
                 pcmData = wavParseResult.pcmData;
 
-                byte[] finalPcmData = ResamplePcm(pcmData, wavParseResult.originalSampleRate, _targetSampleRate, originalChannels, originalBitsPerSample);
+                byte[] finalPcmData = ResamplePcm(pcmData, wavParseResult.originalSampleRate, _serviceConfig.TargetSampleRate, originalChannels, originalBitsPerSample);
 
                 return (finalPcmData, wavParseResult.duration ?? TimeSpan.Zero);
             }
@@ -294,6 +287,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.HamsaAITextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             GC.SuppressFinalize(this);

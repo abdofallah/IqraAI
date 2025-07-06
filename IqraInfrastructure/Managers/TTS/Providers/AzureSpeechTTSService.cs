@@ -1,8 +1,10 @@
-﻿using Deepgram.Models.Manage.v1;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.AzureSpeech;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
+
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class AzureSpeechTTSService : ITTSService
@@ -12,43 +14,38 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private readonly string _subscriptionKey;
         private readonly string _region;
 
-        private readonly string _langauge;
-        private readonly string _speakerName;
+        private readonly AzureSpeechConfig _serviceConfig;
 
         private PullAudioOutputStream _pullStream;
 
-        private readonly int _sampleRate;
-
         private bool _loggingEnabled = false;
 
-        public AzureSpeechTTSService(string subscriptionKey, string region, string langauge, string speakerName, int sampleRate)
+        public AzureSpeechTTSService(string subscriptionKey, string region, AzureSpeechConfig config)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
-            _langauge = langauge;
-            _speakerName = speakerName;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
         {
             var speechConfig = SpeechConfig.FromSubscription(_subscriptionKey, _region);
-            speechConfig.SpeechSynthesisLanguage = _langauge;
-            speechConfig.SpeechSynthesisVoiceName = _speakerName;
+            speechConfig.SpeechSynthesisLanguage = _serviceConfig.Language;
+            speechConfig.SpeechSynthesisVoiceName = _serviceConfig.VoiceName;
 
-            if (_sampleRate == 8000)
+            if (_serviceConfig.SampleRate == 8000)
             {
                 speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm);
             }
-            else if (_sampleRate == 16000)
+            else if (_serviceConfig.SampleRate == 16000)
             {
                 speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm);
             }
-            else if (_sampleRate == 24000)
+            else if (_serviceConfig.SampleRate == 24000)
             {
                 speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm);
             }
-            else if (_sampleRate == 48000)
+            else if (_serviceConfig.SampleRate == 48000)
             {
                 speechConfig.SetSpeechSynthesisOutputFormat(SpeechSynthesisOutputFormat.Raw48Khz16BitMonoPcm);
             }
@@ -73,7 +70,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
         {
-            var constructSSML = $"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{_langauge}\"><voice name=\"{_speakerName}\">{text}</voice></speak>";
+            var constructSSML = $"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{_serviceConfig.Language}\"><voice name=\"{_serviceConfig.VoiceName}\">{text}</voice></speak>";
             var result = await _synthesizer.SpeakSsmlAsync(constructSSML);
 
             if (result.Reason == ResultReason.SynthesizingAudioCompleted)
@@ -141,6 +138,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         public InterfaceTTSProviderEnum GetProviderType()
         {
             return GetProviderTypeStatic();
+        }
+
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
         }
 
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()

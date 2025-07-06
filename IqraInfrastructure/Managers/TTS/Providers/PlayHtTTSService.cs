@@ -1,70 +1,45 @@
-﻿using IqraCore.Entities.TTS.Providers.PlayHt;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS.Providers.PlayHt;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Google.Protobuf.Reflection;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
     public class PlayHtTTSService : ITTSService, IDisposable
-    {
-        private static readonly HttpClient _httpClient = new();
+    {      
         private readonly string _apiKey;
         private readonly string _userId;
-        private readonly string _voiceId;
-        private readonly string _voiceEngine;
-        private readonly string _voiceQuality;
-        private readonly float _voiceSpeed;
-        private readonly float _temperature;
-        private readonly string _emotion;
-        private readonly float _voiceGuidance;
-        private readonly float _styleGuidance;
-        private readonly float _textGuidance;
-        private readonly string _language;
+        private readonly PlayHtConfig _serviceConfig;
 
-        private readonly int _sampleRate;
-        private string _audioFormat;
-
+        private const string _audioFormat = "wav";
         private const string ApiUrl = "https://api.play.ht/api/v2/tts/stream";
 
-        public PlayHtTTSService(string apiKey, string userId, string voiceId, string voiceEngine, string voiceQuality, float voiceSpeed, float temperature, string emotion, float voiceGuidance, float styleGuidance, float textGuidance, string language, int sampleRate)
+        private static readonly HttpClient _httpClient = new();
+
+        public PlayHtTTSService(string apiKey, string userId, PlayHtConfig config)
         {
             _apiKey = apiKey;
             _userId = userId;
-            _voiceId = voiceId;
-            _voiceEngine = voiceEngine;
-            _voiceQuality = voiceQuality;
-            _voiceSpeed = voiceSpeed;
-            _temperature = temperature;
-            _emotion = emotion;
-            _voiceGuidance = voiceGuidance;
-            _styleGuidance = styleGuidance;
-            _textGuidance = textGuidance;
-            _language = language;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
         {
             // make this dynamic within dashboard
-            if (_voiceEngine == "PlayHT1.0")
+            if (_serviceConfig.VoiceEngine == "PlayHT1.0")
             {
-                if (_sampleRate != 8000)
+                if (_serviceConfig.SampleRate != 8000)
                 {
                     throw new Exception("Unsupported sample rate for PlayHT1.0, supported are: 8000");
                 }
-                _audioFormat = "mulaw"; // todo maybe make it mp3 instead for higher quality unless its also 8000
 
             }
-            else
-            {
-                _audioFormat = "wav";
-            }
 
-            if (_sampleRate < 8000 || _sampleRate > 48000)
+            if (_serviceConfig.SampleRate < 8000 || _serviceConfig.SampleRate > 48000)
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000~48000");
             }
@@ -80,18 +55,18 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new PlayHtTtsRequest
             {
                 Text = text,
-                Voice = _voiceId,
-                VoiceEngine = _voiceEngine,
-                Quality = _voiceQuality,
+                Voice = _serviceConfig.VoiceId,
+                VoiceEngine = _serviceConfig.VoiceEngine,
+                Quality = _serviceConfig.VoiceQuality,
                 OutputFormat = _audioFormat,
-                SampleRate = _sampleRate,
-                Speed = _voiceSpeed,
-                Temperature = _temperature,
-                Emotion = _emotion,
-                VoiceGuidance = _voiceGuidance,
-                StyleGuidance = _styleGuidance,
-                TextGuidance = _textGuidance,
-                Language = _language
+                SampleRate = _serviceConfig.SampleRate,
+                Speed = _serviceConfig.VoiceSpeed,
+                Temperature = _serviceConfig.Temperature,
+                Emotion = _serviceConfig.Emotion,
+                VoiceGuidance = _serviceConfig.VoiceGuidance,
+                StyleGuidance = _serviceConfig.StyleGuidance,
+                TextGuidance = _serviceConfig.TextGuidance,
+                Language = _serviceConfig.Language
             };
 
             string jsonPayload = JsonSerializer.Serialize(requestPayload, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
@@ -155,7 +130,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 if (_audioFormat == "ULAW")
                 {
-                    double durationSeconds = (double)audioData.Length / _sampleRate;
+                    double durationSeconds = (double)audioData.Length / _serviceConfig.SampleRate;
                     var ulawDuration = TimeSpan.FromSeconds(durationSeconds);
 
                     return (audioData, ulawDuration);
@@ -264,6 +239,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.PlayHtTextToSpeech;
         }
 
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
+        }
         public void Dispose()
         {
             GC.SuppressFinalize(this);

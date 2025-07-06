@@ -1,7 +1,9 @@
 ﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.TTS.Providers.FishAudio;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.TTS;
 using MessagePack;
+using System.Linq;
 using System.Net.Http.Headers;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
@@ -10,28 +12,26 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private static readonly HttpClient _httpClient = new();
         private readonly string _apiKey;
-        private readonly string _referenceId;
-        private readonly string _model;
 
-        private readonly int _sampleRate;
-        private readonly int _channels = 1; //default by fishaudio
-        private readonly int _bitsPerSample = 16; //default by fishaudio
+        // Hardcoded values based on FishAudio's requirements
+        private readonly int _channels = 1;
+        private readonly int _bitsPerSample = 16;
 
         private const string ApiUrl = "https://api.fish.audio/v1/tts";
 
-        public FishAudioTTSService(string apiKey, string referenceId, string model, int sampleRate)
+        private readonly FishAudioConfig _serviceConfig;
+
+        public FishAudioTTSService(string apiKey, FishAudioConfig config)
         {
             _apiKey = apiKey;
-            _referenceId = referenceId;
-            _model = model;
-            _sampleRate = sampleRate;
+            _serviceConfig = config;
         }
 
         public void Initialize()
         {
             // Static HttpClient, initialization done in constructor or is implicit
 
-            if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_sampleRate))
+            if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_serviceConfig.SampleRate))
             {
                 throw new Exception("Sample rate must be 8000, 16000, 24000, 32000 or 44100");
             }
@@ -47,9 +47,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var requestPayload = new FishAudioTTSRequest
             {
                 Text = text,
-                ReferenceId = _referenceId,
+                ReferenceId = _serviceConfig.ReferenceId,
                 Format = "pcm",
-                SampleRate = (_sampleRate / 1000) // it expects 8 instead of 8000
+                SampleRate = (_serviceConfig.SampleRate / 1000) // it expects 8 instead of 8000
             };
 
             byte[] messagePackData;
@@ -68,7 +68,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             using var request = new HttpRequestMessage(HttpMethod.Post, ApiUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("audio/wav"));
-            request.Headers.Add("model", _model);
+            request.Headers.Add("model", _serviceConfig.Model);
 
             request.Content = new ByteArrayContent(messagePackData);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/msgpack");
@@ -113,7 +113,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return (null, null);
             }
 
-            double durationSeconds = (double)pcmData.Length / (_sampleRate * _channels * (_bitsPerSample / 8));
+            double durationSeconds = (double)pcmData.Length / (_serviceConfig.SampleRate * _channels * (_bitsPerSample / 8));
             TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
 
             return (pcmData, duration);
@@ -139,6 +139,11 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.FishAudioTextToSpeech;
+        }
+
+        public ITtsConfig GetCacheableConfig()
+        {
+            return _serviceConfig;
         }
 
         public void Dispose()
