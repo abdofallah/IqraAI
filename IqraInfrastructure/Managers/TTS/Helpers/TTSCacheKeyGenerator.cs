@@ -6,11 +6,11 @@ using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.TTS.Helpers
 {
-    public class TTSCacheKeyGenerator
+    public static class TTSCacheKeyGenerator
     {
         private static readonly JsonSerializerOptions _serializerOptions = new() { WriteIndented = false };
 
-        public string Generate(string text, InterfaceTTSProviderEnum providerType, ITtsConfig config)
+        public static string Generate(string text, InterfaceTTSProviderEnum providerType, ITtsConfig config)
         {
             string settingsJson = JsonSerializer.Serialize(config, config.GetType(), _serializerOptions);
 
@@ -21,7 +21,9 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                 byte[] inputBytes = Encoding.UTF8.GetBytes(combinedString);
                 byte[] hashBytes = sha256.ComputeHash(inputBytes);
 
-                return Convert.ToBase64String(hashBytes);
+                string base64 = Convert.ToBase64String(hashBytes);
+                string safeBase64 = base64.Replace('+', '-').Replace('/', '_').Replace('\\', '>').TrimEnd('=');
+                return safeBase64;
             }
         }
     }

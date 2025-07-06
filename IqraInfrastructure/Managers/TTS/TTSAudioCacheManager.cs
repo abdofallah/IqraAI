@@ -2,12 +2,7 @@
 using IqraCore.Interfaces.TTS;
 using IqraInfrastructure.Repositories.TTS.Cache;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.TTS
 {
@@ -32,7 +27,7 @@ namespace IqraInfrastructure.Managers.TTS
             _minioRepo = minioRepo;
         }
 
-        public async Task<(bool hit, ReadOnlyMemory<byte> audioData, TimeSpan duration)> GetAudioFromCacheAsync(string cacheKey, string bucketName, CancellationToken token)
+        public async Task<(bool hit, ReadOnlyMemory<byte> audioData, TimeSpan duration)> GetAudioFromCacheAsync(string cacheKey, CancellationToken token)
         {
             // --- Stage 1: Check fast, region-local Redis cache ---
             var (redisSuccess, redisValue) = await _redisRepo.GetAsync(cacheKey);
@@ -40,7 +35,7 @@ namespace IqraInfrastructure.Managers.TTS
             {
                 _logger.LogDebug("Cache HIT (Redis) for key: {CacheKey}", cacheKey);
                 var pointer = JsonSerializer.Deserialize<RedisCachePointer>(redisValue);
-                var audioBytes = await _minioRepo.GetFileAsByteArrayAsync(bucketName, pointer.Path, token);
+                var audioBytes = await _minioRepo.GetFileAsByteArrayAsync(pointer.Path, token);
 
                 if (!audioBytes.IsEmpty)
                 {
@@ -56,7 +51,7 @@ namespace IqraInfrastructure.Managers.TTS
             if (mongoEntry != null)
             {
                 _logger.LogInformation("Cache HIT (MongoDB) for key: {CacheKey}", cacheKey);
-                var audioBytes = await _minioRepo.GetFileAsByteArrayAsync(bucketName, mongoEntry.MinioObjectPath, token);
+                var audioBytes = await _minioRepo.GetFileAsByteArrayAsync(mongoEntry.MinioObjectPath, token);
                 if (!audioBytes.IsEmpty)
                 {
                     // Re-populate the local Redis cache for the next request in this region
@@ -74,14 +69,14 @@ namespace IqraInfrastructure.Managers.TTS
             return (false, ReadOnlyMemory<byte>.Empty, TimeSpan.Zero);
         }
 
-        public async Task StoreAudioInCacheAsync(string cacheKey, string bucketName, ReadOnlyMemory<byte> audioData, TimeSpan duration, ITtsConfig config, TTSAudioCacheEntry context)
+        public async Task StoreAudioInCacheAsync(string cacheKey, ReadOnlyMemory<byte> audioData, TimeSpan duration, ITtsConfig config, TTSAudioCacheEntry context)
         {
             _logger.LogInformation("Storing new audio in cache for key: {CacheKey}", cacheKey);
             var now = DateTime.UtcNow;
-            var minioPath = $"cache/{cacheKey}.pcm";
+            var minioPath = $"cache/tts-{((int)context.ProviderName)}/{cacheKey}.pcm";
 
             // --- Stage 1: Store the audio blob in Minio ---
-            await _minioRepo.PutFileAsByteDataAsync(bucketName, minioPath, audioData, new Dictionary<string, string> { { "cacheKey", cacheKey } });
+            await _minioRepo.PutFileAsByteDataAsync(minioPath, audioData, new Dictionary<string, string> { { "cacheKey", cacheKey } });
 
             // --- Stage 2: Create and store the full metadata entry in MongoDB ---
             var entry = new TTSAudioCacheEntry

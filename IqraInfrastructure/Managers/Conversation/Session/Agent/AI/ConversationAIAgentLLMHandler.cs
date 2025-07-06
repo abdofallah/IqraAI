@@ -1,11 +1,12 @@
-﻿using IqraCore.Interfaces.AI;
+﻿using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
-using IqraInfrastructure.Managers.Business;
 using Microsoft.Extensions.Logging;
 using System.Text;
-using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -154,9 +155,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             bool hasFinishedWarmingUp = false;
             bool successWarmup = false;
             string warmupText = string.Empty;
-            _agentState.LLMService!.MessageStreamed += (sender, responseObj) =>
+            _agentState.LLMService!.MessageStreamed += (sender, eventobject) =>
             {
-                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _agentState.LLMService!.GetProviderType());
+                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(eventobject.ResponseObject, _agentState.LLMService!.GetProviderType());
                 if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
                 {
                     _logger.LogError("Agent {AgentId}: Error extracting LLM chunk, {Reason}", _agentState.AgentId, chunkExtractResult.Message);
@@ -270,11 +271,48 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("Agent {AgentId}: Sending message to LLM.", _agentState.AgentId);
 
+            var cacheableResult = await IsTextCacheable(text);
+            if (cacheableResult.isCacheable && cacheableResult.cachedQuery != null)
+            {
+                _logger.LogInformation("Agent {AgentId}: Using cached response for text: '{Text}'", _agentState.AgentId, text);
+                OnLLMMessageStreamed(this, new ConversationAgentEventLLMStreamed($"response_to_customer: {cacheableResult.cachedQuery}", true));
+                return; // No need to process further
+            }
+
             _llmTask = _agentState.LLMService.ProcessInputAsync(cancellationToken, currentDateTimeData.Data, null);
+         
             await _llmTask;
         }
 
-        private async void OnLLMMessageStreamed(object? sender, object responseObj)
+        private async Task<(bool isCacheable, string? cachedQuery)> IsTextCacheable(string text)
+        {
+            var agent = _agentState.BusinessAppAgent;
+            if (agent == null) return (false, null);
+
+            var manuallyAssignedGroupIds = agent.Cache.Messages;
+            if (manuallyAssignedGroupIds != null && manuallyAssignedGroupIds.Any())
+            {
+                var messageCacheGroups = _agentState.BusinessApp.Cache.MessageGroups
+                    .Where(g => manuallyAssignedGroupIds.Contains(g.Id));
+
+                foreach (var group in messageCacheGroups)
+                {
+                    if (group.Messages.TryGetValue(_agentState.CurrentLanguageCode, out var messagesList))
+                    {
+                        var cachedQuery = messagesList.FirstOrDefault(m => m.Query.Equals(text, StringComparison.OrdinalIgnoreCase));
+                        if (cachedQuery != null)
+                        {
+                            _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (manual group).", _agentState.AgentId, text);
+                            return (true, cachedQuery.Response);
+                        }
+                    }
+                }
+            }
+
+            return (false, null);
+        }
+
+        private async void OnLLMMessageStreamed(object? sender, ConversationAgentEventLLMStreamed eventData)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
 
@@ -303,14 +341,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     return;
                 }
 
-                FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(responseObj, _agentState.LLMService!.GetProviderType());
-                if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
+                string? deltaText;
+                bool isEndOfResponse;
+                if (eventData.IsCachedResponse)
                 {
-                    _logger.LogError("Agent {AgentId}: Error extracting LLM chunk, {Reason}", _agentState.AgentId, chunkExtractResult.Message);
-                    // TODO: Raise error? Stop processing this response?
-                    return;
+                    deltaText = (string)eventData.ResponseObject;
+                    isEndOfResponse = true; // Cached responses are always complete
                 }
-                (string? deltaText, bool isEndOfResponse) = chunkExtractResult.Data.Value;
+                else
+                {
+                    FunctionReturnResult<(string? deltaText, bool isEndOfResponse)?> chunkExtractResult = LLMStreamingChunkDataExtractHelper.GetChunkData(eventData.ResponseObject, _agentState.LLMService!.GetProviderType());
+                    if (!chunkExtractResult.Success || !chunkExtractResult.Data.HasValue)
+                    {
+                        _logger.LogError("Agent {AgentId}: Error extracting LLM chunk, {Reason}", _agentState.AgentId, chunkExtractResult.Message);
+                        // TODO: Raise error? Stop processing this response?
+                        return;
+                    }
+
+                    deltaText = chunkExtractResult.Data.Value.deltaText;
+                    isEndOfResponse = chunkExtractResult.Data.Value.isEndOfResponse;
+                }
+                
 
                 if (!string.IsNullOrEmpty(deltaText))
                 {

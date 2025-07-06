@@ -660,7 +660,8 @@ namespace IqraInfrastructure.Managers.Call
                     _serviceProvider.GetRequiredService<BusinessAgentAudioRepository>(),
                     _serviceProvider.GetRequiredService<IntegrationsManager>(),
                     _serviceProvider.GetRequiredService<ModemTelManager>(),
-                    _serviceProvider.GetRequiredService<TwilioManager>()
+                    _serviceProvider.GetRequiredService<TwilioManager>(),
+                    _serviceProvider.GetRequiredService<TTSAudioCacheManager>()
                 );
 
                 return result.SetSuccessResult(AIAgent);

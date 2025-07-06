@@ -1,5 +1,6 @@
 ﻿using Anthropic.SDK;
 using Anthropic.SDK.Messaging;
+using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
@@ -22,7 +23,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
         private string _systemPrompt;
 
-        public event EventHandler<object>? MessageStreamed;
+        public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
         public event EventHandler MessageStreamedCancelled;
@@ -90,7 +91,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
             {
                 await foreach (var res in _client.Messages.StreamClaudeMessageAsync(parameters, combinedCancellationToken))
                 {
-                    MessageStreamed?.Invoke(this, res);
+                    MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(res));
                 }
             }
             catch (TaskCanceledException ex)

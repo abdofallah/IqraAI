@@ -1,12 +1,18 @@
-﻿using IqraCore.Entities.Conversation.Events;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.TTS;
+using IqraCore.Interfaces.TTS;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.TTS.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Channels;
 
 
@@ -34,6 +40,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly BusinessAgentAudioRepository _audioRepository;
         private readonly BusinessManager _businessManager;
+        private readonly TTSAudioCacheManager _cacheManager;
 
         private int SampleRate;
         private int BitsPerSample;
@@ -68,13 +75,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             ConversationAIAgentState agentState,
             TTSProviderManager ttsProviderManager,
             BusinessAgentAudioRepository audioRepository,
-            BusinessManager businessManager)
+            BusinessManager businessManager,
+            TTSAudioCacheManager cacheManager
+        )
         {
             _logger = loggerFactory.CreateLogger<ConversationAIAgentAudioOutput>();
             _agentState = agentState;
             _ttsProviderManager = ttsProviderManager;
             _audioRepository = audioRepository;
             _businessManager = businessManager;
+            _cacheManager = cacheManager;
         }
 
         public async Task InitializeAsync(CancellationToken agentCTS)
@@ -235,14 +245,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                var cacheHitResult = await CheckAndGetCachedAudio(text, ttsToken);
-                var shouldSaveToCache = (cacheHitResult.Data != null & cacheHitResult.Data?.hasCache);
-                if (cacheHitResult.Success && cacheHitResult.Data != null)
-                {
-                    var cachedSegment = new SpeechSegment(cacheHitResult.Data.Value.audio, cacheHitResult.Data.Value.duration);
+                bool isCacheable = await IsTextCacheable(text);
+                string cacheKey = string.Empty;
+                ITtsConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
 
-                    _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token); // Use audio sending CTS for queue add
-                    return (true, cachedSegment.Duration);
+                if (isCacheable)
+                {
+                    cacheKey = TTSCacheKeyGenerator.Generate(text, _agentState.TTSService.GetProviderType(), ttsConfig);
+                    var (hit, cachedAudio, cachedDuration) = await _cacheManager.GetAudioFromCacheAsync(cacheKey, ttsToken);
+
+                    if (hit && !cachedAudio.IsEmpty)
+                    {
+                        var cachedSegment = new SpeechSegment(cachedAudio, cachedDuration);
+                        _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
+                        return (true, cachedSegment.Duration);
+                    }
                 }
 
                 var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
@@ -258,12 +275,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     return (false, TimeSpan.Zero);
                 }
 
-                _agentState.CurrentResponseDuration = _agentState.CurrentResponseDuration.Add(audioDuration.Value);
+                if (isCacheable && !string.IsNullOrEmpty(cacheKey))
+                {
+                    var context = new TTSAudioCacheEntry
+                    {
+                        BusinessId = _agentState.BusinessApp.Id,
+                        AgentId = _agentState.AgentId,
+                        ProviderName = _agentState.TTSService.GetProviderType()
+                    };
+
+                    _ = _cacheManager.StoreAudioInCacheAsync(cacheKey, audioData, audioDuration.Value, ttsConfig, context);
+                }
 
                 var segment = new SpeechSegment(audioData, audioDuration.Value);
-
-                // Add to queue, respecting cancellation
-                _speechAudioQueue.Add(segment, _audioSendingCTS.Token); // Use audio sending CTS for queue add
+                _speechAudioQueue.Add(segment, _audioSendingCTS.Token);
+                _agentState.CurrentResponseDuration = _agentState.CurrentResponseDuration.Add(audioDuration.Value);
 
                 return (true, segment.Duration);
             }
@@ -291,41 +317,112 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        private async Task<FunctionReturnResult<(bool hasCache, byte[] audio, TimeSpan duration)?>> CheckAndGetCachedAudio(string text, CancellationToken token)
+        private async Task<bool> IsTextCacheable(string text)
         {
-            var result = new FunctionReturnResult<(bool hasCache, byte[] audio, TimeSpan duration)?>();
+            var agent = _agentState.BusinessAppAgent;
+            if (agent == null) return false;
 
-            var currentAgentCacheGroupIds = _agentState.BusinessAppAgent.Cache.Audios;
-
-            if (currentAgentCacheGroupIds.Count == 0) return result.SetSuccessResult(null);
-
-            // Cache this for the future in the initialization
-            // for even faster cache hitting
-            // proposing the following system >
-            // of every query, get the first letter and max length of text, so before we loop through all, we can check that meta data first
-            // then we can just loop through cache, hopefully seperating them already by starting letter so not all of it has to be looped through
-            var audioCacheGroupData = _agentState.BusinessApp.Cache.AudioGroups
-                .Where(group => currentAgentCacheGroupIds.Contains(group.Id))
-                .ToList();
-
-            if (audioCacheGroupData.Count == 0) return result.SetSuccessResult(null);
-
-            foreach (var cacheList in audioCacheGroupData)
+            // --- Step 1: Check manually assigned cache groups (existing logic) ---
+            var manuallyAssignedGroupIds = agent.Cache.Audios;
+            if (manuallyAssignedGroupIds != null && manuallyAssignedGroupIds.Any())
             {
-                var currentLangaugeCacheList = cacheList.Audios[_agentState.CurrentLanguageCode];
+                var audioCacheGroups = _agentState.BusinessApp.Cache.AudioGroups
+                    .Where(g => manuallyAssignedGroupIds.Contains(g.Id));
 
-                foreach (var audioCacheData in currentLangaugeCacheList)
+                foreach (var group in audioCacheGroups)
                 {
-                    if (audioCacheData.Query.ToLower() == text.ToLower())
+                    if (group.Audios.TryGetValue(_agentState.CurrentLanguageCode, out var audioList))
                     {
-                        return result.SetSuccessResult((true, null, TimeSpan.Zero)); // Placeholder, actual audio and duration will be set below
+                        if (audioList.Any(audio => audio.Query.Equals(text, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (manual group).", _agentState.AgentId, text);
+                            return true;
+                        }
                     }
                 }
             }
 
-            return result.SetSuccessResult(null);
+            // --- Step 2: Check if auto-caching is enabled ---
+            var autoCacheSettings = agent.Cache.AudioCacheSettings;
+            if (autoCacheSettings == null ||
+                !autoCacheSettings.AutoCacheAudioResponses ||
+                string.IsNullOrWhiteSpace(autoCacheSettings.AutoCacheAudioResponseCacheGroupId))
+            {
+                _logger.LogTrace("Agent {AgentId}: Text '{Text}' is not cacheable (auto-cache disabled or not configured).", _agentState.AgentId, text);
+                return false;
+            }
+
+            // --- Step 3: Handle auto-caching logic ---
+            var autoCacheGroupId = autoCacheSettings.AutoCacheAudioResponseCacheGroupId;
+            var autoCacheGroup = _agentState.BusinessApp.Cache.AudioGroups.FirstOrDefault(g => g.Id == autoCacheGroupId);
+
+            if (autoCacheGroup == null)
+            {
+                _logger.LogWarning("Agent {AgentId}: Auto-cache group ID '{GroupId}' not found in BusinessApp.", _agentState.AgentId, autoCacheGroupId);
+                return false;
+            }
+
+            // Ensure the language list exists for the current language
+            if (!autoCacheGroup.Audios.ContainsKey(_agentState.CurrentLanguageCode))
+            {
+                autoCacheGroup.Audios[_agentState.CurrentLanguageCode] = new List<BusinessAppCacheAudio>();
+            }
+
+            // Check if the query already exists in this specific auto-cache group
+            var existingQuery = autoCacheGroup.Audios[_agentState.CurrentLanguageCode]
+                .FirstOrDefault(q => q.Query.Equals(text, StringComparison.OrdinalIgnoreCase));
+
+            if (existingQuery != null)
+            {
+                // The query was likely added by another process, but it is now cacheable.
+                _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (already in auto-cache group).", _agentState.AgentId, text);
+                return true;
+            }
+            else
+            {
+                // The query does NOT exist, so we add it.
+                _logger.LogInformation("Agent {AgentId}: Auto-caching new query '{Text}' to group '{GroupId}'.", _agentState.AgentId, text, autoCacheGroupId);
+
+                var newCacheAudio = new BusinessAppCacheAudio
+                {
+                    Id = ObjectId.GenerateNewId().ToString(), // Generate a new unique ID
+                    Query = text,
+                    UnusedExpiryHours = autoCacheSettings.AutoCacheAudioResponsesDefaultExpiryHours ?? 24
+                };
+
+                // This is the "write" operation. We call the repository to persist the change.
+                // We can do this in a fire-and-forget manner to not slow down the current request.
+                // However, the local BusinessApp object in _agentState needs to be updated too.
+
+                var businessId = _agentState.BusinessApp.Id;
+                var languageCode = _agentState.CurrentLanguageCode;
+
+                // Persist the change to the database in the background
+                _ = _businessManager.GetCacheManager().AddAudioCacheGroupAudio(businessId, autoCacheGroupId, languageCode, newCacheAudio)
+                    .ContinueWith(task =>
+                    {
+                        if (task.IsFaulted)
+                        {
+                            _logger.LogError(task.Exception, "Failed to persist auto-cached audio query to database.");
+                        }
+                        else if (task.IsCompletedSuccessfully)
+                        {
+                            var taskResult = task.Result;
+                            if (taskResult.Success)
+                            {
+                                autoCacheGroup.Audios[languageCode].Add(taskResult.Data);
+                            }
+                            else
+                            {
+                                _logger.LogError("Failed to add auto-cached audio query to group {GroupId} for Agent {AgentId}: {ErrorMessage}", autoCacheGroupId, _agentState.AgentId, taskResult.Message);
+                            }
+                        }
+                    });
+
+                return true;
+            }
         }
-        
+
         public async Task SynthesizeAndPlayBlockingAsync(string text, CancellationToken cancellationToken)
         {
             // --- Move logic from original SynthesizeAndPlaySpeechAsync here ---

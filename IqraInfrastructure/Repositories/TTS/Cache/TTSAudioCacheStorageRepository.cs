@@ -9,20 +9,28 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
     {
         private readonly ILogger<TTSAudioCacheStorageRepository> _logger;
         private readonly IMinioClient _minioClient;
+        public string _bucketName;
 
-        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, IMinioClient minioClient)
+        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, IMinioClient minioClient, string bucketName)
         {
             _logger = logger;
             _minioClient = minioClient;
+            _bucketName = bucketName;
+
+            bool bucketExists = _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
+            if (!bucketExists)
+            {
+                throw new ArgumentException("Bucket " + bucketName + " does not exist");
+            }
         }
 
-        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string bucketName, string objectPath, CancellationToken token = default)
+        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default)
         {
             try
             {
                 var stream = new MemoryStream();
                 var args = new GetObjectArgs()
-                    .WithBucket(bucketName)
+                    .WithBucket(_bucketName)
                     .WithObject(objectPath)
                     .WithCallbackStream(async (s, ct) => await s.CopyToAsync(stream, ct));
 
@@ -32,18 +40,18 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", objectPath, bucketName);
+                _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", objectPath, _bucketName);
                 return ReadOnlyMemory<byte>.Empty;
             }
         }
 
-        public async Task PutFileAsByteDataAsync(string bucketName, string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default)
+        public async Task PutFileAsByteDataAsync(string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default)
         {
             try
             {
                 using var fileStream = fileBytes.AsStream();
                 var args = new PutObjectArgs()
-                    .WithBucket(bucketName)
+                    .WithBucket(_bucketName)
                     .WithObject(objectPath)
                     .WithStreamData(fileStream)
                     .WithObjectSize(fileStream.Length)
@@ -54,7 +62,7 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to put file {ObjectPath} to Minio bucket {BucketName}", objectPath, bucketName);
+                _logger.LogError(ex, "Failed to put file {ObjectPath} to Minio bucket {BucketName}", objectPath, _bucketName);
                 // Optionally re-throw if this is a critical failure
             }
         }

@@ -83,7 +83,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             BusinessAgentAudioRepository audioRepository,
             IntegrationsManager integrationManager,
             ModemTelManager modemTelManager,
-            TwilioManager twilioManager
+            TwilioManager twilioManager,
+            TTSAudioCacheManager ttsAudioCacheManager
         )
         {
             _loggerFactory = loggerFactory;
@@ -112,7 +113,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Instantiate Core Modules
             _dtmfSessionManager = new ConversationAIAgentDTMFSessionManager(_loggerFactory, _agentState);
-            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager);
+            _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
             _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);

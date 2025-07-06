@@ -1,10 +1,11 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Interfaces;
 
 namespace IqraCore.Interfaces.AI
 {
     public interface ILLMService : IDisposable
     {
-        event EventHandler<object>? MessageStreamed;
+        event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         void ClearMessageStreamed();
 
         event EventHandler MessageStreamedCancelled;

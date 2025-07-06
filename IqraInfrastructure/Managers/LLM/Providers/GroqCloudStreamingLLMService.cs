@@ -1,12 +1,13 @@
-﻿using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+﻿using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.LLM.Providers.GroqCloud;
 using IqraCore.Interfaces.AI;    
 using Microsoft.Extensions.Logging; 
+using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IqraInfrastructure.Managers.LLM.Providers
 {
@@ -30,7 +31,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private List<GroqCloudMessage> _initialMessages;
         private List<GroqCloudMessage> _messagesMemory;
 
-        public event EventHandler<object>? MessageStreamed;
+        public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
         public event EventHandler MessageStreamedCancelled;
@@ -146,7 +147,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
                             var chunk = JsonSerializer.Deserialize<GroqCloudStreamChunk>(dataJson);
                             if (chunk != null)
                             {
-                                MessageStreamed?.Invoke(this, chunk); // Pass the entire chunk object
+                                MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(chunk)); // Pass the entire chunk object
                             }
                         }
                         catch (JsonException jsonEx)

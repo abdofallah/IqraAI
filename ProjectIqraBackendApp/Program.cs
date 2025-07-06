@@ -27,6 +27,7 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
+using IqraInfrastructure.Repositories.TTS.Cache;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -398,6 +399,35 @@ namespace ProjectIqraBackendApp
                     appConfig["MongoDatabase:AppRepositoryDatabaseName"]
                 );
             });
+
+            builder.Services.AddSingleton<TTSAudioCacheIndexRepository>((sp) =>
+            {
+                return new TTSAudioCacheIndexRepository(
+                    sp.GetRequiredService<ILogger<TTSAudioCacheIndexRepository>>(),
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:TTSAudioCacheIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    )
+                );
+            });
+
+            builder.Services.AddSingleton<TTSAudioCacheMetadataRepository>((sp) =>
+            {
+                return new TTSAudioCacheMetadataRepository(
+                    sp.GetRequiredService<ILogger<TTSAudioCacheMetadataRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:TTSAudioCacheMetadataRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<TTSAudioCacheStorageRepository>((sp) =>
+            {
+                return new TTSAudioCacheStorageRepository(
+                    sp.GetRequiredService<ILogger<TTSAudioCacheStorageRepository>>(),
+                    sp.GetRequiredService<IMinioClient>(),
+                    appConfig["MinioStorage:TTSAudioCacheStorageRepositoryBucketName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig, BackendAppConfig backendAppConfig)
@@ -577,6 +607,18 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<PlanRepository>()
                 );
             });
+
+            // TTSAudioCacheManager
+            builder.Services.AddSingleton<TTSAudioCacheManager>((sp) =>
+            {
+                return new TTSAudioCacheManager(
+                    sp.GetRequiredService<ILogger<TTSAudioCacheManager>>(),
+                    sp.GetRequiredService<TTSAudioCacheIndexRepository>(),
+                    sp.GetRequiredService<TTSAudioCacheMetadataRepository>(),
+                    sp.GetRequiredService<TTSAudioCacheStorageRepository>()
+                );
+            });
+
             // Background services
             builder.Services.AddHostedService<ServerMetricsManager>((sp) =>
             {

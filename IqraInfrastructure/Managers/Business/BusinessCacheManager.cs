@@ -400,6 +400,38 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
+        public async Task<FunctionReturnResult<BusinessAppCacheAudio?>> AddAudioCacheGroupAudio(
+            long businessId,
+            string groupId,
+            string language,
+            BusinessAppCacheAudio audio
+        )
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
+            if (audio == null)
+            {
+                result.Code = "AddAudioChacheGroupAudio:1";
+                result.Message = "Audio cannot be null.";
+                return result;
+            }
+            audio.Id = Guid.NewGuid().ToString();
+            var addResult = await _businessAppRepository.AddAudioToGroup(
+                businessId,
+                groupId,
+                language,
+                audio
+            );
+            if (!addResult)
+            {
+                result.Code = "AddAudioChacheGroupAudio:2";
+                result.Message = "Failed to add audio to group.";
+                return result;
+            }
+            result.Success = true;
+            result.Data = audio;
+            return result;
+        }
+
         public async Task<bool> CheckBusinessCacheAudioGroupExists(long businessId, string existingGroupId)
         {
             var result = await _businessAppRepository.CheckCacheAudioGroupExists(businessId, existingGroupId);

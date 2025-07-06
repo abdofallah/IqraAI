@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
@@ -26,7 +27,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
         private List<ChatMessage> _initialMessages;
         private List<ChatMessage> _messagesMemory;
 
-        public event EventHandler<object>? MessageStreamed;
+        public event EventHandler<ConversationAgentEventLLMStreamed>? MessageStreamed;
         public void ClearMessageStreamed() => MessageStreamed = null;
 
         public event EventHandler MessageStreamedCancelled;
@@ -98,7 +99,7 @@ namespace IqraInfrastructure.Managers.LLM.Providers
 
                 await foreach (var completion in completionResult)
                 {
-                    MessageStreamed?.Invoke(this, completion);
+                    MessageStreamed?.Invoke(this, new ConversationAgentEventLLMStreamed(completion));
                 }
             }
             catch (Exception ex)
