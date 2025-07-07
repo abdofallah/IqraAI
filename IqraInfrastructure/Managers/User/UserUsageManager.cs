@@ -200,7 +200,7 @@ namespace IqraInfrastructure.Managers.User
 
             try
             {
-                // 1. Fetch usage records
+                // Fetch usage records
                 var (usageRecords, hasMore) = await _conversationUsageRepository.GetUsageHistoryPaginatedAsync(masterUserEmail, limit, decodedCursor, fetchNext);
 
                 if (usageRecords == null || !usageRecords.Any())
@@ -208,12 +208,7 @@ namespace IqraInfrastructure.Managers.User
                     return result.SetSuccessResult(new PaginatedResult<MinuteUsageRecordModel>());
                 }
 
-                // 2. Fetch business names for enrichment
-                var businessIds = usageRecords.Select(r => r.BusinessId).Distinct().ToList();
-                var businesses = await _businessRepository.GetBusinessesAsync(businessIds);
-                var businessNameMap = businesses.ToDictionary(b => b.Id, b => b.Name);
-
-                // 3. Map to the final model
+                // Map to the final model
                 paginatedResult.Items = usageRecords.Select((r) =>
                 {
                     MinuteUsageRecordModel returnResult;
@@ -235,7 +230,6 @@ namespace IqraInfrastructure.Managers.User
                     returnResult.Id = r.Id;
                     returnResult.Timestamp = r.CreatedAt;
                     returnResult.BusinessId = r.BusinessId;
-                    returnResult.BusinessName = businessNameMap.GetValueOrDefault(r.BusinessId, "Unknown Business");
                     returnResult.MinutesUsed = r.TotalMinutesUsed;
                     returnResult.ConversationSessionId = r.ConversationSessionId;
                     returnResult.PlanModel = r.PlanModel;
@@ -244,7 +238,7 @@ namespace IqraInfrastructure.Managers.User
                     return returnResult;
                 }).ToList();
 
-                // 4. Set cursors (This logic is identical to your reference code)
+                // Set cursors (This logic is identical to your reference code)
                 if (fetchNext)
                 {
                     paginatedResult.HasNextPage = hasMore;
