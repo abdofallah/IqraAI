@@ -1,5 +1,8 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Billing.Usage;
+using IqraCore.Entities.Helpers;
+using IqraCore.Models.Usage;
 using IqraCore.Models.User;
+using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
@@ -211,15 +214,34 @@ namespace IqraInfrastructure.Managers.User
                 var businessNameMap = businesses.ToDictionary(b => b.Id, b => b.Name);
 
                 // 3. Map to the final model
-                paginatedResult.Items = usageRecords.Select(r => new MinuteUsageRecordModel
+                paginatedResult.Items = usageRecords.Select((r) =>
                 {
-                    Id = r.Id,
-                    Timestamp = r.CreatedAt,
-                    BusinessId = r.BusinessId,
-                    BusinessName = businessNameMap.GetValueOrDefault(r.BusinessId, "Unknown Business"),
-                    MinutesUsed = r.TotalMinutesUsed,
-                    TotalCost = r.TotalCost,
-                    ConversationSessionId = r.ConversationSessionId
+                    MinuteUsageRecordModel returnResult;
+
+                    if (r is FixedPlanMinuteUsageRecord fixedPlanRecord)
+                    {
+                        returnResult = new FixedPlanMinuteUsageRecordModel()
+                        {
+                            TotalMinutesDeducted = fixedPlanRecord.TotalPlanMinutesDeducted,
+                            TotalOverageMinutesCharged = fixedPlanRecord.TotalOverageMinutesCharged,
+                            TotalOverageCost = fixedPlanRecord.TotalOverageCost
+                        };
+                    }
+                    else
+                    {
+                        returnResult = new MinuteUsageRecordModel();
+                    }
+
+                    returnResult.Id = r.Id;
+                    returnResult.Timestamp = r.CreatedAt;
+                    returnResult.BusinessId = r.BusinessId;
+                    returnResult.BusinessName = businessNameMap.GetValueOrDefault(r.BusinessId, "Unknown Business");
+                    returnResult.MinutesUsed = r.TotalMinutesUsed;
+                    returnResult.ConversationSessionId = r.ConversationSessionId;
+                    returnResult.PlanModel = r.PlanModel;
+                    returnResult.TotalCost = r.TotalCost;
+
+                    return returnResult;
                 }).ToList();
 
                 // 4. Set cursors (This logic is identical to your reference code)

@@ -178,6 +178,10 @@ const messageCacheGroupsList = agentCacheTab.find("#messageCacheGroupsList");
 const audioCacheGroupsList = agentCacheTab.find("#audioCacheGroupsList");
 const addMessageCacheGroupButton = agentCacheTab.find("#addMessageCacheGroup");
 const addAudioCacheGroupButton = agentCacheTab.find("#addAudioCacheGroup");
+const agentCacheSettingsAutoCacheAudioCheckbox = agentCacheTab.find("#agentCacheSettingsAutoCacheAudio");
+const agentCacheSettingsAutoCacheAudioBox = agentCacheTab.find("#agentCacheSettingsAutoCacheAudioBox");
+const agentAutoCacheAudioGroupSelect = agentCacheTab.find("#agentAutoCacheAudioGroupSelect");
+const agentAutoCacheExpiryInput = agentCacheTab.find("#agentAutoCacheExpiryInput");
 
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
@@ -573,6 +577,16 @@ function ResetAndEmptyAgentsManageTab() {
 		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
 
+	agentCacheSettingsAutoCacheAudioCheckbox.prop("checked", false).change();
+	agentAutoCacheAudioGroupSelect.empty();
+	agentAutoCacheAudioGroupSelect.append($(`<option value="" disabled selected>Select Audio Group</option>`));
+	BusinessFullData.businessApp.cache.audioGroups.forEach((group) => {
+		agentAutoCacheAudioGroupSelect.append($(`<option value="${group.id}">${group.name}</option>`));
+	});
+
+	agentAutoCacheExpiryInput.val(24);
+
+
 	// Scripts
 	agentScriptsListTab.find("tbody").empty();
 	agentScriptsListTab.find("tbody").append(
@@ -714,9 +728,47 @@ function FillAgentsManagerTab() {
 	fillAgentUtterancesTab();
 	fillAgentScriptsListTab();
 	fillIntegrationsFromAgentData();
-	fillCacheGroupsList("message");
-	fillCacheGroupsList("audio");
+	fillAgentCacheTab();
 	fillAgentSettingsTab();
+}
+
+function SetAgentCardDynamicWidth() {
+	if (!agentTab.hasClass("show")) return;
+
+	const anyAgentCard = agentsListTable.find(".agent-card");
+	if (anyAgentCard.length > 0) {
+		const firstAgentCard = anyAgentCard.first();
+
+		const agentCardWidth = firstAgentCard.innerWidth();
+
+		const agentCardLeftRightPadding = parseInt(firstAgentCard.css("padding-left")) + parseInt(firstAgentCard.css("padding-right"));
+		const agentCardIconWidthAndPadding = firstAgentCard.find(".agent-icon").innerWidth();
+
+		// .agent-card h4
+		const marginLeftForH4 = 20; // .agent-card h4 in style.css
+
+		const currentUsedUpSpace = agentCardLeftRightPadding + agentCardIconWidthAndPadding + marginLeftForH4;
+
+		let availableH4Space = agentCardWidth - currentUsedUpSpace;
+
+		if (availableH4Space < 5) {
+			availableH4Space = 5;
+		}
+
+		// .agent-card h5-info
+		let availableH5Space = agentCardWidth - agentCardLeftRightPadding;
+
+		// FINAL
+		$("#dynamicAgentCardCSS").html(`
+            .agent-card h4 {
+				width: ${availableH4Space}px;
+			}
+
+            .agent-card .h5-info {
+                width: ${availableH5Space}px;
+            }
+		`);
+	}
 }
 
 // General Tab Functions
@@ -1575,6 +1627,18 @@ function refreshAgentIntegrationIndices(type) {
 }
 
 // Cache Tab Functions
+function fillAgentCacheTab() {
+	fillCacheGroupsList("message");
+	fillCacheGroupsList("audio");
+
+	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses) {
+		agentCacheSettingsAutoCacheAudioCheckbox.prop("checked", true).change();
+
+		agentAutoCacheAudioGroupSelect.val(CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId).change();
+		agentAutoCacheExpiryInput.val(CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours);
+	}
+}
+
 function createCacheGroupSelectElement(type, index) {
 	const groups = type === "message" ? BusinessFullData.businessApp.cache.messageGroups : BusinessFullData.businessApp.cache.audioGroups;
 
@@ -4278,6 +4342,7 @@ function initAgentTab() {
 		// Init
 		FillAgentsListTab();
 		registerAgentScriptNodes();
+		SetAgentCardDynamicWidth();
 		nodeConfigOffcanvas = new bootstrap.Offcanvas("#nodeConfigOffcanvas");
 
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
@@ -4348,6 +4413,14 @@ function initAgentTab() {
 				event.preventDefault();
 			}
 		});
+
+		$(window).resize(() => {
+			SetAgentCardDynamicWidth();
+		});
+
+		$(document).on("containerResizeProgress", (event) => {
+			SetAgentCardDynamicWidth();
+		})
 
 		// General Tab Changes
 		function initAgentGeneralTabHandlers() {
@@ -4631,6 +4704,26 @@ function initAgentTab() {
 
 				validateAgentCacheTab(true);
 				CheckAgentTabHasChanges();
+			});
+
+			// Settings
+			agentCacheSettingsAutoCacheAudioCheckbox.on("change", (e) => {
+				var isChecked = $(e.currentTarget).is(":checked");
+
+				agentCacheSettingsAutoCacheAudioBox.toggleClass("d-none", !isChecked);
+
+				validateAgentCacheTab(true);
+				CheckAgentTabHasChanges();
+			});
+
+			agentAutoCacheAudioGroupSelect.on("change", (e) => {
+				validateAgentCacheTab(true);
+				CheckAgentTabHasChanges();
+			});
+
+			agentAutoCacheExpiryInput.on("change", (e) => {
+                validateAgentCacheTab(true);
+                CheckAgentTabHasChanges();
 			});
 		}
 		initAgentCacheTabHandlers();

@@ -430,7 +430,10 @@
                             <button class="nav-link me-2 active" id="agents-manager-cache-inner-messages-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-messages" type="button" role="tab" aria-controls="agents-manager-cache-inner-messages" aria-selected="true">Messages</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="agents-manager-cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-audio" type="button" role="tab" aria-controls="agents-manager-cache-inner-audio" aria-selected="false">Audio</button>
+                            <button class="nav-link me-2" id="agents-manager-cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-audio" type="button" role="tab" aria-controls="agents-manager-cache-inner-audio" aria-selected="false">Audio</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="agents-manager-cache-inner-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-settings" type="button" role="tab" aria-controls="agents-manager-cache-inner-settings" aria-selected="false">Settings</button>
                         </li>
                     </ul>
 
@@ -456,8 +459,46 @@
                                 <span>Add Audio Group</span>
                             </button>
                         </div>
+
+                        <!-- Settings -->
+                        <div class="tab-pane fade w-100" id="agents-manager-cache-inner-settings" role="tabpanel" tabindex="0">
+                            <div class="w-100 agent-audio-cache-settings-box">
+                                <div class="form-check form-switch">
+                                    <div style="display: inline-block; vertical-align: middle;">
+                                        <input type="checkbox" role="switch" class="form-check-input" id="agentCacheSettingsAutoCacheAudio">
+                                        <label class="form-label mb-0" for="agentCacheSettingsAutoCacheAudio">
+                                            <span>Auto Cache Audio Queries?</span>
+                                        </label>
+                                    </div>
+
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="If enabled, will auto cache all tts generated results into the specified audio cache group.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </div>
+
+                                <div class="mt-3 d-none" id="agentCacheSettingsAutoCacheAudioBox">
+                                    <div class="mb-2">
+                                        <label class="form-label" for="agentAutoCacheAudioGroupSelect">Auto Audio Cache Group</label>
+                                        <select class="form-select" id="agentAutoCacheAudioGroupSelect">
+                                            <!-- Dynamically Generated -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label btn-ic-span-align" for="agentAutoCacheExpiryInput">
+                                            <span>Auto Audio Cache Expiry (Hours)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long before auto-cached queries expire. Set to 0 for no expiry.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="agentAutoCacheExpiryInput" min="0" value="24" step="1">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
                     </div>
                 </div>
+
                 <!-- Settings -->
                 <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
                     <div class="mb-3">

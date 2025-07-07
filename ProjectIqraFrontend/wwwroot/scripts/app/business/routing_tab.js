@@ -151,7 +151,7 @@ function SaveBusinessRoute(formData, successCallback, errorCallback) {
 
 /** Functions **/
 
-/** Agent List Tab **/
+/** Routing List Tab **/
 function showRoutingListTab() {
 	routingManagerTab.removeClass("show");
 	routingHeader.removeClass("show");
@@ -173,9 +173,9 @@ function createRouteListElement(routeData) {
 
 	return `
         <div class="col-lg-4 col-md-6 col-12">
-            <div class="agent-card routing-card d-flex flex-column align-items-start justify-content-center" route-id="${routeData.id}">
+            <div class="routing-card d-flex flex-column align-items-start justify-content-center" route-id="${routeData.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
-                    <span class="agent-icon">${routeData.general.emoji}</span>
+                    <span class="route-icon">${routeData.general.emoji}</span>
                     <div class="card-data">
                         <h4>${routeData.general.name}</h4>
                         <h6>${routeData.numbers.length} Number${routeData.numbers.length === 1 ? "" : "s"} Assigned</h6>
@@ -206,7 +206,46 @@ function fillRouteList() {
 	}
 }
 
-/** Agent Manager Tab **/
+function SetRoutingCardDynamicWidth() {
+	if (!routingTab.hasClass("show")) return;
+
+	const anyRoutingCard = routingListTable.find(".routing-card");
+	if (anyRoutingCard.length > 0) {
+		const firstRoutingCard = anyRoutingCard.first();
+
+		const routingCardWidth = firstRoutingCard.innerWidth();
+
+		const routingCardLeftRightPadding = parseInt(firstRoutingCard.css("padding-left")) + parseInt(firstRoutingCard.css("padding-right"));
+		const routingCardIconWidthAndPadding = firstRoutingCard.find(".route-icon").innerWidth();
+
+		// .routing-card h4
+		const marginLeftForH4 = 20; // .routing-card h4 in style.css
+
+		const currentUsedUpSpace = routingCardLeftRightPadding + routingCardIconWidthAndPadding + marginLeftForH4;
+
+		let availableH4Space = routingCardWidth - currentUsedUpSpace;
+
+		if (availableH4Space < 5) {
+			availableH4Space = 5;
+		}
+
+		// .routing-card h5-info
+		let availableH5Space = routingCardWidth - routingCardLeftRightPadding;
+
+		// FINAL
+		$("#dynamicRoutingCardCSS").html(`
+            .routing-card .card-data {
+				width: ${availableH4Space}px;
+			}
+
+            .routing-card .h5-info {
+                width: ${availableH5Space}px;
+            }
+		`);
+	}
+}
+
+/** Routing Manager Tab **/
 function showRoutingManagerTab() {
 	routingListTab.removeClass("show");
 	setTimeout(() => {
@@ -1365,6 +1404,14 @@ function initRoutingTab() {
 				event.preventDefault();
 			}
 		});
+
+		$(window).resize(() => {
+			SetRoutingCardDynamicWidth();
+		});
+
+		$(document).on("containerResizeProgress", (event) => {
+			SetRoutingCardDynamicWidth();
+		})
 
 		/** General Tab **/
 		function initGeneralTabHandlers() {

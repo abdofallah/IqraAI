@@ -1,4 +1,4 @@
-﻿using IqraCore.Entities.Billing;
+﻿using IqraCore.Entities.Billing.Usage;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Usage;
 using Microsoft.Extensions.Logging;
@@ -10,41 +10,41 @@ namespace IqraInfrastructure.Repositories.Conversation
     public class ConversationUsageRepository
     {
         private readonly ILogger<ConversationUsageRepository> _logger;
-        private readonly IMongoCollection<MinuteUsageRecord> _usageCollection;
+        private readonly IMongoCollection<BaseMinuteUsageRecord> _usageCollection;
 
         public ConversationUsageRepository(ILogger<ConversationUsageRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
 
             var database = client.GetDatabase(databaseName);
-            _usageCollection = database.GetCollection<MinuteUsageRecord>("MinuteUsageRecords");
+            _usageCollection = database.GetCollection<BaseMinuteUsageRecord>("MinuteUsageRecords");
 
             // It's crucial to create indexes for efficient querying
-            var indexKeysDefinition = Builders<MinuteUsageRecord>.IndexKeys
+            var indexKeysDefinition = Builders<BaseMinuteUsageRecord>.IndexKeys
                 .Ascending(r => r.MasterUserEmail)
                 .Ascending(r => r.CreatedAt);
-            _usageCollection.Indexes.CreateOneAsync(new CreateIndexModel<MinuteUsageRecord>(indexKeysDefinition));
+            _usageCollection.Indexes.CreateOneAsync(new CreateIndexModel<BaseMinuteUsageRecord>(indexKeysDefinition));
         }
 
-        public Task AddUsageRecordAsync(MinuteUsageRecord record)
+        public Task AddUsageRecordAsync(BaseMinuteUsageRecord record)
         {
             return _usageCollection.InsertOneAsync(record);
         }
 
         // We will need this for the "Usage Details" chart later
-        public Task<List<MinuteUsageRecord>> GetUsageForUserAsync(string masterUserEmail, DateTime startDate, DateTime endDate)
+        public Task<List<BaseMinuteUsageRecord>> GetUsageForUserAsync(string masterUserEmail, DateTime startDate, DateTime endDate)
         {
-            var filter = Builders<MinuteUsageRecord>.Filter.And(
-                Builders<MinuteUsageRecord>.Filter.Eq(r => r.MasterUserEmail, masterUserEmail),
-                Builders<MinuteUsageRecord>.Filter.Gte(r => r.CreatedAt, startDate),
-                Builders<MinuteUsageRecord>.Filter.Lt(r => r.CreatedAt, endDate)
+            var filter = Builders<BaseMinuteUsageRecord>.Filter.And(
+                Builders<BaseMinuteUsageRecord>.Filter.Eq(r => r.MasterUserEmail, masterUserEmail),
+                Builders<BaseMinuteUsageRecord>.Filter.Gte(r => r.CreatedAt, startDate),
+                Builders<BaseMinuteUsageRecord>.Filter.Lt(r => r.CreatedAt, endDate)
             );
 
             return _usageCollection.Find(filter).ToListAsync();
         }
 
         // Overload for use within a transaction
-        public Task AddUsageRecordAsync(MinuteUsageRecord record, IClientSessionHandle session)
+        public Task AddUsageRecordAsync(BaseMinuteUsageRecord record, IClientSessionHandle session)
         {
             return _usageCollection.InsertOneAsync(session, record);
         }
@@ -108,19 +108,19 @@ namespace IqraInfrastructure.Repositories.Conversation
         }
 
 
-        public async Task<(List<MinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor? cursor, bool fetchNext)
+        public async Task<(List<BaseMinuteUsageRecord> Items, bool HasMore)> GetUsageHistoryPaginatedAsync(string masterUserEmail, int limit, PaginationCursor? cursor, bool fetchNext)
         {
-            var filterBuilder = Builders<MinuteUsageRecord>.Filter;
+            var filterBuilder = Builders<BaseMinuteUsageRecord>.Filter;
             var baseFilter = filterBuilder.Eq(r => r.MasterUserEmail, masterUserEmail);
 
             // The rest of this method's logic is identical to your reference implementation.
             // I've adapted it for MinuteUsageRecord.
-            FilterDefinition<MinuteUsageRecord> finalFilter = baseFilter;
-            SortDefinition<MinuteUsageRecord> sortDefinition;
+            FilterDefinition<BaseMinuteUsageRecord> finalFilter = baseFilter;
+            SortDefinition<BaseMinuteUsageRecord> sortDefinition;
 
             if (fetchNext)
             {
-                sortDefinition = Builders<MinuteUsageRecord>.Sort
+                sortDefinition = Builders<BaseMinuteUsageRecord>.Sort
                     .Descending(r => r.CreatedAt)
                     .Descending(r => r.Id);
 
@@ -138,7 +138,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             }
             else
             {
-                sortDefinition = Builders<MinuteUsageRecord>.Sort
+                sortDefinition = Builders<BaseMinuteUsageRecord>.Sort
                     .Ascending(r => r.CreatedAt)
                     .Ascending(r => r.Id);
 
@@ -155,7 +155,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                 }
                 else
                 {
-                    return (new List<MinuteUsageRecord>(), false);
+                    return (new List<BaseMinuteUsageRecord>(), false);
                 }
             }
 

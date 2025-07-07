@@ -2,6 +2,7 @@
 using IqraCore.Entities.Business.WhiteLabelDomain;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
+using IqraCore.Models.Usage;
 using IqraCore.Models.User;
 using IqraCore.Models.User.GetMasterUserDataModel;
 using IqraCore.Models.User.GetUserPlanDetailsModel;
