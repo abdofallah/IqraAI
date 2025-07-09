@@ -452,7 +452,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ConversationAudioRepository>(),
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<OutboundCallCampaignRepository>(),
-                    sp.GetRequiredService<OutboundCallQueueRepository>()
+                    sp.GetRequiredService<OutboundCallQueueRepository>(),
+                    sp.GetRequiredService<IMongoClient>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
@@ -491,8 +492,7 @@ namespace ProjectIqraFrontend
             {
                 return new UserUsageManager(
                     sp.GetRequiredService<ILogger<UserUsageManager>>(),
-                    sp.GetRequiredService<ConversationUsageRepository>(),
-                    sp.GetRequiredService<BusinessRepository>()
+                    sp.GetRequiredService<ConversationUsageRepository>()
                 );
             });
         }

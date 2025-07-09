@@ -389,7 +389,7 @@
 
         function FetchBusinessDataFromAPI(businessId, successCallback, errorCallback) {
             $.ajax({
-                url: '/app/user/business/' + businessId,
+                url: '/app/user/businesses/' + businessId,
                 type: 'POST',
                 success: (response) => {
                     if (!response.success) {

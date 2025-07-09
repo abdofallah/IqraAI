@@ -208,7 +208,14 @@ body {
      margin-bottom: 10px;
      transition: .3s;
      border: 1px solid transparent;
+     padding-left: 20px;
+     transition: all 1000ms;
 }
+
+.l-navbar.show .nav .nav_link {
+     padding-left: 25px;
+}
+
 
 .l-navbar .nav .nav_link.disabled {
      color: var(--first-color-light);
@@ -221,7 +228,14 @@ body {
 }
 
 .l-navbar .nav .nav_icon {
-     font-size: 1.25rem
+     font-size: 1.25rem;
+     width: 25px;
+     text-align: center;
+     transition: all 1000ms;
+}
+
+.l-navbar.show .nav .nav_icon {
+    text-align: left;
 }
 
 .l-navbar.show {
@@ -346,6 +360,16 @@ body {
     .l-navbar .nav .nav_link
     {
         width: var(--nav-width);
+    }
+
+    .l-navbar.show .nav .nav_link
+    {
+        padding-left: 19.5px;
+    }
+
+    .l-navbar.show .nav .nav_icon
+    {
+        text-align: center;
     }
 
     .l-navbar.show .nav-category-label {

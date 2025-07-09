@@ -290,6 +290,50 @@ a:focus {
 	transform: rotate(360deg);
 }
 
+.business-card .action-dropdown
+{
+	position: absolute !important;
+	top: 10px !important;
+	right: 10px !important;
+}
+
+.business-card .action-dropdown .dropdown-menu
+{
+	padding: 0;
+}
+
+.business-card .action-dropdown .dropdown-menu .dropdown-item
+{
+	border-radius: 6px !important;
+}
+
+.business-card .action-dropdown .dropdown-menu .dropdown-item.active, .business-card .action-dropdown .dropdown-menu .dropdown-item:active
+{
+	background-color: #3a3a3a;
+}
+
+.business-card .action-button::before
+{
+	display: none;
+}
+
+.business-card .action-button
+{
+	background-color: var(--tcolor-lighter-green);
+	color: #2a2a2a;
+	padding: 0px 4px;
+	transition: all 500ms;
+}
+
+.business-card .action-button:hover {
+	color: black;
+	background-color: var(--tcolor-dark-green);
+}
+
+.business-card .action-button i {
+	line-height: normal;
+}
+
 .nav .nav-item .nav-link {
 	color: rgba(255, 255, 255, 0.8) !important;
 	border-bottom: 3px solid rgba(255, 255, 255, 0.1);

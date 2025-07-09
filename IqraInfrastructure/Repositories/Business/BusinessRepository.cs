@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Archived;
+using IqraCore.Entities.Business;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -12,11 +13,15 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly ILogger<BusinessRepository> _logger;
 
         private static readonly string CollectionName = "Business";
+        private static readonly string ArchivedCollectionName = "Business_archived";
+
         private static readonly string CounterCollectionName = CollectionName + "Counter";
 
         private static readonly string BusinessIdCounterField = "BusinessIdCounter";
 
         private readonly IMongoCollection<BusinessData> _businessCollection;
+        private readonly IMongoCollection<ArchivedRepoObject<BusinessData>> _businessArchivedCollection;
+
         private readonly IMongoCollection<BsonDocument> _businessCounterCollection;
 
         public BusinessRepository(ILogger<BusinessRepository> logger, IMongoClient client, string databaseName)
@@ -25,6 +30,7 @@ namespace IqraInfrastructure.Repositories.Business
 
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessCollection = database.GetCollection<BusinessData>(CollectionName);
+            _businessArchivedCollection = database.GetCollection<ArchivedRepoObject<BusinessData>>(ArchivedCollectionName);
             _businessCounterCollection = database.GetCollection<BsonDocument>(CounterCollectionName);
 
             ValidateBusinessIdCounter().GetAwaiter().GetResult();
@@ -160,6 +166,35 @@ namespace IqraInfrastructure.Repositories.Business
             var filter = Builders<BusinessData>.Filter.Eq(b => b.Id, businessId) & Builders<BusinessData>.Filter.Eq(b => b.MasterUserEmail, userEmail);
             var business = await _businessCollection.Find(filter).FirstOrDefaultAsync();
             return business != null;
+        }
+
+        public async Task<bool> MoveBusinessToArchivedAsync(long businessId, IClientSessionHandle session)
+        {
+            try
+            {
+                string businessIdString = businessId.ToString();
+
+                var businessDataFilter = Builders<BusinessData>.Filter.Eq(c => c.Id, businessId);
+                var businessToArchive = await _businessCollection.Find(businessDataFilter).FirstOrDefaultAsync();
+
+                if (businessToArchive == null)
+                {
+                    var archivedBusinessDataFilter = Builders<ArchivedRepoObject<BusinessData>>.Filter.Eq(c => c.ObjectId, businessIdString);
+                    var alreadyArchived = await _businessArchivedCollection.Find(archivedBusinessDataFilter).FirstOrDefaultAsync();
+                    return alreadyArchived != null;
+                }
+
+                var businessDataArchive = new ArchivedRepoObject<BusinessData>(businessIdString, businessToArchive);
+                await _businessArchivedCollection.InsertOneAsync(session, businessDataArchive);
+                await _businessCollection.DeleteOneAsync(session, businessDataFilter);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting business {BusinessId}: {Message}", businessId, ex.Message);
+                return false;
+            }
         }
     }
 }

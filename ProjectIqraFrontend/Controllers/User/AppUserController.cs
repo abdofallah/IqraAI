@@ -14,6 +14,7 @@ using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
 using PhoneNumbers;
+using static Google.Api.FieldInfo.Types;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
@@ -305,7 +306,7 @@ namespace ProjectIqraFrontend.Controllers.User
             return result;
         }
 
-        [HttpPost("/app/user/business/{businessId}/meta")]
+        [HttpPost("/app/user/businesses/{businessId}/meta")]
         public async Task<FunctionReturnResult<BusinessData?>> GetUserBusinessMeta(long businessId)
         {
             var result = new FunctionReturnResult<BusinessData?>();
@@ -378,7 +379,7 @@ namespace ProjectIqraFrontend.Controllers.User
             return result;
         }
 
-        [HttpPost("/app/user/business/{businessId}/app")]
+        [HttpPost("/app/user/businesses/{businessId}/app")]
         public async Task<FunctionReturnResult<BusinessApp?>> GetUserBusinessApp(long businessId)
         {
             var result = new FunctionReturnResult<BusinessApp?>();
@@ -459,7 +460,7 @@ namespace ProjectIqraFrontend.Controllers.User
             return result;
         }
 
-        [HttpPost("/app/user/business/{businessId}/whitelabeldomains")]
+        [HttpPost("/app/user/businesses/{businessId}/whitelabeldomains")]
         public async Task<FunctionReturnResult<List<BusinessWhiteLabelDomain>?>> GetUserBusinessWhiteLabelDomains(long businessId)
         {
             var result = new FunctionReturnResult<List<BusinessWhiteLabelDomain>?>();
@@ -539,7 +540,7 @@ namespace ProjectIqraFrontend.Controllers.User
             return result;
         }
 
-        [HttpPost("/app/user/business/{businessId}")]
+        [HttpPost("/app/user/businesses/{businessId}")]
         public async Task<FunctionReturnResult<GetUserBusinessFullReturnModel?>> GetUserBusiness(long businessId)
         {
             var result = new FunctionReturnResult<GetUserBusinessFullReturnModel?>();
@@ -766,6 +767,96 @@ namespace ProjectIqraFrontend.Controllers.User
             result.Success = true;
             result.Data = newBusinessResult.Data;
             return result;
+        }
+
+        [HttpPost("/app/user/business/delete")]
+        public async Task<FunctionReturnResult> DeleteUserBusiness([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "DeleteUserBusiness:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
+            {
+                result.Code = "DeleteUserBusiness:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "DeleteUserBusiness:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.DeleteBusinessDisableAt != null)
+            {
+                result.Code = "DeleteUserBusiness:4";
+                result.Message = "User does not have permission to delete businesses";
+
+                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
+                }
+
+                if (!string.IsNullOrEmpty(user.Permission.Business.DeleteBusinessDisableReason))
+                {
+                    result.Message += ": " + user.Permission.Business.DeleteBusinessDisableReason;
+                }
+
+                return result;
+            }
+
+            string? businessId = formData["BusinessId"];
+            if (string.IsNullOrWhiteSpace(businessId))
+            {
+                result.Code = "DeleteUserBusiness:5";
+                result.Message = "Invalid business id";
+                return result;
+            }
+
+            if (!long.TryParse(businessId, out long businessIdLong))
+            {
+                result.Code = "DeleteUserBusiness:6";
+                result.Message = "Invalid business id";
+                return result;
+            }
+
+            if (!user.Businesses.Contains(businessIdLong))
+            {
+                result.Code = "DeleteUserBusiness:7";
+                result.Message = "User does not have business with the given id.";
+                return result;
+            }
+
+            var deleteBusinessResult = await _businessManager.DeleteBusiness(businessIdLong);
+            if (!deleteBusinessResult.Success)
+            {
+                result.Code = "DeleteUserBusiness:" + deleteBusinessResult.Code;
+                result.Message = deleteBusinessResult.Message;
+                return result;
+            }
+
+            var removeUserBusinessResult = await _userManager.RemoveBusinessFromUser(userEmail, businessIdLong);
+            if (!removeUserBusinessResult.Success)
+            {
+                result.Code = "DeleteUserBusiness:" + removeUserBusinessResult.Code;
+                result.Message = removeUserBusinessResult.Message;
+                return result;
+            }
+
+            return result.SetSuccessResult();
         }
     }
 }

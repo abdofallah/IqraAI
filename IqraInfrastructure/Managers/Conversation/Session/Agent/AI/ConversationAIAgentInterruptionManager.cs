@@ -274,8 +274,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.InterruptingLLMService.AddUserMessage(builtMessage);
                 // TODO should we not save this message or check if already saved
 
-                _agentState.InterruptingLLMService.MessageStreamed += async (sender, responseObj) => {
-                    await CheckIfInterruptibleViaAIMessageStreamHandlerAsync(sender, responseObj, spokenSoFar, text, clientId, externalToken);
+                _agentState.InterruptingLLMService.MessageStreamed += async (sender, eventObject) => {
+                    await CheckIfInterruptibleViaAIMessageStreamHandlerAsync(sender, eventObject.ResponseObject, spokenSoFar, text, clientId, externalToken);
                 };
 
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(_agentState.MasterCancellationToken, externalToken); // Need agent master CTS access

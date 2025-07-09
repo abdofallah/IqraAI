@@ -12,6 +12,7 @@ using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Managers.Region;
+using MongoDB.Driver;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -21,6 +22,7 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly BusinessManagerInitalizationSettings _settings;
 
+        private readonly IMongoClient _mongoClient;
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository? _businessLogoRepository;
@@ -64,13 +66,15 @@ namespace IqraInfrastructure.Managers.Business
             ConversationAudioRepository? conversationAudioRepository,
             RegionManager? regionManager,
             OutboundCallCampaignRepository? outboundCallCampaignRepository,
-            OutboundCallQueueRepository? outboundCallQueueRepository
+            OutboundCallQueueRepository? outboundCallQueueRepository,
+            IMongoClient mongoClient
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
 
             _settings = settings;
 
+            _mongoClient = mongoClient;
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
@@ -371,6 +375,49 @@ namespace IqraInfrastructure.Managers.Business
             return result;
         }
 
+
+        public async Task<FunctionReturnResult> DeleteBusiness(long businessIdLong)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                using (var session = await _mongoClient.StartSessionAsync())
+                {
+                    try
+                    {
+                        session.StartTransaction();
+
+                        var deleteAppResult = await _businessAppRepository.MoveBusinessToArchivedAsync(businessIdLong, session);
+                        if (!deleteAppResult)
+                        {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteBusiness:1", "Failed to delete business app.");
+                        }
+
+                        var deleteDataResult = await _businessRepository.MoveBusinessToArchivedAsync(businessIdLong, session);
+                        if (!deleteDataResult) {
+                            await session.AbortTransactionAsync();
+                            return result.SetFailureResult("DeleteBusiness:2", "Failed to delete business data.");
+                        }
+
+                        await session.CommitTransactionAsync();
+
+                        return result.SetSuccessResult();
+                    }
+                    catch (Exception ex) {
+                        await session.AbortTransactionAsync();
+                        _logger.LogError(ex, "Error deleting business: {BusinessId}", businessIdLong);
+                        return result.SetFailureResult("DeleteBusiness:3", "Failed to delete business. Session transaction failure.");
+                    }
+                }
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error deleting business: {BusinessId}", businessIdLong);
+                return result.SetFailureResult("DeleteBusiness:EXCEPTION", "Failed to delete business.");
+            }      
+        }
+
         /**
          * 
          * Sub Managers
@@ -435,5 +482,6 @@ namespace IqraInfrastructure.Managers.Business
             if (!_settings.InitalizeMakeCallManager || _businessMakeCallManager == null) throw new Exception("Make Call manager not initialized");
             return _businessMakeCallManager;
         }
+
     }
 }

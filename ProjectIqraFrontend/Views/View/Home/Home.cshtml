@@ -258,29 +258,7 @@
                         errorCallback(error);
                     }
                 });
-            }
-
-            function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
-                $.ajax({
-                    url: '/app/user/business/add',
-                    type: 'POST',
-                    data: formData,
-                    dataType: "json",
-                    processData: false,
-                    contentType: false,
-                    success: (response) => {
-                        if (!response.success) {
-                            errorCallback(response);
-                            return;
-                        }
-
-                        successCallback(response.data);
-                    },
-                    error: (error) => {
-                        errorCallback(error);
-                    }
-                });
-            }
+            }     
         </script>
 
         <!-- PageLoader -->
@@ -348,6 +326,9 @@
 
                                             // Init The business Tab
                                             InitBusinessesTab();
+
+                                            // Init Usage table
+                                            InitUsageTab();
                                         },
                                         (userBusinessesError) => {
                                             AlertManager.createAlert({
@@ -377,9 +358,6 @@
                                             console.error("Error occured while fetching user plan data: ", userPlanDataError);
                                         },
                                     );
-
-                                    // Init Usage table
-                                    InitUsageTab();
                                 } else {
                                     CurrentBusinessesList = [];
 

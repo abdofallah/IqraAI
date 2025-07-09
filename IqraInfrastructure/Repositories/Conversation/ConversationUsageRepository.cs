@@ -75,33 +75,37 @@ namespace IqraInfrastructure.Repositories.Conversation
         }
 
 
-        // get stats grouped by a time unit (hour, day, etc.)
+        // get stats grouped by a time unit (hour, day, etc.) 
         public Task<List<AggregatedUsageStatsResult>> GetAggregatedUsageByPeriodAsync(string masterUserEmail, DateTime startDate, DateTime endDate, string groupByFormat)
         {
             var pipeline = new BsonDocument[]
             {
-                // 1. Match documents for the user and time frame
                 new BsonDocument("$match", new BsonDocument
                 {
                     { "MasterUserEmail", masterUserEmail },
                     { "CreatedAt", new BsonDocument { { "$gte", startDate }, { "$lt", endDate } } }
                 }),
-                // 2. Group by the specified date format and calculate sums
+
                 new BsonDocument("$group", new BsonDocument
                 {
-                    { "_id", new BsonDocument("$dateToString", new BsonDocument
+                    { "_id", new BsonDocument // Composite _id
                         {
-                            { "format", groupByFormat },
-                            { "date", "$CreatedAt" },
-                            { "timezone", "UTC" } // Important for consistency
-                        })
+                            { "period", new BsonDocument("$dateToString", new BsonDocument
+                                {
+                                    { "format", groupByFormat },
+                                    { "date", "$CreatedAt" },
+                                    { "timezone", "UTC" }
+                                })
+                            },
+                            { "businessId", "$BusinessId" }
+                        }
                     },
                     { "TotalMinutes", new BsonDocument("$sum", "$TotalMinutesUsed") },
                     { "TotalCost", new BsonDocument("$sum", "$TotalCost") },
                     { "TotalCalls", new BsonDocument("$sum", 1) }
                 }),
-                // 3. Sort by the group key (date/hour)
-                new BsonDocument("$sort", new BsonDocument("_id", 1))
+                // Sort by the period first, then by business for consistency
+                new BsonDocument("$sort", new BsonDocument { { "_id.period", 1 }, { "_id.businessId", 1 } })
             };
 
             return _usageCollection.Aggregate<AggregatedUsageStatsResult>(pipeline).ToListAsync();

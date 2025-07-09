@@ -1,4 +1,5 @@
 /** Global Variables */
+var isDeletingBusiness = false;
 
 /** Element Varables **/
 const businessTab = $("#business-tab");
@@ -17,6 +18,51 @@ const addNewBusinessDefaultLanguageSelect = addNewBusinessModal.find("#addNewBus
 const addNewBusinessButton = addNewBusinessModal.find("#addNewBusinessButton");
 const addNewBusinessButtonSpinner = addNewBusinessButton.find(".save-button-spinner");
 
+/** API Functions **/
+function AddNewUserBusinessToAPI(formData, successCallback, errorCallback) {
+	$.ajax({
+		url: '/app/user/business/add',
+		type: 'POST',
+		data: formData,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+		success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+			successCallback(response.data);
+		},
+		error: (error) => {
+			errorCallback(error);
+		}
+	});
+}
+
+function DeleteBusinessFromAPI(formData, successCallback, errorCallback) {
+    $.ajax({
+        url: '/app/user/business/delete',
+		type: 'POST',
+		data: formData,
+		dataType: "json",
+		processData: false,
+		contentType: false,
+        success: (response) => {
+			if (!response.success) {
+				errorCallback(response);
+				return;
+			}
+
+            successCallback(response.data);
+        },
+		error: (error) => {
+			errorCallback(error);
+		}
+    });
+}
+
 /** Functions **/
 function MoveToBusinessPage(BusinessId) {
 	window.location.href = "/business/" + BusinessId;
@@ -26,7 +72,16 @@ function CreateUserBusinessCard(businessData) {
 	let element = `
                 <div class="col-lg-4 col-md-6 col-12">
                     <a href="/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
-                        <div class="d-flex flex-row align-items-center justify-content-start">
+						<div class="dropdown action-dropdown dropstart dropdown-menu-end">
+							<button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
+							<ul class="dropdown-menu">
+								<li>
+									<span class="dropdown-item text-danger" data-business-id="${businessData.id}" button-type="delete-business"><i class="fa-solid fa-trash me-2"></i>Delete</span>
+								</li>
+							</ul>
+						</div>
+						
+						<div class="d-flex flex-row align-items-center justify-content-start">
                             <img src="${BusinessLogoURL + "/" + businessData.logoURL}.webp">
                             <h4>${businessData.name}</h4>
                         </div>
@@ -121,8 +176,14 @@ function InitBusinessesTab() {
         SetBusinessCardH4Width();
 	})
 
-	$(document).on("click", ".business-card", (event) => {
+	BusinessesList.on("click", ".business-card", (event) => {
 		event.preventDefault();
+		event.stopPropagation();
+
+		// check if target was button or its icon
+		if ($(event.target).closest(".dropdown").length != 0) {
+			return;
+        }
 
 		let currentCardElement = $(event.currentTarget);
 		let businessDataId = currentCardElement.attr("data-business-id");
@@ -151,6 +212,68 @@ function InitBusinessesTab() {
 		} else {
 			MoveToBusinessPage(businessDataId);
 		}
+	});
+
+	BusinessesList.on("click", ".business-card [button-type=delete-business]", async (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+
+		if (isDeletingBusiness) {
+			AlertManager.createAlert({
+				type: "warning",
+				message: "Please wait as there is another business being deleted already.",
+				timeout: 3000,
+			});
+
+			return;
+		}
+
+        let currentCardElement = $(event.currentTarget);
+		let businessDataId = currentCardElement.attr("data-business-id");
+
+		var businessData = CurrentBusinessesList.find((business) => business.id == businessDataId);
+
+		const confirmDialog = new BootstrapConfirmDialog({
+			title: `Delete Business (${businessData.name})`,
+			message: "Are you sure you want to delete this business? This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmButtonClass: "btn-danger",
+			modalClass: "modal-lg",
+		});
+
+		const confirmResult = await confirmDialog.show();
+		if (!confirmResult) {
+			return;
+		}
+
+		isDeletingBusiness = true;
+
+		const formData = new FormData();
+        formData.append("businessId", businessDataId);
+
+		DeleteBusinessFromAPI(
+			formData,
+			(successResponse) => {
+				var businessIndex = CurrentBusinessesList.findIndex((business) => business.id == businessDataId);
+				CurrentBusinessesList.splice(businessIndex, 1);
+
+				BusinessesList.find(`.business-card[data-business-id=${businessDataId}]`).parent().remove();
+
+				isDeletingBusiness = false;
+			},
+			(errorResponse) => {
+				AlertManager.createAlert({
+					type: "danger",
+					message: "Error occured while adding deleting user business. Check browser console for logs.",
+					timeout: 5000,
+				});
+
+				console.error("Error occured while adding deleting user business: ", errorResponse);
+
+				isDeletingBusiness = false;
+			}
+		);
 	});
 
 	addNewBusinessNameInput.on("input", (event) => {

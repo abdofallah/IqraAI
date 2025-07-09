@@ -387,6 +387,26 @@ namespace IqraInfrastructure.Managers.User
                 .Set(u => u.VerifyEmailToken, null);
 
             await _userDatabase.UpdateUser(email, updateDefinition);
-        } 
+        }
+
+        public async Task<FunctionReturnResult> RemoveBusinessFromUser(string userEmail, long businessId)
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                var updateDefinition = Builders<UserData>.Update
+                .Pull(u => u.Businesses, businessId);
+
+                await _userDatabase.UpdateUser(userEmail, updateDefinition);
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to remove business from user, {userEmail}, {businessId}", userEmail, businessId);
+                return result.SetFailureResult("RemoveBusinessFromUser:EXCEPTION", "Failed to remove business from user");
+            }
+        }
     }
 }

@@ -44,7 +44,7 @@
 
                 <!-- Summary Cards -->
                 <div class="row mb-3">
-                    <div class="col-12 col-md-12 col-lg-6 mb-2 mb-md-2 mb-lg-0">
+                    <div class="col-12">
                         <!-- Total Calls-->
                         <div class="analytics-card half-card mb-2">
                             <h6 class="w-100 mb-0">Total Calls</h6>
@@ -52,20 +52,29 @@
                                 <h4 class="m-0" id="usageTotalCallText">...</h4>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12 col-md-12 col-lg-6 mb-2">
                         <!-- Total Call Duration -->
-                        <div class="analytics-card half-card mb-0">
+                        <div class="analytics-card half-card mb-2">
                             <h6 class="w-100 mb-0">Total Call Duration</h6>
                             <div class="d-flex flex-row justify-content-end">
                                 <h4 class="m-0" id="usageTotalCallDurationText">...</h4>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-12 col-md-12 col-lg-6 mb-0">
                         <!-- Average Call Duration -->
-                        <div class="analytics-card half-card mb-2">
+                        <div class="analytics-card half-card mb-0">
                             <h6 class="w-100 mb-0">Average Call Duration</h6>
                             <div class="d-flex flex-row justify-content-end">
                                 <h4 class="m-0" id="usageAverageCallDurationText">...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-12 col-lg-6 mb-2">
+                        <!-- Total Cost -->
+                        <div class="analytics-card half-card mb-2">
+                            <h6 class="w-100 mb-0">Total Cost</h6>
+                            <div class="d-flex flex-row justify-content-end">
+                                <h4 class="m-0" id="usageTotalCostText">...</h4>
                             </div>
                         </div>
                         <!-- Average Call Cost -->
@@ -77,6 +86,21 @@
                         </div>
                     </div>
 
+                </div>
+
+                <!-- Calls Chart Card -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Total Calls Summary</h5>
+                        <div style="height: 300px; position: relative;">
+                            <div id="usageCallsChartSpinner" class="d-flex justify-content-center align-items-center h-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <canvas id="usageCallsChart" class="d-none"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Duration Chart Card -->
@@ -92,19 +116,19 @@
                             <canvas id="usageChart" class="d-none"></canvas>
                         </div>
                     </div>
-                </div>
+                </div> 
 
-                <!-- Calls Chart Card -->
+                <!-- Cost Chart Card -->
                 <div class="card mb-3">
                     <div class="card-body">
-                        <h5 class="card-title mb-3">Total Calls Summary</h5>
+                        <h5 class="card-title mb-3">Total Cost Summary</h5>
                         <div style="height: 300px; position: relative;">
-                            <div id="usageCallsChartSpinner" class="d-flex justify-content-center align-items-center h-100">
+                            <div id="usageCostChartSpinner" class="d-flex justify-content-center align-items-center h-100">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </div>
-                            <canvas id="usageCallsChart" class="d-none"></canvas>
+                            <canvas id="usageCostChart" class="d-none"></canvas>
                         </div>
                     </div>
                 </div>
@@ -122,8 +146,8 @@
                                     <tr>
                                         <th>Date & Time</th>
                                         <th>Business</th>
-                                        <th>Minutes Used</th>
-                                        <th>Cost</th>
+                                        <th>Duration</th>
+                                        <th>Billing Details</th>
                                         <th>Session ID</th>
                                     </tr>
                                 </thead>

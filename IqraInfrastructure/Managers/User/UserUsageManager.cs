@@ -2,11 +2,8 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Usage;
 using IqraCore.Models.User;
-using IqraInfrastructure.Managers.Conversation.Session;
-using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Globalization;
 
@@ -16,16 +13,14 @@ namespace IqraInfrastructure.Managers.User
     {
         private readonly ILogger<UserUsageManager> _logger;
         private readonly ConversationUsageRepository _conversationUsageRepository;
-        private readonly BusinessRepository _businessRepository;
 
         public UserUsageManager(
             ILogger<UserUsageManager> logger,
-            ConversationUsageRepository usageRepository,
-            BusinessRepository businessRepository)
+            ConversationUsageRepository usageRepository
+        )
         {
             _logger = logger;
             _conversationUsageRepository = usageRepository;
-            _businessRepository = businessRepository;
         }
 
         public async Task<FunctionReturnResult<GetUsageSummaryModel?>> GetUsageSummaryAsync(string masterUserEmail, GetUsageSummaryRequestModel request)
@@ -98,84 +93,82 @@ namespace IqraInfrastructure.Managers.User
                 }
 
                 var aggregatedData = await _conversationUsageRepository.GetAggregatedUsageByPeriodAsync(masterUserEmail, startDate, endDate, groupByFormat);
-                var usageDict = aggregatedData.ToDictionary(d => d.Id, d => d);
+
+                var uniqueBusinessIds = aggregatedData.Select(d => d.BusinessId).Distinct().ToList();
+                summary.DurationChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
+                summary.CallsChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
+                summary.CostChart.Datasets = uniqueBusinessIds.Select(id => new StackedBarDataset { BusinessId = id }).ToList();
+
+                var dataLookup = aggregatedData.ToDictionary(d => $"{d.Period}_{d.BusinessId}");
+
+                var xLabels = new List<string>();
 
                 switch (request.GroupBy)
                 {
                     case UsageGroupBy.Hour:
-                        // Loop 24 times for each hour of the selected day.
                         for (int i = 0; i < 24; i++)
                         {
                             var currentHour = startDate.AddHours(i);
-                            var key = currentHour.Hour.ToString("D2"); // "00", "01", ... "23"
+                            var periodKey = currentHour.Hour.ToString("D2");
+                            xLabels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
 
-                            summary.DurationChart.Labels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
-                            summary.CallsChart.Labels.Add(currentHour.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            // For each business, find its data for this period
+                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
+                            {
+                                var businessId = uniqueBusinessIds[j];
+                                var lookupKey = $"{periodKey}_{businessId}";
+                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
 
-                            if (usageDict.TryGetValue(key, out var stats))
-                            {
-                                summary.DurationChart.Data.Add(stats.TotalMinutes);
-                                summary.CallsChart.Data.Add(stats.TotalCalls);
-                            }
-                            else
-                            {
-                                summary.DurationChart.Data.Add(0);
-                                summary.CallsChart.Data.Add(0);
+                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
+                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
+                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
                             }
                         }
                         break;
 
                     case UsageGroupBy.Month:
-                        // Loop from the start month to the end month.
-                        var currentMonth = new DateTime(startDate.Year, startDate.Month, 1);
-                        while (currentMonth <= inclusiveEndDate)
+                        for (var currentMonth = new DateTime(startDate.Year, startDate.Month, 1); currentMonth <= inclusiveEndDate; currentMonth = currentMonth.AddMonths(1))
                         {
-                            var key = currentMonth.ToString("yyyy-MM");
-
-                            summary.DurationChart.Labels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
-                            summary.CallsChart.Labels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
-
-                            if (usageDict.TryGetValue(key, out var stats))
+                            var periodKey = currentMonth.ToString("yyyy-MM");
+                            xLabels.Add(currentMonth.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
                             {
-                                summary.DurationChart.Data.Add(stats.TotalMinutes);
-                                summary.CallsChart.Data.Add(stats.TotalCalls);
-                            }
-                            else
-                            {
-                                summary.DurationChart.Data.Add(0);
-                                summary.CallsChart.Data.Add(0);
-                            }
+                                var businessId = uniqueBusinessIds[j];
+                                var lookupKey = $"{periodKey}_{businessId}";
+                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
 
-                            // Increment to the next month for the next iteration.
-                            currentMonth = currentMonth.AddMonths(1);
+                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
+                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
+                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
+                            }
                         }
                         break;
-
                     case UsageGroupBy.Day:
                     default:
-                        // Loop from the start day to the end day.
                         for (var currentDay = startDate; currentDay <= inclusiveEndDate; currentDay = currentDay.AddDays(1))
                         {
-                            var key = currentDay.ToString("yyyy-MM-dd");
-
-                            summary.DurationChart.Labels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
-                            summary.CallsChart.Labels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
-
-                            if (usageDict.TryGetValue(key, out var stats))
+                            var periodKey = currentDay.ToString("yyyy-MM-dd");
+                            xLabels.Add(currentDay.ToString(labelFormat, CultureInfo.InvariantCulture));
+                            for (int j = 0; j < uniqueBusinessIds.Count; j++)
                             {
-                                summary.DurationChart.Data.Add(stats.TotalMinutes);
-                                summary.CallsChart.Data.Add(stats.TotalCalls);
-                            }
-                            else
-                            {
-                                summary.DurationChart.Data.Add(0);
-                                summary.CallsChart.Data.Add(0);
+                                var businessId = uniqueBusinessIds[j];
+                                var lookupKey = $"{periodKey}_{businessId}";
+                                var dataExists = dataLookup.TryGetValue(lookupKey, out var stats);
+
+                                summary.DurationChart.Datasets[j].Data.Add(dataExists ? stats.TotalMinutes : 0);
+                                summary.CallsChart.Datasets[j].Data.Add(dataExists ? stats.TotalCalls : 0);
+                                summary.CostChart.Datasets[j].Data.Add(dataExists ? stats.TotalCost : 0);
                             }
                         }
                         break;
                 }
 
+                summary.DurationChart.Labels = xLabels;
+                summary.CallsChart.Labels = xLabels;
+                summary.CostChart.Labels = xLabels;
+
                 summary.ChartTitle = $"Usage from {startDate:MMM d, yyyy} to {inclusiveEndDate:MMM d, yyyy}";
+
                 return result.SetSuccessResult(summary);
             }
             catch (Exception ex)
@@ -238,7 +231,7 @@ namespace IqraInfrastructure.Managers.User
                     return returnResult;
                 }).ToList();
 
-                // Set cursors (This logic is identical to your reference code)
+                // Set cursors
                 if (fetchNext)
                 {
                     paginatedResult.HasNextPage = hasMore;

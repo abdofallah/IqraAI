@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Archived;
+using IqraCore.Entities.Business;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -11,15 +12,20 @@ namespace IqraInfrastructure.Repositories.Business
         private readonly ILogger<BusinessAppRepository> _logger;
 
         private readonly string CollectionName = "BusinessApp";
+        private readonly string ArchivedCollectionName = "BusinessApp_archived";
 
+        private readonly IMongoClient _client;
         private readonly IMongoCollection<BusinessApp> _businessAppCollection;
+        private readonly IMongoCollection<ArchivedRepoObject<BusinessApp>> _businessAppArchivedCollection;
 
         public BusinessAppRepository(ILogger<BusinessAppRepository> logger, IMongoClient client, string databaseName)
         {
             _logger = logger;
+            _client = client;
 
             IMongoDatabase database = client.GetDatabase(databaseName);
             _businessAppCollection = database.GetCollection<BusinessApp>(CollectionName);
+            _businessAppArchivedCollection = database.GetCollection<ArchivedRepoObject<BusinessApp>>(ArchivedCollectionName);
         }
 
         public Task<List<BusinessApp>> GetBusinessesAppAsync()
@@ -198,6 +204,35 @@ namespace IqraInfrastructure.Repositories.Business
             var update = Builders<BusinessApp>.Update.Set(b => b.Context.Products.FirstMatchingElement(), newBusinessContextProduct);
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> MoveBusinessToArchivedAsync(long businessId, IClientSessionHandle session)
+        {
+            try
+            {
+                string businessIdString = businessId.ToString();
+
+                var businessAppFilter = Builders<BusinessApp>.Filter.Eq(c => c.Id, businessId);
+                var businessToArchive = await _businessAppCollection.Find(businessAppFilter).FirstOrDefaultAsync();
+
+                if (businessToArchive == null)
+                {
+                    var archivedBusinessAppFilter = Builders<ArchivedRepoObject<BusinessApp>>.Filter.Eq(c => c.ObjectId, businessIdString);
+                    var alreadyArchived = await _businessAppArchivedCollection.Find(archivedBusinessAppFilter).FirstOrDefaultAsync();
+                    return alreadyArchived != null;
+                }
+
+                var businessAppArchive = new ArchivedRepoObject<BusinessApp>(businessIdString, businessToArchive);
+                await _businessAppArchivedCollection.InsertOneAsync(session, businessAppArchive);
+                await _businessAppCollection.DeleteOneAsync(session, businessAppFilter);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting business {BusinessId}: {Message}", businessId, ex.Message);
+                return false;
+            }
         }
 
         /**

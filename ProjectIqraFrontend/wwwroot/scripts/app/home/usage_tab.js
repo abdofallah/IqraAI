@@ -1,29 +1,47 @@
-﻿// --- Global Variables for Usage Tab ---
+﻿// Global Variables for Usage Tab
 let usageChartInstance = null;
 let usageCallsChartInstance = null;
+let usageCostChartInstance = null;
+
 let currentUsagePage = 1;
 let currentUsageNextCursor = null;
 let currentUsagePrevCursor = null;
 let isUsageLoading = false;
 const USAGE_PAGE_SIZE = 10;
 
-// --- Element Variables ---
+const PLAN_MODELS = {
+    StandardPayAsYouGo: 0,
+    VolumeBasedTiered: 1,
+    FixedPricePackage: 2
+};
+
+/** Element Variables **/
 const usageTab = $("#usage-tab");
+
 // New Controls
 const usageDateRangePicker = usageTab.find("#usageDateRangePicker");
 const usageGroupBySelect = usageTab.find("#usageGroupBySelect");
-// Duration Chart
-const usageChartCanvas = usageTab.find("#usageChart");
-const usageChartSpinner = usageTab.find("#usageChartSpinner");
-// Calls Chart
-const usageCallsChartCanvas = usageTab.find("#usageCallsChart");
-const usageCallsChartSpinner = usageTab.find("#usageCallsChartSpinner");
+
 // Summary Cards
 const usageTotalCallText = usageTab.find("#usageTotalCallText");
 const usageTotalCallDurationText = usageTab.find("#usageTotalCallDurationText");
 const usageAverageCallDurationText = usageTab.find("#usageAverageCallDurationText");
 const usageAverageCallCostText = usageTab.find("#usageAverageCallCostText");
-// History Table (unchanged)
+const usageTotalCostText = usageTab.find("#usageTotalCostText");
+
+// Duration Chart
+const usageChartCanvas = usageTab.find("#usageChart");
+const usageChartSpinner = usageTab.find("#usageChartSpinner");
+
+// Calls Chart
+const usageCallsChartCanvas = usageTab.find("#usageCallsChart");
+const usageCallsChartSpinner = usageTab.find("#usageCallsChartSpinner");
+
+// Cost Chart
+const usageCostChartCanvas = usageTab.find("#usageCostChart");
+const usageCostChartSpinner = usageTab.find("#usageCostChartSpinner");
+
+// History Table
 const usageHistoryTableBody = usageTab.find("#usageHistoryTable tbody");
 const usagePagination = {
     controls: usageTab.find("#usagePaginationControls"),
@@ -70,36 +88,54 @@ function FetchUsageHistoryFromAPI(pageSize, nextCursor, prevCursor, successCallb
 }
 
 
-// --- Chart Functions ---
-function createUsageChart(canvas, datasetLabel, yAxisCallback) {
+// Chart Functions
+function getRandomColor(seed) {
+    const r = Math.floor((Math.abs(Math.sin(seed * 10)) * 255) % 180); // Keep it less saturated
+    const g = Math.floor((Math.abs(Math.sin(seed * 11)) * 255) % 180);
+    const b = Math.floor((Math.abs(Math.sin(seed * 12)) * 255) % 180);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function createUsageChart(canvas, isStacked, yAxisCallback) {
     const ctx = canvas[0].getContext('2d');
     return new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{
-                label: datasetLabel,
-                data: [],
-                backgroundColor: 'rgb(231 248 143 / 80%)',
-                borderColor: '#e7f88f',
-                borderWidth: 1,
-                borderRadius: 4,
-                barThickness: 'flex'
-            }]
-        },
+        data: { labels: [], datasets: [] },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { mode: 'index' },
             scales: {
-                y: { beginAtZero: true, ticks: { callback: yAxisCallback } },
-                x: { grid: { display: false } }
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: yAxisCallback
+                    },
+                    stacked: isStacked
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    stacked: isStacked
+                }
             },
             plugins: {
-                legend: { display: false },
+                legend: {
+                    position: 'top'
+                },
                 tooltip: {
                     callbacks: {
                         label: function (context) {
-                            return `${context.dataset.label}: ${context.formattedValue}`;
+                            const formattedValue = yAxisCallback(context.parsed.y);
+                            return ` ${context.dataset.label}: ${formattedValue}`;
+                        },
+                        footer: function (tooltipItems) {
+                            let total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0);
+
+                            const formattedTotal = yAxisCallback(total);
+
+                            return `\nTotal: ${formattedTotal}`;
                         }
                     }
                 }
@@ -108,16 +144,41 @@ function createUsageChart(canvas, datasetLabel, yAxisCallback) {
     });
 }
 
+function updateStackedChart(chartInstance, chartData) {
+    chartInstance.data.labels = chartData.labels;
+
+    chartInstance.data.datasets = chartData.datasets.map((ds, index) => {
+        let businessName = `Unknown (ID: ${ds.businessId})`;
+        const business = CurrentBusinessesList.find(b => b.id == ds.businessId);
+        if (business) {
+            businessName = business.name;
+        }
+
+        return {
+            label: businessName,
+            data: ds.data,
+            backgroundColor: getRandomColor(index + 1),
+            borderColor: '#ffffff',
+            borderWidth: 1
+        };
+    });
+
+    chartInstance.update();
+}
+
 function loadUsageOverview() {
     // 1. Show loading state
     usageChartSpinner.removeClass('d-none');
     usageChartCanvas.addClass('d-none');
     usageCallsChartSpinner.removeClass('d-none');
     usageCallsChartCanvas.addClass('d-none');
+    usageCostChartSpinner.removeClass('d-none');
+    usageCostChartCanvas.addClass('d-none');
     usageTotalCallText.text("...");
     usageTotalCallDurationText.text("...");
     usageAverageCallDurationText.text("...");
     usageAverageCallCostText.text("...");
+    usageTotalCostText.text("...");
 
     // 2. Get parameters from controls
     const picker = usageDateRangePicker.data('daterangepicker');
@@ -139,27 +200,25 @@ function loadUsageOverview() {
     // 3. Call the updated API function
     FetchUsageSummaryFromAPI(startDate, endDate, groupBy,
         (data) => {
-            // 4. Update Summary Cards
+            // Update Summary Cards
             usageTotalCallText.text(data.totalCalls.toLocaleString());
             usageTotalCallDurationText.text(`${data.totalDurationMinutes.toFixed(2)} min`);
             usageAverageCallDurationText.text(`${data.averageDurationSeconds.toFixed(1)} sec`);
-            usageAverageCallCostText.text(formatCurrency(data.averageCallCost)); // Assumes you have a formatCurrency helper
+            usageAverageCallCostText.text(formatCurrency(data.averageCallCost));
+            usageTotalCostText.text(formatCurrency(data.totalCost));
 
-            // 5. Update Duration Chart
-            usageChartInstance.data.labels = data.durationChart.labels;
-            usageChartInstance.data.datasets[0].data = data.durationChart.data;
-            usageChartInstance.update();
+            // Update all charts
+            updateStackedChart(usageChartInstance, data.durationChart);
+            updateStackedChart(usageCallsChartInstance, data.callsChart);
+            updateStackedChart(usageCostChartInstance, data.costChart);
 
-            // 6. Update Calls Chart
-            usageCallsChartInstance.data.labels = data.callsChart.labels;
-            usageCallsChartInstance.data.datasets[0].data = data.callsChart.data;
-            usageCallsChartInstance.update();
-
-            // 7. Hide loading state
+            // Hide loading state
             usageChartSpinner.addClass('d-none');
             usageChartCanvas.removeClass('d-none');
             usageCallsChartSpinner.addClass('d-none');
             usageCallsChartCanvas.removeClass('d-none');
+            usageCostChartSpinner.addClass('d-none');
+            usageCostChartCanvas.removeClass('d-none');
         },
         (error) => {
             console.error("Failed to load usage overview data", error);
@@ -172,26 +231,49 @@ function loadUsageOverview() {
 }
 
 
-// --- Table & Pagination Functions ---
+// Table & Pagination Functions
 
 function renderUsageHistoryTable(items) {
     usageHistoryTableBody.empty();
     if (!items || items.length === 0) {
         usageHistoryTableBody.append(`
             <tr>
-                <td colspan="5" class="text-center p-4 text-muted">No usage history found for this period.</td>
+                <td colspan="5" class="text-center p-4 text-muted">No usage history found.</td>
             </tr>
         `);
         return;
     }
 
     items.forEach(item => {
+        let billingDetailsHtml = '';
+
+        if (item.planModel.value === PLAN_MODELS.FixedPricePackage) {
+            billingDetailsHtml = `
+                Deducted: <strong>${Number(item.totalMinutesDeducted).toFixed(3)} min</strong>
+            `;
+
+            if (item.totalOverageCost > 0) {
+                billingDetailsHtml += `
+                    <br>
+                    <small class="text-danger">Overage: ${formatCurrency(item.totalOverageCost)}</small>
+                `;
+            }
+        } else {
+            billingDetailsHtml = formatCurrency(item.totalCost);
+        }
+
+        var businessName = `Unknown (${item.businessId})`;
+        var businessData = CurrentBusinessesList.find(b => b.id == item.businessId);
+        if (businessData) {
+            businessName = businessData.name;
+        }
+
         const rowHtml = `
             <tr>
                 <td>${formatDate(item.timestamp)}</td>
-                <td>${item.businessName}</td>
-                <td>${Number(item.minutesUsed).toFixed(2)} min</td>
-                <td>${formatCurrency(item.totalCost)}</td>
+                <td>${businessName}</td>
+                <td>${Number(item.minutesUsed).toFixed(3)} min</td>
+                <td>${billingDetailsHtml}</td>
                 <td><code>${item.conversationSessionId}</code></td>
             </tr>
         `;
@@ -277,7 +359,7 @@ function loadUsageHistory(cursor = null, direction = 'next') {
 }
 
 
-// --- Event Handlers ---
+// Event Handlers
 function initializeUsageControls() {
     const start = moment.utc().startOf('month');
     const end = moment.utc();
@@ -381,8 +463,17 @@ function InitUsageTab() {
         return;
     }
 
-    usageChartInstance = createUsageChart(usageChartCanvas, 'Minutes Used', (value) => value + ' min');
-    usageCallsChartInstance = createUsageChart(usageCallsChartCanvas, 'Total Calls', (value) => Number.isInteger(value) ? value : '');
+    usageChartInstance = createUsageChart(usageChartCanvas, true, (value) => {
+        return `${Number(value).toFixed(3)} min`;
+    });
+
+    usageCallsChartInstance = createUsageChart(usageCallsChartCanvas, true, (value) => {
+        return Number.isInteger(value) ? value : '';
+    });
+
+    usageCostChartInstance = createUsageChart(usageCostChartCanvas, true, (value) => {
+        return formatCurrency(value);
+    });
 
     initializeUsageControls();
 

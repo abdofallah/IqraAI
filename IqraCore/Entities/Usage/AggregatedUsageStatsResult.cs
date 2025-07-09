@@ -5,7 +5,10 @@ namespace IqraCore.Entities.Usage
     public class AggregatedUsageStatsResult
     {
         [BsonElement("_id")]
-        public string Id { get; set; }
+        public BsonDocument Id { get; set; }
+
+        public string Period => Id["period"].AsString;
+        public long BusinessId => Id["businessId"].AsInt64;
 
         [BsonRepresentation(BsonType.Decimal128)]
         public decimal TotalMinutes { get; set; }
