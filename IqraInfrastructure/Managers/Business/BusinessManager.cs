@@ -1,17 +1,17 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
-using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
-using Microsoft.AspNetCore.Http;
-using IqraInfrastructure.Managers.Telephony;
-using Microsoft.Extensions.Logging;
-using IqraCore.Entities.Configuration;
 using IqraInfrastructure.Managers.Languages;
-using IqraInfrastructure.Repositories.Conversation;
-using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Telephony;
+using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Repositories.Conversation;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace IqraInfrastructure.Managers.Business
@@ -33,6 +33,7 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly AudioFileProcessor _audioProcessor;
 
+        private readonly LanguagesManager? _languagesManager;
         private readonly IntegrationsManager? _integrationsManager;
         private readonly ModemTelManager? _modemTelManager;
 
@@ -67,7 +68,8 @@ namespace IqraInfrastructure.Managers.Business
             RegionManager? regionManager,
             OutboundCallCampaignRepository? outboundCallCampaignRepository,
             OutboundCallQueueRepository? outboundCallQueueRepository,
-            IMongoClient mongoClient
+            IMongoClient mongoClient,
+            LanguagesManager languagesManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -85,6 +87,7 @@ namespace IqraInfrastructure.Managers.Business
 
             _audioProcessor = new AudioFileProcessor();
 
+            _languagesManager = langaugesManager;
             _integrationsManager = integrationsManager;
             _modemTelManager = modemTelManager;
 
@@ -161,17 +164,79 @@ namespace IqraInfrastructure.Managers.Business
          *
         **/
 
-        public async Task<FunctionReturnResult<BusinessData?>> AddBusiness(BusinessData businessData, IFormFile? businessLogoFile)
+        public async Task<FunctionReturnResult<BusinessData?>> AddBusiness(string userEmail, IFormCollection formData, IClientSessionHandle mongoSession)
         {
             var result = new FunctionReturnResult<BusinessData?>();
 
-            if (_businessLogoRepository == null || _businessSettingsManager == null)
+            string? businessName = formData["BusinessName"];
+            string? businessDefaultLanguage = formData["BusinessDefaultLanguage"];
+            IFormFile? businessLogoFile = formData.Files.GetFile("BusinessLogo");
+
+            if (string.IsNullOrWhiteSpace(businessName) || businessName.Length > 64)
             {
-                _logger.LogError("BusinessLogoRepository or BusinessSettingsManager is null but should not be as AddBusiness is being used.");
-                result.Code = "AddBusiness:-1";
-                result.Message = "CRITICAL: Missing Dependency while it should not be.";
+                result.Code = "AddBusiness:5";
+                result.Message = "Invalid business name. Minimum length is 1 and maximum length is 64.";
                 return result;
             }
+
+            // Valdiate Langauge
+            if (string.IsNullOrWhiteSpace(businessDefaultLanguage))
+            {
+                result.Code = "AddUserBusiness:6";
+                result.Message = "Missing business default language.";
+                return result;
+            }
+            var langaugeData = await _languagesManager.GetLanguageByCode(businessDefaultLanguage);
+            if (!langaugeData.Success)
+            {
+                result.Code = "AddUserBusiness:" + langaugeData.Code;
+                result.Message = langaugeData.Message;
+                return result;
+            }
+            if (langaugeData.Data.DisabledAt != null)
+            {
+                result.Code = "AddUserBusiness:7";
+                result.Message = "Business default language is disabled.";
+                return result;
+            }
+
+            // Valdiate Business Logo if exists
+            if (businessLogoFile != null)
+            {
+                int imageResult = ImageHelper.ValidateBusinessLogoFile(businessLogoFile);
+                if (imageResult == 0)
+                {
+                    result.Code = "AddUserBusiness:8";
+                    result.Message = "Business logo too large. Allowed file size is 5MB.";
+                    return result;
+                }
+
+                if (imageResult == 1)
+                {
+                    result.Code = "AddUserBusiness:9";
+                    result.Message = "Invalid business logo file. Allowed file types are: png, jpg, jpeg, webp, gif.";
+                    return result;
+                }
+
+                if (imageResult != 200)
+                {
+                    result.Code = "AddUserBusiness:10";
+                    result.Message = "Failed to validate business logo.";
+                    return result;
+                }
+            }
+
+            BusinessData businessData = new BusinessData()
+            {
+                Name = businessName,
+                MasterUserEmail = userEmail,
+                DefaultLanguage = businessDefaultLanguage,
+                Languages = new List<string> { businessDefaultLanguage },
+                Tutorials = new Dictionary<string, object>()
+                    {
+                        { "NewBusinessTutorial", true}
+                    }
+            };
 
             long businessId = await _businessRepository.GetNextBusinessId();
             businessData.Id = businessId;
@@ -225,8 +290,8 @@ namespace IqraInfrastructure.Managers.Business
             businessData.WhiteLabelDomainIds.Add(businessWhiteLabelId);
             **/
 
-            await _businessAppRepository.AddBusinessAppAsync(businessApp);
-            await _businessRepository.AddBusinessAsync(businessData);
+            await _businessAppRepository.AddBusinessAppAsync(businessApp, mongoSession);
+            await _businessRepository.AddBusinessAsync(businessData, mongoSession);
 
             result.Success = true;
             result.Data = businessData;
@@ -376,46 +441,23 @@ namespace IqraInfrastructure.Managers.Business
         }
 
 
-        public async Task<FunctionReturnResult> DeleteBusiness(long businessIdLong)
+        public async Task<FunctionReturnResult> DeleteBusiness(long businessIdLong, IClientSessionHandle mongoSession)
         {
             var result = new FunctionReturnResult();
 
-            try
+            var deleteAppResult = await _businessAppRepository.MoveBusinessToArchivedAsync(businessIdLong, mongoSession);
+            if (!deleteAppResult)
             {
-                using (var session = await _mongoClient.StartSessionAsync())
-                {
-                    try
-                    {
-                        session.StartTransaction();
-
-                        var deleteAppResult = await _businessAppRepository.MoveBusinessToArchivedAsync(businessIdLong, session);
-                        if (!deleteAppResult)
-                        {
-                            await session.AbortTransactionAsync();
-                            return result.SetFailureResult("DeleteBusiness:1", "Failed to delete business app.");
-                        }
-
-                        var deleteDataResult = await _businessRepository.MoveBusinessToArchivedAsync(businessIdLong, session);
-                        if (!deleteDataResult) {
-                            await session.AbortTransactionAsync();
-                            return result.SetFailureResult("DeleteBusiness:2", "Failed to delete business data.");
-                        }
-
-                        await session.CommitTransactionAsync();
-
-                        return result.SetSuccessResult();
-                    }
-                    catch (Exception ex) {
-                        await session.AbortTransactionAsync();
-                        _logger.LogError(ex, "Error deleting business: {BusinessId}", businessIdLong);
-                        return result.SetFailureResult("DeleteBusiness:3", "Failed to delete business. Session transaction failure.");
-                    }
-                }
+                return result.SetFailureResult("DeleteBusiness:1", "Failed to delete business app.");
             }
-            catch (Exception ex) {
-                _logger.LogError(ex, "Error deleting business: {BusinessId}", businessIdLong);
-                return result.SetFailureResult("DeleteBusiness:EXCEPTION", "Failed to delete business.");
-            }      
+
+            var deleteDataResult = await _businessRepository.MoveBusinessToArchivedAsync(businessIdLong, mongoSession);
+            if (!deleteDataResult)
+            {
+                return result.SetFailureResult("DeleteBusiness:2", "Failed to delete business data.");
+            }
+
+            return result.SetSuccessResult();
         }
 
         /**

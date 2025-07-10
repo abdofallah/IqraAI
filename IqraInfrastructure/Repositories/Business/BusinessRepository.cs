@@ -78,9 +78,9 @@ namespace IqraInfrastructure.Repositories.Business
             return _businessCollection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public Task AddBusinessAsync(BusinessData business)
+        public Task AddBusinessAsync(BusinessData business, IClientSessionHandle mongoSession)
         {
-            return _businessCollection.InsertOneAsync(business);
+            return _businessCollection.InsertOneAsync(mongoSession, business);
         }
 
         public async Task<bool> UpdateBusinessAsync(long businessId, UpdateDefinition<BusinessData> updateDefinition)

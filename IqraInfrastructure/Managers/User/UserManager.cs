@@ -37,12 +37,12 @@ namespace IqraInfrastructure.Managers.User
             _emailManager = emailManager;
         }
 
-        public async Task AddBusinessIdToUser(string userEmail, long businessId)
+        public async Task AddBusinessIdToUser(string userEmail, long businessId, IClientSessionHandle mongoSession)
         {
             var updateDefinition = Builders<UserData>.Update
                 .AddToSet(u => u.Businesses, businessId);
 
-            await _userDatabase.UpdateUser(userEmail, updateDefinition);
+            await _userDatabase.UpdateUser(userEmail, updateDefinition, mongoSession);
         }
 
         public async Task<UserData?> GetUserByEmail(string email)
@@ -389,24 +389,16 @@ namespace IqraInfrastructure.Managers.User
             await _userDatabase.UpdateUser(email, updateDefinition);
         }
 
-        public async Task<FunctionReturnResult> RemoveBusinessFromUser(string userEmail, long businessId)
+        public async Task<FunctionReturnResult> RemoveBusinessFromUser(string userEmail, long businessId, IClientSessionHandle mongoSession)
         {
             var result = new FunctionReturnResult();
 
-            try
-            {
-                var updateDefinition = Builders<UserData>.Update
+            var updateDefinition = Builders<UserData>.Update
                 .Pull(u => u.Businesses, businessId);
 
-                await _userDatabase.UpdateUser(userEmail, updateDefinition);
+            await _userDatabase.UpdateUser(userEmail, updateDefinition, mongoSession);
 
-                return result.SetSuccessResult();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Failed to remove business from user, {userEmail}, {businessId}", userEmail, businessId);
-                return result.SetFailureResult("RemoveBusinessFromUser:EXCEPTION", "Failed to remove business from user");
-            }
+            return result.SetSuccessResult();
         }
     }
 }

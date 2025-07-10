@@ -1,12 +1,17 @@
 /** Global Variables */
 var isDeletingBusiness = false;
+var lastBusinessCardIndex = 999;
+
+var searchTimeout = null;
+var isSearchActive = false;
+var originalBusinessCards = [];
 
 /** Element Varables **/
 const businessTab = $("#business-tab");
 
 const AddNewBusinessButton = businessTab.find("#AddNewBusinessButton");
 const searchBusinessInput = businessTab.find("#searchBusinessInput");
-const searchBusinessButton = businessTab.find("#searchBusinessButton");
+const searchClearButton = businessTab.find(".search-clear-btn");
 const BusinessesList = businessTab.find("#BusinessesList");
 
 const addNewBusinessModal = $("#addNewBusinessModal");
@@ -71,9 +76,9 @@ function MoveToBusinessPage(BusinessId) {
 function CreateUserBusinessCard(businessData) {
 	let element = `
                 <div class="col-lg-4 col-md-6 col-12">
-                    <a href="/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}">
-						<div class="dropdown action-dropdown dropstart dropdown-menu-end">
-							<button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
+                    <a href="/business/${businessData.id}" class="business-card d-flex flex-column align-items-start justify-content-center" data-business-id="${businessData.id}" style="z-index: ${lastBusinessCardIndex--};">
+						<div class="dropdown action-dropdown dropdown-menu-end">
+							<button class="btn action-button dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
 							<ul class="dropdown-menu">
 								<li>
 									<span class="dropdown-item text-danger" data-business-id="${businessData.id}" button-type="delete-business"><i class="fa-solid fa-trash me-2"></i>Delete</span>
@@ -158,6 +163,128 @@ function SetBusinessCardH4Width() {
 			}
 		`);
     }
+}
+
+/** Search Functions **/
+function performBusinessSearch(searchTerm) {
+	const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+
+	// If search is empty, show all businesses
+	if (trimmedSearchTerm === '') {
+		clearBusinessSearch();
+		return;
+	}
+
+	// Set search active state
+	isSearchActive = true;
+	searchBusinessInput.addClass('search-active');
+
+	// Show clear button
+	searchClearButton.removeClass('d-none');
+
+	// Filter businesses
+	const filteredBusinesses = CurrentBusinessesList.filter(business =>
+		business.name.toLowerCase().includes(trimmedSearchTerm)
+	);
+
+	// Animate out non-matching cards
+	BusinessesList.find('.business-card').each(function () {
+		const card = $(this);
+		const businessId = card.attr('data-business-id');
+		const isMatch = filteredBusinesses.some(business => business.id == businessId);
+
+		if (!isMatch) {
+			card.parent().fadeOut(300, function () {
+				$(this).hide();
+			});
+		}
+	});
+
+	// Show matching cards with fade in
+	setTimeout(() => {
+		BusinessesList.find('.business-card').each(function () {
+			const card = $(this);
+			const businessId = card.attr('data-business-id');
+			const isMatch = filteredBusinesses.some(business => business.id == businessId);
+
+			if (isMatch && !card.parent().is(':visible')) {
+				card.parent().fadeIn(300);
+			}
+		});
+
+		// Show no results message if needed
+		showNoResultsMessage(filteredBusinesses.length === 0, trimmedSearchTerm);
+	}, 350);
+}
+
+function clearBusinessSearch() {
+	// Clear search input
+	searchBusinessInput.val('');
+	searchBusinessInput.removeClass('search-active');
+
+	// Hide clear button
+	searchClearButton.addClass('d-none');
+
+	// Set search inactive
+	isSearchActive = false;
+
+	// Hide no results message
+	hideNoResultsMessage();
+
+	// Show all business cards with fade in
+	setTimeout(() => {
+		BusinessesList.find('.business-card').parent().fadeIn(300);
+	}, 350);
+}
+
+function showNoResultsMessage(show, searchTerm) {
+	const noResultsId = 'no-results-message';
+	let noResultsElement = $(`#${noResultsId}`);
+
+	if (show) {
+		if (noResultsElement.length === 0) {
+			noResultsElement = $(`
+				<div id="${noResultsId}" class="col-12 text-center py-5" style="display: none;">
+					<div class="text-muted">
+						<i class="fa-regular fa-magnifying-glass fa-3x mb-3"></i>
+						<h5>No businesses found</h5>
+						<p>No businesses match your search for "<span class="fw-bold">${searchTerm}</span>"</p>
+						<button class="btn btn-outline-primary btn-sm" onclick="clearBusinessSearch()">
+							<i class="fa-solid fa-times me-2"></i>Clear search
+						</button>
+					</div>
+				</div>
+			`);
+			BusinessesList.append(noResultsElement);
+		} else {
+			noResultsElement.find('.fw-bold').text(searchTerm);
+		}
+		noResultsElement.fadeIn(300);
+	} else {
+		noResultsElement.fadeOut(300);
+	}
+}
+
+function hideNoResultsMessage() {
+	const noResultsElement = $('#no-results-message');
+	if (noResultsElement.length) {
+		noResultsElement.css('animation', 'fadeOutDown 0.3s ease forwards');
+		setTimeout(() => {
+			noResultsElement.remove();
+		}, 300);
+	}
+}
+
+function debounceSearch(searchTerm) {
+	// Clear existing timeout
+	if (searchTimeout) {
+		clearTimeout(searchTimeout);
+	}
+
+	// Set new timeout for search
+	searchTimeout = setTimeout(() => {
+		performBusinessSearch(searchTerm);
+	}, 400);
 }
 
 /** INIT **/
@@ -260,6 +387,10 @@ function InitBusinessesTab() {
 
 				BusinessesList.find(`.business-card[data-business-id=${businessDataId}]`).parent().remove();
 
+				if (isSearchActive) {
+					performBusinessSearch(searchBusinessInput.val());
+				}
+
 				isDeletingBusiness = false;
 			},
 			(errorResponse) => {
@@ -344,6 +475,10 @@ function InitBusinessesTab() {
 
 				BusinessesList.append(businessCardElement);
 
+				if (isSearchActive) {
+					performBusinessSearch(searchBusinessInput.val());
+				}
+
 				addNewBusinessButton.prop("disabled", false);
 				addNewBusinessButtonSpinner.addClass("d-none");
 				addNewBusinessModal.modal("hide");
@@ -362,5 +497,41 @@ function InitBusinessesTab() {
 				addNewBusinessButtonSpinner.addClass("d-none");
 			},
 		);
+	});
+
+	// Search Event Handlers
+	searchBusinessInput.on("input", (event) => {
+		const searchTerm = event.target.value;
+		debounceSearch(searchTerm);
+	});
+
+	searchBusinessInput.on("keydown", (event) => {
+		// Handle Enter key
+		if (event.key === "Enter") {
+			event.preventDefault();
+			performBusinessSearch(searchBusinessInput.val());
+		}
+
+		// Handle Escape key
+		else if (event.key === "Escape") {
+			event.preventDefault();
+			clearBusinessSearch();
+			searchBusinessInput.blur();
+		}
+	});
+
+	searchClearButton.on("click", (event) => {
+		event.preventDefault();
+		clearBusinessSearch();
+		searchBusinessInput.focus();
+	});
+
+	// Focus/blur effects for search
+	searchBusinessInput.on("focus", () => {
+		searchBusinessInput.parent().addClass('input-group-focus');
+	});
+
+	searchBusinessInput.on("blur", () => {
+		searchBusinessInput.parent().removeClass('input-group-focus');
 	});
 }

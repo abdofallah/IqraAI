@@ -299,6 +299,7 @@ a:focus {
 
 .business-card .action-dropdown .dropdown-menu
 {
+	box-shadow: 0px 3px 10px 0px rgb(0 0 0 / 30%);
 	padding: 0;
 }
 
@@ -2062,4 +2063,125 @@ table.table > thead > * > * {
 	border-radius: 6px;
 	border: var(--bs-border-width) solid var(--bs-border-color);
 	padding: 10px;
+}
+
+.search-input-container
+{
+	position: relative;
+	width: 100%;
+}
+
+.search-input-container .form-control
+{
+	padding-right: 80px; /* Space for icon and clear button */
+	border-radius: 0.375rem !important; /* Override input-group border removal */
+}
+
+.search-input-container .form-control:focus {
+    box-shadow: rgb(203 229 78 / 10%) 0px 0px 0px 0.2rem;
+    border-color: var(--tcolor-light-green);
+}
+
+.search-focus
+{
+	box-shadow: rgb(203 229 78 / 10%) 0px 0px 0px 0.2rem;
+	border-radius: 0.375rem;
+}
+
+.search-active
+{
+	background-color: #2a2a2a;
+	border-color: var(--tcolor-lighter-green);
+}
+
+.search-box-icon
+{
+	position: absolute;
+	right: 15px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: #6c757d;
+	z-index: 5;
+	pointer-events: none;
+	transition: right 0.2s ease;
+}
+
+.search-clear-btn
+{
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 10;
+	padding: 0.25rem 0.5rem;
+	font-size: 0.875rem;
+	transition: all 0.2s ease;
+	border-radius: 0.25rem;
+}
+
+.search-clear-btn:hover {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.search-clear-btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    outline: none;
+}
+
+.search-input-container:has(.search-clear-btn:not(.d-none)) .search-box-icon
+{
+	right: 50px;
+}
+
+/* Fallback for browsers that don't support :has() */
+.search-input-container .search-clear-btn:not(.d-none) ~ .search-box-icon
+{
+	right: 50px;
+}
+
+#no-results-message
+{
+	opacity: 0;
+	animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp
+{
+	from
+	{
+		opacity: 0;
+		transform: translateY(20px);
+	}
+
+	to
+	{
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fadeOutDown
+{
+	from
+	{
+		opacity: 1;
+		transform: translateY(0px);
+	}
+
+	to
+	{
+		opacity: 0;
+		transform: translateY(20);
+	}
+}
+
+#no-results-message .text-muted
+{
+	color: #6c757d;
+}
+
+#no-results-message .fa-magnifying-glass
+{
+	color: #dee2e6;
 }

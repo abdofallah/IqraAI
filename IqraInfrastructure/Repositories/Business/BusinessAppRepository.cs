@@ -39,9 +39,9 @@ namespace IqraInfrastructure.Repositories.Business
             return _businessAppCollection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public Task AddBusinessAppAsync(BusinessApp businessApp)
+        public Task AddBusinessAppAsync(BusinessApp businessApp, IClientSessionHandle mongoSession)
         {
-            return _businessAppCollection.InsertOneAsync(businessApp);
+            return _businessAppCollection.InsertOneAsync(mongoSession, businessApp);
         }
 
         public async Task<bool> DeleteBusinessAppAsync(long businessId)

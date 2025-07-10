@@ -81,10 +81,11 @@
                     <button id="AddNewBusinessButton" style="min-width: 200px" class="mb-0 text-decoration-none fw-bold btn btn-primary me-4" data-bs-toggle="modal" data-bs-target="#addNewBusinessModal" disabled>
                         <span>+ Add New Business</span>
                     </button>
-                    <div class="input-group w-100">
-                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" aria-describedby="searchBusinessButton" id="searchBusinessInput" disabled>
-                        <button class="input-group-button btn btn-primary" id="searchBusinessButton" disabled>
-                            <i class='fa-regular fa-magnifying-glass'></i>
+                    <div class="search-input-container">
+                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" id="searchBusinessInput">
+                        <i class="fa-solid fa-magnifying-glass search-box-icon"></i>
+                        <button class="search-clear-btn btn btn-danger d-none" type="button" title="Clear search">
+                            <i class="fa-solid fa-times"></i>
                         </button>
                     </div>
                 </div>
@@ -135,7 +136,7 @@
                             <label for="addNewBusinessDefaultLanguageSelect" class="form-label">Default Language</label>
                             <select class="form-select" id="addNewBusinessDefaultLanguageSelect">
                                 <option value="none" selected disabled>Select Language</option>
-                                <!-- Dynamically Generated -->
+                                    <!-- Dynamically Generated -->
                             </select>
                         </div>
                     </div>
@@ -316,9 +317,6 @@
                                 MasterUserData = masterUserData;
 
                                 if (!MasterUserData.businessPermission.disableBusinesses) {
-                                    searchBusinessInput.prop("disabled", false);
-                                    searchBusinessButton.prop("disabled", false);
-
                                     // Fetch and Init Businesses Tab
                                     FetchUserBusinessesFromAPI(
                                         (userBusinesses) => {

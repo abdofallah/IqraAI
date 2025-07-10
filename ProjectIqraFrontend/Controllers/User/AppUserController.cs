@@ -13,8 +13,8 @@ using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.User;
 using IqraInfrastructure.Repositories.App;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using PhoneNumbers;
-using static Google.Api.FieldInfo.Types;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
@@ -26,10 +26,19 @@ namespace ProjectIqraFrontend.Controllers.User
         private readonly PlanManager _planManager;
         private readonly BusinessManager _businessManager;
         private readonly LanguagesManager _languageManager;
+        private readonly IMongoClient _mongoClient;
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(AppRepository appRepository, UserManager userManager, UserUsageManager userUsageManager,  PlanManager planManager, BusinessManager businessManager, LanguagesManager languageManager)
+        public AppUserController(
+            AppRepository appRepository,
+            UserManager userManager,
+            UserUsageManager userUsageManager,
+            PlanManager planManager,
+            BusinessManager businessManager,
+            LanguagesManager languageManager,
+            IMongoClient mongoClient
+        )
         {
             _appRepository = appRepository;
             _userManager = userManager;
@@ -37,6 +46,7 @@ namespace ProjectIqraFrontend.Controllers.User
             _planManager = planManager;
             _businessManager = businessManager;
             _languageManager = languageManager;
+            _mongoClient = mongoClient;
         }
 
         /**
@@ -683,90 +693,36 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            string? businessName = formData["BusinessName"];
-            string? businessDefaultLanguage = formData["BusinessDefaultLanguage"];
-            IFormFile? businessLogo = formData.Files.GetFile("BusinessLogo");
-
-            if (string.IsNullOrWhiteSpace(businessName) || businessName.Length > 64)
+            using (var mongoSession = _mongoClient.StartSession())
             {
-                result.Code = "AddUserBusiness:5";
-                result.Message = "Invalid business name. Minimum length is 1 and maximum length is 64.";
-                return result;
-            }
-
-            // Valdiate Langauge
-            if (string.IsNullOrWhiteSpace(businessDefaultLanguage))
-            {
-                result.Code = "AddUserBusiness:6";
-                result.Message = "Missing business default language.";
-                return result;
-            }
-            var langaugeData = await _languageManager.GetLanguageByCode(businessDefaultLanguage);
-            if (!langaugeData.Success)
-            {
-                result.Code = "AddUserBusiness:" + langaugeData.Code;
-                result.Message = langaugeData.Message;
-                return result;
-            }
-            if (langaugeData.Data.DisabledAt != null)
-            {
-                result.Code = "AddUserBusiness:7";
-                result.Message = "Business default language is disabled.";
-                return result;
-            }
-
-            // Valdiate Business Logo if exists
-            if (businessLogo != null)
-            {
-                int imageResult = ImageHelper.ValidateBusinessLogoFile(businessLogo);
-                if (imageResult == 0)
+                try
                 {
-                    result.Code = "AddUserBusiness:8";
-                    result.Message = "Business logo too large. Allowed file size is 5MB.";
-                    return result;
-                }
+                    mongoSession.StartTransaction();
 
-                if (imageResult == 1)
-                {
-                    result.Code = "AddUserBusiness:9";
-                    result.Message = "Invalid business logo file. Allowed file types are: png, jpg, jpeg, webp, gif.";
-                    return result;
-                }
-
-                if (imageResult != 200)
-                {
-                    result.Code = "AddUserBusiness:10";
-                    result.Message = "Failed to validate business logo.";
-                    return result;
-                }
-            }
-
-            var newBusinessResult = await _businessManager.AddBusiness(
-                new BusinessData()
-                {
-                    Name = businessName,
-                    MasterUserEmail = userEmail,
-                    DefaultLanguage = businessDefaultLanguage,
-                    Languages = new List<string> { businessDefaultLanguage },
-                    Tutorials = new Dictionary<string, object>()
+                    var newBusinessResult = await _businessManager.AddBusiness(
+                        userEmail,
+                        formData,
+                        mongoSession
+                    );
+                    if (!newBusinessResult.Success)
                     {
-                        { "NewBusinessTutorial", true}
+                        result.Code = "AddUserBusiness:" + newBusinessResult.Code;
+                        result.Message = newBusinessResult.Message;
+                        return result;
                     }
-                },
-                businessLogo
-            );
-            if (!newBusinessResult.Success)
-            {
-                result.Code = "AddUserBusiness:" + newBusinessResult.Code;
-                result.Message = newBusinessResult.Message;
-                return result;
+
+                    await _userManager.AddBusinessIdToUser(userEmail, newBusinessResult.Data.Id, mongoSession);
+
+                    await mongoSession.CommitTransactionAsync();
+
+                    return result.SetSuccessResult(newBusinessResult.Data);
+                }
+                catch (Exception ex)
+                {
+                    // TODO add logging
+                    return result.SetFailureResult("AddUserBusiness:MONGO_SESSION_EXCEPTION", "Exception occured during mongo session.");
+                }
             }
-
-            await _userManager.AddBusinessIdToUser(userEmail, newBusinessResult.Data.Id);
-
-            result.Success = true;
-            result.Data = newBusinessResult.Data;
-            return result;
         }
 
         [HttpPost("/app/user/business/delete")]
@@ -840,23 +796,44 @@ namespace ProjectIqraFrontend.Controllers.User
                 return result;
             }
 
-            var deleteBusinessResult = await _businessManager.DeleteBusiness(businessIdLong);
-            if (!deleteBusinessResult.Success)
+            using (var mongoSession = _mongoClient.StartSession())
             {
-                result.Code = "DeleteUserBusiness:" + deleteBusinessResult.Code;
-                result.Message = deleteBusinessResult.Message;
-                return result;
-            }
+                try
+                {
+                    mongoSession.StartTransaction();
 
-            var removeUserBusinessResult = await _userManager.RemoveBusinessFromUser(userEmail, businessIdLong);
-            if (!removeUserBusinessResult.Success)
-            {
-                result.Code = "DeleteUserBusiness:" + removeUserBusinessResult.Code;
-                result.Message = removeUserBusinessResult.Message;
-                return result;
-            }
+                    var deleteBusinessResult = await _businessManager.DeleteBusiness(businessIdLong, mongoSession);
+                    if (!deleteBusinessResult.Success)
+                    {
+                        mongoSession.AbortTransaction();
 
-            return result.SetSuccessResult();
+                        return result.SetFailureResult(
+                            "DeleteUserBusiness:" + deleteBusinessResult.Code,
+                            deleteBusinessResult.Message
+                        );
+                    }
+
+                    var removeUserBusinessResult = await _userManager.RemoveBusinessFromUser(userEmail, businessIdLong, mongoSession);
+                    if (!removeUserBusinessResult.Success)
+                    {
+                        mongoSession.AbortTransaction();
+
+                        return result.SetFailureResult(
+                            "DeleteUserBusiness:" + removeUserBusinessResult.Code,
+                            removeUserBusinessResult.Message
+                        );
+                    }
+
+                    await mongoSession.CommitTransactionAsync();
+
+                    return result.SetSuccessResult();
+                }
+                catch (Exception ex)
+                {
+                    // TODO add logging
+                    return result.SetFailureResult("DeleteUserBusiness:MONGO_SESSION_EXCEPTION", "Exception occured during mongo session.");
+                }
+            }            
         }
     }
 }

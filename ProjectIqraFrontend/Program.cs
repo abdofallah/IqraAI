@@ -325,6 +325,7 @@ namespace ProjectIqraFrontend
                 );
             });
 
+
             builder.Services.AddSingleton<BusinessDomainVestaCPRepository>((sp) =>
             {
                 return new BusinessDomainVestaCPRepository(
@@ -453,7 +454,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<OutboundCallCampaignRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
-                    sp.GetRequiredService<IMongoClient>()
+                    sp.GetRequiredService<IMongoClient>(),
+                    sp.GetRequiredService<LanguagesManager>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
