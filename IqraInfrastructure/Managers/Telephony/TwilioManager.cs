@@ -88,6 +88,51 @@ namespace IqraInfrastructure.Managers.Telephony
             return result;
         }
 
+        public async Task<FunctionReturnResult<List<TwilioPhoneNumberDetails>>> GetPhoneNumbersByNumberAsync(string accountSid, string authToken, string countryCode, string phoneNumber)
+        {
+            var result = new FunctionReturnResult<List<TwilioPhoneNumberDetails>>();
+
+            try
+            {
+                using (var client = CreateConfiguredHttpClient(accountSid, authToken))
+                {
+                    // Get the list of phone numbers
+                    var response = await client.GetAsync($"Accounts/{accountSid}/IncomingPhoneNumbers.json?PhoneNumber=\"%2B{countryCode}{phoneNumber}\"");
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        result.Code = "GetPhoneNumbersByNumberAsync:1";
+                        result.Message = $"Error getting phone numbers: {response.StatusCode}. Details: {errorContent}";
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        return result;
+                    }
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var responseData = JsonSerializer.Deserialize<TwilioPhoneNumberListResponse>(content, _jsonOptions);
+
+                    if (responseData == null || responseData.IncomingPhoneNumbers == null)
+                    {
+                        result.Code = "GetPhoneNumbersByNumberAsync:2";
+                        result.Message = "Failed to deserialize phone numbers list";
+                        _logger.LogError("Failed to deserialize Twilio phone numbers response");
+                        return result;
+                    }
+
+                    result.Success = true;
+                    result.Data = responseData.IncomingPhoneNumbers;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Code = "GetPhoneNumbersByNumberAsync:3";
+                result.Message = $"Error retrieving phone numbers: {ex.Message}";
+                _logger.LogError(ex, "Error retrieving Twilio phone numbers");
+            }
+
+            return result;
+        }
+
         public async Task<FunctionReturnResult<List<TwilioPhoneNumberDetails>>> GetPhoneNumbersAsync(string accountSid, string authToken)
         {
             var result = new FunctionReturnResult<List<TwilioPhoneNumberDetails>>();

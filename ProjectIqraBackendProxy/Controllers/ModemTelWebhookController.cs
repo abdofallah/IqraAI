@@ -48,6 +48,8 @@ namespace ProjectIqraBackendProxy.Controllers
             {
                 case "incoming":
                     {
+                        _logger.LogDebug($"Incoming call from {webhookContext.From} to {webhookContext.To}");
+
                         var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
                         if (!distributionResult.Success)
                         {

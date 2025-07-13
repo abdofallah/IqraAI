@@ -1,35 +1,35 @@
+using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
 using IqraCore.Utilities;
-using ProjectIqraFrontend.Middlewares;
-using IqraInfrastructure.Repositories.App;
-using IqraInfrastructure.Repositories.Business;
-using IqraInfrastructure.Repositories.Integrations;
-using IqraInfrastructure.Repositories.Languages;
-using IqraInfrastructure.Repositories.LLM;
-using IqraInfrastructure.Repositories.Region;
-using IqraInfrastructure.Repositories.STT;
-using IqraInfrastructure.Repositories.TTS;
-using IqraInfrastructure.Repositories.User;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.STT;
+using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
-using IqraInfrastructure.Managers.Telephony;
-using IqraInfrastructure.Repositories.Redis;
-using System.Reflection;
-using IqraCore.Entities.Configuration;
-using IqraInfrastructure.Repositories.Conversation;
-using Microsoft.Extensions.DependencyInjection;
-using IqraInfrastructure.Repositories.Call;
-using IqraInfrastructure.Managers.Mail;
-using IqraInfrastructure.Managers.Billing;
+using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Billing;
-using MongoDB.Driver;
+using IqraInfrastructure.Repositories.Business;
+using IqraInfrastructure.Repositories.Call;
+using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.Languages;
+using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Repositories.Redis;
+using IqraInfrastructure.Repositories.Region;
+using IqraInfrastructure.Repositories.STT;
+using IqraInfrastructure.Repositories.TTS;
+using IqraInfrastructure.Repositories.User;
+using Microsoft.Extensions.DependencyInjection;
 using Minio;
+using MongoDB.Driver;
+using ProjectIqraFrontend.Middlewares;
+using System.Reflection;
 
 namespace ProjectIqraFrontend
 {
@@ -43,12 +43,16 @@ namespace ProjectIqraFrontend
             var appConfig = builder.Configuration;
             builder.Services.AddSingleton<ViewLinkConfiguration>((sp) =>
             {
+                var baseMinioUrl = appConfig["MinioStorage:PublicURL"];
+                var minioUrlIsSecure = bool.Parse(appConfig["MinioStorage:PublicUrlIsSecure"]) ? "https://" : "http://";
+                baseMinioUrl = minioUrlIsSecure + baseMinioUrl;
+
                 return new ViewLinkConfiguration()
                 {
-                    BusinessLogoURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessLogoRepositoryBucketName"],
-                    BusinessToolAudioURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"],
-                    IntegrationLogoURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:IntegrationsLogoRepositoryBucketName"],
-                    BusinessAgentBackgroundAudioURL = appConfig["MinioStorage:PublicURL"] + "/" + appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
+                    BusinessLogoURL = baseMinioUrl + "/" + appConfig["MinioStorage:BusinessLogoRepositoryBucketName"],
+                    BusinessToolAudioURL = baseMinioUrl + "/" + appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"],
+                    IntegrationLogoURL = baseMinioUrl + "/" + appConfig["MinioStorage:IntegrationsLogoRepositoryBucketName"],
+                    BusinessAgentBackgroundAudioURL = baseMinioUrl + "/" + appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
                 };
             });
 
@@ -321,7 +325,9 @@ namespace ProjectIqraFrontend
                 return new ConversationAudioRepository(
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
                     sp.GetRequiredService<IMinioClient>(),
-                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
+                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"],
+                    appConfig["MinioStorage:PublicURL"],
+                    bool.Parse(appConfig["MinioStorage:PublicUrlIsSecure"])
                 );
             });
 
@@ -454,8 +460,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<RegionManager>(),
                     sp.GetRequiredService<OutboundCallCampaignRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
-                    sp.GetRequiredService<IMongoClient>(),
-                    sp.GetRequiredService<LanguagesManager>()
+                    sp.GetRequiredService<LanguagesManager>(),
+                    sp.GetRequiredService<TwilioManager>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

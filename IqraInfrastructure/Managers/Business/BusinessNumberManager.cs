@@ -1,12 +1,13 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Server;
+using IqraCore.Entities.Helper.Telephony;
 using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Region;
-using System.Text.Json;
 using IqraInfrastructure.Managers.Telephony;
-using IqraCore.Entities.Helper.Telephony;
-using IqraCore.Entities.Helper.Server;
+using IqraInfrastructure.Repositories.Business;
+using PhoneNumbers;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -18,10 +19,18 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessRepository _businessRepository;
 
         private readonly ModemTelManager _modemTelManager;
+        private readonly TwilioManager _twilioManager;
 
         private readonly IntegrationsManager _integrationsManager;
 
-        public BusinessNumberManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, ModemTelManager modemTelManager, IntegrationsManager integrationsManager)
+        public BusinessNumberManager(
+            BusinessManager businessManager,
+            BusinessAppRepository businessAppRepository,
+            BusinessRepository businessRepository,
+            ModemTelManager modemTelManager,
+            TwilioManager twilioManager,
+            IntegrationsManager integrationsManager
+        )
         {
             _parentBusinessManager = businessManager;
 
@@ -29,6 +38,7 @@ namespace IqraInfrastructure.Managers.Business
             _businessRepository = businessRepository;
 
             _modemTelManager = modemTelManager;
+            _twilioManager = twilioManager;
 
             _integrationsManager = integrationsManager;
         }
@@ -160,7 +170,45 @@ namespace IqraInfrastructure.Managers.Business
 
                 // TODO update the webhook url in-app
             }
-            else if (provider == TelephonyProviderEnum.Twilio || provider == TelephonyProviderEnum.Vonage || provider == TelephonyProviderEnum.Telnyx)
+            else if (provider == TelephonyProviderEnum.Twilio)
+            {
+                newNumberData = new BusinessNumberTwilioData(newNumberData);
+
+                var accountAuthToken = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]);
+
+                var phoneNumberData = await _twilioManager.GetPhoneNumbersByNumberAsync(integrationData.Data.Fields["sid"], accountAuthToken, PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(countryCode).ToString(), number);
+                if (!phoneNumberData.Success)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:" + phoneNumberData.Code;
+                    result.Message = phoneNumberData.Message;
+                    return result;
+                }
+
+                if (phoneNumberData.Data.Count == 0)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:7";
+                    result.Message = "Phone number not found.";
+                    return result;
+                }
+                var firstNumber = phoneNumberData.Data.FirstOrDefault();
+
+                if (!firstNumber.Capabilities.Voice)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:8";
+                    result.Message = "Phone number cannot make calls.";
+                    return result;
+                }
+
+                if (!firstNumber.Capabilities.SMS)
+                {
+                    result.Code = "AddOrUpdateBusinessNumber:9";
+                    result.Message = "Phone number cannot make SMS.";
+                    return result;
+                }
+
+                ((BusinessNumberTwilioData)newNumberData).TwilioPhoneNumberId = firstNumber.Sid;
+            }
+            else if (provider == TelephonyProviderEnum.Vonage || provider == TelephonyProviderEnum.Telnyx)
             {
                 result.Code = "AddOrUpdateBusinessNumber:10";
                 result.Message = "Provider type currently not implemented.";

@@ -21,7 +21,7 @@ namespace ProjectIqraFrontend.Controllers.Admin
         }
 
         [HttpGet("/app/admin/integrations")]
-        public async Task<FunctionReturnResult<List<IntegrationData>?>> GetIntegrations(int page = 0, int pageSize = 10)
+        public async Task<FunctionReturnResult<List<IntegrationData>?>> GetIntegrations(int page = 0, int pageSize = 100)
         {
             var result = new FunctionReturnResult<List<IntegrationData>?>();
 

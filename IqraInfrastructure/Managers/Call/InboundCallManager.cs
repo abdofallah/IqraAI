@@ -71,6 +71,7 @@ namespace IqraInfrastructure.Managers.Call
                 var phoneNumberInfo = await GetPhoneNumberInfo(webhookContext);
                 if (phoneNumberInfo == null)
                 {
+                    _logger.LogError("Error distributing call {CallId} for provider {Provider}: phone number not found", webhookContext.CallId, webhookContext.Provider);
                     return result.SetFailureResult("DistributeIncomingCall:NUMBER_NOT_FOUND", "Unable to identify phone number");
                 }
 
@@ -82,6 +83,7 @@ namespace IqraInfrastructure.Managers.Call
                 // TODO in future if phone number has options of what to do in case of no route, set it here
                 if (string.IsNullOrWhiteSpace(numberRouteId))
                 {
+                    _logger.LogError("Error distributing call {CallId} for provider {Provider}: business number has no route set", webhookContext.CallId, webhookContext.Provider);
                     return result.SetFailureResult("DistributeIncomingCall:NO_ROUTE_SET", "Business number has no route set");
                 }
 

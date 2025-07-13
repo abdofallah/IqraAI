@@ -22,7 +22,6 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly BusinessManagerInitalizationSettings _settings;
 
-        private readonly IMongoClient _mongoClient;
         private readonly BusinessRepository _businessRepository;
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessLogoRepository? _businessLogoRepository;
@@ -34,8 +33,6 @@ namespace IqraInfrastructure.Managers.Business
         private readonly AudioFileProcessor _audioProcessor;
 
         private readonly LanguagesManager? _languagesManager;
-        private readonly IntegrationsManager? _integrationsManager;
-        private readonly ModemTelManager? _modemTelManager;
 
         // Sub Managers
         private readonly BusinessSettingsManager? _businessSettingsManager;
@@ -68,15 +65,14 @@ namespace IqraInfrastructure.Managers.Business
             RegionManager? regionManager,
             OutboundCallCampaignRepository? outboundCallCampaignRepository,
             OutboundCallQueueRepository? outboundCallQueueRepository,
-            IMongoClient mongoClient,
-            LanguagesManager languagesManager
+            LanguagesManager? languagesManager,
+            TwilioManager? twilioManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
 
             _settings = settings;
 
-            _mongoClient = mongoClient;
             _businessRepository = businessRepository;
             _businessAppRepository = businessAppRepository;
             _businessLogoRepository = businessLogoRepository;
@@ -88,8 +84,6 @@ namespace IqraInfrastructure.Managers.Business
             _audioProcessor = new AudioFileProcessor();
 
             _languagesManager = langaugesManager;
-            _integrationsManager = integrationsManager;
-            _modemTelManager = modemTelManager;
 
             // Sub Managers
             if (_settings.InitalizeSettingsManager)
@@ -130,11 +124,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeNumberManager)
             {
-                if (modemTelManager == null || integrationsManager == null)
+                if (modemTelManager == null || twilioManager == null || integrationsManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessNumberManager");
                 }
-                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, integrationsManager);
+                _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager);
             }
             if (_settings.InitalizeRoutesManager)
             {

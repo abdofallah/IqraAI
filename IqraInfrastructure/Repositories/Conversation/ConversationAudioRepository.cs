@@ -4,6 +4,7 @@ using Minio;
 using Minio.DataModel;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
+using System.Globalization;
 
 namespace IqraInfrastructure.Repositories.Conversation
 {
@@ -13,7 +14,10 @@ namespace IqraInfrastructure.Repositories.Conversation
         private readonly string _bucketName;
         private readonly ILogger<ConversationAudioRepository> _logger;
 
-        public ConversationAudioRepository(ILogger<ConversationAudioRepository> logger, IMinioClient client, string bucketName)
+        private readonly string? _localMinioHostName;
+        private readonly string? _publicMinioHostName;
+
+        public ConversationAudioRepository(ILogger<ConversationAudioRepository> logger, IMinioClient client, string bucketName, string? publicMinioUrl, bool? publicMinioUrlIsSecure)
         {
             _logger = logger;
 
@@ -22,6 +26,24 @@ namespace IqraInfrastructure.Repositories.Conversation
 
             // Ensure the bucket exists
             EnsureBucketExistsAsync().GetAwaiter().GetResult();
+
+            if (publicMinioUrl != null && publicMinioUrlIsSecure != null)
+            {
+                _localMinioHostName = MakeTargetURL(client.Config.BaseUrl, client.Config.Secure, bucketName, client.Config.Region, true).ToString();
+                _publicMinioHostName = MakeTargetURL(publicMinioUrl, publicMinioUrlIsSecure.Value, bucketName, client.Config.Region, false).ToString();
+            }    
+        }
+
+        private static Uri MakeTargetURL(string endPoint, bool secure, string bucketName = null, string region = null, bool usePathStyle = true)
+        {
+            string text = endPoint;
+            if (!usePathStyle)
+            {
+                string text2 = ((bucketName != null) ? (bucketName + "/") : "");
+                text = text + "/" + text2;
+            }
+            string arg = (secure ? "https" : "http");
+            return new Uri(string.Format(CultureInfo.InvariantCulture, "{0}://{1}", arg, text), UriKind.Absolute);
         }
 
         private async Task EnsureBucketExistsAsync()
@@ -45,6 +67,8 @@ namespace IqraInfrastructure.Repositories.Conversation
                 throw;
             }
         }
+
+        
 
         public async Task<bool> StoreAudioAsync(string reference, byte[] audioData, Dictionary<string, string>? metadata = null)
         {
@@ -277,6 +301,11 @@ namespace IqraInfrastructure.Repositories.Conversation
                     .WithExpiry(expiresInSeconds);
 
                 string presignedUrl = await _minioClient.PresignedGetObjectAsync(presignedGetObjectArgs);
+                if (!string.IsNullOrWhiteSpace(_localMinioHostName + _publicMinioHostName))
+                {
+                    presignedUrl = presignedUrl.Replace(_localMinioHostName, _publicMinioHostName);
+                }
+
                 return presignedUrl;
             }
             catch (ObjectNotFoundException)

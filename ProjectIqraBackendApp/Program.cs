@@ -288,7 +288,9 @@ namespace ProjectIqraBackendApp
                 return new ConversationAudioRepository(
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
                     sp.GetRequiredService<IMinioClient>(),
-                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
+                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"],
+                    null,
+                    null
                 );
             });
 
@@ -483,6 +485,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<BusinessAgentAudioRepository>(),
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
+                    null,
                     null,
                     null,
                     null,

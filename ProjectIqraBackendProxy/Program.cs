@@ -6,6 +6,7 @@ using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
@@ -286,6 +287,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     sp.GetRequiredService<ModemTelManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),
+                    null,
                     null,
                     null,
                     null,
