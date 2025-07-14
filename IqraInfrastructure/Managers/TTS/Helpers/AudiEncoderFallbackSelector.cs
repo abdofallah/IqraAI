@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
         private const int QUALITY_UPSAMPLING_PENALTY = 200;
         private const int QUALITY_BIT_EXPANSION_PENALTY = 150;
 
-        public static List<TTSProviderAvailableAudioFormat> GetFallbackOrder(AudioRequestDetails request, IEnumerable<TTSProviderAvailableAudioFormat> availableFormats, AudioEncoderFallbackOptimizationMode audioOptimzationMode = AudioEncoderFallbackOptimizationMode.Performance)
+        public static List<TTSProviderAvailableAudioFormat> GetFallbackOrder(AudioRequestDetails request, IEnumerable<TTSProviderAvailableAudioFormat> availableFormats, AudioEncoderFallbackOptimizationMode audioOptimzationMode = AudioEncoderFallbackOptimizationMode.Quality)
         {
             if (!Profiles.ContainsKey(request.RequestedEncoding))
             {
