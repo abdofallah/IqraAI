@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Speechify
 {
@@ -10,6 +11,8 @@ namespace IqraCore.Entities.TTS.Providers.Speechify
         public string Language { get; set; }
         public bool LoudnessNormalization { get; set; }
         public bool TextNormalization { get; set; }
-        public int SampleRate { get; set; }
+        public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

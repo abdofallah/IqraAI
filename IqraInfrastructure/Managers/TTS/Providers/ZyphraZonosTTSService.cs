@@ -84,7 +84,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     TimeSpan finalDuration = calculatedDuration ?? TimeSpan.Zero;
 
                     // Resample the PCM data
-                    byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _serviceConfig.SampleRate, originalChannels, originalBitsPerSample);
+                    byte[] finalPcmData = ResamplePcm(pcmData, originalSampleRate, _serviceConfig.TargetSampleRate, originalChannels, _serviceConfig.TargetBitsPerSample);
 
                     return (finalPcmData, finalDuration);
                 }

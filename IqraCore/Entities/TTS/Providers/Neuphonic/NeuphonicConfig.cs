@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Neuphonic
 {
@@ -10,5 +11,7 @@ namespace IqraCore.Entities.TTS.Providers.Neuphonic
         public string VoiceId { get; set; }
         public float Speed { get; set; }
         public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

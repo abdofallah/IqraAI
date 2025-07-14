@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Events;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 using IqraCore.Utilities.Audio;
@@ -41,6 +42,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private int SampleRate;
         private int BitsPerSample;
+        private AudioEncodingTypeEnum AudioEncodingType;
         private int Channels;
         private int BytesPerSample;
         private int ChunkDurationMs;
@@ -91,6 +93,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             SampleRate = _agentState.AgentConfiguration.SampleRate;
             BitsPerSample = _agentState.AgentConfiguration.BitsPerSample;
             Channels = _agentState.AgentConfiguration.Channels;
+            AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType;
 
             BytesPerSample = BitsPerSample / 8;
             ChunkDurationMs = 600;
@@ -130,7 +133,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
             _agentState.TTSBusinessIntegrationData = ttsBusinessIntegrationDataResult.Data;
 
-            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_agentState.TTSBusinessIntegrationData, defaultTTSServiceInfo, new Dictionary<string, string> { });
+            var ttsServiceResult = await _ttsProviderManager.BuildProviderServiceByIntegration(_agentState.TTSBusinessIntegrationData, defaultTTSServiceInfo, _agentState.AgentConfiguration.SampleRate, _agentState.AgentConfiguration.BitsPerSample, _agentState.AgentConfiguration.AudioEncodingType);
             if (!ttsServiceResult.Success || ttsServiceResult.Data == null)
             {
                 _logger.LogError("Agent {AgentId}: Failed to build TTS service with error: {ErrorMessage}", _agentState.AgentId, ttsServiceResult.Message);

@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Minimax
 {
@@ -10,6 +11,8 @@ namespace IqraCore.Entities.TTS.Providers.Minimax
         public float VoiceSpeed { get; set; }
         public string? LanguageBoostId { get; set; }
         public string? PronunciationDict { get; set; }
-        public int SampleRate { get; set; }
+        public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

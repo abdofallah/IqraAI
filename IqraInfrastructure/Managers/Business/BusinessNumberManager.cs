@@ -63,6 +63,7 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
+            string newNumberId = Guid.NewGuid().ToString();
             BusinessNumberData newNumberData = new BusinessNumberData()
             {
                 CountryCode = countryCode,
@@ -174,9 +175,10 @@ namespace IqraInfrastructure.Managers.Business
             {
                 newNumberData = new BusinessNumberTwilioData(newNumberData);
 
+                var accountSid = integrationData.Data.Fields["sid"];
                 var accountAuthToken = _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]);
 
-                var phoneNumberData = await _twilioManager.GetPhoneNumbersByNumberAsync(integrationData.Data.Fields["sid"], accountAuthToken, PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(countryCode).ToString(), number);
+                var phoneNumberData = await _twilioManager.GetPhoneNumbersByNumberAsync(accountSid, accountAuthToken, PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(countryCode).ToString(), number);
                 if (!phoneNumberData.Success)
                 {
                     result.Code = "AddOrUpdateBusinessNumber:" + phoneNumberData.Code;
@@ -207,6 +209,16 @@ namespace IqraInfrastructure.Managers.Business
                 }
 
                 ((BusinessNumberTwilioData)newNumberData).TwilioPhoneNumberId = firstNumber.Sid;
+
+                string statusCallbackUrl = $"http://5.37.230.97:5062/api/twilio/webhook/voice/status/{businessId}/{newNumberId}";
+                string voiceUrl = $"http://5.37.230.97:5062/api/twilio/webhook/voice/incoming/{businessId}/{newNumberId}";
+
+                var updateWebhookResult = await _twilioManager.UpdatePhoneNumberVoiceConfigurationAsync(accountSid, accountAuthToken, firstNumber.Sid, voiceUrl, statusCallbackUrl);
+                if (!updateWebhookResult.Success)
+                {
+                    // do nothing for now?
+                    // do let the user know webhooks were not updated but the number was added eitherways
+                }
             }
             else if (provider == TelephonyProviderEnum.Vonage || provider == TelephonyProviderEnum.Telnyx)
             {
@@ -223,7 +235,7 @@ namespace IqraInfrastructure.Managers.Business
 
             if (postType == "new")
             {
-                newNumberData.Id = Guid.NewGuid().ToString();
+                newNumberData.Id = newNumberId;
 
                 bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
                 if (!addNumberResult)

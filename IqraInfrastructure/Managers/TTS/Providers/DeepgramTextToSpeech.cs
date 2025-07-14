@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 Model = _serviceConfig.ModelId,
                 Encoding = _encoding,
-                SampleRate = _serviceConfig.SampleRate.ToString(),
+                SampleRate = _serviceConfig.TargetSampleRate.ToString(),
                 Container = "none",
                 BitRate  = (_bytesPerSample * (_bytesPerSample * 8)).ToString()
             };
@@ -62,7 +62,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     byte[] audioData = response.Stream.ToArray();
                     response.Stream.Dispose();
 
-                    double durationSeconds = (double)audioData.Length / (_serviceConfig.SampleRate * _channels * _bytesPerSample);
+                    double durationSeconds = (double)audioData.Length / (_serviceConfig.TargetSampleRate * _channels * _bytesPerSample);
                     TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
                     return (audioData, duration);
                 }

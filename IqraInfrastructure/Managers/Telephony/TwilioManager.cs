@@ -418,5 +418,48 @@ namespace IqraInfrastructure.Managers.Telephony
 
             return result;
         }
+
+        public async Task<FunctionReturnResult> UpdatePhoneNumberVoiceConfigurationAsync(string accountSid, string authToken, string phoneNumberId, string voiceUrl, string statusCallbackUrl, string voiceMethod = "POST", string statusCallbackMethod = "POST", string voiceReceiveMode = "voice")
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                using (var client = CreateConfiguredHttpClient(accountSid, authToken))
+                {
+                    var formContent = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("VoiceUrl", voiceUrl),
+                        new KeyValuePair<string, string>("VoiceMethod", voiceMethod), 
+                        new KeyValuePair<string, string>("VoiceFallbackUrl", voiceUrl),
+                        new KeyValuePair<string, string>("VoiceFallbackMethod", voiceMethod),
+                        new KeyValuePair<string, string>("StatusCallback", statusCallbackUrl),
+                        new KeyValuePair<string, string>("StatusCallbackMethod", statusCallbackMethod),
+                        new KeyValuePair<string, string>("VoiceReceiveMode", voiceReceiveMode)
+                    });
+
+                    var response = await client.PostAsync($"Accounts/{accountSid}/IncomingPhoneNumbers/{phoneNumberId}.json", formContent);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        result.Code = "UpdatePhoneNumberVoiceConfiguration:1";
+                        result.Message = $"Error updating phone number voice configuration: {response.StatusCode}. Details: {errorContent}";
+                        _logger.LogError("Twilio API error: {StatusCode}, {Error}", response.StatusCode, errorContent);
+                        return result;
+                    }
+
+                    return result.SetSuccessResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Code = "UpdatePhoneNumberVoiceConfiguration:2";
+                result.Message = $"Error updating phone number voice configuration: {ex.Message}";
+                _logger.LogError(ex, "Error updating Twilio phone number voice configuration");
+
+                return result;
+            }
+        }
     }
 }

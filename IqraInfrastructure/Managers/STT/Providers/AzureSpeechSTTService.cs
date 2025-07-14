@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
@@ -14,7 +15,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private SpeechRecognizer _recognizer;
         private PushAudioInputStream _pushStream;
 
-        private readonly int _sampleRate;
+        private readonly int _inputSampleRate;
+        private readonly int _inputBitsPerSample;
+        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+
         private List<string> _continousLanguageIdentificationIds;
         private bool _speakerDiarization;
         private List<string> _phrasesList;
@@ -30,12 +34,16 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public event EventHandler<object> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
-        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int sampleRate)
+        public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncodingType)
         {
             _subscriptionKey = subscriptionKey;
             _region = region;
             _language = language;
-            _sampleRate = sampleRate;
+
+            _inputSampleRate = inputSampleRate;
+            _inputBitsPerSample = inputBitsPerSample;
+            _inputAudioEncodingType = inputAudioEncodingType;
+
             _continousLanguageIdentificationIds = continousLanguageIdentificationIds;
             _speakerDiarization = speakerDiarization;
             _phrasesList = phrasesList;
@@ -50,7 +58,30 @@ namespace IqraInfrastructure.Managers.STT.Providers
             speechConfig.SetProperty(PropertyId.SpeechServiceResponse_DiarizeIntermediateResults, _speakerDiarization ? "true" : "false");
             speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, _silenceTimeout.ToString());
 
-            _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_sampleRate), 16, 1, AudioStreamWaveFormat.PCM));
+            AudioStreamWaveFormat audioEncodingFormat;
+            switch (_inputAudioEncodingType)
+            {
+                case AudioEncodingTypeEnum.PCM:
+                    audioEncodingFormat = AudioStreamWaveFormat.PCM;
+                    break;
+
+                case AudioEncodingTypeEnum.MULAW:
+                    audioEncodingFormat = AudioStreamWaveFormat.MULAW;
+                    break;
+
+                case AudioEncodingTypeEnum.ALAW:
+                    audioEncodingFormat = AudioStreamWaveFormat.ALAW;
+                    break;
+
+                case AudioEncodingTypeEnum.G722:
+                    audioEncodingFormat = AudioStreamWaveFormat.G722;
+                    break;
+
+                default:
+                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+            }
+
+            _pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormat(Convert.ToUInt32(_inputSampleRate), (byte)_inputBitsPerSample, 1, audioEncodingFormat));
             var audioConfig = AudioConfig.FromStreamInput(_pushStream);
 
             if (_continousLanguageIdentificationIds.Count > 0)

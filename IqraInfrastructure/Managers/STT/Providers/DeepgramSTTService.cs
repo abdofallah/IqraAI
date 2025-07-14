@@ -2,7 +2,7 @@
 using Deepgram.Clients.Interfaces.v2;
 using Deepgram.Models.Authenticate.v1;
 using Deepgram.Models.Listen.v2.WebSocket;
-using IqraCore.Entities.App.Configuration;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 
@@ -15,7 +15,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private readonly bool _speakerDiarization;
         private readonly List<string> _keywordsList;
         private readonly int _silenceTimeout;
-        private readonly int _sampleRate;
         private readonly string _model;
         private readonly bool _punctuate;
         private readonly bool _smartFormat;
@@ -25,6 +24,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
         private readonly bool _dictation;
         private readonly bool _multiChannel;
         private readonly bool _noDelay;
+
+        private readonly int _inputSampleRate;
+        private readonly int _inputBitsPerSample;
+        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+
+        private string _deepgramAudioFormat;
 
         private IListenWebSocketClient _liveClient;
 
@@ -40,7 +45,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
         public event EventHandler<object> OnRecoginizingCancelled;
 
         public DeepgramSTTService(
-            string apiKey, string language, string model, bool speakerDiarization, List<string> keywordsList, int silenceTimeout, int sampleRate,
+            string apiKey, string language, string model, bool speakerDiarization, List<string> keywordsList, int silenceTimeout, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncodingType, 
             bool punctuate = false, bool smartFormat = false, bool fillerWords = true,
             bool profanityFilter = false, bool numerals = false, bool dictation = false, bool multiChannel = false, bool noDelay = true)
         {
@@ -50,7 +55,6 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _speakerDiarization = speakerDiarization;
             _keywordsList = keywordsList;
             _silenceTimeout = silenceTimeout;
-            _sampleRate = sampleRate;
             _punctuate = punctuate;
             _smartFormat = smartFormat;
             _fillerWords = fillerWords;
@@ -59,10 +63,52 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _dictation = dictation;
             _multiChannel = multiChannel;
             _noDelay = noDelay;
+
+            _inputSampleRate = inputSampleRate;
+            _inputBitsPerSample = inputBitsPerSample;
+            _inputAudioEncodingType = inputAudioEncodingType;
         }
 
         public void Initialize()
         {
+            switch (_inputAudioEncodingType)
+            {
+                case AudioEncodingTypeEnum.PCM:
+                    if (_inputBitsPerSample == 16)
+                    {
+                        _deepgramAudioFormat = "linear16";
+                    }
+                    else if (_inputBitsPerSample == 32)
+                    {
+                        _deepgramAudioFormat = "linear32";
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
+                    }
+
+                    break;
+
+                case AudioEncodingTypeEnum.MULAW:
+                    _deepgramAudioFormat = "mulaw";
+                    break;
+
+                case AudioEncodingTypeEnum.ALAW:
+                    _deepgramAudioFormat = "alaw";
+                    break;
+
+                case AudioEncodingTypeEnum.G729:
+                    _deepgramAudioFormat = "g729";
+                    break;
+
+                case AudioEncodingTypeEnum.OPUS:
+                    _deepgramAudioFormat = "opus";
+                    break;
+
+                default:
+                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+            }
+
             DeepgramWsClientOptions options = new DeepgramWsClientOptions(apiKey: _apiKey, keepAlive: true);
             _liveClient = ClientFactory.CreateListenWebSocketClient(_apiKey, options);
 
@@ -76,11 +122,10 @@ namespace IqraInfrastructure.Managers.STT.Providers
         {
             var liveSchema = new LiveSchema()
             {
-                Encoding = "linear16",
-                SampleRate = _sampleRate,
+                Encoding = _deepgramAudioFormat,
+                SampleRate = _inputSampleRate,
                 Channels = 1,
                 InterimResults = false,
-
                 Model = _model,
                 Language = _language,
                 Diarize = _speakerDiarization,

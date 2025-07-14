@@ -106,6 +106,7 @@ namespace ProjectIqraBackendApp
                     KeepAliveInterval = TimeSpan.FromSeconds(30)
                 }
             );
+
             app.Use(async (context, next) =>
             {
                 if (context.Request.Path.StartsWithSegments("/ws/session"))
@@ -492,7 +493,8 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    null
+                    null,
+                    sp.GetRequiredService<TwilioManager>()
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>

@@ -11,6 +11,7 @@ namespace IqraCore.Entities.Call.Queue
         public string CampaignId { get; set; } = string.Empty;
 
         public string CallingNumberId { get; set; } = string.Empty;
+        public TelephonyProviderEnum CallingNumberProvider { get; set; } = TelephonyProviderEnum.Unknown;
         public string? ProviderCallId { get; set; } = null;
         public string RecipientNumber { get; set; } = string.Empty;
 

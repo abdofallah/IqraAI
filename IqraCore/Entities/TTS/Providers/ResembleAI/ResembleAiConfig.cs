@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.ResembleAI
 {
@@ -8,5 +9,7 @@ namespace IqraCore.Entities.TTS.Providers.ResembleAI
         public string ProjectUuid { get; set; } // Included for safety, as projects can scope voice/model access
         public string VoiceUuid { get; set; }
         public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

@@ -148,7 +148,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                         actualSampleRate = firstGeneration.Encoding.SampleRate.Value;
                 }
 
-                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _serviceConfig.SampleRate, _channels, _sampleSize);
+                byte[] resampledAudioData = ResamplePcm(audioData, actualSampleRate, _serviceConfig.TargetSampleRate, _channels, _sampleSize);
 
                 return (resampledAudioData, duration);
             }

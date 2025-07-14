@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.HumeAI
 {
@@ -9,6 +10,8 @@ namespace IqraCore.Entities.TTS.Providers.HumeAI
         public string VoiceProvider { get; set; }
         public string VoiceDescription { get; set; }
         public float VoiceSpeed { get; set; }
-        public int SampleRate { get; set; }
+        public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

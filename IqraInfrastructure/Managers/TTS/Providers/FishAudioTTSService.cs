@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             // Static HttpClient, initialization done in constructor or is implicit
 
-            if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_serviceConfig.SampleRate))
+            if (!(new List<int>([8000, 16000, 24000, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
             {
                 throw new Exception("Sample rate must be 8000, 16000, 24000, 32000 or 44100");
             }
@@ -49,7 +49,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 ReferenceId = _serviceConfig.ReferenceId,
                 Format = "pcm",
-                SampleRate = (_serviceConfig.SampleRate / 1000) // it expects 8 instead of 8000
+                SampleRate = (_serviceConfig.TargetSampleRate / 1000) // it expects 8 instead of 8000
             };
 
             byte[] messagePackData;
@@ -113,7 +113,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return (null, null);
             }
 
-            double durationSeconds = (double)pcmData.Length / (_serviceConfig.SampleRate * _channels * (_bitsPerSample / 8));
+            double durationSeconds = (double)pcmData.Length / (_serviceConfig.TargetSampleRate * _channels * (_bitsPerSample / 8));
             TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
 
             return (pcmData, duration);

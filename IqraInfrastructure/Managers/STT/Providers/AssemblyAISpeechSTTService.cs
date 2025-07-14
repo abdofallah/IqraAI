@@ -1,10 +1,10 @@
-﻿using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
-using System.Globalization;
 using System.Net.WebSockets;
-using System.Text.Json.Serialization;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Web;
 
 namespace IqraInfrastructure.Managers.STT.Providers
@@ -18,9 +18,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
     public class AssemblyAISpeechSTTService : ISTTService
     {
         private readonly string _apiKey;
-        private readonly int _sampleRate;
 
-        private readonly AssemblyAIEncoding _encoding = AssemblyAIEncoding.pcm_s16le;
+        private readonly int _inputSampleRate;
+        private readonly int _inputBitsPerSample;
+        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+
+        private AssemblyAIEncoding _audioEncoding;
         private readonly bool _formatTurns;
         private readonly float _endOfTurnConfidenceThreshold;
         private readonly int _minEndOfTurnSilenceWhenConfident;
@@ -42,14 +45,19 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public AssemblyAISpeechSTTService(
             string apiKey,
-            int sampleRate,
+            int inputSampleRate,
+            int inputBitsPerSample,
+            AudioEncodingTypeEnum inputAudioEncodingType,
             bool formatTurns,
             float endOfTurnConfidenceThreshold,
             int minEndOfTurnSilenceWhenConfident,
             int maxTurnSilence)
         {
             _apiKey = apiKey;
-            _sampleRate = sampleRate;
+
+            _inputSampleRate = inputSampleRate;
+            _inputBitsPerSample = inputBitsPerSample;
+            _inputAudioEncodingType = inputAudioEncodingType;
 
             _formatTurns = formatTurns;
             _endOfTurnConfidenceThreshold = endOfTurnConfidenceThreshold;
@@ -59,6 +67,28 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         public void Initialize()
         {
+            switch (_inputAudioEncodingType)
+            {
+                case AudioEncodingTypeEnum.PCM:
+                    if (_inputBitsPerSample == 16)
+                    {
+                        _audioEncoding = AssemblyAIEncoding.pcm_s16le;
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Invalid bits per sample: {_inputBitsPerSample}");
+                    }
+
+                    break;
+
+                case AudioEncodingTypeEnum.MULAW:
+                    _audioEncoding = AssemblyAIEncoding.pcm_mulaw;
+                    break;
+
+                default:
+                    throw new ArgumentException($"Invalid audio encoding type: {_inputAudioEncodingType}");
+            }
+
             _webSocketClient = new ClientWebSocket();
             _webSocketClient.Options.SetRequestHeader("Authorization", _apiKey);
             _cancellationTokenSource = new CancellationTokenSource();
@@ -74,8 +104,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
             var uriBuilder = new UriBuilder("wss://streaming.assemblyai.com/v3/ws");
             var query = HttpUtility.ParseQueryString(string.Empty);
 
-            query["sample_rate"] = _sampleRate.ToString();
-            query["encoding"] = _encoding.ToString();
+            query["sample_rate"] = _inputSampleRate.ToString();
+            query["encoding"] = _audioEncoding.ToString();
             query["format_turns"] = _formatTurns.ToString().ToLower();
             query["end_of_turn_confidence_threshold"] = _endOfTurnConfidenceThreshold.ToString();
             query["min_end_of_turn_silence_when_confident"] = _minEndOfTurnSilenceWhenConfident.ToString();

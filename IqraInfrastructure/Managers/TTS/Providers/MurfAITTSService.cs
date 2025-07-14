@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Initialize()
         {
-            if (!(_serviceConfig.SampleRate == 8000 || _serviceConfig.SampleRate == 24000 || _serviceConfig.SampleRate == 44100 || _serviceConfig.SampleRate == 48000))
+            if (!(_serviceConfig.TargetSampleRate == 8000 || _serviceConfig.TargetSampleRate == 24000 || _serviceConfig.TargetSampleRate == 44100 || _serviceConfig.TargetSampleRate == 48000))
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000, 24000, 44100, 48000");
             }
@@ -61,7 +61,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Text = text,
                 VoiceId = _serviceConfig.VoiceId,
                 Format = _audioFormat,
-                SampleRate = _serviceConfig.SampleRate,
+                SampleRate = _serviceConfig.TargetSampleRate,
                 EncodeAsBase64 = true,
                 ChannelType = "MONO",
                 ModelVersion = _serviceConfig.Model,

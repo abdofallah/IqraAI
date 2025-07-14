@@ -348,26 +348,14 @@ namespace IqraInfrastructure.Managers.Call
                 // Twilio
                 else if (webhookContext.Provider == TelephonyProviderEnum.Twilio)
                 {
-                    string accountSid = integratonData.Data.Fields["accountsid"];
-                    string authToken = _integrationsManager.DecryptField(integratonData.Data.EncryptedFields["authToken"]);
+                    string accountSid = integratonData.Data.Fields["sid"];
+                    string authToken = _integrationsManager.DecryptField(integratonData.Data.EncryptedFields["auth"]);
 
                     // Get the number details from Twilio
                     var numberDetailsResult = await _twilioManager.GetPhoneNumberDetailsAsync(accountSid, authToken, ((BusinessNumberTwilioData)businessNumber).TwilioPhoneNumberId);
                     if (!numberDetailsResult.Success || numberDetailsResult.Data == null)
                     {
                         _logger.LogWarning("Failed to get phone number details from Twilio: {Message}", numberDetailsResult.Message);
-                        return null;
-                    }
-
-                    if (numberDetailsResult.Data.Status.Replace("_", "") != "in use")
-                    {
-                        _logger.LogWarning("Twilio phone number is not active: {businessId}/{PhoneNumberId}", webhookContext.BusinessId, webhookContext.PhoneNumberId);
-                        return null;
-                    }
-
-                    if (!numberDetailsResult.Data.Capabilities.Voice)
-                    {
-                        _logger.LogWarning("Twilio phone number does not support voice calls: {businessId}/{PhoneNumberId}", webhookContext.BusinessId, webhookContext.PhoneNumberId);
                         return null;
                     }
 

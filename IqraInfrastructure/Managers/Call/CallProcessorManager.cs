@@ -4,6 +4,7 @@ using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helper.Telephony;
@@ -97,10 +98,6 @@ namespace IqraInfrastructure.Managers.Call
 
             FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
-            var sessionBitPerSample = 16;
-            var sessionChannels = 1;
-            var sessionSampleRate = 8000;
-
             try
             {
                 InboundCallQueueData? inboundQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(queueId);
@@ -109,6 +106,21 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("ProcessInboundCallAsync:QUEUE_NOT_FOUND", "Queue not found");
                 }
                 await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend);
+
+                int sessionBitPerSample = 16;
+                int sessionChannels = 1;
+                int sessionSampleRate = 8000;
+                AudioEncodingTypeEnum sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                if (inboundQueueData.RouteNumberProvider == TelephonyProviderEnum.ModemTel)
+                {
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                    sessionBitPerSample = 16;
+                }
+                else if (inboundQueueData.RouteNumberProvider == TelephonyProviderEnum.Twilio)
+                {
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
+                    sessionBitPerSample = 8;
+                }
 
                 RegionData? currentRegionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (currentRegionData == null)
@@ -141,7 +153,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     try
                     {
-                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
+                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
                         if (!sessionAIAgentResult.Success)
                         {
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{sessionAIAgentResult.Code}] {sessionAIAgentResult.Message}" });
@@ -165,7 +177,7 @@ namespace IqraInfrastructure.Managers.Call
                         }
                         hasAddedAgent = true;
 
-                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = inboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
+                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = inboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
                         if (!addSessionTelephonyResult.Success)
                         {
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{addSessionTelephonyResult.Code}] {addSessionTelephonyResult.Message}" });
@@ -249,10 +261,6 @@ namespace IqraInfrastructure.Managers.Call
 
             FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
-            var sessionBitPerSample = 16;
-            var sessionChannels = 1;
-            var sessionSampleRate = 8000;
-
             try
             {
                 OutboundCallQueueData? outboundQueueData = await _outboundCallQueueRepository.GetOutboundCallQueueByIdAsync(queueId);
@@ -261,6 +269,21 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("InitiateOutboundCallAsync:QUEUE_NOT_FOUND", "Queue not found");
                 }
                 await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend, newProcessingServerId: _backendAppConfig.ServerId);
+
+                int sessionBitPerSample = 16;
+                int sessionChannels = 1;
+                int sessionSampleRate = 8000;
+                AudioEncodingTypeEnum sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                if (outboundQueueData.CallingNumberProvider == TelephonyProviderEnum.ModemTel)
+                {
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                    sessionBitPerSample = 16;
+                }
+                else if (outboundQueueData.CallingNumberProvider == TelephonyProviderEnum.Twilio)
+                {
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
+                    sessionBitPerSample = 8;
+                }
 
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
                 if (businessNumber == null)
@@ -309,7 +332,7 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     try
                     {
-                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
+                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
                         if (!sessionAIAgentResult.Success)
                         {
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{sessionAIAgentResult.Code}] {sessionAIAgentResult.Message}" });
@@ -333,7 +356,7 @@ namespace IqraInfrastructure.Managers.Call
                         }
                         hasAddedAgent = true;
 
-                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = outboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate });
+                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = outboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
                         if (!addSessionTelephonyResult.Success)
                         {
                             await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{addSessionTelephonyResult.Code}] {addSessionTelephonyResult.Message}" });
@@ -627,8 +650,8 @@ namespace IqraInfrastructure.Managers.Call
                             ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
                             customerNumber,
                             callId,
-                            integrationData.Data.Fields["accountsid"],
-                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["authtoken"]),
+                            integrationData.Data.Fields["sid"],
+                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]),
                             _serviceProvider.GetRequiredService<TwilioManager>(),
                             _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>()
                         )
@@ -754,6 +777,17 @@ namespace IqraInfrastructure.Managers.Call
                 if (convClient is WebSocketCapableConversationClient wsClient)
                 {
                     await wsClient.HandleAcceptedWebSocketAsync(webSocket, sessionOverallCts.Token);
+
+                    if (convClient is TwilioConversationClient twilioClient)
+                    {
+                        await NotifyTelephonyClientStatus(sessionId, new TelephonyStatusNotifyToBackendModel()
+                        {
+                            PhoneNumberId = twilioClient.ClientTelephonyProviderPhoneNumberId,
+                            Provider = TelephonyProviderEnum.Twilio,
+                            Status = "in-progress"
+                        });
+                    }
+
                     return result.SetSuccessResult(sessionOverallCts);
                 }
                 else

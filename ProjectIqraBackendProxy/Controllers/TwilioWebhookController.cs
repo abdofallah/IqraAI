@@ -24,8 +24,8 @@ namespace ProjectIqraBackendProxy.Controllers
             _callStatusManager = callStatusManager;
         }
 
-        [HttpPost("incoming/{businessId}/{phoneNumberId}")]
-        public async Task<IActionResult> HandleStatusWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
+        [HttpPost("voice/status/{businessId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleStatusWebhook([FromForm] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
         {
             if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
             {
@@ -34,7 +34,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
             var webhookContext = new TelephonyWebhookContextModel
             {
-                Provider = TelephonyProviderEnum.ModemTel,
+                Provider = TelephonyProviderEnum.Twilio,
                 CallId = webhookData.CallSid,
                 BusinessId = businessId,
                 PhoneNumberId = phoneNumberId,
@@ -45,18 +45,6 @@ namespace ProjectIqraBackendProxy.Controllers
 
             switch (webhookData.CallStatus?.ToLower())
             {
-                case "incoming":
-                    {
-                        var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
-                        if (!distributionResult.Success)
-                        {
-                            // todo ask user what to do with failed calls
-                            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say language=""en_US"" voice=""lessac"">Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
-                        }
-
-                        return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" track=""both_tracks"" /></Connect><Hangup /></Response>");
-                    }
-
                 case "no-answer":
                 case "busy":
                     {
@@ -93,8 +81,42 @@ namespace ProjectIqraBackendProxy.Controllers
             }
         }
 
-        [HttpPost("status/{sessionId}")]
-        public async Task<IActionResult> HandleStatusWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] string sessionId)
+        [HttpPost("voice/incoming/{businessId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleIncomingWebhook([FromForm] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId)
+        {
+            if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || webhookData == null)
+            {
+                return BadRequest("Invalid request parameters");
+            }
+
+            var webhookContext = new TelephonyWebhookContextModel
+            {
+                Provider = TelephonyProviderEnum.Twilio,
+                CallId = webhookData.CallSid,
+                BusinessId = businessId,
+                PhoneNumberId = phoneNumberId,
+                To = webhookData.To,
+                From = webhookData.From,
+                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
+            };
+
+            var form = Request.Form;
+
+            var distributionResult = await _inboundCallManager.DistributeIncomingCall(webhookContext);
+            if (!distributionResult.Success)
+            {
+                return Ok(); // for debug do not pick up calls
+                // todo ask user what to do with failed calls
+                return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say language=""en_US"" voice=""lessac"">Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
+            }
+
+            distributionResult.Data.WebhookUrl = distributionResult.Data.WebhookUrl.Replace("192.168.100.9:5250", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devserver").Replace("ws://", "wss://");
+
+            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" /></Connect><Say>.</Say></Response>");
+        }
+
+        [HttpPost("voice/session/incoming/{sessionId}")]
+        public async Task<IActionResult> HandleSessionIncomingWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] string sessionId)
         {
             if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
             {
@@ -103,7 +125,7 @@ namespace ProjectIqraBackendProxy.Controllers
 
             var webhookContext = new TelephonyWebhookContextModel
             {
-                Provider = TelephonyProviderEnum.ModemTel,
+                Provider = TelephonyProviderEnum.Twilio,
                 CallId = webhookData.CallSid,
                 To = webhookData.To,
                 From = webhookData.From,

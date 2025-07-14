@@ -32,14 +32,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             // make this dynamic within dashboard
             if (_serviceConfig.VoiceEngine == "PlayHT1.0")
             {
-                if (_serviceConfig.SampleRate != 8000)
+                if (_serviceConfig.TargetSampleRate != 8000)
                 {
                     throw new Exception("Unsupported sample rate for PlayHT1.0, supported are: 8000");
                 }
 
             }
 
-            if (_serviceConfig.SampleRate < 8000 || _serviceConfig.SampleRate > 48000)
+            if (_serviceConfig.TargetSampleRate < 8000 || _serviceConfig.TargetSampleRate > 48000)
             {
                 throw new Exception("Unsupported sample rate, supported are: 8000~48000");
             }
@@ -59,7 +59,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 VoiceEngine = _serviceConfig.VoiceEngine,
                 Quality = _serviceConfig.VoiceQuality,
                 OutputFormat = _audioFormat,
-                SampleRate = _serviceConfig.SampleRate,
+                SampleRate = _serviceConfig.TargetSampleRate,
                 Speed = _serviceConfig.VoiceSpeed,
                 Temperature = _serviceConfig.Temperature,
                 Emotion = _serviceConfig.Emotion,
@@ -130,7 +130,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             {
                 if (_audioFormat == "ULAW")
                 {
-                    double durationSeconds = (double)audioData.Length / _serviceConfig.SampleRate;
+                    double durationSeconds = (double)audioData.Length / _serviceConfig.TargetSampleRate;
                     var ulawDuration = TimeSpan.FromSeconds(durationSeconds);
 
                     return (audioData, ulawDuration);

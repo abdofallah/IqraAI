@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.PlayHt
 {
@@ -15,6 +16,8 @@ namespace IqraCore.Entities.TTS.Providers.PlayHt
         public float StyleGuidance { get; set; }
         public float TextGuidance { get; set; }
         public string Language { get; set; }
-        public int SampleRate { get; set; }
+        public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

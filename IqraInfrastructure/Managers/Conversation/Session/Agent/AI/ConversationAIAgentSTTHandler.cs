@@ -49,7 +49,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(
                 _agentState.STTBusinessIntegrationData,
                 defaultSTTService,
-                new Dictionary<string, string> { { "language", _agentState.CurrentLanguageCode } }
+                _agentState.AgentConfiguration.SampleRate,
+                _agentState.AgentConfiguration.BitsPerSample,
+                _agentState.AgentConfiguration.AudioEncodingType
             );
 
             if (!sttServiceResult.Success || sttServiceResult.Data == null)

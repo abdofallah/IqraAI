@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Hamsa
 {
@@ -8,5 +9,7 @@ namespace IqraCore.Entities.TTS.Providers.Hamsa
         public string Speaker { get; set; }
         public string Dialect { get; set; }
         public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }

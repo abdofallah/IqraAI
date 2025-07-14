@@ -1,16 +1,17 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Entities.STT;
-using IqraInfrastructure.Repositories.STT;
+using IqraCore.Interfaces.AI;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.STT.Providers;
+using IqraInfrastructure.Repositories.STT;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
-using IqraCore.Interfaces.AI;
-using IqraCore.Entities.Business;
-using IqraInfrastructure.Managers.STT.Providers;
-using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Managers.STT
@@ -462,7 +463,7 @@ namespace IqraInfrastructure.Managers.STT
             return result;
         }
     
-        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ISTTService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncoding)
         {
             var result = new FunctionReturnResult<ISTTService?>();
 
@@ -475,8 +476,6 @@ namespace IqraInfrastructure.Managers.STT
                     result.Message = "Provider not find by integration type";
                     return result;
                 }
-
-                int sampleRate = 8000;
 
                 switch (sttProviderData.Data.Id)
                 {
@@ -504,7 +503,7 @@ namespace IqraInfrastructure.Managers.STT
                                 phrasesList.AddRange(phrasesListString.Split(','));
                             }
 
-                            var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, sampleRate);
+                            var azureSTTService = new AzureSpeechSTTService(resourceKey, resourceRegion, languageId, continousLanguageIdentificationIds, speakerDiarization, phrasesList, silenceTimeout, inputSampleRate, inputBitsPerSample, inputAudioEncoding);
                             return result.SetSuccessResult(
                                 azureSTTService
                             );
@@ -537,7 +536,7 @@ namespace IqraInfrastructure.Managers.STT
                             }
 
                             var deepgramSTTService = new DeepgramSTTService(
-                                apiKey, language, model, speakerDiarizationDg, keywordsList, silenceTimeoutDg, sampleRate,
+                                apiKey, language, model, speakerDiarizationDg, keywordsList, silenceTimeoutDg, inputSampleRate, inputBitsPerSample, inputAudioEncoding,
                                 punctuate: punctuate,
                                 smartFormat: smartFormat,
                                 fillerWords: fillerWords,
@@ -561,7 +560,9 @@ namespace IqraInfrastructure.Managers.STT
 
                             var assemblySTTService = new AssemblyAISpeechSTTService(
                                 apiKey,
-                                sampleRate,
+                                inputSampleRate,
+                                inputBitsPerSample,
+                                inputAudioEncoding,
                                 formatTurns,
                                 endOfTurnConfidenceThreshold,
                                 minEndOfTurnSilenceWhenConfident,

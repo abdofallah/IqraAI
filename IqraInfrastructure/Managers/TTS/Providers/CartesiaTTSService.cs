@@ -50,9 +50,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 Voice = new CartesiaVoiceRequest { Id = _serviceConfig.VoiceId },
                 OutputFormat = new CartesiaOutputFormatRequest
                 {
-                    SampleRate = _serviceConfig.SampleRate,
+                    SampleRate = _serviceConfig.TargetSampleRate,
                     Encoding = "pcm_s16le",
-                    BitRate = (_serviceConfig.SampleRate * (BytesPerSample * 8))
+                    BitRate = (_serviceConfig.TargetSampleRate * (BytesPerSample * 8))
                 },
                 Language = _serviceConfig.LanguageCode,
                 PronunciationDictIds = _serviceConfig.PronunciationDictIds.ToArray()
@@ -75,7 +75,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 {
                     byte[] audioData = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
-                    double durationSeconds = (double)audioData.Length / (_serviceConfig.SampleRate * BytesPerSample * Channels);
+                    double durationSeconds = (double)audioData.Length / (_serviceConfig.TargetSampleRate * BytesPerSample * Channels);
                     TimeSpan duration = TimeSpan.FromSeconds(durationSeconds);
                     return (audioData, duration);
                 }

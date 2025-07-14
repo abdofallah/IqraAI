@@ -810,6 +810,7 @@ namespace IqraInfrastructure.Managers.Business
                 CampaignId = outboundCallCampaignId,
                 CallingNumberId = CallingNumberId,
                 ProviderCallId = null,
+                CallingNumberProvider = businessNumberData.Provider,
                 RecipientNumber = RecipientNumber,
                 ScheduledForDateTime = DateTime.UtcNow.AddMinutes(1),
                 CallRetryOnDeclineData = RetryDeclineData,

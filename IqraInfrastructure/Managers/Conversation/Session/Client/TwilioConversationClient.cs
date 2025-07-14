@@ -102,6 +102,26 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client
             return Task.CompletedTask;
         }
 
+        public override async Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
+        {
+            if (!_isConnected || _activeWebSocket == null || _activeWebSocket.State != WebSocketState.Open)
+            {
+                return;
+            }
+            try
+            {
+                var mediaPayloadBase64 = Convert.ToBase64String(audioData);
+                var mediaMessage = $"{{\"event\":\"media\",\"streamSid\":\"{_streamSidFromTwilio}\",\"media\":{{\"payload\":\"{mediaPayloadBase64}\"}} }}";
+
+                await SendWebSocketDataAsync(Encoding.UTF8.GetBytes(mediaMessage), WebSocketMessageType.Text, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                await HandleWebSocketErrorAndDisconnect($"Error sending audio: {ex.Message}");
+                throw;
+            }
+        }
+
         public override async Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
         {
             if (!_isConnected || _activeWebSocket == null || _activeWebSocket.State != WebSocketState.Open || string.IsNullOrEmpty(_streamSidFromTwilio))

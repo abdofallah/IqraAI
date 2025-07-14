@@ -34,7 +34,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         {
             // Static HttpClient initialization is handled implicitly
 
-            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_serviceConfig.SampleRate))
+            if (!(new List<int>([8000, 16000, 22050, 24000, 32000, 44100])).Contains(_serviceConfig.TargetSampleRate))
             {
                 throw new Exception("Sample rate support are 8000, 16000, 22050, 24000, 32000 or 44100");
             }
@@ -55,9 +55,9 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 AudioSetting = new MinimaxAudioSetting
                 {
                     Format = "pcm",
-                    SampleRate = _serviceConfig.SampleRate,
+                    SampleRate = _serviceConfig.TargetSampleRate,
                     Channel = _channels,
-                    Bitrate = (_serviceConfig.SampleRate * (_bytesPerSample * 8))
+                    Bitrate = (_serviceConfig.TargetSampleRate * (_bytesPerSample * 8))
                 },
                 SubtitleEnable = false,
                 PronunciationDict = _serviceConfig.PronunciationDict,
@@ -132,7 +132,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     // or assuming they match the request (less reliable).
                     int bytesPerSample = _bytesPerSample; // Assuming PCM 16-bit based on common practice
                     int channels = _channels; // Use response channel if available, else assume 1
-                    int sampleRate = _serviceConfig.SampleRate; // Use response rate if available
+                    int sampleRate = _serviceConfig.TargetSampleRate; // Use response rate if available
 
                     if (sampleRate > 0 && bytesPerSample > 0 && channels > 0 && audioData.Length > 0)
                     {

@@ -71,19 +71,19 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
             if (_modelData == null) throw new Exception("Model not found");
 
-            if (_serviceConfig.SampleRate == 8000)
+            if (_serviceConfig.TargetSampleRate == 8000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000;
             }
-            else if (_serviceConfig.SampleRate == 16000)
+            else if (_serviceConfig.TargetSampleRate == 16000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000;
             }
-            else if (_serviceConfig.SampleRate == 24000)
+            else if (_serviceConfig.TargetSampleRate == 24000)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000;
             }
-            else if (_serviceConfig.SampleRate == 44100)
+            else if (_serviceConfig.TargetSampleRate == 44100)
             {
                 _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100;
             }

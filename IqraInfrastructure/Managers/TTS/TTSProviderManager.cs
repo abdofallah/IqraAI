@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
@@ -488,7 +489,7 @@ namespace IqraInfrastructure.Managers.TTS
             return result;
         }
 
-        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<ITTSService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, int targetSampleRate, int targetBitsPerSample, AudioEncodingTypeEnum targetAudioEncoding)
         {
             var result = new FunctionReturnResult<ITTSService?>();
 
@@ -503,8 +504,6 @@ namespace IqraInfrastructure.Managers.TTS
                     );
                 }
 
-                int sampleRate = metaData.TryGetValue("sampleRate", out var rateStr) && int.TryParse(rateStr, out var rate) ? rate : 8000;
-
                 switch (ttsProviderData.Data.Id)
                 {
                     case InterfaceTTSProviderEnum.AzureSpeechServices:
@@ -516,7 +515,9 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 Language = (string)agentIntegrationData.FieldValues["speaker_language"],
                                 VoiceName = (string)agentIntegrationData.FieldValues["speaker"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new AzureSpeechTTSService(resourceKey, resourceRegion, config);
@@ -531,14 +532,16 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 ModelId = (string)agentIntegrationData.FieldValues["model_id"],
                                 VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
-                                SampleRate = sampleRate,
                                 Stability = (float)(double)agentIntegrationData.FieldValues["stability"],
                                 SimilarityBoost = (float)(double)agentIntegrationData.FieldValues["similarityBoost"],
                                 Style = (float)(double)agentIntegrationData.FieldValues["style"],
                                 UseSpeakerBoost = bool.Parse((string)agentIntegrationData.FieldValues["speakerBoost"]),
                                 Speed = (float)(double)agentIntegrationData.FieldValues["speed"],
                                 PronunciationDictionaryId = (string)agentIntegrationData.FieldValues["pronunciationDictionaryId"],
-                                ApplyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"]
+                                ApplyTextNormalization = (string)agentIntegrationData.FieldValues["applyTextNormalization"],
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new ElevenLabsTTSService(apiKey, config); // Assuming constructor is updated
@@ -554,7 +557,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
                                 VoiceName = (string)agentIntegrationData.FieldValues["voice_name"],
                                 SpeakingRate = (float)(double)agentIntegrationData.FieldValues["speaking_rate"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new GoogleTTSService(serviceAccountKeyJson, config);
@@ -571,7 +576,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 ModelId = (string)agentIntegrationData.FieldValues["model_id"],
                                 LanguageCode = (string)agentIntegrationData.FieldValues["language_code"],
                                 PronunciationDictIds = ((string)agentIntegrationData.FieldValues["pronunciationDictIds"]).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList(),
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new CartesiaTTSService(apiKey, config);
@@ -586,7 +593,9 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 ReferenceId = (string)agentIntegrationData.FieldValues["reference_id"],
                                 Model = (string)agentIntegrationData.FieldValues["model"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new FishAudioTTSService(apiKey, config);
@@ -600,7 +609,9 @@ namespace IqraInfrastructure.Managers.TTS
                             var config = new DeepgramConfig
                             {
                                 ModelId = (string)agentIntegrationData.FieldValues["model_id"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new DeepgramTTSService(apiKey, config);
@@ -619,7 +630,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
                                 LanguageBoostId = (string)agentIntegrationData.FieldValues["language_boost_id"],
                                 PronunciationDict = (string)agentIntegrationData.FieldValues["pronunciation_dict"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new MinimaxTTSService(apiKey, groupId, config);
@@ -636,7 +649,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 VoiceProvider = (string)agentIntegrationData.FieldValues["voice_provider"],
                                 VoiceDescription = (string)agentIntegrationData.FieldValues["voice_description"],
                                 VoiceSpeed = (float)(double)agentIntegrationData.FieldValues["voice_speed"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new HumeAITTSService(apiKey, config);
@@ -660,7 +675,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 StyleGuidance = (float)(double)agentIntegrationData.FieldValues["style_guidance"],
                                 TextGuidance = (float)(double)agentIntegrationData.FieldValues["text_guidance"],
                                 Language = (string)agentIntegrationData.FieldValues["language"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new PlayHtTTSService(apiKey, userId, config);
@@ -678,7 +695,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 Language = (string)agentIntegrationData.FieldValues["language"],
                                 LoudnessNormalization = bool.Parse((string)agentIntegrationData.FieldValues["loudness_normalization"]),
                                 TextNormalization = bool.Parse((string)agentIntegrationData.FieldValues["text_normalization"]),
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new SpeechifyTTSService(apiKey, config);
@@ -698,7 +717,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 Rate = (int)(long)agentIntegrationData.FieldValues["rate"], // JSON deserializes numbers to long by default
                                 Style = (string)agentIntegrationData.FieldValues["style"],
                                 Variation = (int)(long)agentIntegrationData.FieldValues["variation"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new MurfAITTSService(apiKey, config);
@@ -724,7 +745,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 LanguageIsoCode = (string)agentIntegrationData.FieldValues["language_iso_code"],
                                 Emotion = emotionDict,
                                 Vqscore = (float)(double)agentIntegrationData.FieldValues["vqscore"],
-                                SampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new ZyphraZonosTTSService(apiKey, config);
@@ -734,13 +757,15 @@ namespace IqraInfrastructure.Managers.TTS
                     case InterfaceTTSProviderEnum.ResembleAITextToSpeech:
                         {
                             string apiKey = _integrationsManager.DecryptField(integrationData.EncryptedFields["api_key"]);
-                            string projectUuid = integrationData.Fields["project_uuid"]; // Auth/Scoping related
+                            string projectUuid = integrationData.Fields["project_uuid"];
 
                             var config = new ResembleAiConfig
                             {
                                 ProjectUuid = projectUuid,
                                 VoiceUuid = (string)agentIntegrationData.FieldValues["voice_uuid"],
-                                TargetSampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new ResembleAITTSService(apiKey, config);
@@ -755,7 +780,9 @@ namespace IqraInfrastructure.Managers.TTS
                             {
                                 Speaker = (string)agentIntegrationData.FieldValues["speaker"],
                                 Dialect = (string)agentIntegrationData.FieldValues["dialect"],
-                                TargetSampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new HamsaAITTSService(apiKey, config);
@@ -772,7 +799,9 @@ namespace IqraInfrastructure.Managers.TTS
                                 Model = (string)agentIntegrationData.FieldValues["model"],
                                 VoiceId = (string)agentIntegrationData.FieldValues["voice_id"],
                                 Speed = (float)(double)agentIntegrationData.FieldValues["speed"],
-                                TargetSampleRate = sampleRate
+                                TargetSampleRate = targetSampleRate,
+                                TargetBitsPerSample = targetBitsPerSample,
+                                TargetEncodingType = targetAudioEncoding
                             };
 
                             var service = new NeuphonicTTSService(apiKey, config);

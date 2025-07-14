@@ -36,7 +36,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             _audioConfig = new AudioConfig
             {
                 AudioEncoding = _audioEncoding,
-                SampleRateHertz = _serviceConfig.SampleRate,
+                SampleRateHertz = _serviceConfig.TargetSampleRate,
                 SpeakingRate = _serviceConfig.SpeakingRate,
             };
         }

@@ -1,4 +1,5 @@
-﻿using IqraCore.Interfaces.TTS;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
 {
@@ -11,6 +12,8 @@ namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
         public string LanguageIsoCode { get; set; }
         public Dictionary<string, float> Emotion { get; set; } = new Dictionary<string, float>();
         public float Vqscore { get; set; }
-        public int SampleRate { get; set; }
+        public int TargetSampleRate { get; set; }
+        public int TargetBitsPerSample { get; set; }
+        public AudioEncodingTypeEnum TargetEncodingType { get; set; }
     }
 }
