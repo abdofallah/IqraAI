@@ -1,8 +1,12 @@
 ﻿using ElevenLabs;
+using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Interfaces;
+using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.ElevenLabs;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
+using IqraInfrastructure.Managers.TTS.Helpers;
+using System.Collections.ObjectModel;
 
 namespace IqraInfrastructure.Managers.TTS.Providers
 {
@@ -10,6 +14,10 @@ namespace IqraInfrastructure.Managers.TTS.Providers
     {
         private readonly string _apiKey;
         private readonly ElevenLabsConfig _serviceConfig;
+
+        private AudioRequestDetails _finalUserRequest;
+        private TTSProviderAvailableAudioFormat _optimalElevenLabsFormat;
+        private bool _audioConversationNeeded = false;
 
         private ElevenLabsClient _client;
 
@@ -22,9 +30,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         private BodyTextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostApplyTextNormalization _applyTextNormalization;
         private List<PronunciationDictionaryVersionLocatorRequestModel> _pronunciationDictionaryId;
 
-        private List<string> _previousRequestIds = new List<string>();
-
-        
+        private List<string> _previousRequestIds = new List<string>();   
 
         public ElevenLabsTTSService(string apiKey, ElevenLabsConfig config)
         {
@@ -63,6 +69,28 @@ namespace IqraInfrastructure.Managers.TTS.Providers
 
         public void Initialize()
         {
+            _finalUserRequest = new AudioRequestDetails
+            {
+                RequestedEncoding = _serviceConfig.TargetEncodingType,
+                RequestedSampleRateHz = _serviceConfig.TargetSampleRate,
+                RequestedBitsPerSample = _serviceConfig.TargetBitsPerSample
+            };
+
+            var bestFallbackOrder = AudiEncoderFallbackSelector.GetFallbackOrder(_finalUserRequest, ElevenLabsSupportedFormats);
+            _optimalElevenLabsFormat = bestFallbackOrder.FirstOrDefault() ?? throw new NotSupportedException(
+                $"ElevenLabs TTS does not support any format that can be reasonably converted to the requested format: " +
+                $"{_finalUserRequest.RequestedEncoding} @ {_finalUserRequest.RequestedSampleRateHz}Hz");
+
+            var formatKey = (_optimalElevenLabsFormat.Encoding, _optimalElevenLabsFormat.SampleRateHz, _optimalElevenLabsFormat.BitsPerSample);
+            if (!FormatMap.TryGetValue(formatKey, out _outputFormat)) // Set the class-level field
+            {
+                throw new InvalidOperationException($"Internal error: No mapping found for the selected optimal ElevenLabs format: {formatKey}");
+            }
+
+            _audioConversationNeeded = _optimalElevenLabsFormat.Encoding != _finalUserRequest.RequestedEncoding ||
+                                    _optimalElevenLabsFormat.SampleRateHz != _finalUserRequest.RequestedSampleRateHz ||
+                                    _optimalElevenLabsFormat.BitsPerSample != _finalUserRequest.RequestedBitsPerSample;
+
             _client = new ElevenLabsClient(_apiKey);
 
             _voiceData = _client.Voices.GetVoicesByVoiceIdAsync(_serviceConfig.VoiceId).GetAwaiter().GetResult();
@@ -70,27 +98,6 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             var allModels = _client.Models.GetModelsAsync().GetAwaiter().GetResult().ToList();
             _modelData = allModels.Find(d => d.ModelId == _serviceConfig.ModelId);
             if (_modelData == null) throw new Exception("Model not found");
-
-            if (_serviceConfig.TargetSampleRate == 8000)
-            {
-                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000;
-            }
-            else if (_serviceConfig.TargetSampleRate == 16000)
-            {
-                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000;
-            }
-            else if (_serviceConfig.TargetSampleRate == 24000)
-            {
-                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000;
-            }
-            else if (_serviceConfig.TargetSampleRate == 44100)
-            {
-                _outputFormat = TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100;
-            }
-            else
-            {
-                throw new Exception("Unsupported sample rate, supported are: 8000, 16000, 24000, 44100");
-            }
         }
 
         public async Task<(byte[]?, TimeSpan?)> SynthesizeTextAsync(string text, CancellationToken cancellationToken, Dictionary<string, object>? metaData)
@@ -110,8 +117,20 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                     _previousRequestIds.RemoveAt(0);
                 }
 
-                var audioData = Convert.FromBase64String(result.Item1.AudioBase64);
-                return (audioData, TimeSpan.FromSeconds(result.Item1.Alignment.CharacterEndTimesSeconds.Last()));
+                byte[] sourceAudioData = Convert.FromBase64String(result.Item1.AudioBase64);
+
+                var duration = result.Item1.Alignment != null && result.Item1.Alignment.CharacterEndTimesSeconds.Any()
+                    ? TimeSpan.FromSeconds(result.Item1.Alignment.CharacterEndTimesSeconds.Last())
+                    : AudioConversationHelper.CalculateDuration(sourceAudioData, _optimalElevenLabsFormat);
+
+                (byte[], TimeSpan) finalAudioData = (sourceAudioData, duration);
+
+                if (_audioConversationNeeded)
+                {
+                    finalAudioData = AudioConversationHelper.Convert(sourceAudioData, _optimalElevenLabsFormat, _finalUserRequest);
+                }
+
+                return finalAudioData;
             }
             catch (Exception ex) {
                 // todo log it
@@ -146,6 +165,51 @@ namespace IqraInfrastructure.Managers.TTS.Providers
         public static InterfaceTTSProviderEnum GetProviderTypeStatic()
         {
             return InterfaceTTSProviderEnum.ElevenLabsTextToSpeech;
+        }
+
+        // STATIC
+        private static readonly ReadOnlyCollection<TTSProviderAvailableAudioFormat> ElevenLabsSupportedFormats;
+        private static readonly ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat> FormatMap;
+
+        static ElevenLabsTTSService()
+        {
+            // Define all formats ElevenLabs can produce that we care about.
+            var supportedFormats = new List<TTSProviderAvailableAudioFormat>
+            {
+                // PCM (Assuming 16-bit depth as is standard)
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 8000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 16000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 22050, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 24000, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 44100, BitsPerSample = 16 },
+                new() { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = 48000, BitsPerSample = 16 },
+
+                // MULAW / ULAW (Inherently 8-bit)
+                new() { Encoding = AudioEncodingTypeEnum.MULAW, SampleRateHz = 8000, BitsPerSample = 8 },
+
+                // ALAW (Inherently 8-bit)
+                new() { Encoding = AudioEncodingTypeEnum.ALAW, SampleRateHz = 8000, BitsPerSample = 8 },
+
+                // OPUS (48kHz, 16-bit)
+                new() { Encoding = AudioEncodingTypeEnum.OPUS, SampleRateHz = 48000, BitsPerSample = 16 },
+            };
+            ElevenLabsSupportedFormats = supportedFormats.AsReadOnly();
+
+            // Create the mapping from our format definition to the ElevenLabs SDK enum.
+            // We only map one Opus format for simplicity, as they all represent the same encoding type for conversion purposes.
+            var formatMap = new Dictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>
+            {
+                { (AudioEncodingTypeEnum.PCM, 8000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm8000 },
+                { (AudioEncodingTypeEnum.PCM, 16000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm16000 },
+                { (AudioEncodingTypeEnum.PCM, 22050, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm22050 },
+                { (AudioEncodingTypeEnum.PCM, 24000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm24000 },
+                { (AudioEncodingTypeEnum.PCM, 44100, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm44100 },
+                { (AudioEncodingTypeEnum.PCM, 48000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Pcm48000 },
+                { (AudioEncodingTypeEnum.MULAW, 8000, 8), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Ulaw8000 },
+                { (AudioEncodingTypeEnum.ALAW, 8000, 8), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Alaw8000 },
+                { (AudioEncodingTypeEnum.OPUS, 48000, 16), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat.Opus48000128 },
+            };
+            FormatMap = new ReadOnlyDictionary<(AudioEncodingTypeEnum, int, int), TextToSpeechWithTimestampsV1TextToSpeechVoiceIdWithTimestampsPostOutputFormat>(formatMap);
         }
     }
 }

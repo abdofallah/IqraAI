@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
-using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.TTS.Helpers
 {
@@ -66,11 +65,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                 scoredOptions.Add(new ScoredOption(availableFormat, score));
             }
            
-            var sortedScore = scoredOptions.OrderBy(o => o.Score).ToList();
-
-            var text = JsonSerializer.Serialize(sortedScore);
-
-            return sortedScore.Select(o => o.Format).ToList();
+            return scoredOptions.OrderBy(o => o.Score).Select(o => o.Format).ToList();
         }
 
         private static int CalculateScore(TTSProviderAvailableAudioFormat sourceFormat, EncodingProfile sourceProfile, EncodingProfile targetProfile, AudioRequestDetails request, AudioEncoderFallbackOptimizationMode audioOptimzationMode)

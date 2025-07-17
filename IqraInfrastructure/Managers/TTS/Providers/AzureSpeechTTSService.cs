@@ -92,14 +92,14 @@ namespace IqraInfrastructure.Managers.TTS.Providers
                 return (new byte[] { }, TimeSpan.Zero);
             }
 
-            byte[] finalAudioData = result.AudioData;
+            (byte[], TimeSpan) finalAudioData = (result.AudioData, result.AudioDuration);
 
             if (_audioConversationNeeded)
             {
                 finalAudioData = AudioConversationHelper.Convert(result.AudioData, _optimalAzureFormat, _finalUserRequest);
             }
 
-            return (finalAudioData, result.AudioDuration);
+            return finalAudioData;
         }
 
         public async Task StopTextSynthesisAsync()

@@ -210,8 +210,8 @@ namespace IqraInfrastructure.Managers.Business
 
                 ((BusinessNumberTwilioData)newNumberData).TwilioPhoneNumberId = firstNumber.Sid;
 
-                string statusCallbackUrl = $"http://5.37.230.97:5062/api/twilio/webhook/voice/status/{businessId}/{newNumberId}";
-                string voiceUrl = $"http://5.37.230.97:5062/api/twilio/webhook/voice/incoming/{businessId}/{newNumberId}";
+                string statusCallbackUrl = $"http://5.37.150.73:5062/api/twilio/webhook/voice/status/{businessId}/{newNumberId}";
+                string voiceUrl = $"http://5.37.150.73:5062/api/twilio/webhook/voice/incoming/{businessId}/{newNumberId}";
 
                 var updateWebhookResult = await _twilioManager.UpdatePhoneNumberVoiceConfigurationAsync(accountSid, accountAuthToken, firstNumber.Sid, voiceUrl, statusCallbackUrl);
                 if (!updateWebhookResult.Success)
