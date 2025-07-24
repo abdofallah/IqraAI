@@ -242,7 +242,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 var baseUri = new Uri(serverEndpoint);
-                baseUri = new Uri(baseUri, $"/api/call/{sessionId}/telephonyclient/status");
+                baseUri = new Uri(baseUri, $"{(baseUri.AbsolutePath != "/" ? baseUri.AbsolutePath : "")}/api/call/{sessionId}/telephonyclient/status");
                 var response = await client.PostAsync(baseUri, content);
 
                 if (!response.IsSuccessStatusCode)

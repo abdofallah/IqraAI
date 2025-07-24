@@ -63,12 +63,13 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = new FunctionReturnResult<BusinessNumberData?>();
 
-            string newNumberId = Guid.NewGuid().ToString();
             BusinessNumberData newNumberData = new BusinessNumberData()
             {
+                Id = postType == "new" ? Guid.NewGuid().ToString() : exisitingNumberData.Id,
                 CountryCode = countryCode,
                 Number = number,
-                Provider = provider
+                Provider = provider,
+                RouteId = exisitingNumberData.RouteId
             };
    
             // Get Integration Data
@@ -210,8 +211,11 @@ namespace IqraInfrastructure.Managers.Business
 
                 ((BusinessNumberTwilioData)newNumberData).TwilioPhoneNumberId = firstNumber.Sid;
 
-                string statusCallbackUrl = $"http://5.37.150.73:5062/api/twilio/webhook/voice/status/{businessId}/{newNumberId}";
-                string voiceUrl = $"http://5.37.150.73:5062/api/twilio/webhook/voice/incoming/{businessId}/{newNumberId}";
+                var regionProxyServerBaseURI = new Uri((getRegionWebhookServer.UseSSL ? "https://" : "http://") + getRegionWebhookServer.Endpoint);
+                var regionProxyABSPATH = (regionProxyServerBaseURI.AbsolutePath != "/" ? regionProxyServerBaseURI.AbsolutePath : "");
+
+                string statusCallbackUrl = new Uri(regionProxyServerBaseURI, $"{regionProxyABSPATH}/api/twilio/webhook/voice/status/{businessId}/{newNumberData.Id}").ToString();
+                string voiceUrl = new Uri(regionProxyServerBaseURI, $"{regionProxyABSPATH}/api/twilio/webhook/voice/incoming/{businessId}/{newNumberData.Id}").ToString();
 
                 var updateWebhookResult = await _twilioManager.UpdatePhoneNumberVoiceConfigurationAsync(accountSid, accountAuthToken, firstNumber.Sid, voiceUrl, statusCallbackUrl);
                 if (!updateWebhookResult.Success)
@@ -235,8 +239,6 @@ namespace IqraInfrastructure.Managers.Business
 
             if (postType == "new")
             {
-                newNumberData.Id = newNumberId;
-
                 bool addNumberResult = await _businessAppRepository.AddBusinessNumber(businessId, newNumberData);
                 if (!addNumberResult)
                 {
@@ -247,8 +249,6 @@ namespace IqraInfrastructure.Managers.Business
             }
             else
             {
-                newNumberData.Id = exisitingNumberData.Id;
-
                 bool updateNumberResult = await _businessAppRepository.UpdateBusinessNumber(businessId, newNumberData);
                 if (!updateNumberResult)
                 {

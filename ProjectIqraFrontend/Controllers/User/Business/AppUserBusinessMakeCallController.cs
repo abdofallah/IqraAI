@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.MakeCalls;
+using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +13,13 @@ namespace ProjectIqraFrontend.Controllers.User.Business
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
+        private readonly BillingValidationManager _billingValidationManager;
 
-        public AppUserBusinessMakeCallController(UserManager userManager, BusinessManager businessManager)
+        public AppUserBusinessMakeCallController(UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;
+            _billingValidationManager = billingValidationManager;
         }
 
         [HttpPost("/app/user/business/{businessId}/calls/initiate")]
@@ -67,11 +70,12 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 );
             }
 
-            if (user.Billing.CreditBalance <= 0)
+            var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "outbound call");
+            if (!checkBalanceOrMinutes.Success)
             {
                 return result.SetFailureResult(
-                    "InitiateCalls:6",
-                    "Insufficient credit balance."
+                    "InitiateCalls:" + checkBalanceOrMinutes.Code,
+                    checkBalanceOrMinutes.Message
                 );
             }
 

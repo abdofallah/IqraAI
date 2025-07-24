@@ -1,4 +1,5 @@
 ﻿using Deepgram.Models.Agent.v2.WebSocket;
+using FluentFTP.Helpers;
 using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
@@ -255,9 +256,9 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
 
-        public async Task<FunctionReturnResult> InitiateOutboundCallAsync(string queueId)
+        public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCallAsync(string queueId)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
 
             FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
@@ -308,18 +309,21 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found");
                 }
                 var anyRegionProxyServerData = regionData.Servers.FirstOrDefault(s => s.Type == ServerTypeEnum.Proxy);
-                if (anyRegionProxyServerData == null) {
+                if (anyRegionProxyServerData == null)
+                {
                     return result.SetFailureResult("InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND", "Region proxy server not found");
                 }
 
                 sessionResult = await CreateConversationSessionAsync(outboundQueueData);
                 if (!sessionResult.Success)
                 {
+                    // CHECK WHY THEN REQUEUE
                     return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", sessionResult.Message);
                 }
                 var startSessionResult = await sessionResult.Data.InitalizeAsync();
                 if (!startSessionResult.Success)
                 {
+                    // CHECK WHY THEN REQUEUE
                     return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_INIT_FAILED", startSessionResult.Message);
                 }
 
@@ -370,69 +374,87 @@ namespace IqraInfrastructure.Managers.Call
                     {
                         await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:EXECEPTION] {ex.Message}" });
                     }
-                    finally
+                });
+
+                if (!taskResultSuccess)
+                {
+                    if (hasAddedAgent == false)
                     {
-                        if (!taskResultSuccess)
+                        if (agent != null)
                         {
-                            if (hasAddedAgent == false)
-                            {
-                                if (agent != null)
-                                {
-                                    agent.Dispose();
-                                }
-                            }
-
-                            if (hasAddedClient == false)
-                            {
-                                if (primaryTelephonyClient != null)
-                                {
-                                    primaryTelephonyClient.Dispose();
-                                }
-                            }
-
-                            await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionState.Error);
-                            await CleanupSessionAsync(sessionResult.Data.SessionId);
+                            agent.Dispose();
                         }
                     }
-                });
+
+                    if (hasAddedClient == false)
+                    {
+                        if (primaryTelephonyClient != null)
+                        {
+                            primaryTelephonyClient.Dispose();
+                        }
+                    }
+
+                    await sessionResult.Data.EndAsync("InitiateOutboundCallAsync Failed", ConversationSessionState.Error);
+                    await CleanupSessionAsync(sessionResult.Data.SessionId);
+
+                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", "Session creation failed");
+                }
 
                 var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
                 var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
                 var callbackUrl = BuildStatusCallbackUrl(anyRegionProxyServerData, outboundQueueData.BusinessId, sessionResult.Data.SessionId, businessNumber.Provider, outboundQueueData.CallingNumberId);
 
+                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
+
                 OutboundCallResultModel? callResultModel = null;
                 switch (businessNumber.Provider)
                 {
                     case TelephonyProviderEnum.ModemTel:
-                        callResultModel = await InitiateModemTelOutboundCallAsync(
-                            businessNumber as BusinessNumberModemTelData,
-                            integrationResult.Data,
-                            outboundQueueData.RecipientNumber,
-                            sessionResult.Data.SessionId,
-                            webhookUrl,
-                            callbackUrl
-                        );
-                        break;
+                        {
+                            callResultModel = await InitiateModemTelOutboundCallAsync(
+                                businessNumber as BusinessNumberModemTelData,
+                                integrationResult.Data,
+                                outboundQueueData.RecipientNumber,
+                                sessionResult.Data.SessionId,
+                                webhookUrl,
+                                callbackUrl
+                            );
+
+                            if (!callResultModel.Success)
+                            {
+                                result.Data.ShouldRequeue = false;
+                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message);
+                            }
+
+                            break;
+                        }
 
                     case TelephonyProviderEnum.Twilio:
-                        callResultModel = await InitiateTwilioOutboundCallAsync(
-                            businessNumber as BusinessNumberTwilioData,
-                            integrationResult.Data,
-                            outboundQueueData.RecipientNumber,
-                            queueId,
-                            webhookUrl,
-                            callbackUrl
-                        );
-                        break;
+                        {
+                            callResultModel = await InitiateTwilioOutboundCallAsync(
+                                businessNumber as BusinessNumberTwilioData,
+                                integrationResult.Data,
+                                outboundQueueData.RecipientNumber,
+                                queueId,
+                                webhookUrl,
+                                callbackUrl
+                            );
+
+                            if (!callResultModel.Success)
+                            {
+                                result.Data.ShouldRequeue = false;
+                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message);
+                            }
+
+                            break;
+                        }
 
                     default:
                         return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider");
                 }
-
-                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
+                
                 await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
-
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(null);
             }
             catch (Exception ex)
             {
@@ -730,9 +752,12 @@ namespace IqraInfrastructure.Managers.Call
             var result = new OutboundCallResultModel();
             try
             {
-                string accountSid = integration.Fields["accountsid"];
-                string authToken = _integrationsManager.DecryptField(integration.EncryptedFields["authToken"]);
+                string accountSid = integration.Fields["sid"];
+                string authToken = _integrationsManager.DecryptField(integration.EncryptedFields["auth"]);
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
+
+                //statusCallbackUrl = statusCallbackUrl.Replace("192.168.100.9:5062", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devproxy").Replace("http://", "https://");
+                //websocketUrl = websocketUrl.Replace("192.168.100.9:5250", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devserver").Replace("ws://", "wss://");
 
                 var callResult = await twilioManager.MakeCallAsync(
                     accountSid,
@@ -803,7 +828,8 @@ namespace IqraInfrastructure.Managers.Call
 
         private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
-            return new Uri(new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint), $"/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
+            var baseURI = new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint);
+            return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
         }
 
         private string BuildStatusCallbackUrl(RegionServerData proxyServerData, long businessId, string sessionId, TelephonyProviderEnum telephonyProvider, string businessNumberId)
@@ -811,7 +837,7 @@ namespace IqraInfrastructure.Managers.Call
             var providerName = telephonyProvider.ToString().ToLower();
 
             var statusCallbackUrl = new Uri((proxyServerData.UseSSL ? "https://" : "http://") + proxyServerData.Endpoint);
-            statusCallbackUrl = new Uri(statusCallbackUrl, $"api/{providerName}/webhook/status/{businessId}/{sessionId}/{businessNumberId}");
+            statusCallbackUrl = new Uri(statusCallbackUrl, $"{(statusCallbackUrl.AbsolutePath != "/" ? statusCallbackUrl.AbsolutePath : "")}/api/{providerName}/webhook/status/{businessId}/{sessionId}/{businessNumberId}");
 
             return statusCallbackUrl.ToString();
         }

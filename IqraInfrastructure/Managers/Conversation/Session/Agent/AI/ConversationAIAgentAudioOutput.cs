@@ -187,6 +187,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         BitsPerSample,
                         Channels
                     );
+
+                    // todo stop double conversion
+                    var convertedBKGAudio = AudioConversationHelper.Convert(rawPcmData.ToArray(), new TTSProviderAvailableAudioFormat() { Encoding = AudioEncodingTypeEnum.PCM, BitsPerSample = BitsPerSample, SampleRateHz = SampleRate }, new AudioRequestDetails() { RequestedEncoding = _agentState.AgentConfiguration.AudioEncodingType, RequestedBitsPerSample = _agentState.AgentConfiguration.BitsPerSample, RequestedSampleRateHz = _agentState.AgentConfiguration.SampleRate });
+
+                    rawPcmData = convertedBKGAudio.audioData;
                 }
                 else
                 {
@@ -215,7 +220,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Success
-                _agentState.BackgroundAudioData = rawPcmData;
+                //_agentState.BackgroundAudioData = rawPcmData;
                 _logger.LogInformation("Agent {AgentId}: Background audio loaded and converted successfully ({Length} bytes of raw PCM).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
                 // enable bkg audio in begin conversation
                 _agentState.IsBackgroundMusicLoaded = true;

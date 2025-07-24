@@ -503,6 +503,17 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ConversationUsageRepository>()
                 );
             });
+            builder.Services.AddSingleton<BillingValidationManager>((sp) =>
+            {
+                return new BillingValidationManager(
+                    sp.GetRequiredService<ILogger<BillingValidationManager>>(),
+                    sp.GetRequiredService<AppRepository>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<PlanManager>(),
+                    sp.GetRequiredService<ConversationStateRepository>()
+                );
+            });
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)

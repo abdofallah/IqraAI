@@ -728,8 +728,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 durationSeconds = 0;
             }
 
-            // Add Minutes Usage to the Account
-            await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
+            // Add Minutes Usage to the Account if atleast 5 seconds of call
+            if (durationSeconds >= 5)
+            {
+                await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
+            }
 
             // Run Audio Compilation in the background
             RunAudioCompilationAsync();

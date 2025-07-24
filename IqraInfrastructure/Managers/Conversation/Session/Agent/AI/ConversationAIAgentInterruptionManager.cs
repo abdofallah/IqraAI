@@ -153,7 +153,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState.InterruptingLLMService = interuptibleLLMServiceResult.Data;
 
             // todo - move the prompt to the backend prompt management system
-            _agentState.InterruptingLLMService.SetSystemPrompt("You are a neural pathway inside a brain of a customer support agent. Your task is to decide that when the customer on call interrupts you whether you should keep speaking or allow the user to interrupt.\n\nYou must always think first and provide your think to why you think the customer response should interrupt you mid response.\n\nHere are the guidelines for thinking before a response (for the thoughts of the model)\n<ThinkingGuidelines>\n\t- The thinking text should always be summarized and not exceed more than 1 to 2 sentences.\n\t- The thinking text should always be less than maximum of 100 characters.\n</ThinkingGuidelines>\n\nYou must follow the following format to reply back:\n```\nthinking: <your rapid thoughts>\nresult: <allow_interrupt or continue_speaking>\n```\nHere are the results format:\nIf we should let the customer speak, respond back with: \"allow_interrupt\".\nIf we should let the customer support agent speak, respond back with: \"continue_speaking\".");
+            _agentState.InterruptingLLMService.SetSystemPrompt("You are a neural pathway inside a brain of a customer support agent. Your task is to decide that when the customer on call interrupts you whether you should keep speaking or allow the user to interrupt.\n\nYou must always think first and provide your think to why you think the customer response should interrupt you mid response.\n\nHere are the guidelines for thinking before a response (for the thoughts of the model)\n<ThinkingGuidelines>\n\t- The thinking text should always be summarized and not exceed more than 1 to 2 sentences.\n\t- The thinking text should always be less than maximum of 100 characters.\n</ThinkingGuidelines>\n\n<IgnoreQueriesGuidelines>\n\t- Do not interrupt when user only replies with filler words like \"Ahan\", \"Right\", \"Okay\", \"Great\", \"Haha\", and etc\n\t- Try to ignore filler replies like \"Okay so\", \"Well\", \"Umm so\", \"But\"\n</IgnoreQueriesGuideliens>\n\nYou must follow the following format to reply back:\n```\nthinking: <your rapid thoughts>\nresult: <allow_interrupt or continue_speaking>\n```\nHere are the results format:\nIf we should let the customer speak, respond back with: \"allow_interrupt\".\nIf we should let the customer support agent speak, respond back with: \"continue_speaking\".");
             _logger.LogInformation("Agent {AgentId}: Interrupting LLM Initialized.", _agentState.AgentId);
         }
         public async Task ReInitializeForLanguageAsync()
@@ -267,10 +267,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
 
                 _agentState.InterruptingLLMService.ClearMessages();
-                string builtMessage = "customer_query: {text}";
+                string builtMessage = $"customer_query: {text}";
 
                 var spokenSoFarCut = spokenSoFar.Length > 20 ? spokenSoFar.Substring(spokenSoFar.Length - 20) : spokenSoFar;
-                string context = $"response_from_system: You were interrupted by the user during speaking. You spoke as far as: ...{spokenSoFarCut}...";
+                string context = $"response_from_system: You were interrupted by the user during speaking.\n\nYou were speaking: ```{fullText}```\n\nYou spoke as far as: ...{spokenSoFarCut}...";
                 _agentState.InterruptingLLMService.AddUserMessage(builtMessage);
                 // TODO should we not save this message or check if already saved
 

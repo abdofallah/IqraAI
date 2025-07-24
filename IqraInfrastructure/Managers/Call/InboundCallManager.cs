@@ -244,7 +244,7 @@ namespace IqraInfrastructure.Managers.Call
                 }
 
                 var baseUri = new Uri(serverEndpoint);
-                baseUri = new Uri(baseUri, "/api/call/incoming");
+                baseUri = new Uri(baseUri, $"{(baseUri.AbsolutePath != "/" ? baseUri.AbsolutePath : "")}/api/call/incoming");
                 var response = await client.PostAsync(baseUri, content);
 
                 if (!response.IsSuccessStatusCode)

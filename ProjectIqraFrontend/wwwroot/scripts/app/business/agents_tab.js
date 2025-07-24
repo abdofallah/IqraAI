@@ -414,7 +414,12 @@ function createDefaultAgentObject() {
 		},
 		cache: {
 			messages: [],
-			audios: []
+			audios: [],
+			audioCacheSettings: {
+				autoCacheAudioResponses: false,
+				autoCacheAudioResponseCacheGroupId: null,
+				autoCacheAudioResponsesDefaultExpiryHours: null
+			}
 		},
 		settings: {
 			backgroundAudioUrl: null,
@@ -992,7 +997,7 @@ function fillAgentPersonalityTab() {
 		currentData[currentLanguage].forEach((value) => {
 			container.append(`
                 <div class="input-group mb-1">
-                    <input type="text" class="form-control" value="${value}">
+                    <textarea class="form-control">${value}</textarea>
                     <button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
                         <i class='fa-regular fa-trash'></i>
                     </button>
@@ -4497,7 +4502,7 @@ function initAgentTab() {
 
 					container.append(`
 						<div class="input-group mb-1">
-							<input type="text" class="form-control" value="">
+							<textarea class="form-control"></textarea>
 							<button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
 								<i class='fa-regular fa-trash'></i>
 							</button>
@@ -4505,7 +4510,7 @@ function initAgentTab() {
 					`);
 
 					// Update data
-					currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+					currentData[currentSelectedLanguage.id] = Array.from(container.find("textarea")).map((input) => $(input).val().trim());
 					validateAgentMultiLanguageElements();
 					validateAgentPersonalityTab(true);
 					CheckAgentTabHasChanges();
@@ -4524,14 +4529,14 @@ function initAgentTab() {
 					$(this).closest(".input-group").remove();
 
 					// Update data
-					currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+					currentData[currentSelectedLanguage.id] = Array.from(container.find("textarea")).map((input) => $(input).val().trim());
 					validateAgentMultiLanguageElements();
 					validateAgentPersonalityTab(true);
 					CheckAgentTabHasChanges();
 				});
 
 				// Value changes
-				container.on("input", "input", () => {
+				container.on("input", "textarea", () => {
 					const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
 					const currentData =
 						listType === "capabilities"
@@ -4540,7 +4545,7 @@ function initAgentTab() {
 								? CurrentAgentPersonalityEthicsMultiLangData
 								: CurrentAgentPersonalityToneMultiLangData;
 
-					currentData[currentSelectedLanguage.id] = Array.from(container.find("input")).map((input) => $(input).val().trim());
+					currentData[currentSelectedLanguage.id] = Array.from(container.find("textarea")).map((input) => $(input).val().trim());
 					validateAgentMultiLanguageElements();
 					validateAgentPersonalityTab(true);
 					CheckAgentTabHasChanges();
@@ -4567,7 +4572,7 @@ function initAgentTab() {
 					(currentData[language.id] || []).forEach((value) => {
 						container.append(`
 							<div class="input-group mb-1">
-								<input type="text" class="form-control" value="${value}">
+								<textarea class="form-control">${value}</textarea>
 								<button class="btn btn-danger" button-type="editAgentPersonalityValueRemove">
 									<i class='fa-regular fa-trash'></i>
 								</button>

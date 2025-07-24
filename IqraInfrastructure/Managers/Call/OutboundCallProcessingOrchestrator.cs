@@ -115,21 +115,7 @@ namespace IqraInfrastructure.Managers.Call
 
                 case TelephonyProviderEnum.Twilio:
                     {
-                        var twilioPhonenumberId = ((BusinessNumberTwilioData)businessPhoneNumber).TwilioPhoneNumberId;
-                        var twilioStatusToCheck = new List<string>() { "queued", "ringing", "in-progress" };
-                        throw new Exception("Twilio is not supported yet. check if sid and token keys are correct below/also multi status check might not work and even from-to switch, find better way");
-                        var currentNumberCalls = await _twilioManager.GetCallsByStatusForPhoneNumber(businessPhoneIntegration.Data.Fields["sid"], _integrationsManager.DecryptField(businessPhoneIntegration.Data.EncryptedFields["token"]), twilioPhonenumberId, twilioStatusToCheck, 1);
-                        if (!currentNumberCalls.Success)
-                        {
-                            await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Canceled, new CallQueueLog { Message = $"[{currentNumberCalls.Code}] {currentNumberCalls.Message}", Type = CallQueueLogTypeEnum.Error });
-                            return;
-                        }
-
-                        if (currentNumberCalls.Data.Count > 0)
-                        {
-                            await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
-                            return;
-                        }
+                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
                         break;
                     }
 

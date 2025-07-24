@@ -371,7 +371,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Determine response type first time
                 if (!_agentState.IsResponding && !_agentState.IsExecutingSystemTool && !_agentState.IsExecutingCustomTool)
                 {
-                    var fullText = _responseBuffer.ToString();
+                    var fullText = _responseBuffer.ToString().TrimStart();
                     if (fullText.StartsWith("response_to_customer:"))
                     {
                         _logger.LogDebug("Agent {AgentId}: LLM response identified as: Speak", _agentState.AgentId);

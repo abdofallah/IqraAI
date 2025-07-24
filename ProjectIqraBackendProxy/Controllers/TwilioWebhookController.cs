@@ -32,6 +32,11 @@ namespace ProjectIqraBackendProxy.Controllers
                 return BadRequest("Invalid request parameters");
             }
 
+            if (string.IsNullOrWhiteSpace(webhookData.From) || string.IsNullOrWhiteSpace(webhookData.To) || string.IsNullOrWhiteSpace(webhookData.CallSid))
+            {
+                return BadRequest("Invalid request parameters");
+            }
+
             var webhookContext = new TelephonyWebhookContextModel
             {
                 Provider = TelephonyProviderEnum.Twilio,
@@ -89,6 +94,11 @@ namespace ProjectIqraBackendProxy.Controllers
                 return BadRequest("Invalid request parameters");
             }
 
+            if (string.IsNullOrWhiteSpace(webhookData.From) || string.IsNullOrWhiteSpace(webhookData.To) || string.IsNullOrWhiteSpace(webhookData.CallSid))
+            {
+                return BadRequest("Invalid request parameters");
+            }
+
             var webhookContext = new TelephonyWebhookContextModel
             {
                 Provider = TelephonyProviderEnum.Twilio,
@@ -110,15 +120,18 @@ namespace ProjectIqraBackendProxy.Controllers
                 return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Say language=""en_US"" voice=""lessac"">Hey there! We are currently at capacity or facing some issues. Please try again later.</Say><Hangup /></Response>");
             }
 
-            distributionResult.Data.WebhookUrl = distributionResult.Data.WebhookUrl.Replace("192.168.100.9:5250", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devserver").Replace("ws://", "wss://");
-
-            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" /></Connect><Say>.</Say></Response>");
+            return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" /></Connect></Response>");
         }
 
         [HttpPost("voice/session/incoming/{sessionId}")]
         public async Task<IActionResult> HandleSessionIncomingWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] string sessionId)
         {
             if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
+            {
+                return BadRequest("Invalid request parameters");
+            }
+
+            if (string.IsNullOrWhiteSpace(webhookData.From) || string.IsNullOrWhiteSpace(webhookData.To) || string.IsNullOrWhiteSpace(webhookData.CallSid))
             {
                 return BadRequest("Invalid request parameters");
             }

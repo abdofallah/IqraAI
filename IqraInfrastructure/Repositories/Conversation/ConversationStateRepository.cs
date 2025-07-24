@@ -341,8 +341,13 @@ namespace IqraInfrastructure.Repositories.Conversation
                     )
                 );
 
-                var update = Builders<ConversationState>.Update
+                var update = isAgent == true?
+                    Builders<ConversationState>.Update
+                    .Set(c => c.Agents.FirstMatchingElement().AudioInfo.AudioCompilationStatus, status)
+                    :
+                    Builders<ConversationState>.Update
                     .Set(c => c.Clients.FirstMatchingElement().AudioInfo.AudioCompilationStatus, status);
+
                 if (failedReason != null && status == ConversationMemberAudioCompilationStatus.Failed)
                 {
                     if (isAgent)

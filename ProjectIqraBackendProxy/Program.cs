@@ -1,4 +1,3 @@
-using Google.Api;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server.Configuration;
 using IqraCore.Utilities;
@@ -6,7 +5,6 @@ using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
 using IqraInfrastructure.Managers.Integrations;
-using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Server;
 using IqraInfrastructure.Managers.Telephony;
@@ -22,7 +20,6 @@ using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Server;
 using IqraInfrastructure.Repositories.User;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using System.Reflection;
 
