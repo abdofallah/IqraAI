@@ -1,0 +1,18 @@
+from_number_id,to_number,dynamic_variables,override_retry_on_call_declined,override_retry_on_missed_call,override_agent_id,override_agent_script_id,override_agent_language_code,override_agent_timezones
+Id of the number from your business to make the call from,International number starting with +(country code)(local number) to make the call to,Dynamic json property values to be used in your prompt/script,Override default retry on call declined,Override default retry on call missed or busy,Override the agent to use in call,Override the default agent script for the default agent or override agent,Override the default language to be used on the call by the agent,Override the list of timezones to be given to the agent
+cc2bf2f3-d232-4e89-ab49-5541bf452b2c,+968999999999,"{
+    ""first_name"": ""Iqra"",
+    ""service_interested_in"": ""Voice AI Agent""
+}","{
+    ""Enabled"": true,
+    // if true then fill the following detailed
+    ""Count"": 3,
+    ""Delay"": ""1"",
+    ""Unit"": 3 // 0 for seconds, 1 for minutes, 2 for hours, 3 for days
+}","{
+    ""Enabled"": true,
+    // if true then fill the following detailed
+    ""Count"": 3,
+    ""Delay"": ""1"",
+    ""Unit"": 3 // 0 for seconds, 1 for minutes, 2 for hours, 3 for days
+}",e398a843-dece-493d-9f41-a8ad36eb26d8,e9604acd-caf6-437e-a994-d950ecab673e,en,"+04:00,-02:00,00:30"

@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
 using System.Text.Json;
@@ -14,13 +15,15 @@ namespace IqraInfrastructure.Managers.Business
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
+        private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
-        public BusinessRoutesManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository)
+        public BusinessRoutesManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository, IntegrationConfigurationManager integrationConfigurationManager)
         {
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
             _businessRepository = businessRepository;
+            _integrationConfigurationManager = integrationConfigurationManager;
         }
 
         public async Task<bool> CheckBusinessRouteExists(long businessId, string existingRouteId)
@@ -452,10 +455,27 @@ namespace IqraInfrastructure.Managers.Business
 
                 if (!viaAIInterruption.UseCurrentAgentLLMForInterrupting)
                 {
-                    // TODO get custom integration data and verify
-                    result.Code = "AddOrUpdateUserBusinessRoute:37";
-                    result.Message = "UseCurrentAgentLLMForInterrupting for interruption not implemented yet";
-                    return result;
+                    if (!interruptionProperty.TryGetProperty("llmIntegrationToUseForCheckingInterruption", out var llmIntegrationElement))
+                    {
+                        result.Code = "AddOrUpdateUserBusinessRoute:LLM_INTEGRATION_PROPERTY_MISSING";
+                        result.Message = "Agent Interruption via AI missing integration property.";
+                        return result;
+                    }
+
+                    var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                        businessId,
+                        llmIntegrationElement,
+                        "LLM"
+                    );
+
+                    if (!validationBuildResult.Success || validationBuildResult.Data == null)
+                    {
+                        result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                        result.Message = validationBuildResult.Message;
+                        return result;
+                    }
+
+                    viaAIInterruption.LLMIntegrationToUseForCheckingInterruption = validationBuildResult.Data;
                 }
 
                 newBusinessAppRouteData.Agent.Interruption = viaAIInterruption;

@@ -289,13 +289,9 @@
 
                             <div class="mt-3" id="agentRouteInterruptionViaLLMIntegrationSelectBox">
                                 <label class="form-label">Interruption LLM Integration</label>
-                                <div class="input-group">
-                                    <select class="form-select" select-type="interrupt-integration-llm">
-                                        <!-- Dynamically Generated -->
-                                    </select>
-                                    <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration" disabled>
-                                        <i class="fa-regular fa-gear"></i>
-                                    </button>
+
+                                <div id="agentRouteInterruptionViaLLMIntegrationContainer">
+                                    <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
                                 </div>
                             </div>
 
@@ -578,6 +574,32 @@
                         Select Number
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Route Agent AI Interruption Integration Configuration Modal -->
+<div class="modal modal-lg fade" id="routeAgentInterruptViaAIIntegrationConfigurationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Integration Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="routeAgentInterruptViaAIIntegrationConfigurationFieldsContainer">
+                    <!-- Dynamic configuration fields will be added here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="routeAgentInterruptViaAISaveIntegrationConfigButton" disabled>
+                    <span>Save Configuration</span>
+                    <div class="spinner-border spinner-border-sm d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
             </div>
         </div>
     </div>

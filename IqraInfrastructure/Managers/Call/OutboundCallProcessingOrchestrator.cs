@@ -181,9 +181,10 @@ namespace IqraInfrastructure.Managers.Call
         private async Task<FunctionReturnResult> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
         {
             var result = new FunctionReturnResult();
-            string endpoint = backendServer.UseSSL ? "https://" : "http://";
-            endpoint += backendServer.Endpoint;
-            string apiPath = "/api/call/outbound";
+            string endpoint = (backendServer.UseSSL ? "https://" : "http://") + backendServer.Endpoint;
+
+            var baseUri = new Uri(endpoint);
+            baseUri = new Uri(baseUri, $"{(baseUri.AbsolutePath != "/" ? baseUri.AbsolutePath : "")}/api/call/outbound");
 
             try
             {
@@ -198,7 +199,7 @@ namespace IqraInfrastructure.Managers.Call
                 var jsonPayload = JsonSerializer.Serialize(requestDto, _camelCaseSerializationOptions);
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-                var response = await client.PostAsync(new Uri(new Uri(endpoint), apiPath), content);
+                var response = await client.PostAsync(baseUri, content);
 
                 var responseContentString = await response.Content.ReadAsStringAsync();
 
@@ -217,7 +218,7 @@ namespace IqraInfrastructure.Managers.Call
             }
             catch (HttpRequestException httpEx)
             {
-                _logger.LogError(httpEx, "HTTP request exception while forwarding call {QueueId} to {EndpointUrl}{ApiPath}.", requestDto.QueueId, endpoint, apiPath);
+                _logger.LogError(httpEx, "HTTP request exception while forwarding call {QueueId} to {EndpointUrl}.", requestDto.QueueId, baseUri.ToString());
                 return result.SetFailureResult("ForwardToBackend:HttpRequestError", $"HTTP request error: {httpEx.Message}");
             }
             catch (TaskCanceledException tex)
@@ -226,7 +227,7 @@ namespace IqraInfrastructure.Managers.Call
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Generic exception while forwarding call {QueueId} to {EndpointUrl}{ApiPath}.", requestDto.QueueId, endpoint, apiPath);
+                _logger.LogError(ex, "Generic exception while forwarding call {QueueId} to {EndpointUrl}.", requestDto.QueueId, baseUri.ToString());
                 return result.SetFailureResult("ForwardToBackend:GenericError", $"Exception: {ex.Message}");
             }
         }

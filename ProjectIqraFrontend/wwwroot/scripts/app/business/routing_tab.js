@@ -15,6 +15,8 @@ let currentRouteAgentSelectedId = "";
 
 let IsSavingRouteManageTab = false;
 
+let routeAgentInterruptionLLMIntegrationConfigurationManager = null;
+
 /** Element Variables  **/
 const tooltipTriggerList = document.querySelectorAll('#routing-tab [data-bs-toggle="tooltip"]');
 const tooltipList = [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
@@ -105,7 +107,7 @@ const editRouteAgentConversationTypeInterruptibleAudioActivityDuration = routeAg
 const routeAgentInterruptViaAIBox = routingTab.find('.route-conversation-type-box[box-type="interruptibleviaai"]');
 const editRouteAgentInterruptViaAIUseAgentLLM = routeAgentInterruptViaAIBox.find("#editRouteAgentInterruptViaAIUseAgentLLM");
 const agentRouteInterruptionViaLLMIntegrationSelectBox = routeAgentInterruptViaAIBox.find("#agentRouteInterruptionViaLLMIntegrationSelectBox");
-const agentRouteInterruptionViaLLMIntegrationSelect = agentRouteInterruptionViaLLMIntegrationSelectBox.find('select[select-type="interrupt-integration-llm"]');
+const agentRouteInterruptionViaLLMIntegrationContainer = routeAgentInterruptViaAIBox.find("#agentRouteInterruptionViaLLMIntegrationContainer");
 
 const editRouteNumberTimezoneSelect = routingTab.find("#editRouteNumberTimezoneSelect");
 
@@ -371,6 +373,10 @@ function resetAndEmptyRouteManagerTab() {
 	editRouteAgentCallerNumberInContextCheck.prop("checked", true);
 	editRouteAgentRouteNumberInContextCheck.prop("checked", true);
 
+	if (routeAgentInterruptionLLMIntegrationConfigurationManager) {
+		routeAgentInterruptionLLMIntegrationConfigurationManager.reset();
+	}
+
 	// Actions
 	editRouteActionToolRinging.empty();
 	editRouteActionToolRingingInputArgumentsSelect.empty();
@@ -554,7 +560,7 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
 			changes.agent.interruption.useCurrentAgentLLMForInterrupting = editRouteAgentInterruptViaAIUseAgentLLM.is(":checked");
 
 			if (changes.agent.interruption.useCurrentAgentLLMForInterrupting == false) {
-				changes.agent.interruption.lLMIntegrationToUseForCheckingInterruption = {};// todo create function to get data
+				changes.agent.interruption.llmIntegrationToUseForCheckingInterruption = routeAgentInterruptionLLMIntegrationConfigurationManager.getData();
 			}
 		}
 
@@ -595,7 +601,10 @@ function checkRoutingTabHasChanges(enableDisableButton = true) {
                     return;
 				}
 
-				// todo check the interruption data otherwise to check if its different or not
+				if (JSON.stringify(ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption) !== JSON.stringify(changes.agent.interruption.llmIntegrationToUseForCheckingInterruption)) {
+					hasChanges = true;
+					return;
+				}
 			}
 		}
 
@@ -919,15 +928,19 @@ function validateRoutingTab(onlyRemove = true) {
 			}
 		}
 		else if (selectedConversationType === AgentInterruptionTypeENUM.InterruptibleViaAI) {
-			var selectedIntegration = agentRouteInterruptionViaLLMIntegrationSelect.find('option:selected').val();
-			if (
-				!editRouteAgentInterruptViaAIUseAgentLLM.is(":checked")
-			) {
-				if (selectedIntegration == "" || !selectedIntegration) {
+			if (!editRouteAgentInterruptViaAIUseAgentLLM.is(":checked"))
+			{
+				const integrationData = routeAgentInterruptionLLMIntegrationConfigurationManager.getData();
+				if (integrationData == "" || !integrationData) {
 					validated = false;
 					errors.push("LLM integration for interuption must be selected");
 				}
-				// todo check llm integration fields
+				
+				if (!onlyRemove) {
+					$('#agentRouteInterruptionViaLLMIntegrationContainer .form-select').addClass('is-invalid');
+				} else {
+					$('#agentRouteInterruptionViaLLMIntegrationContainer .form-select').removeClass('is-invalid');
+				}
 			}
 		}
 
@@ -1091,7 +1104,6 @@ function fillRoutingManagerTab() {
 	}
 
 	// Set conversation type
-	fillRouteAgentInterruptViaAIIntegrationSelect();
 	const conversationType = ManageCurrentRouteData.agent.interruption.type.value;
 	editRouteAgentInterruptionTypeSelect.val(conversationType).change();
 
@@ -1107,7 +1119,7 @@ function fillRoutingManagerTab() {
 		editRouteAgentInterruptViaAIUseAgentLLM.prop("checked", ManageCurrentRouteData.agent.interruption.useCurrentAgentLLMForInterrupting).change();
 
 		if (ManageCurrentRouteData.agent.interruption.useCurrentAgentLLMForInterrupting == false) {
-			// todo llm ai integration
+			routeAgentInterruptionLLMIntegrationConfigurationManager.load(ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption);
 		}	
 	}
 
@@ -1197,10 +1209,18 @@ function fillRouteAgentInterruptViaAIIntegrationSelect() {
 	BusinessFullData.businessApp.integrations.forEach((integrationData) => {
 		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integrationData.type);
 
-        if (integrationTypeData.type.includes("LLM")) {
-            agentRouteInterruptionViaLLMIntegrationSelect.append(`<option value="${integrationData.id}">${integrationData.friendlyName}</option>`);
-        }
-	})
+		if (integrationTypeData.type.includes("LLM")) {
+			var isCurrentSelection = ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption.id == integrationData.id;
+
+			if (isCurrentSelection) {
+				CurrentAgentInterruptionIntegrationLLM = ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption;
+			}
+
+			agentRouteInterruptionViaLLMIntegrationSelect.append(`<option value="${integrationData.id}" ${(isCurrentSelection ? "selected" : "")}>${integrationData.friendlyName}</option>`);
+		}
+	});
+
+	agentRouteInterruptionViaLLMIntegrationSelect.change();
 }
 
 async function canLeaveRoutingTab(leaveMessage = "") {
@@ -1340,6 +1360,20 @@ function initRoutingTab() {
 		/** INIT **/
 		editChangeRouteNumberModal = new bootstrap.Modal(editChangeRouteNumberModalElement);
 		editChangeRouteAgentModal = new bootstrap.Modal(editChangeRouteAgentModalElement);
+
+		routeAgentInterruptionLLMIntegrationConfigurationManager = new IntegrationConfigurationManager('#agentRouteInterruptionViaLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+            isLanguageBound: false,
+
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+
+			modalSelector: '#routeAgentInterruptViaAIIntegrationConfigurationModal',
+
+			onChange: () => checkRoutingTabHasChanges(),
+			onValidate: () => validateRoutingTab(true),
+        });
 
 		/** Event Handlers */
 		addNewRoutingButton.on("click", (event) => {
@@ -1731,13 +1765,6 @@ function initRoutingTab() {
 				} else {
 					agentRouteInterruptionViaLLMIntegrationSelectBox.removeClass("d-none");
 				}
-
-				checkRoutingTabHasChanges();
-				validateRoutingTab(true);
-			});
-
-			agentRouteInterruptionViaLLMIntegrationSelect.on("change", (event) => {
-				// TODO 
 
 				checkRoutingTabHasChanges();
 				validateRoutingTab(true);

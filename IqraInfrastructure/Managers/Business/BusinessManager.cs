@@ -3,6 +3,7 @@ using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
+using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
@@ -66,7 +67,8 @@ namespace IqraInfrastructure.Managers.Business
             OutboundCallCampaignRepository? outboundCallCampaignRepository,
             OutboundCallQueueRepository? outboundCallQueueRepository,
             LanguagesManager? languagesManager,
-            TwilioManager? twilioManager
+            TwilioManager? twilioManager,
+            IntegrationConfigurationManager? integrationConfigurationManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -116,11 +118,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeAgentsManager)
             {
-                if (businessAgentAudioRepository == null)
+                if (businessAgentAudioRepository == null || integrationConfigurationManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessAgentsManager");
                 }
-                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor);
+                _businessAgentsManager = new BusinessAgentsManager(this, businessAppRepository, businessRepository, businessAgentAudioRepository, _audioProcessor, integrationConfigurationManager);
             }
             if (_settings.InitalizeNumberManager)
             {

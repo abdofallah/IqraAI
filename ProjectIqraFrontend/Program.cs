@@ -1,6 +1,8 @@
+using Google.Api;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
@@ -91,6 +93,9 @@ namespace ProjectIqraFrontend
 
             // Initalize All Singleton Services
             InitializeAllSingletonServices(app.Services);
+
+            // SetupDependencies
+            SetupDependencies(app.Services);
 
             // Assign the HttpContextAccessor to JSON Middleware
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
@@ -427,6 +432,14 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<EmailManager>()
                 );
             });
+            builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
+            {
+                return new IntegrationConfigurationManager(
+                    sp.GetRequiredService<STTProviderManager>(),
+                    sp.GetRequiredService<TTSProviderManager>(),
+                    sp.GetRequiredService<LLMProviderManager>()
+                );
+            });
             builder.Services.AddSingleton<BusinessManager>((sp) =>
             {
                 return new BusinessManager(
@@ -461,7 +474,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<OutboundCallCampaignRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<LanguagesManager>(),
-                    sp.GetRequiredService<TwilioManager>()
+                    sp.GetRequiredService<TwilioManager>(),
+                    sp.GetRequiredService<IntegrationConfigurationManager>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
@@ -514,6 +528,13 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ConversationStateRepository>()
                 );
             });
+        }
+
+        private static void SetupDependencies(IServiceProvider serviceProvider)
+        {
+            serviceProvider.GetRequiredService<IntegrationConfigurationManager>().SetupDependencies(
+                serviceProvider.GetRequiredService<BusinessManager>().GetIntegrationsManager()
+            );
         }
 
         private static void InitializeAllSingletonServices(IServiceProvider serviceProvider)
