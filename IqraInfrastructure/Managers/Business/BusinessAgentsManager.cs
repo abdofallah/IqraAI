@@ -298,7 +298,7 @@ namespace IqraInfrastructure.Managers.Business
 
                             var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
                                 businessId,
-                                sttLanguageElement,
+                                currentIntegrationElement,
                                 "STT",
                                 businessLanguage
                             );
@@ -338,7 +338,7 @@ namespace IqraInfrastructure.Managers.Business
 
                             var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
                                 businessId,
-                                llmLanguageElement,
+                                currentIntegrationElement,
                                 "LLM",
                                 businessLanguage
                             );
@@ -378,7 +378,7 @@ namespace IqraInfrastructure.Managers.Business
 
                             var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
                                 businessId,
-                                ttsLanguageElement,
+                                currentIntegrationElement,
                                 "TTS",
                                 businessLanguage
                             );

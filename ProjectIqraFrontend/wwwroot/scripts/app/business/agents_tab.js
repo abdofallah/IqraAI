@@ -48,17 +48,10 @@ let AgentBackgroundAudioWaveSurfer = null;
 
 let IsSavingAgentTab = false;
 
-// Integration related states
-let CurrentAgentIntegrationsSTT = {};
-let CurrentAgentIntegrationsLLM = {};
-let CurrentAgentIntegrationsTTS = {};
-
-// Integration Configuration State
-let CurrentAgentConfigurationIntegration = null;
-let CurrentAgentConfigurationIntegrationType = null;
-let CurrentAgentConfigurationFields = null;
-let CurrentAgentConfigurationValues = {};
-let CurrentAgentConfigurationType = null;
+// Integration Configuration Manager
+let agentSTTIntegrationManager = null;
+let agentLLMIntegrationManager = null;
+let agentTTSIntegrationManager = null;
 
 // Cache related states
 let CurrentAgentCacheMessages = [];
@@ -167,10 +160,6 @@ const ttsIntegrationsList = agentIntegrationsTab.find("#ttsIntegrationsList");
 const addSTTIntegrationButton = agentIntegrationsTab.find("#addSTTIntegration");
 const addLLMIntegrationButton = agentIntegrationsTab.find("#addLLMIntegration");
 const addTTSIntegrationButton = agentIntegrationsTab.find("#addTTSIntegration");
-
-const integrationConfigurationModal = $("#integrationConfigurationModal");
-const integrationConfigurationFieldsContainer = integrationConfigurationModal.find("#integrationConfigurationFieldsContainer");
-const saveIntegrationConfigButton = integrationConfigurationModal.find("#saveIntegrationConfigButton");
 
 // SUB | Cache Tab
 const agentCacheTab = $("#agents-manager-cache");
@@ -312,9 +301,9 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 
 	// Check Integrations tab changes
 	changes.integrations = {
-		stt: CurrentAgentIntegrationsSTT,
-		llm: CurrentAgentIntegrationsLLM,
-		tts: CurrentAgentIntegrationsTTS,
+		stt: agentSTTIntegrationManager.getData(),
+		llm: agentLLMIntegrationManager.getData(),
+		tts: agentTTSIntegrationManager.getData(),
 	};
 	if (JSON.stringify(CurrentManageAgentData.integrations.stt) !== JSON.stringify(changes.integrations.stt)) {
 		hasChanges = true;
@@ -499,9 +488,13 @@ function validateAgentMultiLanguageElements() {
 		const isAnyIncompleteInPersonality = nameIsIncomplete || roleIsIncomplete || listsIncomplete;
 
 		/** Integrations Tab **/
-		const sttIntegrationsIncomplete = !CurrentAgentIntegrationsSTT[language]?.length;
-		const llmIntegrationsIncomplete = !CurrentAgentIntegrationsLLM[language]?.length;
-		const ttsIntegrationsIncomplete = !CurrentAgentIntegrationsTTS[language]?.length;
+		const sttData = agentSTTIntegrationManager.getData();
+		const llmData = agentLLMIntegrationManager.getData();
+		const ttsData = agentTTSIntegrationManager.getData();
+
+		const sttIntegrationsIncomplete = !(sttData[language] && sttData[language].length > 0);
+		const llmIntegrationsIncomplete = !(llmData[language] && llmData[language].length > 0);
+		const ttsIntegrationsIncomplete = !(ttsData[language] && ttsData[language].length > 0);
 
 		const isAnyIncompleteInIntegrations = sttIntegrationsIncomplete || llmIntegrationsIncomplete || ttsIntegrationsIncomplete;
 
@@ -551,9 +544,9 @@ function ResetAndEmptyAgentsManageTab() {
 	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 
 	// Integration Tab
-	CurrentAgentIntegrationsSTT = {};
-	CurrentAgentIntegrationsLLM = {};
-	CurrentAgentIntegrationsTTS = {};
+	if (agentSTTIntegrationManager) agentSTTIntegrationManager.reset();
+	if (agentLLMIntegrationManager) agentLLMIntegrationManager.reset();
+	if (agentTTSIntegrationManager) agentTTSIntegrationManager.reset();
 
 	// Cache
 	CurrentAgentCacheMessages = [];
@@ -573,11 +566,6 @@ function ResetAndEmptyAgentsManageTab() {
 
 		// Utterances Tab
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = "";
-
-		// Integration Tab
-		CurrentAgentIntegrationsSTT[language] = [];
-		CurrentAgentIntegrationsLLM[language] = [];
-		CurrentAgentIntegrationsTTS[language] = [];
 
 		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
@@ -1124,387 +1112,9 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 
 // Integration Tab Functions
 function fillIntegrationsFromAgentData() {
-	// Fill integrations for each language from agent data
-	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentIntegrationsSTT[language] = structuredClone(
-			CurrentManageAgentData.integrations.stt[language]
-		);
-		CurrentAgentIntegrationsLLM[language] = structuredClone(
-			CurrentManageAgentData.integrations.llm[language]
-		);
-		CurrentAgentIntegrationsTTS[language] = structuredClone(
-			CurrentManageAgentData.integrations.tts[language]
-		);
-	});
-
-	fillAgentIntegrationsList("STT");
-	fillAgentIntegrationsList("LLM");
-	fillAgentIntegrationsList("TTS");
-}
-
-function createIntegrationSelectElement(type, index) {
-	const integrations = BusinessFullData.businessApp.integrations.filter((integration) => {
-		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integration.type);
-		return integrationTypeData.type.includes(type) || (type === "STT" && integrationTypeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && integrationTypeData.type.includes("TEXT2SPEECH"));
-	});
-
-	let options = '<option value="">Select Integration</option>';
-	integrations.forEach((integration) => {
-		options += `<option value="${integration.id}">${integration.friendlyName}</option>`;
-	});
-
-	return `
-        <div class="mb-2 integration-item" data-index="${index}">
-            <div class="input-group">
-                <span class="input-group-text">
-                    <i class="fa-regular fa-${index + 1}"></i>
-                </span>
-                <select class="form-select" select-type="integration-${type.toLowerCase()}">
-                    ${options}
-                </select>
-                <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration">
-                    <i class="fa-regular fa-gear"></i>
-                </button>
-                <button class="btn btn-danger" button-type="remove-integration" data-index="${index}" data-integration-id="">
-                    <i class="fa-regular fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-function fillAgentIntegrationsList(type) {
-	const container = type === "STT" ? sttIntegrationsList : type === "LLM" ? llmIntegrationsList : ttsIntegrationsList;
-
-	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-	const currentIntegrations =
-		type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage];
-
-	// Clear existing items
-	container.find(".integration-item").remove();
-
-	// Add current integrations for selected language
-	if (currentIntegrations && currentIntegrations.length > 0) {
-		currentIntegrations.forEach((integration, index) => {
-			const element = $(createIntegrationSelectElement(type, index));
-			element.find("select").val(integration.id);
-			container.append(element);
-		});
-	}
-}
-
-function createAgentIntegrationConfigurationField(field) {
-	let fieldHtml = "";
-
-	switch (field.type) {
-		case "text":
-		case "string":
-			fieldHtml = `
-                <div class="mb-3 config-field" data-field-id="${field.id}">
-                    <label class="form-label btn-ic-span-align">
-                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
-                        ${
-													field.tooltip
-														? `
-								<a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-									<i class="fa-regular fa-circle-question"></i>
-								</a>
-							`
-														: ""
-												}
-                    </label>
-                    <input type="${field.isEncrypted ? "password" : "text"}" 
-                           class="form-control config-field-input"
-                           placeholder="${field.placeholder || ""}"
-                           value="${CurrentAgentConfigurationValues[field.id] || field.defaultValue || ""}">
-                </div>
-            `;
-			break;
-
-		case "number":
-		case "double_number":
-			fieldHtml = `
-                <div class="mb-3 config-field" data-field-id="${field.id}">
-                    <label class="form-label btn-ic-span-align">
-                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
-                        ${
-													field.tooltip
-														? `
-                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-                                <i class="fa-regular fa-circle-question"></i>
-                            </a>
-                        `
-														: ""
-												}
-                    </label>
-                    <input type="number" 
-                           class="form-control config-field-input"
-                           placeholder="${field.placeholder || ""}"
-                           value="${CurrentAgentConfigurationValues[field.id] || field.defaultValue || ""}">
-                </div>
-            `;
-			break;
-
-		case "select": {
-			const options = field.options?.map((opt) => `<option value="${opt.key}" ${opt.isDefault ? "selected" : ""}>${opt.value}</option>`).join("") || "";
-
-			fieldHtml = `
-                <div class="mb-3 config-field" data-field-id="${field.id}">
-                    <label class="form-label btn-ic-span-align">
-                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
-                        ${
-													field.tooltip
-														? `
-                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-                                <i class="fa-regular fa-circle-question"></i>
-                            </a>
-                        `
-														: ""
-												}
-                    </label>
-                    <select class="form-select config-field-input">
-                        <option value="" disabled ${field.defaultValue === "" ? "selected" : ""}>Select ${field.name}</option>
-                        ${options}
-                    </select>
-                </div>
-            `;
-			break;
-		}
-
-		case "models": {
-			const currentModelDataValue = CurrentAgentConfigurationValues[field.id];
-
-			let isDefaultSelected = false;
-			if (currentModelDataValue !== undefined && currentModelDataValue === "") {
-				isDefaultSelected = true;
-			} else if (field.defaultValue === "") {
-				isDefaultSelected = true;
-			}
-
-			fieldHtml = `
-                <div class="mb-3 config-field" data-field-id="${field.id}">
-                    <label class="form-label btn-ic-span-align">
-                        <span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
-                        ${
-													field.tooltip
-														? `
-                            <a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
-                                <i class="fa-regular fa-circle-question"></i>
-                            </a>
-                        `
-														: ""
-												}
-                    </label>
-                    <select class="form-select config-field-input">
-                        <option value="" disabled ${isDefaultSelected ? "selected" : ""}>Select ${field.name}</option>
-                        <!-- Models will be populated dynamically -->
-                    </select>
-                </div>
-            `;
-			break;
-		}
-	}
-
-	return $(fieldHtml);
-}
-
-function fillAgentIntegrationConfigurationFields() {
-	integrationConfigurationFieldsContainer.empty();
-
-	CurrentAgentConfigurationFields.forEach((field) => {
-		const fieldElement = createAgentIntegrationConfigurationField(field);
-		integrationConfigurationFieldsContainer.append(fieldElement);
-
-		// For models field type, populate with available models
-		if (field.type === "models") {
-			populateAgentIntegrationModelsField(field);
-		}
-
-		// Initialize tooltips for new elements
-		const tooltips = fieldElement.find('[data-bs-toggle="tooltip"]');
-		tooltips.each((index, element) => {
-			new bootstrap.Tooltip(element);
-		});
-	});
-}
-
-function populateAgentIntegrationModelsField(field) {
-	const provider =
-		CurrentAgentConfigurationType === "LLM"
-			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-			: CurrentAgentConfigurationType === "STT"
-				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-				: CurrentAgentConfigurationType === "TTS"
-					? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === CurrentAgentConfigurationIntegrationType)
-					: null;
-
-	if (!provider || !provider.models) return;
-
-	const selectElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"] select`);
-
-	// Add enabled models only
-	const enabledModels = provider.models.filter((model) => model.disabledAt === null);
-
-	enabledModels.forEach((model) => {
-		selectElement.append(`
-            <option value="${model.id}" 
-                ${CurrentAgentConfigurationValues[field.id] === model.id ? "selected" : ""}>
-                ${model.name}
-            </option>
-        `);
-	});
-}
-
-function loadAgentIntegrationConfiguration(integrationId, integrationType) {
-	// Get provider configuration based on integration type
-	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((integration) => integration.id === integrationId);
-	const provider =
-		integrationType === "LLM"
-			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-			: integrationType === "STT"
-				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-				: integrationType === "TTS"
-					? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-					: null;
-
-	if (!provider) {
-		AlertManager.createAlert({
-			type: "error",
-			message: "Provider configuration not found",
-			timeout: 3000,
-		});
-		return;
-	}
-
-	CurrentAgentConfigurationIntegration = integrationId;
-	CurrentAgentConfigurationIntegrationType = businessIntegrationData.type;
-	CurrentAgentConfigurationType = integrationType;
-	CurrentAgentConfigurationFields = provider.userIntegrationFields;
-
-	// Get current values if they exist
-	CurrentAgentConfigurationValues = {}; // Reset values
-
-	// Find existing configuration values
-	const currentArray = integrationType === "STT" ? CurrentAgentIntegrationsSTT : integrationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
-
-	if (!currentArray) return;
-
-	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id] ?? [];
-
-	const existingConfig = currentLanguageArray.find((i) => i && i.id === integrationId);
-	if (existingConfig?.fieldValues) {
-		CurrentAgentConfigurationValues = { ...existingConfig.fieldValues };
-	}
-
-	// Fill the modal with fields
-	fillAgentIntegrationConfigurationFields();
-}
-
-function validateAgentIntegrationConfiguration(integration, type, languageName, onlyRemove = true) {
-	const errors = [];
-	let isValid = true;
-
-	// Get provider configuration based on integration type
-	const businessIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === integration);
-	if (!businessIntegrationData) {
-		errors.push(`${languageName}: ${type} Integration #${integration} - Invalid integration selected`);
-		return {
-			isValid: false,
-			errors,
-		};
-	}
-
-	const provider =
-		type === "LLM"
-			? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-			: type === "STT"
-				? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type)
-				: BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === businessIntegrationData.type);
-
-	if (!provider) {
-		errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - Provider configuration not found`);
-		return {
-			isValid: false,
-			errors,
-		};
-	}
-
-	const integrationTypeConfiguration =
-		type === "LLM"
-			? (CurrentAgentIntegrationsLLM[languageName] ?? []).find((i) => i && i.id === integration)
-			: type === "STT"
-				? (CurrentAgentIntegrationsSTT[languageName] ?? []).find((i) => i && i.id === integration)
-				: (CurrentAgentIntegrationsTTS[languageName] ?? []).find((i) => i && i.id === integration);
-
-	provider.userIntegrationFields.forEach((field) => {
-		const lowerCaseFieldId = String(field.id[0]).toLowerCase() + String(field.id).slice(1);
-
-		const value = integrationTypeConfiguration.fieldValues[field.id] || integrationTypeConfiguration.fieldValues[lowerCaseFieldId];
-		const fieldElement = integrationConfigurationModal.find(`[data-field-id="${field.id}"]`);
-		const input = fieldElement.find(".config-field-input");
-
-		// Always remove existing invalid state if exists
-		input.removeClass("is-invalid");
-
-		// Required field validation
-		if (field.required && (!value || String(value).trim() === "")) {
-			isValid = false;
-			errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name} is required`);
-			if (!onlyRemove) {
-				input.addClass("is-invalid");
-			}
-			return;
-		}
-
-		// Type-specific validation
-		if (value) {
-			switch (field.type) {
-				case "number":
-				case "double_number":
-					if (isNaN(value)) {
-						isValid = false;
-						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name} must be a valid number`);
-						if (!onlyRemove) {
-							input.addClass("is-invalid");
-						}
-					}
-					break;
-
-				case "models": {
-					const model = provider.models.find((m) => m.id === value);
-					if (!model) {
-						isValid = false;
-						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Selected model is invalid`);
-						if (!onlyRemove) {
-							input.addClass("is-invalid");
-						}
-					} else if (model.disabledAt !== null) {
-						isValid = false;
-						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Selected model is disabled`);
-						if (!onlyRemove) {
-							input.addClass("is-invalid");
-						}
-					}
-					break;
-				}
-
-				case "select":
-					if (field.options && !field.options.some((opt) => opt.key === value)) {
-						isValid = false;
-						errors.push(`${languageName}: ${type} Integration #${businessIntegrationData.friendlyName} - ${field.name}: Invalid option selected`);
-						if (!onlyRemove) {
-							input.addClass("is-invalid");
-						}
-					}
-					break;
-			}
-		}
-	});
-
-	return {
-		isValid,
-		errors,
-	};
+	agentSTTIntegrationManager.load(CurrentManageAgentData.integrations.stt);
+	agentLLMIntegrationManager.load(CurrentManageAgentData.integrations.llm);
+	agentTTSIntegrationManager.load(CurrentManageAgentData.integrations.tts);
 }
 
 function validateAgentIntegrationsTab() {
@@ -1513,122 +1123,53 @@ function validateAgentIntegrationsTab() {
 
 	// Validate each language has required integrations
 	BusinessFullData.businessData.languages.forEach((languageId) => {
-		// Validate STT integrations
-		if (!CurrentAgentIntegrationsSTT[languageId] || CurrentAgentIntegrationsSTT[languageId].length === 0) {
+		const langData = SpecificationLanguagesListData.find(l => l.id === languageId);
+		const langName = langData ? langData.name : languageId;
+
+		// Get data directly from managers
+		const sttData = agentSTTIntegrationManager.getData()[languageId] || [];
+		const llmData = agentLLMIntegrationManager.getData()[languageId] || [];
+		const ttsData = agentTTSIntegrationManager.getData()[languageId] || [];
+
+		if (sttData.length === 0) {
 			isValid = false;
-			errors.push(`${languageId}: At least one Speech-to-Text integration is required`);
+			errors.push(`${langName}: At least one Speech-to-Text integration is required.`);
 		}
-
-		// Validate LLM integrations
-		if (!CurrentAgentIntegrationsLLM[languageId] || CurrentAgentIntegrationsLLM[languageId].length === 0) {
+		if (llmData.length === 0) {
 			isValid = false;
-			errors.push(`${languageId}: At least one Language Model integration is required`);
+			errors.push(`${langName}: At least one Language Model integration is required.`);
 		}
-
-		// Validate TTS integrations
-		if (!CurrentAgentIntegrationsTTS[languageId] || CurrentAgentIntegrationsTTS[languageId].length === 0) {
+		if (ttsData.length === 0) {
 			isValid = false;
-			errors.push(`${languageId}: At least one Text-to-Speech integration is required`);
-		}
-
-		// Validate integration configurations
-		if (CurrentAgentIntegrationsSTT[languageId]) {
-			CurrentAgentIntegrationsSTT[languageId].forEach((integration, index) => {
-				const validateResult = validateAgentIntegrationConfiguration(integration.id, "STT", languageId);
-				if (!validateResult.isValid) {
-					isValid = false;
-					errors.push(`${languageId}: Speech-to-Text integration configuration is invalid`);
-				}
-			});
-		}
-
-		if (CurrentAgentIntegrationsLLM[languageId]) {
-			CurrentAgentIntegrationsLLM[languageId].forEach((integration, index) => {
-				const validationResult = validateAgentIntegrationConfiguration(integration.id, "LLM", languageId);
-				if (!validationResult.isValid) {
-					isValid = false;
-					errors.push(`${languageId}: Language Model integration configuration is invalid`);
-				}
-			});
-		}
-
-		if (CurrentAgentIntegrationsTTS[languageId]) {
-			CurrentAgentIntegrationsTTS[languageId].forEach((integration, index) => {
-				const validateResult = validateAgentIntegrationConfiguration(integration.id, "TTS", languageId);
-				if (!validateResult.isValid) {
-					isValid = false;
-					errors.push(`${languageId}: Text-to-Speech integration configuration is invalid`);
-				}
-			});
+			errors.push(`${langName}: At least one Text-to-Speech integration is required.`);
 		}
 	});
 
-	return {
-		isValid,
-		errors,
-	};
-}
-
-function getAgentIntegrationConfigurationChanges() {
-	const changes = {};
-	let hasChanges = false;
-
-	CurrentAgentConfigurationFields.forEach((field) => {
-		const fieldElement = integrationConfigurationFieldsContainer.find(`.config-field[data-field-id="${field.id}"]`);
-		const value = fieldElement.find(".config-field-input").val().trim();
-		const currentValue = CurrentAgentConfigurationValues[field.id] || "";
-
-		changes[field.id] = value;
-		if (value !== currentValue) {
-			hasChanges = true;
-		}
-	});
-
-	return {
-		hasChanges,
-		changes,
-	};
-}
-
-function saveAgentIntegrationConfigurationChanges(changes) {
-	// Update current agent integration configuration
-	const currentArray = CurrentAgentConfigurationType === "STT" ? CurrentAgentIntegrationsSTT : CurrentAgentConfigurationType === "LLM" ? CurrentAgentIntegrationsLLM : CurrentAgentIntegrationsTTS;
-
-	if (!currentArray) return;
-
-	const currentLanguageArray = currentArray[manageAgentsLanguageDropdown.getSelectedLanguage().id];
-
-	const integrationIndex = currentLanguageArray.findIndex((i) => {
-		if (!i) return false;
-
-		return i.id === CurrentAgentConfigurationIntegration;
-	});
-	if (integrationIndex !== -1) {
-		// Update existing configuration
-		Object.keys(changes).forEach((fieldId) => {
-			currentLanguageArray[integrationIndex].fieldValues[fieldId] = changes[fieldId];
-		});
+	if (!isValid) {
+		// Return early if basic requirements aren't met
+		return { isValid, errors };
 	}
 
-	// Update local state
-	CurrentAgentConfigurationValues = {
-		...CurrentAgentConfigurationValues,
-		...changes,
-	};
+	// Now, use the managers to validate the configurations of all selected integrations
+	const sttValidation = agentSTTIntegrationManager.validate();
+	if (!sttValidation.isValid) {
+		isValid = false;
+		errors.push(...sttValidation.errors);
+	}
 
-	// Close modal
-	integrationConfigurationModal.modal("hide");
-}
+	const llmValidation = agentLLMIntegrationManager.validate();
+	if (!llmValidation.isValid) {
+		isValid = false;
+		errors.push(...llmValidation.errors);
+	}
 
-function refreshAgentIntegrationIndices(type) {
-	const container = type === "STT" ? sttIntegrationsList : type === "LLM" ? llmIntegrationsList : ttsIntegrationsList;
+	const ttsValidation = agentTTSIntegrationManager.validate();
+	if (!ttsValidation.isValid) {
+		isValid = false;
+		errors.push(...ttsValidation.errors);
+	}
 
-	container.find(".integration-item").each((idx, element) => {
-		$(element).attr("data-index", idx);
-		$(element)
-			.find(".input-group-text i")
-			.attr("class", `fa-regular fa-${idx + 1}`);
-	});
+	return { isValid, errors };
 }
 
 // Cache Tab Functions
@@ -4353,6 +3894,40 @@ function initAgentTab() {
 		manageAgentsLanguageDropdown = new MultiLanguageDropdown("agentsManagerMultiLanguageContainer", BusinessFullLanguagesData);
 		agentsScriptManagerLanguageDropdown = new MultiLanguageDropdown("agentsScriptManagerMultiLanguageContainer", BusinessFullLanguagesData);
 
+		const sharedIntegrationConfigurationManagerOptions = {
+			allowMultiple: true,
+			isLanguageBound: true,
+			languageDropdown: manageAgentsLanguageDropdown,
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => {
+				CheckAgentTabHasChanges();
+				validateAgentMultiLanguageElements();
+			},
+			onIntegrationChange: () => {
+				CheckAgentTabHasChanges();
+				validateAgentMultiLanguageElements();
+			},
+		};
+
+		agentSTTIntegrationManager = new IntegrationConfigurationManager('#sttIntegrationsList', {
+			...sharedIntegrationConfigurationManagerOptions,
+			integrationType: 'STT',
+			providersData: BusinessSTTProvidersForIntegrations,
+		});
+
+		agentLLMIntegrationManager = new IntegrationConfigurationManager('#llmIntegrationsList', {
+			...sharedIntegrationConfigurationManagerOptions,
+			integrationType: 'LLM',
+			providersData: BusinessLLMProvidersForIntegrations,
+		});
+
+		agentTTSIntegrationManager = new IntegrationConfigurationManager('#ttsIntegrationsList', {
+			...sharedIntegrationConfigurationManagerOptions,
+			integrationType: 'TTS',
+			providersData: BusinessTTSProvidersForIntegrations,
+		});
+
 		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
 			event.preventDefault();
@@ -4732,193 +4307,6 @@ function initAgentTab() {
 			});
 		}
 		initAgentCacheTabHandlers();
-
-		// Integration Tab Changes
-		function initAgentIntegrationsTabHandlers() {
-			manageAgentsLanguageDropdown.onLanguageChange((language) => {
-				fillAgentIntegrationsList("STT");
-				fillAgentIntegrationsList("LLM");
-				fillAgentIntegrationsList("TTS");
-			});
-
-			// Integration Event Handlers
-			addSTTIntegrationButton.on("click", (event) => {
-				event.preventDefault();
-				const newIndex = sttIntegrationsList.find(".integration-item").length;
-				sttIntegrationsList.append(createIntegrationSelectElement("STT", newIndex));
-
-				CheckAgentTabHasChanges();
-			});
-
-			addLLMIntegrationButton.on("click", (event) => {
-				event.preventDefault();
-				const newIndex = llmIntegrationsList.find(".integration-item").length;
-				llmIntegrationsList.append(createIntegrationSelectElement("LLM", newIndex));
-
-				CheckAgentTabHasChanges();
-			});
-
-			addTTSIntegrationButton.on("click", (event) => {
-				event.preventDefault();
-				const newIndex = ttsIntegrationsList.find(".integration-item").length;
-				ttsIntegrationsList.append(createIntegrationSelectElement("TTS", newIndex));
-
-				CheckAgentTabHasChanges();
-			});
-
-			// Handle integration removal
-			agentIntegrationsTab.on("click", '[button-type="remove-integration"]', (event) => {
-				event.preventDefault();
-
-				const currentElement = $(event.currentTarget);
-				const dataIndex = parseInt(currentElement.attr("data-index"));
-				const type = currentElement.parent().find('[select-type^="integration-"]').attr("select-type").split("-")[1].toUpperCase();
-				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-				// Remove the integration
-				if (type === "STT") CurrentAgentIntegrationsSTT[currentLanguage].splice(dataIndex, 1);
-				else if (type === "LLM") CurrentAgentIntegrationsLLM[currentLanguage].splice(dataIndex, 1);
-				else if (type === "TTS") CurrentAgentIntegrationsTTS[currentLanguage].splice(dataIndex, 1);
-
-				currentElement.closest(".integration-item").remove();
-
-				// Refresh indices
-				refreshAgentIntegrationIndices(type);
-				CheckAgentTabHasChanges();
-				validateAgentMultiLanguageElements();
-			});
-
-			// Handle integration configuration
-			agentIntegrationsTab.on("click", '[button-type="configure-integration"]', function (event) {
-				event.preventDefault();
-
-				const integrationSelect = $(this).closest(".integration-item").find("select");
-				const integrationId = integrationSelect.val();
-				const integrationType = integrationSelect.attr("select-type").split("-")[1].toUpperCase();
-
-				if (!integrationId) {
-					AlertManager.createAlert({
-						type: "warning",
-						message: "Please select an integration first.",
-						timeout: 3000,
-					});
-					return;
-				}
-
-				// Load configuration before showing modal
-				loadAgentIntegrationConfiguration(integrationId, integrationType);
-
-				// Show the modal
-				integrationConfigurationModal.modal("show");
-			});
-
-			// Handle integration selection changes
-			agentIntegrationsTab.on("change", 'select[select-type^="integration-"]', (event) => {
-				const currentElement = $(event.currentTarget);
-				const type = currentElement.attr("select-type").split("-")[1].toUpperCase();
-				const index = currentElement.closest(".integration-item").data("index");
-				const value = currentElement.val();
-				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-				var currentArray =
-					(type === "STT" ? CurrentAgentIntegrationsSTT[currentLanguage] : type === "LLM" ? CurrentAgentIntegrationsLLM[currentLanguage] : CurrentAgentIntegrationsTTS[currentLanguage]) ?? [];
-
-				if (value) {
-					const alreadyExists = currentArray.some((i) => i.id === value);
-					if (alreadyExists) {
-						AlertManager.createAlert({
-							type: "warning",
-							message: "This integration is already added.",
-							timeout: 3000,
-						});
-
-						currentElement.val("");
-						return;
-					}
-
-					const currentIntegrationData = BusinessFullData.businessApp.integrations.find((i) => i.id === value);
-					const providerData =
-						type === "LLM"
-							? BusinessLLMProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
-							: type === "STT"
-								? BusinessSTTProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
-								: type === "TTS"
-									? BusinessTTSProvidersForIntegrations.find((p) => p.integrationId === currentIntegrationData.type)
-									: null;
-
-					const fieldValuesDefaultData = {};
-					providerData.userIntegrationFields.forEach((fieldData) => {
-						fieldValuesDefaultData[fieldData.id] = fieldData.defaultValue;
-					});
-
-					currentArray[index] = {
-						id: value,
-						fieldValues: fieldValuesDefaultData,
-					};
-				} else {
-					currentArray.splice(index, 1);
-				}
-
-				CheckAgentTabHasChanges();
-				validateAgentMultiLanguageElements();
-			});
-
-			// Save configuration
-			saveIntegrationConfigButton.on("click", (event) => {
-				event.preventDefault();
-
-				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-				const validation = validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, false);
-				if (!validation.isValid) {
-					AlertManager.createAlert({
-						type: "danger",
-						message: `Validation failed:<br>${validation.errors.join("<br>")}`,
-						timeout: 6000,
-					});
-					return;
-				}
-
-				const changes = getAgentIntegrationConfigurationChanges();
-				if (!changes.hasChanges) {
-					integrationConfigurationModal.modal("hide");
-					return;
-				}
-
-				saveAgentIntegrationConfigurationChanges(changes.changes);
-				CheckAgentTabHasChanges();
-			});
-
-			integrationConfigurationModal.on("hide.bs.modal", (event) => {
-				CurrentAgentConfigurationIntegration = null;
-				CurrentAgentConfigurationIntegrationType = null;
-				CurrentAgentConfigurationFields = null;
-				CurrentAgentConfigurationValues = {};
-				CurrentAgentConfigurationType = null;
-				saveIntegrationConfigButton.prop("disabled", true);
-			});
-
-			// Track changes in fields
-			integrationConfigurationFieldsContainer.on("input change", ".config-field-input", (e) => {
-				e.stopPropagation();
-
-				const changes = getAgentIntegrationConfigurationChanges();
-				saveIntegrationConfigButton.prop("disabled", !changes.hasChanges);
-
-				const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
-
-				const currentIntegrationConfiguration =
-					(CurrentAgentConfigurationType === "STT"
-						? CurrentAgentIntegrationsSTT[currentLanguage]
-						: CurrentAgentConfigurationType === "LLM"
-							? CurrentAgentIntegrationsLLM[currentLanguage]
-							: CurrentAgentIntegrationsTTS[currentLanguage]) ?? [];
-				currentIntegrationConfiguration.find((i) => i.id === CurrentAgentConfigurationIntegration).fieldValues = changes.changes;
-
-				validateAgentIntegrationConfiguration(CurrentAgentConfigurationIntegration, CurrentAgentConfigurationType, currentLanguage, true);
-			});
-		}
-		initAgentIntegrationsTabHandlers();
 
 		// Settings Tab Changes
 		function initAgentSettingsTabHandlers() {

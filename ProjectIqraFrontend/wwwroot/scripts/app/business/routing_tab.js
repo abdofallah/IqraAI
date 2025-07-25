@@ -928,18 +928,30 @@ function validateRoutingTab(onlyRemove = true) {
 			}
 		}
 		else if (selectedConversationType === AgentInterruptionTypeENUM.InterruptibleViaAI) {
-			if (!editRouteAgentInterruptViaAIUseAgentLLM.is(":checked"))
-			{
+			const integrationSelects = routeAgentInterruptionLLMIntegrationConfigurationManager.getSelectElements();
+			if (onlyRemove) {
+				integrationSelects.removeClass('is-invalid');
+			}
+
+			if (!editRouteAgentInterruptViaAIUseAgentLLM.is(":checked")) {
 				const integrationData = routeAgentInterruptionLLMIntegrationConfigurationManager.getData();
-				if (integrationData == "" || !integrationData) {
+
+				if (!integrationData || !integrationData.id) {
 					validated = false;
-					errors.push("LLM integration for interuption must be selected");
-				}
-				
-				if (!onlyRemove) {
-					$('#agentRouteInterruptionViaLLMIntegrationContainer .form-select').addClass('is-invalid');
+					errors.push("LLM integration for interruption must be selected.");
+					if (!onlyRemove) {
+						integrationSelects.addClass('is-invalid');
+					}
 				} else {
-					$('#agentRouteInterruptionViaLLMIntegrationContainer .form-select').removeClass('is-invalid');
+
+					const configValidation = routeAgentInterruptionLLMIntegrationConfigurationManager.validate();
+					if (!configValidation.isValid) {
+						validated = false;
+						errors.push(...configValidation.errors);
+						if (!onlyRemove) {
+							integrationSelects.addClass('is-invalid');
+						}
+					}
 				}
 			}
 		}
@@ -1202,27 +1214,6 @@ function fillRoutingManagerTab() {
 	);
 }
 
-function fillRouteAgentInterruptViaAIIntegrationSelect() {
-	agentRouteInterruptionViaLLMIntegrationSelect.empty();
-	agentRouteInterruptionViaLLMIntegrationSelect.append(`<option value="" disabled selected>Select Integration</option>`);
-
-	BusinessFullData.businessApp.integrations.forEach((integrationData) => {
-		const integrationTypeData = SpecificationIntegrationsListData.find((integrationType) => integrationType.id === integrationData.type);
-
-		if (integrationTypeData.type.includes("LLM")) {
-			var isCurrentSelection = ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption.id == integrationData.id;
-
-			if (isCurrentSelection) {
-				CurrentAgentInterruptionIntegrationLLM = ManageCurrentRouteData.agent.interruption.llmIntegrationToUseForCheckingInterruption;
-			}
-
-			agentRouteInterruptionViaLLMIntegrationSelect.append(`<option value="${integrationData.id}" ${(isCurrentSelection ? "selected" : "")}>${integrationData.friendlyName}</option>`);
-		}
-	});
-
-	agentRouteInterruptionViaLLMIntegrationSelect.change();
-}
-
 async function canLeaveRoutingTab(leaveMessage = "") {
 	if (IsSavingRouteManageTab) {
 		AlertManager.createAlert({
@@ -1369,10 +1360,16 @@ function initRoutingTab() {
 			allIntegrations: BusinessFullData.businessApp.integrations,
 			providersData: BusinessLLMProvidersForIntegrations,
 
-			modalSelector: '#routeAgentInterruptViaAIIntegrationConfigurationModal',
+			modalSelector: '#integrationConfigurationModal',
 
-			onChange: () => checkRoutingTabHasChanges(),
-			onValidate: () => validateRoutingTab(true),
+			onSaveSuccessful: () => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true); 
+			},
+			onIntegrationChange: () => {
+				checkRoutingTabHasChanges();
+				validateRoutingTab(true);
+			},
         });
 
 		/** Event Handlers */

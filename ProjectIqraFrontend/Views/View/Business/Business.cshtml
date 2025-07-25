@@ -224,7 +224,31 @@
             </div>
         </div>
 
-        
+        <!-- Integration Configuration Modal -->
+        <div class="modal modal-lg fade" id="integrationConfigurationModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Integration Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div div-type="integration-configuration-fields">
+                            <!-- Dynamic configuration fields will be added here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" button-type="save-integration-configuration" disabled>
+                            <span>Save Configuration</span>
+                            <div class="spinner-border spinner-border-sm d-none" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Select Route Agent Modal -->
         <div class="modal fade" id="editChangeRouteAgentModal" tabindex="-1" aria-labelledby="editChangeRouteAgentModalLabel" aria-hidden="true">

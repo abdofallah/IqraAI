@@ -132,9 +132,9 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 _businessNumberManager = new BusinessNumberManager(this, businessAppRepository, businessRepository, modemTelManager, twilioManager, integrationsManager);
             }
-            if (_settings.InitalizeRoutesManager)
+            if (_settings.InitalizeRoutesManager || integrationConfigurationManager == null)
             {
-                _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository);
+                _businessRoutesManager = new BusinessRoutesManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
             }
             if (_settings.InitalizeConversationsManager)
             {

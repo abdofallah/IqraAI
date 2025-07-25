@@ -2,9 +2,13 @@
  * IntegrationConfigurationManager Class
  * A reusable component for selecting and configuring integrations like LLM, STT, and TTS.
  *
- * @version 1.0.0
+ * @version 1.1.0
  */
 class IntegrationConfigurationManager {
+	static _modalInstance = null;
+	static _modalElement = null;
+	static _activeManager = null;
+
 	/**
 	 * Creates an instance of IntegrationConfigurationManager.
 	 * @param {string} containerSelector - The CSS selector for the container div where the UI will be rendered.
@@ -16,8 +20,8 @@ class IntegrationConfigurationManager {
 	 * @param {Array} options.allIntegrations - The global array of all available business integrations.
 	 * @param {Array} options.providersData - The global array of provider-specific data (userIntegrationFields, models).
 	 * @param {string} options.modalSelector - The CSS selector for the shared configuration modal.
-	 * @param {function} [options.onChange] - Optional callback function to execute when data changes.
-	 * @param {function} [options.onValidate] - Optional callback function to execute for validation checks.
+	 * @param {function} [options.onSaveSuccessful] - Optional callback function to execute when data is successfully changed or saved.
+	 * @param {function} [options.onIntegrationChange] - Optional callback function to execute when integration changes.
 	 */
 	constructor(containerSelector, options) {
 		this.container = $(containerSelector);
@@ -28,8 +32,8 @@ class IntegrationConfigurationManager {
 
 		// --- Default options and merging with provided options ---
 		this.options = {
-			onChange: () => { },
-			onValidate: () => { },
+			onSaveSuccessful: () => { },
+            onIntegrationChange: () => { },
 			...options,
 		};
 
@@ -43,14 +47,20 @@ class IntegrationConfigurationManager {
 		});
 
 		// --- Modal State Variables ---
-		this.modalElement = $(this.options.modalSelector);
-		this.modal = new bootstrap.Modal(this.modalElement[0]);
-		this.modalFieldsContainer = this.modalElement.find(".modal-body > div").first(); // Assumes a standard structure
-		this.modalSaveButton = this.modalElement.find(".modal-footer .btn-primary");
 		this.currentConfig = {
 			integration: null, // The integration object from this.data being configured
 			provider: null, // The provider data for the integration
 		};
+
+		if (!IntegrationConfigurationManager._modalInstance) {
+			IntegrationConfigurationManager._modalElement = $(this.options.modalSelector);
+			if (IntegrationConfigurationManager._modalElement.length) {
+				IntegrationConfigurationManager._modalInstance = new bootstrap.Modal(IntegrationConfigurationManager._modalElement[0]);
+				this._attachSharedModalEventListeners(); // Attach listeners only ONCE
+			} else {
+				console.error(`Integration Modal with selector "${this.options.modalSelector}" not found.`);
+			}
+		}
 
 		this._init();
 	}
@@ -84,6 +94,71 @@ class IntegrationConfigurationManager {
 		this._render();
 	}
 
+	/**
+	 * Public method to validate the configuration of all managed integrations.
+	 * Note: This checks the *configuration* of selected integrations, not whether an integration *has been* selected.
+	 * @returns {{isValid: boolean, errors: Array<string>}} An object containing the overall validation status and a list of all errors found.
+	 */
+	validate() {
+		const allErrors = [];
+		let isAllValid = true;
+
+		const processIntegration = (integration, context) => {
+			if (!integration || !integration.id) {
+				return; // Don't validate empty/unselected integrations
+			}
+			const validationResult = this._validateConfiguration(integration, false); // No UI errors from this public method
+			if (!validationResult.isValid) {
+				isAllValid = false;
+				validationResult.errors.forEach(err => allErrors.push(`${context}${err}`));
+			}
+		};
+
+		if (this.options.isLanguageBound) {
+			const langKey = this.options.languageDropdown.getSelectedLanguage().id;
+			const currentDataSet = this.data[langKey] || [];
+			const context = `Language ${langKey}: `;
+			if (this.options.allowMultiple) {
+				currentDataSet.forEach((integration, index) => {
+					const def = this.filteredIntegrations.find(i => i.id === integration.id);
+					const name = def ? `'${def.friendlyName}'` : `Integration #${index + 1}`;
+					processIntegration(integration, `${context}${name} - `);
+				});
+			} else {
+				processIntegration(currentDataSet, context);
+			}
+		} else {
+			// This is the routing tab scenario
+			const currentDataSet = this.data;
+			if (this.options.allowMultiple) {
+				(currentDataSet || []).forEach((integration, index) => {
+					const def = this.filteredIntegrations.find(i => i.id === integration.id);
+					const name = def ? `'${def.friendlyName}'` : `Integration #${index + 1}`;
+					processIntegration(integration, `${name} - `);
+				});
+			} else {
+				if (currentDataSet && currentDataSet.id) {
+					const def = this.filteredIntegrations.find(i => i.id === currentDataSet.id);
+					const name = def ? `'${def.friendlyName}'` : `${this.options.integrationType} Integration`;
+					processIntegration(currentDataSet, `${name} - `);
+				}
+			}
+		}
+		return {
+			isValid: isAllValid,
+			errors: allErrors
+		};
+	}
+
+	/**
+	 * Publicly exposes the select element(s) managed by this instance.
+	 * @returns {jQuery} A jQuery object containing the select element(s).
+	 */
+	getSelectElements() {
+		return this.container.find('select');
+	}
+
+
 	// =================================================================
 	//  Private Initialization & Rendering Methods
 	// =================================================================
@@ -93,7 +168,7 @@ class IntegrationConfigurationManager {
 	 * @private
 	 */
 	_init() {
-		this._attachEventListeners();
+		this._attachContainerEventListeners();
 		this._render(); // Initial render
 	}
 
@@ -163,12 +238,14 @@ class IntegrationConfigurationManager {
 	 * @private
 	 */
 	_renderModalFields() {
-		this.modalFieldsContainer.empty();
+		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+
+		fieldsContainer.empty();
 		if (!this.currentConfig.provider?.userIntegrationFields) return;
 
 		this.currentConfig.provider.userIntegrationFields.forEach(field => {
 			const fieldElement = this._createModalFieldElement(field);
-			this.modalFieldsContainer.append(fieldElement);
+			fieldsContainer.append(fieldElement);
 
 			if (field.type === "models") {
 				this._populateModelsField(field, fieldElement);
@@ -176,7 +253,7 @@ class IntegrationConfigurationManager {
 		});
 
 		// Init tooltips inside modal
-		const tooltips = this.modalFieldsContainer.find('[data-bs-toggle="tooltip"]');
+		const tooltips = fieldsContainer.find('[data-bs-toggle="tooltip"]');
 		tooltips.each((index, element) => new bootstrap.Tooltip(element));
 	}
 
@@ -236,6 +313,23 @@ class IntegrationConfigurationManager {
 						</select>
 					</div>`;
 				break;
+
+			case "boolean":
+				const isChecked = currentValue === true;
+				fieldHtml = `
+                    <div class="mb-3 config-field form-check" data-field-id="${field.id}">
+                        <input type="checkbox" class="form-check-input config-field-input" id="check-${field.id}" ${isChecked ? "checked" : ""}>
+                        <label class="form-check-label" for="check-${field.id}">
+							<span class="btn-ic-span-align">
+								<span>${field.name} ${field.required ? '<span class="text-danger">*</span>' : ""}</span>
+								${field.tooltip ? `
+									<a href="#" class="d-inline-block" data-bs-html="true" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="${field.tooltip}">
+										<i class="fa-regular fa-circle-question"></i>
+									</a>` : ""}
+							</span>
+                        </label>
+                    </div>`;
+				break;
 		}
 
 		return $(fieldHtml);
@@ -263,14 +357,12 @@ class IntegrationConfigurationManager {
 	// =================================================================
 
 	/**
-	 * Attaches all necessary event listeners using delegation.
-	 * @private
+	 * Attaches event listeners for the integration items within this manager's container.
 	 */
-	_attachEventListeners() {
-		// --- Main Container Listeners ---
+	_attachContainerEventListeners() {
 		this.container.on("change", "select", this._handleIntegrationSelect.bind(this));
 		this.container.on("click", 'button[button-type="configure"]', this._handleConfigureClick.bind(this));
-		this.container.on("click", ".btn-light", (e) => { // 'Add' button
+		this.container.on("click", ".btn-light", (e) => {
 			if (!this.options.allowMultiple) return;
 			e.preventDefault();
 			this._addIntegration();
@@ -282,18 +374,40 @@ class IntegrationConfigurationManager {
 			this._removeIntegration(index);
 		});
 
-		// --- Modal Listeners ---
-		this.modalSaveButton.on("click", this._handleSaveConfiguration.bind(this));
-		this.modalElement.on("hide.bs.modal", this._handleModalClose.bind(this));
-		this.modalFieldsContainer.on("input change", ".config-field-input", () => {
-			const changes = this._getModalChanges();
-			this.modalSaveButton.prop("disabled", !changes.hasChanges);
-		});
-
-		// --- External Language Dropdown Listener ---
+		// Language dropdown listener remains instance-specific
 		if (this.options.isLanguageBound && this.options.languageDropdown) {
 			this.options.languageDropdown.onLanguageChange(() => this._render());
 		}
+	}
+
+	/**
+	 * This method is called only ONCE by the first instance created.
+	 */
+	_attachSharedModalEventListeners() {
+		const modalEl = IntegrationConfigurationManager._modalElement;
+		const saveButton = modalEl.find(".modal-footer button[button-type='save-integration-configuration']");
+
+		saveButton.on("click", () => {
+			if (IntegrationConfigurationManager._activeManager) {
+				const isSuccess = IntegrationConfigurationManager._activeManager._handleSaveConfiguration();
+				if (isSuccess) {
+					IntegrationConfigurationManager._modalInstance.hide();
+				}
+			}
+		});
+
+		modalEl.on("hidden.bs.modal", () => {
+			if (IntegrationConfigurationManager._activeManager) {
+				IntegrationConfigurationManager._activeManager._handleModalClose();
+			}
+		});
+
+		modalEl.find(".modal-body div[div-type='integration-configuration-fields']").on("input change", ".config-field-input", () => {
+			if (IntegrationConfigurationManager._activeManager) {
+				const changes = IntegrationConfigurationManager._activeManager._getModalChanges();
+				saveButton.prop("disabled", !changes.hasChanges);
+			}
+		});
 	}
 
 	_handleIntegrationSelect(e) {
@@ -318,21 +432,28 @@ class IntegrationConfigurationManager {
 			const integrationDefinition = this.options.allIntegrations.find(i => i.id === integrationId);
 			const provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
 			provider?.userIntegrationFields.forEach(field => {
-				if (field.defaultValue !== undefined) {
+				if (field.defaultValue !== undefined && field.defaultValue !== null) {
 					newIntegrationData.fieldValues[field.id] = field.defaultValue;
 				}
 			});
 		}
 
 		if (this.options.allowMultiple) {
+			// Ensure the dataset exists before trying to assign to an index
+			if (!currentDataSet) {
+				currentDataSet = [];
+				if (this.options.isLanguageBound) {
+					const langKey = this.options.languageDropdown.getSelectedLanguage().id;
+					this.data[langKey] = currentDataSet;
+				}
+			}
 			currentDataSet[index] = newIntegrationData;
 		} else {
 			// For single integration, the data itself is the object
-			this.data = newIntegrationData;
+			this.data = integrationId ? newIntegrationData : null;
 		}
 
-		this.options.onChange();
-		this.options.onValidate();
+		this.options.onIntegrationChange();
 	}
 
 	_handleConfigureClick(e) {
@@ -356,32 +477,54 @@ class IntegrationConfigurationManager {
 
 		this.currentConfig.provider = this.options.providersData.find(p => p.integrationId === integrationDefinition.type);
 		if (!this.currentConfig.provider) {
-			console.error("Provider data not found for integration type:", integrationDefinition.type);
+			AlertManager.createAlert({
+				type: "error",
+				message: `Provider configuration not found for integration type: ${integrationDefinition.type}`,
+				timeout: 4000
+			});
 			return;
 		}
 
+		IntegrationConfigurationManager._activeManager = this;
+
 		// --- Render and show modal ---
 		this._renderModalFields();
-		this.modalSaveButton.prop('disabled', true); // Disable save initially
-		this.modal.show();
+		const saveButton = IntegrationConfigurationManager._modalElement.find(".modal-footer button[button-type='save-integration-configuration']");
+		saveButton.prop('disabled', true);
+
+		IntegrationConfigurationManager._modalInstance.show();
 	}
 
 	_handleSaveConfiguration() {
-		// Here you can add validation logic for the modal fields if needed
 		const changes = this._getModalChanges();
+		const proposedIntegrationData = structuredClone(this.currentConfig.integration);
+		Object.assign(proposedIntegrationData.fieldValues, changes.changes);
 
-		// Update the fieldValues of the integration being configured
+		const validation = this._validateConfiguration(proposedIntegrationData, true);
+
+		if (!validation.isValid) {
+			AlertManager.createAlert({
+				type: 'danger',
+				message: `Validation Failed:<br>${validation.errors.join('<br>')}`,
+				timeout: 6000,
+			});
+			return false; // Return failure
+		}
+
 		Object.assign(this.currentConfig.integration.fieldValues, changes.changes);
-
-		this.modal.hide();
-		this.options.onChange();
-		this.options.onValidate();
+		this.options.onSaveSuccessful();
+        
+		return true;
 	}
 
+
 	_handleModalClose() {
-		// Reset temporary state
+		// Reset temporary state for THIS instance
 		this.currentConfig = { integration: null, provider: null };
-		this.modalFieldsContainer.empty();
+		IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first().empty();
+
+		// Crucially, unset the active manager so the modal is "free" again.
+		IntegrationConfigurationManager._activeManager = null;
 	}
 
 	_addIntegration() {
@@ -396,22 +539,108 @@ class IntegrationConfigurationManager {
 				this.data = currentDataSet;
 			}
 		}
-		currentDataSet.push({ id: null, fieldValues: {} });
+		currentDataSet.push({
+			id: null,
+			fieldValues: {}
+		});
 		this._render();
-		this.options.onChange();
+		this.options.onIntegrationChange();
 	}
 
 	_removeIntegration(index) {
 		let currentDataSet = this._getCurrentDataSet();
 		currentDataSet.splice(index, 1);
 		this._render();
-		this.options.onChange();
-		this.options.onValidate();
+		this.options.onIntegrationChange();
 	}
 
 	// =================================================================
-	//  Private Helper Methods
+	//  Private Helper & Validation Methods
 	// =================================================================
+
+	/**
+	 * Central validation logic for a single integration's configuration.
+	 * @private
+	 * @param {object} integration - The integration object to validate (e.g., { id: '...', fieldValues: {...} }).
+	 * @param {boolean} [showUIErrors=false] - If true, adds/removes 'is-invalid' classes in the modal.
+	 * @returns {{isValid: boolean, errors: Array<string>}}
+	 */
+	_validateConfiguration(integration, showUIErrors = false) {
+		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+
+		const errors = [];
+		let isValid = true;
+
+		const businessIntegrationData = this.options.allIntegrations.find(i => i.id === integration.id);
+		const provider = this.options.providersData.find(p => p.integrationId === businessIntegrationData.type);
+
+		if (!provider) {
+			return {
+				isValid: false,
+				errors: [`Provider configuration not found for integration '${businessIntegrationData.friendlyName}'.`]
+			};
+		}
+
+		// Clear previous errors if showing UI errors
+		if (showUIErrors) {
+			fieldsContainer.find('.is-invalid').removeClass('is-invalid');
+		}
+
+		provider.userIntegrationFields.forEach(field => {
+			const value = integration.fieldValues[field.id];
+			const fieldElement = fieldsContainer.find(`[data-field-id="${field.id}"]`);
+			const input = fieldElement.find(".config-field-input");
+
+			// Required field validation
+			if (field.required && (value === undefined || value === null || String(value).trim() === "")) {
+				isValid = false;
+				errors.push(`${field.name} is required.`);
+				if (showUIErrors) input.addClass('is-invalid');
+				return;
+			}
+
+			// Type-specific validation (only if a value is present)
+			if (value !== undefined && value !== null && String(value).trim() !== "") {
+				switch (field.type) {
+					case "number":
+					case "double_number":
+						if (isNaN(value)) {
+							isValid = false;
+							errors.push(`${field.name} must be a valid number.`);
+							if (showUIErrors) input.addClass('is-invalid');
+						}
+						break;
+
+					case "models":
+						const model = provider.models.find(m => m.id === value);
+						if (!model) {
+							isValid = false;
+							errors.push(`${field.name}: Selected model is invalid.`);
+							if (showUIErrors) input.addClass('is-invalid');
+						} else if (model.disabledAt !== null) {
+							isValid = false;
+							errors.push(`${field.name}: Selected model is disabled.`);
+							if (showUIErrors) input.addClass('is-invalid');
+						}
+						break;
+
+					case "select":
+						if (field.options && !field.options.some(opt => opt.key === value)) {
+							isValid = false;
+							errors.push(`${field.name}: Invalid option selected.`);
+							if (showUIErrors) input.addClass('is-invalid');
+						}
+						break;
+				}
+			}
+		});
+
+		return {
+			isValid,
+			errors
+		};
+	}
+
 
 	/**
 	 * Gets the relevant slice of data based on whether the manager is language-bound.
@@ -431,22 +660,65 @@ class IntegrationConfigurationManager {
 	}
 
 	/**
-	 * Checks for changes within the configuration modal.
+	 * Checks for changes within the configuration modal and performs type conversion.
 	 * @private
 	 * @returns {{hasChanges: boolean, changes: object}}
 	 */
 	_getModalChanges() {
+		const fieldsContainer = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields']").first();
+
 		const changes = {};
 		let hasChanges = false;
 
-		this.modalFieldsContainer.find(".config-field").each((_, el) => {
+		fieldsContainer.find(".config-field").each((_, el) => {
 			const fieldElement = $(el);
 			const fieldId = fieldElement.data("field-id");
-			const value = fieldElement.find(".config-field-input").val();
-			const currentValue = this.currentConfig.integration.fieldValues?.[fieldId] ?? "";
+			const input = fieldElement.find(".config-field-input");
 
-			changes[fieldId] = value;
-			if (String(value) !== String(currentValue)) {
+			// Find the schema to know the expected type
+			const fieldSchema = this.currentConfig.provider.userIntegrationFields.find(f => f.id === fieldId);
+			if (!fieldSchema) return; // Should not happen
+
+			let processedValue;
+
+			// Perform type conversion based on the schema
+			switch (fieldSchema.type) {
+				case 'boolean':
+					processedValue = input.is(':checked');
+					break;
+
+				case 'number':
+					// For integers. parseFloat is used to handle empty/invalid strings gracefully.
+					const intValue = parseInt(input.val(), 10);
+					processedValue = isNaN(intValue) ? input.val() : intValue; // If not a valid int, keep original string for validation
+					break;
+
+				case 'double_number':
+					// For floating-point numbers
+					const floatValue = parseFloat(input.val());
+					processedValue = isNaN(floatValue) ? input.val() : floatValue; // If not a valid float, keep original string
+					break;
+
+				case 'string':
+				case 'text':
+				case 'select':
+				case 'models':
+				default:
+					// For all others, the value is a string
+					processedValue = input.val();
+					break;
+			}
+
+			// Retrieve the original value for comparison
+			const originalValue = this.currentConfig.integration.fieldValues?.[fieldId];
+			const defaultValue = fieldSchema.defaultValue ?? (fieldSchema.type === 'boolean' ? false : "");
+			const currentValue = originalValue ?? defaultValue;
+
+			// Assign the correctly-typed value to our changes object
+			changes[fieldId] = processedValue;
+
+			// Use a strict comparison, which now works correctly due to proper typing
+			if (processedValue !== currentValue) {
 				hasChanges = true;
 			}
 		});

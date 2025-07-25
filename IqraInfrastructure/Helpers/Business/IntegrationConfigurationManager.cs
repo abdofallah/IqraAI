@@ -34,6 +34,8 @@ namespace IqraInfrastructure.Helpers.Business
             if (_dependenciesSetup) return;
 
             _businessIntegrationsManager = businessIntegrationsManager;
+
+            _dependenciesSetup = true;
         }
 
         public async Task<FunctionReturnResult<BusinessAppAgentIntegrationData>> ValidateAndBuildIntegrationData(
