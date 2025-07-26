@@ -145,6 +145,7 @@ namespace IqraInfrastructure.Managers.Call
             }
 
             bool successfullyForwarded = false;
+            bool shouldRequeCall = false;
             foreach (var optimalServer in serverSelectionResult.Data)
             {
                 RegionServerData? backendServerDetails = regionDetails.Servers.FirstOrDefault(s => s.Endpoint == optimalServer.ServerEndpoint && s.Type == ServerTypeEnum.Backend);
@@ -163,24 +164,40 @@ namespace IqraInfrastructure.Managers.Call
                 if (forwardResponse.Success)
                 {
                     successfullyForwarded = true;
+
+                    if (forwardResponse.Data != null && forwardResponse.Data.ShouldRequeue)
+                    {
+                        shouldRequeCall = true;
+                    }
+
                     break;
                 }
                 else
                 {
-                    // todo... should try the same server 3 times atleast??
-                    await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"Failed to forward to backend {backendServerDetails.Endpoint}. {forwardResponse.Message}", Type = CallQueueLogTypeEnum.Error });
+                    if (forwardResponse.Data != null && forwardResponse.Data.ShouldRequeue)
+                    {
+                        shouldRequeCall = true;
+                    }
+                    else
+                    {
+                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"Failed to forward to backend {backendServerDetails.Endpoint}. {forwardResponse.Message}", Type = CallQueueLogTypeEnum.Error });
+                    }
                 }
             }
 
-            if (!successfullyForwarded)
+            if (shouldRequeCall)
+            {
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+            }
+            else if (!successfullyForwarded)
             {
                 await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = "Failed to forward to any backend server.", Type = CallQueueLogTypeEnum.Error });
             }
         }
 
-        private async Task<FunctionReturnResult> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
+        private async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
             string endpoint = (backendServer.UseSSL ? "https://" : "http://") + backendServer.Endpoint;
 
             var baseUri = new Uri(endpoint);
@@ -208,13 +225,13 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult($"ForwardToBackend:{response.StatusCode}", $"Backend returned error: {response.StatusCode}. Details: {responseContentString}");
                 }
 
-                var backendResponse = JsonSerializer.Deserialize<FunctionReturnResult>(responseContentString, _camelCaseSerializationOptions);
+                var backendResponse = JsonSerializer.Deserialize<FunctionReturnResult<InitiateOutboundCallResultModel>>(responseContentString, _camelCaseSerializationOptions);
                 if (backendResponse == null || !backendResponse.Success)
                 {
                     return result.SetFailureResult(backendResponse?.Code ?? "BackendParseFail", backendResponse?.Message ?? "Backend failed to process or invalid response format.");
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(backendResponse.Data);
             }
             catch (HttpRequestException httpEx)
             {

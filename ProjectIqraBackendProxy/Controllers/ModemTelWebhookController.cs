@@ -96,7 +96,7 @@ namespace ProjectIqraBackendProxy.Controllers
             }
         }
 
-        [HttpPost("status/{businessId}/{sessionId}/{phoneNumberId}")]
+        [HttpPost("voice/status/{businessId}/{sessionId}/{phoneNumberId}")]
         public async Task<IActionResult> HandleStatusWebhook([FromBody] ModemTelWebhookStatusData webhookData, [FromRoute] long businessId, [FromRoute] string sessionId, [FromRoute] string phoneNumberId)
         {
             if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)

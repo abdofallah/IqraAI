@@ -487,12 +487,10 @@ namespace IqraInfrastructure.Managers.Call
                 {
                     case "in-progress":
                         {
-                            if (sessionData.State != ConversationSessionState.WaitingForPrimaryClient)
+                            if (sessionData.State == ConversationSessionState.WaitingForPrimaryClient)
                             {
-                                return result.SetFailureResult("NotifyTelephonyClientStatus:INVALID_STATE", "Invalid session state");
+                                await sessionData.StartAsync();
                             }
-
-                            await sessionData.StartAsync();
                             
                             return result.SetSuccessResult();
                         }
@@ -837,7 +835,7 @@ namespace IqraInfrastructure.Managers.Call
             var providerName = telephonyProvider.ToString().ToLower();
 
             var statusCallbackUrl = new Uri((proxyServerData.UseSSL ? "https://" : "http://") + proxyServerData.Endpoint);
-            statusCallbackUrl = new Uri(statusCallbackUrl, $"{(statusCallbackUrl.AbsolutePath != "/" ? statusCallbackUrl.AbsolutePath : "")}/api/{providerName}/webhook/status/{businessId}/{sessionId}/{businessNumberId}");
+            statusCallbackUrl = new Uri(statusCallbackUrl, $"{(statusCallbackUrl.AbsolutePath != "/" ? statusCallbackUrl.AbsolutePath : "")}/api/{providerName}/webhook/voice/outbound/status/{businessId}/{sessionId}/{businessNumberId}");
 
             return statusCallbackUrl.ToString();
         }

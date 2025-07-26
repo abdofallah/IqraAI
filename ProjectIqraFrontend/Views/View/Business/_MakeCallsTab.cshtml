@@ -452,18 +452,9 @@
                         <div class="mt-3 d-none" id="agentMakeCallInterruptionViaLLMIntegrationSelectBox">
                             <!-- Initially hidden -->
                             <label class="form-label">Interruption LLM Integration</label>
-                            <div class="input-group">
-                                <select class="form-select" select-type="interrupt-integration-llm-makecall">
-                                    <!-- Unique select-type -->
-                                    <!-- Dynamically Generated -->
-                                    <option value="" disabled selected>Select LLM Integration</option>
-                                </select>
-                                <button class="btn btn-secondary" button-type="configure-integration" data-bs-toggle="tooltip" data-bs-title="Configure Integration" disabled>
-                                    <!-- Configure button might link elsewhere -->
-                                    <i class="fa-regular fa-gear"></i>
-                                </button>
+                            <div id="agentMakeCallInterruptionViaLLMIntegrationContainer">
+                                <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
                             </div>
-                            <!-- Placeholder for potential LLM config display -->
                         </div>
                     </div>
                     <!-- Response Options (Currently no extra settings) -->

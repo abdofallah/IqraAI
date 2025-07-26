@@ -492,7 +492,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
                             var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
-                            chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                            if (!backgroundChunk.IsEmpty)
+                            {
+                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                            }
+                            else
+                            {
+                                chunkToSend = speechChunk.ToArray();
+                            }
+
                             _currentSpeechPosition += speechChunkSize;
                             isSpeechChunk = true;
 
@@ -531,7 +539,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             {
                                 var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, firstSpeechChunkSize);
                                 var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
-                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                                if (!backgroundChunk.IsEmpty)
+                                {
+                                    chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                                }
+                                else
+                                {
+                                    chunkToSend = speechChunk.ToArray();
+                                }
                                 _currentSpeechPosition += firstSpeechChunkSize;
                                 isSpeechChunk = true;
 
@@ -670,10 +685,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private byte[] MixAudioChunks(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
         {
             // --- Move logic from original MixAudioChunks here ---
-            // Use _agentState.CurrentAgentVolumeFactor and _agentState.BackgroundMusicVolume
             int outputLength = Math.Max(speechChunk.Length, backgroundChunk.Length);
             if (outputLength == 0) return Array.Empty<byte>();
-            if (outputLength % 2 != 0) outputLength++; // Ensure even length for 16-bit
+            if (outputLength % 2 != 0) outputLength++; // Ensure even length for 16-bit > we could have 8 bit fix it
 
             byte[] mixedOutput = new byte[outputLength];
             var mixedSpan = mixedOutput.AsSpan();

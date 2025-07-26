@@ -8,9 +8,12 @@ namespace IqraCore.Entities.User
     {
         [BsonId]
         public string Email { get; set; } = string.Empty;
+        public string EmailHash { get; set; } = string.Empty;
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public List<long> Businesses { get; set; } = new List<long>();
+
+        public List<UserApiKey> UserApiKeys { get; set; } = new List<UserApiKey>();
 
         public UserPermission Permission { get; set; } = new UserPermission();
         public List<UserPaymentMethod> PaymentMethods { get; set; } = new List<UserPaymentMethod>();

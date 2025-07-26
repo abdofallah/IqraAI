@@ -2,7 +2,6 @@
 using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
-using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using Microsoft.Extensions.Logging;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers

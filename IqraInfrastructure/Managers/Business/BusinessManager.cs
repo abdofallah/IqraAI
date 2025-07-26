@@ -146,11 +146,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeMakeCallManager)
             {
-                if (regionManager == null || outboundCallCampaignRepository == null || outboundCallQueueRepository == null)
+                if (regionManager == null || outboundCallCampaignRepository == null || outboundCallQueueRepository == null || integrationConfigurationManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessMakeCallManager");
                 }
-                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, outboundCallQueueRepository);
+                _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, outboundCallQueueRepository, integrationConfigurationManager);
             }
         }
 

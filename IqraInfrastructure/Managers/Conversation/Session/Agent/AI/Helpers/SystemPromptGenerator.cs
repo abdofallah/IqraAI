@@ -221,6 +221,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
 	                {{~ if Session.Route.Agent.CallerNumberInContext ~}}
 	                Caller phone Number is: {{Session.Caller.PhoneNumber}}
 	                {{~ end ~}}
+
+                    {{~ if Session.DynamicVariables.size > 0 ~}}
+                    <DynamicVariables>
+                        {{~ for dynamicVariable in Session.DynamicVariables ~}}
+                            - {{dynamicVariable}}
+                        {{~ end ~}}
+                    </DynamicVariables>
+                    {{~ end ~}}
                 </SessionInformation>";
             }
             
@@ -249,6 +257,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             routeObject["Agent"] = CreateRouteAgentObject(currentSessionContext.Agent);
             routeObject["Multilangauges"] = await CreateRouteLanguageObject(currentSessionContext.Language, languageCode);
             sessionObject["Route"] = routeObject;
+            sessionObject["DynamicVariables"] = CreateSessionDynamicVariablesObject(currentSessionContext);
 
             // Add the model to the context
             modelObject.Import(modelObject);
@@ -267,6 +276,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             result.Data = renderedPrompt;
 
             return result;
+        }
+
+        private ScriptArray CreateSessionDynamicVariablesObject(ConversationSessionContext context)
+        {
+            var dynamicVariablesObject = new ScriptArray();
+            if (context.DynamicVariables == null || context.DynamicVariables.Count == 0) return dynamicVariablesObject;
+
+            foreach (var dynamicVariable in context.DynamicVariables)
+            {
+                dynamicVariablesObject.Add($"{dynamicVariable.Key}: {dynamicVariable.Value}") ;
+            }
+            return dynamicVariablesObject;
         }
 
         private ScriptObject CreateAgentPersonalityObject(BusinessAppAgentPersonality personality, string languageCode)

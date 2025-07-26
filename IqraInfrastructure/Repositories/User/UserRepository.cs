@@ -70,5 +70,11 @@ namespace IqraInfrastructure.Repositories.User
         {
             return _usersCollection.Find(_ => true).Skip(page * pageSize).Limit(pageSize).ToListAsync();
         }
+
+        public async Task<UserData?> GetUserByEmailHashAsync(string emailHash)
+        {
+            var filter = Builders<UserData>.Filter.Eq(u => u.EmailHash, emailHash);
+            return await _usersCollection.Find(filter).FirstOrDefaultAsync();
+        }
     }
 }

@@ -166,14 +166,33 @@ namespace IqraCore.Utilities
                 }
             }
 
+            var valueIsJsonElement = value is JsonElement;
             switch (argument.Type)
             {
                 case BusinessAppToolConfigurationInputSchemeaTypeEnum.String:
-                    if (value is not string stringValue)
+
+                    string? stringValue;
+                    if (valueIsJsonElement)
+                    {
+                        var stringJsonElement = (JsonElement)value;
+                        if (stringJsonElement.ValueKind != JsonValueKind.String)
+                        {
+                            result.Code = "ValidateArgumentValue:STRING_VALIDATION_FAILED";
+                            result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected string (received {stringJsonElement.ValueKind}).";
+                            return result;
+                        }
+
+                        stringValue = stringJsonElement.GetString();
+                    }
+                    else if (value.GetType() != typeof(string))
                     {
                         result.Code = "ValidateArgumentValue:1";
                         result.Message = $"{actionType} tool input argument {argument.Name[businessDefaultLanguage]} type mismatch, expected string (received {value.GetType().Name}).";
                         return result;
+                    }
+                    else
+                    {
+                        stringValue = (string)value;
                     }
 
                     if (string.IsNullOrWhiteSpace(stringValue))

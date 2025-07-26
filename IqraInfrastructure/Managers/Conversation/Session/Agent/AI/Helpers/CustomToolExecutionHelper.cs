@@ -181,6 +181,150 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
             }
         }
 
+        public async Task<FunctionReturnResult<string?>> ExecuteHttpRequestForToolAsync(
+            BusinessAppTool toolData,
+            Dictionary<string, object> parameters,
+            CancellationToken cancellationToken
+        )
+        {
+            var result = new FunctionReturnResult<string?>();
+            if (_businessApp == null || string.IsNullOrEmpty(_currentLanguageCode))
+            {
+                result.Code = "ExecuteHttpRequest:0";
+                result.Message = "Helper not initialized with BusinessApp and LanguageCode.";
+                return result;
+            }
+            if (toolData == null)
+            {
+                result.Code = "ExecuteHttpRequest:1";
+                result.Message = "Tool data provided was null.";
+                return result;
+            }
+
+            try
+            {
+                var baseUriResult = await ResolveEndpointQueryStrings(toolData.Configuration.Endpoint, parameters);
+                if (!baseUriResult.Success)
+                {
+                    result.Code = "ExecuteHttpRequest:3";
+                    result.Message = $"Error resolving endpoint query strings for tool {toolData.Id}:\n\n```{baseUriResult.Message}```";
+                    return result;
+                }
+                var baseUri = baseUriResult.Data;
+
+                using (var toolHttpClient = new HttpClient())
+                {
+                    toolHttpClient.Timeout = TimeSpan.FromSeconds(5); // todo make configurable by user
+
+                    HttpResponseMessage httpResponseMessage;
+                    HttpContent? requestContent = null;
+
+                    // Build Request Body
+                    if (toolData.Configuration.RequestType != HttpMethodEnum.Get && toolData.Configuration.RequestType != HttpMethodEnum.Delete)
+                    {
+                        var requestContentResult = await BuildRequestBody(toolData.Id, toolData.Configuration, parameters);
+                        if (!requestContentResult.Success)
+                        {
+                            result.Code = "ExecuteHttpRequest:4";
+                            result.Message = $"Error building request body for tool {toolData.Id}:\n\n```{requestContentResult.Message}```";
+                            return result;
+                        }    
+
+                        requestContent = requestContentResult.Data;
+                    }
+
+                    // Add Headers
+                    foreach (var header in toolData.Configuration.Headers)
+                    {
+                        var headerValueResult = await RenderScribanTemplateAsync(header.Value, parameters);
+                        if (!headerValueResult.Success)
+                        {
+                            result.Code = "ExecuteHttpRequest:4";
+                            result.Message = $"Error rendering header value for tool {toolData.Id}:\n\n```{headerValueResult.Message}```";
+                            return result;
+                        }
+                        toolHttpClient.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, headerValueResult.Data);
+                    }
+
+                    // Execute Request
+                    switch (toolData.Configuration.RequestType)
+                    {
+                        case HttpMethodEnum.Get:
+                            httpResponseMessage = await toolHttpClient.GetAsync(baseUri, cancellationToken);
+                            break;
+                        case HttpMethodEnum.Post:
+                            httpResponseMessage = await toolHttpClient.PostAsync(baseUri, requestContent, cancellationToken);
+                            break;
+                        case HttpMethodEnum.Put:
+                            httpResponseMessage = await toolHttpClient.PutAsync(baseUri, requestContent, cancellationToken);
+                            break;
+                        case HttpMethodEnum.Patch:
+                            httpResponseMessage = await toolHttpClient.PatchAsync(baseUri, requestContent, cancellationToken);
+                            break;
+                        case HttpMethodEnum.Delete:
+                            httpResponseMessage = await toolHttpClient.DeleteAsync(baseUri, cancellationToken);
+                            break;
+                        default:
+                            result.Code = "ExecuteHttpRequest:3";
+                            result.Message = $"Unsupported http method {toolData.Configuration.RequestType} in tool {toolData.Id}";
+                            _logger.LogError(result.Message);
+                            return result;
+                    }
+
+                    var responseStatusCode = httpResponseMessage.StatusCode;
+                    var responseData = await httpResponseMessage.Content.ReadAsStringAsync(cancellationToken);
+
+                    // Process Response
+                    if (!toolData.Response.TryGetValue(responseStatusCode.ToString(), out BusinessAppToolResponse? responseToolConfiguration) || responseToolConfiguration == null)
+                    {
+                        result.Success = true; // Consider it success, but provide raw data
+                        result.Data = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) returned status code {responseStatusCode} with data:\n\n```{responseData}```\n\nNo specific handling was defined for this status code.";
+                        return result;
+                    }
+
+                    var javascriptExecutedResult = ExecuteJavaScriptProcessor(responseData, responseToolConfiguration.Javascript);
+                    if (!javascriptExecutedResult.Success)
+                    {
+                        result.Code = "ExecuteHttpRequest:4" + javascriptExecutedResult.Code;
+                        result.Message = $"Tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) returned status code {responseStatusCode} but failed to execute the response JavaScript processor. Error: {javascriptExecutedResult.Message}";
+                        // Optionally include raw response data in error for debugging?
+                        // result.Message += $"\nRaw Response: ```{responseData}```";
+                        return result;
+                    }
+
+                    // Handle Static Response Override
+                    if (responseToolConfiguration.HasStaticResponse && responseToolConfiguration.StaticResponse.TryGetValue(_currentLanguageCode!, out string? staticResponse) && !string.IsNullOrEmpty(staticResponse))
+                    {
+                        result.Success = true;
+                        result.Data = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) executed successfully (Status: {responseStatusCode}). The processed data was:\n\n```{javascriptExecutedResult.Data}```\n\nThe following static response is configured:\n\n```{staticResponse}```";
+                        return result;
+                    }
+
+                    result.Success = true;
+                    result.Data = $"The custom tool {toolData.General.Name[_currentLanguageCode]} ({toolData.Id}) executed successfully (Status: {responseStatusCode}). The processed data is:\n\n```{javascriptExecutedResult.Data}```";
+                    return result;
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                result.Code = "ExecuteHttpRequest:-1";
+                result.Message = $"Error executing tool '{toolData.General.Name[_currentLanguageCode]}': Network or HTTP error - {httpEx.Message}";
+                return result;
+            }
+            catch (OperationCanceledException)
+            {
+                result.Code = "ExecuteHttpRequest:-2";
+                result.Message = $"Execution of tool '{toolData.General.Name[_currentLanguageCode]}' was cancelled.";
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Code = "ExecuteHttpRequest:-3";
+                result.Message = $"Error executing tool '{toolData.General.Name[_currentLanguageCode]}': {ex.Message}";
+                return result;
+            }
+        }
+
         private async Task<FunctionReturnResult<HttpContent?>> BuildRequestBody(string toolId, BusinessAppToolConfiguration toolConfig, Dictionary<string, object> context)
         {
             var result = new FunctionReturnResult<HttpContent?>();
@@ -595,7 +739,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers
                     LoopLimit = 1000,
                     RecursiveLimit = 64,
                     StrictVariables = false,
-                    LimitToString = 1000,
+                    LimitToString = 16000,
                     LoopLimitQueryable = 1000,
                     ObjectRecursionLimit = 1000
                 };

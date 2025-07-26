@@ -1,20 +1,22 @@
-﻿using IqraCore.Entities.Business;
+﻿using Google.Protobuf.WellKnownTypes;
+using IqraCore.Entities.Business;
+using IqraCore.Entities.Call.Outbound;
+using IqraCore.Entities.Call.Queue;
+using IqraCore.Entities.Helper.Agent;
+using IqraCore.Entities.Helper.Call.Outbound;
+using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
 using IqraCore.Entities.Helpers;
 using IqraCore.Models.Business.MakeCalls;
-using IqraInfrastructure.Managers.Region;
-using Microsoft.AspNetCore.Http;
-using System.Text.Json;
-using PhoneNumbers;
-using IqraCore.Entities.Helper.Call.Outbound;
-using IqraCore.Entities.Helper.Agent;
 using IqraCore.Utilities;
-using nietras.SeparatedValues;
-using IqraCore.Entities.Call.Outbound;
-using Microsoft.Extensions.Logging;
+using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Repositories.Call;
-using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Helper.Call.Queue;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using nietras.SeparatedValues;
+using PhoneNumbers;
+using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
 {
@@ -25,13 +27,15 @@ namespace IqraInfrastructure.Managers.Business
         private readonly RegionManager _regionManager;
         private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
+        private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
         public BusinessMakeCallManager(
             ILogger<BusinessMakeCallManager> logger,
             BusinessManager parentBusinessManager,
             RegionManager regionManager,
             OutboundCallCampaignRepository outboundCallCampaignRepository,
-            OutboundCallQueueRepository outboundCallQueueRepository
+            OutboundCallQueueRepository outboundCallQueueRepository,
+            IntegrationConfigurationManager integrationConfigurationManager
         )
         {
             _logger = logger;
@@ -39,6 +43,7 @@ namespace IqraInfrastructure.Managers.Business
             _regionManager = regionManager;
             _outboundCallCampaignRepository = outboundCallCampaignRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
+            _integrationConfigurationManager = integrationConfigurationManager;
         }
 
         public async Task<FunctionReturnResult> QueueCallInitiationRequestAsync(BusinessData businessData, MakeCallRequestDto callConfig, IFormFile? bulkCsvFile)
@@ -405,23 +410,42 @@ namespace IqraInfrastructure.Managers.Business
                         "Missing or invalid 'AgentSettings.Interruption.UseAgentLLM' in configuration for intertuption type 'Via AI'."
                     );
                 }
-                if (callConfig.AgentSettings.Interruption.UseAgentLLM == false)
+
+                if (callConfig.AgentSettings.Interruption.UseAgentLLM.Value == false)
                 {
                     if (string.IsNullOrWhiteSpace(callConfig.AgentSettings.Interruption.LLMIntegrationId))
                     {
                         return result.SetFailureResult(
-                            "ForwardCallInitiationRequestAsync:46",
-                            "Missing or invalid 'AgentSettings.Interruption.LlmIntegrationId' in configuration for intertuption type 'Via AI' when 'UseAgentLLM' is false."
+                            "ForwardCallInitiationRequestAsync:AGENT_INTERRUPTION_INTEGRATION_ID_MISSING",
+                            "Intergation ID missing for Agent LLM Interruption."
                         );
                     }
 
-                    // todo check if llm integration exists
-                    // validate integration config
+                    
+                    if (callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields == null)
+                    {
+                        return result.SetFailureResult(
+                            "ForwardCallInitiationRequestAsync:AGENT_INTERRUPTION_INTEGRATION_DATA_MISSING",
+                            "Intergation config data missing for Agent LLM Interruption."
+                        );
+                    }
 
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:47",
-                        "Interruption type 'Via AI' not implemented yet."
+                    var fieldsToJsonElement = JsonSerializer.SerializeToDocument(callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields);
+                    var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                        businessId,
+                        callConfig.AgentSettings.Interruption.LLMIntegrationId,
+                        fieldsToJsonElement.RootElement,
+                        "LLM"
                     );
+
+                    if (!validationBuildResult.Success || validationBuildResult.Data == null)
+                    {
+                        result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                        result.Message = validationBuildResult.Message;
+                        return result;
+                    }
+
+                    callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields = validationBuildResult.Data.FieldValues;
                 }
             }
             // Actions
@@ -448,6 +472,8 @@ namespace IqraInfrastructure.Managers.Business
                     ringingToolValidationResult.Message
                 );
             }
+            callConfig.Actions.Declined.Arguments = ringingToolValidationResult.Data;
+
             // Actions.Missed
             if (callConfig.Actions.Missed == null)
             {
@@ -456,14 +482,16 @@ namespace IqraInfrastructure.Managers.Business
                     "Missing 'Actions.Missed' in configuration."
                 );
             }
-            ringingToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Missed, "Missed");
-            if (ringingToolValidationResult.Success == false)
+            var missedToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Missed, "Missed");
+            if (missedToolValidationResult.Success == false)
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + ringingToolValidationResult.Code,
-                    ringingToolValidationResult.Message
+                    "ForwardCallInitiationRequestAsync:" + missedToolValidationResult.Code,
+                    missedToolValidationResult.Message
                 );
             }
+            callConfig.Actions.Missed.Arguments = missedToolValidationResult.Data;
+
             // Actions.Answered
             if (callConfig.Actions.Answered == null)
             {
@@ -472,14 +500,16 @@ namespace IqraInfrastructure.Managers.Business
                     "Missing 'Actions.Answered' in configuration."
                 );
             }
-            ringingToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Answered, "Answered");
-            if (ringingToolValidationResult.Success == false)
+            var answeredToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Answered, "Answered");
+            if (answeredToolValidationResult.Success == false)
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + ringingToolValidationResult.Code,
-                    ringingToolValidationResult.Message
+                    "ForwardCallInitiationRequestAsync:" + answeredToolValidationResult.Code,
+                    answeredToolValidationResult.Message
                 );
             }
+            callConfig.Actions.Answered.Arguments = answeredToolValidationResult.Data;
+
             // Actions.Ended
             if (callConfig.Actions.Ended == null)
             {
@@ -488,14 +518,15 @@ namespace IqraInfrastructure.Managers.Business
                     "Missing 'Actions.Ended' in configuration."
                 );
             }
-            ringingToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Ended, "Ended");
-            if (ringingToolValidationResult.Success == false)
+            var endedToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Ended, "Ended");
+            if (endedToolValidationResult.Success == false)
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + ringingToolValidationResult.Code,
-                    ringingToolValidationResult.Message
+                    "ForwardCallInitiationRequestAsync:" + endedToolValidationResult.Code,
+                    endedToolValidationResult.Message
                 );
             }
+            callConfig.Actions.Ended.Arguments = endedToolValidationResult.Data;
 
             // first check if bulk data converted/valid
             FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>? bulkCallFileResult = null;
@@ -685,7 +716,7 @@ namespace IqraInfrastructure.Managers.Business
             Dictionary<string, string> DynamicVariables;
             if (bulkCallRowData == null || bulkCallRowData.DynamicVariables == null)
             {
-                DynamicVariables = new Dictionary<string, string>(); // todo get from callConfig
+                DynamicVariables = callConfig.DynamicVariables ?? new Dictionary<string, string>();
             }
             else
             {
@@ -1151,12 +1182,12 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
-        private async Task<FunctionReturnResult> ValidateActionData(long businessId, string businessDefaultLanguage, MakeCallActionToolConfigDto data, string actionType)
+        private async Task<FunctionReturnResult<Dictionary<string, object>?>> ValidateActionData(long businessId, string businessDefaultLanguage, MakeCallActionToolConfigDto data, string actionType)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<Dictionary<string, object>?>();
 
             string? selectedToolId = data.ToolId;
-            if (selectedToolId == null) return result.SetSuccessResult();
+            if (selectedToolId == null) return result.SetSuccessResult(null);
 
             var selectedToolData = await _parentBusinessManager.GetToolsManager().GetBusinessAppTool(businessId, selectedToolId);
             if (selectedToolData == null)
@@ -1168,6 +1199,8 @@ namespace IqraInfrastructure.Managers.Business
 
             Dictionary<string, object>? argumentsList = data.Arguments;
             if (argumentsList == null) argumentsList = new Dictionary<string, object>();
+
+            var convertedArgumentsList = new Dictionary<string, object>();
 
             foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
             {
@@ -1182,55 +1215,48 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else if (foundProperty)
                 {
-                    // Handle Array Type
-                    if (toolInputArgument.IsArray)
+                    var valueIsJsonElement = argumentValueProperty is JsonElement;
+
+                    string? stringValue;
+                    if (valueIsJsonElement)
                     {
-                        if (argumentValueProperty.GetType() != typeof(object[]))
+                        var stringJsonElement = (JsonElement)argumentValueProperty;
+                        if (stringJsonElement.ValueKind != JsonValueKind.String)
                         {
-                            return result.SetFailureResult(
-                                "ValidateActionData:4",
-                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} should be an array."
-                            );
+                            result.Code = "ValidateArgumentValue:STRING_VALIDATION_FAILED";
+                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} type mismatch, expected string (received {stringJsonElement.ValueKind}).";
+                            return result;
                         }
 
-                        var arrayValuesCount = 0;
-                        foreach (var arrayElement in argumentValueProperty as object[])
-                        {
-                            var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, arrayElement, toolInputArgument, actionType);
-                            if (!validationResult.Success)
-                            {
-                                return result.SetFailureResult(
-                                    "ValidateActionData:" + validationResult.Code,
-                                    validationResult.Message
-                                );
-                            }
-                            arrayValuesCount++;
-                        }
-
-                        if (toolInputArgument.IsRequired && arrayValuesCount == 0)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateActionData:5",
-                                $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} array cannot be empty as it is required."
-                            );
-                        }
+                        stringValue = stringJsonElement.GetString();
                     }
-                    // Handle Single Value
+                    else if (argumentValueProperty.GetType() != typeof(string))
+                    {
+                        result.Code = "ValidateArgumentValue:1";
+                        result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} type mismatch, expected string (received {argumentValueProperty.GetType().Name}).";
+                        return result;
+                    }
                     else
                     {
-                        var validationResult = BusinessAppToolPropertyValidator.ValidateArgumentValue(businessDefaultLanguage, argumentValueProperty, toolInputArgument, actionType);
-                        if (!validationResult.Success)
-                        {
-                            return result.SetFailureResult(
-                                "ValidateActionData:" + validationResult.Code,
-                                validationResult.Message
-                            );
-                        }
+                        stringValue = (string)argumentValueProperty;
                     }
+
+                    if (string.IsNullOrWhiteSpace(stringValue))
+                    {
+                        if (toolInputArgument.IsRequired)
+                        {
+                            result.Code = "ValidateArgumentValue:2";
+                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} value is empty but it is required.";
+                            return result;
+                        }
+                        break;
+                    }
+
+                    convertedArgumentsList.Add(toolInputArgument.Id, stringValue);
                 }
             }
 
-            return result.SetSuccessResult();
+            return result.SetSuccessResult(convertedArgumentsList);
         }
     }
 }

@@ -3,6 +3,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.User;
 using IqraCore.Entities.User.Billing;
 using IqraCore.Models.Authentication;
+using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.User;
@@ -24,10 +25,11 @@ namespace IqraInfrastructure.Managers.User
         private readonly UserSessionRepository _userSessionDatabase;
         private readonly UserRepository _userDatabase;
         private readonly EmailManager _emailManager;
+        private readonly UserApiKeyProcessor _apiKeyProcessor;
 
         private readonly int _sessionDurationHours = 24;
 
-        public UserManager(ILogger<UserManager> logger, AppRepository appRepository, UserSessionRepository userSessionRepository, UserRepository userRepository, EmailManager emailManager)
+        public UserManager(ILogger<UserManager> logger, AppRepository appRepository, UserSessionRepository userSessionRepository, UserRepository userRepository, EmailManager emailManager, UserApiKeyProcessor apiKeyProcessor)
         {
             _logger = logger;
 
@@ -35,6 +37,7 @@ namespace IqraInfrastructure.Managers.User
             _userDatabase = userRepository;
             _userSessionDatabase = userSessionRepository;
             _emailManager = emailManager;
+            _apiKeyProcessor = apiKeyProcessor;
         }
 
         public async Task AddBusinessIdToUser(string userEmail, long businessId, IClientSessionHandle mongoSession)
@@ -55,6 +58,7 @@ namespace IqraInfrastructure.Managers.User
             UserData newUser = new UserData
             {
                 Email = model.Email,
+                EmailHash = _apiKeyProcessor.ComputeEmailHash(model.Email),
                 FirstName = model.FirstName,
                 LastName = model.LastName,
                 PasswordSHA = HashPassword(model.Email, model.Password),

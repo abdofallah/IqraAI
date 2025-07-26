@@ -123,10 +123,10 @@ namespace ProjectIqraBackendProxy.Controllers
             return Ok(@$"<?xml version=""1.0"" encoding=""UTF-8""?><Response><Connect><Stream url=""{distributionResult.Data.WebhookUrl}"" /></Connect></Response>");
         }
 
-        [HttpPost("voice/session/incoming/{sessionId}")]
-        public async Task<IActionResult> HandleSessionIncomingWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] string sessionId)
+        [HttpPost("voice/outbound/status/{businessId}/{sessionId}/{phoneNumberId}")]
+        public async Task<IActionResult> HandleSessionIncomingWebhook([FromBody] TwilioWebhookDataModel webhookData, [FromRoute] long businessId, [FromRoute] string phoneNumberId, [FromRoute] string sessionId)
         {
-            if (string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
+            if (businessId < 0 || string.IsNullOrWhiteSpace(phoneNumberId) || string.IsNullOrWhiteSpace(sessionId) || webhookData == null)
             {
                 return BadRequest("Invalid request parameters");
             }
@@ -142,7 +142,9 @@ namespace ProjectIqraBackendProxy.Controllers
                 CallId = webhookData.CallSid,
                 To = webhookData.To,
                 From = webhookData.From,
-                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound"
+                Direction = webhookData.Direction == "inbound" ? "inbound" : "outbound",
+                BusinessId = businessId,
+                PhoneNumberId = phoneNumberId
             };
 
             var distributionResult = await _callStatusManager.NotifyOutboundCallStatus(sessionId, webhookContext, webhookData.CallStatus?.ToLower());

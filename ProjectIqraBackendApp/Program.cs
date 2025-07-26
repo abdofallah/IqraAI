@@ -2,6 +2,7 @@ using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
 using IqraCore.Interfaces.Server;
 using IqraCore.Utilities;
+using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Call;
@@ -494,7 +495,8 @@ namespace ProjectIqraBackendApp
                     null,
                     null,
                     null,
-                    sp.GetRequiredService<TwilioManager>()
+                    sp.GetRequiredService<TwilioManager>(),
+                    sp.GetRequiredService<IntegrationConfigurationManager>()
                 );
             });
             builder.Services.AddSingleton<IntegrationsManager>((sp) =>
@@ -533,6 +535,14 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ILogger<TTSProviderManager>>(),
                     sp.GetRequiredService<TTSProviderRepository>(),
                     sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
+            {
+                return new IntegrationConfigurationManager(
+                    sp.GetRequiredService<STTProviderManager>(),
+                    sp.GetRequiredService<TTSProviderManager>(),
+                    sp.GetRequiredService<LLMProviderManager>()
                 );
             });
 

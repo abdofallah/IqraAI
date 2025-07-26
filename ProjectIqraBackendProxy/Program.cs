@@ -292,7 +292,8 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     null,
-                    sp.GetRequiredService<TwilioManager>()
+                    sp.GetRequiredService<TwilioManager>(),
+                    null
                 );
             });
             builder.Services.AddSingleton<ServerSelectionManager>((sp) =>
@@ -326,6 +327,7 @@ namespace ProjectIqraBackendProxy
                     null,
                     null,
                     sp.GetRequiredService<UserRepository>(),
+                    null,
                     null
                 );
             });

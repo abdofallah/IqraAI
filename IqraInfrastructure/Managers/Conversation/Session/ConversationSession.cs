@@ -1,8 +1,10 @@
-﻿using IqraCore.Entities.Business;
+﻿using Google.Protobuf.WellKnownTypes;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
 using IqraCore.Entities.Conversation.Context;
+using IqraCore.Entities.Conversation.Context.Action;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Agent;
@@ -13,11 +15,14 @@ using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
+using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Web;
 
 namespace IqraInfrastructure.Managers.Conversation.Session
 {
@@ -32,6 +37,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         private readonly BillingUsageManager _billingProcessingManager;
 
         private readonly string _sessionId;
+        private readonly DateTime _createdAt;
         private CallQueueData _sessionCallQueueData;
         private readonly string _callOrWebInitiated;
 
@@ -91,6 +97,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         )
         {
             _sessionId = sessionId;
+            _createdAt = DateTime.UtcNow;
             _sessionCallQueueData = queueData;
             _callOrWebInitiated = callOrWebInitiated;
             _sessionCts = sessionCTS;
@@ -174,8 +181,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         MultiLanguageEnabled = businessRouteData.Language.MultiLanguageEnabled,
                         EnabledMultiLanguages = businessRouteData.Language.EnabledMultiLanguages
                     }
-                    // TODO ACTIONS
                 };
+
+                // Actions
+                if (businessRouteData.Actions != null)
+                {
+                    // Ended
+                    if (businessRouteData.Actions.CallEndedTool != null && businessRouteData.Actions.CallEndedTool.SelectedToolId != null)
+                    {
+                        _sessionContextData.CallEndedAction = new ConversationSessionContextAction()
+                        {
+                            SelectedToolId = businessRouteData.Actions.CallEndedTool.SelectedToolId,
+                            Arguments = businessRouteData.Actions.CallEndedTool.Arguments ?? new Dictionary<string, object>()
+                        };
+                    }
+                }
             }
             else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
             {
@@ -208,10 +228,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         NotifyOnSilenceMS = campaignData.CallRequestData.Configuration.Timeouts.NotifyOnSilenceMS.Value,
                         EndCallOnSilenceMS = campaignData.CallRequestData.Configuration.Timeouts.EndOnSilenceMS.Value,
                         MaxCallTimeS = campaignData.CallRequestData.Configuration.Timeouts.MaxCallTimeS.Value,
-                    }
-                    // TODO ACTIONS
+                    },
+                    DynamicVariables = campaignData.CallRequestData.DynamicVariables
                 };
 
+                // ACTIONS
+                if (campaignData.CallRequestData.Actions != null)
+                {
+                    // Ended
+                    if (campaignData.CallRequestData.Actions.Ended != null && campaignData.CallRequestData.Actions.Ended.ToolId != null)
+                    {
+                        _sessionContextData.CallEndedAction = new ConversationSessionContextAction()
+                        {
+                            SelectedToolId = campaignData.CallRequestData.Actions.Ended.ToolId,
+                            Arguments = campaignData.CallRequestData.Actions.Ended.Arguments ?? new Dictionary<string, object>()
+                        };
+                    }
+                }
+
+                // INTERRUPTION
                 if (campaignData.CallRequestData.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.TurnByTurn)
                 {
                     _sessionContextData.Agent.Interruption = new BusinessAppRouteAgentInterruptionTurnByTurn()
@@ -734,6 +769,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
             }
 
+            _ = Task.Run(async () =>
+            {
+                await ExecuteEndCallAction();
+            });
+
             // Run Audio Compilation in the background
             RunAudioCompilationAsync();
 
@@ -784,6 +824,89 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                     _logger.LogError(ex, "Error executing audio compilation background task for session {SessionId}", _sessionId);
                 }
             });
+        }
+
+        private async Task ExecuteEndCallAction()
+        {
+            if (_sessionContextData.CallEndedAction.SelectedToolId == null)
+            {
+                return;
+            }
+
+            BusinessAppTool? endCallTool = _sessionBusinessAppData.Tools.Find(t => t.Id == _sessionContextData.CallEndedAction.SelectedToolId);
+            if (endCallTool == null)
+            {
+                AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", "Tool not found");
+                return;
+            }
+
+            var parsedArguments = new Dictionary<string, object?>();
+
+            string? cachedConversation = null;
+
+            foreach (var argument in _sessionContextData.CallEndedAction.Arguments)
+            {
+                var argumentName = argument.Key;
+                var argumentValue = argument.Value;
+
+                if (argument.Value is string stringValue)
+                {
+                    if (stringValue.Contains("{{conversation}}") || stringValue.Contains("{={conversation}=}"))
+                    {
+                        if (cachedConversation == null)
+                        {
+                            cachedConversation = JsonSerializer.Serialize(_messages);
+                        }
+
+                        stringValue = stringValue
+                            .Replace("{{conversation}}", cachedConversation)
+                            .Replace("{={conversation}=}", cachedConversation);
+                    }
+
+                    if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
+                    {
+                        var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
+
+                        stringValue = stringValue
+                            .Replace("{{from_number}}", callerNumber)
+                            .Replace("{={from_number}=}", callerNumber);
+                    }
+                    else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+                    {
+                        var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
+
+                        stringValue = stringValue
+                            .Replace("{{to_number}}", recipientNumber)
+                            .Replace("{={to_number}=}", recipientNumber);
+                    }
+
+                    stringValue = stringValue
+                        .Replace("{{call_answered}}", _createdAt.ToString())
+                        .Replace("{={call_answered}=}", _createdAt.ToString());
+
+                    parsedArguments[argumentName] = stringValue;
+                }
+                else
+                {
+                    parsedArguments[argumentName] = argument.Value;
+                }
+            }
+
+            CustomToolExecutionHelper endCallToolhelper = new CustomToolExecutionHelper(_loggerFactory);
+            endCallToolhelper.Initialize(_sessionBusinessAppData, _sessionContextData.Language.DefaultLanguageCode);
+
+            var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolAsync(
+                endCallTool,
+                parsedArguments,
+                CancellationToken.None
+            );
+            if (!endToolResult.Success)
+            {
+                AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", $"{endToolResult.Code}: {endToolResult.Message}");
+                return;
+            }
+
+            AddLogEntry(ConversationLogLevel.Information, "Call ended action executed successfully");
         }
 
         public IReadOnlyList<ConversationMessage> GetHistory()

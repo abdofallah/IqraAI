@@ -56,6 +56,10 @@
                         <i class='fa-regular fa-chart-line nav_icon'></i>
                         <span class="nav_name">Usage</span>
                     </a>
+                    <a class="nav_link" for="api-keys-tab">
+                        <i class='fa-regular fa-key nav_icon'></i>
+                        <span class="nav_name">API Keys</span>
+                    </a>
                     <a class="nav_link disabled mb-0" for="settings-tab">
                         <i class='fa-regular fa-gear nav_icon'></i>
                         <span class="nav_name">Settings</span>
@@ -73,27 +77,9 @@
 
     <!-- Main Container -->
     <div class="w-100 main-container-wrapper" id="tabs-list">
+
         <!-- Bussiness Container -->
-        <div class="main-container fade show w-100" id="business-tab">
-            <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-briefcase'></i> <span>Businesses</span></h3>
-            <div class="inner-container">
-                <div class="mb-4 d-flex flex-row align-items-center justify-content-between" id="businessesListActions">
-                    <button id="AddNewBusinessButton" style="min-width: 200px" class="mb-0 text-decoration-none fw-bold btn btn-primary me-4" data-bs-toggle="modal" data-bs-target="#addNewBusinessModal" disabled>
-                        <span>+ Add New Business</span>
-                    </button>
-                    <div class="search-input-container">
-                        <input type="text" class="form-control" placeholder="Business Name" aria-label="Business Name" id="searchBusinessInput">
-                        <i class="fa-solid fa-magnifying-glass search-box-icon"></i>
-                        <button class="search-clear-btn btn btn-danger d-none" type="button" title="Clear search">
-                            <i class="fa-solid fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="row" id="BusinessesList">
-                    <!-- Dynamically Generated -->
-                </div> 
-            </div>
-        </div>
+        <partial name="_BusinessesTab.cshtml" />
 
         <!-- Billing Container -->
         <partial name="_BillingTab.cshtml" />
@@ -101,55 +87,14 @@
         <!-- Usage Container -->
         <partial name="_UsageTab.cshtml" />
 
+        <!-- API Keys Container -->
+        <partial name="_APIKeysTab.cshtml" />
+
         <!-- Settings Container -->
         <div class="main-container fade w-100 d-none" id="settings-tab">
             <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-gear nav_icon'></i> <span>Settings</span></h3>
             <div class="inner-container">
                 <h6>Ah! This page is currently under development.</h6>
-            </div>
-        </div>
-
-        <!-------------------
-
-                MODALS
-
-        --------------------->
-        <!-- Add New Business Modal -->
-        <div class="modal modal-lg fade" id="addNewBusinessModal" tabindex="-1" aria-labelledby="addNewBusinessModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="addNewBusinessModalLabel">Add New Business</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="addNewBusinessNameInput" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="addNewBusinessNameInput" placeholder="Business Name">
-                        </div>
-                        <div class="mb-3">
-                            <label for="addNewBusinessLogoInput" class="form-label d-block">Logo</label>
-                            <img src="~/img/picture_placeholder_light.png" class="rounded-3 image-fluid" id="addNewBusinessLogoPreview">
-                            <input type="file" class="form-control d-none" id="addNewBusinessLogoInput" accept="image/png, image/gif, image/jpeg, image/webp">
-                        </div>
-                        <div>
-                            <label for="addNewBusinessDefaultLanguageSelect" class="form-label">Default Language</label>
-                            <select class="form-select" id="addNewBusinessDefaultLanguageSelect">
-                                <option value="none" selected disabled>Select Language</option>
-                                    <!-- Dynamically Generated -->
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary btn-ic-span-align" id="addNewBusinessButton" disabled>
-                            <i class="fa-regular fa-plus"></i>
-                            <span>Add</span>
-                            <div class="spinner-border save-button-spinner d-none" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -303,6 +248,7 @@
         <script src="~/scripts/app/home/businesses_tab.js"></script>
         <script src="~/scripts/app/home/billing_tab.js"></script>
         <script src="~/scripts/app/home/usage_tab.js"></script>
+        <script src="~/scripts/app/home/api_keys_tab.js"></script>
 
         <!-- Init -->
         <script>
@@ -327,6 +273,9 @@
 
                                             // Init Usage table
                                             InitUsageTab();
+
+                                            // Init API Keys Tab
+                                            InitApiKeysTab();
                                         },
                                         (userBusinessesError) => {
                                             AlertManager.createAlert({

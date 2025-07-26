@@ -69,6 +69,33 @@ namespace IqraInfrastructure.Helpers.Business
                 return result;
             }
 
+            if (!currentIntegrationElement.TryGetProperty("fieldValues", out var fieldValuesElement))
+            {
+                result.Code = "ValidateIntegrationData:3";
+                result.Message = $"{integrationType} field values not found in integration.";
+                return result;
+            }
+
+            return await ValidateAndBuildIntegrationData(businessId, integrationId, fieldValuesElement, integrationType, businessLanguage);
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppAgentIntegrationData>> ValidateAndBuildIntegrationData(
+            long businessId,
+            string integrationId,
+            JsonElement fieldValuesElement,
+            string integrationType,
+            string? businessLanguage = null
+        )
+        {
+            var result = new FunctionReturnResult<BusinessAppAgentIntegrationData>();
+
+            if (!_dependenciesSetup)
+            {
+                result.Code = "ValidateIntegrationData:MISSING_DEPENDENCIES";
+                result.Message = $"Dependencies for integration configuration managers are not setup.";
+                return result;
+            }
+
             var currentIntegrationResult = await _businessIntegrationsManager.getBusinessIntegrationById(businessId, integrationId);
             if (!currentIntegrationResult.Success)
             {
@@ -108,14 +135,7 @@ namespace IqraInfrastructure.Helpers.Business
             var newIntegrationData = new BusinessAppAgentIntegrationData()
             {
                 Id = integrationId,
-            };
-
-            if (!currentIntegrationElement.TryGetProperty("fieldValues", out var fieldValuesElement))
-            {
-                result.Code = "ValidateIntegrationData:3";
-                result.Message = $"{integrationType} field values not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                return result;
-            }
+            };          
 
             IEnumerable<ProviderFieldBase> userIntegrationFields;
             IEnumerable<ProviderModelBase> models;

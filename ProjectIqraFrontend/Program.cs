@@ -3,6 +3,7 @@ using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Integrations;
@@ -429,7 +430,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<AppRepository>(),
                     sp.GetRequiredService<UserSessionRepository>(),
                     sp.GetRequiredService<UserRepository>(),
-                    sp.GetRequiredService<EmailManager>()
+                    sp.GetRequiredService<EmailManager>(),
+                    sp.GetRequiredService<UserApiKeyProcessor>()
                 );
             });
             builder.Services.AddSingleton<IntegrationConfigurationManager>((sp) =>
@@ -526,6 +528,30 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<UserManager>(),
                     sp.GetRequiredService<PlanManager>(),
                     sp.GetRequiredService<ConversationStateRepository>()
+                );
+            });
+            builder.Services.AddSingleton<UserApiKeyManager>((sp) =>
+            {
+                return new UserApiKeyManager(
+                    sp.GetRequiredService<ILogger<UserApiKeyManager>>(),
+                    sp.GetRequiredService<UserRepository>(),
+                    sp.GetRequiredService<UserApiKeyProcessor>()
+                );
+            });
+            builder.Services.AddSingleton<UserApiKeyProcessor>((sp) =>
+            {
+                AES256EncryptionService userApiKeyEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["UserApiKeys:ApiKeyEncryptionKey"]
+                );
+                AES256EncryptionService userApiKeyPayloadEncryptionService = new AES256EncryptionService(
+                    sp.GetRequiredService<ILogger<AES256EncryptionService>>(),
+                    appConfig["UserApiKeys:PayloadEncryptionKey"]
+                );
+                return new UserApiKeyProcessor(
+                    appConfig["User:EmailHashPepper"],
+                    userApiKeyEncryptionService,
+                    userApiKeyPayloadEncryptionService
                 );
             });
         }

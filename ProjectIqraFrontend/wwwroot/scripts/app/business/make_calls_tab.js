@@ -18,6 +18,8 @@ const OutboundCallRetryDelayUnitType = {
     Days: 3
 }
 
+let makeCallAgentInterruptionLLMIntegrationConfigurationManager = null;
+
 /** Dynamic State Variables **/
 let IsInitiatingCall = false;
 let CurrentMakeCallType = OutboundCallNumberType.Single;
@@ -86,7 +88,6 @@ const makeCallAgentConversationTypeInterruptibleAudioActivityDuration = makeCall
 const makeCallAgentInterruptViaAIBox = makeCallsTab.find('.make-call-conversation-type-box[box-type="interruptibleviaai"]');
 const makeCallAgentInterruptViaAIUseAgentLLM = makeCallAgentInterruptViaAIBox.find("#makeCallAgentInterruptViaAIUseAgentLLM");
 const agentMakeCallInterruptionViaLLMIntegrationSelectBox = makeCallAgentInterruptViaAIBox.find("#agentMakeCallInterruptionViaLLMIntegrationSelectBox");
-const agentMakeCallInterruptionViaLLMIntegrationSelect = agentMakeCallInterruptionViaLLMIntegrationSelectBox.find('select[select-type="interrupt-integration-llm-makecall"]');
 const makeCallAgentInterruptViaResponseBox = makeCallsTab.find('.make-call-conversation-type-box[box-type="interruptibleviaresponse"]');
 const makeCallNumberTimezoneSelect = makeCallsTab.find("#makeCallNumberTimezoneSelect");
 const makeCallAgentFromNumberInContextCheck = makeCallsTab.find("#makeCallAgentFromNumberInContextCheck");
@@ -354,7 +355,9 @@ function resetMakeCallForm() {
 	makeCallAgentTurnByTurnUseInterruptedResponseInNextTurn.prop("checked", false);
 	makeCallAgentConversationTypeInterruptibleAudioActivityDuration.val("300");
 	makeCallAgentInterruptViaAIUseAgentLLM.prop("checked", true);
-	agentMakeCallInterruptionViaLLMIntegrationSelect.val("");
+	if (makeCallAgentInterruptionLLMIntegrationConfigurationManager) {
+		makeCallAgentInterruptionLLMIntegrationConfigurationManager.reset();
+	}
 	handleInterruptionTypeChange(); // Call after setting defaults
 
 	makeCallNumberTimezoneSelect.val("");
@@ -474,7 +477,6 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 	removeError(makeCallAgentLanguageSelect);
 	removeError(makeCallNumberTimezoneSelect);
 	removeError(makeCallAgentConversationTypeInterruptibleAudioActivityDuration);
-	removeError(agentMakeCallInterruptionViaLLMIntegrationSelect);
 	if (!SelectedAgentId) addError("An Agent must be selected.", makeCallSelectedAgentNameInput);
 	if (SelectedAgentId && !makeCallAgentDefaultScriptSelect.val()) addError("An Opening Script must be selected.", makeCallAgentDefaultScriptSelect);
 	if (!makeCallAgentLanguageSelect.val()) addError("A Language must be selected.", makeCallAgentLanguageSelect);
@@ -484,8 +486,32 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 		const duration = parseInt(makeCallAgentConversationTypeInterruptibleAudioActivityDuration.val());
 		if (isNaN(duration) || duration < 50) addError("VAD duration must be >= 50ms.", makeCallAgentConversationTypeInterruptibleAudioActivityDuration);
 	} else if (interruptionType === AgentInterruptionTypeENUM.InterruptibleViaAI) {
-		if (!makeCallAgentInterruptViaAIUseAgentLLM.is(":checked") && !agentMakeCallInterruptionViaLLMIntegrationSelect.val())
-			addError("An LLM Integration must be selected for AI interruption.", agentMakeCallInterruptionViaLLMIntegrationSelect);
+		const integrationSelects = makeCallAgentInterruptionLLMIntegrationConfigurationManager.getSelectElements();
+		if (onlyRemoveErrors) {
+			integrationSelects.removeClass('is-invalid');
+		}
+
+		if (!makeCallAgentInterruptViaAIUseAgentLLM.is(":checked")) {
+			const integrationData = makeCallAgentInterruptionLLMIntegrationConfigurationManager.getData();
+			if (!integrationData || !integrationData.id) {
+				validated = false;
+				errors.push("LLM integration for interruption must be selected.");
+				if (!onlyRemoveErrors) {
+					integrationSelects.addClass('is-invalid');
+				}
+			} else {
+				const configValidation = makeCallAgentInterruptionLLMIntegrationConfigurationManager.validate();
+				if (!configValidation.isValid) {
+					isValid = false;
+					errors.push(...configValidation.errors);
+					if (!onlyRemoveErrors) {
+						integrationSelects.addClass('is-invalid');
+					}
+				}
+			}
+
+			
+		}
 	}
 
 	// --- Actions Tab Validation ---
@@ -552,7 +578,7 @@ function gatherMakeCallConfig() {
 			agentId: SelectedAgentId,
 			scriptId: makeCallAgentDefaultScriptSelect.val() || null,
 			languageCode: makeCallAgentLanguageSelect.val() || null,
-			interruption: { type: parseInt(makeCallAgentInterruptionTypeSelect.val()), useInterruptedResponseInNextTurn: null, vadDurationMS: null, useAgentLLM: null, llmIntegrationId: null },
+			interruption: { type: parseInt(makeCallAgentInterruptionTypeSelect.val()), useInterruptedResponseInNextTurn: null, vadDurationMS: null, useAgentLLM: null, llmIntegrationId: null, llmIntegrationConfigFields: null },
 			timezones: [makeCallNumberTimezoneSelect.val()] || null,
 			includeFromNumberInContext: makeCallAgentFromNumberInContextCheck.is(":checked"),
 			includeToNumberInContext: makeCallAgentToNumberInContextCheck.is(":checked")
@@ -584,7 +610,11 @@ function gatherMakeCallConfig() {
 		config.agentSettings.interruption.vadDurationMS = parseInt(makeCallAgentConversationTypeInterruptibleAudioActivityDuration.val()) || 300;
 	} else if (intType === AgentInterruptionTypeENUM.InterruptibleViaAI) {
 		config.agentSettings.interruption.useAgentLLM = makeCallAgentInterruptViaAIUseAgentLLM.is(":checked");
-		if (!config.agentSettings.interruption.useAgentLLM) config.agentSettings.interruption.llmIntegrationId = agentMakeCallInterruptionViaLLMIntegrationSelect.val() || null;
+		if (!config.agentSettings.interruption.useAgentLLM) {
+			var integrationData = makeCallAgentInterruptionLLMIntegrationConfigurationManager.getData();
+			config.agentSettings.interruption.llmIntegrationId = integrationData.id;
+			config.agentSettings.interruption.llmIntegrationConfigFields = integrationData.fieldValues;
+		}		
 	}
 	const actionMappings = [
 		{ key: "declined", toolSel: makeCallActionToolDeclinedSelect, argsList: makeCallActionToolDeclinedArgsList },
@@ -717,25 +747,6 @@ function populateAgentScripts(agentData) {
 		makeCallAgentDefaultScriptSelect.append(`<option value="${script.id}">${scriptName}</option>`);
 	});
 	makeCallAgentDefaultScriptSelect.prop("disabled", false);
-}
-
-function fillMakeCallAgentInterruptViaAIIntegrationSelect() {
-	agentMakeCallInterruptionViaLLMIntegrationSelect.empty().append(`<option value="" disabled selected>Select LLM Integration</option>`);
-	let llmIntegrationsFound = false;
-	const integrations = BusinessFullData?.businessApp?.integrations || [];
-	const llmIntegrationTypes = SpecificationIntegrationsListData?.filter((i) => i.type.includes("LLM")).map((i) => i.id) || [];
-	integrations.forEach((integrationData) => {
-		if (llmIntegrationTypes.includes(integrationData.type)) {
-			agentMakeCallInterruptionViaLLMIntegrationSelect.append(`<option value="${integrationData.id}">${integrationData.friendlyName || "Unnamed Integration"}</option>`);
-			llmIntegrationsFound = true;
-		}
-	});
-	if (!llmIntegrationsFound) {
-		agentMakeCallInterruptionViaLLMIntegrationSelect.append(`<option value="" disabled>No LLM Integrations found</option>`);
-		agentMakeCallInterruptionViaLLMIntegrationSelect.prop("disabled", true);
-	} else {
-		agentMakeCallInterruptionViaLLMIntegrationSelect.prop("disabled", false);
-	}
 }
 
 function handleInterruptionTypeChange() {
@@ -1006,11 +1017,10 @@ function initAgentTabHandlers() {
 	makeCallAgentConversationTypeInterruptibleAudioActivityDuration.on("input", () => validateMakeCallConfig(true));
 	makeCallAgentInterruptViaAIUseAgentLLM.on("change", (event) => {
 		const isChecked = $(event.currentTarget).is(":checked");
-		if (isChecked) agentMakeCallInterruptionViaLLMIntegrationSelectBox.addClass("d-none");
-		else agentMakeCallInterruptionViaLLMIntegrationSelectBox.removeClass("d-none");
+		if (!isChecked) agentMakeCallInterruptionViaLLMIntegrationSelectBox.removeClass("d-none");
+		else agentMakeCallInterruptionViaLLMIntegrationSelectBox.addClass("d-none");
 		validateMakeCallConfig(true);
 	});
-	agentMakeCallInterruptionViaLLMIntegrationSelect.on("change", () => validateMakeCallConfig(true));
 	makeCallNumberTimezoneSelect.on("change", () => validateMakeCallConfig(true));
 	makeCallAgentFromNumberInContextCheck.on("change", () => validateMakeCallConfig(true));
 	makeCallAgentToNumberInContextCheck.on("change", () => validateMakeCallConfig(true));
@@ -1071,7 +1081,6 @@ function initMakeCallsTab() {
 
 	// Pre-populate Dropdowns
 	populateLanguageSelect();
-	fillMakeCallAgentInterruptViaAIIntegrationSelect();
 	populateToolSelect(makeCallActionToolDeclinedSelect);
 	populateToolSelect(makeCallActionToolMissSelect);
 	populateToolSelect(makeCallActionToolPickedUpSelect);
@@ -1079,6 +1088,24 @@ function initMakeCallsTab() {
 
 	// Set Initial Form State
 	resetMakeCallForm();
+
+	makeCallAgentInterruptionLLMIntegrationConfigurationManager = new IntegrationConfigurationManager('#agentMakeCallInterruptionViaLLMIntegrationContainer', {
+		integrationType: 'LLM',
+		allowMultiple: false,
+		isLanguageBound: false,
+
+		allIntegrations: BusinessFullData.businessApp.integrations,
+		providersData: BusinessLLMProvidersForIntegrations,
+
+		modalSelector: '#integrationConfigurationModal',
+
+		onSaveSuccessful: () => {
+			validateMakeCallConfig(true)
+		},
+		onIntegrationChange: () => {
+			validateMakeCallConfig(true)
+		},
+	});
 
 	// Attach Event Handlers
 	// Header Buttons
@@ -1164,7 +1191,6 @@ function initMakeCallsTab() {
 		}
 
 		populateLanguageSelect();
-		fillMakeCallAgentInterruptViaAIIntegrationSelect();
 		populateToolSelect(makeCallActionToolDeclinedSelect);
 		populateToolSelect(makeCallActionToolMissSelect);
 		populateToolSelect(makeCallActionToolPickedUpSelect);

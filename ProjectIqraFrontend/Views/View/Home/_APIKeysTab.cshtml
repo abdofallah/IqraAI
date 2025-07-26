@@ -1,0 +1,116 @@
+﻿<!-- API Keys Container -->
+<div class="main-container fade w-100 d-none" id="api-keys-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-key'></i> <span>API Keys</span></h3>
+    <div class="inner-container">
+        <div class="mb-4 d-flex flex-row align-items-center justify-content-between" id="apiKeysListActions">
+            <button id="addNewApiKeyButton" style="min-width: 200px" class="mb-0 text-decoration-none fw-bold btn btn-primary me-4" data-bs-toggle="modal" data-bs-target="#addApiKeyModal">
+                <span>+ Create API Key</span>
+            </button>
+            <div class="search-input-container">
+                <input type="text" class="form-control" placeholder="Friendly Name" aria-label="Friendly Name" id="searchApiKeysInput">
+                <i class="fa-solid fa-magnifying-glass search-box-icon"></i>
+                <button class="search-clear-btn btn btn-danger d-none" type="button" title="Clear search">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover w-100" id="api-keys-table">
+                <thead>
+                    <tr>
+                        <th>Friendly Name</th>
+                        <th>Key</th>
+                        <th>Created</th>
+                        <th>Last Used</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamically Generated -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- =================================================================
+                        MODALS FOR API KEYS
+================================================================== -->
+<!-- Add New API Key Modal -->
+<div class="modal modal-lg fade" id="addApiKeyModal" tabindex="-1" aria-labelledby="addApiKeyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addApiKeyModalLabel">Create New API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="addApiKeyNameInput" class="form-label">Friendly Name</label>
+                    <input type="text" class="form-control" id="addApiKeyNameInput" placeholder="e.g., 'My Production Server Key'">
+                    <small class="form-text text-muted">A recognizable name to help you identify this key later.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Business Access</label>
+                    <div class="p-3 border rounded">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="" id="apiKeyUnrestrictedAccessCheck">
+                            <label class="form-check-label" for="apiKeyUnrestrictedAccessCheck">
+                                <strong>Unrestricted Access</strong> (Can access all current and future businesses)
+                            </label>
+                        </div>
+                        <hr>
+                        <div id="apiKeyBusinessListContainer">
+                            <!-- Business checkboxes will be dynamically inserted here by JavaScript -->
+                            <p class="text-muted text-center">Loading businesses...</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-ic-span-align" id="createApiKeyConfirmButton">
+                    <i class="fa-regular fa-plus"></i>
+                    <span>Create Key</span>
+                    <div class="spinner-border save-button-spinner d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- API Key Generated Modal -->
+<div class="modal fade" id="apiKeyGeneratedModal" tabindex="-1" aria-labelledby="apiKeyGeneratedModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="apiKeyGeneratedModalLabel">API Key Created Successfully</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="fa-regular fa-triangle-exclamation fs-4 me-3"></i>
+                    <div>
+                        <strong>This is the only time you will see this API key.</strong> For your security, we do not store it. Please copy and save it in a secure location.
+                    </div>
+                </div>
+
+                <p>Your new API key is:</p>
+                <div class="input-group">
+                    <input type="text" class="form-control font-monospace" readonly id="generatedApiKeyValue">
+                    <button class="btn btn-outline-secondary" type="button" id="copyApiKeyButton" title="Copy to Clipboard">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I have copied my key</button>
+            </div>
+        </div>
+    </div>
+</div>
