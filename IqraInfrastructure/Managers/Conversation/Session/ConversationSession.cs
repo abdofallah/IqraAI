@@ -571,7 +571,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 await UpdateStateAsync(ConversationSessionState.Starting, "Session starting");
 
                 await PrimaryAgent.InitializeAsync(_sessionBusinessAppData, _sessionContextData, _sessionCts.Token);
-                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
 
                 // Start silence and max duration detection timer
                 StartTimers();
@@ -584,6 +583,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             catch (Exception ex)
             {
                 return result.SetFailureResult("StartAsync:EXCEPTION", ex.Message);
+            }
+        }
+
+        public async Task<FunctionReturnResult> NotifyConversationStarted()
+        {
+            var result = new FunctionReturnResult();
+
+            try
+            {
+                await PrimaryAgent.NotifyConversationStarted().WaitAsync(_sessionCts.Token);
+
+                return result.SetSuccessResult();
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult("NotifyConversationStarted:EXCEPTION", ex.Message);
             }
         }
 

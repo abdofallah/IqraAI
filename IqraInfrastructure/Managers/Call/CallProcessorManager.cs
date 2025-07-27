@@ -452,7 +452,9 @@ namespace IqraInfrastructure.Managers.Call
                     default:
                         return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider");
                 }
-                
+
+                await sessionResult.Data.StartAsync();
+
                 await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
                 return result.SetSuccessResult(null);
             }
@@ -490,6 +492,11 @@ namespace IqraInfrastructure.Managers.Call
                             if (sessionData.State == ConversationSessionState.WaitingForPrimaryClient)
                             {
                                 await sessionData.StartAsync();
+                            }
+
+                            if (sessionData.State == ConversationSessionState.Active)
+                            {
+                                await sessionData.NotifyConversationStarted();
                             }
                             
                             return result.SetSuccessResult();

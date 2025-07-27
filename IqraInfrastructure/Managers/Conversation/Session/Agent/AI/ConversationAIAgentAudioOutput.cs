@@ -176,22 +176,44 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 string? contentType = null;
                 if (fileResult.Metadata.TryGetValue("fileContentType", out contentType) && !string.IsNullOrWhiteSpace(contentType))
                 {
-                    _logger.LogInformation("Agent {AgentId}: Original file Content-Type is {ContentType}.", _agentState.AgentId, contentType);
-                    rawPcmData = await AudioToRAWPCMConverter.ConvertToRawPcmAsync(
-                        fileResult.Data,
-                        contentType,
-                        audioUrl,
-                        _logger,
-                        _agentState.AgentId,
-                        SampleRate,
-                        BitsPerSample,
-                        Channels
-                    );
+                    AudioEncodingTypeEnum? backgroundFileEncoding = null;
+                    if (contentType == "audio/mpeg")
+                    {
+                        backgroundFileEncoding = AudioEncodingTypeEnum.MPEG;
+                    }
+                    else if (contentType == "audio/wav")
+                    {
+                        backgroundFileEncoding = AudioEncodingTypeEnum.WAV;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Agent {AgentId}: Background audio file (ID: {FileId}) has unsupported format '{ContentType}'.", _agentState.AgentId, audioUrl, contentType);
+                    }
 
-                    // todo stop double conversion
-                    var convertedBKGAudio = AudioConversationHelper.Convert(rawPcmData.ToArray(), new TTSProviderAvailableAudioFormat() { Encoding = AudioEncodingTypeEnum.PCM, BitsPerSample = BitsPerSample, SampleRateHz = SampleRate }, new AudioRequestDetails() { RequestedEncoding = _agentState.AgentConfiguration.AudioEncodingType, RequestedBitsPerSample = _agentState.AgentConfiguration.BitsPerSample, RequestedSampleRateHz = _agentState.AgentConfiguration.SampleRate });
+                    if (backgroundFileEncoding != null)
+                    {
+                        var convertedBKGAudio = AudioConversationHelper.Convert(
+                            fileResult.Data.ToArray(),
+                            new TTSProviderAvailableAudioFormat()
+                            {
+                                Encoding = backgroundFileEncoding.Value,
+                                BitsPerSample = 0, // for wav and mpeg, its in the header
+                                SampleRateHz = 0 // for wav and mpeg, its in the header
+                            },
+                            new AudioRequestDetails()
+                            {
+                                RequestedEncoding = _agentState.AgentConfiguration.AudioEncodingType,
+                                RequestedBitsPerSample = _agentState.AgentConfiguration.BitsPerSample,
+                                RequestedSampleRateHz = _agentState.AgentConfiguration.SampleRate
+                            }
+                        );
 
-                    rawPcmData = convertedBKGAudio.audioData;
+                        rawPcmData = convertedBKGAudio.audioData;
+                    }
+                    else
+                    {
+                        rawPcmData = ReadOnlyMemory<byte>.Empty; // Indicate failure
+                    }
                 }
                 else
                 {
@@ -220,7 +242,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 // Success
-                //_agentState.BackgroundAudioData = rawPcmData;
+                _agentState.BackgroundAudioData = rawPcmData;
                 _logger.LogInformation("Agent {AgentId}: Background audio loaded and converted successfully ({Length} bytes of raw PCM).", _agentState.AgentId, _agentState.BackgroundAudioData.Length);
                 // enable bkg audio in begin conversation
                 _agentState.IsBackgroundMusicLoaded = true;
@@ -492,14 +514,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
                             var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
-                            if (!backgroundChunk.IsEmpty)
-                            {
-                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
-                            }
-                            else
-                            {
-                                chunkToSend = speechChunk.ToArray();
-                            }
+                            chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
 
                             _currentSpeechPosition += speechChunkSize;
                             isSpeechChunk = true;
@@ -539,14 +554,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             {
                                 var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, firstSpeechChunkSize);
                                 var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
-                                if (!backgroundChunk.IsEmpty)
-                                {
-                                    chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
-                                }
-                                else
-                                {
-                                    chunkToSend = speechChunk.ToArray();
-                                }
+                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+
                                 _currentSpeechPosition += firstSpeechChunkSize;
                                 isSpeechChunk = true;
 
@@ -573,7 +582,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             var backgroundChunk = GetNextBackgroundChunk(BytesPerChunk);
                             if (!backgroundChunk.IsEmpty)
                             {
-                                chunkToSend = MixAudioChunks(ReadOnlyMemory<byte>.Empty, backgroundChunk); // Mix with silence
+                                chunkToSend = MixAudioChunks(ReadOnlyMemory<byte>.Empty, backgroundChunk);
                             }
 
                             // Check if playback just became complete
@@ -684,40 +693,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private byte[] MixAudioChunks(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
         {
-            // --- Move logic from original MixAudioChunks here ---
-            int outputLength = Math.Max(speechChunk.Length, backgroundChunk.Length);
-            if (outputLength == 0) return Array.Empty<byte>();
-            if (outputLength % 2 != 0) outputLength++; // Ensure even length for 16-bit > we could have 8 bit fix it
-
-            byte[] mixedOutput = new byte[outputLength];
-            var mixedSpan = mixedOutput.AsSpan();
-
-            var speechSpan = speechChunk.Span;
-            var backgroundSpan = backgroundChunk.Span;
-
-            // Ensure spans are valid before casting (non-empty and even length)
-            var speechShortSpan = speechSpan.Length >= 2 && speechSpan.Length % 2 == 0
-               ? MemoryMarshal.Cast<byte, short>(speechSpan)
-               : ReadOnlySpan<short>.Empty;
-            var backgroundShortSpan = backgroundSpan.Length >= 2 && backgroundSpan.Length % 2 == 0
-               ? MemoryMarshal.Cast<byte, short>(backgroundSpan)
-               : ReadOnlySpan<short>.Empty;
-
-            var mixedShortSpan = MemoryMarshal.Cast<byte, short>(mixedSpan);
-
-            float agentVolume = (float)_agentState.CurrentAgentVolumeFactor; // Read volatile state
-            float backgroundVolume = (float)_agentState.BackgroundMusicVolume;
-
-            for (int i = 0; i < mixedShortSpan.Length; i++)
-            {
-                short speechSample = i < speechShortSpan.Length ? (short)(speechShortSpan[i] * (float)agentVolume) : (short)0;
-                short backgroundSample = i < backgroundShortSpan.Length ? (short)(backgroundShortSpan[i] * (float)backgroundVolume) : (short)0;
-
-                int mixedSample = speechSample + backgroundSample / 2; // clip agent audio a bit
-                mixedShortSpan[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
-            }
-
-            return mixedOutput;
+            return AudioConversationHelper.MixAudioChunks(AudioEncodingType, SampleRate, BitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume, 1, 1);
         }
 
         public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration, CancellationToken cancellationToken)

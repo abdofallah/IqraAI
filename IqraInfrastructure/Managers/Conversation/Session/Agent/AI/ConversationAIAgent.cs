@@ -344,10 +344,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (_agentState.BusinessAppAgent.Utterances.GreetingMessage?.TryGetValue(_agentState.CurrentLanguageCode, out openingMessage) == true && !string.IsNullOrEmpty(openingMessage))
                 {
                     _logger.LogDebug("Agent {AgentId}: Playing agent-first opening message.", AgentId);
+                    foreach (var dynamicVariable in _agentState.CurrentSessionContext.DynamicVariables)
+                    {
+                        openingMessage = openingMessage.Replace(("{{" + dynamicVariable.Key + "}}"), dynamicVariable.Value);
+                    }
+
                     // Format for LLM history, synthesize raw text
                     string llmHistoryMessage = "response_to_customer: " + openingMessage;
                     _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
-                    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(openingMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
+                    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
                     await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(openingMessage, _conversationCTS.Token);
                 }
                 else
