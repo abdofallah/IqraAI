@@ -1,11 +1,18 @@
 ﻿using Concentus;
+using Concentus.Enums;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
 using NAudio.Codecs;
+using NAudio.Mixer;
+using NAudio.Utils;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using NLayer.NAudioSupport;
 using SIPSorceryMedia.Abstractions;
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace IqraInfrastructure.Managers.TTS.Helpers
 {
@@ -30,40 +37,44 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                 sourceFormat.SampleRateHz == targetFormat.RequestedSampleRateHz &&
                 sourceFormat.BitsPerSample == targetFormat.RequestedBitsPerSample)
             {
-                return (sourceAudio, CalculateDuration(sourceAudio, sourceFormat));
+                // Still calculate duration to be safe, especially for compressed formats.
+                TimeSpan simpleDuration = CalculateDuration(sourceAudio, sourceFormat);
+                return (sourceAudio, simpleDuration);
             }
 
-            IWaveProvider? sourceProvider = null;
-            IWaveProvider? resampler = null;
+            IWaveProvider? pcmProvider = null;
+            IWaveProvider? resampledProvider = null;
             try
             {
-                sourceProvider = CreateWaveProvider(sourceAudio, sourceFormat);
-                resampler = CreateResampler(sourceProvider, targetFormat);
+                // Step 1: Decode the source audio into a standardized 32-bit float PCM IWaveProvider.
+                pcmProvider = CreatePcm32FloatProvider(sourceAudio, sourceFormat);          
 
-                byte[] targetAudio = EncodeToTargetFormat(resampler, targetFormat);
+                // Step 2: Resample if necessary. This now operates on the clean 32-bit float PCM.
+                resampledProvider = CreateResampler(pcmProvider, targetFormat);
 
-                // Calculate duration on the final, converted data.
+                // Step 3: Encode the processed PCM stream into the final target format.
+                byte[] targetAudio = EncodeToTargetFormat(resampledProvider, targetFormat);
+
+                // Final duration calculation on the converted data.
                 var finalFormat = new TTSProviderAvailableAudioFormat
                 {
                     Encoding = targetFormat.RequestedEncoding,
                     SampleRateHz = targetFormat.RequestedSampleRateHz,
                     BitsPerSample = targetFormat.RequestedBitsPerSample
                 };
-
                 TimeSpan duration = CalculateDuration(targetAudio, finalFormat);
 
                 return (targetAudio, duration);
             }
             catch (Exception ex)
             {
-                // It's helpful to know which conversion failed.
                 string errorMessage = $"An error occurred while converting audio from {sourceFormat.Encoding} ({sourceFormat.SampleRateHz}Hz) to {targetFormat.RequestedEncoding} ({targetFormat.RequestedSampleRateHz}Hz).";
                 throw new Exception(errorMessage, ex);
             }
             finally
             {
-                (resampler as IDisposable)?.Dispose();
-                (sourceProvider as IDisposable)?.Dispose();
+                (pcmProvider as IDisposable)?.Dispose();
+                (resampledProvider as IDisposable)?.Dispose();
             }
         }
 
@@ -76,452 +87,419 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
 
             try
             {
+                // For WAV, read the header directly. It's the most reliable.
                 if (format.Encoding == AudioEncodingTypeEnum.WAV || IsWavFile(audioData))
                 {
-                    audioData = FixWavHeader(audioData);
-                    using var reader = new WaveFileReader(new MemoryStream(audioData));
+                    using var memStream = new MemoryStream(FixWavHeader(audioData));
+                    using var reader = new WaveFileReader(memStream);
                     return reader.TotalTime;
                 }
 
-                // For MP3/MPEG, we must decode to get accurate duration.
+                // For MP3/MPEG, NLayer can read the duration from the frames.
                 if (format.Encoding == AudioEncodingTypeEnum.MPEG)
                 {
                     var inputStream = new MemoryStream(audioData);
                     var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
-                    using var reader = new Mp3FileReaderBase(inputStream, builder);
-                    return reader.TotalTime;
+                    var rawProvider = new Mp3FileReaderBase(inputStream, builder);
+                    return rawProvider.TotalTime;
                 }
 
-                if (format.SampleRateHz <= 0 || format.BitsPerSample <= 0) return TimeSpan.Zero;
+                // For raw PCM, we can calculate directly.
+                if (format.Encoding == AudioEncodingTypeEnum.PCM)
+                {
+                    if (format.SampleRateHz <= 0 || format.BitsPerSample <= 0) return TimeSpan.Zero;
+                    long totalBytes = audioData.Length;
+                    int bytesPerSample = format.BitsPerSample / 8;
+                    if (bytesPerSample == 0) return TimeSpan.Zero;
+                    int channels = 1; // Assuming mono for this calculation
+                    long totalSamples = totalBytes / bytesPerSample / channels;
+                    return TimeSpan.FromSeconds((double)totalSamples / format.SampleRateHz);
+                }
 
-                double bytesPerSample = format.BitsPerSample / 8.0;
-                double totalSamples = audioData.Length / bytesPerSample;
-                return TimeSpan.FromSeconds(totalSamples / format.SampleRateHz);
+                // For all other compressed formats (MULAW, ALAW, G729, etc.), the most reliable
+                // way to get duration is to decode to PCM and measure the result.
+                IWaveProvider? pcmProvider = null;
+                try
+                {
+                    pcmProvider = CreatePcm32FloatProvider(audioData, format);
+
+                    byte[] pcmBytes = ReadAllBytes(pcmProvider);
+                    long totalBytes = pcmBytes.Length;
+
+                    // Now, use the reliable formula on the decoded PCM data.
+                    if (pcmProvider.WaveFormat.AverageBytesPerSecond == 0) return TimeSpan.Zero;
+                    double totalSeconds = (double)totalBytes / pcmProvider.WaveFormat.AverageBytesPerSecond;
+                    return TimeSpan.FromSeconds(totalSeconds);
+                }
+                finally
+                {
+                    (pcmProvider as IDisposable)?.Dispose();
+                }
             }
             catch
             {
+                // Fallback for any parsing errors
                 return TimeSpan.Zero;
             }
         }
 
         /// <summary>
         /// Mixes two audio chunks, providing fine-grained control over volume and clipping.
-        /// This method intelligently selects a high-performance path for PCM audio or a generic
-        /// decode-mix-encode path for compressed formats.
         /// </summary>
         public static byte[] MixAudioChunks(
             AudioEncodingTypeEnum encodingType, int sampleRate, int bitsPerSample,
             ReadOnlyMemory<byte> speechChunk, float speechChunkVolume,
-            ReadOnlyMemory<byte> backgroundChunk, float backgroundChunkVolume,
-            float speechClipFactor = 1.0f, float backgroundClipFactor = 1.0f
-        )
+            ReadOnlyMemory<byte> backgroundChunk, float backgroundChunkVolume
+)
         {
-            // --- Step 0: Handle Empty Chunks (Bug Fix) ---
             bool speechIsEmpty = speechChunk.IsEmpty || speechChunk.Length == 0;
             bool backgroundIsEmpty = backgroundChunk.IsEmpty || backgroundChunk.Length == 0;
 
             if (speechIsEmpty && backgroundIsEmpty) return Array.Empty<byte>();
 
-            // --- Step 1: Dispatch to the Correct Mixing Strategy ---
-            if (encodingType == AudioEncodingTypeEnum.PCM)
-            {
-                switch (bitsPerSample)
-                {
-                    case 8:
-                        return MixPcm8BitChunks(speechChunk, speechChunkVolume, speechClipFactor, backgroundChunk, backgroundChunkVolume, backgroundClipFactor);
-                    case 16:
-                        return MixPcm16BitChunks(speechChunk, speechChunkVolume, speechClipFactor, backgroundChunk, backgroundChunkVolume, backgroundClipFactor);
-                    case 24:
-                        return MixPcm24BitChunks(speechChunk, speechChunkVolume, speechClipFactor, backgroundChunk, backgroundChunkVolume, backgroundClipFactor);
-                }
-            }
-
-            // GENERIC PATH: For all other formats (32-bit PCM, G.729, Opus, etc.), use the decode-mix-encode pipeline.
             var sourceFormat = new TTSProviderAvailableAudioFormat { Encoding = encodingType, SampleRateHz = sampleRate, BitsPerSample = bitsPerSample };
-            var pcmTargetFormat = new AudioRequestDetails { RequestedEncoding = AudioEncodingTypeEnum.PCM, RequestedSampleRateHz = sampleRate, RequestedBitsPerSample = 32 };
 
-            var (speechPcm, _) = Convert(speechChunk.ToArray(), sourceFormat, pcmTargetFormat);
-            var (backgroundPcm, _) = Convert(backgroundChunk.ToArray(), sourceFormat, pcmTargetFormat);
+            if (speechIsEmpty)
+            {
+                return ApplyVolumeToChunk(backgroundChunk.Span, sourceFormat, backgroundChunkVolume);
+            }
+            if (backgroundIsEmpty)
+            {
+                return ApplyVolumeToChunk(speechChunk.Span, sourceFormat, speechChunkVolume);
+            }
 
-            byte[] mixedPcm = MixPcm32BitFloatChunks(speechPcm, speechChunkVolume, speechClipFactor, backgroundPcm, backgroundChunkVolume, backgroundClipFactor);
+            // Define the target format for our high-precision intermediate stage.
+            var pcm32Target = new AudioRequestDetails { RequestedEncoding = AudioEncodingTypeEnum.PCM, RequestedSampleRateHz = sampleRate, RequestedBitsPerSample = 32 };
 
-            var pcmSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sampleRate, BitsPerSample = 32 };
+            var speechConverted = Convert(speechChunk.ToArray(), sourceFormat, pcm32Target);
+            var backgroundConverted = Convert(backgroundChunk.ToArray(), sourceFormat, pcm32Target);
+
+            // Mix the two audio chunks using optimized mixing
+            var mixedAudio = MixPcm32AudioData(speechConverted.audioData, speechChunkVolume, backgroundConverted.audioData, backgroundChunkVolume);
+
+            // Re-encode the mixed audio back to the original desired format.
+            var mixedPcmSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sampleRate, BitsPerSample = 32 };
             var finalTargetFormat = new AudioRequestDetails { RequestedEncoding = encodingType, RequestedSampleRateHz = sampleRate, RequestedBitsPerSample = bitsPerSample };
+            var (finalMixedAudio, _) = Convert(mixedAudio, mixedPcmSourceFormat, finalTargetFormat);
 
-            var (finalMixedAudio, _) = Convert(mixedPcm, pcmSourceFormat, finalTargetFormat);
             return finalMixedAudio;
-        }
-
-        /// <summary>
-        /// High-performance mixer for 8-bit unsigned PCM.
-        /// </summary>
-        private static byte[] MixPcm8BitChunks(ReadOnlyMemory<byte> speech, float speechVol, float speechClip, ReadOnlyMemory<byte> bg, float bgVol, float bgClip)
-        {
-            // Prevent division by zero
-            if (speechClip < 0.1f) speechClip = 1.0f;
-            if (bgClip < 0.1f) bgClip = 1.0f;
-
-            var output = new byte[Math.Max(speech.Length, bg.Length)];
-            var speechSpan = speech.Span;
-            var bgSpan = bg.Span;
-
-            for (int i = 0; i < output.Length; i++)
-            {
-                // Convert 8-bit unsigned (0 to 255) to a signed space for math
-                int speechSample = i < speechSpan.Length ? (int)(((speechSpan[i] - 128) * speechVol) / speechClip) : 0;
-                int bgSample = i < bgSpan.Length ? (int)(((bgSpan[i] - 128) * bgVol) / bgClip) : 0;
-
-                int mixedSample = speechSample + bgSample;
-
-                // Clamp in the signed space [-128, 127] and convert back to unsigned byte
-                output[i] = (byte)(Math.Clamp(mixedSample, -128, 127) + 128);
-            }
-            return output;
-        }
-
-        /// <summary>
-        /// High-performance mixer for 16-bit signed PCM.
-        /// </summary>
-        private static byte[] MixPcm16BitChunks(ReadOnlyMemory<byte> speech, float speechVol, float speechClip, ReadOnlyMemory<byte> bg, float bgVol, float bgClip)
-        {
-            if (speechClip < 0.1f) speechClip = 1.0f;
-            if (bgClip < 0.1f) bgClip = 1.0f;
-
-            var output = new byte[Math.Max(speech.Length, bg.Length)];
-            var speechShorts = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, short>(speech.Span);
-            var bgShorts = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, short>(bg.Span);
-            var mixedShorts = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, short>(output.AsSpan());
-
-            for (int i = 0; i < mixedShorts.Length; i++)
-            {
-                int speechSample = i < speechShorts.Length ? (int)((speechShorts[i] * speechVol) / speechClip) : 0;
-                int bgSample = i < bgShorts.Length ? (int)((bgShorts[i] * bgVol) / bgClip) : 0;
-
-                int mixedSample = speechSample + bgSample;
-                mixedShorts[i] = (short)Math.Clamp(mixedSample, short.MinValue, short.MaxValue);
-            }
-            return output;
-        }
-
-        /// <summary>
-        /// High-performance mixer for 24-bit signed PCM.
-        /// </summary>
-        private static byte[] MixPcm24BitChunks(ReadOnlyMemory<byte> speech, float speechVol, float speechClip, ReadOnlyMemory<byte> bg, float bgVol, float bgClip)
-        {
-            if (speechClip < 0.1f) speechClip = 1.0f;
-            if (bgClip < 0.1f) bgClip = 1.0f;
-
-            int maxLength = Math.Max(speech.Length, bg.Length);
-            var output = new byte[maxLength - (maxLength % 3)]; // Ensure length is a multiple of 3
-            var speechSpan = speech.Span;
-            var bgSpan = bg.Span;
-
-            int speechSampleCount = speech.Length / 3;
-            int bgSampleCount = bg.Length / 3;
-            int mixedSampleCount = output.Length / 3;
-
-            for (int i = 0; i < mixedSampleCount; i++)
-            {
-                // Read 24-bit samples and convert to 32-bit int for math
-                int speechSample = i < speechSampleCount ? Read24BitSample(speechSpan, i * 3) : 0;
-                int bgSample = i < bgSampleCount ? Read24BitSample(bgSpan, i * 3) : 0;
-
-                // Apply volume and clipping
-                long processedSpeech = (long)((speechSample * speechVol) / speechClip);
-                long processedBg = (long)((bgSample * bgVol) / bgClip);
-
-                long mixedSample = processedSpeech + processedBg;
-
-                // Clamp to 24-bit range and write back to output
-                int clampedSample = (int)Math.Clamp(mixedSample, -8388608, 8388607);
-                Write24BitSample(output, i * 3, clampedSample);
-            }
-            return output;
-        }
-
-        /// <summary>
-        /// A mixer that operates on 32-bit float PCM byte arrays. Used by the generic path.
-        /// </summary>
-        private static byte[] MixPcm32BitFloatChunks(byte[] speechPcm, float speechVolume, float speechClip, byte[] backgroundPcm, float backgroundVolume, float bgClip)
-        {
-            if (speechClip < 0.1f) speechClip = 1.0f;
-            if (bgClip < 0.1f) bgClip = 1.0f;
-
-            using var mixedPcmStream = new MemoryStream();
-            int speechIndex = 0;
-            int backgroundIndex = 0;
-
-            while (speechIndex < speechPcm.Length && backgroundIndex < backgroundPcm.Length)
-            {
-                float speechSample = BitConverter.ToSingle(speechPcm, speechIndex);
-                float backgroundSample = BitConverter.ToSingle(backgroundPcm, backgroundIndex);
-
-                float mixedSample = (speechSample * speechVolume / speechClip) + (backgroundSample * backgroundVolume / bgClip);
-                mixedSample = Math.Clamp(mixedSample, -1.0f, 1.0f); // Clamp to valid float range
-
-                mixedPcmStream.Write(BitConverter.GetBytes(mixedSample));
-                speechIndex += 4;
-                backgroundIndex += 4;
-            }
-
-            // Append the remainder of whichever chunk is longer
-            if (speechIndex < speechPcm.Length) mixedPcmStream.Write(speechPcm, speechIndex, speechPcm.Length - speechIndex);
-            else if (backgroundIndex < backgroundPcm.Length) mixedPcmStream.Write(backgroundPcm, backgroundIndex, backgroundPcm.Length - backgroundIndex);
-
-            return mixedPcmStream.ToArray();
-        }
-
-        // --- 24-bit Helpers ---
-        private static int Read24BitSample(ReadOnlySpan<byte> buffer, int offset)
-        {
-            int sample = buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
-            // Sign-extend if the 24th bit is set
-            return (sample & 0x800000) != 0 ? sample | ~0xFFFFFF : sample;
-        }
-
-        private static void Write24BitSample(Span<byte> buffer, int offset, int sample)
-        {
-            buffer[offset] = (byte)(sample & 0xFF);
-            buffer[offset + 1] = (byte)((sample >> 8) & 0xFF);
-            buffer[offset + 2] = (byte)((sample >> 16) & 0xFF);
         }
 
         #region Private Helper Methods
 
-        /// <summary>
-        /// Step 1: Creates an NAudio IWaveProvider (a raw PCM stream) from the source audio bytes.
-        /// </summary>
-        private static IWaveProvider CreateWaveProvider(byte[] sourceAudio, TTSProviderAvailableAudioFormat sourceFormat)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte[] MixPcm32AudioData(ReadOnlySpan<byte> speechData, float speechVolume, ReadOnlySpan<byte> backgroundData, float backgroundVolume)
         {
-            switch (sourceFormat.Encoding)
+            int speechSampleCount = speechData.Length >> 2; // Divide by 4 (faster than / 4)
+            int backgroundSampleCount = backgroundData.Length >> 2;
+            int maxSampleCount = Math.Max(speechSampleCount, backgroundSampleCount);
+
+            if (maxSampleCount == 0) return Array.Empty<byte>();
+
+            byte[] mixedAudio = new byte[maxSampleCount << 2]; // Multiply by 4 (faster than * 4)
+
+            unsafe
             {
-                case AudioEncodingTypeEnum.WAV:
-                    if (IsWavFile(sourceAudio))
-                    {
-                        sourceAudio = FixWavHeader(sourceAudio);
-                        return new WaveFileReader(new MemoryStream(sourceAudio));
-                    }
-                    throw new ArgumentException("Source audio is not a WAV file.");
-
-                case AudioEncodingTypeEnum.PCM:
-                    if (IsWavFile(sourceAudio))
-                    {
-                        sourceAudio = FixWavHeader(sourceAudio);
-                        return new WaveFileReader(new MemoryStream(sourceAudio));
-                    }
-                    var pcmFormat = new WaveFormat(sourceFormat.SampleRateHz, sourceFormat.BitsPerSample, 1);
-                    return new RawSourceWaveStream(sourceAudio, 0, sourceAudio.Length, pcmFormat);
-
-                case AudioEncodingTypeEnum.MULAW:
-                    if (IsWavFile(sourceAudio))
-                    {
-                        sourceAudio = FixWavHeader(sourceAudio);
-                        return new WaveFileReader(new MemoryStream(sourceAudio));
-                    }
-                    var mulawFormat = WaveFormat.CreateMuLawFormat(sourceFormat.SampleRateHz, 1);
-                    return new RawSourceWaveStream(new MemoryStream(sourceAudio), mulawFormat);
-
-                case AudioEncodingTypeEnum.ALAW:
-                    if (IsWavFile(sourceAudio))
-                    {
-                        sourceAudio = FixWavHeader(sourceAudio);
-                        return new WaveFileReader(new MemoryStream(sourceAudio));
-                    }
-                    var alawFormat = WaveFormat.CreateALawFormat(sourceFormat.SampleRateHz, 1);
-                    return new RawSourceWaveStream(new MemoryStream(sourceAudio), alawFormat);
-
-                case AudioEncodingTypeEnum.G722:
-                    {
-                        if (sourceFormat.SampleRateHz != 16000 || sourceFormat.BitsPerSample != 16)
-                        {
-                            throw new ArgumentException($"Invalid source format for G722. Expected metadata with 16000Hz/16bits, but received {sourceFormat.SampleRateHz}Hz/{sourceFormat.BitsPerSample} bits.");
-                        }
-
-                        var waveFormat = new WaveFormat(16000, 16, 1);
-                        var codec = new G722Codec();
-                        var state = new G722CodecState(64000, G722Flags.None);
-
-                        var decodedBytes = new byte[sourceAudio.Length * 4];
-                        var waveBuffer = new WaveBuffer(decodedBytes);
-
-                        int samplesDecoded = codec.Decode(state, waveBuffer.ShortBuffer, sourceAudio, sourceAudio.Length);
-
-                        return new RawSourceWaveStream(decodedBytes, 0, samplesDecoded * 2, waveFormat);
-                    }
-                
-                case AudioEncodingTypeEnum.G729:
-                    {
-                        if (sourceFormat.SampleRateHz != 8000 || sourceFormat.BitsPerSample != 16)
-                        {
-                            throw new ArgumentException($"Invalid source format for G729. Expected metadata with 8000Hz/16bits, but received {sourceFormat.SampleRateHz}Hz/{sourceFormat.BitsPerSample} bits.");
-                        }
-
-                        var pcmShorts = _audioEncoder.DecodeAudio(sourceAudio, new AudioFormat(SDPWellKnownMediaFormatsEnum.G729));
-                        var pcmBytes = new byte[pcmShorts.Length * sizeof(short)];
-                        Buffer.BlockCopy(pcmShorts, 0, pcmBytes, 0, pcmBytes.Length);
-
-                        var waveFormat = new WaveFormat(8000, 16, 1);
-                        return new RawSourceWaveStream(pcmBytes, 0, pcmBytes.Length, waveFormat);
-                    }
-
-                case AudioEncodingTypeEnum.OPUS:
-                    return DecodeFromOpus(sourceAudio, sourceFormat.SampleRateHz);
-
-                case AudioEncodingTypeEnum.MPEG:
-                    {
-                        var inputStream = new MemoryStream(sourceAudio);
-                        var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
-                        return new Mp3FileReaderBase(inputStream, builder);
-                    }
-                
-                default:
-                    throw new ArgumentException($"Unsupported source encoding type: {sourceFormat.Encoding}");
-            }
-        }
-
-        /// <summary>
-        /// Step 2: Creates a resampler to convert the source PCM to the target sample rate and bit depth.
-        /// This now uses a cross-platform resampler.
-        /// </summary>
-        private static IWaveProvider CreateResampler(IWaveProvider sourceProvider, AudioRequestDetails targetFormat)
-        {
-            if (sourceProvider.WaveFormat.SampleRate == targetFormat.RequestedSampleRateHz)
-            {
-                if (sourceProvider.WaveFormat.BitsPerSample == targetFormat.RequestedBitsPerSample)
+                fixed (byte* speechPtr = speechData)
+                fixed (byte* backgroundPtr = backgroundData)
+                fixed (byte* mixedPtr = mixedAudio)
                 {
-                    return sourceProvider;
+                    int* speechSamples = (int*)speechPtr;
+                    int* backgroundSamples = (int*)backgroundPtr;
+                    int* mixedSamples = (int*)mixedPtr;
+
+                    // Process samples in chunks for better cache performance
+                    const int chunkSize = 16; // Process 16 samples at a time
+                    int fullChunks = maxSampleCount / chunkSize;
+                    int remainder = maxSampleCount % chunkSize;
+
+                    // Process full chunks
+                    for (int chunk = 0; chunk < fullChunks; chunk++)
+                    {
+                        int baseIndex = chunk * chunkSize;
+
+                        for (int i = 0; i < chunkSize; i++)
+                        {
+                            int sampleIndex = baseIndex + i;
+
+                            long speechSample = sampleIndex < speechSampleCount ?
+                                (long)(speechSamples[sampleIndex] * speechVolume) : 0L;
+                            long backgroundSample = sampleIndex < backgroundSampleCount ?
+                                (long)(backgroundSamples[sampleIndex] * backgroundVolume) : 0L;
+
+                            long mixedSample = speechSample + backgroundSample;
+                            mixedSamples[sampleIndex] = (int)Math.Clamp(mixedSample, int.MinValue, int.MaxValue);
+                        }
+                    }
+
+                    // Process remaining samples
+                    int remainderStart = fullChunks * chunkSize;
+                    for (int i = 0; i < remainder; i++)
+                    {
+                        int sampleIndex = remainderStart + i;
+
+                        long speechSample = sampleIndex < speechSampleCount ?
+                            (long)(speechSamples[sampleIndex] * speechVolume) : 0L;
+                        long backgroundSample = sampleIndex < backgroundSampleCount ?
+                            (long)(backgroundSamples[sampleIndex] * backgroundVolume) : 0L;
+
+                        long mixedSample = speechSample + backgroundSample;
+                        mixedSamples[sampleIndex] = (int)Math.Clamp(mixedSample, int.MinValue, int.MaxValue);
+                    }
                 }
             }
 
-            var sampleProvider = sourceProvider.ToSampleProvider();
+            return mixedAudio;
+        }
 
-            var resampler = new WdlResamplingSampleProvider(sampleProvider, targetFormat.RequestedSampleRateHz);
+        private static byte[] ApplyVolumeToChunk(ReadOnlySpan<byte> audioData, TTSProviderAvailableAudioFormat sourceFormat, float volume)
+        {
+            if (Math.Abs(volume - 1.0f) < 0.001f) // If volume is essentially 1.0, return copy
+            {
+                return audioData.ToArray();
+            }
 
-            if (targetFormat.RequestedBitsPerSample == 32)
+            // Convert to PCM 32-bit for volume processing
+            var pcm32Target = new AudioRequestDetails { RequestedEncoding = AudioEncodingTypeEnum.PCM, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = 32 };
+            var converted = Convert(audioData.ToArray(), sourceFormat, pcm32Target);
+
+            // Apply volume in place
+            int sampleCount = converted.audioData.Length >> 2;
+            byte[] volumeAdjusted = new byte[converted.audioData.Length];
+
+            unsafe
             {
-                return resampler.ToWaveProvider();
+                fixed (byte* sourcePtr = converted.audioData)
+                fixed (byte* destPtr = volumeAdjusted)
+                {
+                    int* sourceSamples = (int*)sourcePtr;
+                    int* destSamples = (int*)destPtr;
+
+                    for (int i = 0; i < sampleCount; i++)
+                    {
+                        long adjustedSample = (long)(sourceSamples[i] * volume);
+                        destSamples[i] = (int)Math.Clamp(adjustedSample, int.MinValue, int.MaxValue);
+                    }
+                }
             }
-            else if (targetFormat.RequestedBitsPerSample == 24)
+
+            // Convert back to original format
+            var volumeSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sourceFormat.SampleRateHz, BitsPerSample = 32 };
+            var finalTarget = new AudioRequestDetails { RequestedEncoding = sourceFormat.Encoding, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = sourceFormat.BitsPerSample };
+            var (finalAudio, _) = Convert(volumeAdjusted, volumeSourceFormat, finalTarget);
+
+            return finalAudio;
+        }
+
+        public static IWaveProvider CreatePcm32FloatProvider(byte[] sourceAudio, TTSProviderAvailableAudioFormat sourceFormat)
+        {
+            IWaveProvider rawProvider;
+            var sourceStream = new MemoryStream(sourceAudio);
+
+            switch (sourceFormat.Encoding)
             {
-                return new SampleToWaveProvider24(resampler);
+                case AudioEncodingTypeEnum.WAV:
+                    rawProvider = new WaveFileReader(new MemoryStream(FixWavHeader(sourceAudio)));
+                    break;
+
+                case AudioEncodingTypeEnum.PCM:
+                    var pcmFormat = new WaveFormat(sourceFormat.SampleRateHz, sourceFormat.BitsPerSample, 1);
+                    rawProvider = new RawSourceWaveStream(sourceAudio, 0, sourceAudio.Length, pcmFormat);
+                    break;
+
+                case AudioEncodingTypeEnum.MULAW:
+                    {
+                        var pcmShorts = _audioEncoder.DecodeAudio(sourceAudio, new AudioFormat(SDPWellKnownMediaFormatsEnum.PCMU));
+                        var pcmBytesMULAW = new byte[pcmShorts.Length * sizeof(short)];
+                        Buffer.BlockCopy(pcmShorts, 0, pcmBytesMULAW, 0, pcmBytesMULAW.Length);
+                        var mulawWF = new WaveFormat(8000, 16, 1);
+                        rawProvider = new RawSourceWaveStream(pcmBytesMULAW, 0, pcmBytesMULAW.Length, mulawWF);
+                        break;
+                    }
+
+                case AudioEncodingTypeEnum.ALAW:
+                    {
+                        var pcmShorts = _audioEncoder.DecodeAudio(sourceAudio, new AudioFormat(SDPWellKnownMediaFormatsEnum.PCMA));
+                        var pcmBytesALAW = new byte[pcmShorts.Length * sizeof(short)];
+                        Buffer.BlockCopy(pcmShorts, 0, pcmBytesALAW, 0, pcmBytesALAW.Length);
+                        var alawWF = new WaveFormat(8000, 16, 1);
+                        rawProvider = new RawSourceWaveStream(pcmBytesALAW, 0, pcmBytesALAW.Length, alawWF);
+                        break;
+                    }
+
+                case AudioEncodingTypeEnum.G722:
+                    {
+                        var pcmShorts = _audioEncoder.DecodeAudio(sourceAudio, new AudioFormat(SDPWellKnownMediaFormatsEnum.G722));
+                        var pcmBytesG722 = new byte[pcmShorts.Length * sizeof(short)];
+                        Buffer.BlockCopy(pcmShorts, 0, pcmBytesG722, 0, pcmBytesG722.Length);
+                        var g722Wf = new WaveFormat(16000, 16, 1);
+                        rawProvider = new RawSourceWaveStream(pcmBytesG722, 0, pcmBytesG722.Length, g722Wf);
+                        break;
+                    }
+
+                case AudioEncodingTypeEnum.G729:
+                    {
+                        var pcmShorts = _audioEncoder.DecodeAudio(sourceAudio, new AudioFormat(SDPWellKnownMediaFormatsEnum.G729));
+                        var pcmBytesG729 = new byte[pcmShorts.Length * sizeof(short)];
+                        Buffer.BlockCopy(pcmShorts, 0, pcmBytesG729, 0, pcmBytesG729.Length);
+                        var g729Wf = new WaveFormat(8000, 16, 1);
+                        rawProvider = new RawSourceWaveStream(pcmBytesG729, 0, pcmBytesG729.Length, g729Wf);
+                        break;
+                    }
+
+                case AudioEncodingTypeEnum.OPUS:
+                    rawProvider = DecodeFromOpus(sourceAudio, sourceFormat.SampleRateHz);
+                    break;
+
+                case AudioEncodingTypeEnum.MPEG:
+                    var inputStream = new MemoryStream(sourceAudio);
+                    var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
+                    rawProvider = new Mp3FileReaderBase(inputStream, builder);
+                    break;
+
+                default:
+                    throw new NotSupportedException($"Unsupported source encoding type: {sourceFormat.Encoding}");
             }
-            else if (targetFormat.RequestedBitsPerSample == 16)
+
+            if (rawProvider.WaveFormat.Encoding == WaveFormatEncoding.Pcm)
             {
-                return resampler.ToWaveProvider16();
-            }
-            else if (targetFormat.RequestedBitsPerSample == 8)
-            {
-                return new SampleToWaveProvider8(resampler);
+                if (rawProvider.WaveFormat.BitsPerSample != 32)
+                {
+                    return rawProvider.ToSampleProvider().ToWaveProvider();
+                }
+
+                return rawProvider;
             }
             else
             {
-                throw new ArgumentException($"Unsupported target PCM bit depth: {targetFormat.RequestedBitsPerSample}. Supported values: 8, 16, 24, 32.");
+                return new WaveToSampleProvider(rawProvider).ToWaveProvider();
             }
         }
 
-        /// <summary>
-        /// Step 3: Reads all bytes from the resampled PCM provider and encodes them into the final target format.
-        /// </summary>
+        private static IWaveProvider CreateResampler(IWaveProvider pcm32FloatProvider, AudioRequestDetails targetFormat)
+        {
+            // Input is guaranteed to be 32-bit float PCM.
+            if (pcm32FloatProvider.WaveFormat.SampleRate == targetFormat.RequestedSampleRateHz && pcm32FloatProvider.WaveFormat.BitsPerSample == 32)
+            {
+                return pcm32FloatProvider; // No resampling needed.
+            }
+
+            var sampleProvider = pcm32FloatProvider.ToSampleProvider();
+            // WdlResamplingSampleProvider is a high-quality resampler included with NAudio.
+            var resampler = new WdlResamplingSampleProvider(sampleProvider, targetFormat.RequestedSampleRateHz);
+            return resampler.ToWaveProvider();
+        }
+
         private static byte[] EncodeToTargetFormat(IWaveProvider pcmProvider, AudioRequestDetails targetFormat)
         {
             using var ms = new MemoryStream();
+
+            // The input provider is always 32-bit float PCM at the correct sample rate.
             switch (targetFormat.RequestedEncoding)
             {
                 case AudioEncodingTypeEnum.PCM:
                 case AudioEncodingTypeEnum.WAV:
+                    // PCM/WAV encoding logic remains the same.
                     {
-                        IWaveProvider finalPcmProvider = pcmProvider;
-                        if (pcmProvider.WaveFormat.BitsPerSample != targetFormat.RequestedBitsPerSample)
+                        IWaveProvider finalProvider;
+                        var sampleProvider = pcmProvider.ToSampleProvider();
+
+                        switch (targetFormat.RequestedBitsPerSample)
                         {
-                            finalPcmProvider = new WaveFormatConversionProvider(new WaveFormat(pcmProvider.WaveFormat.SampleRate, targetFormat.RequestedBitsPerSample, 1), pcmProvider);
+                            case 16:
+                                finalProvider = new SampleToWaveProvider16(sampleProvider);
+                                break;
+                            case 24:
+                                finalProvider = new SampleToWaveProvider24(sampleProvider);
+                                break;
+                            case 32:
+                                // Use our new, custom converter for 32-bit signed integer PCM.
+                                finalProvider = new SampleToWaveProvider32(sampleProvider);
+                                break;
+                            default:
+                                throw new NotSupportedException($"Encoding to {targetFormat.RequestedBitsPerSample}-bit PCM is not supported.");
                         }
 
                         if (targetFormat.RequestedEncoding == AudioEncodingTypeEnum.WAV)
                         {
-                            using (var writer = new WaveFileWriter(ms, finalPcmProvider.WaveFormat))
-                            {
-                                finalPcmProvider.CopyTo(writer);
-                            }
+                            using var writer = new WaveFileWriter(new IgnoreDisposeStream(ms), finalProvider.WaveFormat);
+                            finalProvider.CopyTo(writer);
                         }
-                        else // PCM
+                        else
                         {
-                            finalPcmProvider.CopyTo(ms);
+                            finalProvider.CopyTo(ms);
                         }
                         return ms.ToArray();
                     }
 
+                // NEW UNIFIED ENCODING LOGIC:
                 case AudioEncodingTypeEnum.MULAW:
                 case AudioEncodingTypeEnum.ALAW:
-                    {
-                        var pcm16Provider = pcmProvider.WaveFormat.BitsPerSample == 16
-                            ? pcmProvider
-                            : pcmProvider.ToSampleProvider().ToWaveProvider16();
-
-                        byte[] readBuffer = new byte[pcm16Provider.WaveFormat.BlockAlign * 1024];
-                        int bytesRead;
-
-                        while ((bytesRead = pcm16Provider.Read(readBuffer, 0, readBuffer.Length)) > 0)
-                        {
-                            for (int i = 0; i < bytesRead; i += 2)
-                            {
-                                short pcmSample = (short)(readBuffer[i] | readBuffer[i + 1] << 8);
-                                byte encodedSample = targetFormat.RequestedEncoding == AudioEncodingTypeEnum.MULAW
-                                    ? MuLawEncoder.LinearToMuLawSample(pcmSample)
-                                    : ALawEncoder.LinearToALawSample(pcmSample);
-                                ms.WriteByte(encodedSample);
-                            }
-                        }
-                        return ms.ToArray();
-                    }
-                
                 case AudioEncodingTypeEnum.G722:
-                    {
-                        if (pcmProvider.WaveFormat.SampleRate != 16000 || pcmProvider.WaveFormat.BitsPerSample != 16)
-                        {
-                            throw new InvalidOperationException($"G.722 encoding requires 16kHz, 16-bit PCM. The provided format is {pcmProvider.WaveFormat}. Resampling failed or was incorrect.");
-                        }
-
-                        var codec = new G722Codec();
-                        var state = new G722CodecState(64000, G722Flags.None);
-                        var pcmBuffer = new byte[320];
-                        var g722Buffer = new byte[pcmBuffer.Length / 4];
-                        int bytesRead;
-                        while((bytesRead = pcmProvider.Read(pcmBuffer, 0, pcmBuffer.Length)) > 0)
-                        {
-                            var waveBuffer = new WaveBuffer(pcmBuffer);
-                            int encodedCount = codec.Encode(state, g722Buffer, waveBuffer.ShortBuffer, bytesRead / 2);
-                            ms.Write(g722Buffer, 0, encodedCount);
-                        }
-                        return ms.ToArray();
-                    }
-                
                 case AudioEncodingTypeEnum.G729:
                     {
-                        if (pcmProvider.WaveFormat.SampleRate != 8000 || pcmProvider.WaveFormat.BitsPerSample != 16)
+                        // SIPSorcery encoder expects 16-bit PCM shorts.
+                        // First, convert our float provider to 16-bit PCM.
+                        var pcm16Provider = new SampleToWaveProvider16(pcmProvider.ToSampleProvider());
+
+                        // Verify sample rates before encoding.
+                        var expectedRate = GetExpectedSampleRate(targetFormat.RequestedEncoding);
+                        if (pcm16Provider.WaveFormat.SampleRate != expectedRate)
                         {
-                            throw new InvalidOperationException($"G.729 encoding requires 8kHz, 16-bit PCM. The provided format is {pcmProvider.WaveFormat}.");
+                            throw new InvalidOperationException($"{targetFormat.RequestedEncoding} requires a {expectedRate} Hz sample rate, but received {pcm16Provider.WaveFormat.SampleRate} Hz.");
                         }
 
-                        var pcmBytes = ReadAllBytes(pcmProvider);
+                        var pcmBytes = ReadAllBytes(pcm16Provider);
                         var pcmShorts = new short[pcmBytes.Length / 2];
                         Buffer.BlockCopy(pcmBytes, 0, pcmShorts, 0, pcmBytes.Length);
 
-                        var g729Bytes = _audioEncoder.EncodeAudio(pcmShorts, new AudioFormat(SDPWellKnownMediaFormatsEnum.G729));
-                        return g729Bytes;
+                        var audioFormat = new AudioFormat(GetSdpFormat(targetFormat.RequestedEncoding));
+                        var encodedBytes = _audioEncoder.EncodeAudio(pcmShorts, audioFormat);
+                        return encodedBytes;
                     }
 
                 case AudioEncodingTypeEnum.OPUS:
-                    return EncodeToOpus(pcmProvider, targetFormat);
+                    var pcm16ProviderOpus = new SampleToWaveProvider16(pcmProvider.ToSampleProvider());
+                    return EncodeToOpus(pcm16ProviderOpus, targetFormat);
 
                 case AudioEncodingTypeEnum.MPEG:
-                     throw new NotSupportedException($"Encoding to {targetFormat.RequestedEncoding} is not yet implemented. This requires an external library like LAME wrapped by NAudio.Lame.");
-                
+                    throw new NotSupportedException($"Encoding to {targetFormat.RequestedEncoding} is not supported.");
+
                 default:
                     throw new ArgumentException($"Unsupported target encoding type: {targetFormat.RequestedEncoding}");
             }
         }
 
-        // --- Codec-Specific and Utility Helpers ---
+        private static byte[] ApplyVolumeToChunk(byte[] chunk, TTSProviderAvailableAudioFormat sourceFormat, float volume)
+        {
+            if (Math.Abs(volume - 1.0f) < 0.001) return chunk;
+
+            var speech32BitProvider = CreatePcm32FloatProvider(chunk.ToArray(), sourceFormat).ToSampleProvider();
+            var speechVolumeProvider = new VolumeSampleProvider(speech32BitProvider);
+            speechVolumeProvider.Volume = volume;
+
+            var mixedMemoryStream = new MemoryStream();
+            float[] buffer = new float[speechVolumeProvider.WaveFormat.AverageBytesPerSecond];
+            int bytesRead;
+            while ((bytesRead = speechVolumeProvider.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                for (int i = 0; i < bytesRead / 4; i++)
+                {
+                    var sample = buffer[i];
+                    sample = Math.Max(-1.0f, Math.Min(1.0f, sample));
+                    var pcmSample = (int)(sample * int.MaxValue);
+                    var pcmBytes = BitConverter.GetBytes(pcmSample);
+                    mixedMemoryStream.Write(pcmBytes, 0, pcmBytes.Length);
+                }
+            }
+
+            // Re-encode back to the original target format
+            var pcmSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sourceFormat.SampleRateHz, BitsPerSample = 32 };
+            var finalTargetFormat = new AudioRequestDetails { RequestedEncoding = sourceFormat.Encoding, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = sourceFormat.BitsPerSample };
+            var (finalAudio, _) = Convert(mixedMemoryStream.ToArray(), pcmSourceFormat, finalTargetFormat);
+
+            return finalAudio;
+        }
 
         private static IWaveProvider DecodeFromOpus(byte[] opusData, int sampleRate)
         {
@@ -534,13 +512,13 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             var waveFormat = new WaveFormat(sampleRate, 16, 1);
             return new RawSourceWaveStream(pcmBytes, 0, pcmBytes.Length, waveFormat);
         }
-        
+
         private static byte[] EncodeToOpus(IWaveProvider pcmProvider, AudioRequestDetails targetFormat)
         {
             int sampleRate = pcmProvider.WaveFormat.SampleRate;
             int frameSizeMs = 20; // Standard frame size
             int frameSizeSamples = sampleRate * frameSizeMs / 1000;
-            
+
             var encoder = OpusCodecFactory.CreateEncoder(sampleRate, 1, Concentus.Enums.OpusApplication.OPUS_APPLICATION_VOIP);
             encoder.Bitrate = 32000;
 
@@ -579,11 +557,11 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             return data[0] == 'R' && data[1] == 'I' && data[2] == 'F' && data[3] == 'F' &&
                    data[8] == 'W' && data[9] == 'A' && data[10] == 'V' && data[11] == 'E';
         }
-        
+
         private static byte[] FixWavHeader(byte[] wavData)
         {
             if (!IsWavFile(wavData) || wavData.Length < 44) return wavData;
-            
+
             int correctFileSize = wavData.Length - 8;
             Array.Copy(BitConverter.GetBytes(correctFileSize), 0, wavData, 4, 4);
 
@@ -606,129 +584,38 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             return wavData;
         }
 
-        #endregion
-
-        #region Private Nested Class for 8/24-Bit Conversion
-
-        /// <summary>
-        /// A custom IWaveProvider that converts a 32-bit floating-point ISampleProvider
-        /// into an 8-bit unsigned PCM IWaveProvider on the fly.
-        /// </summary>
-        private class SampleToWaveProvider8 : IWaveProvider
+        private static SDPWellKnownMediaFormatsEnum GetSdpFormat(AudioEncodingTypeEnum encoding)
         {
-            private readonly ISampleProvider _sourceProvider;
-            private readonly WaveFormat _waveFormat;
-            private float[] _sourceBuffer;
-
-            public SampleToWaveProvider8(ISampleProvider sourceProvider)
+            switch (encoding)
             {
-                if (sourceProvider.WaveFormat.Channels != 1)
-                {
-                    throw new NotSupportedException("Only mono audio is supported for 8-bit conversion.");
-                }
-
-                _sourceProvider = sourceProvider;
-                _waveFormat = new WaveFormat(sourceProvider.WaveFormat.SampleRate, 8, 1);
-            }
-
-            public WaveFormat WaveFormat => _waveFormat;
-
-            public int Read(byte[] buffer, int offset, int count)
-            {
-                // The number of float samples to read is the same as the number of bytes to write.
-                int samplesToRead = count;
-
-                // Ensure our source buffer is large enough
-                if (_sourceBuffer == null || _sourceBuffer.Length < samplesToRead)
-                {
-                    _sourceBuffer = new float[samplesToRead];
-                }
-
-                // Read from the 32-bit float source provider
-                int samplesRead = _sourceProvider.Read(_sourceBuffer, 0, samplesToRead);
-
-                // Convert each float sample to an 8-bit byte
-                for (int i = 0; i < samplesRead; i++)
-                {
-                    // The formula to convert a float sample from [-1.0, 1.0] to a byte [0, 255]
-                    float sample = _sourceBuffer[i];
-                    // Clamp the sample to the valid range to prevent issues from rogue samples
-                    if (sample > 1.0f) sample = 1.0f;
-                    if (sample < -1.0f) sample = -1.0f;
-
-                    buffer[offset + i] = (byte)((sample + 1.0f) * 127.5f);
-                }
-
-                return samplesRead;
+                case AudioEncodingTypeEnum.MULAW: return SDPWellKnownMediaFormatsEnum.PCMU;
+                case AudioEncodingTypeEnum.ALAW: return SDPWellKnownMediaFormatsEnum.PCMA;
+                case AudioEncodingTypeEnum.G722: return SDPWellKnownMediaFormatsEnum.G722;
+                case AudioEncodingTypeEnum.G729: return SDPWellKnownMediaFormatsEnum.G729;
+                default: throw new NotSupportedException($"No Sdp format mapping for {encoding}");
             }
         }
 
-        /// <summary>
-        /// A custom IWaveProvider that converts a 32-bit floating-point ISampleProvider
-        /// into a 24-bit signed PCM IWaveProvider on the fly.
-        /// </summary>
-        private class SampleToWaveProvider24 : IWaveProvider
+        private static int GetExpectedSampleRate(AudioEncodingTypeEnum encoding)
         {
-            private readonly ISampleProvider _sourceProvider;
-            private readonly WaveFormat _waveFormat;
-            private float[] _sourceBuffer;
-
-            // The maximum positive value for a 24-bit signed integer.
-            private const int MaxValue24Bit = 8388607; // 2^23 - 1
-
-            public SampleToWaveProvider24(ISampleProvider sourceProvider)
+            switch (encoding)
             {
-                if (sourceProvider.WaveFormat.Channels != 1)
-                {
-                    throw new NotSupportedException("Only mono audio is supported for 24-bit conversion.");
-                }
-
-                _sourceProvider = sourceProvider;
-                _waveFormat = new WaveFormat(sourceProvider.WaveFormat.SampleRate, 24, 1);
-            }
-
-            public WaveFormat WaveFormat => _waveFormat;
-
-            public int Read(byte[] buffer, int offset, int count)
-            {
-                // Calculate how many 3-byte samples we need to generate.
-                int samplesToRead = count / 3;
-
-                // Ensure our source float buffer is large enough.
-                if (_sourceBuffer == null || _sourceBuffer.Length < samplesToRead)
-                {
-                    _sourceBuffer = new float[samplesToRead];
-                }
-
-                // Read from the 32-bit float source provider.
-                int samplesRead = _sourceProvider.Read(_sourceBuffer, 0, samplesToRead);
-
-                int bufferIndex = offset;
-                for (int i = 0; i < samplesRead; i++)
-                {
-                    // Get the float sample and clamp it to the valid range.
-                    float sample = _sourceBuffer[i];
-                    if (sample > 1.0f) sample = 1.0f;
-                    if (sample < -1.0f) sample = -1.0f;
-
-                    // Convert the float sample to a 24-bit integer value.
-                    int pcm24 = (int)(sample * MaxValue24Bit);
-
-                    // Write the 3 bytes of the 24-bit sample in little-endian order.
-                    buffer[bufferIndex++] = (byte)(pcm24 & 0xFF);         // Least significant byte
-                    buffer[bufferIndex++] = (byte)((pcm24 >> 8) & 0xFF);  // Middle byte
-                    buffer[bufferIndex++] = (byte)((pcm24 >> 16) & 0xFF); // Most significant byte
-                }
-
-                // Return the total number of bytes written.
-                return samplesRead * 3;
+                case AudioEncodingTypeEnum.MULAW:
+                case AudioEncodingTypeEnum.ALAW:
+                case AudioEncodingTypeEnum.G729:
+                    return 8000;
+                case AudioEncodingTypeEnum.G722:
+                    return 16000;
+                default:
+                    throw new NotSupportedException($"No expected sample rate for {encoding}");
             }
         }
 
+
         #endregion
+
     }
 
-    // Helper extension methods to simplify stream copying
     internal static class WaveProviderExtensions
     {
         public static void CopyTo(this IWaveProvider source, Stream destination)
@@ -739,6 +626,62 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             {
                 destination.Write(buffer, 0, bytesRead);
             }
+        }
+    }
+
+    internal class SampleToWaveProvider32 : IWaveProvider
+    {
+        private readonly ISampleProvider _sourceProvider;
+        private readonly WaveFormat _waveFormat;
+        private readonly float[] _sourceBuffer;
+
+        public WaveFormat WaveFormat => _waveFormat;
+
+        public SampleToWaveProvider32(ISampleProvider sourceProvider)
+        {
+            if (sourceProvider.WaveFormat.Encoding != WaveFormatEncoding.IeeeFloat)
+                throw new ArgumentException("Source provider must be 32-bit float.");
+            if (sourceProvider.WaveFormat.BitsPerSample != 32)
+                throw new ArgumentException("Source provider must be 32-bit float.");
+
+            _sourceProvider = sourceProvider;
+            _waveFormat = new WaveFormat(sourceProvider.WaveFormat.SampleRate, 32, sourceProvider.WaveFormat.Channels);
+
+            // Use a buffer for efficiency
+            _sourceBuffer = new float[sourceProvider.WaveFormat.SampleRate];
+        }
+
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            // The number of 32-bit integer samples we need to generate
+            int samplesRequired = count / 4;
+
+            // The number of float samples we need to read from the source
+            int samplesToRead = Math.Min(samplesRequired, _sourceBuffer.Length);
+
+            // Read float samples from the source provider
+            int samplesActuallyRead = _sourceProvider.Read(_sourceBuffer, 0, samplesToRead);
+
+            int outIndex = offset;
+            for (int i = 0; i < samplesActuallyRead; i++)
+            {
+                // Convert float sample (-1.0 to 1.0) to 32-bit integer sample
+                float floatSample = _sourceBuffer[i];
+
+                // Clamp the sample to prevent overflow
+                floatSample = Math.Max(-1.0f, Math.Min(1.0f, floatSample));
+
+                int pcmSample = (int)(floatSample * 2147483647.0);
+
+                // Copy the bytes of the integer sample into the output buffer
+                byte[] sampleBytes = BitConverter.GetBytes(pcmSample);
+                Buffer.BlockCopy(sampleBytes, 0, buffer, outIndex, 4);
+
+                outIndex += 4;
+            }
+
+            // Return the total number of bytes written to the output buffer
+            return samplesActuallyRead * 4;
         }
     }
 }

@@ -172,5 +172,7 @@ namespace IqraInfrastructure.Managers.User
             // If comparison fails or decryption throws an error
             return (false, user, keyMetadata);
         }
+
+        public string HashUserEmail(string userEmail) => _apiKeyProcessor.ComputeEmailHash(userEmail);
     }
 }

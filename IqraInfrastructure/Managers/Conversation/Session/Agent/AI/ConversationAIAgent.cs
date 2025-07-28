@@ -344,7 +344,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (_agentState.BusinessAppAgent.Utterances.GreetingMessage?.TryGetValue(_agentState.CurrentLanguageCode, out openingMessage) == true && !string.IsNullOrEmpty(openingMessage))
                 {
                     _logger.LogDebug("Agent {AgentId}: Playing agent-first opening message.", AgentId);
-                    foreach (var dynamicVariable in _agentState.CurrentSessionContext.DynamicVariables)
+                    foreach (var dynamicVariable in _agentState.CurrentSessionContext.DynamicVariables ?? new Dictionary<string, string>())
                     {
                         openingMessage = openingMessage.Replace(("{{" + dynamicVariable.Key + "}}"), dynamicVariable.Value);
                     }

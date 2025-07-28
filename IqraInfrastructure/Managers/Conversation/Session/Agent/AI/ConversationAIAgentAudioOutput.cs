@@ -514,7 +514,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         {
                             var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, speechChunkSize);
                             var backgroundChunk = GetNextBackgroundChunk(speechChunkSize);
-                            chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                            chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
 
                             _currentSpeechPosition += speechChunkSize;
                             isSpeechChunk = true;
@@ -554,7 +554,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             {
                                 var speechChunk = _currentSpeechSegment.Slice(_currentSpeechPosition, firstSpeechChunkSize);
                                 var backgroundChunk = GetNextBackgroundChunk(firstSpeechChunkSize);
-                                chunkToSend = MixAudioChunks(speechChunk, backgroundChunk);
+                                chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(speechChunk, backgroundChunk);
 
                                 _currentSpeechPosition += firstSpeechChunkSize;
                                 isSpeechChunk = true;
@@ -582,7 +582,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             var backgroundChunk = GetNextBackgroundChunk(BytesPerChunk);
                             if (!backgroundChunk.IsEmpty)
                             {
-                                chunkToSend = MixAudioChunks(ReadOnlyMemory<byte>.Empty, backgroundChunk);
+                                chunkToSend = MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte>.Empty, backgroundChunk);
                             }
 
                             // Check if playback just became complete
@@ -691,9 +691,39 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             return chunk;
         }
 
-        private byte[] MixAudioChunks(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
+        private byte[] MixAudioChunksWhileApplyingVolumeAndClipping(ReadOnlyMemory<byte> speechChunk, ReadOnlyMemory<byte> backgroundChunk)
         {
-            return AudioConversationHelper.MixAudioChunks(AudioEncodingType, SampleRate, BitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume, 1, 1);
+            try
+            {
+                return AudioConversationHelper.MixAudioChunks(AudioEncodingType, SampleRate, BitsPerSample, speechChunk, _agentState.CurrentAgentVolumeFactor, backgroundChunk, _agentState.BackgroundMusicVolume);
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Error mixing audio chunks.", _agentState.AgentId);
+
+                if (speechChunk.IsEmpty && backgroundChunk.IsEmpty)
+                {
+                    return Array.Empty<byte>();
+                }
+
+                if (!speechChunk.IsEmpty && !backgroundChunk.IsEmpty)
+                {
+                    return speechChunk.ToArray();
+                }
+
+                if (speechChunk.IsEmpty)
+                {
+                    return backgroundChunk.ToArray();
+                }
+
+                if (backgroundChunk.IsEmpty)
+                {
+                    return speechChunk.ToArray();
+                }
+
+                return new byte[0];
+            }
         }
 
         public Task StartVolumeFadeAsync(float targetFactor, TimeSpan duration, CancellationToken cancellationToken)

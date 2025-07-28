@@ -4,6 +4,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -42,6 +43,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Dependencies\ElevenLabs\src\libs\ElevenLabs\ElevenLabs.csproj" />
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Helpers\Audio\" />
   </ItemGroup>
 
 </Project>
