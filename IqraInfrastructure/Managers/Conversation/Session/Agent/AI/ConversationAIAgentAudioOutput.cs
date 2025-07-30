@@ -206,7 +206,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                                 RequestedEncoding = _agentState.AgentConfiguration.AudioEncodingType,
                                 RequestedBitsPerSample = _agentState.AgentConfiguration.BitsPerSample,
                                 RequestedSampleRateHz = _agentState.AgentConfiguration.SampleRate
-                            }
+                            },
+                            false
                         );
 
                         rawPcmData = convertedBKGAudio.audioData;

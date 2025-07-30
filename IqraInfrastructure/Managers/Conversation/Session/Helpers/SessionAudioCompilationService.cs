@@ -5,10 +5,7 @@ using IqraCore.Entities.TTS;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Globalization;
-using System.Text;
-using System.Xml.Linq;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 {

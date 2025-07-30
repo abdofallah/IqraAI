@@ -41,7 +41,7 @@ namespace IqraInfrastructure.Helpers.Audio
             }
 
             IWaveProvider? pcmProvider = null;
-            IWaveProvider? resampledProvider = null;
+            ISampleProvider? resampledProvider = null;
             try
             {
                 // Step 1: Decode the source audio into a standardized 32-bit float PCM IWaveProvider.
@@ -153,7 +153,7 @@ namespace IqraInfrastructure.Helpers.Audio
             AudioEncodingTypeEnum encodingType, int sampleRate, int bitsPerSample,
             ReadOnlyMemory<byte> speechChunk, float speechChunkVolume,
             ReadOnlyMemory<byte> backgroundChunk, float backgroundChunkVolume
-)
+        )
         {
             bool speechIsEmpty = speechChunk.IsEmpty || speechChunk.Length == 0;
             bool backgroundIsEmpty = backgroundChunk.IsEmpty || backgroundChunk.Length == 0;
@@ -174,8 +174,8 @@ namespace IqraInfrastructure.Helpers.Audio
             // Define the target format for our high-precision intermediate stage.
             var pcm32Target = new AudioRequestDetails { RequestedEncoding = AudioEncodingTypeEnum.PCM, RequestedSampleRateHz = sampleRate, RequestedBitsPerSample = 32 };
 
-            var speechConverted = Convert(speechChunk.ToArray(), sourceFormat, pcm32Target);
-            var backgroundConverted = Convert(backgroundChunk.ToArray(), sourceFormat, pcm32Target);
+            var speechConverted = Convert(speechChunk.ToArray(), sourceFormat, pcm32Target, false);
+            var backgroundConverted = Convert(backgroundChunk.ToArray(), sourceFormat, pcm32Target, false);
 
             // Mix the two audio chunks using optimized mixing
             var mixedAudio = MixPcm32AudioData(speechConverted.audioData, speechChunkVolume, backgroundConverted.audioData, backgroundChunkVolume);
@@ -183,7 +183,7 @@ namespace IqraInfrastructure.Helpers.Audio
             // Re-encode the mixed audio back to the original desired format.
             var mixedPcmSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sampleRate, BitsPerSample = 32 };
             var finalTargetFormat = new AudioRequestDetails { RequestedEncoding = encodingType, RequestedSampleRateHz = sampleRate, RequestedBitsPerSample = bitsPerSample };
-            var (finalMixedAudio, _) = Convert(mixedAudio, mixedPcmSourceFormat, finalTargetFormat);
+            var (finalMixedAudio, _) = Convert(mixedAudio, mixedPcmSourceFormat, finalTargetFormat, false);
 
             return finalMixedAudio;
         }
@@ -264,7 +264,7 @@ namespace IqraInfrastructure.Helpers.Audio
 
             // Convert to PCM 32-bit for volume processing
             var pcm32Target = new AudioRequestDetails { RequestedEncoding = AudioEncodingTypeEnum.PCM, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = 32 };
-            var converted = Convert(audioData.ToArray(), sourceFormat, pcm32Target);
+            var converted = Convert(audioData.ToArray(), sourceFormat, pcm32Target, false);
 
             // Apply volume in place
             int sampleCount = converted.audioData.Length >> 2;
@@ -289,7 +289,7 @@ namespace IqraInfrastructure.Helpers.Audio
             // Convert back to original format
             var volumeSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sourceFormat.SampleRateHz, BitsPerSample = 32 };
             var finalTarget = new AudioRequestDetails { RequestedEncoding = sourceFormat.Encoding, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = sourceFormat.BitsPerSample };
-            var (finalAudio, _) = Convert(volumeAdjusted, volumeSourceFormat, finalTarget);
+            var (finalAudio, _) = Convert(volumeAdjusted, volumeSourceFormat, finalTarget, false);
 
             return finalAudio;
         }
@@ -379,21 +379,19 @@ namespace IqraInfrastructure.Helpers.Audio
             }
         }
 
-        private static IWaveProvider CreateResampler(IWaveProvider pcm32FloatProvider, AudioRequestDetails targetFormat)
+        private static ISampleProvider CreateResampler(IWaveProvider pcm32FloatProvider, AudioRequestDetails targetFormat)
         {
             // Input is guaranteed to be 32-bit float PCM.
             if (pcm32FloatProvider.WaveFormat.SampleRate == targetFormat.RequestedSampleRateHz && pcm32FloatProvider.WaveFormat.BitsPerSample == 32)
             {
-                return pcm32FloatProvider;
+                return pcm32FloatProvider.ToSampleProvider();
             }
 
             var sampleProvider = pcm32FloatProvider.ToSampleProvider();
-
-            var resampler = new WdlResamplingSampleProvider(sampleProvider, targetFormat.RequestedSampleRateHz);
-            return resampler.ToWaveProvider();
+            return new WdlResamplingSampleProvider(sampleProvider, targetFormat.RequestedSampleRateHz);
         }
 
-        private static byte[] EncodeToTargetFormat(IWaveProvider pcmProvider, AudioRequestDetails targetFormat)
+        private static byte[] EncodeToTargetFormat(ISampleProvider pcmProvider, AudioRequestDetails targetFormat)
         {
             using var ms = new MemoryStream();
 
@@ -405,7 +403,7 @@ namespace IqraInfrastructure.Helpers.Audio
                     // PCM/WAV encoding logic remains the same.
                     {
                         IWaveProvider finalProvider;
-                        var sampleProvider = pcmProvider.ToSampleProvider();
+                        var sampleProvider = pcmProvider;
 
                         switch (targetFormat.RequestedBitsPerSample)
                         {
@@ -443,7 +441,7 @@ namespace IqraInfrastructure.Helpers.Audio
                     {
                         // SIPSorcery encoder expects 16-bit PCM shorts.
                         // First, convert our float provider to 16-bit PCM.
-                        var pcm16Provider = new SampleToWaveProvider16(pcmProvider.ToSampleProvider());
+                        var pcm16Provider = new SampleToWaveProvider16(pcmProvider);
 
                         // Verify sample rates before encoding.
                         var expectedRate = GetExpectedSampleRate(targetFormat.RequestedEncoding);
@@ -462,7 +460,7 @@ namespace IqraInfrastructure.Helpers.Audio
                     }
 
                 case AudioEncodingTypeEnum.OPUS:
-                    var pcm16ProviderOpus = new SampleToWaveProvider16(pcmProvider.ToSampleProvider());
+                    var pcm16ProviderOpus = new SampleToWaveProvider16(pcmProvider);
                     return EncodeToOpus(pcm16ProviderOpus, targetFormat);
 
                 case AudioEncodingTypeEnum.MPEG:
@@ -471,37 +469,6 @@ namespace IqraInfrastructure.Helpers.Audio
                 default:
                     throw new ArgumentException($"Unsupported target encoding type: {targetFormat.RequestedEncoding}");
             }
-        }
-
-        private static byte[] ApplyVolumeToChunk(byte[] chunk, TTSProviderAvailableAudioFormat sourceFormat, float volume)
-        {
-            if (Math.Abs(volume - 1.0f) < 0.001) return chunk;
-
-            var speech32BitProvider = CreatePcm32FloatProvider(chunk.ToArray(), sourceFormat).ToSampleProvider();
-            var speechVolumeProvider = new VolumeSampleProvider(speech32BitProvider);
-            speechVolumeProvider.Volume = volume;
-
-            var mixedMemoryStream = new MemoryStream();
-            float[] buffer = new float[speechVolumeProvider.WaveFormat.AverageBytesPerSecond];
-            int bytesRead;
-            while ((bytesRead = speechVolumeProvider.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                for (int i = 0; i < bytesRead / 4; i++)
-                {
-                    var sample = buffer[i];
-                    sample = Math.Max(-1.0f, Math.Min(1.0f, sample));
-                    var pcmSample = (int)(sample * int.MaxValue);
-                    var pcmBytes = BitConverter.GetBytes(pcmSample);
-                    mixedMemoryStream.Write(pcmBytes, 0, pcmBytes.Length);
-                }
-            }
-
-            // Re-encode back to the original target format
-            var pcmSourceFormat = new TTSProviderAvailableAudioFormat { Encoding = AudioEncodingTypeEnum.PCM, SampleRateHz = sourceFormat.SampleRateHz, BitsPerSample = 32 };
-            var finalTargetFormat = new AudioRequestDetails { RequestedEncoding = sourceFormat.Encoding, RequestedSampleRateHz = sourceFormat.SampleRateHz, RequestedBitsPerSample = sourceFormat.BitsPerSample };
-            var (finalAudio, _) = Convert(mixedMemoryStream.ToArray(), pcmSourceFormat, finalTargetFormat);
-
-            return finalAudio;
         }
 
         private static IWaveProvider DecodeFromOpus(byte[] opusData, int sampleRate)
