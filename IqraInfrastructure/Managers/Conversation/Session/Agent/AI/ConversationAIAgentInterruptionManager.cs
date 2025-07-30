@@ -74,26 +74,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 )
                 {
                     _logger.LogInformation("Agent {AgentId}: Initializing VAD for interruptible conversation.", _agentState.AgentId);
-                    _vadOptions = new VadOptions { SampleRate = 16000 }; // TODO: Configurable? SampleRate from AudioOutput const?
-                    string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VadModels\\silero_vad.onnx"); // TODO: Make model path configurable
-                    if (!File.Exists(modelPath))
+                    _vadOptions = new VadOptions()
                     {
-                        _logger.LogError("Agent {AgentId}: VAD model file not found at {Path}", _agentState.AgentId, modelPath);
-                        // Decide how to handle - throw, or disable interruption? Disable for now.
-                        _agentState.CurrentConversationType = AgentInterruptionTypeENUM.InterruptibleViaResponse; // Fallback
-                    }
-                    else
+                        AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType,
+                        SampleRate = _agentState.AgentConfiguration.SampleRate,
+                        BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
+                    };
+
+                    try
                     {
                         DisposeCurrentVadService();
 
                         _vadService = new SileroVadService(_loggerFactory.CreateLogger<SileroVadService>());
-                        _vadService.Initialize(modelPath, _vadOptions);
+                        _vadService.Initialize(_vadOptions);
                         _vadService.VoiceActivityChanged += OnVoiceActivityChanged;
 
                         _agentState.VadService = _vadService;
                         _agentState.IsVadEnabled = true;
 
                         _logger.LogInformation("Agent {AgentId}: VAD Initialized.", _agentState.AgentId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("Agent {AgentId}: Failed to create silero vad service session. Error: {Error}.", _agentState.AgentId, ex.Message);
+
+                        // Decide how to handle - throw, or disable interruption? Disable for now.
+                        _agentState.CurrentConversationType = AgentInterruptionTypeENUM.TurnByTurn; // Fallback
                     }
                 }
 

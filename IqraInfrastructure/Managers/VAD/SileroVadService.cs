@@ -1,21 +1,24 @@
-﻿using IqraCore.Interfaces.VAD;
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.TTS;
+using IqraCore.Interfaces.VAD;
+using IqraInfrastructure.Helpers.Audio;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
 {
     public class SileroVadService : IVadService
     {
+        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VadModels\\silero_vad.onnx");
+        private static InferenceSession? InferenceSession = null;
+
+        private static int SileroVadSampleRate = 16000;
+        private static int Silero16khzWindowSizeSamples = 512;
+
         private readonly ILogger<SileroVadService> _logger;
-        private InferenceSession? _session;
         private VadOptions _options = new();
 
         // --- ADJUSTED FOR YOUR MODEL ---
@@ -36,7 +39,6 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
         private int _minSpeechSamples = 0;
         private int _speechPadSamples = 0;
         private int _windowSizeBytes = 0;
-        private int _windowSizeSamples = 0;
 
         // Model Constants (Match reference code/model)
         private const int HiddenSize = 128; // Based on reference code
@@ -52,67 +54,60 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
         public SileroVadService(ILogger<SileroVadService> logger)
         {
             _logger = logger;
-            // Buffer size calculation will happen in Initialize
-            _buffer = ArrayPool<byte>.Shared.Rent(1); // Rent minimal initially
-        }
 
-        public void Initialize(string modelPath, VadOptions options)
-        {
-            if (!File.Exists(modelPath))
+            if (InferenceSession == null)
             {
-                _logger.LogError("VAD model file not found at path: {ModelPath}", modelPath);
-                throw new FileNotFoundException("VAD model file not found.", modelPath);
-            }
+                if (!File.Exists(ModelPath))
+                {
+                    _logger.LogError("VAD model file not found at path: {ModelPath}", ModelPath);
+                    throw new FileNotFoundException("VAD model file not found.", ModelPath);
+                }
 
-            _options = options ?? new VadOptions();
-
-            try
-            {
                 var sessionOptions = new SessionOptions
                 {
-                    // These seem standard for Silero VAD based on reference
                     InterOpNumThreads = 1,
                     IntraOpNumThreads = 1,
                     EnableCpuMemArena = true,
-                    // Set ExecutionMode if desired (e.g., SEQUENTIAL for potential latency benefit)
-                    // ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
                     GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
                 };
 
-                _session = new InferenceSession(modelPath, sessionOptions);
-                _logger.LogInformation("Silero VAD ONNX model loaded successfully from {ModelPath}", modelPath);
+                InferenceSession = new InferenceSession(ModelPath, sessionOptions);
 
-                // --- Model Specific Config ---
-                if (_options.SampleRate != 16000 && _options.SampleRate != 8000)
-                {
-                    _logger.LogWarning("VAD configured with unsupported sample rate {SampleRate}. Forcing to 16000.", _options.SampleRate);
-                    _options.SampleRate = 16000; // Or throw error?
-                }
-                // Set window size based on sample rate (matching reference code)
-                _windowSizeSamples = _options.SampleRate == 16000 ? 512 : 256;
-                _windowSizeBytes = _windowSizeSamples * 2; // 16-bit PCM
+                _logger.LogInformation("Silero VAD ONNX model loaded successfully from {ModelPath}", ModelPath);
+            }
+
+            _buffer = ArrayPool<byte>.Shared.Rent(1);
+        }
+
+        public void Initialize(VadOptions options)
+        {
+            _options = options;
+
+            try
+            {
+                _windowSizeBytes = Silero16khzWindowSizeSamples * 2; // 16-bit PCM
                                                            // Use provided window size if explicitly set and valid
                 if (_options.WindowSizeSamples > 0 && (_options.WindowSizeSamples == 512 || _options.WindowSizeSamples == 256))
                 {
-                    _windowSizeSamples = _options.WindowSizeSamples;
-                    _windowSizeBytes = _windowSizeSamples * 2;
+                    Silero16khzWindowSizeSamples = _options.WindowSizeSamples;
+                    _windowSizeBytes = Silero16khzWindowSizeSamples * 2;
                 }
                 else if (_options.WindowSizeSamples > 0)
                 {
-                    _logger.LogWarning("Ignoring provided WindowSizeSamples ({ProvidedSize}), using default ({CalculatedSize}) based on sample rate.", _options.WindowSizeSamples, _windowSizeSamples);
+                    _logger.LogWarning("Ignoring provided WindowSizeSamples ({ProvidedSize}), using default ({CalculatedSize}) based on sample rate.", _options.WindowSizeSamples, Silero16khzWindowSizeSamples);
                 }
                 // --- End Model Specific Config ---
 
-                _minSilenceSamples = (_options.SampleRate * _options.MinSilenceDurationMs) / 1000;
-                _minSpeechSamples = (_options.SampleRate * _options.MinSpeechDurationMs) / 1000;
-                _speechPadSamples = (_options.SampleRate * _options.SpeechPadMs) / 1000;
+                _minSilenceSamples = (SileroVadSampleRate * _options.MinSilenceDurationMs) / 1000;
+                _minSpeechSamples = (SileroVadSampleRate * _options.MinSpeechDurationMs) / 1000;
+                _speechPadSamples = (SileroVadSampleRate * _options.SpeechPadMs) / 1000;
 
                 // Resize buffer based on final window size
                 ArrayPool<byte>.Shared.Return(_buffer); // Return initial small buffer
                 _buffer = ArrayPool<byte>.Shared.Rent(_windowSizeBytes);
 
                 _logger.LogInformation("VAD Initialized: SampleRate={SampleRate}, WindowSamples={WindowSamples}, MinSilenceMs={MinSilenceMs}, MinSpeechMs={MinSpeechMs}, PaddingMs={SpeechPadMs}, Threshold={Threshold}",
-                    _options.SampleRate, _windowSizeSamples, _options.MinSilenceDurationMs, _options.MinSpeechDurationMs, _options.SpeechPadMs, _options.Threshold);
+                    SileroVadSampleRate, Silero16khzWindowSizeSamples, _options.MinSilenceDurationMs, _options.MinSpeechDurationMs, _options.SpeechPadMs, _options.Threshold);
 
                 Reset(); // Initialize state variables and model hidden states
             }
@@ -124,10 +119,29 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
             }
         }
 
-        public void ProcessAudio(ReadOnlyMemory<byte> pcm16AudioChunk)
+        public void ProcessAudio(byte[] audioChunkData)
         {
-            if (_session == null) return;
-            if (pcm16AudioChunk.Length % 2 != 0) pcm16AudioChunk = pcm16AudioChunk.Slice(0, pcm16AudioChunk.Length - 1);
+            if (InferenceSession == null) return;
+            if (audioChunkData.Length == 0) return;
+
+            var convertedAudio = AudioConversationHelper.Convert(
+                audioChunkData,
+                new TTSProviderAvailableAudioFormat()
+                { 
+                    Encoding = _options.AudioEncodingType,
+                    SampleRateHz = _options.SampleRate,
+                    BitsPerSample = _options.BitsPerSample
+                },
+                new AudioRequestDetails()
+                { 
+                    RequestedEncoding = AudioEncodingTypeEnum.PCM,
+                    RequestedSampleRateHz = 16000,
+                    RequestedBitsPerSample = 32
+                },
+                false
+            );
+
+            var pcm16AudioChunk = convertedAudio.audioData.AsMemory();
             if (pcm16AudioChunk.IsEmpty) return;
 
             int bytesProcessed = 0;
@@ -156,18 +170,16 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
             const string StateOutputName = "stateN";
 
             // Check if initialized properly
-            if (_session == null || _state == null || _srTensor == null) return;
+            if (InferenceSession == null || _state == null || _srTensor == null) return;
 
             try
             {
-                // 1. Convert PCM16 bytes to float32 tensor
-                var floatData = MemoryMarshal.Cast<byte, short>(windowData.Span);
-                // Ensure input tensor shape matches model (e.g., [1, _windowSizeSamples])
-                var inputTensor = new DenseTensor<float>(new[] { BatchSize, _windowSizeSamples });
-                for (int i = 0; i < floatData.Length; i++)
+                // 1. Convert PCM16khz32bit bytes to float32 tensor
+                var floatData = MemoryMarshal.Cast<byte, float>(windowData.Span);
+                var inputTensor = new DenseTensor<float>(new[] { BatchSize, Silero16khzWindowSizeSamples });
+                for (int i = 0; i < Math.Min(floatData.Length, Silero16khzWindowSizeSamples); i++)
                 {
-                    // Assuming BatchSize is 1
-                    inputTensor.SetValue(i, (float)floatData[i] / 32768.0f);
+                    inputTensor.SetValue(i, floatData[i]);
                 }
 
                 // 2. Prepare inputs using correct names and tensors
@@ -179,7 +191,7 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
                 };
 
                 // 3. Run Inference
-                using var results = _session.Run(inputs);
+                using var results = InferenceSession.Run(inputs);
 
                 // 4. Extract outputs using correct names
                 var outputTensor = results.FirstOrDefault(r => r.Name == ProbOutputName)?.AsTensor<float>();
@@ -221,7 +233,7 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
             if (_speechProbability >= _options.Threshold)
             {
                 _tempEndSamples = 0;
-                _speechDurationSamples += _windowSizeSamples;
+                _speechDurationSamples += Silero16khzWindowSizeSamples;
 
                 if (_speechDurationSamples >= _minSpeechSamples)
                 {
@@ -236,7 +248,7 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
             }
             else // Below threshold
             {
-                _silenceDurationSamples += _windowSizeSamples;
+                _silenceDurationSamples += Silero16khzWindowSizeSamples;
 
                 if (_triggered && _silenceDurationSamples > _speechPadSamples)
                 {
@@ -271,7 +283,7 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
             _state = new DenseTensor<float>(new[] { NumLayersDirections, BatchSize, HiddenSize });
 
             // Reset the sample rate tensor
-            _srTensor = new DenseTensor<long>(new long[] { _options.SampleRate }, new[] { 1 }); // Shape [1]
+            _srTensor = new DenseTensor<long>(new long[] { SileroVadSampleRate }, new[] { 1 }); // Shape [1]
 
             Array.Clear(_buffer, 0, _buffer.Length);
         }
@@ -285,8 +297,8 @@ namespace IqraInfrastructure.Managers.VAD // Or your preferred namespace
         public void Dispose()
         {
             _logger.LogInformation("Disposing SileroVadService.");
-            _session?.Dispose();
-            _session = null;
+            InferenceSession?.Dispose();
+            InferenceSession = null;
             ArrayPool<byte>.Shared.Return(_buffer);
             GC.SuppressFinalize(this);
         }

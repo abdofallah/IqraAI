@@ -196,7 +196,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                 if (storedSuccessfully)
                 {
-                    await DeleteOriginalChunksAsync(chunkInfos.Select(ci => ci.Reference).ToList(), participant.id, sessionId);
+                    // TODO ENABLE BACK
+                    //await DeleteOriginalChunksAsync(chunkInfos.Select(ci => ci.Reference).ToList(), participant.id, sessionId);
 
                     isSuccess = true;
                     return compiledAudioReference;

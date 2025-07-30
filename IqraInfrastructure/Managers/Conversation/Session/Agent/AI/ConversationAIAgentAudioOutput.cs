@@ -4,6 +4,7 @@ using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
 using IqraCore.Utilities.Audio;
+using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.TTS.Helpers;

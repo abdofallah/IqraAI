@@ -1,20 +1,14 @@
 ﻿using Concentus;
-using Concentus.Enums;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
-using NAudio.Codecs;
-using NAudio.Mixer;
 using NAudio.Utils;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using NLayer.NAudioSupport;
 using SIPSorceryMedia.Abstractions;
-using System;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
-namespace IqraInfrastructure.Managers.TTS.Helpers
+namespace IqraInfrastructure.Helpers.Audio
 {
     public static class AudioConversationHelper
     {
@@ -25,7 +19,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
         /// <summary>
         /// Converts audio data from a source format to a target format, handling encoding, sample rate, and bit depth changes.
         /// </summary>
-        public static (byte[] audioData, TimeSpan duration) Convert(byte[] sourceAudio, TTSProviderAvailableAudioFormat sourceFormat, AudioRequestDetails targetFormat)
+        public static (byte[] audioData, TimeSpan duration) Convert(byte[] sourceAudio, TTSProviderAvailableAudioFormat sourceFormat, AudioRequestDetails targetFormat, bool getDuration = true)
         {
             if (sourceAudio == null || sourceAudio.Length == 0)
             {
@@ -37,8 +31,12 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                 sourceFormat.SampleRateHz == targetFormat.RequestedSampleRateHz &&
                 sourceFormat.BitsPerSample == targetFormat.RequestedBitsPerSample)
             {
-                // Still calculate duration to be safe, especially for compressed formats.
-                TimeSpan simpleDuration = CalculateDuration(sourceAudio, sourceFormat);
+                TimeSpan simpleDuration = TimeSpan.Zero;
+                if (getDuration)
+                {
+                    simpleDuration = CalculateDuration(sourceAudio, sourceFormat);
+                }
+
                 return (sourceAudio, simpleDuration);
             }
 
@@ -62,7 +60,12 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                     SampleRateHz = targetFormat.RequestedSampleRateHz,
                     BitsPerSample = targetFormat.RequestedBitsPerSample
                 };
-                TimeSpan duration = CalculateDuration(targetAudio, finalFormat);
+
+                TimeSpan duration = TimeSpan.Zero;
+                if (getDuration)
+                {
+                    duration = CalculateDuration(targetAudio, finalFormat);
+                }
 
                 return (targetAudio, duration);
             }
@@ -99,7 +102,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
                 if (format.Encoding == AudioEncodingTypeEnum.MPEG)
                 {
                     var inputStream = new MemoryStream(audioData);
-                    var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
+                    var builder = new Mp3FileReaderBase.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
                     var rawProvider = new Mp3FileReaderBase(inputStream, builder);
                     return rawProvider.TotalTime;
                 }
@@ -188,7 +191,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
         #region Private Helper Methods
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte[] MixPcm32AudioData(ReadOnlySpan<byte> speechData, float speechVolume, ReadOnlySpan<byte> backgroundData, float backgroundVolume)
+        public static byte[] MixPcm32AudioData(ReadOnlySpan<byte> speechData, float speechVolume, ReadOnlySpan<byte> backgroundData, float backgroundVolume)
         {
             int speechSampleCount = speechData.Length >> 2; // Divide by 4 (faster than / 4)
             int backgroundSampleCount = backgroundData.Length >> 2;
@@ -353,7 +356,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
 
                 case AudioEncodingTypeEnum.MPEG:
                     var inputStream = new MemoryStream(sourceAudio);
-                    var builder = new Mp3FileReader.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
+                    var builder = new Mp3FileReaderBase.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
                     rawProvider = new Mp3FileReaderBase(inputStream, builder);
                     break;
 
@@ -381,11 +384,11 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
             // Input is guaranteed to be 32-bit float PCM.
             if (pcm32FloatProvider.WaveFormat.SampleRate == targetFormat.RequestedSampleRateHz && pcm32FloatProvider.WaveFormat.BitsPerSample == 32)
             {
-                return pcm32FloatProvider; // No resampling needed.
+                return pcm32FloatProvider;
             }
 
             var sampleProvider = pcm32FloatProvider.ToSampleProvider();
-            // WdlResamplingSampleProvider is a high-quality resampler included with NAudio.
+
             var resampler = new WdlResamplingSampleProvider(sampleProvider, targetFormat.RequestedSampleRateHz);
             return resampler.ToWaveProvider();
         }

@@ -107,6 +107,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
             _recognizer.Canceled += OnCanceled;
             _recognizer.SessionStarted += OnSessionStarted;
             _recognizer.SessionStopped += OnSessionStopped;
+            _recognizer.SpeechEndDetected += OnSpeechEndDetected;
         }
 
         public void StartTranscription()
@@ -147,6 +148,11 @@ namespace IqraInfrastructure.Managers.STT.Providers
                 // todo logger
                 Console.WriteLine($"No speech could be recognized.");
             }
+            else
+            {
+                // todo logger
+                Console.WriteLine($"Error details:");
+            }
         }
 
         private void OnCanceled(object? sender, SpeechRecognitionCanceledEventArgs e)
@@ -173,6 +179,12 @@ namespace IqraInfrastructure.Managers.STT.Providers
         {
             // todo logger
             Console.WriteLine($"Session stopped. Session ID: {e.SessionId}");
+        }
+
+        private void OnSpeechEndDetected(object? sender, RecognitionEventArgs e)
+        {
+            // todo logger
+            Console.WriteLine($"Speech end detected.");
         }
 
         public string GetProviderFullName()

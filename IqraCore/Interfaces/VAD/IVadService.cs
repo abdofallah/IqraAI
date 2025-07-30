@@ -1,16 +1,21 @@
-﻿namespace IqraCore.Interfaces.VAD
+﻿using IqraCore.Entities.Helper.Audio;
+
+namespace IqraCore.Interfaces.VAD
 {
     public interface IVadService : IDisposable
     {
         event EventHandler<VadEventArgs> VoiceActivityChanged; // Single event is often simpler
-        void Initialize(string modelPath, VadOptions options);
-        void ProcessAudio(ReadOnlyMemory<byte> pcm16AudioChunk);
+        void Initialize(VadOptions options);
+        void ProcessAudio(byte[] audioChunk);
         void Reset();
     }
 
     public class VadOptions
     {
-        public int SampleRate { get; set; } = 16000; // Default to 16kHz
+        public AudioEncodingTypeEnum AudioEncodingType { get; set; }
+        public int SampleRate { get; set; }
+        public int BitsPerSample { get; set; }
+
         public float Threshold { get; set; } = 0.5f; // Speech probability threshold
         public int MinSilenceDurationMs { get; set; } = 300; // Min duration of silence to confirm end of speech
         public int MinSpeechDurationMs { get; set; } = 50; // Min duration of speech to confirm start

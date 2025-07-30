@@ -5,6 +5,7 @@ using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.ElevenLabs;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
+using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using System.Collections.ObjectModel;
 

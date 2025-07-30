@@ -67,7 +67,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         try
                         {
-                            _agentState.VadService.ProcessAudio(audioData.AsMemory());
+                            _agentState.VadService.ProcessAudio(audioData);
                         }
                         catch (Exception ex)
                         {

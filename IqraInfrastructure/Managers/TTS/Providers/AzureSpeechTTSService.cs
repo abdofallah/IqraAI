@@ -4,6 +4,7 @@ using IqraCore.Entities.TTS;
 using IqraCore.Entities.TTS.Providers.AzureSpeech;
 using IqraCore.Interfaces.AI;
 using IqraCore.Interfaces.TTS;
+using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.TTS.Helpers;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
