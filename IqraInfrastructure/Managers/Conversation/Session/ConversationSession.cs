@@ -361,6 +361,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 JoinedAt = DateTime.UtcNow,
                 AudioInfo = new ConversationMemberAudioInfo()
                 { 
+                    AudioEncodingType = clientConfig.AudioEncodingType,
                     SampleRate = clientConfig.SampleRate,
                     Channels = clientConfig.Channels,
                     BitsPerSample = clientConfig.BitsPerSample,
@@ -490,6 +491,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 JoinedAt = DateTime.UtcNow,
                 AudioInfo = new ConversationMemberAudioInfo()
                 {
+                    AudioEncodingType = agent.AgentConfiguration.AudioEncodingType,
                     SampleRate = agent.AgentConfiguration.SampleRate,
                     Channels = agent.AgentConfiguration.Channels,
                     BitsPerSample = agent.AgentConfiguration.BitsPerSample,

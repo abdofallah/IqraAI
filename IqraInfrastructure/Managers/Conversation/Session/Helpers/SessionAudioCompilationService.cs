@@ -1,7 +1,11 @@
 ﻿using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Enum;
+using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.TTS;
+using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
@@ -59,7 +63,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                         string? compiledRef = await CompileAudioForParticipantAsync(
                             sessionId,
                             pariticipantInfo,
-                            pariticipantInfo.type.ToLower().Contains("modemtel")
+                            (pariticipantInfo.type.ToLower().Contains("modemtel") || pariticipantInfo.type.ToLower().Contains("twilio"))
                         );
 
                         if (!string.IsNullOrEmpty(compiledRef))
@@ -140,7 +144,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
 
                     if (!ignoreSilence)
                     {
-                        var silenceBytes = GenerateSilence(gapDuration, participant.AudioInfo.SampleRate, bytesPerSecond, bytesPerSample);
+                        var silenceBytes = GenerateSilence(gapDuration, participant.AudioInfo.AudioEncodingType, participant.AudioInfo.SampleRate, bytesPerSecond, bytesPerSample);
                         if (silenceBytes.Length > 0) await compiledAudioStream.WriteAsync(silenceBytes, 0, silenceBytes.Length);
                     }
 
@@ -167,18 +171,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                 }
 
                 compiledAudioStream.Position = 0;
-                byte[] pcmData = compiledAudioStream.ToArray();
 
-                byte[] wavHeader = GenerateWavHeader(
-                    participant.AudioInfo.SampleRate,
-                    (short)participant.AudioInfo.BitsPerSample,
-                    (short)participant.AudioInfo.Channels,
-                    pcmData.Length
+                var convertedAudio = AudioConversationHelper.Convert(
+                    compiledAudioStream.ToArray(),
+                    new TTSProviderAvailableAudioFormat()
+                    {
+                        Encoding = participant.AudioInfo.AudioEncodingType,
+                        SampleRateHz = participant.AudioInfo.SampleRate,
+                        BitsPerSample = participant.AudioInfo.BitsPerSample
+                    },
+                    new AudioRequestDetails()
+                    {
+                        RequestedEncoding = AudioEncodingTypeEnum.WAV,
+                        RequestedSampleRateHz = participant.AudioInfo.SampleRate,
+                        RequestedBitsPerSample = participant.AudioInfo.BitsPerSample
+                    },
+                    false
                 );
-
-                byte[] wavData = new byte[wavHeader.Length + pcmData.Length];
-                Buffer.BlockCopy(wavHeader, 0, wavData, 0, wavHeader.Length);
-                Buffer.BlockCopy(pcmData, 0, wavData, wavHeader.Length, pcmData.Length);
 
                 // Store compiled audio
                 string compiledAudioReference = $"{sessionId}/compiled/{participant.id}.wav";
@@ -192,12 +201,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     { "Format", "wav" }
                 };
 
-                bool storedSuccessfully = await _audioRepository.StoreAudioAsync(compiledAudioReference, wavData, compiledMetadata);
+                bool storedSuccessfully = await _audioRepository.StoreAudioAsync(compiledAudioReference, convertedAudio.audioData, compiledMetadata);
 
                 if (storedSuccessfully)
                 {
-                    // TODO ENABLE BACK
-                    //await DeleteOriginalChunksAsync(chunkInfos.Select(ci => ci.Reference).ToList(), participant.id, sessionId);
+                    await DeleteOriginalChunksAsync(chunkInfos.Select(ci => ci.Reference).ToList(), participant.id, sessionId);
 
                     isSuccess = true;
                     return compiledAudioReference;
@@ -223,12 +231,60 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
             
         }
 
-        private byte[] GenerateSilence(TimeSpan duration, int sampleRate, int bytesPerSecond, int BytesPerSample)
+        private static byte[] g729SilenceFrame = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        private byte[] GenerateSilence(TimeSpan duration, AudioEncodingTypeEnum audioEncodingType, int sampleRate, int bytesPerSecond, int BytesPerSample)
         {
             if (duration <= TimeSpan.Zero) return Array.Empty<byte>();
+
             long numBytes = (long)(duration.TotalSeconds * bytesPerSecond);
-            if (numBytes % BytesPerSample != 0) numBytes += BytesPerSample - numBytes % BytesPerSample;
-            return numBytes > 0 ? new byte[numBytes] : Array.Empty<byte>();
+            if (numBytes % BytesPerSample != 0)
+                numBytes += BytesPerSample - numBytes % BytesPerSample;
+
+            if (numBytes <= 0) return Array.Empty<byte>();
+
+            byte[] silenceBuffer = new byte[numBytes];
+
+            switch (audioEncodingType)
+            {
+                case AudioEncodingTypeEnum.PCM:
+                case AudioEncodingTypeEnum.WAV:
+                case AudioEncodingTypeEnum.G722:
+                    // PCM and WAV and G.722 use 0x00 for silence (default initialization)
+                    break;
+
+                case AudioEncodingTypeEnum.MULAW:
+                    // μ-law silence is 0xFF
+                    Array.Fill(silenceBuffer, (byte)0xFF);
+                    break;
+
+                case AudioEncodingTypeEnum.ALAW:
+                    // A-law silence is 0xD5 (213 in decimal)
+                    Array.Fill(silenceBuffer, (byte)0xD5);
+                    break;             
+
+                case AudioEncodingTypeEnum.G729:
+                    {
+                        for (int i = 0; i < numBytes; i += g729SilenceFrame.Length)
+                        {
+                            int copyLength = Math.Min(g729SilenceFrame.Length, (int)(numBytes - i));
+                            Array.Copy(g729SilenceFrame, 0, silenceBuffer, i, copyLength);
+                        }
+
+                        break;
+                    }
+
+                case AudioEncodingTypeEnum.OPUS:
+                    // OPUS uses packets - this is complex and typically handled by codec
+                    // For basic implementation, we'll use empty frames (all zeros)
+                    // Note: Proper OPUS silence should use DTX (Discontinuous Transmission)
+                case AudioEncodingTypeEnum.MPEG:
+                    // MPEG silence depends on the specific format (MP3, AAC, etc.)
+                    // Basic approach: all zeros, but proper implementation needs frame headers
+                default:
+                    throw new ArgumentException($"Unsupported audio encoding type: {audioEncodingType}");
+            }
+
+            return silenceBuffer;
         }
 
         private async Task DeleteOriginalChunksAsync(
@@ -257,34 +313,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     Interlocked.Increment(ref failCount);
                 }
             });
-        }
-
-        private byte[] GenerateWavHeader(int sampleRate, short bitsPerSample, short channels, int pcmDataLength)
-        {
-            using (var ms = new MemoryStream())
-            using (var writer = new BinaryWriter(ms, Encoding.UTF8)) // Encoding doesn't matter much for non-char writes
-            {
-                // RIFF Chunk
-                writer.Write(Encoding.ASCII.GetBytes("RIFF"));
-                writer.Write(36 + pcmDataLength); // ChunkSize: 4 (WAVE) + 24 (fmt chunk) + 8 (data chunk header) + pcmDataLength
-                writer.Write(Encoding.ASCII.GetBytes("WAVE"));
-
-                // fmt Sub-Chunk
-                writer.Write(Encoding.ASCII.GetBytes("fmt "));
-                writer.Write(16); // Subchunk1Size: 16 for PCM
-                writer.Write((short)1); // AudioFormat: 1 for PCM (Linear Quantization)
-                writer.Write(channels);
-                writer.Write(sampleRate);
-                writer.Write(sampleRate * channels * (bitsPerSample / 8)); // ByteRate: SampleRate * NumChannels * BitsPerSample/8
-                writer.Write((short)(channels * (bitsPerSample / 8))); // BlockAlign: NumChannels * BitsPerSample/8
-                writer.Write(bitsPerSample);
-
-                // data Sub-Chunk
-                writer.Write(Encoding.ASCII.GetBytes("data"));
-                writer.Write(pcmDataLength); // Subchunk2Size: Size of the actual sound data
-
-                return ms.ToArray();
-            }
         }
     }
 }
