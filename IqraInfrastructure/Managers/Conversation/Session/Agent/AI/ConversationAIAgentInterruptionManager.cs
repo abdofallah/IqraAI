@@ -4,12 +4,12 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Text;
-using IqraInfrastructure.Managers.VAD;
 using IqraInfrastructure.Managers.Business;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Business;
 using System.Diagnostics;
+using IqraInfrastructure.Managers.VAD.Silero;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI

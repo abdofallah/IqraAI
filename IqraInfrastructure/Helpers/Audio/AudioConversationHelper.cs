@@ -379,7 +379,7 @@ namespace IqraInfrastructure.Helpers.Audio
             }
         }
 
-        private static ISampleProvider CreateResampler(IWaveProvider pcm32FloatProvider, AudioRequestDetails targetFormat)
+        public static ISampleProvider CreateResampler(IWaveProvider pcm32FloatProvider, AudioRequestDetails targetFormat)
         {
             // Input is guaranteed to be 32-bit float PCM.
             if (pcm32FloatProvider.WaveFormat.SampleRate == targetFormat.RequestedSampleRateHz && pcm32FloatProvider.WaveFormat.BitsPerSample == 32)
@@ -619,6 +619,11 @@ namespace IqraInfrastructure.Helpers.Audio
 
             // Use a buffer for efficiency
             _sourceBuffer = new float[sourceProvider.WaveFormat.SampleRate];
+        }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            return _sourceProvider.Read(buffer, offset, count);
         }
 
         public int Read(byte[] buffer, int offset, int count)
