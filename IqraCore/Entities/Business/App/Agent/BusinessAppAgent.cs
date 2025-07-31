@@ -9,6 +9,7 @@
         public BusinessAppAgentUtterances Utterances { get; set; } = new BusinessAppAgentUtterances();
         public List<BusinessAppAgentScript> Scripts { get; set; } = new List<BusinessAppAgentScript>(); 
         public BusinessAppAgentIntegrations Integrations { get; set; } = new BusinessAppAgentIntegrations();
+        public BusinessAppAgentVoicemail Voicemail { get; set; } = new BusinessAppAgentVoicemail();
         public BusinessAppAgentCache Cache { get; set; } = new BusinessAppAgentCache();
         public BusinessAppAgentSettings Settings { get; set; } = new BusinessAppAgentSettings();
     }

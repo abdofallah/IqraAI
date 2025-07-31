@@ -77,6 +77,9 @@
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="agents-manager-cache-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache" type="button" role="tab" aria-controls="agents-manager-cache" aria-selected="true">Cache</button>
                 </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="agents-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-voicemail" type="button" role="tab" aria-controls="agents-manager-voicemail" aria-selected="true">Voicemail</button>
+                </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="agents-manager-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-settings" type="button" role="tab" aria-controls="agents-manager-settings" aria-selected="true">Settings</button>
                 </li>
@@ -486,7 +489,202 @@
                         </div>
                     </div>
                 </div>
+                <!-- Voicemail -->
+                <div class="tab-pane fade w-100" id="agents-manager-voicemail" role="tabpanel" aria-labelledby="agents-manager-voicemail-tab" tabindex="0">
+                    <!-- Voicemail Detection Settings -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h6 class="mb-0">Voicemail Detection</h6>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="voicemailIsEnabled">
+                                    <label class="form-check-label" for="voicemailIsEnabled">Enable</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body" id="voicemailSettingsContainer" style="opacity: 0.5; pointer-events: none;">
 
+                            <!-- Detection Timing & Method -->
+                            <div class="mb-4">
+                                <p class="fw-bold mb-2">Detection Timing & Method</p>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="voicemailInitialCheckDelayMS" class="form-label">
+                                            <span>Initial Check Delay (ms)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The time to wait in milliseconds after the call connects before starting the first voicemail check.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="voicemailInitialCheckDelayMS" value="1000" min="0">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="voicemailMLCheckDurationMS" class="form-label">
+                                            <span>ML Check Duration (ms)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The duration of audio (1000-4000ms) to analyze with the machine learning model.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="range" class="form-range" id="voicemailMLCheckDurationMS" min="1000" max="4000" step="100" value="1000">
+                                        <div class="text-center small"><span id="voicemailMLCheckDurationMSValue">1000</span> ms</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="voicemailMaxMLCheckTries" class="form-label">
+                                            <span>Max ML Check Tries</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How many times to run the ML check. The results are averaged for a more accurate detection.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="voicemailMaxMLCheckTries" value="2" min="1">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="voicemailVADSilenceThresholdMS" class="form-label">
+                                            <span>VAD Silence Threshold (ms)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The amount of silence (in ms) to wait for after a voicemail message is spoken before considering it complete.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="voicemailVADSilenceThresholdMS" value="1000" min="0">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="voicemailVADMaxSpeechDurationMS" class="form-label">
+                                            <span>VAD Max Speech Duration (ms)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="The maximum duration (in ms) to monitor for speech to prevent issues with looping voicemail messages.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="voicemailVADMaxSpeechDurationMS" value="4000" min="0">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Advanced Verification -->
+                            <div class="mb-4">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="voicemailEnableAdvancedVerification">
+                                    <label class="form-check-label" for="voicemailEnableAdvancedVerification">
+                                        <span>Enable Advanced Verification</span>
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Further verify the voicemail by transcribing the audio and checking the content with an LLM.">
+                                            <i class="fa-regular fa-circle-question"></i>
+                                        </a>
+                                    </label>
+                                </div>
+                                <div id="voicemailAdvancedVerificationContainer" class="d-none">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">STT for Transcription</label>
+                                            <div id="voicemailSTTIntegrationContainer">
+                                                <!-- Voicemail STT Integration Manager will render here -->
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">LLM for Verification</label>
+                                            <div id="voicemailLLMIntegrationContainer">
+                                                <!-- Voicemail LLM Integration Manager will render here -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Triggers -->
+                            <div class="row mb-4">
+                                <!-- Stop Speaking Trigger -->
+                                <div class="col-md-6">
+                                    <p class="fw-bold mb-2">Stop Agent Speaking Trigger</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnML" value="ml">
+                                                <label class="form-check-label" for="stopAgentOnML">After ML Check Success</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnVAD" value="vad">
+                                                <label class="form-check-label" for="stopAgentOnVAD">After VAD Silence</label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnLLM" value="llm">
+                                                <label class="form-check-label" for="stopAgentOnLLM">After LLM Confirmation</label>
+                                            </div>
+                                            <label for="voicemailStopSpeakingDelay" class="form-label">
+                                                <span>Delay Action (ms)</span>
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after the trigger condition is met before stopping the agent from speaking.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <input type="number" class="form-control" id="voicemailStopSpeakingDelay" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- End/Leave Message Trigger -->
+                                <div class="col-md-6">
+                                    <p class="fw-bold mb-2">End Call / Leave Message Trigger</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnML" value="ml">
+                                                <label class="form-check-label" for="endLeaveOnML">After ML Check Success</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnVAD" value="vad">
+                                                <label class="form-check-label" for="endLeaveOnVAD">After VAD Silence</label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnLLM" value="llm">
+                                                <label class="form-check-label" for="endLeaveOnLLM">After LLM Confirmation</label>
+                                            </div>
+                                            <label for="voicemailEndLeaveDelay" class="form-label">
+                                                <span>Delay Action (ms)</span>
+                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after the trigger condition is met before ending the call or leaving a message.">
+                                                    <i class="fa-regular fa-circle-question"></i>
+                                                </a>
+                                            </label>
+                                            <input type="number" class="form-control" id="voicemailEndLeaveDelay" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Final Action -->
+                            <div>
+                                <p class="fw-bold mb-2">Final Action on Detect</p>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="finalAction" id="voicemailEndCall" value="end" checked>
+                                    <label class="form-check-label" for="voicemailEndCall">
+                                        End Call
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="finalAction" id="voicemailLeaveMessage" value="leave">
+                                    <label class="form-check-label" for="voicemailLeaveMessage">
+                                        Leave a Message
+                                    </label>
+                                </div>
+
+                                <div class="mt-3 d-none" id="voicemailLeaveMessageContainer">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="voicemailMessageToLeave">
+                                            <span>Message to Leave</span> <i class="fa-regular fa-language"></i>
+                                        </label>
+                                        <textarea class="form-control" id="voicemailMessageToLeave" rows="3" placeholder="Enter the message the agent will leave on the voicemail."></textarea>
+                                    </div>
+                                    <div>
+                                        <label for="voicemailWaitAfterMessage" class="form-label">
+                                            <span>Wait Before End (ms)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after the message is left before ending the call.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="voicemailWaitAfterMessage" value="1000" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Settings -->
                 <div class="tab-pane fade w-100" id="agents-manager-settings" role="tabpanel" aria-labelledby="agents-manager-settings-tab" tabindex="0">
                     <div class="mb-3">

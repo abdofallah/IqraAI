@@ -5,6 +5,7 @@ using IqraInfrastructure.Helpers.Audio;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace IqraInfrastructure.Managers.VAD.Silero
 {
@@ -201,6 +202,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         {
             _cancellationTokenSource.Cancel();
             if (_loopTask != null) _loopTask.Wait();
+            _cancellationTokenSource.Dispose();
             _buffer.Clear();
             SileroVadOnnxModel.Dispose();
 

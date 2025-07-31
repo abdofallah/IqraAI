@@ -52,6 +52,8 @@ let IsSavingAgentTab = false;
 let agentSTTIntegrationManager = null;
 let agentLLMIntegrationManager = null;
 let agentTTSIntegrationManager = null;
+let voicemailSTTIntegrationManager = null;
+let voicemailLLMIntegrationManager = null;
 
 // Cache related states
 let CurrentAgentCacheMessages = [];
@@ -68,6 +70,8 @@ let CurrentAgentPersonalityEthicsMultiLangData = {};
 let CurrentAgentPersonalityToneMultiLangData = {};
 
 let CurrentAgentUtterancesGreetingMessageMultiLangData = {};
+
+let CurrentAgentVoicemailMessageToLeaveMultiLangData = {};
 
 // Script
 let ManageCurrentScriptData = null;
@@ -171,6 +175,31 @@ const agentCacheSettingsAutoCacheAudioCheckbox = agentCacheTab.find("#agentCache
 const agentCacheSettingsAutoCacheAudioBox = agentCacheTab.find("#agentCacheSettingsAutoCacheAudioBox");
 const agentAutoCacheAudioGroupSelect = agentCacheTab.find("#agentAutoCacheAudioGroupSelect");
 const agentAutoCacheExpiryInput = agentCacheTab.find("#agentAutoCacheExpiryInput");
+
+// SUB | Voicemail Tab
+const agentVoicemailTab = agentTab.find("#agents-manager-voicemail");
+const voicemailIsEnabled = agentVoicemailTab.find("#voicemailIsEnabled");
+const voicemailSettingsContainer = agentVoicemailTab.find("#voicemailSettingsContainer");
+const voicemailInitialCheckDelayMS = agentVoicemailTab.find("#voicemailInitialCheckDelayMS");
+const voicemailMLCheckDurationMS = agentVoicemailTab.find("#voicemailMLCheckDurationMS");
+const voicemailMLCheckDurationMSValue = agentVoicemailTab.find("#voicemailMLCheckDurationMSValue");
+const voicemailMaxMLCheckTries = agentVoicemailTab.find("#voicemailMaxMLCheckTries");
+const voicemailVADSilenceThresholdMS = agentVoicemailTab.find("#voicemailVADSilenceThresholdMS");
+const voicemailVADMaxSpeechDurationMS = agentVoicemailTab.find("#voicemailVADMaxSpeechDurationMS");
+
+const voicemailEnableAdvancedVerification = agentVoicemailTab.find("#voicemailEnableAdvancedVerification");
+const voicemailAdvancedVerificationContainer = agentVoicemailTab.find("#voicemailAdvancedVerificationContainer");
+
+const stopSpeakingTriggerRadios = agentVoicemailTab.find('input[name="stopSpeakingTrigger"]');
+const voicemailStopSpeakingDelay = agentVoicemailTab.find("#voicemailStopSpeakingDelay");
+
+const endLeaveTriggerRadios = agentVoicemailTab.find('input[name="endLeaveTrigger"]');
+const voicemailEndLeaveDelay = agentVoicemailTab.find("#voicemailEndLeaveDelay");
+
+const finalActionRadios = agentVoicemailTab.find('input[name="finalAction"]');
+const voicemailLeaveMessageContainer = agentVoicemailTab.find("#voicemailLeaveMessageContainer");
+const voicemailMessageToLeave = agentVoicemailTab.find("#voicemailMessageToLeave");
+const voicemailWaitAfterMessage = agentVoicemailTab.find("#voicemailWaitAfterMessage");
 
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
@@ -322,6 +351,13 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
+	// Check Voicemail tab changes
+	const voicemailChanges = CheckAgentVoicemailTabChanges(false);
+	changes.voicemail = voicemailChanges.changes;
+	if (voicemailChanges.hasChanges) {
+		hasChanges = true;
+	}
+
 	// Check Settings tab changes
 	const settingsChanges = CheckAgentSettingsTabChanges(false);
 	changes.settings = settingsChanges.changes;
@@ -410,6 +446,29 @@ function createDefaultAgentObject() {
 				autoCacheAudioResponsesDefaultExpiryHours: null
 			}
 		},
+		voicemail: {
+			isEnabled: false,
+			initialCheckDelayMS: 1000,
+			mlCheckDurationMS: 1000,
+			maxMLCheckTries: 2,
+			voiceMailMessageVADSilenceThresholdMS: 1000,
+			voiceMailMessageVADMaxSpeechDurationMS: 4000,
+			onVoiceMailMessageDetectVerifySTTAndLLM: false,
+			transcribeVoiceMessageSTT: null,
+			verifyVoiceMessageLLM: null,
+			stopSpeakingAgentAfterXMlCheckSuccess: true,
+			stopSpeakingAgentAfterVadSilence: false,
+			stopSpeakingAgentAfterLLMConfirm: false,
+			stopSpeakingAgentDelayAfterMatchMS: 1000,
+			endOrLeaveMessageAfterXMLCheckSuccess: true,
+			endOrLeaveMessageAfterVadSilence: false,
+			endOrLeaveMessageAfterLLMConfirm: false,
+			endOrLeaveMessageDelayAfterMatchMS: 1000,
+			endCallOnDetect: true,
+			leaveMessageOnDetect: false,
+			messageToLeave: {},
+			waitXMSAfterLeavingMessageToEndCall: 1000
+		},
 		settings: {
 			backgroundAudioUrl: null,
 			backgroundAudioVolume: 100,
@@ -436,6 +495,9 @@ function createDefaultAgentObject() {
 		agent.integrations.stt[language] = [];
 		agent.integrations.llm[language] = [];
 		agent.integrations.tts[language] = [];
+
+		// Voicemail
+		agent.voicemail.messageToLeave[language] = "";
 	});
 
 	return agent;
@@ -552,6 +614,12 @@ function ResetAndEmptyAgentsManageTab() {
 	CurrentAgentCacheMessages = [];
 	CurrentAgentCacheAudios = [];
 
+	// Voicemail Tab
+	CurrentAgentVoicemailMessageToLeaveMultiLangData = {};
+	if (voicemailSTTIntegrationManager) voicemailSTTIntegrationManager.reset();
+	if (voicemailLLMIntegrationManager) voicemailLLMIntegrationManager.reset();
+
+	// Reset languages
 	BusinessFullData.businessData.languages.forEach((language) => {
 		// General Tab
 		CurrentAgentGeneralNameMultiLangData[language] = "";
@@ -566,6 +634,9 @@ function ResetAndEmptyAgentsManageTab() {
 
 		// Utterances Tab
 		CurrentAgentUtterancesGreetingMessageMultiLangData[language] = "";
+
+		// Voicemail Tab
+		CurrentAgentVoicemailMessageToLeaveMultiLangData[language] = "";
 
 		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
@@ -671,6 +742,12 @@ function ValidateAgentTab(onlyRemove = true) {
 		errors.push(...isCacheTabValid.errors);
 	}
 
+	const isVoicemailTabValid = validateAgentVoicemailTab(onlyRemove);
+	if (!isVoicemailTabValid.isValid) {
+		isValid = false;
+		errors.push(...isVoicemailTabValid.errors);
+	}
+
 	const isSettingsTabValid = validateAgentSettingsTab(onlyRemove);
 	if (!isSettingsTabValid.isValid) {
 		isValid = false;
@@ -722,6 +799,7 @@ function FillAgentsManagerTab() {
 	fillAgentScriptsListTab();
 	fillIntegrationsFromAgentData();
 	fillAgentCacheTab();
+	fillAgentVoicemailTab();
 	fillAgentSettingsTab();
 }
 
@@ -1337,6 +1415,166 @@ function validateAgentCacheTab(onlyRemove = true) {
 		isValid,
 		errors,
 	};
+}
+
+// Voicemail Tab Functions
+function CheckAgentVoicemailTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+	const originalData = CurrentManageAgentData.voicemail;
+
+	// Get all current values from the UI
+	changes.isEnabled = voicemailIsEnabled.is(":checked");
+	changes.initialCheckDelayMS = parseInt(voicemailInitialCheckDelayMS.val(), 10);
+	changes.mlCheckDurationMS = parseInt(voicemailMLCheckDurationMS.val(), 10);
+	changes.maxMLCheckTries = parseInt(voicemailMaxMLCheckTries.val(), 10);
+	changes.voiceMailMessageVADSilenceThresholdMS = parseInt(voicemailVADSilenceThresholdMS.val(), 10);
+	changes.voiceMailMessageVADMaxSpeechDurationMS = parseInt(voicemailVADMaxSpeechDurationMS.val(), 10);
+
+	changes.onVoiceMailMessageDetectVerifySTTAndLLM = voicemailEnableAdvancedVerification.is(":checked");
+	changes.transcribeVoiceMessageSTT = voicemailSTTIntegrationManager.getData();
+	changes.verifyVoiceMessageLLM = voicemailLLMIntegrationManager.getData();
+
+
+	const stopTrigger = stopSpeakingTriggerRadios.filter(":checked").val();
+	changes.stopSpeakingAgentAfterXMlCheckSuccess = stopTrigger === 'ml';
+	changes.stopSpeakingAgentAfterVadSilence = stopTrigger === 'vad';
+	changes.stopSpeakingAgentAfterLLMConfirm = stopTrigger === 'llm';
+	changes.stopSpeakingAgentDelayAfterMatchMS = parseInt(voicemailStopSpeakingDelay.val(), 10);
+
+	const endLeaveTrigger = endLeaveTriggerRadios.filter(":checked").val();
+	changes.endOrLeaveMessageAfterXMLCheckSuccess = endLeaveTrigger === 'ml';
+	changes.endOrLeaveMessageAfterVadSilence = endLeaveTrigger === 'vad';
+	changes.endOrLeaveMessageAfterLLMConfirm = endLeaveTrigger === 'llm';
+	changes.endOrLeaveMessageDelayAfterMatchMS = parseInt(voicemailEndLeaveDelay.val(), 10);
+
+	const finalAction = finalActionRadios.filter(":checked").val();
+	changes.endCallOnDetect = finalAction === 'end';
+	changes.leaveMessageOnDetect = finalAction === 'leave';
+	changes.waitXMSAfterLeavingMessageToEndCall = parseInt(voicemailWaitAfterMessage.val(), 10);
+
+	changes.messageToLeave = CurrentAgentVoicemailMessageToLeaveMultiLangData;
+
+	// Compare with original data
+	if (JSON.stringify(changes) !== JSON.stringify(originalData)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
+	}
+
+	return { hasChanges, changes };
+}
+
+function fillAgentVoicemailTab() {
+	const data = CurrentManageAgentData.voicemail;
+	const currentLanguage = manageAgentsLanguageDropdown.getSelectedLanguage().id;
+
+	// Reset UI state before filling
+	voicemailIsEnabled.prop('checked', data.isEnabled).trigger('change');
+	voicemailInitialCheckDelayMS.val(data.initialCheckDelayMS);
+	voicemailMLCheckDurationMS.val(data.mlCheckDurationMS).trigger('input');
+	voicemailMaxMLCheckTries.val(data.maxMLCheckTries);
+	voicemailVADSilenceThresholdMS.val(data.voiceMailMessageVADSilenceThresholdMS);
+	voicemailVADMaxSpeechDurationMS.val(data.voiceMailMessageVADMaxSpeechDurationMS);
+
+	// Advanced Verification
+	voicemailEnableAdvancedVerification.prop('checked', data.onVoiceMailMessageDetectVerifySTTAndLLM).trigger('change');
+
+	// Populate STT/LLM dropdowns
+	voicemailSTTIntegrationManager.load(data.transcribeVoiceMessageSTT);
+	voicemailLLMIntegrationManager.load(data.verifyVoiceMessageLLM);
+
+	// Triggers
+	if (data.stopSpeakingAgentAfterXMlCheckSuccess) stopSpeakingTriggerRadios.filter('[value="ml"]').prop('checked', true);
+	else if (data.stopSpeakingAgentAfterVadSilence) stopSpeakingTriggerRadios.filter('[value="vad"]').prop('checked', true);
+	else if (data.stopSpeakingAgentAfterLLMConfirm) stopSpeakingTriggerRadios.filter('[value="llm"]').prop('checked', true);
+	voicemailStopSpeakingDelay.val(data.stopSpeakingAgentDelayAfterMatchMS);
+
+	if (data.endOrLeaveMessageAfterXMLCheckSuccess) endLeaveTriggerRadios.filter('[value="ml"]').prop('checked', true);
+	else if (data.endOrLeaveMessageAfterVadSilence) endLeaveTriggerRadios.filter('[value="vad"]').prop('checked', true);
+	else if (data.endOrLeaveMessageAfterLLMConfirm) endLeaveTriggerRadios.filter('[value="llm"]').prop('checked', true);
+	voicemailEndLeaveDelay.val(data.endOrLeaveMessageDelayAfterMatchMS);
+
+	// Final Action
+	if (data.leaveMessageOnDetect) finalActionRadios.filter('[value="leave"]').prop('checked', true).trigger('change');
+	else finalActionRadios.filter('[value="end"]').prop('checked', true).trigger('change');
+	voicemailWaitAfterMessage.val(data.waitXMSAfterLeavingMessageToEndCall);
+
+	// Message to Leave
+	BusinessFullData.businessData.languages.forEach((language) => {
+		CurrentAgentVoicemailMessageToLeaveMultiLangData[language] = data.messageToLeave[language];
+	});
+	voicemailMessageToLeave.val(CurrentAgentVoicemailMessageToLeaveMultiLangData[currentLanguage]);
+}
+
+function validateAgentVoicemailTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+	agentVoicemailTab.find(".is-invalid").removeClass("is-invalid");
+
+	if (!voicemailIsEnabled.is(":checked")) {
+		return { isValid, errors };
+	}
+
+	// Advanced verification validation
+	if (voicemailEnableAdvancedVerification.is(":checked")) {
+		// STT Validation
+		const sttData = voicemailSTTIntegrationManager.getData();
+		const sttSelects = voicemailSTTIntegrationManager.getSelectElements();
+		if (onlyRemove) sttSelects.removeClass('is-invalid');
+
+		if (!sttData || !sttData.id) {
+			isValid = false;
+			errors.push("An STT integration must be selected for advanced verification.");
+			if (!onlyRemove) sttSelects.addClass('is-invalid');
+		} else {
+			const sttValidation = voicemailSTTIntegrationManager.validate();
+			if (!sttValidation.isValid) {
+				isValid = false;
+				errors.push(...sttValidation.errors);
+				if (!onlyRemove) sttSelects.addClass('is-invalid');
+			}
+		}
+
+		// LLM Validation
+		const llmData = voicemailLLMIntegrationManager.getData();
+		const llmSelects = voicemailLLMIntegrationManager.getSelectElements();
+		if (onlyRemove) llmSelects.removeClass('is-invalid');
+
+		if (!llmData || !llmData.id) {
+			isValid = false;
+			errors.push("An LLM integration must be selected for advanced verification.");
+			if (!onlyRemove) llmSelects.addClass('is-invalid');
+		} else {
+			const llmValidation = voicemailLLMIntegrationManager.validate();
+			if (!llmValidation.isValid) {
+				isValid = false;
+				errors.push(...llmValidation.errors);
+				if (!onlyRemove) llmSelects.addClass('is-invalid');
+			}
+		}
+	}
+
+
+	// Leave message validation
+	if (finalActionRadios.filter('[value="leave"]').is(":checked")) {
+		let isMessageEmpty = false;
+		BusinessFullData.businessData.languages.forEach(language => {
+			if (!CurrentAgentVoicemailMessageToLeaveMultiLangData[language] || CurrentAgentVoicemailMessageToLeaveMultiLangData[language].trim() === "") {
+				isMessageEmpty = true;
+				errors.push(`The 'Message to Leave' cannot be empty for language: ${language}.`);
+			}
+		});
+
+		if (isMessageEmpty) {
+			isValid = false;
+			if (!onlyRemove) voicemailMessageToLeave.addClass("is-invalid");
+		}
+	}
+
+	return { isValid, errors };
 }
 
 // Settings Tab Functions
@@ -3928,6 +4166,29 @@ function initAgentTab() {
 			providersData: BusinessTTSProvidersForIntegrations,
 		});
 
+		voicemailSTTIntegrationManager = new IntegrationConfigurationManager('#voicemailSTTIntegrationContainer', {
+			integrationType: 'STT',
+			allowMultiple: false,
+			isLanguageBound: false,
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessSTTProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentVoicemailTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentVoicemailTab(true); },
+		});
+
+		// Voicemail LLM Manager
+		voicemailLLMIntegrationManager = new IntegrationConfigurationManager('#voicemailLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+			isLanguageBound: false,
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentVoicemailTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentVoicemailTab(true); },
+		});
+
 		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
 			event.preventDefault();
@@ -4307,6 +4568,100 @@ function initAgentTab() {
 			});
 		}
 		initAgentCacheTabHandlers();
+
+		// Voicemail Tab Handlers
+		function initAgentVoicemailTabHandlers() {
+			// Helper to disable/enable main container
+			function toggleVoicemailContainer(isEnabled) {
+				if (isEnabled) {
+					voicemailSettingsContainer.css({ opacity: 1, pointerEvents: 'auto' });
+				} else {
+					voicemailSettingsContainer.css({ opacity: 0.5, pointerEvents: 'none' });
+				}
+				voicemailSettingsContainer.find('input, select, textarea').prop('disabled', !isEnabled);
+			}
+
+			function updateLLMTriggerState() {
+				const isAdvancedEnabled = voicemailEnableAdvancedVerification.is(':checked');
+				const llmStopRadio = stopSpeakingTriggerRadios.filter('[value="llm"]');
+				const llmEndLeaveRadio = endLeaveTriggerRadios.filter('[value="llm"]');
+
+				// Disable the radio buttons
+				llmStopRadio.prop('disabled', !isAdvancedEnabled);
+				llmEndLeaveRadio.prop('disabled', !isAdvancedEnabled);
+
+				// Add visual indication to the label for better UX
+				llmStopRadio.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
+				llmEndLeaveRadio.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
+
+				// Edge case: If LLM option was selected, and advanced verification is turned off,
+				// we must move the selection to a valid (enabled) option to avoid confusion.
+				if (!isAdvancedEnabled) {
+					if (llmStopRadio.is(':checked')) {
+						// Reset to the default 'ML' option
+						stopSpeakingTriggerRadios.filter('[value="ml"]').prop('checked', true);
+					}
+					if (llmEndLeaveRadio.is(':checked')) {
+						// Reset to the default 'ML' option
+						endLeaveTriggerRadios.filter('[value="ml"]').prop('checked', true);
+					}
+				}
+			}
+
+
+			// Main Enable Switch
+			voicemailIsEnabled.on('change', function () {
+				toggleVoicemailContainer($(this).is(':checked'));
+				CheckAgentTabHasChanges();
+				validateAgentVoicemailTab(true);
+			});
+
+			// Slider value display
+			voicemailMLCheckDurationMS.on('input', function () {
+				voicemailMLCheckDurationMSValue.text($(this).val());
+			});
+
+			// Advanced verification switch
+			voicemailEnableAdvancedVerification.on('change', function () {
+				voicemailAdvancedVerificationContainer.toggleClass('d-none', !$(this).is(':checked'));
+
+				// Call the new helper function on change
+				updateLLMTriggerState();
+
+				CheckAgentTabHasChanges();
+				validateAgentVoicemailTab(true);
+			});
+
+			// Final action radio buttons
+			finalActionRadios.on('change', function () {
+				voicemailLeaveMessageContainer.toggleClass('d-none', $(this).val() !== 'leave');
+				CheckAgentTabHasChanges();
+				validateAgentVoicemailTab(true);
+			});
+
+			// Handle all other input changes
+			agentVoicemailTab.on('input change', 'input, select, textarea', () => {
+				CheckAgentTabHasChanges();
+				validateAgentVoicemailTab(true);
+			});
+
+			// Handle multi-language for message to leave
+			voicemailMessageToLeave.on("input", (event) => {
+				const currentSelectedLanguage = manageAgentsLanguageDropdown.getSelectedLanguage();
+				CurrentAgentVoicemailMessageToLeaveMultiLangData[currentSelectedLanguage.id] = $(event.currentTarget).val();
+				validateAgentVoicemailTab(true);
+				CheckAgentTabHasChanges();
+			});
+
+			// Update UI on language change
+			manageAgentsLanguageDropdown.onLanguageChange((language) => {
+				if ($("#agents-manager-voicemail-tab").hasClass('active')) {
+					voicemailMessageToLeave.val(CurrentAgentVoicemailMessageToLeaveMultiLangData[language.id] || "");
+					validateAgentVoicemailTab(true);
+				}
+			});
+		}
+		initAgentVoicemailTabHandlers();
 
 		// Settings Tab Changes
 		function initAgentSettingsTabHandlers() {
