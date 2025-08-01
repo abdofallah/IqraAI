@@ -206,7 +206,7 @@ namespace IqraInfrastructure.Managers.Call
             try
             {
                 using var client = _httpClientFactory.CreateClient("OutboundCallForwardClient");
-                client.Timeout = TimeSpan.FromSeconds(10);
+                client.Timeout = TimeSpan.FromSeconds(30);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 if (!string.IsNullOrEmpty(backendServer.APIKey))
                 {

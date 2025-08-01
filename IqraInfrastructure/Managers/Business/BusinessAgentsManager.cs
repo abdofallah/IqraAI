@@ -487,6 +487,273 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
+            // Voicemail Section
+            if (!changesRootElement.TryGetProperty("voicemail", out var voicemailElement))
+            {
+                return result.SetFailureResult(
+                    "AddOrUpdateAgent:VOICEMAIL_SECTION_MISSING",
+                    "Voicemail section not found."
+                );
+            }
+            else
+            {
+                var voicemailData = new BusinessAppAgentVoicemail();
+
+                // IsEnabled
+                if (!voicemailElement.TryGetProperty("isEnabled", out var isEnabledElement) ||
+                    (isEnabledElement.ValueKind != JsonValueKind.True && isEnabledElement.ValueKind != JsonValueKind.False))
+                {
+                    return result.SetFailureResult(
+						"AddOrUpdateAgent:VOICEMAIL_ISENABLED_INVALID",
+                        "Voicemail isEnabled parameter is missing or invalid."
+                    );
+                }
+                voicemailData.IsEnabled = isEnabledElement.GetBoolean();
+
+                if (voicemailData.IsEnabled)
+                {
+                    if (!voicemailElement.TryGetProperty("initialCheckDelayMS", out var initialCheckDelayMSElement)
+                        || initialCheckDelayMSElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_INITIALCHECKDELAY_INVALID",
+                            "Voicemail initialCheckDelayMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.InitialCheckDelayMS = initialCheckDelayMSElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("mlCheckDurationMS", out var mlCheckDurationMSElement)
+                        || mlCheckDurationMSElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_MLCHECKDURATION_INVALID",
+                            "Voicemail mlCheckDurationMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.MLCheckDurationMS = mlCheckDurationMSElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("maxMLCheckTries", out var maxMLCheckTriesElement)
+                        || maxMLCheckTriesElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_MAXMLTRIES_INVALID",
+                            "Voicemail maxMLCheckTries parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.MaxMLCheckTries = maxMLCheckTriesElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("voiceMailMessageVADSilenceThresholdMS", out var vadSilenceThresholdElement)
+                        || vadSilenceThresholdElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_VADSILENCE_INVALID",
+                            "Voicemail voiceMailMessageVADSilenceThresholdMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.VoiceMailMessageVADSilenceThresholdMS = vadSilenceThresholdElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("voiceMailMessageVADMaxSpeechDurationMS", out var vadMaxSpeechDurationElement)
+                        || vadMaxSpeechDurationElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_VADMAXSPEECH_INVALID",
+                            "Voicemail voiceMailMessageVADMaxSpeechDurationMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.VoiceMailMessageVADMaxSpeechDurationMS = vadMaxSpeechDurationElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterXMlCheckSuccess", out var stopOnMlElement) ||
+                        (stopOnMlElement.ValueKind != JsonValueKind.True && stopOnMlElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_STOPONML_INVALID",
+                            "Voicemail stopSpeakingAgentAfterXMlCheckSuccess parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.StopSpeakingAgentAfterXMlCheckSuccess = stopOnMlElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterVadSilence", out var stopOnVadElement)
+                        || (stopOnVadElement.ValueKind != JsonValueKind.True && stopOnVadElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_STOPONVAD_INVALID",
+                            "Voicemail stopSpeakingAgentAfterVadSilence parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.StopSpeakingAgentAfterVadSilence = stopOnVadElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentAfterLLMConfirm", out var stopOnLlmElement)
+                        || (stopOnLlmElement.ValueKind != JsonValueKind.True && stopOnLlmElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_STOPONLLM_INVALID",
+                            "Voicemail stopSpeakingAgentAfterLLMConfirm parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.StopSpeakingAgentAfterLLMConfirm = stopOnLlmElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("stopSpeakingAgentDelayAfterMatchMS", out var stopDelayElement)
+                        || stopDelayElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_STOPDELAY_INVALID",
+                            "Voicemail stopSpeakingAgentDelayAfterMatchMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.StopSpeakingAgentDelayAfterMatchMS = stopDelayElement.GetInt32();
+
+                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterXMLCheckSuccess", out var endOnMlElement)
+                        || (endOnMlElement.ValueKind != JsonValueKind.True && endOnMlElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ENDONML_INVALID",
+                            "Voicemail endOrLeaveMessageAfterXMLCheckSuccess parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.EndOrLeaveMessageAfterXMLCheckSuccess = endOnMlElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterVadSilence", out var endOnVadElement)
+                        || (endOnVadElement.ValueKind != JsonValueKind.True && endOnVadElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ENDONVAD_INVALID",
+                            "Voicemail endOrLeaveMessageAfterVadSilence parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.EndOrLeaveMessageAfterVadSilence = endOnVadElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageAfterLLMConfirm", out var endOnLlmElement)
+                        || (endOnLlmElement.ValueKind != JsonValueKind.True && endOnLlmElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ENDONLLM_INVALID",
+                            "Voicemail endOrLeaveMessageAfterLLMConfirm parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.EndOrLeaveMessageAfterLLMConfirm = endOnLlmElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("endOrLeaveMessageDelayAfterMatchMS", out var endLeaveDelayElement)
+                        || endLeaveDelayElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ENDDELAY_INVALID",
+                            "Voicemail endOrLeaveMessageDelayAfterMatchMS parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.EndOrLeaveMessageDelayAfterMatchMS = endLeaveDelayElement.GetInt32();
+
+                    // Final Action
+                    if (!voicemailElement.TryGetProperty("endCallOnDetect", out var endCallElement)
+                        || (endCallElement.ValueKind != JsonValueKind.True && endCallElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ENDCALL_INVALID",
+                            "Voicemail endCallOnDetect parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.EndCallOnDetect = endCallElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("leaveMessageOnDetect", out var leaveMessageElement)
+                        || (leaveMessageElement.ValueKind != JsonValueKind.True && leaveMessageElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_LEAVEMESSAGE_INVALID",
+                            "Voicemail leaveMessageOnDetect parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.LeaveMessageOnDetect = leaveMessageElement.GetBoolean();
+
+                    if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
+                        || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
+                            "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
+
+                    // --- Advanced Verification and Conditional Logic ---
+                    if (!voicemailElement.TryGetProperty("onVoiceMailMessageDetectVerifySTTAndLLM", out var advancedVerificationElement) ||
+                        (advancedVerificationElement.ValueKind != JsonValueKind.True && advancedVerificationElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_ADVANCEDVERIFICATION_INVALID",
+                            "Voicemail onVoiceMailMessageDetectVerifySTTAndLLM parameter is missing or invalid."
+                        );
+                    }
+                    voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM = advancedVerificationElement.GetBoolean();
+
+                    if ((voicemailData.StopSpeakingAgentAfterLLMConfirm || voicemailData.EndOrLeaveMessageAfterLLMConfirm) && !voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
+                    {
+                        return result.SetFailureResult(
+							"AddOrUpdateAgent:VOICEMAIL_LLMTRIGGER_MISMATCH",
+                            "An LLM Confirmation trigger is enabled, but Advanced Verification is disabled."
+                        );
+                    }
+
+                    if (voicemailData.OnVoiceMailMessageDetectVerifySTTAndLLM)
+                    {
+                        // STT Integration for Voicemail
+                        if (!voicemailElement.TryGetProperty("transcribeVoiceMessageSTT", out var sttIntegrationElement)
+                            || sttIntegrationElement.ValueKind == JsonValueKind.Null)
+                        {
+                            return result.SetFailureResult(
+							    "AddOrUpdateAgent:VOICEMAIL_STT_INTEGRATION_MISSING",
+                                "STT integration for voicemail advanced verification is required but not provided."
+                            );
+                        }
+                        var sttValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, sttIntegrationElement, "STT");
+                        if (!sttValidationResult.Success || sttValidationResult.Data == null)
+                        {
+                            return result.SetFailureResult(
+							    "AddOrUpdateAgent:" + sttValidationResult.Code,
+                                "Voicemail STT Integration failed: " + sttValidationResult.Message);
+                        }
+                        voicemailData.TranscribeVoiceMessageSTT = sttValidationResult.Data;
+
+                        // LLM Integration for Voicemail
+                        if (!voicemailElement.TryGetProperty("verifyVoiceMessageLLM", out var llmIntegrationElement)
+                            || llmIntegrationElement.ValueKind == JsonValueKind.Null)
+                        {
+                            return result.SetFailureResult(
+							    "AddOrUpdateAgent:VOICEMAIL_LLM_INTEGRATION_MISSING",
+                                "LLM integration for voicemail advanced verification is required but not provided."
+                            );
+                        }
+                        var llmValidationResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(businessId, llmIntegrationElement, "LLM");
+                        if (!llmValidationResult.Success || llmValidationResult.Data == null)
+                        {
+                            return result.SetFailureResult(
+							    "AddOrUpdateAgent:" + llmValidationResult.Code,
+                                "Voicemail LLM Integration failed: " + llmValidationResult.Message
+                            );
+                        }
+                        voicemailData.VerifyVoiceMessageLLM = llmValidationResult.Data;
+                    }
+
+                    // Multi-Language Message to Leave
+                    if (voicemailData.LeaveMessageOnDetect)
+                    {
+                        var messageToLeaveValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                            businessLanguages,
+                            voicemailElement,
+                            "messageToLeave",
+                            voicemailData.MessageToLeave
+                        );
+                        if (!messageToLeaveValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+							    "AddOrUpdateAgent:" + messageToLeaveValidationResult.Code,
+                                messageToLeaveValidationResult.Message
+                            );
+                        }
+                    }
+                }
+
+                newAgentData.Voicemail = voicemailData;
+            }
+
             // Settings
             if (!changesRootElement.TryGetProperty("settings", out var settingsTabElement))
             {

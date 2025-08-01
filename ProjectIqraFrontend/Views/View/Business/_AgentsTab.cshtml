@@ -492,8 +492,8 @@
                 <!-- Voicemail -->
                 <div class="tab-pane fade w-100" id="agents-manager-voicemail" role="tabpanel" aria-labelledby="agents-manager-voicemail-tab" tabindex="0">
                     <!-- Voicemail Detection Settings -->
-                    <div class="card mt-4">
-                        <div class="card-header">
+                    <div class="mt-4">
+                        <div class="card card-body mb-4">
                             <div class="d-flex align-items-center justify-content-between">
                                 <h6 class="mb-0">Voicemail Detection</h6>
                                 <div class="form-check form-switch">
@@ -502,10 +502,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body" id="voicemailSettingsContainer" style="opacity: 0.5; pointer-events: none;">
+                        <div id="voicemailSettingsContainer" style="opacity: 0.5; pointer-events: none;">
 
                             <!-- Detection Timing & Method -->
-                            <div class="mb-4">
+                            <div class="card card-body mb-3">
                                 <p class="fw-bold mb-2">Detection Timing & Method</p>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
@@ -562,8 +562,8 @@
                             </div>
 
                             <!-- Advanced Verification -->
-                            <div class="mb-4">
-                                <div class="form-check form-switch mb-3">
+                            <div class="card card-body mb-3">
+                                <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" role="switch" id="voicemailEnableAdvancedVerification">
                                     <label class="form-check-label" for="voicemailEnableAdvancedVerification">
                                         <span>Enable Advanced Verification</span>
@@ -572,15 +572,15 @@
                                         </a>
                                     </label>
                                 </div>
-                                <div id="voicemailAdvancedVerificationContainer" class="d-none">
+                                <div id="voicemailAdvancedVerificationContainer" class="d-none mt-3">
                                     <div class="row">
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-12 col-md-6 mb-3 mb-md-0">
                                             <label class="form-label">STT for Transcription</label>
                                             <div id="voicemailSTTIntegrationContainer">
                                                 <!-- Voicemail STT Integration Manager will render here -->
                                             </div>
                                         </div>
-                                        <div class="col-md-6 mb-3">
+                                        <div class="col-12 col-md-6 mb-0">
                                             <label class="form-label">LLM for Verification</label>
                                             <div id="voicemailLLMIntegrationContainer">
                                                 <!-- Voicemail LLM Integration Manager will render here -->
@@ -591,65 +591,67 @@
                             </div>
 
                             <!-- Action Triggers -->
-                            <div class="row mb-4">
-                                <!-- Stop Speaking Trigger -->
-                                <div class="col-md-6">
-                                    <p class="fw-bold mb-2">Stop Agent Speaking Trigger</p>
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnML" value="ml">
-                                                <label class="form-check-label" for="stopAgentOnML">After ML Check Success</label>
+                            <div class="card card-body mb-3">
+                                <div class="row">
+                                    <!-- Stop Speaking Trigger -->
+                                    <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                        <p class="fw-bold mb-2">Stop Agent Speaking Triggers</p>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="stopAgentOnML" value="ml">
+                                                    <label class="form-check-label" for="stopAgentOnML">After ML Check Success</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="stopAgentOnVAD" value="vad">
+                                                    <label class="form-check-label" for="stopAgentOnVAD">After VAD Silence</label>
+                                                </div>
+                                                <div class="form-check mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="stopAgentOnLLM" value="llm">
+                                                    <label class="form-check-label" for="stopAgentOnLLM">After LLM Confirmation</label>
+                                                </div>
+                                                <label for="voicemailStopSpeakingDelay" class="form-label">
+                                                    <span>Delay Action (ms)</span>
+                                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after ALL selected trigger conditions are met before stopping the agent from speaking.">
+                                                        <i class="fa-regular fa-circle-question"></i>
+                                                    </a>
+                                                </label>
+                                                <input type="number" class="form-control" id="voicemailStopSpeakingDelay" value="1000" min="0">
                                             </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnVAD" value="vad">
-                                                <label class="form-check-label" for="stopAgentOnVAD">After VAD Silence</label>
-                                            </div>
-                                            <div class="form-check mb-3">
-                                                <input class="form-check-input" type="radio" name="stopSpeakingTrigger" id="stopAgentOnLLM" value="llm">
-                                                <label class="form-check-label" for="stopAgentOnLLM">After LLM Confirmation</label>
-                                            </div>
-                                            <label for="voicemailStopSpeakingDelay" class="form-label">
-                                                <span>Delay Action (ms)</span>
-                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after the trigger condition is met before stopping the agent from speaking.">
-                                                    <i class="fa-regular fa-circle-question"></i>
-                                                </a>
-                                            </label>
-                                            <input type="number" class="form-control" id="voicemailStopSpeakingDelay" value="1000" min="0">
                                         </div>
                                     </div>
-                                </div>
-                                <!-- End/Leave Message Trigger -->
-                                <div class="col-md-6">
-                                    <p class="fw-bold mb-2">End Call / Leave Message Trigger</p>
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnML" value="ml">
-                                                <label class="form-check-label" for="endLeaveOnML">After ML Check Success</label>
+                                    <!-- End/Leave Message Trigger -->
+                                    <div class="col-12 col-md-6 mb-0">
+                                        <p class="fw-bold mb-2">End Call / Leave Message Triggers</p>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="endLeaveOnML" value="ml">
+                                                    <label class="form-check-label" for="endLeaveOnML">After ML Check Success</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="endLeaveOnVAD" value="vad">
+                                                    <label class="form-check-label" for="endLeaveOnVAD">After VAD Silence</label>
+                                                </div>
+                                                <div class="form-check mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="endLeaveOnLLM" value="llm">
+                                                    <label class="form-check-label" for="endLeaveOnLLM">After LLM Confirmation</label>
+                                                </div>
+                                                <label for="voicemailEndLeaveDelay" class="form-label">
+                                                    <span>Delay Action (ms)</span>
+                                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after ALL selected trigger conditions are met before ending the call or leaving a message.">
+                                                        <i class="fa-regular fa-circle-question"></i>
+                                                    </a>
+                                                </label>
+                                                <input type="number" class="form-control" id="voicemailEndLeaveDelay" value="1000" min="0">
                                             </div>
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnVAD" value="vad">
-                                                <label class="form-check-label" for="endLeaveOnVAD">After VAD Silence</label>
-                                            </div>
-                                            <div class="form-check mb-3">
-                                                <input class="form-check-input" type="radio" name="endLeaveTrigger" id="endLeaveOnLLM" value="llm">
-                                                <label class="form-check-label" for="endLeaveOnLLM">After LLM Confirmation</label>
-                                            </div>
-                                            <label for="voicemailEndLeaveDelay" class="form-label">
-                                                <span>Delay Action (ms)</span>
-                                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long to wait after the trigger condition is met before ending the call or leaving a message.">
-                                                    <i class="fa-regular fa-circle-question"></i>
-                                                </a>
-                                            </label>
-                                            <input type="number" class="form-control" id="voicemailEndLeaveDelay" value="1000" min="0">
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Final Action -->
-                            <div>
+                            <div class="card card-body">
                                 <p class="fw-bold mb-2">Final Action on Detect</p>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="finalAction" id="voicemailEndCall" value="end" checked>

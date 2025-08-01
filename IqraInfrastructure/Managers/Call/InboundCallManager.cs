@@ -220,7 +220,7 @@ namespace IqraInfrastructure.Managers.Call
                 using var client = _httpClientFactory.CreateClient("CallManagerServerForward");
 
                 // Set headers
-                client.Timeout = TimeSpan.FromSeconds(14); // todo check if 14 seconds is good
+                client.Timeout = TimeSpan.FromSeconds(30); // todo check if 14 seconds is good
                 client.DefaultRequestHeaders.Add("X-API-Key", serverApiKey);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

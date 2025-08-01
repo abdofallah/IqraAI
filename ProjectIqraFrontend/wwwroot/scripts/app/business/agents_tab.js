@@ -1435,17 +1435,14 @@ function CheckAgentVoicemailTabChanges(enableDisableButton = true) {
 	changes.transcribeVoiceMessageSTT = voicemailSTTIntegrationManager.getData();
 	changes.verifyVoiceMessageLLM = voicemailLLMIntegrationManager.getData();
 
-
-	const stopTrigger = stopSpeakingTriggerRadios.filter(":checked").val();
-	changes.stopSpeakingAgentAfterXMlCheckSuccess = stopTrigger === 'ml';
-	changes.stopSpeakingAgentAfterVadSilence = stopTrigger === 'vad';
-	changes.stopSpeakingAgentAfterLLMConfirm = stopTrigger === 'llm';
+	changes.stopSpeakingAgentAfterXMlCheckSuccess = $('#stopAgentOnML').is(':checked');
+	changes.stopSpeakingAgentAfterVadSilence = $('#stopAgentOnVAD').is(':checked');
+	changes.stopSpeakingAgentAfterLLMConfirm = $('#stopAgentOnLLM').is(':checked');
 	changes.stopSpeakingAgentDelayAfterMatchMS = parseInt(voicemailStopSpeakingDelay.val(), 10);
 
-	const endLeaveTrigger = endLeaveTriggerRadios.filter(":checked").val();
-	changes.endOrLeaveMessageAfterXMLCheckSuccess = endLeaveTrigger === 'ml';
-	changes.endOrLeaveMessageAfterVadSilence = endLeaveTrigger === 'vad';
-	changes.endOrLeaveMessageAfterLLMConfirm = endLeaveTrigger === 'llm';
+	changes.endOrLeaveMessageAfterXMLCheckSuccess = $('#endLeaveOnML').is(':checked');
+	changes.endOrLeaveMessageAfterVadSilence = $('#endLeaveOnVAD').is(':checked');
+	changes.endOrLeaveMessageAfterLLMConfirm = $('#endLeaveOnLLM').is(':checked');
 	changes.endOrLeaveMessageDelayAfterMatchMS = parseInt(voicemailEndLeaveDelay.val(), 10);
 
 	const finalAction = finalActionRadios.filter(":checked").val();
@@ -1481,32 +1478,34 @@ function fillAgentVoicemailTab() {
 
 	// Advanced Verification
 	voicemailEnableAdvancedVerification.prop('checked', data.onVoiceMailMessageDetectVerifySTTAndLLM).trigger('change');
-
 	// Populate STT/LLM dropdowns
 	voicemailSTTIntegrationManager.load(data.transcribeVoiceMessageSTT);
 	voicemailLLMIntegrationManager.load(data.verifyVoiceMessageLLM);
 
 	// Triggers
-	if (data.stopSpeakingAgentAfterXMlCheckSuccess) stopSpeakingTriggerRadios.filter('[value="ml"]').prop('checked', true);
-	else if (data.stopSpeakingAgentAfterVadSilence) stopSpeakingTriggerRadios.filter('[value="vad"]').prop('checked', true);
-	else if (data.stopSpeakingAgentAfterLLMConfirm) stopSpeakingTriggerRadios.filter('[value="llm"]').prop('checked', true);
+	// Stop Speaking Triggers
+	$('#stopAgentOnML').prop('checked', data.stopSpeakingAgentAfterXMlCheckSuccess);
+	$('#stopAgentOnVAD').prop('checked', data.stopSpeakingAgentAfterVadSilence);
+	$('#stopAgentOnLLM').prop('checked', data.stopSpeakingAgentAfterLLMConfirm);
 	voicemailStopSpeakingDelay.val(data.stopSpeakingAgentDelayAfterMatchMS);
-
-	if (data.endOrLeaveMessageAfterXMLCheckSuccess) endLeaveTriggerRadios.filter('[value="ml"]').prop('checked', true);
-	else if (data.endOrLeaveMessageAfterVadSilence) endLeaveTriggerRadios.filter('[value="vad"]').prop('checked', true);
-	else if (data.endOrLeaveMessageAfterLLMConfirm) endLeaveTriggerRadios.filter('[value="llm"]').prop('checked', true);
+	// End/Leave Message Triggers
+	$('#endLeaveOnML').prop('checked', data.endOrLeaveMessageAfterXMLCheckSuccess);
+	$('#endLeaveOnVAD').prop('checked', data.endOrLeaveMessageAfterVadSilence);
+	$('#endLeaveOnLLM').prop('checked', data.endOrLeaveMessageAfterLLMConfirm);
 	voicemailEndLeaveDelay.val(data.endOrLeaveMessageDelayAfterMatchMS);
 
 	// Final Action
-	if (data.leaveMessageOnDetect) finalActionRadios.filter('[value="leave"]').prop('checked', true).trigger('change');
-	else finalActionRadios.filter('[value="end"]').prop('checked', true).trigger('change');
+	if (data.leaveMessageOnDetect) {
+		finalActionRadios.filter('[value="leave"]').prop('checked', true).trigger('change');
+		BusinessFullData.businessData.languages.forEach((language) => {
+			CurrentAgentVoicemailMessageToLeaveMultiLangData[language] = data.messageToLeave[language];
+		});
+		voicemailMessageToLeave.val(CurrentAgentVoicemailMessageToLeaveMultiLangData[currentLanguage]);
+	}
+	else {
+		finalActionRadios.filter('[value="end"]').prop('checked', true).trigger('change');
+	}
 	voicemailWaitAfterMessage.val(data.waitXMSAfterLeavingMessageToEndCall);
-
-	// Message to Leave
-	BusinessFullData.businessData.languages.forEach((language) => {
-		CurrentAgentVoicemailMessageToLeaveMultiLangData[language] = data.messageToLeave[language];
-	});
-	voicemailMessageToLeave.val(CurrentAgentVoicemailMessageToLeaveMultiLangData[currentLanguage]);
 }
 
 function validateAgentVoicemailTab(onlyRemove = true) {
@@ -1555,6 +1554,29 @@ function validateAgentVoicemailTab(onlyRemove = true) {
 				if (!onlyRemove) llmSelects.addClass('is-invalid');
 			}
 		}
+	}
+
+	const isStopTriggerSelected = $('#stopAgentOnML').is(':checked') || $('#stopAgentOnVAD').is(':checked') || $('#stopAgentOnLLM').is(':checked');
+	if (!isStopTriggerSelected) {
+		isValid = false;
+		errors.push("At least one 'Stop Agent Speaking' trigger must be selected.");
+		if (!onlyRemove) {
+			// You can optionally add a class to the parent card to highlight the group
+			$('#stopAgentOnML').closest('.card').addClass('border-danger');
+		}
+	} else {
+		$('#stopAgentOnML').closest('.card').removeClass('border-danger');
+	}
+
+	const isEndLeaveTriggerSelected = $('#endLeaveOnML').is(':checked') || $('#endLeaveOnVAD').is(':checked') || $('#endLeaveOnLLM').is(':checked');
+	if (!isEndLeaveTriggerSelected) {
+		isValid = false;
+		errors.push("At least one 'End Call / Leave Message' trigger must be selected.");
+		if (!onlyRemove) {
+			$('#endLeaveOnML').closest('.card').addClass('border-danger');
+		}
+	} else {
+		$('#endLeaveOnML').closest('.card').removeClass('border-danger');
 	}
 
 
@@ -4583,28 +4605,21 @@ function initAgentTab() {
 
 			function updateLLMTriggerState() {
 				const isAdvancedEnabled = voicemailEnableAdvancedVerification.is(':checked');
-				const llmStopRadio = stopSpeakingTriggerRadios.filter('[value="llm"]');
-				const llmEndLeaveRadio = endLeaveTriggerRadios.filter('[value="llm"]');
+				const llmStopCheckbox = $('#stopAgentOnLLM');
+				const llmEndLeaveCheckbox = $('#endLeaveOnLLM');
 
 				// Disable the radio buttons
-				llmStopRadio.prop('disabled', !isAdvancedEnabled);
-				llmEndLeaveRadio.prop('disabled', !isAdvancedEnabled);
+				llmStopCheckbox.prop('disabled', !isAdvancedEnabled);
+				llmEndLeaveCheckbox.prop('disabled', !isAdvancedEnabled);
 
 				// Add visual indication to the label for better UX
-				llmStopRadio.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
-				llmEndLeaveRadio.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
+				llmStopCheckbox.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
+				llmEndLeaveCheckbox.closest('.form-check').css('opacity', isAdvancedEnabled ? 1 : 0.6);
 
-				// Edge case: If LLM option was selected, and advanced verification is turned off,
-				// we must move the selection to a valid (enabled) option to avoid confusion.
 				if (!isAdvancedEnabled) {
-					if (llmStopRadio.is(':checked')) {
-						// Reset to the default 'ML' option
-						stopSpeakingTriggerRadios.filter('[value="ml"]').prop('checked', true);
-					}
-					if (llmEndLeaveRadio.is(':checked')) {
-						// Reset to the default 'ML' option
-						endLeaveTriggerRadios.filter('[value="ml"]').prop('checked', true);
-					}
+					// If advanced is off, uncheck the LLM boxes to prevent an invalid state
+					llmStopCheckbox.prop('checked', false);
+					llmEndLeaveCheckbox.prop('checked', false);
 				}
 			}
 

@@ -216,7 +216,7 @@ namespace IqraInfrastructure.Managers.Call
                 using var client = _httpClientFactory.CreateClient("CallStatusManagerForward");
 
                 // Set headers
-                client.Timeout = TimeSpan.FromSeconds(14); // check if 10 seconds is good
+                client.Timeout = TimeSpan.FromSeconds(30); // check if 10 seconds is good
                 client.DefaultRequestHeaders.Add("X-API-Key", serverData.APIKey);
 
                 // Prepare the request body
