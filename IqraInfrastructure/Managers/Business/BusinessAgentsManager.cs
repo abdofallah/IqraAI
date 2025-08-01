@@ -482,8 +482,74 @@ namespace IqraInfrastructure.Managers.Business
 
                 if (cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement))
                 {
-                    // TODO agent.Cache.AutoCacheAudioSettings
-                    //newAgentData.Cache.AutoCacheAudioSettings = null;
+                    if (autoCacheSettingsElement.ValueKind != JsonValueKind.Object)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:CACHE_AUDIOCACHESETTINGS_INVALID",
+                            "Cache autoCacheAudioSettings parameter must be an object."
+                        );
+                    }
+
+                    var audioSettings = new BusinessAppAgentAutoCacheAudioSettings();
+
+                    if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponses", out var autoCacheEnabledElement) ||
+                        (autoCacheEnabledElement.ValueKind != JsonValueKind.True && autoCacheEnabledElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:CACHE_AUTOCACHEENABLED_INVALID",
+                            "Cache autoCacheAudioResponses parameter is missing or invalid."
+                        );
+                    }
+                    audioSettings.AutoCacheAudioResponses = autoCacheEnabledElement.GetBoolean();
+
+                    if (audioSettings.AutoCacheAudioResponses)
+                    {
+                        if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponseCacheGroupId", out var groupIdElement)
+                            || groupIdElement.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_GROUPID_INVALID",
+                                "Cache autoCacheAudioResponseCacheGroupId parameter is missing or invalid."
+                            );
+                        }
+                        var cacheGroupId = groupIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(cacheGroupId))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_GROUPID_EMPTY",
+                                "An audio cache group must be selected when auto-caching is enabled."
+                            );
+                        }
+
+                        var checkAudioCacheGroupExistsResult = await _parentBusinessManager.GetCacheManager().CheckBusinessCacheAudioGroupExists(businessId, cacheGroupId);
+                        if (!checkAudioCacheGroupExistsResult)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_GROUPID_NOTFOUND",
+                                $"The selected auto-cache audio group (ID: {cacheGroupId}) does not exist."
+                            );
+                        }
+                        audioSettings.AutoCacheAudioResponseCacheGroupId = cacheGroupId;
+
+                        if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponsesDefaultExpiryHours", out var expiryElement) || expiryElement.ValueKind != JsonValueKind.Number)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_EXPIRY_INVALID",
+                                "Cache autoCacheAudioResponsesDefaultExpiryHours parameter is missing or invalid."
+                            );
+                        }
+                        var expiryHours = expiryElement.GetInt32();
+                        if (expiryHours < 0)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_EXPIRY_NEGATIVE",
+                                "Cache expiry hours cannot be negative."
+                            );
+                        }
+                        audioSettings.AutoCacheAudioResponsesDefaultExpiryHours = expiryHours;
+                    }
+
+                    newAgentData.Cache.AudioCacheSettings = audioSettings;
                 }
             }
 
