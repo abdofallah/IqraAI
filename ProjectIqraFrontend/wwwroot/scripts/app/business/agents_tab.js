@@ -1322,6 +1322,29 @@ function CheckAgentCacheTabChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
+	// Auto Cache Audio Settings
+	changes.autoCacheAudioSettings = {};
+
+	changes.autoCacheAudioSettings.autoCacheAudioResponses = agentCacheSettingsAutoCacheAudioCheckbox.is(":checked");
+	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses !== changes.autoCacheAudioSettings.autoCacheAudioResponses) {
+		hasChanges = true;
+	} 
+
+	if (changes.autoCacheAudioSettings.autoCacheAudioResponses) {
+		changes.autoCacheAudioSettings.autoCacheAudioResponseCacheGroupId = agentAutoCacheAudioGroupSelect.val();
+		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
+			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId !== changes.autoCacheAudioSettings.autoCacheAudioResponseCacheGroupId) {
+            hasChanges = true;
+        }
+
+		changes.autoCacheAudioSettings.autoCacheAudioResponsesDefaultExpiryHours = parseInt(agentAutoCacheExpiryInput.val(), 10) || 0;
+		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
+			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours !== changes.autoCacheAudioSettings.autoCacheAudioResponsesDefaultExpiryHours) {
+            hasChanges = true;
+		}
+	}
+
+
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);
 	}
@@ -1396,20 +1419,31 @@ function validateAgentCacheTab(onlyRemove = true) {
 		}
 	});
 
-	/**
-	// Auto Cache Audio Settings validation (if needed)
-	const autoCacheAudioResponses = false; // Add appropriate element check
-	const autoCacheExpiryHours = 24; // Add appropriate element check
-	const autoCacheGroupId = null; // Add appropriate element check
+	if (agentCacheSettingsAutoCacheAudioCheckbox.is(":checked")) {
+		// Validate that a cache group is selected
+		const autoCacheGroupId = agentAutoCacheAudioGroupSelect.val();
+		if (!autoCacheGroupId || autoCacheGroupId.trim() === "") {
+			isValid = false;
+			errors.push("Auto Cache Audio Group must be selected when auto-caching is enabled.");
+			if (!onlyRemove) {
+				agentAutoCacheAudioGroupSelect.addClass("is-invalid");
+			}
+		} else {
+			agentAutoCacheAudioGroupSelect.removeClass("is-invalid");
+		}
 
-	if (autoCacheAudioResponses && !autoCacheGroupId) {
-		isValid = false;
-		errors.push("Auto cache audio group must be selected when auto cache is enabled");
-		if (!onlyRemove) {
-			// Add invalid class to appropriate element
+		// Validate that the expiry hours is a non-negative number
+		const autoCacheExpiryHours = parseInt(agentAutoCacheExpiryInput.val(), 10);
+		if (isNaN(autoCacheExpiryHours) || autoCacheExpiryHours < 0) {
+			isValid = false;
+			errors.push("Auto Cache Expiry (Hours) must be a valid, non-negative number.");
+			if (!onlyRemove) {
+				agentAutoCacheExpiryInput.addClass("is-invalid");
+			}
+		} else {
+			agentAutoCacheExpiryInput.removeClass("is-invalid");
 		}
 	}
-	**/
 
 	return {
 		isValid,
@@ -1423,39 +1457,77 @@ function CheckAgentVoicemailTabChanges(enableDisableButton = true) {
 	let hasChanges = false;
 	const originalData = CurrentManageAgentData.voicemail;
 
-	// Get all current values from the UI
 	changes.isEnabled = voicemailIsEnabled.is(":checked");
-	changes.initialCheckDelayMS = parseInt(voicemailInitialCheckDelayMS.val(), 10);
-	changes.mlCheckDurationMS = parseInt(voicemailMLCheckDurationMS.val(), 10);
-	changes.maxMLCheckTries = parseInt(voicemailMaxMLCheckTries.val(), 10);
-	changes.voiceMailMessageVADSilenceThresholdMS = parseInt(voicemailVADSilenceThresholdMS.val(), 10);
-	changes.voiceMailMessageVADMaxSpeechDurationMS = parseInt(voicemailVADMaxSpeechDurationMS.val(), 10);
 
-	changes.onVoiceMailMessageDetectVerifySTTAndLLM = voicemailEnableAdvancedVerification.is(":checked");
-	changes.transcribeVoiceMessageSTT = voicemailSTTIntegrationManager.getData();
-	changes.verifyVoiceMessageLLM = voicemailLLMIntegrationManager.getData();
+	if (changes.isEnabled) {
+		changes.initialCheckDelayMS = parseInt(voicemailInitialCheckDelayMS.val(), 10);
+		changes.mlCheckDurationMS = parseInt(voicemailMLCheckDurationMS.val(), 10);
+		changes.maxMLCheckTries = parseInt(voicemailMaxMLCheckTries.val(), 10);
+		changes.voiceMailMessageVADSilenceThresholdMS = parseInt(voicemailVADSilenceThresholdMS.val(), 10);
+		changes.voiceMailMessageVADMaxSpeechDurationMS = parseInt(voicemailVADMaxSpeechDurationMS.val(), 10);
 
-	changes.stopSpeakingAgentAfterXMlCheckSuccess = $('#stopAgentOnML').is(':checked');
-	changes.stopSpeakingAgentAfterVadSilence = $('#stopAgentOnVAD').is(':checked');
-	changes.stopSpeakingAgentAfterLLMConfirm = $('#stopAgentOnLLM').is(':checked');
-	changes.stopSpeakingAgentDelayAfterMatchMS = parseInt(voicemailStopSpeakingDelay.val(), 10);
+		changes.onVoiceMailMessageDetectVerifySTTAndLLM = voicemailEnableAdvancedVerification.is(":checked");
+		if (changes.onVoiceMailMessageDetectVerifySTTAndLLM) {
+			changes.transcribeVoiceMessageSTT = voicemailSTTIntegrationManager.getData();
+			changes.verifyVoiceMessageLLM = voicemailLLMIntegrationManager.getData();
+		}
 
-	changes.endOrLeaveMessageAfterXMLCheckSuccess = $('#endLeaveOnML').is(':checked');
-	changes.endOrLeaveMessageAfterVadSilence = $('#endLeaveOnVAD').is(':checked');
-	changes.endOrLeaveMessageAfterLLMConfirm = $('#endLeaveOnLLM').is(':checked');
-	changes.endOrLeaveMessageDelayAfterMatchMS = parseInt(voicemailEndLeaveDelay.val(), 10);
+		changes.stopSpeakingAgentAfterXMlCheckSuccess = $('#stopAgentOnML').is(':checked');
+		changes.stopSpeakingAgentAfterVadSilence = $('#stopAgentOnVAD').is(':checked');
+		changes.stopSpeakingAgentAfterLLMConfirm = $('#stopAgentOnLLM').is(':checked');
+		changes.stopSpeakingAgentDelayAfterMatchMS = parseInt(voicemailStopSpeakingDelay.val(), 10);
 
-	const finalAction = finalActionRadios.filter(":checked").val();
-	changes.endCallOnDetect = finalAction === 'end';
-	changes.leaveMessageOnDetect = finalAction === 'leave';
-	changes.waitXMSAfterLeavingMessageToEndCall = parseInt(voicemailWaitAfterMessage.val(), 10);
+		changes.endOrLeaveMessageAfterXMLCheckSuccess = $('#endLeaveOnML').is(':checked');
+		changes.endOrLeaveMessageAfterVadSilence = $('#endLeaveOnVAD').is(':checked');
+		changes.endOrLeaveMessageAfterLLMConfirm = $('#endLeaveOnLLM').is(':checked');
+		changes.endOrLeaveMessageDelayAfterMatchMS = parseInt(voicemailEndLeaveDelay.val(), 10);
 
-	changes.messageToLeave = CurrentAgentVoicemailMessageToLeaveMultiLangData;
+		const finalAction = finalActionRadios.filter(":checked").val();
+		changes.endCallOnDetect = finalAction === 'end';
+		changes.leaveMessageOnDetect = finalAction === 'leave';
 
-	// Compare with original data
-	if (JSON.stringify(changes) !== JSON.stringify(originalData)) {
-		hasChanges = true;
+		if (changes.leaveMessageOnDetect) {
+			changes.waitXMSAfterLeavingMessageToEndCall = parseInt(voicemailWaitAfterMessage.val(), 10);
+			changes.messageToLeave = CurrentAgentVoicemailMessageToLeaveMultiLangData;
+		}
 	}
+
+	// Check top-level enable toggle first
+	if (changes.isEnabled !== originalData.isEnabled) {
+		hasChanges = true;
+	} else if (changes.isEnabled) {
+		// If the state (enabled) hasn't changed, and it's on, check all sub-properties
+		const simpleNumericProps = [
+			"initialCheckDelayMS", "mlCheckDurationMS", "maxMLCheckTries",
+			"voiceMailMessageVADSilenceThresholdMS", "voiceMailMessageVADMaxSpeechDurationMS",
+			"stopSpeakingAgentDelayAfterMatchMS", "endOrLeaveMessageDelayAfterMatchMS"
+		];
+		simpleNumericProps.forEach(prop => {
+			if (changes[prop] !== originalData[prop]) hasChanges = true;
+		});
+
+		const simpleBooleanProps = [
+			"onVoiceMailMessageDetectVerifySTTAndLLM", "stopSpeakingAgentAfterXMlCheckSuccess",
+			"stopSpeakingAgentAfterVadSilence", "stopSpeakingAgentAfterLLMConfirm",
+			"endOrLeaveMessageAfterXMLCheckSuccess", "endOrLeaveMessageAfterVadSilence",
+			"endOrLeaveMessageAfterLLMConfirm", "endCallOnDetect", "leaveMessageOnDetect"
+		];
+		simpleBooleanProps.forEach(prop => {
+			if (changes[prop] !== originalData[prop]) hasChanges = true;
+		});
+
+		// Compare complex/nested objects
+		if (changes.onVoiceMailMessageDetectVerifySTTAndLLM) {
+			if (JSON.stringify(changes.transcribeVoiceMessageSTT) !== JSON.stringify(originalData.transcribeVoiceMessageSTT)) hasChanges = true;
+			if (JSON.stringify(changes.verifyVoiceMessageLLM) !== JSON.stringify(originalData.verifyVoiceMessageLLM)) hasChanges = true;
+		}
+
+		if (changes.leaveMessageOnDetect) {
+			if (changes.waitXMSAfterLeavingMessageToEndCall !== originalData.waitXMSAfterLeavingMessageToEndCall) hasChanges = true;
+			if (JSON.stringify(changes.messageToLeave) !== JSON.stringify(originalData.messageToLeave)) hasChanges = true;
+		}
+	}
+
 
 	if (enableDisableButton) {
 		confirmPublishAgentButton.prop("disabled", !hasChanges);

@@ -480,16 +480,16 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement))
+                if (!cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement)
+                    || autoCacheSettingsElement.ValueKind != JsonValueKind.Object)
                 {
-                    if (autoCacheSettingsElement.ValueKind != JsonValueKind.Object)
-                    {
-                        return result.SetFailureResult(
+                    return result.SetFailureResult(
                             "AddOrUpdateAgent:CACHE_AUDIOCACHESETTINGS_INVALID",
-                            "Cache autoCacheAudioSettings parameter must be an object."
+                            "Cache autoCacheAudioSettings parameter is missing or invalid."
                         );
-                    }
-
+                }
+                else
+                {
                     var audioSettings = new BusinessAppAgentAutoCacheAudioSettings();
 
                     if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponses", out var autoCacheEnabledElement) ||
