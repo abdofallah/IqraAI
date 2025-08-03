@@ -7,19 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="libphonenumber-csharp" Version="9.0.4" />
-    <PackageReference Include="MessagePack" Version="3.1.3" />
+    <PackageReference Include="libphonenumber-csharp" Version="9.0.10" />
+    <PackageReference Include="MessagePack" Version="3.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.4" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" />
-    <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.7" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.1" />
+    <PackageReference Include="MongoDB.Driver" Version="3.4.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NLayer.NAudioSupport" Version="1.4.0" />
     <PackageReference Include="RJCP.SerialPortStream" Version="3.0.3" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <PackageReference Include="System.Data.HashFunction.xxHash" Version="2.0.0" />
-    <PackageReference Include="System.IO.Hashing" Version="9.0.4" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.7" />
   </ItemGroup>
 	
 </Project>
