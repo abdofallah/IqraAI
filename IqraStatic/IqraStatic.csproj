@@ -7,17 +7,29 @@
   </PropertyGroup>
 
 	<ItemGroup>
-	  <None Update="VadModels\silero_vad.jit">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  <None Update="Models\BlandAIVM\config.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
-	  <None Update="VadModels\silero_vad.onnx">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  <None Update="Models\BlandAIVM\preprocessor_config.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
-	  <None Update="VadModels\silero_vad_16k_op15.onnx">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  <None Update="Models\BlandAIVM\training_args.bin">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
-	  <None Update="VadModels\silero_vad_half.onnx">
-	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  <None Update="Models\BlandAIVM\voicemail_detector.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Models\Silero\silero_vad.jit">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Models\Silero\silero_vad.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Models\Silero\silero_vad_16k_op15.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Models\Silero\silero_vad_half.onnx">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
 	  <None Update="VestaCP\ProxyTemplates\iqrabusiness-https.stpl">
 	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -34,6 +46,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="VadModels\" />
+	  <Folder Include="Models\BlandAIVM\" />
 	</ItemGroup>
 </Project>
