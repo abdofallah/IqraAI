@@ -6,6 +6,8 @@ namespace IqraCore.Interfaces.VAD
     {
         event EventHandler<VadEventArgs> VoiceActivityChanged; // Single event is often simpler
         void Initialize(VadOptions options);
+
+        void Process32bitAudio(float[] audioChunk);
         void ProcessAudio(byte[] audioChunk);
         void Reset();
     }

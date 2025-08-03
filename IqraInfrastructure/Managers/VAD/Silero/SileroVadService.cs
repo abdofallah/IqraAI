@@ -4,8 +4,6 @@ using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Helpers.Audio;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
-using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace IqraInfrastructure.Managers.VAD.Silero
 {
@@ -38,7 +36,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 
         public event EventHandler<VadEventArgs>? VoiceActivityChanged;
 
-        public SileroVadService(ILogger<SileroVadService> logger)
+        public SileroVadService(ILogger<SileroVadService> logger, CancellationToken cancellationToken)
         {
             _logger = logger;
 
@@ -46,7 +44,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 
             _buffer = new List<float>();
 
-            _cancellationTokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         }
 
         public void Initialize(VadOptions options)
@@ -67,6 +65,11 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                 Dispose();
                 throw;
             }
+        }
+
+        public void Process32bitAudio(float[] audioChunkData)
+        {
+            _buffer.AddRange(audioChunkData);
         }
 
         public void ProcessAudio(byte[] audioChunkData)

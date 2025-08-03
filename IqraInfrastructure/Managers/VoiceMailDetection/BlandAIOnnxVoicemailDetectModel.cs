@@ -11,22 +11,46 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
     public class BlandAIOnnxVoicemailDetectModel : IDisposable
     {
-        private readonly InferenceSession _session;
-        private readonly IReadOnlyDictionary<long, string> _id2label;
+        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\BlandAIVM\\voicemail_detector.onnx");
+        private static string ModelConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\BlandAIVM\\config.json");
 
-        public BlandAIOnnxVoicemailDetectModel(string modelPath, string configPath)
+        private static InferenceSession Session;
+        private static IReadOnlyDictionary<long, string> Id2label;
+        private static bool IsModelLoaded = false;
+        private static bool IsLoadingModel = false;
+
+        public BlandAIOnnxVoicemailDetectModel()
         {
-            if (!File.Exists(modelPath))
-                throw new FileNotFoundException("ONNX model file not found.", modelPath);
-            if (!File.Exists(configPath))
-                throw new FileNotFoundException("Model config file not found.", configPath);
+            if (!IsModelLoaded)
+            {
+                while (IsLoadingModel)
+                {
+                    Task.Delay(100).GetAwaiter().GetResult();
+                }
 
-            _session = new InferenceSession(modelPath);
+                try
+                {
+                    IsLoadingModel = true;
 
-            var configJson = File.ReadAllText(configPath);
-            var modelConfig = JsonSerializer.Deserialize<ModelConfig>(configJson);
+                    if (!File.Exists(ModelPath))
+                        throw new FileNotFoundException("ONNX model file not found.", ModelPath);
+                    if (!File.Exists(ModelConfigPath))
+                        throw new FileNotFoundException("Model config file not found.", ModelConfigPath);
 
-            _id2label = modelConfig.id2label.ToDictionary(kvp => long.Parse(kvp.Key), kvp => kvp.Value);
+                    Session = new InferenceSession(ModelPath);
+
+                    var configJson = File.ReadAllText(ModelConfigPath);
+                    var modelConfig = JsonSerializer.Deserialize<ModelConfig>(configJson);
+
+                    Id2label = modelConfig.id2label.ToDictionary(kvp => long.Parse(kvp.Key), kvp => kvp.Value);
+
+                    IsModelLoaded = true;
+                }
+                finally
+                {
+                    IsLoadingModel = false;
+                }
+            }
         }
 
         public (string Label, float Confidence) Predict(float[] audioSource)
@@ -42,13 +66,13 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
             var inputTensor = new DenseTensor<float>(new Memory<float>(processedAudio), dimensions);
 
-            var modelInputName = _session.InputNames.First();
+            var modelInputName = Session.InputNames.First();
             var inputs = new List<NamedOnnxValue>
             {
                 NamedOnnxValue.CreateFromTensor(modelInputName, inputTensor)
             };
 
-            using var results = _session.Run(inputs);
+            using var results = Session.Run(inputs);
 
             var outputTensor = results.First().AsTensor<float>();
 
@@ -57,7 +81,7 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
             var maxConfidence = probabilities.Max();
             var maxIndex = probabilities.ToList().IndexOf(maxConfidence);
 
-            var predictedLabel = _id2label[maxIndex];
+            var predictedLabel = Id2label[maxIndex];
 
             return (predictedLabel, maxConfidence);
         }
@@ -117,7 +141,7 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
         public void Dispose()
         {
-            _session?.Dispose();
+            Session?.Dispose();
             GC.SuppressFinalize(this);
         }
     }

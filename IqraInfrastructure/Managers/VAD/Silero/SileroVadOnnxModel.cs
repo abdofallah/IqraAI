@@ -5,8 +5,10 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 {
     public class SileroVadOnnxModel : IDisposable
     {
-        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "VadModels\\silero_vad.onnx");
-        private static InferenceSession? session = null;
+        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\Silero\\silero_vad.onnx");
+        private static InferenceSession session;
+        private static bool IsModelLoaded = false;
+        private static bool IsLoadingModel = false;
 
         private float[][][] state;
         private float[][] context;
@@ -16,14 +18,28 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 
         public SileroVadOnnxModel()
         {
-            if (session == null)
+            if (!IsModelLoaded)
             {
-                var sessionOptions = new SessionOptions();
-                sessionOptions.InterOpNumThreads = 1;
-                sessionOptions.IntraOpNumThreads = 1;
-                sessionOptions.EnableCpuMemArena = true;
+                while (IsLoadingModel)
+                {
+                    Task.Delay(100).GetAwaiter().GetResult();
+                }
 
-                session = new InferenceSession(ModelPath, sessionOptions);
+                try
+                {
+                    var sessionOptions = new SessionOptions();
+                    sessionOptions.InterOpNumThreads = 1;
+                    sessionOptions.IntraOpNumThreads = 1;
+                    sessionOptions.EnableCpuMemArena = true;
+
+                    session = new InferenceSession(ModelPath, sessionOptions);
+
+                    IsModelLoaded = true;
+                }
+                finally
+                {
+                    IsLoadingModel = false;
+                }
             }
 
             ResetStates();

@@ -85,7 +85,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     {
                         DisposeCurrentVadService();
 
-                        _vadService = new SileroVadService(_loggerFactory.CreateLogger<SileroVadService>());
+                        _vadService = new SileroVadService(_loggerFactory.CreateLogger<SileroVadService>(), agentCTS);
                         _vadService.Initialize(_vadOptions);
                         _vadService.VoiceActivityChanged += OnVoiceActivityChanged;
 

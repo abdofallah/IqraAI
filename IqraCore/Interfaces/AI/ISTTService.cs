@@ -9,7 +9,8 @@ namespace IqraCore.Interfaces.AI
         void StopTranscription();
         void WriteTranscriptionAudioData(byte[] data);
         event EventHandler<string> TranscriptionResultReceived;
-        event EventHandler<object> OnRecoginizingRecieved;
+        event EventHandler<string> OnRecoginizingRecieved;
+        event EventHandler<object> OnRecoginizingCancelled;
 
         string GetProviderFullName();
         InterfaceSTTProviderEnum GetProviderType();

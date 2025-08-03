@@ -40,7 +40,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
             remove { _transcriptionResultReceived -= value; }
         }
 
-        public event EventHandler<object> OnRecoginizingRecieved;
+        public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
 
         public AssemblyAISpeechSTTService(
@@ -177,7 +177,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
                     }
                     else
                     {
-                        OnRecoginizingRecieved?.Invoke(this, turn);
+                        OnRecoginizingRecieved?.Invoke(this, turn.Transcript ?? string.Empty);
                     }
                     break;
 

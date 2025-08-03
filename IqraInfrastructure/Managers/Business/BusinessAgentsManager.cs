@@ -729,15 +729,42 @@ namespace IqraInfrastructure.Managers.Business
                     }
                     voicemailData.LeaveMessageOnDetect = leaveMessageElement.GetBoolean();
 
-                    if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
-                        || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
+                    if (voicemailData.EndCallOnDetect && voicemailData.LeaveMessageOnDetect)
                     {
                         return result.SetFailureResult(
-							"AddOrUpdateAgent:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
-                            "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
+                            "AddOrUpdateAgent:VOICEMAIL_ENDCALLANDLEAVEMESSAGE_INVALID",
+                            "Voicemail endCallOnDetect and leaveMessageOnDetect cannot be true at the same time."
                         );
                     }
-                    voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
+
+                    if (voicemailData.LeaveMessageOnDetect)
+                    {
+                        voicemailData.MessageToLeave = new Dictionary<string, string>();
+                        var messageToLeaveValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
+                            businessLanguages,
+                            voicemailElement,
+                            "messageToLeave",
+                            voicemailData.MessageToLeave
+                        );
+                        if (!messageToLeaveValidationResult.Success)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:" + messageToLeaveValidationResult.Code,
+                                messageToLeaveValidationResult.Message
+                            );
+                        }
+
+                        if (!voicemailElement.TryGetProperty("waitXMSAfterLeavingMessageToEndCall", out var waitAfterMessageElement)
+                        || waitAfterMessageElement.ValueKind != JsonValueKind.Number)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:VOICEMAIL_WAITAFTERMESSAGE_INVALID",
+                                "Voicemail waitXMSAfterLeavingMessageToEndCall parameter is missing or invalid."
+                            );
+                        }
+                        voicemailData.WaitXMSAfterLeavingMessageToEndCall = waitAfterMessageElement.GetInt32();
+                    }
+                    
 
                     // --- Advanced Verification and Conditional Logic ---
                     if (!voicemailElement.TryGetProperty("onVoiceMailMessageDetectVerifySTTAndLLM", out var advancedVerificationElement) ||
@@ -796,24 +823,6 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
                         voicemailData.VerifyVoiceMessageLLM = llmValidationResult.Data;
-                    }
-
-                    // Multi-Language Message to Leave
-                    if (voicemailData.LeaveMessageOnDetect)
-                    {
-                        var messageToLeaveValidationResult = MultiLanguagePropertyHelper.ValidateAndAssignMultiLanguageProperty(
-                            businessLanguages,
-                            voicemailElement,
-                            "messageToLeave",
-                            voicemailData.MessageToLeave
-                        );
-                        if (!messageToLeaveValidationResult.Success)
-                        {
-                            return result.SetFailureResult(
-							    "AddOrUpdateAgent:" + messageToLeaveValidationResult.Code,
-                                messageToLeaveValidationResult.Message
-                            );
-                        }
                     }
                 }
 

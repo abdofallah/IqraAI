@@ -3,7 +3,6 @@ using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.TTS;
 using IqraCore.Interfaces.TTS;
-using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Audio;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.TTS;
@@ -12,7 +11,6 @@ using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI

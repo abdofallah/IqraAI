@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
             remove { _transcriptionResultReceived -= value; }
         }
 
-        public event EventHandler<object> OnRecoginizingRecieved;
+        public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
         public AzureSpeechSTTService(string subscriptionKey, string region, string language, List<string> continousLanguageIdentificationIds, bool speakerDiarization, List<string> phrasesList, int silenceTimeout, int inputSampleRate, int inputBitsPerSample, AudioEncodingTypeEnum inputAudioEncodingType)
         {
@@ -132,8 +132,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
 
         private void OnRecognizing(object? sender, SpeechRecognitionEventArgs e)
         {
-            //Console.WriteLine($"RECOGNIZING: Text={e.Result.Text}");
-            OnRecoginizingRecieved?.Invoke(this, e);
+            OnRecoginizingRecieved?.Invoke(this, e.Result.Text);
         }
 
         private void OnRecognized(object? sender, SpeechRecognitionEventArgs e)

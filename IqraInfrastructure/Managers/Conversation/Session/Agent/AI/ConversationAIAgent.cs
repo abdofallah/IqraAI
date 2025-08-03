@@ -48,6 +48,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
+        private readonly ConversationAIAgentVoicemailDetector _voicemailDetector;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
@@ -100,7 +101,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _ttsProviderManager = ttsProviderManager;
             _llmProviderManager = llmProviderManager;
             _langaugesManager = languagesManager;
-            _audioRepository = audioRepository;
+            _audioRepository = audioRepository; 
 
             // Create shared state
             _agentState = new ConversationAIAgentState(agentId, _conversationCTS.Token);
@@ -119,7 +120,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             _interruptionManager = new ConversationAIAgentInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _audioOutputHandler, _llmHandler);
-            
+            _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _audioInputHandler, _audioOutputHandler, _agentState);
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
@@ -229,6 +230,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _interruptionManager.InitializeAsync(_conversationCTS.Token);
                 await _audioInputHandler.InitializeAsync(_conversationCTS.Token);
 
+                if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
+                {
+                    await _voicemailDetector.InitializeAsync(_conversationCTS.Token);
+                }         
+
                 _agentState.IsInitialized = true;
                 _logger.LogInformation("AI Agent {AgentId} initialized successfully. Lang: {Lang}, Type: {Type}",
                     AgentId, _agentState.CurrentLanguageCode, _agentState.CurrentConversationType);
@@ -256,8 +262,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (requiresLanguageSelection)
             {
-                // todo make this delay configurable by the user
-                await Task.Delay(1000);
+                if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
+                {
+                    await _voicemailDetector.StartAsync();
+                }
+
                 await SetupLanguageSelectionViaDTMFAsync(_conversationCTS.Token);
             }
             else

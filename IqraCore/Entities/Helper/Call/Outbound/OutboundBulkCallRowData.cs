@@ -5,6 +5,7 @@
         public string? FromNumberId { get; set; }
         public string? ToNumber { get; set; }
         public Dictionary<string, string>? DynamicVariables { get; set; }
+        public Dictionary<string, string>? Metadata { get; set; }
         public OutboundBulkCallRowDataRetryData? OverrideRetryCallDeclinedData { get; set; }
         public OutboundBulkCallRowDataRetryData? OverrideRetryCallMissedData { get; set; }
         public string? OverrideAgentId { get; set; }

@@ -8,6 +8,7 @@ namespace IqraCore.Entities.Conversation.Context
         public ConversationSessionContextTimeout Timeout { get; set; } = new ConversationSessionContextTimeout();
         public ConversationSessionContextAgent Agent { get; set; } = new ConversationSessionContextAgent();
         public Dictionary<string, string> DynamicVariables { get; set; } = new Dictionary<string, string>();
+        public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
         public ConversationSessionContextAction CallEndedAction { get; set; } = new ConversationSessionContextAction();
     }
 }

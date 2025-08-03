@@ -12,6 +12,7 @@ namespace IqraCore.Models.Business.MakeCalls
         public MakeCallAgentSettingsDto? AgentSettings { get; set; }
         public MakeCallActionsDto? Actions { get; set; }
         public Dictionary<string, string>? DynamicVariables { get; set; }
+        public Dictionary<string, string>? Metadata { get; set; }
     }
 
     public class MakeCallGeneralDto

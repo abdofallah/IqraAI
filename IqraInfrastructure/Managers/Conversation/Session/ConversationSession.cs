@@ -180,7 +180,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         DefaultLanguageCode = businessRouteData.Language.DefaultLanguageCode,
                         MultiLanguageEnabled = businessRouteData.Language.MultiLanguageEnabled,
                         EnabledMultiLanguages = businessRouteData.Language.EnabledMultiLanguages
-                    }
+                    },
+                    DynamicVariables = new Dictionary<string, string>(),
+                    Metadata = new Dictionary<string, string>()
                 };
 
                 // Actions
@@ -229,7 +231,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         EndCallOnSilenceMS = campaignData.CallRequestData.Configuration.Timeouts.EndOnSilenceMS.Value,
                         MaxCallTimeS = campaignData.CallRequestData.Configuration.Timeouts.MaxCallTimeS.Value,
                     },
-                    DynamicVariables = campaignData.CallRequestData.DynamicVariables
+                    DynamicVariables = campaignData.CallRequestData.DynamicVariables,
+                    Metadata = campaignData.CallRequestData.Metadata
                 };
 
                 // ACTIONS
@@ -860,6 +863,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             var parsedArguments = new Dictionary<string, object?>();
 
             string? cachedConversation = null;
+            string? cachedMetadata = null;
 
             foreach (var argument in _sessionContextData.CallEndedAction.Arguments)
             {
@@ -878,6 +882,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                         stringValue = stringValue
                             .Replace("{{conversation}}", cachedConversation)
                             .Replace("{={conversation}=}", cachedConversation);
+                    }
+
+                    if (stringValue.Contains("{{metadata}}") || stringValue.Contains("{={metadata}=}"))
+                    {
+                        if (cachedMetadata == null)
+                        {
+                            cachedMetadata = JsonSerializer.Serialize(_sessionContextData.Metadata);
+                        }
+
+                        stringValue = stringValue
+                            .Replace("{{metadata}}", cachedMetadata)
+                            .Replace("{={metadata}=}", cachedMetadata);
                     }
 
                     if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)

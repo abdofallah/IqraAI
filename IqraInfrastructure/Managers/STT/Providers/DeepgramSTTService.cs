@@ -41,7 +41,7 @@ namespace IqraInfrastructure.Managers.STT.Providers
             remove { _transcriptionResultReceived -= value; }
         }
 
-        public event EventHandler<object> OnRecoginizingRecieved;
+        public event EventHandler<string> OnRecoginizingRecieved;
         public event EventHandler<object> OnRecoginizingCancelled;
 
         public DeepgramSTTService(
@@ -187,7 +187,8 @@ namespace IqraInfrastructure.Managers.STT.Providers
             }
             else
             {
-                OnRecoginizingRecieved?.Invoke(this, e);
+                // TODO TEST
+                _transcriptionResultReceived?.Invoke(this, transcript);
             }
         }
 

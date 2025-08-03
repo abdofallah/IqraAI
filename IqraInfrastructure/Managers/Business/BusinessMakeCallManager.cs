@@ -723,6 +723,16 @@ namespace IqraInfrastructure.Managers.Business
                 DynamicVariables = bulkCallRowData.DynamicVariables;
             }
 
+            Dictionary<string, string> Metadata;
+            if (bulkCallRowData == null || bulkCallRowData.Metadata == null)
+            {
+                Metadata = callConfig.Metadata ?? new Dictionary<string, string>();
+            }
+            else
+            {
+                Metadata = bulkCallRowData.Metadata;
+            }
+
             OutboundCallRetryData RetryDeclineData = new OutboundCallRetryData() { Enabled = false };
             if (bulkCallRowData == null || bulkCallRowData.OverrideRetryCallDeclinedData == null)
             {
@@ -904,6 +914,7 @@ namespace IqraInfrastructure.Managers.Business
                             string? from_number_id = readRow["from_number_id"].ToString();
                             string? to_number = readRow["to_number"].ToString();
                             string? dynamic_variables = readRow["dynamic_variables"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
+                            string? metadata = readRow["metadata"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? override_retry_on_call_declined = readRow["override_retry_on_call_declined"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? override_retry_on_missed_call = readRow["override_retry_on_missed_call"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? override_agent_id = readRow["override_agent_id"].ToString();
@@ -979,6 +990,29 @@ namespace IqraInfrastructure.Managers.Business
                                 }
                             }
                             currentOutboundCallRow.DynamicVariables = dynamicVariablesDictionary;
+
+                            Dictionary<string, string>? metadataDictionary = null;
+                            if (!string.IsNullOrWhiteSpace(metadata))
+                            {
+                                try
+                                {
+                                    metadataDictionary = JsonSerializer.Deserialize<Dictionary<string, string>>(metadata);
+                                    if (metadataDictionary == null)
+                                    {
+                                        return result.SetFailureResult(
+                                            "ValidateAndBuildBulkCSVCallFile:6",
+                                            $"Error deserializing metadata for row {currentRowLine}."
+                                        );
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    return result.SetFailureResult(
+                                        "ValidateAndBuildBulkCSVCallFile:7",
+                                        $"Error deserializing metadata for row {currentRowLine}: {ex.Message}"
+                                    );
+                                }
+                            }
 
                             OutboundBulkCallRowDataRetryData? outboundBulkCallRowDataRetryDeclinedData = null;
                             if (!string.IsNullOrWhiteSpace(override_retry_on_call_declined))
