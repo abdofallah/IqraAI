@@ -120,7 +120,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             _interruptionManager = new ConversationAIAgentInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _audioOutputHandler, _llmHandler);
-            _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _audioInputHandler, _audioOutputHandler, _agentState);
+            _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _agentState, sttProviderManager, llmProviderManager);
 
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
