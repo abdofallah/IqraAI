@@ -10,7 +10,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
     public class VonageConversationClient : BaseTelephonyConversationClient
     {
         private readonly VonageManager _vonageManager;
-        private readonly string _callUuid; // Vonage's equivalent of Call SID
+        private readonly string _callUuid;
+        private readonly string _jwt;
 
         public VonageConversationClient(
             string clientId,
@@ -18,12 +19,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
             string callUuid,
+            string jwt,
             VonageManager vonageManager,
             IConversationClientTransport transport,
             ILogger<VonageConversationClient> logger
         ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
             _callUuid = callUuid;
+            _jwt = jwt;
             _vonageManager = vonageManager;
             ClientTelephonyProviderType = TelephonyProviderEnum.Vonage;
         }
@@ -46,37 +49,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                 return;
             }
 
-            // Check if the message is a DTMF event
-            if (jsonMessage["type"]?.GetValue<string>() == "dtmf")
+            string? digit = jsonMessage["digit"]?.GetValue<string>();
+            if (!string.IsNullOrEmpty(digit))
             {
-                string? digit = jsonMessage["dtmf"]?["digit"]?.GetValue<string>();
-                if (!string.IsNullOrEmpty(digit))
-                {
-                    RaiseDTMFReceived(digit);
-                }
+                _logger.LogInformation("Received DTMF digit from Vonage: {Digit}", digit);
+                RaiseDTMFReceived(digit);
             }
-            // Otherwise, assume it's a media message (audio)
-            else if (jsonMessage["media"]?["payload"] is not null)
+            else
             {
-                string? payload = jsonMessage["media"]?["payload"]?.GetValue<string>();
-                if (!string.IsNullOrEmpty(payload))
-                {
-                    try
-                    {
-                        byte[] audioData = Convert.FromBase64String(payload);
-                        RaiseAudioReceived(audioData);
-                    }
-                    catch (FormatException ex)
-                    {
-                        _logger.LogWarning(ex, "Received malformed Base64 audio payload from Vonage.");
-                    }
-                }
+                _logger.LogWarning("Received an unexpected text message on a Vonage client stream: {Message}", message);
             }
         }
 
         protected override void OnTransportBinaryMessageReceived(object sender, byte[] data)
         {
-            _logger.LogWarning("Received an unexpected binary message on a Vonage client stream. Ignoring {DataLength} bytes.", data.Length);
+            RaiseAudioReceived(data);
         }
 
         /// <summary>
@@ -84,10 +71,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// </summary>
         public override Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
         {
-            var mediaPayloadBase64 = Convert.ToBase64String(audioData);
-            // Vonage's format for sending audio is simpler, just the payload.
-            var mediaMessage = $"{{\"media\":{{\"payload\":\"{mediaPayloadBase64}\"}} }}";
-            return Transport.SendTextAsync(mediaMessage, cancellationToken);
+            return Transport.SendBinaryAsync(audioData, cancellationToken);
         }
 
         /// <summary>
@@ -95,10 +79,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// </summary>
         public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
         {
-            // This would require using the Vonage REST API to send DTMF, not the WebSocket.
-            // This is a key difference from Twilio.
-            _logger.LogInformation("Sending DTMF for call {CallUuid} via Vonage REST API.", _callUuid);
-            return _vonageManager.SendDtmfAsync(_callUuid, digits);
+            //var dtmfMessage = $"{{\"dtmf\":\"{digits}\"}}";
+            //return Transport.SendTextAsync(dtmfMessage, cancellationToken);
+
+            return _vonageManager.SendDtmfAsync(_jwt, _callUuid, digits);
         }
 
         /// <summary>
@@ -108,7 +92,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         {
             await base.DisconnectAsync(reason); // Closes WebSocket
             _logger.LogInformation("Ending Vonage call {CallUuid} via API.", _callUuid);
-            await _vonageManager.EndCallAsync(_callUuid);
+            await _vonageManager.EndCallAsync(_jwt, _callUuid);
         }
     }
 }

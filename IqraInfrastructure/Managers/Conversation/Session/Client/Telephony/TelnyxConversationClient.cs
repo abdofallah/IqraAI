@@ -10,33 +10,32 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
     public class TelnyxConversationClient : BaseTelephonyConversationClient
     {
         private readonly TelnyxManager _telnyxManager;
-        private readonly string _callControlId; // Telnyx's unique call identifier
-        private readonly string? _streamId; // Telnyx uses a stream_url for connection
+        private readonly string _apiKey;
+        private readonly string _callControlId;
+
+        // This is the critical ID received from the 'start' event, needed for sending media.
+        private string _streamId;
 
         public TelnyxConversationClient(
-            string clientId,
+            string clientId, // This would typically be the call_control_id
             string telephonyPhoneNumber,
             string telephonyProviderPhoneNumberId,
             string customerPhoneNumber,
-            string callControlId,
-            string? streamId,
+            string apiKey,
             TelnyxManager telnyxManager,
             IConversationClientTransport transport,
             ILogger<TelnyxConversationClient> logger
         ) : base(clientId, telephonyPhoneNumber, telephonyProviderPhoneNumberId, customerPhoneNumber, transport, logger)
         {
-            _callControlId = callControlId;
-            _streamId = streamId;
+            _callControlId = clientId; // The client ID is the call control ID for Telnyx.
+            _apiKey = apiKey;
             _telnyxManager = telnyxManager;
             ClientTelephonyProviderType = TelephonyProviderEnum.Telnyx;
         }
 
-        /// <summary>
-        /// Handles incoming text messages from Telnyx, which are JSON payloads.
-        /// </summary>
         protected override void OnTransportTextMessageReceived(object sender, string message)
         {
-            JsonNode? jsonMessage;
+            JsonNode jsonMessage;
             try
             {
                 jsonMessage = JsonNode.Parse(message);
@@ -47,12 +46,17 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                 return;
             }
 
-            string? eventType = jsonMessage["event"]?.GetValue<string>();
+            string eventType = jsonMessage["event"]?.GetValue<string>();
 
             switch (eventType)
             {
+                case "start":
+                    _streamId = jsonMessage["stream_id"]?.GetValue<string>();
+                    _logger.LogInformation("Telnyx stream started with stream_id: {StreamId}", _streamId);
+                    break;
+
                 case "media":
-                    string? payload = jsonMessage["media"]?["payload"]?.GetValue<string>();
+                    string payload = jsonMessage["media"]?["payload"]?.GetValue<string>();
                     if (!string.IsNullOrEmpty(payload))
                     {
                         try
@@ -66,12 +70,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
                         }
                     }
                     break;
+
                 case "dtmf":
-                    string? digit = jsonMessage["dtmf"]?["digit"]?.GetValue<string>();
+                    string digit = jsonMessage["dtmf"]?["digit"]?.GetValue<string>();
                     if (!string.IsNullOrEmpty(digit))
                     {
                         RaiseDTMFReceived(digit);
                     }
+                    break;
+
+                case "stop":
+                    _logger.LogInformation("Received 'stop' event from Telnyx for stream {StreamId}.", _streamId);
+                    // The WebSocket connection will be closed by Telnyx, triggering the transport's disconnect.
                     break;
             }
         }
@@ -81,35 +91,49 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             _logger.LogWarning("Received an unexpected binary message on a Telnyx client stream. Ignoring {DataLength} bytes.", data.Length);
         }
 
-        /// <summary>
-        /// Sends audio to Telnyx by wrapping it in their specific JSON format.
-        /// </summary>
         public override Task SendAudioAsync(byte[] audioData, CancellationToken cancellationToken)
         {
-            var mediaPayloadBase64 = Convert.ToBase64String(audioData);
-            var mediaMessage = new { command = "media", payload = mediaPayloadBase64, stream_id = _streamId };
-            string jsonPayload = JsonSerializer.Serialize(mediaMessage);
+            if (string.IsNullOrEmpty(_streamId))
+            {
+                _logger.LogWarning("Cannot send audio, Telnyx stream_id has not been received yet.");
+                return Task.CompletedTask;
+            }
+
+            var mediaPayload = new { payload = Convert.ToBase64String(audioData) };
+            var mediaMessage = new { @event = "media", stream_id = _streamId, media = mediaPayload };
+            string jsonPayload = JsonSerializer.Serialize(mediaMessage, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
 
             return Transport.SendTextAsync(jsonPayload, cancellationToken);
         }
 
-        /// <summary>
-        /// Sends DTMF digits using the Telnyx API.
-        /// </summary>
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public Task ClearBufferedAudioAync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Sending DTMF for call {CallControlId} via Telnyx API.", _callControlId);
-            return _telnyxManager.SendDtmfAsync(_callControlId, digits);
+            if (string.IsNullOrEmpty(_streamId))
+            {
+                _logger.LogWarning("Cannot clear buffer, Telnyx stream_id has not been received yet.");
+                return Task.CompletedTask;
+            }
+
+            var clearMessage = new { @event = "clear", stream_id = _streamId };
+            string jsonPayload = JsonSerializer.Serialize(clearMessage);
+            return Transport.SendTextAsync(jsonPayload, cancellationToken);
         }
 
-        /// <summary>
-        /// Disconnects the call by closing the transport and then using the Telnyx API.
-        /// </summary>
+        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        {
+            // Sending DTMF is a REST API call, not a WebSocket message for Telnyx.
+            // This requires adding a 'SendDtmfAsync' method to the TelnyxManager.
+            _logger.LogInformation("Sending DTMF via Telnyx API for call {CallControlId}", _callControlId);
+            // return _telnyxManager.SendDtmfAsync(_apiKey, _callControlId, digits);
+            _logger.LogWarning("SendDTMFAsync for Telnyx is not yet implemented in the manager.");
+            return Task.CompletedTask;
+        }
+
         public override async Task DisconnectAsync(string reason)
         {
-            await base.DisconnectAsync(reason); // Closes WebSocket
+            await base.DisconnectAsync(reason); // Closes WebSocket via transport
             _logger.LogInformation("Ending Telnyx call {CallControlId} via API.", _callControlId);
-            await _telnyxManager.EndCallAsync(_callControlId);
+            await _telnyxManager.EndCallAsync(_apiKey, _callControlId);
         }
     }
 }
