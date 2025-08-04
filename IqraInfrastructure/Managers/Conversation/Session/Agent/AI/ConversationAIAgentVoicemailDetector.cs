@@ -1,4 +1,5 @@
-﻿using IqraCore.Entities.Conversation.Events;
+﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Conversation.Events;
 using IqraCore.Entities.Helper.Audio;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.TTS;
@@ -23,6 +24,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentState _agentState;
         private readonly STTProviderManager _sttProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
+
+        private readonly BusinessAppAgentVoicemail _voicemailSettings;
 
         private CancellationTokenSource _cancellationTokenSource;
 
@@ -76,11 +79,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _llmProviderManager = llmProviderManager;
 
             _audioBuffer = new List<float>();
+
+            _voicemailSettings = _agentState.BusinessAppAgent.Voicemail;
         }
 
         public async Task InitializeAsync(CancellationToken token)
         {
-            if (!_agentState.BusinessAppAgent.Voicemail.IsEnabled) return;
+            if (!_voicemailSettings.IsEnabled) return;
 
             _cancellationTokenSource= CancellationTokenSource.CreateLinkedTokenSource(token);
 
@@ -95,11 +100,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 SampleRate = _agentState.AgentConfiguration.SampleRate,
                 BitsPerSample = _agentState.AgentConfiguration.BitsPerSample,
 
-                MinSilenceDurationMs = _agentState.BusinessAppAgent.Voicemail.VoiceMailMessageVADSilenceThresholdMS,
+                MinSilenceDurationMs = _voicemailSettings.VoiceMailMessageVADSilenceThresholdMS,
                 MinSpeechDurationMs = 300
             });
 
-            if (_agentState.BusinessAppAgent.Voicemail.OnVoiceMailMessageDetectVerifySTTAndLLM)
+            if (_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM)
             {
                 await InitalizeLLMSTTServices();
             }
@@ -110,7 +115,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // STT SERVICE
             var sttServiceResult = await _sttProviderManager.BuildProviderServiceByIntegration(
                 _agentState.STTBusinessIntegrationData,
-                _agentState.BusinessAppAgent.Voicemail.TranscribeVoiceMessageSTT,
+                _voicemailSettings.TranscribeVoiceMessageSTT,
                 _agentState.AgentConfiguration.SampleRate,
                 _agentState.AgentConfiguration.BitsPerSample,
                 _agentState.AgentConfiguration.AudioEncodingType
@@ -132,7 +137,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             var llmServiceResult = await _llmProviderManager.BuildProviderServiceByIntegration(
                 _agentState.LLMBusinessIntegrationData,
-                _agentState.BusinessAppAgent.Voicemail.VerifyVoiceMessageLLM,
+                _voicemailSettings.VerifyVoiceMessageLLM,
                 new Dictionary<string, string> { }
             );
             if (!llmServiceResult.Success || llmServiceResult.Data == null)
@@ -149,13 +154,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public async Task StartAsync()
         {
-            await Task.Delay(_agentState.BusinessAppAgent.Voicemail.InitialCheckDelayMS);
+            await Task.Delay(_voicemailSettings.InitialCheckDelayMS);
 
             _startedAt = DateTime.UtcNow;
 
             _audioBufferProcessingTask = Task.Run(() => ProcessAudioBuffer(), _cancellationTokenSource.Token);
 
-            if (_agentState.BusinessAppAgent.Voicemail.OnVoiceMailMessageDetectVerifySTTAndLLM)
+            if (_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM)
             {
                 _sttService.StartTranscription();
             }
@@ -168,7 +173,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (_hasServiceEnded) return;
             if (audioData.Length == 0) return;
 
-            if (_agentState.BusinessAppAgent.Voicemail.OnVoiceMailMessageDetectVerifySTTAndLLM)
+            if (_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM)
             {
                 _sttService.WriteTranscriptionAudioData(audioData);
             }
@@ -207,14 +212,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private async Task ProcessAudioBuffer()
         {
-            double mlCheckDurationInSeconds = _agentState.BusinessAppAgent.Voicemail.MLCheckDurationMS / 1000.0;
+            double mlCheckDurationInSeconds = _voicemailSettings.MLCheckDurationMS / 1000.0;
             long samplesLength = (long)(16000 * mlCheckDurationInSeconds); // (long)(sampleRate * (bitDepth / 8.0) * numberOfChannels * durationInSeconds);
 
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 if (_hasServiceEnded) break;
                 if (_hasCompletedMLChecks) break;
-                if (_currentMLChecks >= _agentState.BusinessAppAgent.Voicemail.MaxMLCheckTries)
+                if (_currentMLChecks >= _voicemailSettings.MaxMLCheckTries)
                 {
                     _hasCompletedMLChecks = true;
                     break;
@@ -240,12 +245,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 if (_hasServiceEnded) break;
-                if (_hasTriggeredStopSpeakingAgentTrigger && _hasTriggeredEndCallorLeaveMessageTrigger) break;
+                if (_hasTriggeredStopSpeakingAgentTrigger && _hasTriggeredEndCallorLeaveMessageTrigger)
+                {
+                    _hasServiceEnded = true;
+                    break;
+                }
 
                 // Get Results
 
                 // ML CHECK
-                bool isMLCheckEnabled = _agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentAfterXMlCheckSuccess;
+                bool isMLCheckEnabled = _voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess;
                 bool isMLCheckSuccess = false;
                 if (isMLCheckEnabled)
                 {
@@ -257,7 +266,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         var onlyHumanResults = _currentCheckResult.Where(x => x.Item1 == "human").ToList();
                         var totalHumanConfidence = onlyHumanResults.Sum(x => x.Item2);
 
-                        if (totalVoicemailConfidence > totalHumanConfidence)
+                        var totalConfidence = totalVoicemailConfidence + totalHumanConfidence;
+
+                        var voiceMailResult = totalVoicemailConfidence / totalConfidence;
+                        var humanResult = totalHumanConfidence / totalConfidence;
+
+                        if (voiceMailResult > humanResult)
                         {
                             isMLCheckSuccess = true;
                         }
@@ -280,7 +294,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 // LLM Confirmation Check
                 bool isLLMCheckSuccess = false;
-                if (_agentState.BusinessAppAgent.Voicemail.OnVoiceMailMessageDetectVerifySTTAndLLM)
+                if (_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM)
                 {
                     if (_hasStartedLLMCheck && _hasRecievedEndOfResponse)
                     {
@@ -300,21 +314,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (!_hasTriggeredStopSpeakingAgentTrigger)
                 {
                     var hasAchievedResult = true;
-                    if (_agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentAfterXMlCheckSuccess)
+                    if (_voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess)
                     {
                         if (!isMLCheckSuccess)
                         {
                             hasAchievedResult = false;
                         }
                     }
-                    if (_agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentAfterVadSilence)
+                    if (_voicemailSettings.StopSpeakingAgentAfterVadSilence)
                     {
                         if (!isVADCheckSuccess)
                         {
                             hasAchievedResult = false;
                         }
                     }
-                    if (_agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentAfterLLMConfirm)
+                    if (_voicemailSettings.StopSpeakingAgentAfterLLMConfirm)
                     {
                         if (!isLLMCheckSuccess)
                         {
@@ -328,7 +342,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         _ = Task.Run(async () =>
                         {
-                            await Task.Delay(_agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentDelayAfterMatchMS, _cancellationTokenSource.Token);
+                            await Task.Delay(_voicemailSettings.StopSpeakingAgentDelayAfterMatchMS, _cancellationTokenSource.Token);
                             OnStopAgentSpeaking?.Invoke(this, null);
                         });
                     }
@@ -338,21 +352,21 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 if (!_hasTriggeredEndCallorLeaveMessageTrigger)
                 {
                     var hasAchievedResult = true;
-                    if (_agentState.BusinessAppAgent.Voicemail.EndOrLeaveMessageAfterXMLCheckSuccess)
+                    if (_voicemailSettings.EndOrLeaveMessageAfterXMLCheckSuccess)
                     {
                         if (!isMLCheckSuccess)
                         {
                             hasAchievedResult = false;
                         }
                     }
-                    if (_agentState.BusinessAppAgent.Voicemail.EndOrLeaveMessageAfterVadSilence)
+                    if (_voicemailSettings.EndOrLeaveMessageAfterVadSilence)
                     {
                         if (!isVADCheckSuccess)
                         {
                             hasAchievedResult = false;
                         }
                     }
-                    if (_agentState.BusinessAppAgent.Voicemail.EndOrLeaveMessageAfterLLMConfirm)
+                    if (_voicemailSettings.EndOrLeaveMessageAfterLLMConfirm)
                     {
                         if (!isLLMCheckSuccess)
                         {
@@ -366,7 +380,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                         _ = Task.Run(async () =>
                         {
-                            await Task.Delay(_agentState.BusinessAppAgent.Voicemail.EndOrLeaveMessageDelayAfterMatchMS, _cancellationTokenSource.Token);
+                            await Task.Delay(_voicemailSettings.EndOrLeaveMessageDelayAfterMatchMS, _cancellationTokenSource.Token);
                             OnEndCallorLeaveMessageRecieved?.Invoke(this, null);
                         });
                     }
@@ -378,15 +392,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private void PerformLLMCheck()
         {
-            if (!_agentState.BusinessAppAgent.Voicemail.OnVoiceMailMessageDetectVerifySTTAndLLM) return;
+            if (!_voicemailSettings.OnVoiceMailMessageDetectVerifySTTAndLLM) return;
             if (_hasServiceEnded) return;
             if (_hasStartedLLMCheck) return;
             _hasStartedLLMCheck = true;
 
             string llmMessage = "Here is the context from the call so far that you can use to determine the result:\n\n\n";
-            if (_agentState.BusinessAppAgent.Voicemail.StopSpeakingAgentAfterXMlCheckSuccess && _hasCompletedMLChecks)
+            if (_voicemailSettings.StopSpeakingAgentAfterXMlCheckSuccess && _hasCompletedMLChecks)
             {
-                var predictionSeconds = _agentState.BusinessAppAgent.Voicemail.MLCheckDurationMS / 1000;
+                var predictionSeconds = _voicemailSettings.MLCheckDurationMS / 1000;
 
                 llmMessage += "- Result of the Voicemail Detection Machine Learning Model:\n```";
                 for (int i = 0; i < _currentCheckResult.Count; i++)
@@ -425,7 +439,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // make sure we are not stuck in loop of no silence ending
                 Task.Run(async () =>
                     {
-                        await Task.Delay(_agentState.BusinessAppAgent.Voicemail.VoiceMailMessageVADMaxSpeechDurationMS, _cancellationTokenSource.Token);
+                        await Task.Delay(_voicemailSettings.VoiceMailMessageVADMaxSpeechDurationMS, _cancellationTokenSource.Token);
                         OnVadSilenceRecived();
                     },
                     _cancellationTokenSource.Token

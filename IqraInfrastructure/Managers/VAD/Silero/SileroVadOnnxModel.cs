@@ -5,7 +5,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 {
     public class SileroVadOnnxModel : IDisposable
     {
-        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\Silero\\silero_vad.onnx");
+        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "Silero", "silero_vad.onnx");
         private static InferenceSession session;
         private static bool IsModelLoaded = false;
         private static bool IsLoadingModel = false;

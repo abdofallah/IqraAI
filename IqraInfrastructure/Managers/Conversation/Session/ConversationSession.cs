@@ -17,6 +17,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
@@ -436,7 +437,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         {
             lock (_clientsLock)
             {
-                return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientId == businessPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyType == provider);
+                return _clients.FirstOrDefault(c => c.ClientType == ConversationClientType.Telephony && ((BaseTelephonyConversationClient)c).ClientId == businessPhoneNumberId && ((BaseTelephonyConversationClient)c).ClientTelephonyProviderType == provider);
             }
         }
 
@@ -1010,9 +1011,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
             foreach (var client in _clients)
             {
-                if (client is WebSocketCapableConversationClient websocketClient)
+                if (client is TwilioConversationClient twilioClient)
                 {
-                    websocketClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
+                    twilioClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
+                }
+                else if (client is ModemTelConversationClient modemClient)
+                {
+                    modemClient.ClearBufferedAudioAync(CancellationToken.None).GetAwaiter().GetResult();
                 }
             }
         }

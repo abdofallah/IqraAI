@@ -69,7 +69,7 @@ namespace IqraInfrastructure.Managers.Business
                 CountryCode = countryCode,
                 Number = number,
                 Provider = provider,
-                RouteId = exisitingNumberData.RouteId ?? null
+                RouteId = postType == "new" ? null : (exisitingNumberData.RouteId ?? null)
             };
    
             // Get Integration Data

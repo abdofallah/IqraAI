@@ -169,6 +169,36 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
              // NEW: DTMF Session Manager Events -> Orchestrator/LLM
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
+
+            // Voicemail
+            _voicemailDetector.OnStopAgentSpeaking += OnVoicemailStopAgentSpeaking;
+            _voicemailDetector.OnEndCallorLeaveMessageRecieved += OnVoicemailEndCallorLeaveMessageRecieved;
+        }
+
+        private async void OnVoicemailEndCallorLeaveMessageRecieved(object? sender, EventArgs e)
+        {
+            if (_agentState.BusinessAppAgent.Voicemail.EndCallOnDetect)
+            {
+                await _conversationSessionManager.EndAsync("Voicemail detected");
+            }
+            else if (_agentState.BusinessAppAgent.Voicemail.LeaveMessageOnDetect)
+            {
+                string voicemailMessage = _agentState.BusinessAppAgent.Voicemail.MessageToLeave[_agentState.CurrentLanguageCode];
+
+                string llmHistoryMessage = "response_to_customer: " + voicemailMessage;
+                _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
+                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
+                await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(voicemailMessage, _conversationCTS.Token);
+
+                // TODO in future implement here a way if user joins the call while message is spoken
+                await Task.Delay(_agentState.BusinessAppAgent.Voicemail.WaitXMSAfterLeavingMessageToEndCall);
+                await _conversationSessionManager.EndAsync("Voicemail detected");
+            }
+        }
+
+        private async void OnVoicemailStopAgentSpeaking(object? sender, EventArgs e)
+        {
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
         }
 
         private void OnSpeechPlaybackComplete()

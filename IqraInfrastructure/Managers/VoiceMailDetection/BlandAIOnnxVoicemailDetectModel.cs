@@ -11,8 +11,9 @@ namespace IqraInfrastructure.Managers.VoiceMailDetection
 
     public class BlandAIOnnxVoicemailDetectModel : IDisposable
     {
-        private static string ModelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\BlandAIVM\\voicemail_detector.onnx");
-        private static string ModelConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models\\BlandAIVM\\config.json");
+        private static string BasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "BlandAIVM");
+        private static string ModelPath = Path.Combine(BasePath, "voicemail_detector.onnx");
+        private static string ModelConfigPath = Path.Combine(BasePath, "config.json");
 
         private static InferenceSession Session;
         private static IReadOnlyDictionary<long, string> Id2label;

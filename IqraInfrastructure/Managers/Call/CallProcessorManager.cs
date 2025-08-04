@@ -1,6 +1,4 @@
-﻿using Deepgram.Models.Agent.v2.WebSocket;
-using FluentFTP.Helpers;
-using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
@@ -21,6 +19,8 @@ using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Transport;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -655,34 +655,42 @@ namespace IqraInfrastructure.Managers.Call
             switch (businessNumberData.Provider)
             {
                 case TelephonyProviderEnum.ModemTel:
-                    return result.SetSuccessResult(
-                        new ModemTelConversationClient(
-                            clientId,
-                            phoneNumberData,
-                            ((BusinessNumberModemTelData)businessNumberData).ModemTelPhoneNumberId,
-                            customerNumber,
-                            callId,
-                            integrationData.Data.Fields["endpoint"],
-                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
-                            _serviceProvider.GetRequiredService<ModemTelManager>(),
-                            _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>()
-                        )
-                    );
+                    {
+                        var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeferredClientTransport>());
+                        return result.SetSuccessResult(
+                            new ModemTelConversationClient(
+                                clientId,
+                                phoneNumberData,
+                                ((BusinessNumberModemTelData)businessNumberData).ModemTelPhoneNumberId,
+                                customerNumber,
+                                callId,
+                                integrationData.Data.Fields["endpoint"],
+                                _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["apikey"]),
+                                _serviceProvider.GetRequiredService<ModemTelManager>(),
+                                deferredTransport,
+                                _serviceProvider.GetRequiredService<ILogger<ModemTelConversationClient>>()
+                            )
+                        );
+                    }
 
                 case TelephonyProviderEnum.Twilio:
-                    return result.SetSuccessResult(
-                        new TwilioConversationClient(
-                            clientId,
-                            phoneNumberData,
-                            ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
-                            customerNumber,
-                            callId,
-                            integrationData.Data.Fields["sid"],
-                            _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]),
-                            _serviceProvider.GetRequiredService<TwilioManager>(),
-                            _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>()
-                        )
-                    );
+                    {
+                        var deferredTransport = new DeferredClientTransport(_serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DeferredClientTransport>());
+                        return result.SetSuccessResult(
+                            new TwilioConversationClient(
+                                clientId,
+                                phoneNumberData,
+                                ((BusinessNumberTwilioData)businessNumberData).TwilioPhoneNumberId,
+                                customerNumber,
+                                callId,
+                                integrationData.Data.Fields["sid"],
+                                _integrationsManager.DecryptField(integrationData.Data.EncryptedFields["auth"]),
+                                _serviceProvider.GetRequiredService<TwilioManager>(),
+                                deferredTransport,
+                                _serviceProvider.GetRequiredService<ILogger<TwilioConversationClient>>()
+                            )
+                        );
+                    }
 
                 default:
                     return result.SetFailureResult("CreateTelephonyClient:INVALID_PROVIDER", "Invalid provider");
@@ -761,9 +769,6 @@ namespace IqraInfrastructure.Managers.Call
                 string authToken = _integrationsManager.DecryptField(integration.EncryptedFields["auth"]);
                 var twilioManager = _serviceProvider.GetRequiredService<TwilioManager>();
 
-                //statusCallbackUrl = statusCallbackUrl.Replace("192.168.100.9:5062", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devproxy").Replace("http://", "https://");
-                //websocketUrl = websocketUrl.Replace("192.168.100.9:5250", "iqrabackend.om-mct-s-dev.ddns.iqra.bot/devserver").Replace("ws://", "wss://");
-
                 var callResult = await twilioManager.MakeCallAsync(
                     accountSid,
                     authToken,
@@ -785,6 +790,45 @@ namespace IqraInfrastructure.Managers.Call
                 result.Message = $"Error initiating call: {ex.Message}"; return result;
             }
         }
+        private async Task<OutboundCallResultModel> InitiateSipTrunkOutboundCallAsync(BusinessNumberData sipNumber, string toNumber)
+        {
+            var result = new OutboundCallResultModel();
+
+            var sipCallManager = _serviceProvider.GetRequiredService<SipCallManager>();
+
+            // 1. Get a new User Agent from our manager
+            var uac = sipCallManager.CreateOutboundUserAgent();
+
+            // 2. Create our client wrapper
+            var sipClient = new SipConversationClient(
+                uac.CallDescriptor.CallId,
+                sipNumber.Number, // SIP URI
+                $"sip:{toNumber}@{sipNumber.Number}", // PROVIDER DOMAIN
+                uac,
+                _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<SipConversationClient>()
+            );
+
+            // 3. The CallProcessor will create and manage the session as before...
+            // ...
+            // var sessionResult = await CreateConversationSessionAsync(...);
+            // sessionResult.Data.SetPrimaryClient(sipClient); // pseudo-code
+
+            // 4. Now, tell the client to place the call
+            bool callSucceeded = await sipClient.Call($"sip:{toNumber}@{sipNumber.Number}"); // PROVIDER DOMAIN
+
+            if (callSucceeded)
+            {
+                result.Success = true;
+                result.CallId = sipClient.ClientId;
+                //result.Client = sipClient; // Pass the active client back
+            }
+            else
+            {
+                result.Message = "Failed to initiate SIP call.";
+            }
+
+            return result;
+        }
 
         public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
         {
@@ -804,25 +848,41 @@ namespace IqraInfrastructure.Managers.Call
                     convClient = sessionManager.PrimaryClient;
                 }
 
-                if (convClient is WebSocketCapableConversationClient wsClient)
+                if (convClient is BaseConversationClient baseClient)
                 {
-                    await wsClient.HandleAcceptedWebSocketAsync(webSocket, sessionOverallCts.Token);
-
-                    if (convClient is TwilioConversationClient twilioClient)
+                    if (baseClient.Transport is DeferredClientTransport deferredTransport)
                     {
-                        await NotifyTelephonyClientStatus(sessionId, new TelephonyStatusNotifyToBackendModel()
-                        {
-                            PhoneNumberId = twilioClient.ClientTelephonyProviderPhoneNumberId,
-                            Provider = TelephonyProviderEnum.Twilio,
-                            Status = "in-progress"
-                        });
-                    }
+                        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
 
-                    return result.SetSuccessResult(sessionOverallCts);
+                        var realTransport = new WebSocketClientTransport(
+                            webSocket,
+                            loggerFactory.CreateLogger<WebSocketClientTransport>(),
+                            sessionOverallCts.Token
+                        );
+
+                        deferredTransport.Activate(realTransport);
+
+                        if (convClient is TwilioConversationClient twilioClient)
+                        {
+                            await NotifyTelephonyClientStatus(sessionId, new TelephonyStatusNotifyToBackendModel()
+                            {
+                                PhoneNumberId = twilioClient.ClientTelephonyProviderPhoneNumberId,
+                                Provider = TelephonyProviderEnum.Twilio,
+                                Status = "in-progress"
+                            });
+                        }
+
+                        return result.SetSuccessResult(sessionOverallCts);
+                    }
+                    else
+                    {
+                        // This means the client was somehow initialized with a non-deferred transport, or transport is already activated.
+                        return result.SetFailureResult("AssignWebSocketToClientAsync:TRANSPORT_MISMATCH", "Client transport is not in a deferred state or is of an unexpected type.");
+                    }
                 }
                 else
                 {
-                    return result.SetFailureResult("AssignWebSocketToClientAsync:NOT_FOUND", "Client not websocket capable or not found");
+                    return result.SetFailureResult("AssignWebSocketToClientAsync:NOT_FOUND", "Conversation client not found or is not a BaseConversationClient.");
                 }
             }
             else

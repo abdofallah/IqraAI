@@ -181,7 +181,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Helpers
                     {
                         RequestedEncoding = AudioEncodingTypeEnum.WAV,
                         RequestedSampleRateHz = participant.AudioInfo.SampleRate,
-                        RequestedBitsPerSample = participant.AudioInfo.BitsPerSample
+                        RequestedBitsPerSample = 32
                     },
                     false
                 );

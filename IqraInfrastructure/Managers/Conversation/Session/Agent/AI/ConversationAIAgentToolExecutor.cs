@@ -1,6 +1,6 @@
 ﻿using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
-using IqraInfrastructure.Managers.Conversation.Session.Client;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using Microsoft.Extensions.Logging;
 using PhoneNumbers;
 using System.Text;
