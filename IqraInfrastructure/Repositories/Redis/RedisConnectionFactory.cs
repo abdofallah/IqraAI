@@ -73,6 +73,21 @@ namespace IqraInfrastructure.Repositories.Redis
             }
         }
 
+        public IServer GetServer()
+        {
+            var connection = GetConnection();
+            if (connection == null) return null;
+
+            var endpoint = connection.GetEndPoints().FirstOrDefault();
+            if (endpoint == null)
+            {
+                _logger.LogWarning("No endpoints found for Redis connection.");
+                return null;
+            }
+
+            return connection.GetServer(endpoint);
+        }
+
         public IDatabase GetDatabase()
         {
             return GetConnection().GetDatabase(_defaultDatabase);
