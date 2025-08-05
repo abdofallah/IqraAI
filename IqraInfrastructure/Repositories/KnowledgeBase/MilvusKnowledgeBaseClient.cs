@@ -33,11 +33,12 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
     public record CreateCollectionRequest(
         string collectionName,
         int dimension,
-        [property: JsonPropertyName("metric_type")] string metricType,
+        string metricType,
         string primaryFieldName,
         string idType,
         bool autoId,
-        string vectorFieldName);
+        string vectorFieldName
+    );
 
     public record DropCollectionRequest(string collectionName);
     public record LoadCollectionRequest(string collectionName);
@@ -45,8 +46,9 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
 
     // DTOs for Index Management
     public record CreateIndexRequest(string collectionName, List<IndexParameter> indexParams);
+    public record DropIndexRequest(string collectionName, string indexName);
     public record IndexParameter(
-        [property: JsonPropertyName("index_type")] string indexType,
+        string indexType,
         string metricType,
         string fieldName,
         string indexName,
@@ -84,15 +86,15 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         private readonly MilvusOptions _options;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
 
-        public MilvusKnowledgeBaseClient(IHttpClientFactory httpClientFactory, IOptions<MilvusOptions> options, ILogger<MilvusKnowledgeBaseClient> logger)
+        public MilvusKnowledgeBaseClient(IHttpClientFactory httpClientFactory, MilvusOptions options, ILogger<MilvusKnowledgeBaseClient> logger)
         {
-            _httpClient = httpClientFactory.CreateClient();
-            _options = options.Value;
+            _httpClient = httpClientFactory.CreateClient("MilvusClient");
+            _options = options;
             _logger = logger;
 
             // Configure HttpClient
             _httpClient.BaseAddress = new Uri(_options.Endpoint);
-            var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_options.Username}:{_options.Password}"));
+            var authToken = $"{_options.Username}:{_options.Password}";
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
 
             // Configure JSON serialization to match Milvus API expectations
@@ -137,6 +139,12 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         public async Task<bool> CreateIndexAsync(CreateIndexRequest request, CancellationToken cancellationToken = default)
         {
             var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/indexes/create", request, cancellationToken);
+            return response?.Code == 0;
+        }
+
+        public async Task<bool> DropIndexAsync(DropIndexRequest request, CancellationToken cancellationToken = default)
+        {
+            var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/indexes/drop", request, cancellationToken);
             return response?.Code == 0;
         }
 

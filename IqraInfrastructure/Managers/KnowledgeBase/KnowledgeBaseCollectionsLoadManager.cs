@@ -19,7 +19,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
         // --- Configuration for Janitor ---
         private const string JanitorLockKey = "milvus:janitor:lock";
         private readonly TimeSpan _lockTimeout = TimeSpan.FromMinutes(5);
-        private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+        private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(30);
 
         private const string SessionsKeyPrefix = "milvus:collection:{0}:sessions";
 
@@ -44,37 +44,32 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
 
             try
             {
-                // Create a transaction. This is the "no-script" way to achieve atomicity.
-                var transaction = db.CreateTransaction();
-                transaction.AddCondition(Condition.KeyExists(sessionsKey)); // Optional: Watch the key
-                var userCountTask = transaction.SortedSetLengthAsync(sessionsKey);
-                var addTask = transaction.SortedSetAddAsync(sessionsKey, sessionId, expiryTimestamp);
+                var redisKey = new RedisKey(sessionsKey);
+                var redisValue = new RedisValue(sessionId);
 
-                // Execute the transaction.
-                bool committed = await transaction.ExecuteAsync();
-                if (!committed)
+                if ((await db.SortedSetScoreAsync(redisKey, redisValue)) != null)
                 {
-                    _logger.LogWarning("Transaction to register session for {CollectionName} was aborted (key was likely modified). Retrying...", collectionName);
-                    // Simple retry logic. For high-contention, a backoff strategy would be better.
-                    await Task.Delay(50); // Small delay before retry
-                    return await RegisterUseAsync(collectionName, sessionId, expiry);
-                }
-
-                long previousUserCount = await userCountTask;
-
-                if (previousUserCount == 0)
-                {
-                    _logger.LogInformation("First user for {CollectionName}. Issuing load command.", collectionName);
-                    bool loaded = await _milvusClient.LoadCollectionAsync(collectionName);
-                    if (!loaded)
+                    bool removeSession = await db.SortedSetRemoveAsync(redisKey, redisValue);
+                    if (!removeSession)
                     {
-                        _logger.LogError("CRITICAL: Failed to load collection {CollectionName}. Rolling back registration.", collectionName);
-                        await DeregisterUseAsync(collectionName, sessionId);
                         return false;
                     }
                 }
 
-                _logger.LogInformation("Session {SessionId} successfully registered for {CollectionName}.", sessionId, collectionName);
+                bool addCollectionAndSession = await db.SortedSetAddAsync(redisKey, redisValue, expiryTimestamp);
+                if (!addCollectionAndSession)
+                {
+                    return false;
+                }
+
+                bool loaded = await _milvusClient.LoadCollectionAsync(collectionName);
+                if (!loaded)
+                {
+                    _logger.LogError("CRITICAL: Failed to load collection {CollectionName}. Rolling back registration.", collectionName);
+                    await DeregisterUseAsync(collectionName, sessionId);
+                    return false;
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -94,14 +89,11 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
 
             if (!await db.KeyExistsAsync(sessionsKey))
             {
-                // The janitor may have already cleaned it up. This is a valid state.
-                _logger.LogInformation("Deregister called for {CollectionName}, but key no longer exists. Assuming released.", collectionName);
                 return true;
             }
 
             // ZREM is atomic, no transaction needed here.
             await db.SortedSetRemoveAsync(sessionsKey, sessionId);
-            _logger.LogInformation("Session {SessionId} deregistered from {CollectionName}.", sessionId, collectionName);
             return true;
         }
 
@@ -129,7 +121,6 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                 {
                     try
                     {
-                        _logger.LogInformation("Janitor acquired lock. Starting cleanup cycle.");
                         await CleanupStaleCollectionsAsync(db, stoppingToken);
                     }
                     catch (Exception ex)
@@ -162,8 +153,6 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                 // 2. Check if any sessions remain.
                 if (await db.SortedSetLengthAsync(key) == 0)
                 {
-                    _logger.LogWarning("Collection {CollectionName} has no active sessions after cleanup. Releasing.", collectionName);
-
                     // 3. If no sessions are left, release from Milvus and delete the Redis key.
                     if (await _milvusClient.ReleaseCollectionAsync(collectionName))
                     {

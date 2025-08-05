@@ -1,11 +1,6 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Entities.KnowledgeBase;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace IqraInfrastructure.Repositories.KnowledgeBase
 {
@@ -23,7 +18,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         private const string FieldChunkId = "chunk_id";
         private const string FieldDocumentName = "document_name";
         private const string FieldTextChunk = "text_chunk";
-        private const string FieldEmbedding = "embedding";
+        private const string FieldEmbedding = "vector";
 
         public KnowledgeBaseRepository(MilvusKnowledgeBaseClient milvusClient, ILogger<KnowledgeBaseRepository> logger)
         {
@@ -35,24 +30,18 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         /// Creates a collection with a predefined schema and then creates an index on the vector field.
         /// This is a correction and improvement over the original implementation.
         /// </summary>
-        public async Task<bool> CreateCollectionAsync(string collectionName, int vectorDimension, CancellationToken cancellationToken = default)
+        public async Task<bool> CreateCollectionAsync(string collectionName, int vectorDimension, bool hybrirdSearchEnabled, CancellationToken cancellationToken = default)
         {
             try
             {
-                // Note: The Milvus v2.5 REST API does not support creating a collection with a complex schema
-                // in a single "quick setup" call. We define the schema and then create the collection.
-                // The following schema corrects the mismatch in the original user code.
                 var createCollectionRequest = new CreateCollectionRequest(
                     collectionName: collectionName,
                     dimension: vectorDimension,
-                    metricType: "IP", // Inner Product, as used in the original code's search
+                    metricType: "IP",
                     primaryFieldName: FieldChunkId,
                     idType: "Int64",
                     autoId: true,
                     vectorFieldName: FieldEmbedding
-                // Note: To add more scalar fields, you would need to use a more complex schema definition,
-                // which the basic create endpoint may not support. For now, we add 'document_name' and 'text_chunk'
-                // via the insert data structure, and Milvus will infer their types.
                 );
 
                 bool collectionCreated = await _milvusClient.CreateCollectionAsync(createCollectionRequest, cancellationToken);
@@ -62,20 +51,38 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
                     return false;
                 }
 
-                _logger.LogInformation("Successfully created collection {CollectionName}.", collectionName);
+                bool releaseCollection = await _milvusClient.ReleaseCollectionAsync(collectionName, cancellationToken);
+                if (!releaseCollection)
+                {
+                    _logger.LogError("Failed to release collection {CollectionName} via Milvus client.", collectionName);
+                    return false;
+                }
+
+                bool dropDefaultIndex = await _milvusClient.DropIndexAsync(
+                    new DropIndexRequest(
+                        collectionName: collectionName,
+                        indexName: FieldEmbedding
+                    ),
+                    cancellationToken
+                );
+                if (!dropDefaultIndex)
+                {
+                    _logger.LogError("Failed to drop default index for collection {CollectionName}.", collectionName);
+                    return false;
+                }
 
                 // Phase 2: Create the index immediately after collection creation.
                 var createIndexRequest = new CreateIndexRequest(
                     collectionName: collectionName,
                     indexParams: new List<IndexParameter>
                     {
-                    new IndexParameter(
-                        indexType: "HNSW",
-                        metricType: "IP", // Must match search metric type
-                        fieldName: FieldEmbedding,
-                        indexName: $"idx_{FieldEmbedding}", // It's good practice to name indexes
-                        @params: new Dictionary<string, object> { { "M", 8 }, { "efConstruction", 64 } }
-                    )
+                        new IndexParameter(
+                            indexType: "HNSW",
+                            metricType: "IP",
+                            fieldName: FieldEmbedding,
+                            indexName: $"idx_{FieldEmbedding}",
+                            @params: new Dictionary<string, object> { { "M", 8 }, { "efConstruction", 64 } }
+                        )
                     }
                 );
 
@@ -87,7 +94,6 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
                     return false;
                 }
 
-                _logger.LogInformation("Successfully created index on field {FieldName} for collection {CollectionName}.", FieldEmbedding, collectionName);
                 return true;
             }
             catch (Exception ex)
@@ -172,7 +178,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
                     processedResults.Add(new KnowledgeBaseSearchResult
                     {
                         // The keys are "id", "distance", and the names of the output_fields.
-                        Score = Convert.ToSingle(item["distance"]),
+                        Score = float.Parse(item["distance"].ToString()),
                         Text = item[FieldTextChunk].ToString() ?? string.Empty,
                         DocumentName = item[FieldDocumentName].ToString() ?? string.Empty
                     });
