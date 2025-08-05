@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Managers\STT\Providers\ElevenLabsScribeSTTServiceDISABLED" />
+    <None Remove="Managers\STT\Providers\IntellaSTTServiceDISABLED" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.5.0" />
     <PackageReference Include="Azure.AI.Inference" Version="1.0.0-beta.5" />
     <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />

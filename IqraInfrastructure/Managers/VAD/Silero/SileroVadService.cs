@@ -16,6 +16,7 @@ namespace IqraInfrastructure.Managers.VAD.Silero
         private readonly SileroVadOnnxModel SileroVadOnnxModel;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly List<float> _buffer;
+        private long _totalSamplesProcessed = 0;
 
         private VadOptions _options;
         private Task _loopTask;
@@ -115,6 +116,8 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                     float[] currentChunk = _buffer.Take(Silero16khzWindowSizeSamples).ToArray();
                     _buffer.RemoveRange(0, Silero16khzWindowSizeSamples);
 
+                    _totalSamplesProcessed += Silero16khzWindowSizeSamples;
+
                     ProcessWindow(currentChunk);
                 }
 
@@ -153,7 +156,9 @@ namespace IqraInfrastructure.Managers.VAD.Silero
                     if (!_isCurrentlySpeaking)
                     {
                         _isCurrentlySpeaking = true;
-                        OnVoiceActivityChanged(true);   
+
+                        long speechStartSample = _totalSamplesProcessed - _speechDurationSamples;
+                        OnVoiceActivityChanged(true, speechStartSample);   
                     }
                     _silenceDurationSamples = 0;
                 }
@@ -171,10 +176,12 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 
                 if (_isCurrentlySpeaking && effectiveSilenceDuration >= _minSilenceSamples)
                 {
+                    long speechEndSample = _totalSamplesProcessed - effectiveSilenceDuration;
+
                     _isCurrentlySpeaking = false;
                     _triggered = false;
                     _tempEndSamples = 0;
-                    OnVoiceActivityChanged(false);
+                    OnVoiceActivityChanged(false, speechEndSample);
                     _speechDurationSamples = 0;
                 }
             }
@@ -195,10 +202,17 @@ namespace IqraInfrastructure.Managers.VAD.Silero
             _buffer.Clear();
         }
 
-        private void OnVoiceActivityChanged(bool isSpeechDetected)
+        private void OnVoiceActivityChanged(bool isSpeechDetected, long samplePosition)
         {
-            try { VoiceActivityChanged?.Invoke(this, new VadEventArgs(isSpeechDetected)); }
-            catch (Exception ex) { _logger.LogError(ex, "Error invoking VoiceActivityChanged event handler."); }
+            try {
+                double seconds = (double)samplePosition / SileroVadSampleRate;
+                TimeSpan timestamp = TimeSpan.FromSeconds(seconds);
+
+                VoiceActivityChanged?.Invoke(this, new VadEventArgs(isSpeechDetected, timestamp));
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error invoking VoiceActivityChanged event handler.");
+            }
         }
 
         public void Dispose()

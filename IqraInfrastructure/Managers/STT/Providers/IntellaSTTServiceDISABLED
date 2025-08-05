@@ -1,0 +1,334 @@
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Interfaces;
+using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.VAD;
+using IqraInfrastructure.Managers.VAD.Silero;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Text.Json;
+
+namespace IqraInfrastructure.Managers.STT.Providers
+{
+    public class IntellaSpeechSTTService : ISTTService, IDisposable
+    {
+        private readonly string _apiToken;
+        private readonly string _accountId;
+        private readonly int _noOfSpeakers;
+
+        private readonly SileroVadService _sileroVad;
+        private readonly ILogger<IntellaSpeechSTTService> _logger;
+        private static readonly HttpClient _httpClient = new HttpClient();
+
+        private List<byte> _audioBuffer;
+        private long _totalBytesDiscarded = 0;
+        private TimeSpan? _speechStartTime = null;
+        private CancellationTokenSource _pollingCancellationTokenSource;
+
+        public event EventHandler<string> TranscriptionResultReceived;
+        public event EventHandler<string> OnRecoginizingRecieved; // Not applicable for Intella's non-streaming API
+        public event EventHandler<object> OnRecoginizingCancelled;
+
+        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+        private readonly int _inputSampleRate;
+        private readonly int _inputBitsPerSample;
+
+        public IntellaSpeechSTTService(
+            string apiToken,
+            string accountId,
+            int noOfSpeakers,
+            int inputSampleRate,
+            int inputBitsPerSample,
+            AudioEncodingTypeEnum inputAudioEncodingType,
+            int minimumSilenceDurationMS,
+            int minimumSpeechDurationMS,
+            ILoggerFactory loggerFactory
+        )
+        {
+            _apiToken = apiToken;
+            _accountId = accountId;
+            _noOfSpeakers = noOfSpeakers;
+            _logger = loggerFactory.CreateLogger<IntellaSpeechSTTService>();
+
+            _inputAudioEncodingType = inputAudioEncodingType;
+            _inputSampleRate = inputSampleRate;
+            _inputBitsPerSample = inputBitsPerSample;
+
+            // Initialize Silero VAD
+            _sileroVad = new SileroVadService(loggerFactory.CreateLogger<SileroVadService>(), CancellationToken.None);
+            _sileroVad.Initialize(new VadOptions()
+            {
+                AudioEncodingType = inputAudioEncodingType,
+                SampleRate = inputSampleRate,
+                BitsPerSample = inputBitsPerSample,
+
+                MinSpeechDurationMs = minimumSpeechDurationMS,
+                MinSilenceDurationMs = minimumSilenceDurationMS
+            });
+            _sileroVad.VoiceActivityChanged += OnVoiceActivityChanged;
+        }
+
+        public void Initialize()
+        {
+            _audioBuffer = new List<byte>();
+            _pollingCancellationTokenSource = new CancellationTokenSource();
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("x-ApiToken", _apiToken);
+            _logger.LogInformation("Intella STT Service Initialized.");
+        }
+
+        public void StartTranscription()
+        {
+            _sileroVad.Reset();
+            _logger.LogInformation("Intella STT Transcription Started.");
+        }
+
+        public void WriteTranscriptionAudioData(byte[] data)
+        {
+            if (data == null || data.Length == 0) return;
+
+            // Write audio to buffer and process with VAD
+            _audioBuffer.AddRange(data);
+            _sileroVad.ProcessAudio(data);
+        }
+
+        private void OnVoiceActivityChanged(object sender, VadEventArgs e)
+        {
+            if (e.IsSpeechDetected && _speechStartTime == null)
+            {
+                _speechStartTime = e.Timestamp;
+                _logger.LogInformation($"Speech detected. Marking start time at: {_speechStartTime.Value:g}");
+                return;
+            }
+
+            if (!e.IsSpeechDetected && _speechStartTime != null)
+            {
+                var speechEndTime = e.Timestamp;
+                _logger.LogInformation($"Speech ended at: {speechEndTime:g}. Preparing audio segment for transcription.");
+
+                // --- MODIFICATION 1: Buffer Management Logic ---
+                long absoluteStartByte = TimeSpanToBytes(_speechStartTime.Value);
+                long absoluteEndByte = TimeSpanToBytes(speechEndTime);
+                long byteCount = absoluteEndByte - absoluteStartByte;
+
+                // The position to start copying from *within the current buffer*
+                long relativeStartByte = absoluteStartByte - _totalBytesDiscarded;
+                long relativeEndByte = absoluteEndByte - _totalBytesDiscarded;
+
+                if (byteCount <= 0 || relativeStartByte < 0)
+                {
+                    _logger.LogWarning("Calculated speech segment is invalid (length={byteCount}, start={relativeStartByte}). Ignoring.", byteCount, relativeStartByte);
+                    _speechStartTime = null;
+                    return;
+                }
+
+                var fullBufferBytes = _audioBuffer.ToArray();
+                if (relativeStartByte + byteCount > fullBufferBytes.Length)
+                {
+                    _logger.LogError("Buffer consistency error. Attempting to read beyond buffer size. Skipping segment.");
+                    _speechStartTime = null;
+                    return;
+                }
+
+                // Extract the precise audio segment
+                byte[] speechSegment = new byte[byteCount];
+                Array.Copy(fullBufferBytes, relativeStartByte, speechSegment, 0, byteCount);
+                
+                // Remove Processed Buffer
+                _audioBuffer.RemoveRange(0, (int)relativeEndByte);
+                _totalBytesDiscarded = absoluteEndByte;
+
+                // Process Current Segment
+                _ = Task.Run(() => ProcessTranscription(speechSegment));
+                _speechStartTime = null;
+               
+                _logger.LogInformation($"Buffer size after trim: {_audioBuffer.Count} bytes. Total bytes discarded: {_totalBytesDiscarded}.");
+            }
+        }
+
+        private long TimeSpanToBytes(TimeSpan time)
+        {
+            int bytesPerSecond = _inputSampleRate * (_inputBitsPerSample / 8);
+            return (long)(time.TotalSeconds * bytesPerSecond);
+        }
+
+        private async Task ProcessTranscription(byte[] audioData)
+        {
+            var benchmarkStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                // Step 1: Upload the audio and get a request ID
+                var requestId = await UploadAudioForTranscription(audioData);
+                if (string.IsNullOrEmpty(requestId))
+                {
+                    throw new Exception("Failed to get a request ID from Intella API.");
+                }
+
+                _logger.LogInformation($"Audio uploaded successfully. Request ID: {requestId}");
+
+                // Step 2: Poll for the transcription result. [3, 6]
+                var transcript = await PollForResult(requestId, _pollingCancellationTokenSource.Token);
+
+                benchmarkStopwatch.Stop();
+
+                if (!string.IsNullOrEmpty(transcript))
+                {
+                    _logger.LogInformation($"BENCHMARK: Transcription success. Time taken: {benchmarkStopwatch.Elapsed.TotalMilliseconds:F0} ms for {audioData.Length} bytes of audio.");
+                    //_logger.LogInformation($"Transcription received: {transcript}");
+                    TranscriptionResultReceived?.Invoke(this, transcript);
+                }
+                else
+                {
+                    _logger.LogWarning($"BENCHMARK: Polling completed without transcript. Time taken: {benchmarkStopwatch.Elapsed.TotalMilliseconds:F0} ms.");
+                    //_logger.LogWarning("Polling completed but no transcript was returned.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during the transcription process.");
+                OnRecoginizingCancelled?.Invoke(this, ex);
+            }
+        }
+
+        private async Task<string> UploadAudioForTranscription(byte[] rawPcmData)
+        {
+            var requestUri = $"https://api.intella.me/api/accounts/{_accountId}/requests";
+
+            byte[] wavFileBytes = CreateWavFileWithHeader(rawPcmData);
+
+            using var formData = new MultipartFormDataContent();
+
+            var audioContent = new ByteArrayContent(wavFileBytes);
+            audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+
+            formData.Add(audioContent, "file", "speech.wav");
+            formData.Add(new StringContent(_noOfSpeakers.ToString()), "noOfSpeakers");
+            formData.Add(new StringContent("speech.wav"), "fileName");
+
+            var response = await _httpClient.PostAsync(requestUri, formData);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"Intella API Error: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}");
+                response.EnsureSuccessStatusCode();
+            }
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            using var jsonDoc = JsonDocument.Parse(jsonResponse);
+
+            return jsonDoc.RootElement.TryGetProperty("id", out var id) ? id.GetString() : null;
+        }
+
+        private byte[] CreateWavFileWithHeader(byte[] rawPcmData)
+        {
+            // --- Define WAV format constants ---
+            const int sampleRate = 16000;
+            const short bitsPerSample = 32;
+            const short numChannels = 1;
+
+            // --- Calculate header values ---
+            int byteRate = sampleRate * numChannels * bitsPerSample / 8;
+            short blockAlign = (short)(numChannels * bitsPerSample / 8);
+            int subChunk2Size = rawPcmData.Length;
+            int chunkSize = 36 + subChunk2Size;
+
+            using (var memoryStream = new MemoryStream())
+            using (var writer = new BinaryWriter(memoryStream, System.Text.Encoding.UTF8))
+            {
+                // --- RIFF Chunk Descriptor ---
+                // Contains the letters "RIFF" in ASCII
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+                // 36 + SubChunk2Size
+                writer.Write(chunkSize);
+                // Contains the letters "WAVE"
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+
+                // --- "fmt " Sub-Chunk ---
+                // Contains the letters "fmt " (notice the trailing space)
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+                // 16 for PCM. This is the size of the rest of the Sub-chunk
+                writer.Write(16);
+                // PCM = 1
+                writer.Write((short)1);
+                // Mono = 1
+                writer.Write(numChannels);
+                // 16000
+                writer.Write(sampleRate);
+                // SampleRate * NumChannels * BitsPerSample/8
+                writer.Write(byteRate);
+                // NumChannels * BitsPerSample/8
+                writer.Write(blockAlign);
+                // 32 bits
+                writer.Write(bitsPerSample);
+
+                // --- "data" Sub-Chunk ---
+                // Contains the letters "data"
+                writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+                // Number of bytes in the data.
+                writer.Write(subChunk2Size);
+
+                // --- Audio Data ---
+                // Write the raw PCM data
+                writer.Write(rawPcmData);
+
+                return memoryStream.ToArray();
+            }
+        }
+
+        private async Task<string> PollForResult(string requestId, CancellationToken cancellationToken)
+        {
+            var requestUri = $"https://api.intella.me/api/accounts/{_accountId}/requests/{requestId}";
+            var pollingInterval = TimeSpan.FromMilliseconds(50); // Poll every 2 seconds
+            var timeout = TimeSpan.FromMinutes(5); // 5-minute timeout
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            while (stopwatch.Elapsed < timeout && !cancellationToken.IsCancellationRequested)
+            {
+                var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                using var jsonDoc = JsonDocument.Parse(jsonResponse);
+                var root = jsonDoc.RootElement;
+
+                // Status 0 indicates completion based on the documentation
+                if (root.TryGetProperty("status", out var statusProp) && statusProp.GetInt32() == 0)
+                {
+                    return root.TryGetProperty("transcriptContent", out var transcriptProp) ? transcriptProp.GetString() : string.Empty;
+                }
+
+                await Task.Delay(pollingInterval, cancellationToken);
+            }
+
+            throw new TimeoutException("Polling for transcription result timed out.");
+        }
+
+        public async Task StopTranscriptionAsync()
+        {
+            _pollingCancellationTokenSource?.Cancel();
+            _sileroVad.VoiceActivityChanged -= OnVoiceActivityChanged;
+            _audioBuffer?.Clear();
+            _logger.LogInformation("Intella STT Transcription Stopped.");
+            await Task.CompletedTask;
+        }
+
+        public void StopTranscription()
+        {
+            StopTranscriptionAsync().GetAwaiter().GetResult();
+        }
+
+        public string GetProviderFullName() => "Intella STT";
+
+        public InterfaceSTTProviderEnum GetProviderType() => GetProviderTypeStatic();
+
+        public static InterfaceSTTProviderEnum GetProviderTypeStatic() => InterfaceSTTProviderEnum.Intella;
+
+        public void Dispose()
+        {
+            _pollingCancellationTokenSource?.Dispose();
+            _audioBuffer?.Clear();
+            // Note: HttpClient is typically not disposed if it's static and reused.
+        }
+    }
+}

@@ -28,10 +28,12 @@ namespace IqraCore.Interfaces.VAD
     public class VadEventArgs : EventArgs
     {
         public bool IsSpeechDetected { get; }
+        public TimeSpan Timestamp { get; }
 
-        public VadEventArgs(bool isSpeechDetected)
+        public VadEventArgs(bool isSpeechDetected, TimeSpan duration)
         {
             IsSpeechDetected = isSpeechDetected;
+            Timestamp = duration;
         }
     }
 }

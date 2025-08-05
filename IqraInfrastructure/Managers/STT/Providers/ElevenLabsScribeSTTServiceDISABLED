@@ -1,0 +1,265 @@
+﻿using IqraCore.Entities.Helper.Audio;
+using IqraCore.Entities.Interfaces;
+using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.VAD;
+using IqraInfrastructure.Helpers.Audio;
+using IqraInfrastructure.Managers.VAD.Silero;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+namespace IqraInfrastructure.Managers.STT.Providers
+{
+    public class ElevenLabsScribeSTTService : ISTTService, IDisposable
+    {
+        private readonly string _apiToken;
+        private readonly string _modelId;
+        private readonly int? _noOfSpeakers;
+        private readonly string? _languageCode;
+
+        private readonly SileroVadService _sileroVad;
+        private readonly ILogger<ElevenLabsScribeSTTService> _logger;
+        private static readonly HttpClient _httpClient = new HttpClient();
+
+        private List<byte> _audioBuffer;
+        private long _totalBytesDiscarded = 0;
+        private TimeSpan? _speechStartTime = null;
+        private CancellationTokenSource _transcriptionCancellationTokenSource;
+
+        public event EventHandler<string> TranscriptionResultReceived;
+        public event EventHandler<string> OnRecoginizingRecieved; // Not directly applicable
+        public event EventHandler<object> OnRecoginizingCancelled;
+
+        private readonly AudioEncodingTypeEnum _inputAudioEncodingType;
+        private readonly int _inputSampleRate;
+        private readonly int _inputBitsPerSample;
+
+        public ElevenLabsScribeSTTService(
+            string apiToken,
+            string modelId,
+            string? languageCode,
+            int? noOfSpeakers,
+            int inputSampleRate,
+            int inputBitsPerSample,
+            AudioEncodingTypeEnum inputAudioEncodingType,
+            int minimumSilenceDurationMS,
+            int minimumSpeechDurationMS,
+            ILoggerFactory loggerFactory
+        )
+        {
+            _apiToken = apiToken;
+            _languageCode = languageCode;
+            _modelId = modelId ?? "scribe_v1";
+            _noOfSpeakers = noOfSpeakers;
+            _logger = loggerFactory.CreateLogger<ElevenLabsScribeSTTService>();
+
+            _inputAudioEncodingType = inputAudioEncodingType;
+            _inputSampleRate = inputSampleRate;
+            _inputBitsPerSample = inputBitsPerSample;
+
+            // Initialize Silero VAD
+            _sileroVad = new SileroVadService(loggerFactory.CreateLogger<SileroVadService>(), CancellationToken.None);
+            _sileroVad.Initialize(new VadOptions()
+            {
+                AudioEncodingType = inputAudioEncodingType,
+                SampleRate = inputSampleRate,
+                BitsPerSample = inputBitsPerSample,
+                MinSpeechDurationMs = minimumSpeechDurationMS,
+                MinSilenceDurationMs = minimumSilenceDurationMS
+            });
+            _sileroVad.VoiceActivityChanged += OnVoiceActivityChanged;
+        }
+
+        public void Initialize()
+        {
+            _audioBuffer = new List<byte>();
+            _transcriptionCancellationTokenSource = new CancellationTokenSource();
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("xi-api-key", _apiToken);
+            _logger.LogInformation("ElevenLabs Scribe STT Service Initialized.");
+        }
+
+        public void StartTranscription()
+        {
+            _sileroVad.Reset();
+            _logger.LogInformation("ElevenLabs Scribe STT Transcription Started.");
+        }
+
+        public void WriteTranscriptionAudioData(byte[] data)
+        {
+            if (data == null || data.Length == 0) return;
+
+            _audioBuffer.AddRange(data);
+            _sileroVad.ProcessAudio(data);
+        }
+
+        private void OnVoiceActivityChanged(object sender, VadEventArgs e)
+        {
+            if (e.IsSpeechDetected && _speechStartTime == null)
+            {
+                _speechStartTime = e.Timestamp;
+                _logger.LogInformation($"Speech detected. Marking start time at: {_speechStartTime.Value:g}");
+                return;
+            }
+
+            if (!e.IsSpeechDetected && _speechStartTime != null)
+            {
+                var speechEndTime = e.Timestamp;
+                _logger.LogInformation($"Speech ended at: {speechEndTime:g}. Preparing audio segment for transcription.");
+
+                long absoluteStartByte = TimeSpanToBytes(_speechStartTime.Value);
+                long absoluteEndByte = TimeSpanToBytes(speechEndTime);
+                long byteCount = absoluteEndByte - absoluteStartByte;
+                long relativeStartByte = absoluteStartByte - _totalBytesDiscarded;
+
+                if (byteCount <= 0 || relativeStartByte < 0)
+                {
+                    _logger.LogWarning("Calculated speech segment is invalid (length={byteCount}, start={relativeStartByte}). Ignoring.", byteCount, relativeStartByte);
+                    _speechStartTime = null;
+                    return;
+                }
+
+                var fullBufferBytes = _audioBuffer.ToArray();
+                if (relativeStartByte + byteCount > fullBufferBytes.Length)
+                {
+                    _logger.LogError("Buffer consistency error. Attempting to read beyond buffer size. Skipping segment.");
+                    _speechStartTime = null;
+                    return;
+                }
+
+                byte[] speechSegment = new byte[byteCount];
+                Array.Copy(fullBufferBytes, relativeStartByte, speechSegment, 0, byteCount);
+
+                // This logic correctly removes the processed part of the buffer.
+                int bytesToRemove = (int)(relativeStartByte + byteCount);
+                _audioBuffer.RemoveRange(0, bytesToRemove);
+                _totalBytesDiscarded += bytesToRemove;
+
+                _ = Task.Run(() => ProcessTranscription(speechSegment), _transcriptionCancellationTokenSource.Token);
+                _speechStartTime = null;
+
+                _logger.LogInformation($"Buffer size after trim: {_audioBuffer.Count} bytes. Total bytes discarded: {_totalBytesDiscarded}.");
+            }
+        }
+
+        private long TimeSpanToBytes(TimeSpan time)
+        {
+            // Bytes per second = Sample Rate * (BitsPerSample / 8) * Number of Channels
+            int bytesPerSecond = _inputSampleRate * (_inputBitsPerSample / 8);
+            return (long)(time.TotalSeconds * bytesPerSecond);
+        }
+
+        private async Task ProcessTranscription(byte[] rawPcmData)
+        {
+            var benchmarkStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                var requestUri = "https://api.elevenlabs.io/v1/speech-to-text";
+
+                // Create a valid WAV file from the raw PCM data
+                (byte[] wavFileBytes, _) = AudioConversationHelper.Convert(
+                    rawPcmData,
+                    new IqraCore.Entities.TTS.TTSProviderAvailableAudioFormat()
+                    {
+                        Encoding = _inputAudioEncodingType,
+                        SampleRateHz = _inputSampleRate,
+                        BitsPerSample = _inputBitsPerSample
+                    },
+                    new AudioRequestDetails()
+                    {
+                        RequestedEncoding = AudioEncodingTypeEnum.WAV,
+                        RequestedBitsPerSample = 16,
+                        RequestedSampleRateHz = 16000
+                    },
+                    false
+                );
+
+                using var formData = new MultipartFormDataContent();
+
+                var audioContent = new ByteArrayContent(wavFileBytes);
+                audioContent.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
+                formData.Add(audioContent, "file", "speech.wav");
+                formData.Add(new StringContent(_modelId), "model_id");
+                formData.Add(new StringContent("pcm_s16le_16"), "file_format");
+
+                if (_languageCode != null)
+                {
+                    formData.Add(new StringContent(_languageCode), "language_code");
+                }
+
+                if (_noOfSpeakers.HasValue)
+                {
+                    formData.Add(new StringContent(_noOfSpeakers.Value.ToString()), "num_speakers");
+                    formData.Add(new StringContent("true"), "diarize");
+                }
+
+                var response = await _httpClient.PostAsync(requestUri, formData, _transcriptionCancellationTokenSource.Token);
+                benchmarkStopwatch.Stop();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    using var jsonDoc = JsonDocument.Parse(jsonResponse);
+                    var transcript = jsonDoc.RootElement.TryGetProperty("text", out var textProp) ? textProp.GetString() : string.Empty;
+
+                    if (!string.IsNullOrEmpty(transcript))
+                    {
+                        _logger.LogInformation($"BENCHMARK: Transcription success. Time taken: {benchmarkStopwatch.Elapsed.TotalMilliseconds:F0} ms for {rawPcmData.Length} bytes of audio.");
+                        TranscriptionResultReceived?.Invoke(this, transcript);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"BENCHMARK: Transcription completed without text. Time taken: {benchmarkStopwatch.Elapsed.TotalMilliseconds:F0} ms.");
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"ElevenLabs API Error: {response.StatusCode} - {errorContent}");
+                    OnRecoginizingCancelled?.Invoke(this, new Exception($"ElevenLabs API Error: {response.StatusCode} - {errorContent}"));
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Transcription task was canceled.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred during the transcription process.");
+                OnRecoginizingCancelled?.Invoke(this, ex);
+            }
+        }
+
+        public async Task StopTranscriptionAsync()
+        {
+            if (_transcriptionCancellationTokenSource != null && !_transcriptionCancellationTokenSource.IsCancellationRequested)
+            {
+                _transcriptionCancellationTokenSource.Cancel();
+            }
+            _sileroVad.VoiceActivityChanged -= OnVoiceActivityChanged;
+            _audioBuffer?.Clear();
+            _logger.LogInformation("ElevenLabs Scribe STT Transcription Stopped.");
+            await Task.CompletedTask;
+        }
+
+        public void StopTranscription()
+        {
+            StopTranscriptionAsync().GetAwaiter().GetResult();
+        }
+
+        public string GetProviderFullName() => "ElevenLabs Scribe STT";
+
+        public InterfaceSTTProviderEnum GetProviderType() => GetProviderTypeStatic();
+
+        public static InterfaceSTTProviderEnum GetProviderTypeStatic() => InterfaceSTTProviderEnum.ElevenLabsScribe;
+
+        public void Dispose()
+        {
+            _transcriptionCancellationTokenSource?.Dispose();
+            _audioBuffer?.Clear();
+        }
+    }
+}
