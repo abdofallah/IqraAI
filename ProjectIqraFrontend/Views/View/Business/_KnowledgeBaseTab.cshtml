@@ -1,6 +1,437 @@
 ﻿<div class="main-container fade d-none w-100" id="knowledge-base-tab">
-    <h3 class="fw-bold tab-title"><i class='fa-regular fa-database'></i> <span>Knowledge Base</span></h3>
-    <div class="inner-container">
-        <h6>Ah! This page is currently under development.</h6>
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-database'></i> <span>Knowledge Base</span></h3>
+
+    <!-- Header Container -->
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="knowledge-base-header">
+        <div class="d-flex flex-column align-items-start justify-content-between">
+
+            <!-- Knowledge Base Manager Inner Header -->
+            <div class="w-100 fade show" id="knowledge-base-manager-header-inner">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToKnowledgeBaseTab">Knowledge Base</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentKnowledgeBaseName">New Knowledge Base</span></li>
+                        </ol>
+                    </nav>
+                    <div>
+                        <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveKnowledgeBaseButton" disabled>
+                            <i class='fa-regular fa-floppy-disk'></i>
+                            <span> Save</span>
+                        </button>
+                        <button class="btn btn-success btn-sm btn-ic-span-align d-none" id="testRetrievalButton">
+                            <i class="fa-regular fa-vial"></i>
+                            <span> Test Retrieval</span>
+                        </button>
+                    </div>
+                </div>
+
+                <ul class="nav w-100" id="knowledge-base-manager-tab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="knowledge-base-manager-general-tab" data-bs-toggle="pill" data-bs-target="#knowledge-base-manager-general" type="button" role="tab" aria-controls="knowledge-base-manager-general" aria-selected="true">General</button>
+                    </li>
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link" id="knowledge-base-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#knowledge-base-manager-configuration" type="button" role="tab" aria-controls="knowledge-base-manager-configuration" aria-selected="false">Configuration</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="knowledge-base-manager-documents-tab" data-bs-toggle="pill" data-bs-target="#knowledge-base-manager-documents" type="button" role="tab" aria-controls="knowledge-base-manager-documents" aria-selected="false" disabled>Documents</button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Document Chunk Manager Header -->
+            <div class="w-100 fade d-none" id="knowledge-base-document-chunk-manager-header-inner">
+                <div class="d-flex flex-column align-items-start justify-content-between">
+                    <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">Knowledge Base</li>
+                                <li class="breadcrumb-item"><a href="#" id="backToKbManagerFromChunks">Knowledge Base</a></li>
+                                <li class="breadcrumb-item active" aria-current="page" id="currentChunksDocumentName">Document</li>
+                            </ol>
+                        </nav>
+                        <div>
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveChunksButton" disabled>
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save Chunks</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
+
+    <!-- Main Container -->
+    <div class="inner-container">
+        <!-- Knowledge Base List Tab -->
+        <div class="fade show w-100" id="knowledgeBaseListTab">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 250px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewKnowledgeBaseButton">
+                        <span>+ Add New Knowledge Base</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Knowledge Base name" aria-label="Knowledge Base Name" aria-describedby="searchKnowledgeBaseButton">
+                    <button class="input-group-button btn btn-primary" id="searchKnowledgeBaseButton">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="knowledgeBaseListTable">
+                <!-- Dynamically Generated Knowledge Base Cards -->
+            </div>
+        </div>
+        <!-- Knowledge Base Manager Tab -->
+        <div class="fade d-none w-100" id="knowledgeBaseManagerTab">
+
+            <div class="tab-content w-100" id="knowledge-base-manager-tabContent">
+                <!-- General -->
+                <div class="tab-pane fade show active w-100" id="knowledge-base-manager-general" role="tabpanel" aria-labelledby="knowledge-base-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="editKnowledgeBaseNameInput">Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="editKnowledgeBaseIconInput">🧠</button>
+                            <input type="text" class="form-control" id="editKnowledgeBaseNameInput" placeholder="Knowledge Base Name">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="editKnowledgeBaseDescriptionInput">Description</label>
+                        <input type="text" class="form-control" id="editKnowledgeBaseDescriptionInput" placeholder="Knowledge Base Description">
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div class="tab-pane fade w-100" id="knowledge-base-manager-configuration" role="tabpanel" aria-labelledby="knowledge-base-manager-configuration-tab" tabindex="0">
+                    <!-- Chunk Settings -->
+                    <div class="card p-3 mb-4">
+                        <h5 class="fw-bold mb-3">Chunk Settings</h5>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="chunkMode" id="chunkModeGeneral" value="general" checked>
+                            <label class="form-check-label" for="chunkModeGeneral">
+                                General
+                                <p class="form-text">General text chunking mode, the chunks retrieved and recalled are the same.</p>
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="chunkMode" id="chunkModeParentChild" value="parent-child">
+                            <label class="form-check-label" for="chunkModeParentChild">
+                                Parent-child
+                                <p class="form-text">The child-chunk is used for retrieval and the parent-chunk is used for recall as context.</p>
+                            </label>
+                        </div>
+
+                        <!-- General Chunking Settings -->
+                        <div id="generalChunkSettings">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="generalDelimiter" class="form-label">Delimiter</label>
+                                    <input type="text" class="form-control" id="generalDelimiter" value="\n\n">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="generalMaxChunkLength" class="form-label">Maximum chunk length</label>
+                                    <input type="number" class="form-control" id="generalMaxChunkLength" value="1024">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="generalChunkOverlap" class="form-label">Chunk overlap</label>
+                                    <input type="number" class="form-control" id="generalChunkOverlap" value="50">
+                                </div>
+                            </div>
+                            <hr>
+                            <h6>Text Pre-processing Rules</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="generalReplaceConsecutive">
+                                <label class="form-check-label" for="generalReplaceConsecutive">Replace consecutive spaces, newlines and tabs</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="generalDeleteUrls">
+                                <label class="form-check-label" for="generalDeleteUrls">Delete all URLs and email addresses</label>
+                            </div>
+                        </div>
+
+                        <!-- Parent-child Chunking Settings -->
+                        <div id="parentChildChunkSettings" class="d-none">
+                            <div class="mb-3">
+                                <h6>Parent-chunk for Context</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="parentChunkType" id="parentChunkParagraph" value="paragraph" checked>
+                                    <label class="form-check-label" for="parentChunkParagraph">Paragraph</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="parentChunkType" id="parentChunkFullDoc" value="full_doc">
+                                    <label class="form-check-label" for="parentChunkFullDoc">Full Doc</label>
+                                </div>
+                            </div>
+                            <div id="parentChunkParagraphSettings" class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="parentDelimiter" class="form-label">Delimiter</label>
+                                    <input type="text" class="form-control" id="parentDelimiter" value="\n\n">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="parentMaxChunkLength" class="form-label">Maximum chunk length</label>
+                                    <input type="number" class="form-control" id="parentMaxChunkLength" value="1024">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <h6>Child-chunk for Retrieval</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="childDelimiter" class="form-label">Delimiter</label>
+                                        <input type="text" class="form-control" id="childDelimiter" value="\n">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="childMaxChunkLength" class="form-label">Maximum chunk length</label>
+                                        <input type="number" class="form-control" id="childMaxChunkLength" value="512">
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <h6>Text Pre-processing Rules</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="parentChildReplaceConsecutive">
+                                <label class="form-check-label" for="parentChildReplaceConsecutive">Replace consecutive spaces, newlines and tabs</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="parentChildDeleteUrls">
+                                <label class="form-check-label" for="parentChildDeleteUrls">Delete all URLs and email addresses</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Embedding Model -->
+                    <div class="card p-3 mb-4">
+                        <h5 class="fw-bold mb-3">Embedding Model</h5>
+                        <div id="knowledgeBaseEmbeddingIntegrationContainer">
+                            <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
+                        </div>
+                    </div>
+
+                    <!-- Retrieval Settings -->
+                    <div class="card p-3">
+                        <h5 class="fw-bold mb-3">Retrieval Settings</h5>
+                        <ul class="nav nav-pills mb-3" id="retrieval-pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="pills-vector-search-tab" data-bs-toggle="pill" data-bs-target="#pills-vector-search" type="button" role="tab">Vector Search</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-fulltext-search-tab" data-bs-toggle="pill" data-bs-target="#pills-fulltext-search" type="button" role="tab">Full-Text Search</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pills-hybrid-search-tab" data-bs-toggle="pill" data-bs-target="#pills-hybrid-search" type="button" role="tab">Hybrid Search <span class="badge bg-primary">RECOMMEND</span></button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="pills-tabContent">
+                            <!-- Vector Search Pane -->
+                            <div class="tab-pane fade show active" id="pills-vector-search" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="vectorTopK" class="form-label">Top K</label>
+                                        <input type="number" class="form-control" id="vectorTopK" value="3">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="vectorScoreThreshold" class="form-label">Score Threshold</label>
+                                        <input type="range" class="form-range" min="0" max="1" step="0.01" id="vectorScoreThreshold" value="0.5">
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="vectorRerankModelSwitch">
+                                    <label class="form-check-label" for="vectorRerankModelSwitch">Use Rerank Model</label>
+                                </div>
+                                <div class="mt-3 d-none" id="vectorRerankContainer">
+                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                                </div>
+                            </div>
+                            <!-- Full-Text Search Pane -->
+                            <div class="tab-pane fade" id="pills-fulltext-search" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <label for="fulltextTopK" class="form-label">Top K</label>
+                                        <input type="number" class="form-control" id="fulltextTopK" value="3">
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mt-3">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="fulltextRerankModelSwitch">
+                                    <label class="form-check-label" for="fulltextRerankModelSwitch">Use Rerank Model</label>
+                                </div>
+                                <div class="mt-3 d-none" id="fulltextRerankContainer">
+                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                                </div>
+                            </div>
+                            <!-- Hybrid Search Pane -->
+                            <div class="tab-pane fade" id="pills-hybrid-search" role="tabpanel">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="hybridMode" id="hybridWeightedScore" value="weighted_score" checked>
+                                    <label class="form-check-label" for="hybridWeightedScore">Weighted Score</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="hybridMode" id="hybridRerankModel" value="rerank_model">
+                                    <label class="form-check-label" for="hybridRerankModel">Rerank Model</label>
+                                </div>
+                                <div id="hybridWeightedScoreContainer" class="mb-3">
+                                    <label for="hybridWeightSlider" class="form-label">Semantic <span id="semanticWeight">0.7</span> vs Keyword <span id="keywordWeight">0.3</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="hybridWeightSlider" value="0.7">
+                                </div>
+                                <div id="hybridRerankContainer" class="d-none mb-3">
+                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="hybridTopK" class="form-label">Top K</label>
+                                        <input type="number" class="form-control" id="hybridTopK" value="3">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="hybridScoreThreshold" class="form-label">Score Threshold</label>
+                                        <input type="range" class="form-range" min="0" max="1" step="0.01" id="hybridScoreThreshold" value="0.5">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents -->
+                <div class="tab-pane fade w-100" id="knowledge-base-manager-documents" role="tabpanel" aria-labelledby="knowledge-base-manager-documents-tab" tabindex="0">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-2">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="uploadDocumentButton">
+                                <span>+ Upload Document</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100 ms-2">
+                            <input type="text" class="form-control" placeholder="Document name" aria-label="Document Name" aria-describedby="searchDocumentButton">
+                            <button class="input-group-button btn btn-primary" id="searchDocumentButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table class="table" id="documentsTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr tr-type="none-notice">
+                                <td colspan="3">No documents uploaded yet.</td>
+                            </tr>
+                            <!-- Dynamically Generated Document Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+        <!-- Document Chunk Manager Tab -->
+        <div class="fade d-none w-100" id="documentChunkManagerTab">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 200px" class="me-2">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewChunkButton">
+                        <span>+ Add New Chunk</span>
+                    </button>
+                </div>
+                <div class="input-group w-100 ms-2">
+                    <input type="text" class="form-control" id="chunkManagerSearchInput" placeholder="Search in chunks..." aria-label="Search Chunks">
+                    <button class="input-group-button btn btn-primary" id="searchChunksButton">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div id="chunksListContainer">
+                <!-- Dynamically generated chunk cards will go here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Document Upload Modal -->
+    <div class="modal fade" id="documentSettingsModal" tabindex="-1" aria-labelledby="documentSettingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="documentSettingsModalLabel">Document Settings</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="documentUploadInput" class="form-label">Upload File</label>
+                        <input class="form-control" type="file" id="documentUploadInput">
+                        <small class="form-text">Supported formats: .txt, .md, .pdf, .html, .docx</small>
+                    </div>
+                    <hr>
+                    <h5 class="fw-bold mb-3">Custom Chunk Settings</h5>
+                    <p class="form-text">These settings override the knowledge base's default chunking rules for this document only.</p>
+
+                    <!-- Dynamic Chunking Settings for the Modal -->
+                    <div id="modalChunkSettingsContainer">
+                        <!-- This content will be dynamically inserted by JavaScript -->
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveAndProcessDocumentButton">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span>Save & Process</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Chunk Modal -->
+    <div class="modal fade" id="editChunkModal" tabindex="-1" aria-labelledby="editChunkModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="editChunkModalLabel">Edit Chunk</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <textarea class="form-control" id="editChunkTextarea" rows="10"></textarea>
+                    <div class="form-text text-end mt-1" id="editChunkCharCount">0 characters</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveChunkChangesButton">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Retrieval Modal -->
+    <div class="modal fade" id="testRetrievalModal" tabindex="-1" aria-labelledby="testRetrievalModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="testRetrievalModalLabel">Test Retrieval</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="retrievalQueryInput" class="form-label">Query</label>
+                        <textarea class="form-control" id="retrievalQueryInput" rows="3" placeholder="Enter your test query here..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="runQueryButton">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        <span>Run Query</span>
+                    </button>
+                    <hr>
+                    <h5 class="fw-bold mb-3">Results</h5>
+                    <div id="retrievalResultsContainer" style="max-height: 400px; overflow-y: auto;">
+                        <p class="text-muted">Run a query to see results here.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>

@@ -72,7 +72,7 @@
                         <i class='fa-regular fa-book nav_icon'></i>
                         <span class="nav_name">Context</span>
                     </a>
-                    <a class="nav_link disabled" for="knowledge-base-tab">
+                    <a class="nav_link" for="knowledge-base-tab">
                         <i class='fa-regular fa-database nav_icon'></i>
                         <span class="nav_name">Knowledge Base</span>
                     </a>
@@ -676,10 +676,10 @@
     <script src="~/scripts/app/business/settings_tab.js"></script>
     <script src="~/scripts/app/business/tools_tab.js"></script>
     <script src="~/scripts/app/business/context_tab.js"></script>
+    <script src="~/scripts/app/business/knowledgebase_tab.js"></script>
     <script src="~/scripts/app/business/cache_tab.js"></script>
     <script src="~/scripts/app/business/integrations_tab.js"></script>
     <script src="~/scripts/app/business/numbers_tab.js"></script>
-
     <script src="~/scripts/app/business/agents_tab.js"></script>
     <script src="~/scripts/app/business/overview_tab.js"></script>
     <script src="~/scripts/app/business/routing_tab.js"></script>
@@ -816,6 +816,7 @@
                                                 initNumbersTab();
                                                 initConversationsTab();
                                                 initMakeCallsTab();
+                                                initKnowledgeBaseTab();
 
                                                 let businessTutorials = BusinessFullData.businessData.tutorials;
                                                 if (businessTutorials) {

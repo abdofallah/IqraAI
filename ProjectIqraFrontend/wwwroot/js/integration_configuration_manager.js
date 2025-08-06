@@ -95,6 +95,13 @@ class IntegrationConfigurationManager {
 	}
 
 	/**
+	 * Disable the manager, making it read-only and uneditable.
+	 */
+    disable() {
+        this._disable();
+    }
+
+	/**
 	 * Public method to validate the configuration of all managed integrations.
 	 * Note: This checks the *configuration* of selected integrations, not whether an integration *has been* selected.
 	 * @returns {{isValid: boolean, errors: Array<string>}} An object containing the overall validation status and a list of all errors found.
@@ -724,5 +731,14 @@ class IntegrationConfigurationManager {
 		});
 
 		return { hasChanges, changes };
+	}
+
+	/**
+	 * Disables the manager, making it read-only and uneditable.
+     * @private
+	 */
+	_disable() {
+        this.container.find('button').prop('disabled', true);
+        this.container.find('select').prop('disabled', true);
 	}
 }
