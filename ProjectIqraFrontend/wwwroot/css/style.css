@@ -988,7 +988,7 @@ table.table > thead > * > * {
 	color: black;
 }
 
-.route-conversation-type-box {
+.route-conversation-type-box, .knowledgebase-document-chunking-type-box, .knowledgebase-document-retrival-type-box {
 	background-color: #1a1a1a;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;

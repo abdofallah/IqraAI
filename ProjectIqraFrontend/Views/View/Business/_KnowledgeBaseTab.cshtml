@@ -108,25 +108,19 @@
                 <!-- Configuration -->
                 <div class="tab-pane fade w-100" id="knowledge-base-manager-configuration" role="tabpanel" aria-labelledby="knowledge-base-manager-configuration-tab" tabindex="0">
                     <!-- Chunk Settings -->
-                    <div class="card p-3 mb-4">
-                        <h5 class="fw-bold mb-3">Chunk Settings</h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="chunkMode" id="chunkModeGeneral" value="general" checked>
-                            <label class="form-check-label" for="chunkModeGeneral">
-                                General
-                                <p class="form-text">General text chunking mode, the chunks retrieved and recalled are the same.</p>
-                            </label>
-                        </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="chunkMode" id="chunkModeParentChild" value="parent-child">
-                            <label class="form-check-label" for="chunkModeParentChild">
-                                Parent-child
-                                <p class="form-text">The child-chunk is used for retrieval and the parent-chunk is used for recall as context.</p>
-                            </label>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="knowledgebaseDocumentChunkingTypeSelect">
+                            <span>Default Chunk Settings </span>
 
-                        <!-- General Chunking Settings -->
-                        <div id="generalChunkSettings">
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Choose a chunking mode and preview the spliting results. This stage involves content preprocessing and structuring, where long texts are divided into multiple smaller chunks. When uploading a document, you can override these settings.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="knowledgebaseDocumentChunkingTypeSelect">
+                            <option value="0" selected>General</option> <!-- General text chunking mode, the chunks retrieved and recalled are the same. -->
+                            <option value="1">Parent-child</option> <!-- The child-chunk is used for retrieval and the parent-chunk is used for recall as context. -->
+                        </select>
+                        <div class="w-100 knowledgebase-document-chunking-type-box" box-type="general">
                             <div class="row">
                                 <div class="col-md-4">
                                     <label for="generalDelimiter" class="form-label">Delimiter</label>
@@ -152,9 +146,7 @@
                                 <label class="form-check-label" for="generalDeleteUrls">Delete all URLs and email addresses</label>
                             </div>
                         </div>
-
-                        <!-- Parent-child Chunking Settings -->
-                        <div id="parentChildChunkSettings" class="d-none">
+                        <div class="w-100 knowledgebase-document-chunking-type-box d-none" box-type="parentchild">
                             <div class="mb-3">
                                 <h6>Parent-chunk for Context</h6>
                                 <div class="form-check">
@@ -203,90 +195,101 @@
                     </div>
 
                     <!-- Embedding Model -->
-                    <div class="card p-3 mb-4">
-                        <h5 class="fw-bold mb-3">Embedding Model</h5>
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="knowledgeBaseEmbeddingIntegrationContainerSelect">
+                            <span>Embedding Model </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Embedding model to convert text into vectors for processing.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
                         <div id="knowledgeBaseEmbeddingIntegrationContainer">
                             <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
                         </div>
                     </div>
 
                     <!-- Retrieval Settings -->
-                    <div class="card p-3">
-                        <h5 class="fw-bold mb-3">Retrieval Settings</h5>
-                        <ul class="nav nav-pills mb-3" id="retrieval-pills-tab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-vector-search-tab" data-bs-toggle="pill" data-bs-target="#pills-vector-search" type="button" role="tab">Vector Search</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-fulltext-search-tab" data-bs-toggle="pill" data-bs-target="#pills-fulltext-search" type="button" role="tab">Full-Text Search</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-hybrid-search-tab" data-bs-toggle="pill" data-bs-target="#pills-hybrid-search" type="button" role="tab">Hybrid Search <span class="badge bg-primary">RECOMMEND</span></button>
-                            </li>
-                        </ul>
-                        <div class="tab-content" id="pills-tabContent">
-                            <!-- Vector Search Pane -->
-                            <div class="tab-pane fade show active" id="pills-vector-search" role="tabpanel">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="vectorTopK" class="form-label">Top K</label>
-                                        <input type="number" class="form-control" id="vectorTopK" value="3">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="vectorScoreThreshold" class="form-label">Score Threshold</label>
-                                        <input type="range" class="form-range" min="0" max="1" step="0.01" id="vectorScoreThreshold" value="0.5">
-                                    </div>
+                    <div>
+                        <label class="form-label btn-ic-span-align" for="knowledgebaseDocumentRetrivalTypeSelect">
+                            <span>Retrieval Settings </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Embedding model to convert text into vectors for processing.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="knowledgebaseDocumentRetrivalTypeSelect">
+                            <option value="0" selected>Vector Search</option>
+                            <option value="1">Full Text Search</option>
+                            <option value="2">Hybird Search</option>
+                        </select>
+
+                        <!-- Vector Search Pane -->
+                        <div class="w-100 knowledgebase-document-retrival-type-box" box-type="vectorsearch">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="vectorTopK" class="form-label">Top K</label>
+                                    <input type="number" class="form-control" id="vectorTopK" value="3">
                                 </div>
-                                <div class="form-check form-switch mt-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="vectorRerankModelSwitch">
-                                    <label class="form-check-label" for="vectorRerankModelSwitch">Use Rerank Model</label>
-                                </div>
-                                <div class="mt-3 d-none" id="vectorRerankContainer">
-                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                                <div class="col-md-6 mt-3 mt-md-0">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="useVectorScoreThreshold">
+                                        <label class="form-check-label" for="useVectorScoreThreshold">Score Threshold</label>
+                                    </div>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.01" id="vectorScoreThreshold" value="0.5" disabled>
                                 </div>
                             </div>
-                            <!-- Full-Text Search Pane -->
-                            <div class="tab-pane fade" id="pills-fulltext-search" role="tabpanel">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <label for="fulltextTopK" class="form-label">Top K</label>
-                                        <input type="number" class="form-control" id="fulltextTopK" value="3">
-                                    </div>
-                                </div>
-                                <div class="form-check form-switch mt-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="fulltextRerankModelSwitch">
-                                    <label class="form-check-label" for="fulltextRerankModelSwitch">Use Rerank Model</label>
-                                </div>
-                                <div class="mt-3 d-none" id="fulltextRerankContainer">
-                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="vectorRerankModelSwitch">
+                                <label class="form-check-label" for="vectorRerankModelSwitch">Use Rerank Model</label>
+                            </div>
+                            <div class="mt-3 d-none" id="vectorRerankContainer">
+                                <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                            </div>
+                        </div>
+                        <!-- Full-Text Search Pane -->
+                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="fulltextsearch">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label for="fulltextTopK" class="form-label">Top K</label>
+                                    <input type="number" class="form-control" id="fulltextTopK" value="3">
                                 </div>
                             </div>
-                            <!-- Hybrid Search Pane -->
-                            <div class="tab-pane fade" id="pills-hybrid-search" role="tabpanel">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="hybridMode" id="hybridWeightedScore" value="weighted_score" checked>
-                                    <label class="form-check-label" for="hybridWeightedScore">Weighted Score</label>
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="fulltextRerankModelSwitch">
+                                <label class="form-check-label" for="fulltextRerankModelSwitch">Use Rerank Model</label>
+                            </div>
+                            <div class="mt-3 d-none" id="fulltextRerankContainer">
+                                <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                            </div>
+                        </div>
+                        <!-- Hybrid Search Pane -->
+                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="hybirdsearch">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="hybridMode" id="hybridWeightedScore" value="weighted_score" checked>
+                                <label class="form-check-label" for="hybridWeightedScore">Weighted Score</label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="hybridMode" id="hybridRerankModel" value="rerank_model">
+                                <label class="form-check-label" for="hybridRerankModel">Rerank Model</label>
+                            </div>
+                            <div id="hybridWeightedScoreContainer" class="mb-3">
+                                <label for="hybridWeightSlider" class="form-label">Semantic <span id="semanticWeight">0.7</span> vs Keyword <span id="keywordWeight">0.3</span></label>
+                                <input type="range" class="form-range" min="0" max="1" step="0.1" id="hybridWeightSlider" value="0.7">
+                            </div>
+                            <div id="hybridRerankContainer" class="d-none mb-3">
+                                <!-- Rerank IntegrationConfigurationManager UI will be built here -->
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="hybridTopK" class="form-label">Top K</label>
+                                    <input type="number" class="form-control" id="hybridTopK" value="3">
                                 </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="radio" name="hybridMode" id="hybridRerankModel" value="rerank_model">
-                                    <label class="form-check-label" for="hybridRerankModel">Rerank Model</label>
-                                </div>
-                                <div id="hybridWeightedScoreContainer" class="mb-3">
-                                    <label for="hybridWeightSlider" class="form-label">Semantic <span id="semanticWeight">0.7</span> vs Keyword <span id="keywordWeight">0.3</span></label>
-                                    <input type="range" class="form-range" min="0" max="1" step="0.1" id="hybridWeightSlider" value="0.7">
-                                </div>
-                                <div id="hybridRerankContainer" class="d-none mb-3">
-                                    <!-- Rerank IntegrationConfigurationManager UI will be built here -->
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="hybridTopK" class="form-label">Top K</label>
-                                        <input type="number" class="form-control" id="hybridTopK" value="3">
+                                <div class="col-md-6 mt-3 mt-md-0">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="useHybirdScoreThreshold">
+                                        <label class="form-check-label" for="useHybirdScoreThreshold">Score Threshold</label>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label for="hybridScoreThreshold" class="form-label">Score Threshold</label>
-                                        <input type="range" class="form-range" min="0" max="1" step="0.01" id="hybridScoreThreshold" value="0.5">
-                                    </div>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.01" id="hybridScoreThreshold" value="0.5" disabled>
                                 </div>
                             </div>
                         </div>

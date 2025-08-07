@@ -4,10 +4,21 @@ const ChunkingModeENUM = {
     ParentChild: "parent-child",
 };
 
+const ChunkingSelectMap = {
+    "0": "general",
+    "1": "parentchild"
+};
+
 const RetrievalModeENUM = {
-    Vector: 'vector',
-    FullText: 'full-text',
-    Hybrid: 'hybrid'
+    Vector: 'vectorsearch',
+    FullText: 'fulltextsearch',
+    Hybrid: 'hybirdsearch'
+};
+
+const RetrievalSelectMap = {
+    "0": "vectorsearch",
+    "1": "fulltextsearch",
+    "2": "hybirdsearch"
 };
 
 
@@ -73,17 +84,19 @@ const knowledgeBaseIconPicker = new EmojiPicker({
 
 // -- Configuration Pane
 // ---- Chunking
-const chunkModeGeneralRadio = knowledgeBaseManagerTab.find('#chunkModeGeneral');
-const chunkModeParentChildRadio = knowledgeBaseManagerTab.find('#chunkModeParentChild');
+const knowledgebaseDocumentChunkingTypeSelect = knowledgeBaseManagerTab.find('#knowledgebaseDocumentChunkingTypeSelect');
+const chunkingTypeBoxes = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box');
+const knowledgebaseDocumentRetrivalTypeSelect = knowledgeBaseManagerTab.find('#knowledgebaseDocumentRetrivalTypeSelect');
+const retrievalTypeBoxes = knowledgeBaseManagerTab.find('.knowledgebase-document-retrival-type-box');
 
-const generalChunkSettings = knowledgeBaseManagerTab.find('#generalChunkSettings');
+const generalChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="general"]');
 const generalDelimiterInput = generalChunkSettings.find('#generalDelimiter');
 const generalMaxLengthInput = generalChunkSettings.find('#generalMaxChunkLength');
 const generalOverlapInput = generalChunkSettings.find('#generalChunkOverlap');
 const generalReplaceConsecutiveCheck = generalChunkSettings.find('#generalReplaceConsecutive');
 const generalDeleteUrlsCheck = generalChunkSettings.find('#generalDeleteUrls');
 
-const parentChildChunkSettings = knowledgeBaseManagerTab.find('#parentChildChunkSettings');
+const parentChildChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="parentchild"]');
 const parentChunkParagraphRadio = knowledgeBaseManagerTab.find('#parentChunkParagraph');
 const parentChunkFullDocRadio = knowledgeBaseManagerTab.find('#parentChunkFullDoc');
 const parentChunkParagraphSettings = knowledgeBaseManagerTab.find('#parentChunkParagraphSettings');
@@ -98,8 +111,7 @@ const parentChildDeleteUrlsCheck = parentChildChunkSettings.find('#parentChildDe
 const knowledgeBaseEmbeddingIntegrationContainer = knowledgeBaseManagerTab.find('#knowledgeBaseEmbeddingIntegrationContainer');
 
 // ---- Retrieval
-const retrievalPills = knowledgeBaseManagerTab.find('#retrieval-pills-tab button');
-
+const useVectorScoreThreshold = knowledgeBaseManagerTab.find('#useVectorScoreThreshold');
 const vectorTopKInput = knowledgeBaseManagerTab.find('#vectorTopK');
 const vectorScoreThresholdInput = knowledgeBaseManagerTab.find('#vectorScoreThreshold');
 const vectorRerankModelSwitch = knowledgeBaseManagerTab.find('#vectorRerankModelSwitch');
@@ -109,6 +121,7 @@ const fulltextTopKInput = knowledgeBaseManagerTab.find('#fulltextTopK');
 const fulltextRerankModelSwitch = knowledgeBaseManagerTab.find('#fulltextRerankModelSwitch');
 const fulltextRerankContainer = knowledgeBaseManagerTab.find('#fulltextRerankContainer');
 
+const useHybirdScoreThreshold = knowledgeBaseManagerTab.find('#useHybirdScoreThreshold');
 const hybridWeightedScoreRadio = knowledgeBaseManagerTab.find('#hybridWeightedScore');
 const hybridRerankModelRadio = knowledgeBaseManagerTab.find('#hybridRerankModel');
 const hybridWeightedScoreContainer = knowledgeBaseManagerTab.find('#hybridWeightedScoreContainer');
@@ -563,6 +576,7 @@ function createDefaultKnowledgeBaseObject() {
                 mode: RetrievalModeENUM.Vector,
                 vector: {
                     topK: 3,
+                    useScoreThreshold: false,
                     scoreThreshold: 0.5,
                     rerank: {
                         enabled: false,
@@ -580,6 +594,7 @@ function createDefaultKnowledgeBaseObject() {
                     mode: 'weighted_score', // or 'rerank_model'
                     weight: 0.7,
                     topK: 3,
+                    useScoreThreshold: false,
                     scoreThreshold: 0.5,
                     rerank: {
                         integration: null
@@ -600,12 +615,8 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     // Configuration - Re-enable everything for 'new'
     knowledgeBaseManagerConfigurationPane.find('input, select, button').prop('disabled', false);
     knowledgeBaseManagerConfigurationPane.removeClass('disabled-pane');
-    generalChunkSettings.find('input').prop('disabled', false);
-    parentChildChunkSettings.find('input').prop('disabled', false);
-
-    // -- Chunking
-    chunkModeGeneralRadio.prop('checked', true).trigger('change');
-    parentChunkParagraphRadio.prop('checked', true).trigger('change');
+    knowledgebaseDocumentChunkingTypeSelect.val('0').trigger('change');
+    knowledgebaseDocumentRetrivalTypeSelect.val('0').trigger('change');
 
     // -- Integrations
     knowledgeBaseEmbeddingIntegrationManager.reset();
@@ -614,7 +625,8 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     hybridRerankIntegrationManager.reset();
 
     // -- Retrieval
-    $('#pills-vector-search-tab').click();
+    useVectorScoreThreshold.prop('checked', false).trigger('change');
+    useHybirdScoreThreshold.prop('checked', false).trigger('change');
     vectorRerankModelSwitch.prop('checked', false).trigger('change');
     fulltextRerankModelSwitch.prop('checked', false).trigger('change');
     hybridWeightedScoreRadio.prop('checked', true).trigger('change');
@@ -631,30 +643,31 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
 }
 
 function fillKnowledgeBaseManagerTab() {
+    const kbData = ManageCurrentKnowledgeBaseData;
+
     // General
-    editKnowledgeBaseIconInput.text(ManageCurrentKnowledgeBaseData.general.emoji);
-    editKnowledgeBaseNameInput.val(ManageCurrentKnowledgeBaseData.general.name);
-    editKnowledgeBaseDescriptionInput.val(ManageCurrentKnowledgeBaseData.general.description);
+    editKnowledgeBaseIconInput.text(kbData.general.emoji);
+    editKnowledgeBaseNameInput.val(kbData.general.name);
+    editKnowledgeBaseDescriptionInput.val(kbData.general.description);
 
     // -- Configuration: Surgical Disabling for 'edit' mode --
-    chunkModeGeneralRadio.prop('disabled', true);
-    chunkModeParentChildRadio.prop('disabled', true);
+    knowledgebaseDocumentChunkingTypeSelect.prop('disabled', true);
+    knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false); // Can always change retrieval
     knowledgeBaseEmbeddingIntegrationManager.disable();
-
-    const savedChunkMode = ManageCurrentKnowledgeBaseData.configuration.chunking.mode;
-    if (savedChunkMode === ChunkingModeENUM.General) {
-        parentChildChunkSettings.find('input').prop('disabled', true);
-        generalChunkSettings.find('input').prop('disabled', false);
-    } else {
-        generalChunkSettings.find('input').prop('disabled', true);
-        parentChildChunkSettings.find('input').prop('disabled', false);
-    }
-
-    retrievalPills.prop('disabled', false);
-    knowledgeBaseManagerConfigurationPane.find('#pills-tabContent').find('input, select, button').prop('disabled', false);
-
     knowledgeBaseManagerConfigurationPane.addClass('disabled-pane');
 
+    // -- NEW: Set select boxes based on loaded data --
+    const chunkingModeVal = Object.keys(ChunkingSelectMap).find(key => ChunkingSelectMap[key] === kbData.configuration.chunking.mode);
+    knowledgebaseDocumentChunkingTypeSelect.val(chunkingModeVal).trigger('change');
+
+    const retrievalModeVal = Object.keys(RetrievalSelectMap).find(key => RetrievalSelectMap[key] === kbData.configuration.retrieval.mode);
+    knowledgebaseDocumentRetrivalTypeSelect.val(retrievalModeVal).trigger('change');
+
+    // -- Set Score Thresholds --
+    useVectorScoreThreshold.prop('checked', kbData.configuration.retrieval.vector.useScoreThreshold).trigger('change');
+    useHybirdScoreThreshold.prop('checked', kbData.configuration.retrieval.hybrid.useScoreThreshold).trigger('change');
+    vectorScoreThresholdInput.val(kbData.configuration.retrieval.vector.scoreThreshold);
+    hybridScoreThresholdInput.val(kbData.configuration.retrieval.hybrid.scoreThreshold);
 
     // Documents
     fillDocumentsTable();
@@ -685,10 +698,13 @@ function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
         hasChanges = true;
     }
 
+    const chunkingMode = ChunkingSelectMap[knowledgebaseDocumentChunkingTypeSelect.val()];
+    const retrievalMode = RetrievalSelectMap[knowledgebaseDocumentRetrivalTypeSelect.val()];
+
     // --- Configuration Tab ---
     changes.configuration = {
         chunking: {
-            mode: ManageCurrentKnowledgeBaseData.configuration.chunking.mode,
+            mode: chunkingMode,
             general: {
                 delimiter: generalDelimiterInput.val(),
                 maxLength: parseInt(generalMaxLengthInput.val()),
@@ -716,9 +732,10 @@ function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
         },
         embedding: ManageCurrentKnowledgeBaseData.configuration.embedding,
         retrieval: {
-            mode: $('#retrieval-pills-tab button.active').attr('id').replace('pills-', '').replace('-tab', ''),
+            mode: retrievalMode,
             vector: {
                 topK: parseInt(vectorTopKInput.val()),
+                useScoreThreshold: useVectorScoreThreshold.is(':checked'),
                 scoreThreshold: parseFloat(vectorScoreThresholdInput.val()),
                 rerank: {
                     enabled: vectorRerankModelSwitch.is(':checked'),
@@ -736,6 +753,7 @@ function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
                 mode: $('input[name="hybridMode"]:checked').val(),
                 weight: parseFloat(hybridWeightSlider.val()),
                 topK: parseInt(hybridTopKInput.val()),
+                useScoreThreshold: useHybirdScoreThreshold.is(':checked'),
                 scoreThreshold: parseFloat(hybridScoreThresholdInput.val()),
                 rerank: {
                     integration: hybridRerankIntegrationManager.getData()
@@ -773,7 +791,8 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
     let validated = true;
 
     // --- General Tab ---
-    if (!editKnowledgeBaseNameInput.val().trim()) {
+    const knowledgeBaseName = editKnowledgeBaseNameInput.val();
+    if (!knowledgeBaseName || knowledgeBaseName.length === 0 || knowledgeBaseName.trim().length === 0) {
         validated = false;
         errors.push("Knowledge Base name is required.");
         if (!onlyRemove) editKnowledgeBaseNameInput.addClass("is-invalid");
@@ -781,7 +800,8 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
         editKnowledgeBaseNameInput.removeClass("is-invalid");
     }
 
-    if (!editKnowledgeBaseDescriptionInput.val().trim()) {
+    const knowledgeBaseDescription = editKnowledgeBaseDescriptionInput.val();
+    if (!knowledgeBaseDescription || knowledgeBaseDescription.length === 0 || knowledgeBaseDescription.trim().length === 0) {
         validated = false;
         errors.push("Knowledge Base description is required.");
         if (!onlyRemove) editKnowledgeBaseDescriptionInput.addClass("is-invalid");
@@ -790,48 +810,238 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
     }
 
     // --- Configuration Tab ---
+
+    // Default Chunking Settings
+    const selectedChunkingType = ChunkingSelectMap[knowledgebaseDocumentChunkingTypeSelect.val()];
+    if (selectedChunkingType === 'general') {
+        const delimiter = generalDelimiterInput.val();
+        if (!delimiter || delimiter.length === 0 || delimiter.trim().length === 0) {
+            validated = false;
+            errors.push("General chunk delimiter is required.");
+            if (!onlyRemove) {
+                generalDelimiterInput.addClass("is-invalid");
+            }
+        } else {
+            generalDelimiterInput.removeClass("is-invalid");
+        }
+
+        const generalMaxLength = parseInt(generalMaxLengthInput.val());
+        if (isNaN(generalMaxLength) || generalMaxLength <= 0) {
+            validated = false;
+            errors.push("General chunk max length is invalid.");
+            if (!onlyRemove) {
+                generalMaxLengthInput.addClass("is-invalid");
+            }
+        } else {
+            generalMaxLengthInput.removeClass("is-invalid");
+        }
+
+        const chunkOverlap = parseInt(generalOverlapInput.val());
+        if (isNaN(chunkOverlap) || chunkOverlap < 0) {
+            validated = false;
+            errors.push("General chunk overlap is invalid.");
+            if (!onlyRemove) {
+                generalOverlapInput.addClass("is-invalid");
+            }
+        } else {
+            generalOverlapInput.removeClass("is-invalid");
+        }
+    }
+    else if (selectedChunkingType === 'parent-child') {
+        const parentChunkContextType = $('input[name="parentChunkType"]:checked').val();
+        if (parentChunkContextType == "paragraph") {
+            const parentDelimiter = parentDelimiterInput.val();
+            if (!parentDelimiter) {
+                validated = false;
+                errors.push("Parent chunk delimiter is required.");
+                if (!onlyRemove) {
+                    parentDelimiterInput.addClass("is-invalid");
+                }
+            } else {
+                parentDelimiterInput.removeClass("is-invalid");
+            }
+
+            const parentMaxLength = parseInt(parentMaxLengthInput.val());
+            if (isNaN(parentMaxLength) || parentMaxLength <= 0) {
+                validated = false;
+                errors.push("Parent chunk max length is invalid.");
+                if (!onlyRemove) {
+                    parentMaxLengthInput.addClass("is-invalid");
+                }
+            } else {
+                parentMaxLengthInput.removeClass("is-invalid");
+            }
+        }
+
+        const childChunkDelimiter = childDelimiterInput.val();
+        if (!childChunkDelimiter || childChunkDelimiter.length === 0 || childChunkDelimiter.trim().length === 0) {
+            validated = false;
+            errors.push("Child chunk delimiter is required.");
+            if (!onlyRemove) {
+                childDelimiterInput.addClass("is-invalid");
+            }
+        } else {
+            childDelimiterInput.removeClass("is-invalid");
+        }
+
+        const childMaxLength = parseInt(childMaxLengthInput.val());
+        if (isNaN(childMaxLength) || childMaxLength <= 0) {
+            validated = false;
+            errors.push("Child chunk max length is invalid.");
+            if (!onlyRemove) {
+                childMaxLengthInput.addClass("is-invalid");
+            }
+        } else {
+            childMaxLengthInput.removeClass("is-invalid");
+        }
+    }
+
+    // Embedding Model
     if (ManageKnowledgeBaseType === 'new') {
-        const embeddingValidation = knowledgeBaseEmbeddingIntegrationManager.validate();
-        if (!embeddingValidation.isValid) {
+        const embeddingSelect = knowledgeBaseEmbeddingIntegrationManager.getSelectElements();
+        const embeddingData = knowledgeBaseEmbeddingIntegrationManager.getData();
+        if (!embeddingData || !embeddingData.id) {
             validated = false;
-            errors.push(...embeddingValidation.errors);
-            if (!onlyRemove) knowledgeBaseEmbeddingIntegrationManager.getSelectElements().addClass('is-invalid');
-        } else {
-            knowledgeBaseEmbeddingIntegrationManager.getSelectElements().removeClass('is-invalid');
+            errors.push("Integration for embedding model must be selected.");
+            if (!onlyRemove) {
+                embeddingSelect.addClass('is-invalid');
+            }
         }
+        else {
+            embeddingSelect.removeClass('is-invalid');
+
+            const embeddingValidation = knowledgeBaseEmbeddingIntegrationManager.validate();
+            if (!embeddingValidation.isValid) {
+                validated = false;
+                errors.push(...embeddingValidation.errors.map(e => `Embedding Model: ${e}`));
+                if (!onlyRemove) {
+                    embeddingSelect.addClass('is-invalid');
+                }
+            } else {
+                embeddingSelect.removeClass('is-invalid');
+            }
+        }     
     }
 
-    if (vectorRerankModelSwitch.is(':checked')) {
-        const vectorRerankValidation = vectorRerankIntegrationManager.validate();
-        if (!vectorRerankValidation.isValid) {
+    // Retrieval Settings
+    const retrivalType = RetrievalSelectMap[knowledgebaseDocumentRetrivalTypeSelect.val()];
+    if (retrivalType === 'vectorsearch') {
+        const vectorTopK = parseInt(vectorTopKInput.val());
+        if (isNaN(vectorTopK) || vectorTopK <= 1) {
             validated = false;
-            errors.push(...vectorRerankValidation.errors.map(e => `Vector Rerank: ${e}`));
-            if (!onlyRemove) vectorRerankIntegrationManager.getSelectElements().addClass('is-invalid');
+            errors.push("Vector top K is invalid.");
+            if (!onlyRemove) {
+                vectorTopKInput.addClass("is-invalid");
+            }
         } else {
-            vectorRerankIntegrationManager.getSelectElements().removeClass('is-invalid');
+            vectorTopKInput.removeClass("is-invalid");
         }
-    }
-    if (fulltextRerankModelSwitch.is(':checked')) {
-        const fulltextRerankValidation = fulltextRerankIntegrationManager.validate();
-        if (!fulltextRerankValidation.isValid) {
-            validated = false;
-            errors.push(...fulltextRerankValidation.errors.map(e => `Full-Text Rerank: ${e}`));
-            if (!onlyRemove) fulltextRerankIntegrationManager.getSelectElements().addClass('is-invalid');
-        } else {
-            fulltextRerankIntegrationManager.getSelectElements().removeClass('is-invalid');
-        }
-    }
-    if (hybridRerankModelRadio.is(':checked')) {
-        const hybridRerankValidation = hybridRerankIntegrationManager.validate();
-        if (!hybridRerankValidation.isValid) {
-            validated = false;
-            errors.push(...hybridRerankValidation.errors.map(e => `Hybrid Rerank: ${e}`));
-            if (!onlyRemove) hybridRerankIntegrationManager.getSelectElements().addClass('is-invalid');
-        } else {
-            hybridRerankIntegrationManager.getSelectElements().removeClass('is-invalid');
-        }
-    }
 
+        const vectorRerankEnabled = vectorRerankModelSwitch.is(':checked');
+        if (vectorRerankEnabled) {
+            const vectorRerankSelect = vectorRerankIntegrationManager.getSelectElements();
+            const vectorRerankData = vectorRerankIntegrationManager.getData();
+            if (!vectorRerankData || !vectorRerankData.id) {
+                validated = false;
+                errors.push("Integration for vector rerank must be selected.");
+                if (!onlyRemove) {
+                    vectorRerankSelect.addClass('is-invalid');
+                }
+            }
+            else {
+                vectorRerankSelect.removeClass('is-invalid');
+
+                const vectorRerankValidation = vectorRerankIntegrationManager.validate();
+                if (!vectorRerankValidation.isValid) {
+                    validated = false;
+                    errors.push(...vectorRerankValidation.errors.map(e => `Vector Rerank: ${e}`));
+                    if (!onlyRemove) {
+                        vectorRerankSelect.addClass('is-invalid');
+                    }
+                } else {
+                    vectorRerankSelect.removeClass('is-invalid');
+                }
+            }
+        }
+    }
+    else if (retrivalType == "fulltextsearch") {
+        const fulltextTopK = parseInt(fulltextTopKInput.val());
+        if (isNaN(fulltextTopK) || fulltextTopK <= 1) {
+            validated = false;
+            errors.push("Full-Text top K is invalid.");
+            if (!onlyRemove) {
+                fulltextTopKInput.addClass("is-invalid");
+            }
+        } else {
+            fulltextTopKInput.removeClass("is-invalid");
+        }
+
+        const fulltextRerankEnabled = fulltextRerankModelSwitch.is(':checked');
+        if (fulltextRerankEnabled) {
+            const fulltextRerankSelect = fulltextRerankIntegrationManager.getSelectElements();
+            const fulltextRerankData = fulltextRerankIntegrationManager.getData();
+            if (!fulltextRerankData || !fulltextRerankData.id) {
+                validated = false;
+                errors.push("Integration for full-text rerank must be selected.");
+                if (!onlyRemove) {
+                    fulltextRerankSelect.addClass('is-invalid');
+                }
+            }
+            else {
+                fulltextRerankSelect.removeClass('is-invalid');
+
+                const fulltextRerankValidation = fulltextRerankIntegrationManager.validate();
+                if (!fulltextRerankValidation.isValid) {
+                    validated = false;
+                    errors.push(...fulltextRerankValidation.errors.map(e => `Full-Text Rerank: ${e}`));
+                    if (!onlyRemove) {
+                        fulltextRerankSelect.addClass('is-invalid');
+                    }
+                } else {
+                    fulltextRerankSelect.removeClass('is-invalid');
+                }
+            }  
+        }
+    }
+    else if (retrivalType == "hybirdsearch") {
+        const hybirdSearchMode = $('input[name="hybridMode"]:checked').val();
+        if (hybirdSearchMode == "rerank_model") {
+            const hybridRerankSelect = hybridRerankIntegrationManager.getSelectElements();
+            const hybridRerankData = hybridRerankIntegrationManager.getData();
+            if (!hybridRerankData || !hybridRerankData.id) {
+                validated = false;
+                errors.push("Integration for hybrid rerank must be selected.");
+                if (!onlyRemove) {
+                    hybridRerankSelect.addClass('is-invalid');
+                }
+            }
+            else {
+                hybridRerankSelect.removeClass('is-invalid');
+                
+                const hybridRerankValidation = hybridRerankIntegrationManager.validate();
+                if (!hybridRerankValidation.isValid) {
+                    validated = false;
+                    errors.push(...hybridRerankValidation.errors.map(e => `Hybrid Rerank: ${e}`));
+                    if (!onlyRemove) {
+                        hybridRerankSelect.addClass('is-invalid');
+                    }
+                } else {
+                    hybridRerankSelect.removeClass('is-invalid');
+                }
+            }
+        }
+
+        const hybridTopK = parseInt(hybridTopKInput.val());
+        if (isNaN(hybridTopK) || hybridTopK <= 1) {
+            validated = false;
+            errors.push("Hybrid top K is invalid.");
+            if (!onlyRemove) {
+                hybridTopKInput.addClass("is-invalid");
+            }
+        } else {
+            hybridTopKInput.removeClass("is-invalid");
+        }
+    }
 
     return {
         validated: validated,
@@ -986,14 +1196,10 @@ function initKnowledgeBaseTab() {
 
 
         // Chunking Settings
-        $('input[name="chunkMode"]').on('change', function () {
-            if ($(this).val() === 'general') {
-                generalChunkSettings.removeClass('d-none');
-                parentChildChunkSettings.addClass('d-none');
-            } else {
-                generalChunkSettings.addClass('d-none');
-                parentChildChunkSettings.removeClass('d-none');
-            }
+        knowledgebaseDocumentChunkingTypeSelect.on('change', function () {
+            const selectedType = ChunkingSelectMap[$(this).val()];
+            chunkingTypeBoxes.addClass('d-none');
+            chunkingTypeBoxes.filter(`[box-type="${selectedType}"]`).removeClass('d-none');
         });
 
         $('input[name="parentChunkType"]').on('change', function () {
@@ -1005,6 +1211,12 @@ function initKnowledgeBaseTab() {
         });
 
         // Retrieval Settings
+        knowledgebaseDocumentRetrivalTypeSelect.on('change', function () {
+            const selectedType = RetrievalSelectMap[$(this).val()];
+            retrievalTypeBoxes.addClass('d-none');
+            retrievalTypeBoxes.filter(`[box-type="${selectedType}"]`).removeClass('d-none');
+        });
+
         vectorRerankModelSwitch.on('change', function () {
             vectorRerankContainer.toggleClass('d-none', !this.checked);
             handleInputChange();
@@ -1019,6 +1231,14 @@ function initKnowledgeBaseTab() {
             hybridWeightedScoreContainer.toggleClass('d-none', $(this).val() !== 'weighted_score');
             hybridRerankContainer.toggleClass('d-none', $(this).val() !== 'rerank_model');
             handleInputChange();
+        });
+
+        useVectorScoreThreshold.on('change', function () {
+            vectorScoreThresholdInput.prop('disabled', !$(this).is(':checked'));
+        });
+
+        useHybirdScoreThreshold.on('change', function () {
+            hybridScoreThresholdInput.prop('disabled', !$(this).is(':checked'));
         });
 
         hybridWeightSlider.on('input', function () {
