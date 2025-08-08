@@ -367,6 +367,13 @@ namespace ProjectIqraFrontend
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
         {
+            builder.Services.AddSingleton<UserSessionValidationHelper>((sp) =>
+            {
+                return new UserSessionValidationHelper(
+                    sp.GetRequiredService<UserManager>(),
+                    sp.GetRequiredService<BusinessManager>()
+                );
+            });
             builder.Services.AddSingleton<EmailManager>((sp) =>
             {
                 return new EmailManager(
@@ -457,7 +464,8 @@ namespace ProjectIqraFrontend
                         InitalizeSettingsManager = true,
                         InitalizeToolsManager = true,
                         InitalizeConversationsManager = true,
-                        InitalizeMakeCallManager = true
+                        InitalizeMakeCallManager = true,
+                        InitalizeKnowledgeBaseManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),

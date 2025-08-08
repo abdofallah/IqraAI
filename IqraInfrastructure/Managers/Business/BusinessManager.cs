@@ -4,6 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.File;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
@@ -11,6 +12,7 @@ using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -46,6 +48,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessRoutesManager? _businessRoutesManager;
         private readonly BusinessConversationsManager? _businessConversationsManager;
         private readonly BusinessMakeCallManager? _businessMakeCallManager;
+        private readonly BusinessKnowledgeBaseManager? _businessKnowledgeBaseManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -68,7 +71,10 @@ namespace IqraInfrastructure.Managers.Business
             OutboundCallQueueRepository? outboundCallQueueRepository,
             LanguagesManager? languagesManager,
             TwilioManager? twilioManager,
-            IntegrationConfigurationManager? integrationConfigurationManager
+            IntegrationConfigurationManager? integrationConfigurationManager,
+            BusinessKnowledgeBaseDocumentRepository? businessKnowledgeBaseDocumentRepository,
+            KnowledgeBaseVectorRepository? knowledgeBaseVectorRepository,
+            UnstructuredManager? unstructuredManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -151,6 +157,14 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessMakeCallManager");
                 }
                 _businessMakeCallManager = new BusinessMakeCallManager(loggerFactory.CreateLogger<BusinessMakeCallManager>(), this, regionManager, outboundCallCampaignRepository, outboundCallQueueRepository, integrationConfigurationManager);
+            }
+            if (_settings.InitalizeKnowledgeBaseManager)
+            {
+                if ()
+                {
+                    throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
+                }
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, , integrationConfigurationManager, knowledgeBaseVectorRepository, unstructuredManager);
             }
         }
 
@@ -521,5 +535,10 @@ namespace IqraInfrastructure.Managers.Business
             return _businessMakeCallManager;
         }
 
+        public BusinessKnowledgeBaseManager GetKnowledgeBaseManager()
+        {
+            if (!_settings.InitalizeKnowledgeBaseManager || _businessKnowledgeBaseManager == null) throw new Exception("Knowledge Base manager not initialized");
+            return _businessKnowledgeBaseManager;
+        }
     }
 }

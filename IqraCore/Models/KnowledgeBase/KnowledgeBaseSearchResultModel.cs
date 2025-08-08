@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.KnowledgeBase
+﻿namespace IqraCore.Models.KnowledgeBase
 {
-    public class KnowledgeBaseSearchResult
+    public class KnowledgeBaseSearchResultModel
     {
         public float Score { get; set; }
         public string Text { get; set; }

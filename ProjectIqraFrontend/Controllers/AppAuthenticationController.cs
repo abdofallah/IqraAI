@@ -216,9 +216,9 @@ namespace ProjectIqraFrontend.Controllers
                 }
 
                 UserPermission userPermission = user.Permission;
-                if (userPermission.LoginDisabledAt != null)
+                if (userPermission.DisableUserAt != null)
                 {
-                    var message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.LoginDisabledReason) ? "" : ": " + userPermission.LoginDisabledReason));
+                    var message = ("User is not allowed to login" + (string.IsNullOrEmpty(userPermission.UserDisabledReason) ? "" : ": " + userPermission.UserDisabledReason));
                     return result.SetFailureResult(
                         "Login:USER_LOGIN_DISABLED",
                         message

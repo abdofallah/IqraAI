@@ -1,6 +1,6 @@
-﻿namespace IqraCore.Entities.KnowledgeBase
+﻿namespace IqraCore.Models.KnowledgeBase
 {
-    public class KnowledgeBaseChunk
+    public class KnowledgeBaseChunkModel
     {
         public string DocumentName { get; set; }
         public string TextChunk { get; set; }

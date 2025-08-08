@@ -1,18 +1,24 @@
 ﻿/** Global Variables **/
 const ChunkingModeENUM = {
-    General: "general",
-    ParentChild: "parent-child",
+    General: 0,
+    ParentChild: 1,
+};
+
+const KnowledgeBaseChunkingParentChunkTypeENUM = {
+    Paragraph: 0,
+    FullDoc: 1
+}
+
+const RetrievalModeENUM = {
+    Unknown: 0,
+    Vector: 1,
+    FullText: 2,
+    Hybrid: 3
 };
 
 const ChunkingSelectMap = {
     "0": "general",
     "1": "parentchild"
-};
-
-const RetrievalModeENUM = {
-    Vector: 'vectorsearch',
-    FullText: 'fulltextsearch',
-    Hybrid: 'hybirdsearch'
 };
 
 const RetrievalSelectMap = {
@@ -145,7 +151,6 @@ const documentChunkManagerTab = knowledgeBaseTab.find('#documentChunkManagerTab'
 const addNewChunkButton = documentChunkManagerTab.find('#addNewChunkButton');
 const chunkManagerSearchInput = documentChunkManagerTab.find('#chunkManagerSearchInput');
 const chunksListContainer = documentChunkManagerTab.find('#chunksListContainer');
-
 
 // -- Modals --
 let documentSettingsModal = null;
@@ -545,60 +550,28 @@ function createDefaultKnowledgeBaseObject() {
         },
         configuration: {
             chunking: {
-                mode: ChunkingModeENUM.General,
-                general: {
-                    delimiter: "\\n\\n",
-                    maxLength: 1024,
-                    overlap: 50,
-                    preprocess: {
-                        replaceConsecutive: false,
-                        deleteUrls: false
-                    }
+                type: {
+                    value: ChunkingModeENUM.General
                 },
-                parentChild: {
-                    parent: {
-                        type: 'paragraph',
-                        delimiter: "\\n\\n",
-                        maxLength: 1024
-                    },
-                    child: {
-                        delimiter: "\\n",
-                        maxLength: 512,
-                    },
-                    preprocess: {
-                        replaceConsecutive: false,
-                        deleteUrls: false
-                    }
+                delimiter: "\\n\\n",
+                maxLength: 1024,
+                overlap: 50,
+                preprocess: {
+                    replaceConsecutive: false,
+                    deleteUrls: false
                 }
             },
             embedding: null, // To be filled by IntegrationManager
             retrieval: {
-                mode: RetrievalModeENUM.Vector,
-                vector: {
-                    topK: 3,
-                    useScoreThreshold: false,
-                    scoreThreshold: 0.5,
-                    rerank: {
-                        enabled: false,
-                        integration: null
-                    }
+                type: {
+                    value: RetrievalModeENUM.Vector
                 },
-                fullText: {
-                    topK: 3,
-                    rerank: {
-                        enabled: false,
-                        integration: null
-                    }
-                },
-                hybrid: {
-                    mode: 'weighted_score', // or 'rerank_model'
-                    weight: 0.7,
-                    topK: 3,
-                    useScoreThreshold: false,
-                    scoreThreshold: 0.5,
-                    rerank: {
-                        integration: null
-                    }
+                topK: 3,
+                useScoreThreshold: false,
+                scoreThreshold: null,
+                rerank: {
+                    enabled: false,
+                    integration: null
                 }
             }
         },
@@ -652,7 +625,7 @@ function fillKnowledgeBaseManagerTab() {
 
     // -- Configuration: Surgical Disabling for 'edit' mode --
     knowledgebaseDocumentChunkingTypeSelect.prop('disabled', true);
-    knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false); // Can always change retrieval
+    knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false);
     knowledgeBaseEmbeddingIntegrationManager.disable();
     knowledgeBaseManagerConfigurationPane.addClass('disabled-pane');
 
@@ -677,6 +650,7 @@ function fillKnowledgeBaseManagerTab() {
     saveKnowledgeBaseButton.addClass('disabled').prop("disabled", true);
 }
 
+// FIX CHANGES FUNCTION
 function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
     if (ManageKnowledgeBaseType === null) return { hasChanges: false };
 

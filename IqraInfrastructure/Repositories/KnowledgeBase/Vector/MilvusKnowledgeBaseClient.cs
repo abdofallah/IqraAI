@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace IqraInfrastructure.Repositories.KnowledgeBase
+namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 {
     /// <summary>
     /// Configuration options for connecting to Milvus.

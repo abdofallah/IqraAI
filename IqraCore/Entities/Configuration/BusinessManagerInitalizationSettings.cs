@@ -12,5 +12,6 @@
         public bool InitalizeRoutesManager { get; set; } = false;
         public bool InitalizeConversationsManager { get; set; } = false;
         public bool InitalizeMakeCallManager { get; set; } = false;
+        public bool InitalizeKnowledgeBaseManager { get; set; } = false;
     }
 }

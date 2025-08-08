@@ -1,18 +1,18 @@
 ﻿using IqraCore.Entities.Helpers;
-using IqraCore.Entities.KnowledgeBase;
+using IqraCore.Models.KnowledgeBase;
 using Microsoft.Extensions.Logging;
 
-namespace IqraInfrastructure.Repositories.KnowledgeBase
+namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 {
     /// <summary>
     /// A high-level repository for interacting with the knowledge base.
     /// It uses the MilvusKnowledgeBaseClient to communicate with the Milvus service
     /// and translates between application-specific models and Milvus API DTOs.
     /// </summary>
-    public class KnowledgeBaseRepository
+    public class KnowledgeBaseVectorRepository
     {
         private readonly MilvusKnowledgeBaseClient _milvusClient;
-        private readonly ILogger<KnowledgeBaseRepository> _logger;
+        private readonly ILogger<KnowledgeBaseVectorRepository> _logger;
 
         // Field names are defined as constants to ensure consistency
         private const string FieldChunkId = "chunk_id";
@@ -20,7 +20,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         private const string FieldTextChunk = "text_chunk";
         private const string FieldEmbedding = "vector";
 
-        public KnowledgeBaseRepository(MilvusKnowledgeBaseClient milvusClient, ILogger<KnowledgeBaseRepository> logger)
+        public KnowledgeBaseVectorRepository(MilvusKnowledgeBaseClient milvusClient, ILogger<KnowledgeBaseVectorRepository> logger)
         {
             _milvusClient = milvusClient;
             _logger = logger;
@@ -106,17 +106,17 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         /// <summary>
         /// Inserts a batch of document chunks into the specified collection.
         /// </summary>
-        public async Task<bool> AddChunksAsync(string collectionName, IEnumerable<KnowledgeBaseChunk> chunks, CancellationToken cancellationToken = default)
+        public async Task<bool> AddChunksAsync(string collectionName, IEnumerable<KnowledgeBaseChunkModel> chunks, CancellationToken cancellationToken = default)
         {
             try
             {
                 // Translate our application's KnowledgeBaseChunk model into the format Milvus expects: List<Dictionary<string, object>>
                 var dataToInsert = chunks.Select(chunk => new Dictionary<string, object>
-            {
-                { FieldDocumentName, chunk.DocumentName },
-                { FieldTextChunk, chunk.TextChunk },
-                { FieldEmbedding, chunk.Embedding }
-            }).ToList();
+                {
+                    { FieldDocumentName, chunk.DocumentName },
+                    { FieldTextChunk, chunk.TextChunk },
+                    { FieldEmbedding, chunk.Embedding }
+                }).ToList();
 
                 if (!dataToInsert.Any())
                 {
@@ -148,9 +148,9 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
         /// IMPORTANT: This method now assumes the collection has already been loaded into memory.
         /// The loading/releasing logic is handled by the new session manager (Phase 3).
         /// </summary>
-        public async Task<FunctionReturnResult<List<KnowledgeBaseSearchResult>>> SearchAsync(string collectionName, ReadOnlyMemory<float> queryVector, int topK, string? filter = null, CancellationToken cancellationToken = default)
+        public async Task<FunctionReturnResult<List<KnowledgeBaseSearchResultModel>>> SearchAsync(string collectionName, ReadOnlyMemory<float> queryVector, int topK, string? filter = null, CancellationToken cancellationToken = default)
         {
-            var result = new FunctionReturnResult<List<KnowledgeBaseSearchResult>>();
+            var result = new FunctionReturnResult<List<KnowledgeBaseSearchResultModel>>();
 
             try
             {
@@ -171,11 +171,11 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase
                     return result.SetFailureResult("SEARCH_FAILED", $"Search failed with code: {searchResponse?.Code}");
                 }
 
-                var processedResults = new List<KnowledgeBaseSearchResult>();
+                var processedResults = new List<KnowledgeBaseSearchResultModel>();
                 // The response `Data` is a List of dictionaries, one for each result.
                 foreach (var item in searchResponse.Data)
                 {
-                    processedResults.Add(new KnowledgeBaseSearchResult
+                    processedResults.Add(new KnowledgeBaseSearchResultModel
                     {
                         // The keys are "id", "distance", and the names of the output_fields.
                         Score = float.Parse(item["distance"].ToString()),

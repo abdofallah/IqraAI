@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using IqraCore.Entities.Business.App.KnowledgeBase;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business
 {
@@ -14,5 +15,6 @@ namespace IqraCore.Entities.Business
         public BusinessAppCache Cache { get; set; } = new BusinessAppCache();
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();
         public List<BusinessNumberData> Numbers { get; set; } = new List<BusinessNumberData>();
+        public List<BusinessAppKnowledgeBase> KnowledgeBases { get; set; } = new List<BusinessAppKnowledgeBase>();
     }
 }

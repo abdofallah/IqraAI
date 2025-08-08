@@ -20,6 +20,7 @@
         public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
         public BusinessConversationsPermission Conversations { get; set; } = new BusinessConversationsPermission();
         public BusinessNumbersPermission Numbers { get; set; } = new BusinessNumbersPermission();
+        public BusinessKnowledgeBasesPermission KnowledgeBases { get; set; } = new BusinessKnowledgeBasesPermission();
 
         // Non-Client Facing Permissions
         public BusinessRecieveCallPermission RecieveCall { get; set; } = new BusinessRecieveCallPermission();

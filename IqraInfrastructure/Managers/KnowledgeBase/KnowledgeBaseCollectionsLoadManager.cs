@@ -1,4 +1,4 @@
-﻿using IqraInfrastructure.Repositories.KnowledgeBase;
+﻿using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Redis;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

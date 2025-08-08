@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Archived;
 using IqraCore.Entities.Business;
+using IqraCore.Entities.Business.App.KnowledgeBase;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -657,6 +658,96 @@ namespace IqraInfrastructure.Repositories.Business
             );
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
+        }
+
+        /**
+        * 
+        * Knowledge Base Tab
+        * 
+        **/
+
+        public async Task<bool> AddKnowledgeBaseToArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.KnowledgeBases, kb);
+
+            var result = session != null
+                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
+                : await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateKnowledgeBaseInArrayAsync(long businessId, BusinessAppKnowledgeBase kb, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kb.Id)
+            );
+
+            var update = Builders<BusinessApp>.Update.Set("KnowledgeBases.$", kb);
+
+            var result = session != null
+                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
+                : await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> RemoveKnowledgeBaseFromArrayAsync(long businessId, string kbId, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.PullFilter(b => b.KnowledgeBases, k => k.Id == kbId);
+
+            var result = session != null
+                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
+                : await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddDocumentIdToKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kbId)
+            );
+
+            // Use the positional operator '$' to update the 'Documents' array of the matched knowledge base
+            var update = Builders<BusinessApp>.Update.Push("KnowledgeBases.$.Documents", documentId);
+
+            var result = session != null
+                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
+                : await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> RemoveDocumentIdFromKnowledgeBaseAsync(long businessId, string kbId, long documentId, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == kbId)
+            );
+
+            var update = Builders<BusinessApp>.Update.Pull("KnowledgeBases.$.Documents", documentId);
+
+            var result = session != null
+                ? await _businessAppCollection.UpdateOneAsync(session, filter, update)
+                : await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<BusinessAppKnowledgeBase?> GetBusinessAppKnowledgeBaseAsync(long businessId, string existingKbId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == existingKbId)
+            );
+
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
         }
     }
 }
