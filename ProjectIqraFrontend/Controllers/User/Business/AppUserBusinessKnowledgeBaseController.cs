@@ -1,5 +1,4 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase;
-using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
@@ -22,7 +21,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             _businessManager = businessManager;
         }
 
-        [HttpPost("/app/user/business/{businessId}/knowledge-base/save")]
+        [HttpPost("/app/user/business/{businessId}/knowledgebase/save")]
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> SaveKnowledgeBase(long businessId, [FromForm] IFormCollection formData)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBase?>();
@@ -126,66 +125,66 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
-        [HttpPost("/app/user/business/{businessId}/knowledge-base/{knowledgeBaseId}/documents/upload")]
-        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UploadKnowledgeBaseDocument(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
-        {
-            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
+        //[HttpPost("/app/user/business/{businessId}/knowledge-base/{knowledgeBaseId}/documents/upload")]
+        //public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UploadKnowledgeBaseDocument(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
+        //{
+        //    var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
-            // Validation
-            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
-                Request,
-                businessId,
-                checkUserDisabled: true,
-                checkBusinessesDisabled: true,
-                checkBusinessesEditingEnabled: true
-            );
-            if (!userSessionAndBusinessValidationResult.Success)
-            {
-                result.Code = $"UploadKnowledgeBaseDocument:{userSessionAndBusinessValidationResult.Code}";
-                result.Message = userSessionAndBusinessValidationResult.Message;
-                return result;
-            }
-            var userData = userSessionAndBusinessValidationResult.Data.userData;
-            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+        //    // Validation
+        //    var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+        //        Request,
+        //        businessId,
+        //        checkUserDisabled: true,
+        //        checkBusinessesDisabled: true,
+        //        checkBusinessesEditingEnabled: true
+        //    );
+        //    if (!userSessionAndBusinessValidationResult.Success)
+        //    {
+        //        result.Code = $"UploadKnowledgeBaseDocument:{userSessionAndBusinessValidationResult.Code}";
+        //        result.Message = userSessionAndBusinessValidationResult.Message;
+        //        return result;
+        //    }
+        //    var userData = userSessionAndBusinessValidationResult.Data.userData;
+        //    var businessData = userSessionAndBusinessValidationResult.Data.businessData;
 
-            // Knowledge Base Permission
-            if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:KNOWLEDGE_BASES_DISABLED",
-                    $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
-                );
-            }
+        //    // Knowledge Base Permission
+        //    if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+        //    {
+        //        return result.SetFailureResult(
+        //            "UploadKnowledgeBaseDocument:KNOWLEDGE_BASES_DISABLED",
+        //            $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+        //        );
+        //    }
 
-            if (businessData.Permission.KnowledgeBases.DisabledEditingAt != null)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:EDITING_KNOWLEDGE_BASES_DISABLED",
-                    $"Permission to edit knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledEditingReason}"
-                );
-            }
+        //    if (businessData.Permission.KnowledgeBases.DisabledEditingAt != null)
+        //    {
+        //        return result.SetFailureResult(
+        //            "UploadKnowledgeBaseDocument:EDITING_KNOWLEDGE_BASES_DISABLED",
+        //            $"Permission to edit knowledge bases is disabled for this business: {businessData.Permission.KnowledgeBases.DisabledEditingReason}"
+        //        );
+        //    }
 
-            // Logic
-            var file = formData.Files.FirstOrDefault();
-            if (file == null || file.Length == 0)
-            {
-                return result.SetFailureResult(
-                    "UploadKnowledgeBaseDocument:NO_FILE",
-                    "No file was provided for upload."
-                );
-            }
+        //    // Logic
+        //    var file = formData.Files.FirstOrDefault();
+        //    if (file == null || file.Length == 0)
+        //    {
+        //        return result.SetFailureResult(
+        //            "UploadKnowledgeBaseDocument:NO_FILE",
+        //            "No file was provided for upload."
+        //        );
+        //    }
 
-            // Delegate to Manager
-            var addAndProcessResult = await _businessManager.GetKnowledgeBaseManager().ProcessAndAddDocumentAsync(businessId, knowledgeBaseId, formData, file);
-            if (!addAndProcessResult.Success)
-            {
-                return result.SetFailureResult(
-                    $"UploadKnowledgeBaseDocument:{addAndProcessResult.Code}",
-                    addAndProcessResult.Message
-                );
-            }
+        //    // Delegate to Manager
+        //    var addAndProcessResult = await _businessManager.GetKnowledgeBaseManager().ProcessAndAddDocumentAsync(businessId, knowledgeBaseId, formData, file);
+        //    if (!addAndProcessResult.Success)
+        //    {
+        //        return result.SetFailureResult(
+        //            $"UploadKnowledgeBaseDocument:{addAndProcessResult.Code}",
+        //            addAndProcessResult.Message
+        //        );
+        //    }
 
-            return result.SetSuccessResult(addAndProcessResult.Data);
-        }
+        //    return result.SetSuccessResult(addAndProcessResult.Data);
+        //}
     }
 }

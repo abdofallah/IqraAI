@@ -6,6 +6,7 @@ using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Document;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -21,6 +22,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Integrations;
+using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Redis;
@@ -76,6 +78,11 @@ namespace ProjectIqraFrontend
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
+            });
+            // MilvusClient
+            builder.Services.AddHttpClient("MilvusClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
             });
             builder.Services.AddHttpClient("ProxyForwarder").SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
@@ -133,6 +140,20 @@ namespace ProjectIqraFrontend
                     .Build();
             });
 
+            builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
+            {
+                return new MilvusKnowledgeBaseClient(
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    new MilvusOptions() { 
+                        Endpoint = appConfig["Milvus:Endpoint"],
+                        Username = appConfig["Milvus:Username"],
+                        Password = appConfig["Milvus:Password"],
+                        ExpiryCheckIntervalSeconds = int.Parse(appConfig["Milvus:ExpiryCheckIntervalSeconds"]),
+                        CollectionStaleTimeoutMinutes = int.Parse(appConfig["Milvus:CollectionStaleTimeoutMinutes"])
+                    },
+                    sp.GetRequiredService<ILogger<MilvusKnowledgeBaseClient>>()
+                );
+            });
 
             // Repositories
 
@@ -363,6 +384,23 @@ namespace ProjectIqraFrontend
                     appConfig["MongoDatabase:ConversationUsageRepositoryDatabaseName"]
                 );
             });
+
+            builder.Services.AddSingleton<BusinessKnowledgeBaseDocumentRepository>((sp) =>
+            {
+                return new BusinessKnowledgeBaseDocumentRepository(
+                    sp.GetRequiredService<ILogger<BusinessKnowledgeBaseDocumentRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:BusinessKnowledgeBaseDocumentRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<KnowledgeBaseVectorRepository>((sp) =>
+            {
+                return new KnowledgeBaseVectorRepository(
+                    sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    sp.GetRequiredService<ILogger<KnowledgeBaseVectorRepository>>()
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -387,6 +425,12 @@ namespace ProjectIqraFrontend
                         FromEmail = appConfig["MailSMTP:FromEmail"],
                         FromName = appConfig["MailSMTP:FromName"]
                     }
+                );
+            });
+            builder.Services.AddSingleton<UnstructuredManager>((sp) =>
+            {
+                return new UnstructuredManager(
+
                 );
             });
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
@@ -485,7 +529,10 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<LanguagesManager>(),
                     sp.GetRequiredService<TwilioManager>(),
-                    sp.GetRequiredService<IntegrationConfigurationManager>()
+                    sp.GetRequiredService<IntegrationConfigurationManager>(),
+                    sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
+                    sp.GetRequiredService<KnowledgeBaseVectorRepository>(),
+                    sp.GetRequiredService<UnstructuredManager>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

@@ -120,7 +120,7 @@
                             <option value="0" selected>General</option> <!-- General text chunking mode, the chunks retrieved and recalled are the same. -->
                             <option value="1">Parent-child</option> <!-- The child-chunk is used for retrieval and the parent-chunk is used for recall as context. -->
                         </select>
-                        <div class="w-100 knowledgebase-document-chunking-type-box" box-type="general">
+                        <div class="w-100 knowledgebase-document-chunking-type-box" box-type="0">
                             <div class="row">
                                 <div class="col-md-4">
                                     <label for="generalDelimiter" class="form-label">Delimiter</label>
@@ -146,7 +146,7 @@
                                 <label class="form-check-label" for="generalDeleteUrls">Delete all URLs and email addresses</label>
                             </div>
                         </div>
-                        <div class="w-100 knowledgebase-document-chunking-type-box d-none" box-type="parentchild">
+                        <div class="w-100 knowledgebase-document-chunking-type-box d-none" box-type="1">
                             <div class="mb-3">
                                 <h6>Parent-chunk for Context</h6>
                                 <div class="form-check">
@@ -224,7 +224,7 @@
                         </select>
 
                         <!-- Vector Search Pane -->
-                        <div class="w-100 knowledgebase-document-retrival-type-box" box-type="vectorsearch">
+                        <div class="w-100 knowledgebase-document-retrival-type-box" box-type="0">
                             <div class="row">
                                 <div class="col-md-6">
                                     <label for="vectorTopK" class="form-label">Top K</label>
@@ -247,7 +247,7 @@
                             </div>
                         </div>
                         <!-- Full-Text Search Pane -->
-                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="fulltextsearch">
+                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="1">
                             <div class="row">
                                 <div class="col-md-12">
                                     <label for="fulltextTopK" class="form-label">Top K</label>
@@ -263,7 +263,7 @@
                             </div>
                         </div>
                         <!-- Hybrid Search Pane -->
-                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="hybirdsearch">
+                        <div class="w-100 knowledgebase-document-retrival-type-box d-none" box-type="2">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="hybridMode" id="hybridWeightedScore" value="weighted_score" checked>
                                 <label class="form-check-label" for="hybridWeightedScore">Weighted Score</label>

@@ -2,9 +2,10 @@
 
 var currentAuthType = 'login';
 
-$(document).ready(() => {
-    var URLPath = window.location.pathname;
+$(document).ready(() => {   
+    const urlParams = new URLSearchParams(window.location.search);
 
+    const URLPath = window.location.pathname;
     if (URLPath === '/register') {
         setAuthType('register');
     }
@@ -17,6 +18,18 @@ $(document).ready(() => {
     else {
         setAuthType(currentAuthType);
     }
+
+    const object = {
+        authType: currentAuthType
+    };
+    if (urlParams.has('source')) {
+        const source = urlParams.get('source');
+        if (source && source.trim() !== '') {
+            setCookie('source', source);
+            object.source = source;
+        }
+    }
+    umami.track('Authentication | Visit', { visitEvent: object });
 
     $("#switchToRegister").on('click', (event) => {
         event.preventDefault();

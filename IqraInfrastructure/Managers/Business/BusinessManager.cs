@@ -4,7 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
-using IqraInfrastructure.Managers.File;
+using IqraInfrastructure.Managers.Document;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.Region;
@@ -160,11 +160,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeKnowledgeBaseManager)
             {
-                if ()
+                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || unstructuredManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
-                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, , integrationConfigurationManager, knowledgeBaseVectorRepository, unstructuredManager);
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, unstructuredManager);
             }
         }
 

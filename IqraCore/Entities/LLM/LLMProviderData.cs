@@ -1,5 +1,4 @@
-﻿using IqraCore.Attributes;
-using IqraCore.Entities.Interfaces;
+﻿using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using MongoDB.Bson.Serialization.Attributes;
 

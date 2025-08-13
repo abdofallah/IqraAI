@@ -1,9 +1,14 @@
-﻿using IqraCore.Entities.Business;
-
-namespace IqraCore.Interfaces.AI
+﻿namespace IqraCore.Interfaces.AI
 {
+    public class EmbeddingResult
+    {
+        public float[]? Vector { get; set; }
+        public bool Success { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
     public interface IEmbeddingService : IDisposable
     {
-        Task GetEmbeddingAsync(string text, BusinessAppAgentIntegrationData embedding);
+        Task<EmbeddingResult> GenerateEmbeddingAsync(string text, int? dimensions = null);
     }
 }

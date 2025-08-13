@@ -15,7 +15,6 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document
         [BsonRepresentation(BsonType.String)]
         public KnowledgeBaseDocumentStatus Status { get; set; } = KnowledgeBaseDocumentStatus.Processing;
 
-        // Polymorphism support for different chunk types
         public List<BusinessAppKnowledgeBaseDocumentChunk> Chunks { get; set; } = new();
     }
 }

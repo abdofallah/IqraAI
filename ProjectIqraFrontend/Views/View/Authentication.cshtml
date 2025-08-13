@@ -277,7 +277,7 @@
                     <div class="mb-4">
                         <a href="#" class="text-decoration-none forget-password" id="switchToForget">Forgot Password?</a>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                    <button type="submit" data-umami-event="Authentication | Login Button" class="btn btn-primary w-100 mb-4">
                         <span>Login</span>
                     </button>
                 </form>
@@ -322,7 +322,7 @@
                         <input type="password" class="form-control" id="confirm-password" required>
                         <div class="invalid-feedback">Passwords do not match.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                    <button type="submit" data-umami-event="Authentication | Register Button" class="btn btn-primary w-100 mb-4">
                         <span>Register</span>
                     </button>
                 </form>
@@ -344,7 +344,7 @@
                         <input type="email" class="form-control" id="email" required>
                         <div class="invalid-feedback">Invalid Input</div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mb-4">
+                    <button type="submit" data-umami-event="Authentication | Reset Password Button" class="btn btn-primary w-100 mb-4">
                         <span>Reset Password</span>
                     </button>
                 </form>
@@ -359,17 +359,18 @@
     </div>
 
     <!-- Libs -->
-    <script src="~/js/jquery-3.7.1.min.js"></script>
-    <script src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/animate-images.umd.min.js"></script>
+    <script defer src="https://umami.badal.om/script.js" data-website-id="8f350117-f10d-4bdb-a6d6-63d4117a21c3"></script>
+    <script defer src="~/js/jquery-3.7.1.min.js"></script>
+    <script defer src="~/libs/bootstrap-5.3.3-dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="~/js/animate-images.umd.min.js"></script>
 
     <!-- Scripts -->
-    <script src="~/scripts/app/authentication/helper_functions.js"></script>
-    <script src="~/scripts/app/authentication/set_initial_auth_type.js"></script>
-    <script src="~/scripts/app/authentication/login_container.js"></script>
-    <script src="~/scripts/app/authentication/register_container.js"></script>
-    <script src="~/scripts/app/authentication/forget_container.js"></script>
-    <script src="~/scripts/app/authentication/main_intro_container.js"></script>
+    <script defer src="~/scripts/app/authentication/helper_functions.js"></script>
+    <script defer src="~/scripts/app/authentication/set_initial_auth_type.js"></script>
+    <script defer src="~/scripts/app/authentication/login_container.js"></script>
+    <script defer src="~/scripts/app/authentication/register_container.js"></script>
+    <script defer src="~/scripts/app/authentication/forget_container.js"></script>
+    <script defer src="~/scripts/app/authentication/main_intro_container.js"></script>
 </body>
 
 </html>

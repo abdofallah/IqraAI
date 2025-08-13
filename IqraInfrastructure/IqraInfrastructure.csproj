@@ -51,4 +51,8 @@
     <ProjectReference Include="..\IqraCore\IqraCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Repositories\Rerank\" />
+  </ItemGroup>
+
 </Project>

@@ -1,44 +1,50 @@
 ﻿/** Global Variables **/
-const ChunkingModeENUM = {
+const KnowledgeBaseChunkingType = {
     General: 0,
-    ParentChild: 1,
+    ParentChild: 1
 };
 
-const KnowledgeBaseChunkingParentChunkTypeENUM = {
+const KnowledgeBaseChunkingParentChunkType = {
     Paragraph: 0,
     FullDoc: 1
-}
-
-const RetrievalModeENUM = {
-    Unknown: 0,
-    Vector: 1,
-    FullText: 2,
-    Hybrid: 3
 };
 
-const ChunkingSelectMap = {
-    "0": "general",
-    "1": "parentchild"
+const KnowledgeBaseRetrievalType = {
+    VectorSearch: 0,
+    FullTextSearch: 1,
+    HybirdSearch: 2 // Corrected from 'Hybrid' in C#
 };
 
-const RetrievalSelectMap = {
-    "0": "vectorsearch",
-    "1": "fulltextsearch",
-    "2": "hybirdsearch"
+const KnowledgeBaseHybridRetrievalMode = {
+    WeightedScore: 0,
+    RerankModel: 1
+};
+
+const KnowledgeBaseDocumentStatus = {
+    Processing: 0,
+    Ready: 1,
+    Failed: 2
+};
+
+const RetrievalTypeDisplayMap = {
+    0: "Vector Search",
+    1: "Full-Text Search",
+    2: "Hybrid Search"
 };
 
 
 /** Dynamic Variables **/
-let ManageKnowledgeBaseType = null; // 'new' or 'edit'
+let ManageKnowledgeBaseType = null;
 let ManageCurrentKnowledgeBaseData = null;
-let ManageCurrentDocumentData = null; // To track document being edited/viewed
 
-// -- NEW: Change tracking arrays for chunks --
+let ManageCurrentKnowledgeBaseDocuments = [];
+let ManageCurrentDocumentData = null;
+
 let currentAddedChunks = [];
 let currentEditedChunks = [];
 let currentDeletedChunks = [];
 
-let editingChunkInfo = null; // { mode: 'add'/'edit', type: 'parent'/'child'/'general', parentId: '...', chunkId: '...' }
+let editingChunkInfo = null;
 let IsSavingKnowledgeBase = false;
 let IsProcessingDocument = false;
 let IsSavingChunks = false;
@@ -95,14 +101,14 @@ const chunkingTypeBoxes = knowledgeBaseManagerTab.find('.knowledgebase-document-
 const knowledgebaseDocumentRetrivalTypeSelect = knowledgeBaseManagerTab.find('#knowledgebaseDocumentRetrivalTypeSelect');
 const retrievalTypeBoxes = knowledgeBaseManagerTab.find('.knowledgebase-document-retrival-type-box');
 
-const generalChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="general"]');
+const generalChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="0"]');
 const generalDelimiterInput = generalChunkSettings.find('#generalDelimiter');
 const generalMaxLengthInput = generalChunkSettings.find('#generalMaxChunkLength');
 const generalOverlapInput = generalChunkSettings.find('#generalChunkOverlap');
 const generalReplaceConsecutiveCheck = generalChunkSettings.find('#generalReplaceConsecutive');
 const generalDeleteUrlsCheck = generalChunkSettings.find('#generalDeleteUrls');
 
-const parentChildChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="parentchild"]');
+const parentChildChunkSettings = knowledgeBaseManagerTab.find('.knowledgebase-document-chunking-type-box[box-type="1"]');
 const parentChunkParagraphRadio = knowledgeBaseManagerTab.find('#parentChunkParagraph');
 const parentChunkFullDocRadio = knowledgeBaseManagerTab.find('#parentChunkFullDoc');
 const parentChunkParagraphSettings = knowledgeBaseManagerTab.find('#parentChunkParagraphSettings');
@@ -175,22 +181,23 @@ const retrievalResultsContainer = testRetrievalModalElement.find('#retrievalResu
 
 /** API FUNCTIONS (Stubs) **/
 function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
-    // $.ajax({ ... }); // Future implementation
-    console.log("Simulating Save with FormData:", JSON.parse(formData.get('changes')));
-
-    const changes = JSON.parse(formData.get('changes'));
-    const response = {
-        success: true,
-        data: {
-            id: ManageKnowledgeBaseType === 'new' ? `kb_${new Date().getTime()}` : formData.get('existingKnowledgeBaseId'),
-            ...changes,
-            documents: ManageKnowledgeBaseType === 'edit' ? ManageCurrentKnowledgeBaseData.documents : []
-        }
-    };
-
-    setTimeout(() => {
-        successCallback(response);
-    }, 1000);
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/save`,
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (response.success) {
+                onSuccess(response);
+            } else {
+                onError(response, true);
+            }
+        },
+        error: (error) => {
+            onError(error, false);
+        },
+    });
 }
 
 function SaveAndProcessDocument(formData, successCallback, errorCallback) {
@@ -310,8 +317,9 @@ function showDocumentChunkManagerTab() {
 
 // -- List Management --
 function createKnowledgeBaseListElement(kbData) {
-    const documents = kbData.documents || [];
-    const retrievalMode = kbData.configuration?.retrieval?.mode || 'N/A';
+    const documents = kbData.documents;
+    const retrievalModeName = RetrievalTypeDisplayMap[kbData.configuration.retrieval.type];
+
     return `
         <div class="col-lg-4 col-md-6 col-12">
             <div class="routing-card d-flex flex-column align-items-start justify-content-center" kb-id="${kbData.id}">
@@ -320,7 +328,7 @@ function createKnowledgeBaseListElement(kbData) {
                     <div class="card-data">
                         <h4>${kbData.general.name}</h4>
                         <h6>${documents.length} Document${documents.length === 1 ? "" : "s"}</h6>
-						<h6>Mode: ${retrievalMode.replace('-', ' ')}</h6>
+						<h6>Mode: ${retrievalModeName}</h6>
                     </div>
                 </div>
                 <div>
@@ -350,13 +358,13 @@ function fillKnowledgeBaseList() {
 function createDocumentTableRow(docData) {
     let statusPill = '';
     switch (docData.status) {
-        case 'Ready':
+        case KnowledgeBaseDocumentStatus.Ready:
             statusPill = `<span class="badge bg-success">Ready</span>`;
             break;
-        case 'Processing':
+        case KnowledgeBaseDocumentStatus.Processing:
             statusPill = `<span class="badge bg-primary">Processing</span>`;
             break;
-        case 'Failed':
+        case KnowledgeBaseDocumentStatus.Failed:
             statusPill = `<span class="badge bg-danger">Failed</span>`;
             break;
         default:
@@ -382,13 +390,15 @@ function createDocumentTableRow(docData) {
     `;
 }
 
+
 function fillDocumentsTable() {
     const docsTableBody = documentsTable.find("tbody");
     docsTableBody.empty();
-    if (!ManageCurrentKnowledgeBaseData || ManageCurrentKnowledgeBaseData.documents.length === 0) {
+
+    if (ManageCurrentKnowledgeBaseDocuments.length === 0) {
         docsTableBody.append('<tr tr-type="none-notice"><td colspan="3">No documents uploaded yet.</td></tr>');
     } else {
-        ManageCurrentKnowledgeBaseData.documents.forEach(doc => {
+        ManageCurrentKnowledgeBaseDocuments.forEach(doc => {
             docsTableBody.append(createDocumentTableRow(doc));
         });
     }
@@ -398,20 +408,20 @@ function populateDocumentModalSettings() {
     const chunkingConfig = ManageCurrentKnowledgeBaseData.configuration.chunking;
     let settingsHtml = '';
 
-    if (chunkingConfig.mode === ChunkingModeENUM.General) {
+    if (chunkingConfig.type === KnowledgeBaseChunkingType.General) {
         settingsHtml = `
             <div class="row">
                 <div class="col-md-4">
                     <label class="form-label">Delimiter</label>
-                    <input type="text" class="form-control" id="modalGeneralDelimiter" value="${chunkingConfig.general.delimiter}">
+                    <input type="text" class="form-control" id="modalGeneralDelimiter" value="${chunkingConfig.delimiter}">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Max length</label>
-                    <input type="number" class="form-control" id="modalGeneralMaxLength" value="${chunkingConfig.general.maxLength}">
+                    <input type="number" class="form-control" id="modalGeneralMaxLength" value="${chunkingConfig.maxLength}">
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Overlap</label>
-                    <input type="number" class="form-control" id="modalGeneralOverlap" value="${chunkingConfig.general.overlap}">
+                    <input type="number" class="form-control" id="modalGeneralOverlap" value="${chunkingConfig.overlap}">
                 </div>
             </div>
         `;
@@ -421,22 +431,22 @@ function populateDocumentModalSettings() {
              <div class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label">Delimiter</label>
-                    <input type="text" class="form-control" id="modalParentDelimiter" value="${chunkingConfig.parentChild.parent.delimiter}">
+                    <input type="text" class="form-control" id="modalParentDelimiter" value="${chunkingConfig.parent.delimiter || ''}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Max length</label>
-                    <input type="number" class="form-control" id="modalParentMaxLength" value="${chunkingConfig.parentChild.parent.maxLength}">
+                    <input type="number" class="form-control" id="modalParentMaxLength" value="${chunkingConfig.parent.maxLength || ''}">
                 </div>
             </div>
             <h6>Child-chunk</h6>
              <div class="row">
                 <div class="col-md-6">
                     <label class="form-label">Delimiter</label>
-                    <input type="text" class="form-control" id="modalChildDelimiter" value="${chunkingConfig.parentChild.child.delimiter}">
+                    <input type="text" class="form-control" id="modalChildDelimiter" value="${chunkingConfig.child.delimiter}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Max length</label>
-                    <input type="number" class="form-control" id="modalChildMaxLength" value="${chunkingConfig.parentChild.child.maxLength}">
+                    <input type="number" class="form-control" id="modalChildMaxLength" value="${chunkingConfig.child.maxLength}">
                 </div>
             </div>
         `;
@@ -517,15 +527,16 @@ function createRetrievalResultCard(result, index) {
 function fillChunksList() {
     chunksListContainer.empty();
     const chunks = ManageCurrentDocumentData.chunks || [];
-    const mode = ManageCurrentKnowledgeBaseData.configuration.chunking.mode;
+
+    const chunkingType = ManageCurrentKnowledgeBaseData.configuration.chunking.type;
 
     if (chunks.length === 0) {
         chunksListContainer.html('<h6 class="text-center mt-5">No chunks found for this document.</h6>');
         return;
     }
 
-    if (mode === ChunkingModeENUM.ParentChild) {
-        chunks.forEach(parentChunk => {
+    if (chunkingType === KnowledgeBaseChunkingType.ParentChild) {
+        chunks.filter(c => c.children).forEach(parentChunk => {
             chunksListContainer.append(createParentChunkCard(parentChunk));
         });
     } else { // General Mode
@@ -549,10 +560,9 @@ function createDefaultKnowledgeBaseObject() {
             description: ""
         },
         configuration: {
+            // Default to General Chunking
             chunking: {
-                type: {
-                    value: ChunkingModeENUM.General
-                },
+                type: KnowledgeBaseChunkingType.General,
                 delimiter: "\\n\\n",
                 maxLength: 1024,
                 overlap: 50,
@@ -561,11 +571,14 @@ function createDefaultKnowledgeBaseObject() {
                     deleteUrls: false
                 }
             },
-            embedding: null, // To be filled by IntegrationManager
+            // Default Embedding Integration
+            embedding: {
+                id: "",
+                fieldValues: {}
+            },
+            // Default to Vector Retrieval
             retrieval: {
-                type: {
-                    value: RetrievalModeENUM.Vector
-                },
+                type: KnowledgeBaseRetrievalType.VectorSearch,
                 topK: 3,
                 useScoreThreshold: false,
                 scoreThreshold: null,
@@ -588,8 +601,10 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     // Configuration - Re-enable everything for 'new'
     knowledgeBaseManagerConfigurationPane.find('input, select, button').prop('disabled', false);
     knowledgeBaseManagerConfigurationPane.removeClass('disabled-pane');
-    knowledgebaseDocumentChunkingTypeSelect.val('0').trigger('change');
-    knowledgebaseDocumentRetrivalTypeSelect.val('0').trigger('change');
+
+    // REWRITTEN: Default to enum values
+    knowledgebaseDocumentChunkingTypeSelect.val(KnowledgeBaseChunkingType.General).trigger('change');
+    knowledgebaseDocumentRetrivalTypeSelect.val(KnowledgeBaseRetrievalType.VectorSearch).trigger('change');
 
     // -- Integrations
     knowledgeBaseEmbeddingIntegrationManager.reset();
@@ -606,6 +621,7 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     hybridWeightSlider.val(0.7).trigger('input');
 
     // Documents
+    ManageCurrentKnowledgeBaseDocuments = [];
     fillDocumentsTable();
 
     // Tabs & Buttons
@@ -625,22 +641,67 @@ function fillKnowledgeBaseManagerTab() {
 
     // -- Configuration: Surgical Disabling for 'edit' mode --
     knowledgebaseDocumentChunkingTypeSelect.prop('disabled', true);
-    knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false);
     knowledgeBaseEmbeddingIntegrationManager.disable();
-    knowledgeBaseManagerConfigurationPane.addClass('disabled-pane');
+    knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false);
+    knowledgeBaseManagerConfigurationPane.removeClass('disabled-pane');
 
-    // -- NEW: Set select boxes based on loaded data --
-    const chunkingModeVal = Object.keys(ChunkingSelectMap).find(key => ChunkingSelectMap[key] === kbData.configuration.chunking.mode);
-    knowledgebaseDocumentChunkingTypeSelect.val(chunkingModeVal).trigger('change');
+    // -- Set configuration based on loaded data --
+    const chunkingConfig = kbData.configuration.chunking;
+    knowledgebaseDocumentChunkingTypeSelect.val(chunkingConfig.type).trigger('change');
+    if (chunkingConfig.type === KnowledgeBaseChunkingType.General)
+    {
+        generalDelimiterInput.val(chunkingConfig.delimiter);
+        generalMaxLengthInput.val(chunkingConfig.maxLength);
+        generalOverlapInput.val(chunkingConfig.overlap);
+        generalReplaceConsecutiveCheck.prop('checked', chunkingConfig.preprocess.replaceConsecutive);
+        generalDeleteUrlsCheck.prop('checked', chunkingConfig.preprocess.deleteUrls);
+    }
+    else if (chunkingConfig.type === KnowledgeBaseChunkingType.ParentChild)
+    {
+        const parentType = chunkingConfig.parent.type === KnowledgeBaseChunkingParentChunkType.Paragraph ? 'paragraph' : 'full_doc';
+        $(`input[name="parentChunkType"][value="${parentType}"]`).prop('checked', true).trigger('change');
+        parentDelimiterInput.val(chunkingConfig.parent.delimiter);
+        parentMaxLengthInput.val(chunkingConfig.parent.maxLength);
+        childDelimiterInput.val(chunkingConfig.child.delimiter);
+        childMaxLengthInput.val(chunkingConfig.child.maxLength);
+        parentChildReplaceConsecutiveCheck.prop('checked', chunkingConfig.preprocess.replaceConsecutive);
+        parentChildDeleteUrlsCheck.prop('checked', chunkingConfig.preprocess.deleteUrls);
+    }
 
-    const retrievalModeVal = Object.keys(RetrievalSelectMap).find(key => RetrievalSelectMap[key] === kbData.configuration.retrieval.mode);
-    knowledgebaseDocumentRetrivalTypeSelect.val(retrievalModeVal).trigger('change');
+    const retrievalConfig = kbData.configuration.retrieval;
+    knowledgebaseDocumentRetrivalTypeSelect.val(retrievalConfig.type).trigger('change');
+    if (retrievalConfig.type === KnowledgeBaseRetrievalType.VectorSearch) {
+        vectorTopKInput.val(retrievalConfig.topK);
+        useVectorScoreThreshold.prop('checked', retrievalConfig.useScoreThreshold).trigger('change');
+        vectorScoreThresholdInput.val(retrievalConfig.scoreThreshold);
+        vectorRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
 
-    // -- Set Score Thresholds --
-    useVectorScoreThreshold.prop('checked', kbData.configuration.retrieval.vector.useScoreThreshold).trigger('change');
-    useHybirdScoreThreshold.prop('checked', kbData.configuration.retrieval.hybrid.useScoreThreshold).trigger('change');
-    vectorScoreThresholdInput.val(kbData.configuration.retrieval.vector.scoreThreshold);
-    hybridScoreThresholdInput.val(kbData.configuration.retrieval.hybrid.scoreThreshold);
+        if (retrievalConfig.rerank.enabled) {
+            vectorRerankIntegrationManager.setData(retrievalConfig.rerank.integration);
+        }
+    }
+    else if (retrievalConfig.type === KnowledgeBaseRetrievalType.FullTextSearch) {
+        fulltextTopKInput.val(retrievalConfig.topK);
+        fulltextRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
+        if (retrievalConfig.rerank.enabled) {
+            fulltextRerankIntegrationManager.setData(retrievalConfig.rerank.integration);
+        }
+    }
+    else if (retrievalConfig.type === KnowledgeBaseRetrievalType.HybirdSearch) {
+        hybridTopKInput.val(retrievalConfig.topK);
+        useHybirdScoreThreshold.prop('checked', retrievalConfig.useScoreThreshold).trigger('change');
+        hybridScoreThresholdInput.val(retrievalConfig.scoreThreshold);
+
+        if (retrievalConfig.mode === KnowledgeBaseHybridRetrievalMode.RerankModel) {
+            hybridRerankModelRadio.prop('checked', true).trigger('change');
+            hybridRerankIntegrationManager.setData(retrievalConfig.rerankIntegration);
+        }
+        else
+        {
+            hybridWeightedScoreRadio.prop('checked', true).trigger('change');
+            hybridWeightSlider.val(retrievalConfig.weight).trigger('input');
+        }
+    }
 
     // Documents
     fillDocumentsTable();
@@ -654,107 +715,101 @@ function fillKnowledgeBaseManagerTab() {
 function checkKnowledgeBaseTabHasChanges(enableDisableButton = true) {
     if (ManageKnowledgeBaseType === null) return { hasChanges: false };
 
-    const changes = {};
-    let hasChanges = false;
-
-    // --- General Tab ---
-    changes.general = {
-        emoji: editKnowledgeBaseIconInput.text(),
-        name: editKnowledgeBaseNameInput.val().trim(),
-        description: editKnowledgeBaseDescriptionInput.val().trim(),
-    };
-
-    if (
-        changes.general.emoji !== ManageCurrentKnowledgeBaseData.general.emoji ||
-        changes.general.name !== ManageCurrentKnowledgeBaseData.general.name ||
-        changes.general.description !== ManageCurrentKnowledgeBaseData.general.description
-    ) {
-        hasChanges = true;
-    }
-
-    const chunkingMode = ChunkingSelectMap[knowledgebaseDocumentChunkingTypeSelect.val()];
-    const retrievalMode = RetrievalSelectMap[knowledgebaseDocumentRetrivalTypeSelect.val()];
-
-    // --- Configuration Tab ---
-    changes.configuration = {
-        chunking: {
-            mode: chunkingMode,
-            general: {
-                delimiter: generalDelimiterInput.val(),
-                maxLength: parseInt(generalMaxLengthInput.val()),
-                overlap: parseInt(generalOverlapInput.val()),
-                preprocess: {
-                    replaceConsecutive: generalReplaceConsecutiveCheck.is(':checked'),
-                    deleteUrls: generalDeleteUrlsCheck.is(':checked'),
-                }
-            },
-            parentChild: {
-                parent: {
-                    type: $('input[name="parentChunkType"]:checked').val(),
-                    delimiter: parentDelimiterInput.val(),
-                    maxLength: parseInt(parentMaxLengthInput.val()),
-                },
-                child: {
-                    delimiter: childDelimiterInput.val(),
-                    maxLength: parseInt(childMaxLengthInput.val()),
-                },
-                preprocess: {
-                    replaceConsecutive: parentChildReplaceConsecutiveCheck.is(':checked'),
-                    deleteUrls: parentChildDeleteUrlsCheck.is(':checked'),
-                }
-            }
+    const originalData = ManageCurrentKnowledgeBaseData;
+    const currentData = {
+        general: {
+            emoji: editKnowledgeBaseIconInput.text(),
+            name: editKnowledgeBaseNameInput.val().trim(),
+            description: editKnowledgeBaseDescriptionInput.val().trim(),
         },
-        embedding: ManageCurrentKnowledgeBaseData.configuration.embedding,
-        retrieval: {
-            mode: retrievalMode,
-            vector: {
-                topK: parseInt(vectorTopKInput.val()),
-                useScoreThreshold: useVectorScoreThreshold.is(':checked'),
-                scoreThreshold: parseFloat(vectorScoreThresholdInput.val()),
-                rerank: {
-                    enabled: vectorRerankModelSwitch.is(':checked'),
-                    integration: vectorRerankIntegrationManager.getData()
-                }
-            },
-            fullText: {
-                topK: parseInt(fulltextTopKInput.val()),
-                rerank: {
-                    enabled: fulltextRerankModelSwitch.is(':checked'),
-                    integration: fulltextRerankIntegrationManager.getData()
-                }
-            },
-            hybrid: {
-                mode: $('input[name="hybridMode"]:checked').val(),
-                weight: parseFloat(hybridWeightSlider.val()),
-                topK: parseInt(hybridTopKInput.val()),
-                useScoreThreshold: useHybirdScoreThreshold.is(':checked'),
-                scoreThreshold: parseFloat(hybridScoreThresholdInput.val()),
-                rerank: {
-                    integration: hybridRerankIntegrationManager.getData()
-                }
-            }
-        }
+        configuration: {}
     };
-    if (ManageKnowledgeBaseType === 'new') {
-        changes.configuration.chunking.mode = $('input[name="chunkMode"]:checked').val();
-        changes.configuration.embedding = knowledgeBaseEmbeddingIntegrationManager.getData();
+
+    // --- Build Chunking Configuration ---
+    const chunkingType = parseInt(knowledgebaseDocumentChunkingTypeSelect.val());
+    if (chunkingType === KnowledgeBaseChunkingType.General) {
+        currentData.configuration.chunking = {
+            type: chunkingType,
+            delimiter: generalDelimiterInput.val(),
+            maxLength: parseInt(generalMaxLengthInput.val()),
+            overlap: parseInt(generalOverlapInput.val()),
+            preprocess: {
+                replaceConsecutive: generalReplaceConsecutiveCheck.is(':checked'),
+                deleteUrls: generalDeleteUrlsCheck.is(':checked'),
+            }
+        };
+    } else { // ParentChild
+        currentData.configuration.chunking = {
+            type: chunkingType,
+            parent: {
+                type: $('input[name="parentChunkType"]:checked').val() === 'paragraph' ? KnowledgeBaseChunkingParentChunkType.Paragraph : KnowledgeBaseChunkingParentChunkType.FullDoc,
+                delimiter: parentDelimiterInput.val() || null,
+                maxLength: parseInt(parentMaxLengthInput.val()) || null,
+            },
+            child: {
+                delimiter: childDelimiterInput.val(),
+                maxLength: parseInt(childMaxLengthInput.val()),
+            },
+            preprocess: {
+                replaceConsecutive: parentChildReplaceConsecutiveCheck.is(':checked'),
+                deleteUrls: parentChildDeleteUrlsCheck.is(':checked'),
+            }
+        };
     }
 
+    // --- Build Embedding Configuration ---
+    // Embedding is only set on creation.
+    currentData.configuration.embedding = ManageKnowledgeBaseType === 'new'
+        ? knowledgeBaseEmbeddingIntegrationManager.getData()
+        : originalData.configuration.embedding;
 
-    if (JSON.stringify(changes.configuration) !== JSON.stringify(ManageCurrentKnowledgeBaseData.configuration)) {
-        hasChanges = true;
+    // --- Build Retrieval Configuration ---
+    const retrievalType = parseInt(knowledgebaseDocumentRetrivalTypeSelect.val());
+    if (retrievalType === KnowledgeBaseRetrievalType.VectorSearch) {
+        currentData.configuration.retrieval = {
+            type: retrievalType,
+            topK: parseInt(vectorTopKInput.val()),
+            useScoreThreshold: useVectorScoreThreshold.is(':checked'),
+            scoreThreshold: useVectorScoreThreshold.is(':checked') ? parseFloat(vectorScoreThresholdInput.val()) : null,
+            rerank: {
+                enabled: vectorRerankModelSwitch.is(':checked'),
+                integration: vectorRerankModelSwitch.is(':checked') ? vectorRerankIntegrationManager.getData() : null
+            }
+        };
+    } else if (retrievalType === KnowledgeBaseRetrievalType.FullTextSearch) {
+        currentData.configuration.retrieval = {
+            type: retrievalType,
+            topK: parseInt(fulltextTopKInput.val()),
+            rerank: {
+                enabled: fulltextRerankModelSwitch.is(':checked'),
+                integration: fulltextRerankModelSwitch.is(':checked') ? fulltextRerankIntegrationManager.getData() : null
+            }
+        };
+    } else { // Hybrid Search
+        const isRerankMode = hybridRerankModelRadio.is(':checked');
+        currentData.configuration.retrieval = {
+            type: retrievalType,
+            mode: isRerankMode ? KnowledgeBaseHybridRetrievalMode.RerankModel : KnowledgeBaseHybridRetrievalMode.WeightedScore,
+            weight: !isRerankMode ? parseFloat(hybridWeightSlider.val()) : null,
+            rerankIntegration: isRerankMode ? hybridRerankIntegrationManager.getData() : null,
+            topK: parseInt(hybridTopKInput.val()),
+            useScoreThreshold: useHybirdScoreThreshold.is(':checked'),
+            scoreThreshold: useHybirdScoreThreshold.is(':checked') ? parseFloat(hybridScoreThresholdInput.val()) : null,
+        };
     }
 
+    // Using a deep comparison library would be more robust, but JSON.stringify is a good approximation here.
+    const hasChanges = JSON.stringify(currentData.general) !== JSON.stringify(originalData.general) ||
+        JSON.stringify(currentData.configuration) !== JSON.stringify(originalData.configuration);
 
     if (enableDisableButton) {
         saveKnowledgeBaseButton.prop("disabled", !hasChanges);
-        if (hasChanges) saveKnowledgeBaseButton.removeClass('disabled');
-        else saveKnowledgeBaseButton.addClass('disabled');
+        saveKnowledgeBaseButton.toggleClass('disabled', !hasChanges);
     }
 
     return {
         hasChanges: hasChanges,
-        changes: changes,
+        changes: currentData,
     };
 }
 
@@ -786,8 +841,8 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
     // --- Configuration Tab ---
 
     // Default Chunking Settings
-    const selectedChunkingType = ChunkingSelectMap[knowledgebaseDocumentChunkingTypeSelect.val()];
-    if (selectedChunkingType === 'general') {
+    const selectedChunkingType = parseInt(knowledgebaseDocumentChunkingTypeSelect.val());
+    if (selectedChunkingType === KnowledgeBaseChunkingType.General) {
         const delimiter = generalDelimiterInput.val();
         if (!delimiter || delimiter.length === 0 || delimiter.trim().length === 0) {
             validated = false;
@@ -821,7 +876,7 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
             generalOverlapInput.removeClass("is-invalid");
         }
     }
-    else if (selectedChunkingType === 'parent-child') {
+    else if (selectedChunkingType === KnowledgeBaseChunkingType.ParentChild) {
         const parentChunkContextType = $('input[name="parentChunkType"]:checked').val();
         if (parentChunkContextType == "paragraph") {
             const parentDelimiter = parentDelimiterInput.val();
@@ -898,8 +953,8 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
     }
 
     // Retrieval Settings
-    const retrivalType = RetrievalSelectMap[knowledgebaseDocumentRetrivalTypeSelect.val()];
-    if (retrivalType === 'vectorsearch') {
+    const retrievalType = parseInt(knowledgebaseDocumentRetrivalTypeSelect.val());
+    if (retrievalType === KnowledgeBaseRetrievalType.VectorSearch) {
         const vectorTopK = parseInt(vectorTopKInput.val());
         if (isNaN(vectorTopK) || vectorTopK <= 1) {
             validated = false;
@@ -938,7 +993,7 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
             }
         }
     }
-    else if (retrivalType == "fulltextsearch") {
+    else if (retrievalType === KnowledgeBaseRetrievalType.FullTextSearch) {
         const fulltextTopK = parseInt(fulltextTopKInput.val());
         if (isNaN(fulltextTopK) || fulltextTopK <= 1) {
             validated = false;
@@ -977,7 +1032,7 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
             }  
         }
     }
-    else if (retrivalType == "hybirdsearch") {
+    else if (retrievalType === KnowledgeBaseRetrievalType.HybirdSearch) {
         const hybirdSearchMode = $('input[name="hybridMode"]:checked').val();
         if (hybirdSearchMode == "rerank_model") {
             const hybridRerankSelect = hybridRerankIntegrationManager.getSelectElements();
@@ -1171,7 +1226,7 @@ function initKnowledgeBaseTab() {
 
         // Chunking Settings
         knowledgebaseDocumentChunkingTypeSelect.on('change', function () {
-            const selectedType = ChunkingSelectMap[$(this).val()];
+            const selectedType = $(this).val();
             chunkingTypeBoxes.addClass('d-none');
             chunkingTypeBoxes.filter(`[box-type="${selectedType}"]`).removeClass('d-none');
         });
@@ -1186,7 +1241,7 @@ function initKnowledgeBaseTab() {
 
         // Retrieval Settings
         knowledgebaseDocumentRetrivalTypeSelect.on('change', function () {
-            const selectedType = RetrievalSelectMap[$(this).val()];
+            const selectedType = $(this).val();
             retrievalTypeBoxes.addClass('d-none');
             retrievalTypeBoxes.filter(`[box-type="${selectedType}"]`).removeClass('d-none');
         });
@@ -1255,7 +1310,9 @@ function initKnowledgeBaseTab() {
 
             SaveAndProcessDocument(formData, (response) => {
                 const newDoc = response.data;
-                ManageCurrentKnowledgeBaseData.documents.push(newDoc);
+                ManageCurrentKnowledgeBaseDocuments.push(newDoc); 
+                ManageCurrentKnowledgeBaseData.documents.push(newDoc.id); 
+
                 fillDocumentsTable();
 
                 spinner.addClass('d-none');
@@ -1324,7 +1381,9 @@ function initKnowledgeBaseTab() {
             });
 
             if (await confirmDialog.show()) {
-                ManageCurrentKnowledgeBaseData.documents = ManageCurrentKnowledgeBaseData.documents.filter(d => d.id !== docId);
+                ManageCurrentKnowledgeBaseDocuments = ManageCurrentKnowledgeBaseDocuments.filter(d => d.id.toString() !== docId);
+                ManageCurrentKnowledgeBaseData.documents = ManageCurrentKnowledgeBaseData.documents.filter(id => id.toString() !== docId);
+
                 fillDocumentsTable();
                 AlertManager.createAlert({ type: 'success', message: 'Document deleted successfully.' });
             }
@@ -1347,7 +1406,7 @@ function initKnowledgeBaseTab() {
         documentsTable.on('click', '[button-type="viewDocumentChunks"]', function (e) {
             e.preventDefault();
             const docId = $(this).closest('tr').attr('doc-id');
-            ManageCurrentDocumentData = ManageCurrentKnowledgeBaseData.documents.find(d => d.id === docId);
+            ManageCurrentDocumentData = ManageCurrentKnowledgeBaseDocuments.find(d => d.id.toString() === docId);
 
             // Reset change tracking for the new session
             currentAddedChunks = [];
@@ -1584,42 +1643,44 @@ function initKnowledgeBaseTab() {
                 formData.append('existingKnowledgeBaseId', ManageCurrentKnowledgeBaseData.id);
             }
 
-            SaveBusinessKnowledgeBase(formData, (response) => {
-                ManageCurrentKnowledgeBaseData = response.data;
-                currentKnowledgeBaseName.text(ManageCurrentKnowledgeBaseData.general.name);
+            SaveBusinessKnowledgeBase(formData,
+                (response) => {
+                    ManageCurrentKnowledgeBaseData = response.data;
+                    currentKnowledgeBaseName.text(ManageCurrentKnowledgeBaseData.general.name);
 
-                if (ManageKnowledgeBaseType === 'new') {
-                    BusinessFullData.businessApp.knowledgeBases.push(ManageCurrentKnowledgeBaseData);
-                } else { // 'edit'
-                    const index = BusinessFullData.businessApp.knowledgeBases.findIndex(kb => kb.id === ManageCurrentKnowledgeBaseData.id);
-                    BusinessFullData.businessApp.knowledgeBases[index] = ManageCurrentKnowledgeBaseData;
+                    if (ManageKnowledgeBaseType === 'new') {
+                        BusinessFullData.businessApp.knowledgeBases.push(ManageCurrentKnowledgeBaseData);
+                    } else { // 'edit'
+                        const index = BusinessFullData.businessApp.knowledgeBases.findIndex(kb => kb.id === ManageCurrentKnowledgeBaseData.id);
+                        BusinessFullData.businessApp.knowledgeBases[index] = ManageCurrentKnowledgeBaseData;
+                    }
+
+                    fillKnowledgeBaseList();
+
+                    spinner.addClass('d-none');
+                    IsSavingKnowledgeBase = false;
+                    ManageKnowledgeBaseType = 'edit';
+
+                    fillKnowledgeBaseManagerTab();
+                    saveKnowledgeBaseButton.addClass('disabled').prop('disabled', true);
+
+                    AlertManager.createAlert({
+                        type: "success",
+                        message: "Knowledge Base saved successfully.",
+                        timeout: 6000,
+                    });
+                },
+                (error) => {
+                    spinner.addClass('d-none');
+                    IsSavingKnowledgeBase = false;
+                    saveKnowledgeBaseButton.removeClass('disabled').prop('disabled', false);
+                    AlertManager.createAlert({
+                        type: "danger",
+                        message: "An error occurred while saving.",
+                        timeout: 6000,
+                    });
                 }
-
-                fillKnowledgeBaseList();
-
-                spinner.addClass('d-none');
-                IsSavingKnowledgeBase = false;
-                ManageKnowledgeBaseType = 'edit';
-
-                fillKnowledgeBaseManagerTab();
-                saveKnowledgeBaseButton.addClass('disabled').prop('disabled', true);
-
-                AlertManager.createAlert({
-                    type: "success",
-                    message: "Knowledge Base saved successfully.",
-                    timeout: 6000,
-                });
-
-            }, (error) => {
-                spinner.addClass('d-none');
-                IsSavingKnowledgeBase = false;
-                saveKnowledgeBaseButton.removeClass('disabled').prop('disabled', false);
-                AlertManager.createAlert({
-                    type: "danger",
-                    message: "An error occurred while saving.",
-                    timeout: 6000,
-                });
-            });
+            );
         });
 
 

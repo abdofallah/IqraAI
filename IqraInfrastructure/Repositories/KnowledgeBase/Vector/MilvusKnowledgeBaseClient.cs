@@ -17,9 +17,8 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         public required string Endpoint { get; set; }
         public required string Username { get; set; }
         public required string Password { get; set; }
-
-        public int ExpiryCheckIntervalSeconds { get; set; } = 300; // 5 minutes
-        public int CollectionStaleTimeoutMinutes { get; set; } = 30; // 30 minutes
+        public required int ExpiryCheckIntervalSeconds { get; set; }
+        public required int CollectionStaleTimeoutMinutes { get; set; }
     }
 
     #region Data Transfer Objects (DTOs)

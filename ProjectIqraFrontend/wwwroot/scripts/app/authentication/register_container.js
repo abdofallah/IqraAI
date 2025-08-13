@@ -16,6 +16,17 @@
         && password === confirmPassword
         && password.length >= 8
     ) {
+        var trackEvent = {
+            email: email,
+            firstName: firstName,
+            lastName: lastName
+        }
+        const source = getCookie('source');
+        if (source && source.trim() !== '') {
+            trackEvent.source = source;
+        }
+        umami.track('Authentication | Register Function', { registerEvent: trackEvent });
+
         $.ajax({
             url: '/auth/register',
             method: 'POST',

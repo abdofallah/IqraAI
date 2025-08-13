@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace IqraInfrastructure.Managers.File
+namespace IqraInfrastructure.Managers.Document
 {
     public class UnstructuredManager
     {

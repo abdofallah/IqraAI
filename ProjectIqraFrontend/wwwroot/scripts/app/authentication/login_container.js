@@ -6,6 +6,15 @@
         var password = $('.login-container #password').val();
 
         if (email && password) {
+            var trackEvent = {
+                email: email
+            }
+            const source = getCookie('source');
+            if (source && source.trim() !== '') {
+                trackEvent.source = source;
+            }
+            umami.track('Authentication | Login Function', { loginEvent: trackEvent });
+
             $.ajax({
                 url: '/auth/login',
                 method: 'POST',
