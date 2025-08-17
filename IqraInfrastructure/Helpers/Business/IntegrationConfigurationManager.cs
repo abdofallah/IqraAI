@@ -1,11 +1,15 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Embedding;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.ProviderBase;
+using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.LLM;
+using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
 using System.Text.Json;
@@ -21,12 +25,16 @@ namespace IqraInfrastructure.Helpers.Business
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
         private readonly LLMProviderManager _llmProviderManager;
+        private readonly EmbeddingProviderManager _embeddingProviderManager;
+        private readonly RerankProviderManager _rerankProviderManager;
 
-        public IntegrationConfigurationManager(STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager, LLMProviderManager llmProviderManager)
+        public IntegrationConfigurationManager(STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager, LLMProviderManager llmProviderManager, EmbeddingProviderManager embeddingProviderManager, RerankProviderManager rerankProviderManager)
         {
             _sttProviderManager = sttProviderManager;
             _ttsProviderManager = ttsProviderManager;
             _llmProviderManager = llmProviderManager;
+            _embeddingProviderManager = embeddingProviderManager;
+            _rerankProviderManager = rerankProviderManager;
         }
 
         public void SetupDependencies(BusinessIntegrationsManager businessIntegrationsManager)
@@ -117,6 +125,14 @@ namespace IqraInfrastructure.Helpers.Business
             {
                 providerManager = _llmProviderManager;
             }
+            else if (integrationType == "Embedding")
+            {
+                providerManager = _embeddingProviderManager;
+            }
+            else if (integrationType == "Rerank")
+            {
+                providerManager = _rerankProviderManager;
+            }
             else
             {
                 result.Code = "ValidateIntegrationData:4";
@@ -157,6 +173,18 @@ namespace IqraInfrastructure.Helpers.Business
                 var llmData = providerData.Data as LLMProviderData;
                 userIntegrationFields = llmData.UserIntegrationFields;
                 models = llmData.Models;
+            }
+            else if (integrationType == "Embedding")
+            {
+                var embeddingData = providerData.Data as EmbeddingProviderData;
+                userIntegrationFields = embeddingData.UserIntegrationFields;
+                models = embeddingData.Models;
+            }
+            else if (integrationType == "Rerank")
+            {
+                var rerankData = providerData.Data as RerankProviderData;
+                userIntegrationFields = rerankData.UserIntegrationFields;
+                models = rerankData.Models;
             }
             else
             {
