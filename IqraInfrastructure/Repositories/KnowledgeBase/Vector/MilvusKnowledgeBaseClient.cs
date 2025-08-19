@@ -30,6 +30,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 
     // DTOs for Collection Management
     public record CreateCollectionRequest(
+        string dbName,
         string collectionName,
         int dimension,
         string metricType,
@@ -39,13 +40,13 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         string vectorFieldName
     );
 
-    public record DropCollectionRequest(string collectionName);
-    public record LoadCollectionRequest(string collectionName);
-    public record ReleaseCollectionRequest(string collectionName);
+    public record DropCollectionRequest(string dbName, string collectionName);
+    public record LoadCollectionRequest(string dbName, string collectionName);
+    public record ReleaseCollectionRequest(string dbName, string collectionName);
 
     // DTOs for Index Management
-    public record CreateIndexRequest(string collectionName, List<IndexParameter> indexParams);
-    public record DropIndexRequest(string collectionName, string indexName);
+    public record CreateIndexRequest(string dbName, string collectionName, List<IndexParameter> indexParams);
+    public record DropIndexRequest(string dbName, string collectionName, string indexName);
     public record IndexParameter(
         string indexType,
         string metricType,
@@ -54,12 +55,13 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         Dictionary<string, object> @params);
 
     // DTOs for Entity (Data) Management
-    public record InsertRequest(string collectionName, [property: JsonPropertyName("data")] List<Dictionary<string, object>> Data);
+    public record InsertRequest(string dbName, string collectionName, [property: JsonPropertyName("data")] List<Dictionary<string, object>> Data);
     public record InsertResponseData(int insertCount, List<object> insertIds);
 
-    public record DeleteRequest(string collectionName, string filter);
+    public record DeleteRequest(string dbName, string collectionName, string filter);
 
     public record SearchRequest(
+        string dbName,
         string collectionName,
         [property: JsonPropertyName("data")] List<ReadOnlyMemory<float>> vectors,
         string annsField,
@@ -112,23 +114,23 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             return response?.Code == 0;
         }
 
-        public async Task<bool> DropCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+        public async Task<bool> DropCollectionAsync(string databaseName, string collectionName, CancellationToken cancellationToken = default)
         {
-            var request = new DropCollectionRequest(collectionName);
+            var request = new DropCollectionRequest(databaseName, collectionName);
             var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/collections/drop", request, cancellationToken);
             return response?.Code == 0;
         }
 
-        public async Task<bool> LoadCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+        public async Task<bool> LoadCollectionAsync(string databaseName, string collectionName, CancellationToken cancellationToken = default)
         {
-            var request = new LoadCollectionRequest(collectionName);
+            var request = new LoadCollectionRequest(databaseName, collectionName);
             var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/collections/load", request, cancellationToken);
             return response?.Code == 0;
         }
 
-        public async Task<bool> ReleaseCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+        public async Task<bool> ReleaseCollectionAsync(string databaseName, string collectionName, CancellationToken cancellationToken = default)
         {
-            var request = new ReleaseCollectionRequest(collectionName);
+            var request = new ReleaseCollectionRequest(databaseName, collectionName);
             var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/collections/release", request, cancellationToken);
             return response?.Code == 0;
         }

@@ -68,6 +68,14 @@
                         <i class='fa-regular fa-microphone nav_icon'></i>
                         <span class="nav_name">STT Provider</span>
                     </a>
+                    <a class="nav_link" for="embedding-provider-tab">
+                        <i class='fa-regular fa-atom-simple nav_icon'></i>
+                        <span class="nav_name">Embedding Provider</span>
+                    </a>
+                    <a class="nav_link" for="rerank-provider-tab">
+                        <i class='fa-regular fa-sort-amount-up-alt nav_icon'></i>
+                        <span class="nav_name">Rerank Provider</span>
+                    </a>
                     <a class="nav_link" for="languages-tab">
                         <i class='fa-regular fa-language nav_icon'></i>
                         <span class="nav_name">Languages</span>
@@ -88,6 +96,7 @@
     </div>
 
     <div class="w-100 main-container-wrapper" id="tabs-list">
+
         <!-- Users Container -->
         <div class="main-container fade w-100 d-none" id="users-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-user'></i> <span>Users</span></h3>
@@ -2197,6 +2206,415 @@
             </div>
         </div>
 
+        <!-- Embedding Provider Container -->
+        <div class="main-container fade w-100 d-none" id="embedding-provider-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-atom-simple nav_icon'></i> <span>Embedding Provider</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="embedding-provider-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="embedding-provider-list-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-list" type="button" role="tab" aria-controls="embedding-provider-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="embedding-provider-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToEmbeddingProviderListTabFromManageTab">Providers</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageEmbeddingProviderName">Provider</span></li>
+                        </ol>
+                    </nav>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="embedding-provider-model-manager-breadcrumb">
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelEmbeddingProviderName">Provider</span></li>
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToEmbeddingProviderManagerModelsListTabFromModelTab">Models</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page"><span id="currentManageEmbeddingProviderModelName">Model</span></li>
+                            </ol>
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderModelButton">
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save</span>
+                            </button>
+                        </div>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div class="tab-content" id="embedding-provider-tab-content">
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="embedding-provider-list" role="tabpanel" aria-labelledby="embedding-provider-list-tab" tabindex="0">
+                        <div class="fade w-100 show" id="embeddingProviderListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Embedding Provider Name or Id" aria-label="Embedding Provider Name or Id" aria-describedby="searchEmbeddingProviderButton">
+                                    <button class="input-group-button btn btn-primary" id="searchEmbeddingProviderButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="embeddingProviderListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Disabled</th>
+                                        <th scope="col">Models</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Provider Manage Tab -->
+                        <div class="fade w-100 d-none" id="embeddingProviderManageTab">
+                            <!-- Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="embedding-provider-manager-inner-tab-container">
+                                <ul class="nav fade show" id="embedding-provider-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="embedding-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-general" type="button" role="tab" aria-controls="embedding-provider-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="embedding-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-models" type="button" role="tab" aria-controls="embedding-provider-manager-models" aria-selected="true">Models</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="embedding-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-manager-integrations" type="button" role="tab" aria-controls="embedding-provider-manager-integrations" aria-selected="false">Integrations</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageEmbeddingProviderButton" disabled>
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="embedding-provider-manager-manage-tab-content">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="embedding-provider-manager-general" role="tabpanel" aria-labelledby="embedding-provider-manager-general-tab" tabindex="0">
+                                    <!-- This section is identical in structure to the LLM one -->
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageEmbeddingProviderIdInput">Identifer</label>
+                                        <input type="text" class="form-control" id="manageEmbeddingProviderIdInput" placeholder="Identifer" disabled>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageEmbeddingProviderIntegrationSelect">Integration</label>
+                                        <select class="form-select" id="manageEmbeddingProviderIntegrationSelect">
+                                            <option value="">Select Integration</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageEmbeddingProviderDisabledInput">
+                                        <label class="form-check-label" for="manageEmbeddingProviderDisabledInput">Disabled</label>
+                                    </div>
+                                </div>
+
+                                <!-- Models -->
+                                <div class="tab-pane fade w-100" id="embedding-provider-manager-models" role="tabpanel" aria-labelledby="embedding-provider-manager-models-tab" tabindex="0">
+                                    <!-- List Tab -->
+                                    <div class="fade w-100 show" id="embeddingProviderManagerModelsListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                            <div style="min-width: 200px" class="me-4">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingProviderModelButton">
+                                                    <span>+ Add New Model</span>
+                                                </button>
+                                            </div>
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchEmbeddingProviderModelButton">
+                                                <button class="input-group-button btn btn-primary" id="searchEmbeddingProviderModelButton">
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <table id="embeddingProviderModelListTable" class="table w-100">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Disabled</th>
+                                                    <th scope="col">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Manage Tab - REBUILT FOR EMBEDDING MODELS -->
+                                    <div class="fade w-100 d-none" id="embeddingProviderManagerModelManageTab">
+                                        <!-- Manager Inner Tabs (Simplified) -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                            <ul class="nav" id="embedding-provider-model-manager-inner-tab" role="tablist">
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="embedding-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#embedding-provider-model-manager-general" type="button" role="tab" aria-controls="embedding-provider-model-manager-general" aria-selected="true">General</button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="embedding-provider-model-manager-manage-tab-content">
+                                            <!-- General -->
+                                            <div class="tab-pane fade w-100 show active" id="embedding-provider-model-manager-general" role="tabpanel" aria-labelledby="embedding-provider-model-manager-general-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageEmbeddingProviderModelIdInput">Identifer</label>
+                                                    <input type="text" class="form-control" id="manageEmbeddingProviderModelIdInput" placeholder="Model Identifer">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageEmbeddingProviderModelNameInput">Name</label>
+                                                    <input type="text" class="form-control" id="manageEmbeddingProviderModelNameInput" placeholder="Model Name">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Price / Token Unit</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" placeholder="Price" id="manageEmbeddingProviderModelPriceInput" step="0.000001">
+                                                        <span class="input-group-text">/</span>
+                                                        <input type="number" class="form-control" placeholder="For x Tokens" id="manageEmbeddingProviderModelPriceTokensInput">
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageEmbeddingProviderModelDimensionsInput">Available Vector Dimensions</label>
+                                                    <input type="text" class="form-control" id="manageEmbeddingProviderModelDimensionsInput" placeholder="e.g. 256, 768, 1536">
+                                                    <div class="form-text">Enter a comma-separated list of supported integer dimensions.</div>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageEmbeddingProviderModelDisabledInput" checked>
+                                                    <label class="form-check-label" for="manageEmbeddingProviderModelDisabledInput">Disabled</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Integrations -->
+                                <div class="tab-pane fade w-100" id="embedding-provider-manager-integrations" role="tabpanel" aria-labelledby="embedding-provider-manager-integrations-tab" tabindex="0">
+                                    <!-- This section is identical in structure to the LLM one -->
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingProviderIntegrationFieldButton">
+                                                <span>+ Add New Field</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchEmbeddingProviderIntegrationFieldButton">
+                                            <button class="input-group-button btn btn-primary" id="searchEmbeddingProviderIntegrationFieldButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="embeddingProviderIntegrationFieldsList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rerank Provider Container -->
+        <div class="main-container fade w-100 d-none" id="rerank-provider-tab">
+            <h3 class="fw-bold tab-title"><i class='fa-regular fa-sort-amount-up-alt nav_icon'></i> <span>Rerank Provider</span></h3>
+            <div class="inner-container">
+                <!-- Manager Inner Tabs & Breadcrumbs -->
+                <div class="mb-3">
+                    <ul class="nav w-100 fade show" id="rerank-provider-inner-tab" role="tablist">
+                        <li class="nav-item me-2" role="presentation">
+                            <button class="nav-link active" id="rerank-provider-list-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-list" type="button" role="tab" aria-controls="rerank-provider-list" aria-selected="true">List</button>
+                        </li>
+                    </ul>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="rerank-provider-manage-breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="#" id="switchBackToRerankProviderListTabFromManageTab">Providers</a>
+                            </li>
+                            <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRerankProviderName">Provider</span></li>
+                        </ol>
+                    </nav>
+                    <nav class="w-100 fade d-none" aria-label="breadcrumb" id="rerank-provider-model-manager-breadcrumb">
+                        <div class="d-flex flex-row align-items-center justify-content-between">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item" aria-current="page"><span id="currentManageModelRerankProviderName">Provider</span></li>
+                                <li class="breadcrumb-item">
+                                    <a href="#" id="switchBackToRerankProviderManagerModelsListTabFromModelTab">Models</a>
+                                </li>
+                                <li class="breadcrumb-item active" aria-current="page"><span id="currentManageRerankProviderModelName">Model</span></li>
+                            </ol>
+                            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderModelButton">
+                                <i class='fa-regular fa-floppy-disk'></i>
+                                <span> Save</span>
+                            </button>
+                        </div>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div class="tab-content" id="rerank-provider-tab-content">
+
+                    <!-- List -->
+                    <div class="tab-pane fade w-100 show active" id="rerank-provider-list" role="tabpanel" aria-labelledby="rerank-provider-list-tab" tabindex="0">
+                        <div class="fade w-100 show" id="rerankProviderListTableTab">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Rerank Provider Name or Id" aria-label="Rerank Provider Name or Id" aria-describedby="searchRerankProviderButton">
+                                    <button class="input-group-button btn btn-primary" id="searchRerankProviderButton">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="rerankProviderListTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Disabled</th>
+                                        <th scope="col">Models</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dynamically Generated -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Provider Manage Tab -->
+                        <div class="fade w-100 d-none" id="rerankProviderManageTab">
+                            <!-- Manager Inner Tabs -->
+                            <div class="d-flex flex-row align-items-center justify-content-between mb-3 fade show w-100" id="rerank-provider-manager-inner-tab-container">
+                                <ul class="nav fade show" id="rerank-provider-manager-inner-tab" role="tablist">
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link active" id="rerank-provider-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-general" type="button" role="tab" aria-controls="rerank-provider-manager-general" aria-selected="true">General</button>
+                                    </li>
+                                    <li class="nav-item me-2" role="presentation">
+                                        <button class="nav-link" id="rerank-provider-manager-models-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-models" type="button" role="tab" aria-controls="rerank-provider-manager-models" aria-selected="true">Models</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="rerank-provider-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-manager-integrations" type="button" role="tab" aria-controls="rerank-provider-manager-integrations" aria-selected="false">Integrations</button>
+                                    </li>
+                                </ul>
+                                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveManageRerankProviderButton" disabled>
+                                    <i class='fa-regular fa-floppy-disk'></i>
+                                    <span> Save</span>
+                                </button>
+                            </div>
+
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="rerank-provider-manager-manage-tab-content">
+                                <!-- General -->
+                                <div class="tab-pane fade w-100 show active" id="rerank-provider-manager-general" role="tabpanel" aria-labelledby="rerank-provider-manager-general-tab" tabindex="0">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRerankProviderIdInput">Identifer</label>
+                                        <input type="text" class="form-control" id="manageRerankProviderIdInput" placeholder="Identifer" disabled>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label" for="manageRerankProviderIntegrationSelect">Integration</label>
+                                        <select class="form-select" id="manageRerankProviderIntegrationSelect">
+                                            <option value="">Select Integration</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="manageRerankProviderDisabledInput">
+                                        <label class="form-check-label" for="manageRerankProviderDisabledInput">Disabled</label>
+                                    </div>
+                                </div>
+
+                                <!-- Models -->
+                                <div class="tab-pane fade w-100" id="rerank-provider-manager-models" role="tabpanel" aria-labelledby="rerank-provider-manager-models-tab" tabindex="0">
+                                    <!-- List Tab -->
+                                    <div class="fade w-100 show" id="rerankProviderManagerModelsListTab">
+                                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                            <div style="min-width: 200px" class="me-4">
+                                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRerankProviderModelButton">
+                                                    <span>+ Add New Model</span>
+                                                </button>
+                                            </div>
+                                            <div class="input-group w-100">
+                                                <input type="text" class="form-control" placeholder="Model Name or Id" aria-label="Model Name or Id" aria-describedby="searchRerankProviderModelButton">
+                                                <button class="input-group-button btn btn-primary" id="searchRerankProviderModelButton">
+                                                    <i class='fa-regular fa-magnifying-glass'></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <table id="rerankProviderModelListTable" class="table w-100">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">Name</th>
+                                                    <th scope="col">Disabled</th>
+                                                    <th scope="col">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Dynamically Generated -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Manage Tab -->
+                                    <div class="fade w-100 d-none" id="rerankProviderManagerModelManageTab">
+                                        <!-- Manager Inner Tabs (Simplified) -->
+                                        <div class="d-flex flex-row align-items-center justify-content-between mb-3">
+                                            <ul class="nav" id="rerank-provider-model-manager-inner-tab" role="tablist">
+                                                <li class="nav-item me-2" role="presentation">
+                                                    <button class="nav-link active" id="rerank-provider-model-manager-general-tab" data-bs-toggle="pill" data-bs-target="#rerank-provider-model-manager-general" type="button" role="tab" aria-controls="rerank-provider-model-manager-general" aria-selected="true">General</button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <!-- Tab Content -->
+                                        <div class="tab-content" id="rerank-provider-model-manager-manage-tab-content">
+                                            <!-- General -->
+                                            <div class="tab-pane fade w-100 show active" id="rerank-provider-model-manager-general" role="tabpanel" aria-labelledby="rerank-provider-model-manager-general-tab" tabindex="0">
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRerankProviderModelIdInput">Identifer</label>
+                                                    <input type="text" class="form-control" id="manageRerankProviderModelIdInput" placeholder="Model Identifer">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label" for="manageRerankProviderModelNameInput">Name</label>
+                                                    <input type="text" class="form-control" id="manageRerankProviderModelNameInput" placeholder="Model Name">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Price / Token Unit</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" placeholder="Price" id="manageRerankProviderModelPriceInput" step="0.000001">
+                                                        <span class="input-group-text">/</span>
+                                                        <input type="number" class="form-control" placeholder="For x Tokens" id="manageRerankProviderModelPriceTokensInput">
+                                                    </div>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="manageRerankProviderModelDisabledInput" checked>
+                                                    <label class="form-check-label" for="manageRerankProviderModelDisabledInput">Disabled</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Integrations -->
+                                <div class="tab-pane fade w-100" id="rerank-provider-manager-integrations" role="tabpanel" aria-labelledby="rerank-provider-manager-integrations-tab" tabindex="0">
+                                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                        <div style="min-width: 200px" class="me-4">
+                                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewRerankProviderIntegrationFieldButton">
+                                                <span>+ Add New Field</span>
+                                            </button>
+                                        </div>
+                                        <div class="input-group w-100">
+                                            <input type="text" class="form-control" placeholder="Search Field" aria-label="Search Field" aria-describedby="searchRerankProviderIntegrationFieldButton">
+                                            <button class="input-group-button btn btn-primary" id="searchRerankProviderIntegrationFieldButton">
+                                                <i class='fa-regular fa-magnifying-glass'></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="rerankProviderIntegrationFieldsList">
+                                        <!-- Fields will be dynamically added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Languages Contaienr -->
         <div class="main-container fade w-100 d-none" id="languages-tab">
             <h3 class="fw-bold tab-title"><i class='fa-regular fa-language nav_icon'></i> <span>Languages</span></h3>
@@ -2514,6 +2932,8 @@
         var CurrentLLMProvidersList = null;
         var CurrentSTTProvidersList = null;
         var CurrentTTSProvidersList = null;
+        var CurrentEmbeddingProvidersList = null;
+        var CurrentRerankProvidersList = null;
         var CurrentLanguagesList = null;
         let CurrentIntegrationsList = null;
 
@@ -2582,6 +3002,10 @@
                     CurrentSTTProvidersList != null
                     &&
                     CurrentTTSProvidersList != null
+                    &&
+                    CurrentEmbeddingProvidersList != null
+                    &&
+                    CurrentRerankProvidersList != null
                     &&
                     CurrentLanguagesList != null
                     &&
@@ -2674,6 +3098,28 @@
                 , 100);
         }
 
+        function RunActionAfterEmbeddingProvidersLoad(action) {
+            var EmbeddingProvidersCheckInterval = setInterval(
+                () => {
+                    if (CurrentEmbeddingProvidersList != null) {
+                        clearInterval(EmbeddingProvidersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
+        function RunActionAfterRerankProvidersLoad(action) {
+            var RerankProvidersCheckInterval = setInterval(
+                () => {
+                    if (CurrentRerankProvidersList != null) {
+                        clearInterval(RerankProvidersCheckInterval);
+                        action();
+                    }
+                }
+                , 100);
+        }
+
         function RunActionAfterLanguagesLoad(action) {
             var languagesCheckInterval = setInterval(
                 () => {
@@ -2705,6 +3151,8 @@
     <script src="~/scripts/app/admin/llm_provider_tab.js"></script>
     <script src="~/scripts/app/admin/stt_provider_tab.js"></script>
     <script src="~/scripts/app/admin/tts_provider_tab.js"></script>
+    <script src="~/scripts/app/admin/embedding_provider_tab.js"></script>
+    <script src="~/scripts/app/admin/rerank_provider_tab.js"></script>
     <script src="~/scripts/app/admin/languages_tab.js"></script>
     <script src="~/scripts/app/admin/integrations_tab.js"></script>
 

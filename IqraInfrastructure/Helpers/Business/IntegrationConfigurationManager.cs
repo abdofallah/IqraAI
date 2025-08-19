@@ -232,27 +232,112 @@ namespace IqraInfrastructure.Helpers.Business
 
                     case "select":
                     case "models":
-                        var fieldValueOptionKey = fieldValueElement.GetString();
-                        if (integrationField.Required && string.IsNullOrWhiteSpace(fieldValueOptionKey))
                         {
-                            result.Code = "ValidateIntegrationData:8";
-                            result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                            return result;
-                        }
-
-                        if (integrationField.Type == "select")
-                        {
-                            if (integrationField.Options == null || integrationField.Options.Find(d => d.Key == fieldValueOptionKey) == null)
+                            var fieldValueOptionKey = fieldValueElement.GetString();
+                            if (integrationField.Required && string.IsNullOrWhiteSpace(fieldValueOptionKey))
                             {
-                                result.Code = "ValidateIntegrationData:9";
-                                result.Message = $"{integrationType} option value for select field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                result.Code = "ValidateIntegrationData:8";
+                                result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                 return result;
                             }
+
+                            if (integrationField.Type == "select")
+                            {
+                                if (integrationField.Options == null || integrationField.Options.Find(d => d.Key == fieldValueOptionKey) == null)
+                                {
+                                    result.Code = "ValidateIntegrationData:9";
+                                    result.Message = $"{integrationType} option value for select field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+                            }
+
+                            if (integrationField.Type == "models")
+                            {
+                                var fieldValueModelData = models.ToList().Find(x => x.Id == fieldValueOptionKey);
+                                if (fieldValueModelData == null)
+                                {
+                                    result.Code = "ValidateIntegrationData:10";
+                                    result.Message = $"{integrationType} model is not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
+                                if (fieldValueModelData.DisabledAt != null)
+                                {
+                                    result.Code = "ValidateIntegrationData:11";
+                                    result.Message = $"{integrationType} model is disabled in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                    return result;
+                                }
+
+                                if (integrationType == "TTS")
+                                {
+                                    var ttsSpeaker = fieldValueModelData as TTSProviderSpeakerData;
+                                    if (ttsSpeaker == null)
+                                    {
+                                        result.Code = "ValidateIntegrationData:12";
+                                        result.Message = $"Invalid TTS speaker data structure in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+
+                                    if (businessLanguage == null)
+                                    {
+                                        result.Code = "ValidateIntegrationData:LANGUAGE_NOT_PROVIDED";
+                                        result.Message = "Missing business language required for validation.";
+                                        return result;
+                                    }
+
+                                    if (!ttsSpeaker.IsMultilingual && !ttsSpeaker.SupportedLanguages.Contains(businessLanguage))
+                                    {
+                                        result.Code = "ValidateIntegrationData:13";
+                                        result.Message = $"TTS speaker '{ttsSpeaker.Name}' does not support language '{businessLanguage}' in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                        return result;
+                                    }
+                                }
+                            }
+
+                            newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueOptionKey);
+                            break;
                         }
 
-                        if (integrationField.Type == "models")
+                    case "model_vector_dimensions":
                         {
-                            var fieldValueModelData = models.ToList().Find(x => x.Id == fieldValueOptionKey);
+                            var fieldValueOptionValue = fieldValueElement.GetString();
+                            if (integrationField.Required && string.IsNullOrWhiteSpace(fieldValueOptionValue))
+                            {
+                                result.Code = "ValidateIntegrationData:8";
+                                result.Message = $"{integrationType} field value for field {integrationField.Name} is empty in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                            }
+
+                            if (integrationType != "Embedding")
+                            {
+                                result.Code = "ValidateIntegrationData:14";
+                                result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                            }
+
+                            if (!int.TryParse(fieldValueOptionValue, out var fieldValueOptionKeyInt))
+                            {
+                                result.Code = "ValidateIntegrationData:14";
+                                result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                            }
+
+                            string? selectedModel = null;
+                            if (!fieldValuesElement.TryGetProperty("model", out var selectedModelElement))
+                            {
+                                result.Code = "ValidateIntegrationData:5";
+                                result.Message = $"{integrationType} field value for field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                            }
+                            selectedModel = selectedModelElement.GetString();
+                            if (string.IsNullOrWhiteSpace(selectedModel))
+                            {
+                                result.Code = "ValidateIntegrationData:5";
+                                result.Message = $"{integrationType} field value for field {integrationField.Name} not found in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                return result;
+                            }
+
+                            EmbeddingProviderModelData? fieldValueModelData = (EmbeddingProviderModelData)models.ToList().Find(x => x.Id == selectedModel);
                             if (fieldValueModelData == null)
                             {
                                 result.Code = "ValidateIntegrationData:10";
@@ -260,41 +345,16 @@ namespace IqraInfrastructure.Helpers.Business
                                 return result;
                             }
 
-                            if (fieldValueModelData.DisabledAt != null)
+                            if (fieldValueModelData.AvailableVectorDimensions.Contains(fieldValueOptionKeyInt) == false)
                             {
-                                result.Code = "ValidateIntegrationData:11";
-                                result.Message = $"{integrationType} model is disabled in integration with name {currentIntegrationResult.Data.FriendlyName}.";
+                                result.Code = "ValidateIntegrationData:15";
+                                result.Message = $"Invalid {integrationType} field value for field {integrationField.Name} in integration with name {currentIntegrationResult.Data.FriendlyName}.";
                                 return result;
                             }
 
-                            if (integrationType == "TTS")
-                            {
-                                var ttsSpeaker = fieldValueModelData as TTSProviderSpeakerData;
-                                if (ttsSpeaker == null)
-                                {
-                                    result.Code = "ValidateIntegrationData:12";
-                                    result.Message = $"Invalid TTS speaker data structure in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                    return result;
-                                }
-
-                                if (businessLanguage == null)
-                                {
-                                    result.Code = "ValidateIntegrationData:LANGUAGE_NOT_PROVIDED";
-                                    result.Message = "Missing business language required for validation.";
-                                    return result;
-                                }
-
-                                if (!ttsSpeaker.IsMultilingual && !ttsSpeaker.SupportedLanguages.Contains(businessLanguage))
-                                {
-                                    result.Code = "ValidateIntegrationData:13";
-                                    result.Message = $"TTS speaker '{ttsSpeaker.Name}' does not support language '{businessLanguage}' in integration with name {currentIntegrationResult.Data.FriendlyName}.";
-                                    return result;
-                                }
-                            }
+                            newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueOptionKeyInt);
+                            break;
                         }
-
-                        newIntegrationData.FieldValues.Add(integrationField.Id, fieldValueOptionKey);
-                        break;
 
                     case "number":
                         if (fieldValueElement.ValueKind == JsonValueKind.String)

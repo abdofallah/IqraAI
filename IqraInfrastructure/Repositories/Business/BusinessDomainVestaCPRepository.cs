@@ -243,9 +243,10 @@ namespace IqraInfrastructure.Repositories.Business
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    var errorResult = await response.Content.ReadAsStringAsync();
                     result.Success = false;
                     result.Code = "SendRequest:1";
-                    result.Message = "Failed with status code " + response.StatusCode.ToString();
+                    result.Message = "Failed with status code:" + response.StatusCode.ToString() + ":" + errorResult;
                     return result;
                 }
 

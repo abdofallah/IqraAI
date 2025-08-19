@@ -849,98 +849,110 @@ namespace IqraInfrastructure.Managers.Conversation.Session
 
         private async Task ExecuteEndCallAction()
         {
-            if (_sessionContextData.CallEndedAction.SelectedToolId == null)
+            try
             {
-                return;
-            }
+                _logger.LogInformation("Executing end call action for session {SessionId}", _sessionId);
 
-            BusinessAppTool? endCallTool = _sessionBusinessAppData.Tools.Find(t => t.Id == _sessionContextData.CallEndedAction.SelectedToolId);
-            if (endCallTool == null)
-            {
-                AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", "Tool not found");
-                return;
-            }
-
-            var parsedArguments = new Dictionary<string, object?>();
-
-            string? cachedConversation = null;
-            string? cachedMetadata = null;
-
-            foreach (var argument in _sessionContextData.CallEndedAction.Arguments)
-            {
-                var argumentName = argument.Key;
-                var argumentValue = argument.Value;
-
-                if (argument.Value is string stringValue)
+                if (_sessionContextData.CallEndedAction.SelectedToolId == null)
                 {
-                    if (stringValue.Contains("{{conversation}}") || stringValue.Contains("{={conversation}=}"))
+
+                    return;
+                }
+
+                _logger.LogInformation("Executing end call action for session {SessionId} found tool", _sessionId);
+
+                BusinessAppTool? endCallTool = _sessionBusinessAppData.Tools.Find(t => t.Id == _sessionContextData.CallEndedAction.SelectedToolId);
+                if (endCallTool == null)
+                {
+                    AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", "Tool not found");
+                    return;
+                }
+
+                var parsedArguments = new Dictionary<string, object?>();
+
+                string? cachedConversation = null;
+                string? cachedMetadata = null;
+
+                foreach (var argument in _sessionContextData.CallEndedAction.Arguments)
+                {
+                    var argumentName = argument.Key;
+                    var argumentValue = argument.Value;
+
+                    if (argument.Value is string stringValue)
                     {
-                        if (cachedConversation == null)
+                        if (stringValue.Contains("{{conversation}}") || stringValue.Contains("{={conversation}=}"))
                         {
-                            cachedConversation = JsonSerializer.Serialize(_messages);
+                            if (cachedConversation == null)
+                            {
+                                cachedConversation = JsonSerializer.Serialize(_messages);
+                            }
+
+                            stringValue = stringValue
+                                .Replace("{{conversation}}", cachedConversation)
+                                .Replace("{={conversation}=}", cachedConversation);
+                        }
+
+                        if (stringValue.Contains("{{metadata}}") || stringValue.Contains("{={metadata}=}"))
+                        {
+                            if (cachedMetadata == null)
+                            {
+                                cachedMetadata = JsonSerializer.Serialize(_sessionContextData.Metadata);
+                            }
+
+                            stringValue = stringValue
+                                .Replace("{{metadata}}", cachedMetadata)
+                                .Replace("{={metadata}=}", cachedMetadata);
+                        }
+
+                        if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
+                        {
+                            var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
+
+                            stringValue = stringValue
+                                .Replace("{{from_number}}", callerNumber)
+                                .Replace("{={from_number}=}", callerNumber);
+                        }
+                        else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
+                        {
+                            var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
+
+                            stringValue = stringValue
+                                .Replace("{{to_number}}", recipientNumber)
+                                .Replace("{={to_number}=}", recipientNumber);
                         }
 
                         stringValue = stringValue
-                            .Replace("{{conversation}}", cachedConversation)
-                            .Replace("{={conversation}=}", cachedConversation);
-                    }
+                            .Replace("{{call_answered}}", _createdAt.ToString())
+                            .Replace("{={call_answered}=}", _createdAt.ToString());
 
-                    if (stringValue.Contains("{{metadata}}") || stringValue.Contains("{={metadata}=}"))
+                        parsedArguments[argumentName] = stringValue;
+                    }
+                    else
                     {
-                        if (cachedMetadata == null)
-                        {
-                            cachedMetadata = JsonSerializer.Serialize(_sessionContextData.Metadata);
-                        }
-
-                        stringValue = stringValue
-                            .Replace("{{metadata}}", cachedMetadata)
-                            .Replace("{={metadata}=}", cachedMetadata);
+                        parsedArguments[argumentName] = argument.Value;
                     }
-
-                    if (_sessionCallQueueData.Type == CallQueueTypeEnum.Inbound)
-                    {
-                        var callerNumber = (_sessionCallQueueData as InboundCallQueueData).CallerNumber;
-
-                        stringValue = stringValue
-                            .Replace("{{from_number}}", callerNumber)
-                            .Replace("{={from_number}=}", callerNumber);
-                    }
-                    else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
-                    {
-                        var recipientNumber = (_sessionCallQueueData as OutboundCallQueueData).RecipientNumber;
-
-                        stringValue = stringValue
-                            .Replace("{{to_number}}", recipientNumber)
-                            .Replace("{={to_number}=}", recipientNumber);
-                    }
-
-                    stringValue = stringValue
-                        .Replace("{{call_answered}}", _createdAt.ToString())
-                        .Replace("{={call_answered}=}", _createdAt.ToString());
-
-                    parsedArguments[argumentName] = stringValue;
                 }
-                else
+
+                CustomToolExecutionHelper endCallToolhelper = new CustomToolExecutionHelper(_loggerFactory);
+                endCallToolhelper.Initialize(_sessionBusinessAppData, _sessionContextData.Language.DefaultLanguageCode);
+
+                var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolAsync(
+                    endCallTool,
+                    parsedArguments,
+                    CancellationToken.None
+                );
+                if (!endToolResult.Success)
                 {
-                    parsedArguments[argumentName] = argument.Value;
+                    AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", $"{endToolResult.Code}: {endToolResult.Message}");
+                    return;
                 }
+
+                AddLogEntry(ConversationLogLevel.Information, "Call ended action executed successfully");
             }
-
-            CustomToolExecutionHelper endCallToolhelper = new CustomToolExecutionHelper(_loggerFactory);
-            endCallToolhelper.Initialize(_sessionBusinessAppData, _sessionContextData.Language.DefaultLanguageCode);
-
-            var endToolResult = await endCallToolhelper.ExecuteHttpRequestForToolAsync(
-                endCallTool,
-                parsedArguments,
-                CancellationToken.None
-            );
-            if (!endToolResult.Success)
+            catch (Exception ex)
             {
-                AddLogEntry(ConversationLogLevel.Error, "Call ended action failed", $"{endToolResult.Code}: {endToolResult.Message}");
-                return;
+                _logger.LogError(ex, "Error executing call ended action for session {SessionId}", _sessionId);
             }
-
-            AddLogEntry(ConversationLogLevel.Information, "Call ended action executed successfully");
         }
 
         public IReadOnlyList<ConversationMessage> GetHistory()

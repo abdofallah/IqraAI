@@ -217,7 +217,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (imageResult == 0)
                 {
                     result.Code = "AddUserBusiness:8";
-                    result.Message = "Business logo too large. Allowed file size is 5MB.";
+                    result.Message = "Business logo too large. Allowed file size is 3MB.";
                     return result;
                 }
 

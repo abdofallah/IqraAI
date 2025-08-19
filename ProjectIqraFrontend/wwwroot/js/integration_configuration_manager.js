@@ -41,7 +41,7 @@ class IntegrationConfigurationManager {
 		this.data = this.options.isLanguageBound ? {} : this.options.allowMultiple ? [] : null;
 		this.filteredIntegrations = this.options.allIntegrations.filter((integration) => {
 			const typeData = SpecificationIntegrationsListData.find((it) => it.id === integration.type);
-			const type = this.options.integrationType.toUpperCase();
+			const type = this.options.integrationType;
 			// Handle aliases like SPEECH2TEXT for STT
 			return typeData.type.includes(type) || (type === "STT" && typeData.type.includes("SPEECH2TEXT")) || (type === "TTS" && typeData.type.includes("TEXT2SPEECH"));
 		});
@@ -257,6 +257,10 @@ class IntegrationConfigurationManager {
 			if (field.type === "models") {
 				this._populateModelsField(field, fieldElement);
 			}
+
+			if (field.type === "model_vector_dimensions") {
+				this._populateModelVectorDimensionsField(fieldElement);
+			}
 		});
 
 		// Init tooltips inside modal
@@ -321,6 +325,16 @@ class IntegrationConfigurationManager {
 					</div>`;
 				break;
 
+			case "model_vector_dimensions":
+                fieldHtml = `
+                    <div class="mb-3 config-field" data-field-id="${field.id}">
+                        ${labelHtml}
+                        <select class="form-select config-field-input">
+                            <!-- Dynamically Generated on Models Change -->
+                        </select>
+                    </div>`;
+                break;
+
 			case "boolean":
 				const isChecked = currentValue === true;
 				fieldHtml = `
@@ -357,6 +371,34 @@ class IntegrationConfigurationManager {
 		enabledModels.forEach(model => {
 			selectElement.append(`<option value="${model.id}" ${currentValue === model.id ? "selected" : ""}>${model.name}</option>`);
 		});
+	}
+
+	/**
+	 * Populates a "models" type select field with available models.
+	 * @private
+	 */
+	_populateModelVectorDimensionsField(fieldElement) {
+		const provider = this.currentConfig.provider;
+		if (!provider?.models) return;
+
+		var currentSelected = this.currentConfig.integration.fieldValues?.['model_vector_dimension']; 
+
+		const selectElement = fieldElement.find('select');
+		selectElement.empty();
+
+		const currentValue = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model'] select").val();
+		if (!currentValue) {
+			selectElement.append(`<option disabled selected>Select Model First</option>`);
+		}
+		else {
+			const currentModel = provider.models.find(model => model.id === currentValue);
+			if (!currentModel) return;
+
+			selectElement.append(`<option ${!currentSelected ? "selected" : ""} disabled>Select Vector Dimension</option>`);
+			currentModel.availableVectorDimensions.forEach(vectorDimension => {
+				selectElement.append(`<option value="${vectorDimension}" ${currentSelected === vectorDimension.toString() ? "selected" : ""}>${vectorDimension}</option>`);
+			});
+		}		
 	}
 
 	// =================================================================
@@ -409,8 +451,20 @@ class IntegrationConfigurationManager {
 			}
 		});
 
-		modalEl.find(".modal-body div[div-type='integration-configuration-fields']").on("input change", ".config-field-input", () => {
+		modalEl.find(".modal-body div[div-type='integration-configuration-fields']").on("input change", ".config-field-input", (event) => {
 			if (IntegrationConfigurationManager._activeManager) {
+				// Embedding vector dimensions
+				if (IntegrationConfigurationManager._activeManager.options.integrationType == "Embedding") {
+					const parentField = $(event.currentTarget).parent();
+					const fieldId = parentField.attr("data-field-id");
+
+					if (fieldId == "model") {
+						const vectorField = IntegrationConfigurationManager._modalElement.find(".modal-body div[div-type='integration-configuration-fields'] .config-field[data-field-id='model_vector_dimension']");
+						IntegrationConfigurationManager._activeManager._populateModelVectorDimensionsField(vectorField);
+					}
+				}
+
+				// Changes
 				const changes = IntegrationConfigurationManager._activeManager._getModalChanges();
 				saveButton.prop("disabled", !changes.hasChanges);
 			}
@@ -631,6 +685,10 @@ class IntegrationConfigurationManager {
 						}
 						break;
 
+					case "model_vector_dimensions":
+						// TODO
+						break;
+
 					case "select":
 						if (field.options && !field.options.some(opt => opt.key === value)) {
 							isValid = false;
@@ -710,6 +768,7 @@ class IntegrationConfigurationManager {
 				case 'text':
 				case 'select':
 				case 'models':
+				case 'model_vector_dimensions':
 				default:
 					// For all others, the value is a string
 					processedValue = input.val();

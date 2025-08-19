@@ -67,7 +67,7 @@ namespace IqraCore.Utilities
 
         public static int ValidateBusinessLogoFile(IFormFile file)
         {
-            if (file.Length > 5 * 1024 * 1024)
+            if (file.Length > 3 * 1024 * 1024)
             {
                 return 0;
             }
@@ -88,7 +88,7 @@ namespace IqraCore.Utilities
 
         public static int ValidateIntegrationLogoFile(IFormFile file)
         {
-            if (file.Length > 5 * 1024 * 1024)
+            if (file.Length > 3 * 1024 * 1024)
             {
                 return 0;
             }
@@ -109,7 +109,7 @@ namespace IqraCore.Utilities
 
         public static int ValidateBusinessWhiteLabelLogoFile(IFormFile file)
         {
-            if (file.Length > 5 * 1024 * 1024)
+            if (file.Length > 3 * 1024 * 1024)
             {
                 return 0;
             }

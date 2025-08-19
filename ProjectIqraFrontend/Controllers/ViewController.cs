@@ -173,7 +173,7 @@ namespace ProjectIqraFrontend.Controllers
             TempData.TryAdd("BusinessLogoURL", _viewLinkConfiguration.BusinessLogoURL);
             TempData.TryAdd("IntegrationLogoURL", _viewLinkConfiguration.IntegrationLogoURL);
 
-            return View("Admin");
+            return View("Admin/Admin");
         }
     }
 }

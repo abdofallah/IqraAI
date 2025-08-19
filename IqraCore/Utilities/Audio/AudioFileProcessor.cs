@@ -37,6 +37,10 @@ namespace IqraCore.Utilities.Audio
             if (file == null || file.Length == 0)
                 return new AudioValidationResult { IsValid = false, ErrorMessage = "File is empty" };
 
+            // Check file size
+            if (file.Length > 15 * 1024 * 1024) // 15 MB
+                return new AudioValidationResult { IsValid = false, ErrorMessage = "File is too large. Maximum allowed size is 15 MB." };
+
             // Check file extension
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (extension != ".wav" && extension != ".mp3")

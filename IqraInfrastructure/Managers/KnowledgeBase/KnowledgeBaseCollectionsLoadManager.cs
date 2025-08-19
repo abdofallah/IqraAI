@@ -15,6 +15,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
         private readonly ILogger<KnowledgeBaseCollectionsLoadManager> _logger;
         private readonly MilvusKnowledgeBaseClient _milvusClient;
         private readonly RedisConnectionFactory _redisFactory;
+        private readonly string _databaseName;
 
         // --- Configuration for Janitor ---
         private const string JanitorLockKey = "milvus:janitor:lock";
@@ -23,11 +24,12 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
 
         private const string SessionsKeyPrefix = "milvus:collection:{0}:sessions";
 
-        public KnowledgeBaseCollectionsLoadManager(ILogger<KnowledgeBaseCollectionsLoadManager> logger, MilvusKnowledgeBaseClient milvusClient, RedisConnectionFactory redisFactory)
+        public KnowledgeBaseCollectionsLoadManager(ILogger<KnowledgeBaseCollectionsLoadManager> logger, MilvusKnowledgeBaseClient milvusClient, string databaseName, RedisConnectionFactory redisFactory)
         {
             _logger = logger;
             _milvusClient = milvusClient;
             _redisFactory = redisFactory;
+            _databaseName = databaseName;
         }
 
         #region Public API Methods
@@ -36,7 +38,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
         /// Registers a session's intent to use a collection, providing its expiry.
         /// Uses a Redis Transaction to atomically handle loading if it's the first session.
         /// </summary>
-        public async Task<bool> RegisterUseAsync(string collectionName, string sessionId, TimeSpan expiry)
+        public async Task<bool> RegisterUseAsync(string databaseName, string collectionName, string sessionId, TimeSpan expiry)
         {
             var db = _redisFactory.GetDatabase();
             var sessionsKey = string.Format(SessionsKeyPrefix, collectionName);
@@ -62,7 +64,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                     return false;
                 }
 
-                bool loaded = await _milvusClient.LoadCollectionAsync(collectionName);
+                bool loaded = await _milvusClient.LoadCollectionAsync(databaseName, collectionName);
                 if (!loaded)
                 {
                     _logger.LogError("CRITICAL: Failed to load collection {CollectionName}. Rolling back registration.", collectionName);
@@ -154,7 +156,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                 if (await db.SortedSetLengthAsync(key) == 0)
                 {
                     // 3. If no sessions are left, release from Milvus and delete the Redis key.
-                    if (await _milvusClient.ReleaseCollectionAsync(collectionName))
+                    if (await _milvusClient.ReleaseCollectionAsync(_databaseName, collectionName))
                     {
                         await db.KeyDeleteAsync(key);
                     }

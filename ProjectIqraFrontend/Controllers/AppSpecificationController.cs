@@ -1,15 +1,19 @@
-﻿using IqraCore.Entities.Helpers;
+﻿using IqraCore.Entities.Embedding;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Integrations;
 using IqraCore.Entities.Languages;
 using IqraCore.Entities.LLM;
 using IqraCore.Entities.Region;
+using IqraCore.Entities.Rerank;
 using IqraCore.Entities.STT;
 using IqraCore.Entities.TTS;
 using IqraCore.Entities.User;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
@@ -27,8 +31,20 @@ namespace ProjectIqraFrontend.Controllers
         private readonly LLMProviderManager _llmProviderManager;
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
+        private readonly EmbeddingProviderManager _embeddingProviderManager;
+        private readonly RerankProviderManager _rerankProviderManager;
 
-        public AppSpecificationController(UserManager userManager, LanguagesManager languagesManager, RegionManager regionManager, IntegrationsManager integrationsManager, LLMProviderManager llmProviderManager, STTProviderManager sttProviderManager, TTSProviderManager ttsProviderManager)
+        public AppSpecificationController(
+            UserManager userManager,
+            LanguagesManager languagesManager,
+            RegionManager regionManager,
+            IntegrationsManager integrationsManager,
+            LLMProviderManager llmProviderManager,
+            STTProviderManager sttProviderManager,
+            TTSProviderManager ttsProviderManager,
+            EmbeddingProviderManager embeddingProviderManager,
+            RerankProviderManager rerankProviderManager
+        )
         {
             _userManager = userManager;
             _languagesManager = languagesManager;
@@ -37,6 +53,8 @@ namespace ProjectIqraFrontend.Controllers
             _llmProviderManager = llmProviderManager;
             _sttProviderManager = sttProviderManager;
             _ttsProviderManager = ttsProviderManager;
+            _embeddingProviderManager = embeddingProviderManager;
+            _rerankProviderManager = rerankProviderManager;
         }
 
         [HttpPost("/app/specification/languages")]
@@ -347,5 +365,122 @@ namespace ProjectIqraFrontend.Controllers
             return result;
         }
 
+        [HttpPost("/app/specification/embeddingproviders/getbyintegration")]
+        public async Task<FunctionReturnResult<EmbeddingProviderData?>> GetEmbeddingProviderByIntegrationType([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<EmbeddingProviderData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!formData.TryGetValue("integrationtype", out StringValues integrationTypeValue))
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:4";
+                result.Message = "Integration type required";
+                return result;
+            }
+
+            string integrationType = integrationTypeValue.ToString();
+            if (string.IsNullOrEmpty(integrationType))
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:5";
+                result.Message = "Integration type missing";
+                return result;
+            }
+
+            var getEmbeddingProviderByIntegrationResult = await _embeddingProviderManager.GetProviderDataByIntegration(integrationType);
+            if (!getEmbeddingProviderByIntegrationResult.Success)
+            {
+                result.Code = "GetEmbeddingProviderByIntegrationType:" + getEmbeddingProviderByIntegrationResult.Code;
+                result.Message = getEmbeddingProviderByIntegrationResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = getEmbeddingProviderByIntegrationResult.Data;
+            return result;
+        }
+
+        [HttpPost("/app/specification/rerankproviders/getbyintegration")]
+        public async Task<FunctionReturnResult<RerankProviderData?>> GetRerankProviderByIntegrationType([FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<RerankProviderData?>();
+
+            string? sessionId = Request.Cookies["sessionId"];
+            string? authKey = Request.Cookies["authKey"];
+            string? userEmail = Request.Cookies["userEmail"];
+
+            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            {
+                result.Code = "GetRerankProviderByIntegrationType:1";
+                result.Message = "Invalid session data";
+                return result;
+            }
+
+            if (!(await _userManager.ValidateSession(userEmail, sessionId, authKey)))
+            {
+                result.Code = "GetRerankProviderByIntegrationType:2";
+                result.Message = "Session validation failed";
+                return result;
+            }
+
+            UserData? user = await _userManager.GetUserByEmail(userEmail);
+            if (user == null)
+            {
+                result.Code = "GetRerankProviderByIntegrationType:3";
+                result.Message = "User not found";
+                return result;
+            }
+
+            if (!formData.TryGetValue("integrationtype", out StringValues integrationTypeValue))
+            {
+                result.Code = "GetRerankProviderByIntegrationType:4";
+                result.Message = "Integration type required";
+                return result;
+            }
+
+            string integrationType = integrationTypeValue.ToString();
+            if (string.IsNullOrEmpty(integrationType))
+            {
+                result.Code = "GetRerankProviderByIntegrationType:5";
+                result.Message = "Integration type missing";
+                return result;
+            }
+
+            var getRerankProviderByIntegrationResult = await _rerankProviderManager.GetProviderDataByIntegration(integrationType);
+            if (!getRerankProviderByIntegrationResult.Success)
+            {
+                result.Code = "GetRerankProviderByIntegrationType:" + getRerankProviderByIntegrationResult.Code;
+                result.Message = getRerankProviderByIntegrationResult.Message;
+                return result;
+            }
+
+            result.Success = true;
+            result.Data = getRerankProviderByIntegrationResult.Data;
+            return result;
+        }
     }
 }

@@ -7,11 +7,13 @@ using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Document;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Managers.Region;
+using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
@@ -21,12 +23,14 @@ using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
+using IqraInfrastructure.Repositories.Embedding;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
+using IqraInfrastructure.Repositories.Rerank;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
@@ -255,6 +259,24 @@ namespace ProjectIqraFrontend
                 );
             });
 
+            builder.Services.AddSingleton<EmbeddingProviderRepository>((sp) =>
+            {
+                return new EmbeddingProviderRepository(
+                    sp.GetRequiredService<ILogger<EmbeddingProviderRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:EmbeddingProviderRepositoryDatabaseName"]
+                );
+            });
+
+            builder.Services.AddSingleton<RerankProviderRepository>((sp) =>
+            {
+                return new RerankProviderRepository(
+                    sp.GetRequiredService<ILogger<RerankProviderRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:RerankProviderRepositoryDatabaseName"]
+                );
+            });
+
             builder.Services.AddSingleton<InboundCallQueueRepository>((sp) =>
             {
                 return new InboundCallQueueRepository(
@@ -398,6 +420,7 @@ namespace ProjectIqraFrontend
             {
                 return new KnowledgeBaseVectorRepository(
                     sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    appConfig["Milvus:Database"],
                     sp.GetRequiredService<ILogger<KnowledgeBaseVectorRepository>>()
                 );
             });
@@ -490,7 +513,9 @@ namespace ProjectIqraFrontend
                 return new IntegrationConfigurationManager(
                     sp.GetRequiredService<STTProviderManager>(),
                     sp.GetRequiredService<TTSProviderManager>(),
-                    sp.GetRequiredService<LLMProviderManager>()
+                    sp.GetRequiredService<LLMProviderManager>(),
+                    sp.GetRequiredService<EmbeddingProviderManager>(),
+                    sp.GetRequiredService<RerankProviderManager>()
                 );
             });
             builder.Services.AddSingleton<BusinessManager>((sp) =>
@@ -557,6 +582,22 @@ namespace ProjectIqraFrontend
                 return new TTSProviderManager(
                     sp.GetRequiredService<ILogger<TTSProviderManager>>(),
                     sp.GetRequiredService<TTSProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<EmbeddingProviderManager>((sp) =>
+            {
+                return new EmbeddingProviderManager(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<EmbeddingProviderRepository>(),
+                    sp.GetRequiredService<IntegrationsManager>()
+                );
+            });
+            builder.Services.AddSingleton<RerankProviderManager>((sp) =>
+            {
+                return new RerankProviderManager(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<RerankProviderRepository>(),
                     sp.GetRequiredService<IntegrationsManager>()
                 );
             });

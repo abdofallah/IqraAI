@@ -14,6 +14,7 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document
 
         [BsonRepresentation(BsonType.String)]
         public KnowledgeBaseDocumentStatus Status { get; set; } = KnowledgeBaseDocumentStatus.Processing;
+        public string? FailedReason { get; set; } = null;
 
         public List<BusinessAppKnowledgeBaseDocumentChunk> Chunks { get; set; } = new();
     }

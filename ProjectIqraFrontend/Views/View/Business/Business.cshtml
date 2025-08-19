@@ -385,6 +385,8 @@
         var BusinessLLMProvidersForIntegrations = null;
         var BusinessSTTProvidersForIntegrations = null;
         var BusinessTTSProvidersForIntegrations = null;
+        var BusinessEmbeddingProvidersForIntegrations = null;
+        var BusinessRerankProvidersForIntegrations = null;
 
         // API Related Functions
 
@@ -522,6 +524,48 @@
                 }
             });
         }
+
+        function FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/embeddingproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
+
+        function FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(formData, successCallback, errorCallback) {
+            $.ajax({
+                url: '/app/specification/rerankproviders/getbyintegration',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (!response.success) {
+                        errorCallback(response);
+                        return;
+                    }
+
+                    successCallback(response.data);
+                },
+                error: (error) => {
+                    errorCallback(error);
+                }
+            });
+        }
     </script>
 
     <!-- New Business Tutorial -->
@@ -638,6 +682,10 @@
                     BusinessSTTProvidersForIntegrations != null
                     &&
                     BusinessTTSProvidersForIntegrations != null
+                    &&
+                    BusinessEmbeddingProvidersForIntegrations != null
+                    && 
+                    BusinessRerankProvidersForIntegrations != null
                 ) {
                     clearInterval(PageLoaderInterval);
 
@@ -705,9 +753,13 @@
                                     const temporaryLLMProvidersForIntegrations = [];
                                     const temporarySTTProvidersForIntegrations = [];
                                     const temporaryTTSProvidersForIntegrations = [];
+                                    const temporaryEmbeddingProvidersForIntegrations = [];
+                                    const temporaryRerankProvidersForIntegrations = [];
                                     let LLMProviderFail = false;
                                     let STTProviderFail = false;
                                     let TTSProviderFail = false;
+                                    let EmbeddingProviderFail = false;
+                                    let RerankProviderFail = false;
 
                                     SpecificationIntegrationsListData.forEach((integration) => {
                                         if (integration.type.includes("LLM")) {
@@ -775,6 +827,52 @@
                                                 }
                                             );
                                         }
+
+                                        if (integration.type.includes("Embedding"))
+                                        {
+                                            const formData = new FormData();
+                                            formData.append("integrationtype", integration.id);
+                                            FetchSpecificationEmbeddingProviderDataByIntegrationTypeFromAPI(
+                                                formData,
+                                                (EmbeddingProviderResult) => {
+                                                    temporaryEmbeddingProvidersForIntegrations.push(EmbeddingProviderResult);
+                                                },
+                                                (EmbeddingProviderError) => {
+                                                    AlertManager.createAlert({
+                                                        type: 'danger',
+                                                        message: 'Error occured while fetching Embedding Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                        enableDismiss: false
+                                                    });
+
+                                                    console.log('Error occured while fetching Embedding Provider data for integration with id ' + integration.id + ': ', EmbeddingProviderError);
+
+                                                    EmbeddingProviderFail = true;
+                                                }
+                                            );
+                                        }
+
+                                        if (integration.type.includes("Rerank"))
+                                        {
+                                            const formData = new FormData();
+                                            formData.append("integrationtype", integration.id);
+                                            FetchSpecificationRerankProviderDataByIntegrationTypeFromAPI(
+                                                formData,
+                                                (RerankProviderResult) => {
+                                                    temporaryRerankProvidersForIntegrations.push(RerankProviderResult);
+                                                },
+                                                (RerankProviderError) => {
+                                                    AlertManager.createAlert({
+                                                        type: 'danger',
+                                                        message: 'Error occured while fetching Rerank Provider data for integration with id ' + integration.id + '. Check browser console for logs.',
+                                                        enableDismiss: false
+                                                    });
+
+                                                    console.log('Error occured while fetching Rerank Provider data for integration with id ' + integration.id + ': ', RerankProviderError);
+
+                                                    RerankProviderFail = true;
+                                                }
+                                            );
+                                        }
                                     });
 
                                     if (!LLMProviderFail) {
@@ -789,7 +887,17 @@
                                         BusinessTTSProvidersForIntegrations = temporaryTTSProvidersForIntegrations;
                                     }
 
-                                    if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail) {
+                                    if (!EmbeddingProviderFail)
+                                    {
+                                        BusinessEmbeddingProvidersForIntegrations = temporaryEmbeddingProvidersForIntegrations;
+                                    }
+
+                                    if (!RerankProviderFail)
+                                    {
+                                        BusinessRerankProvidersForIntegrations = temporaryRerankProvidersForIntegrations;
+                                    }
+
+                                    if (!LLMProviderFail && !STTProviderFail && !TTSProviderFail && !EmbeddingProviderFail && !RerankProviderFail) {
                                         FetchBusinessDataFromAPI(CurrentBusinessId,
                                             (businessData) => {
                                                 BusinessFullData = businessData;

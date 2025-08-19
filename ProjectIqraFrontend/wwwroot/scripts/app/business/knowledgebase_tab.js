@@ -179,7 +179,7 @@ const retrievalQueryInput = testRetrievalModalElement.find('#retrievalQueryInput
 const retrievalResultsContainer = testRetrievalModalElement.find('#retrievalResultsContainer');
 
 
-/** API FUNCTIONS (Stubs) **/
+/** API FUNCTIONS **/
 function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
     $.ajax({
         url: `/app/user/business/${CurrentBusinessId}/knowledgebase/save`,
@@ -189,13 +189,13 @@ function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
         contentType: false,
         success: (response) => {
             if (response.success) {
-                onSuccess(response);
+                successCallback(response);
             } else {
-                onError(response, true);
+                errorCallback(response, true);
             }
         },
         error: (error) => {
-            onError(error, false);
+            errorCallback(error, false);
         },
     });
 }
@@ -318,7 +318,7 @@ function showDocumentChunkManagerTab() {
 // -- List Management --
 function createKnowledgeBaseListElement(kbData) {
     const documents = kbData.documents;
-    const retrievalModeName = RetrievalTypeDisplayMap[kbData.configuration.retrieval.type];
+    const retrievalModeName = RetrievalTypeDisplayMap[kbData.configuration.retrieval.type.value];
 
     return `
         <div class="col-lg-4 col-md-6 col-12">
@@ -389,7 +389,6 @@ function createDocumentTableRow(docData) {
         </tr>
     `;
 }
-
 
 function fillDocumentsTable() {
     const docsTableBody = documentsTable.find("tbody");
@@ -641,14 +640,15 @@ function fillKnowledgeBaseManagerTab() {
 
     // -- Configuration: Surgical Disabling for 'edit' mode --
     knowledgebaseDocumentChunkingTypeSelect.prop('disabled', true);
-    knowledgeBaseEmbeddingIntegrationManager.disable();
     knowledgebaseDocumentRetrivalTypeSelect.prop('disabled', false);
     knowledgeBaseManagerConfigurationPane.removeClass('disabled-pane');
 
     // -- Set configuration based on loaded data --
+
+    // Chunking
     const chunkingConfig = kbData.configuration.chunking;
-    knowledgebaseDocumentChunkingTypeSelect.val(chunkingConfig.type).trigger('change');
-    if (chunkingConfig.type === KnowledgeBaseChunkingType.General)
+    knowledgebaseDocumentChunkingTypeSelect.val(chunkingConfig.type.value).trigger('change');
+    if (chunkingConfig.type.value === KnowledgeBaseChunkingType.General)
     {
         generalDelimiterInput.val(chunkingConfig.delimiter);
         generalMaxLengthInput.val(chunkingConfig.maxLength);
@@ -656,7 +656,7 @@ function fillKnowledgeBaseManagerTab() {
         generalReplaceConsecutiveCheck.prop('checked', chunkingConfig.preprocess.replaceConsecutive);
         generalDeleteUrlsCheck.prop('checked', chunkingConfig.preprocess.deleteUrls);
     }
-    else if (chunkingConfig.type === KnowledgeBaseChunkingType.ParentChild)
+    else if (chunkingConfig.type.value === KnowledgeBaseChunkingType.ParentChild)
     {
         const parentType = chunkingConfig.parent.type === KnowledgeBaseChunkingParentChunkType.Paragraph ? 'paragraph' : 'full_doc';
         $(`input[name="parentChunkType"][value="${parentType}"]`).prop('checked', true).trigger('change');
@@ -668,33 +668,39 @@ function fillKnowledgeBaseManagerTab() {
         parentChildDeleteUrlsCheck.prop('checked', chunkingConfig.preprocess.deleteUrls);
     }
 
+    // Embedding
+    const embeddingConfig = kbData.configuration.embedding;
+    knowledgeBaseEmbeddingIntegrationManager.load(embeddingConfig);
+    knowledgeBaseEmbeddingIntegrationManager.disable();
+
+    // Retrival
     const retrievalConfig = kbData.configuration.retrieval;
-    knowledgebaseDocumentRetrivalTypeSelect.val(retrievalConfig.type).trigger('change');
-    if (retrievalConfig.type === KnowledgeBaseRetrievalType.VectorSearch) {
+    knowledgebaseDocumentRetrivalTypeSelect.val(retrievalConfig.type.value).trigger('change');
+    if (retrievalConfig.type.value === KnowledgeBaseRetrievalType.VectorSearch) {
         vectorTopKInput.val(retrievalConfig.topK);
         useVectorScoreThreshold.prop('checked', retrievalConfig.useScoreThreshold).trigger('change');
         vectorScoreThresholdInput.val(retrievalConfig.scoreThreshold);
         vectorRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
 
         if (retrievalConfig.rerank.enabled) {
-            vectorRerankIntegrationManager.setData(retrievalConfig.rerank.integration);
+            vectorRerankIntegrationManager.load(retrievalConfig.rerank.integration);
         }
     }
-    else if (retrievalConfig.type === KnowledgeBaseRetrievalType.FullTextSearch) {
+    else if (retrievalConfig.type.value === KnowledgeBaseRetrievalType.FullTextSearch) {
         fulltextTopKInput.val(retrievalConfig.topK);
         fulltextRerankModelSwitch.prop('checked', retrievalConfig.rerank.enabled).trigger('change');
         if (retrievalConfig.rerank.enabled) {
-            fulltextRerankIntegrationManager.setData(retrievalConfig.rerank.integration);
+            fulltextRerankIntegrationManager.load(retrievalConfig.rerank.integration);
         }
     }
-    else if (retrievalConfig.type === KnowledgeBaseRetrievalType.HybirdSearch) {
+    else if (retrievalConfig.type.value === KnowledgeBaseRetrievalType.HybirdSearch) {
         hybridTopKInput.val(retrievalConfig.topK);
         useHybirdScoreThreshold.prop('checked', retrievalConfig.useScoreThreshold).trigger('change');
         hybridScoreThresholdInput.val(retrievalConfig.scoreThreshold);
 
-        if (retrievalConfig.mode === KnowledgeBaseHybridRetrievalMode.RerankModel) {
+        if (retrievalConfig.mode.value === KnowledgeBaseHybridRetrievalMode.RerankModel) {
             hybridRerankModelRadio.prop('checked', true).trigger('change');
-            hybridRerankIntegrationManager.setData(retrievalConfig.rerankIntegration);
+            hybridRerankIntegrationManager.load(retrievalConfig.rerankIntegration);
         }
         else
         {
@@ -1126,38 +1132,38 @@ function initKnowledgeBaseTab() {
 
         // Integration Manager Initializations
         knowledgeBaseEmbeddingIntegrationManager = new IntegrationConfigurationManager('#knowledgeBaseEmbeddingIntegrationContainer', {
-            integrationType: 'LLM',
+            integrationType: 'Embedding',
             allowMultiple: false,
             isLanguageBound: false,
             allIntegrations: BusinessFullData.businessApp.integrations,
-            providersData: BusinessLLMProvidersForIntegrations,
+            providersData: BusinessEmbeddingProvidersForIntegrations,
             modalSelector: '#integrationConfigurationModal',
             onIntegrationChange: () => { handleInputChange() },
         });
         vectorRerankIntegrationManager = new IntegrationConfigurationManager('#vectorRerankContainer', {
-            integrationType: 'LLM',
+            integrationType: 'Rerank',
             allowMultiple: false,
             isLanguageBound: false,
             allIntegrations: BusinessFullData.businessApp.integrations,
-            providersData: BusinessLLMProvidersForIntegrations,
+            providersData: BusinessRerankProvidersForIntegrations,
             modalSelector: '#integrationConfigurationModal',
             onIntegrationChange: () => { handleInputChange() },
         });
         fulltextRerankIntegrationManager = new IntegrationConfigurationManager('#fulltextRerankContainer', {
-            integrationType: 'LLM',
+            integrationType: 'Rerank',
             allowMultiple: false,
             isLanguageBound: false,
             allIntegrations: BusinessFullData.businessApp.integrations,
-            providersData: BusinessLLMProvidersForIntegrations,
+            providersData: BusinessRerankProvidersForIntegrations,
             modalSelector: '#integrationConfigurationModal',
             onIntegrationChange: () => { handleInputChange() },
         });
         hybridRerankIntegrationManager = new IntegrationConfigurationManager('#hybridRerankContainer', {
-            integrationType: 'LLM',
+            integrationType: 'Rerank',
             allowMultiple: false,
             isLanguageBound: false,
             allIntegrations: BusinessFullData.businessApp.integrations,
-            providersData: BusinessLLMProvidersForIntegrations,
+            providersData: BusinessRerankProvidersForIntegrations,
             modalSelector: '#integrationConfigurationModal',
             onIntegrationChange: () => { handleInputChange() },
         });
@@ -1669,6 +1675,8 @@ function initKnowledgeBaseTab() {
                         message: "Knowledge Base saved successfully.",
                         timeout: 6000,
                     });
+
+                    knowledgeBaseManagerDocumentsTabButton.click();
                 },
                 (error) => {
                     spinner.addClass('d-none');
@@ -1676,9 +1684,11 @@ function initKnowledgeBaseTab() {
                     saveKnowledgeBaseButton.removeClass('disabled').prop('disabled', false);
                     AlertManager.createAlert({
                         type: "danger",
-                        message: "An error occurred while saving.",
+                        message: "Error occured while saving knowledgebase data. Check browser console for logs.",
                         timeout: 6000,
                     });
+
+                    console.error("Error occured while saving knowledgebase data:", error);
                 }
             );
         });

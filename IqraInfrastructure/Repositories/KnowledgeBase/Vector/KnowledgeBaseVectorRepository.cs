@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.KnowledgeBase;
 using Microsoft.Extensions.Logging;
+using System.Xml.Linq;
 
 namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 {
@@ -14,14 +15,17 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         private readonly MilvusKnowledgeBaseClient _milvusClient;
         private readonly ILogger<KnowledgeBaseVectorRepository> _logger;
 
+        private readonly string DatabaseName;
+
         // Field names are defined as constants to ensure consistency
         private const string FieldChunkId = "chunk_id";
         private const string FieldDocumentName = "document_name";
         private const string FieldTextChunk = "text_chunk";
         private const string FieldEmbedding = "vector";
 
-        public KnowledgeBaseVectorRepository(MilvusKnowledgeBaseClient milvusClient, ILogger<KnowledgeBaseVectorRepository> logger)
+        public KnowledgeBaseVectorRepository(MilvusKnowledgeBaseClient milvusClient, string databaseName, ILogger<KnowledgeBaseVectorRepository> logger)
         {
+            DatabaseName = databaseName;
             _milvusClient = milvusClient;
             _logger = logger;
         }
@@ -35,6 +39,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             try
             {
                 var createCollectionRequest = new CreateCollectionRequest(
+                    dbName: DatabaseName,
                     collectionName: collectionName,
                     dimension: vectorDimension,
                     metricType: "IP",
@@ -51,7 +56,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
                     return false;
                 }
 
-                bool releaseCollection = await _milvusClient.ReleaseCollectionAsync(collectionName, cancellationToken);
+                bool releaseCollection = await _milvusClient.ReleaseCollectionAsync(DatabaseName, collectionName, cancellationToken);
                 if (!releaseCollection)
                 {
                     _logger.LogError("Failed to release collection {CollectionName} via Milvus client.", collectionName);
@@ -60,6 +65,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 
                 bool dropDefaultIndex = await _milvusClient.DropIndexAsync(
                     new DropIndexRequest(
+                        dbName: DatabaseName,
                         collectionName: collectionName,
                         indexName: FieldEmbedding
                     ),
@@ -73,6 +79,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 
                 // Phase 2: Create the index immediately after collection creation.
                 var createIndexRequest = new CreateIndexRequest(
+                    dbName: DatabaseName,
                     collectionName: collectionName,
                     indexParams: new List<IndexParameter>
                     {
@@ -124,7 +131,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
                     return true;
                 }
 
-                var request = new InsertRequest(collectionName, dataToInsert);
+                var request = new InsertRequest(DatabaseName, collectionName, dataToInsert);
                 var result = await _milvusClient.InsertAsync(request, cancellationToken);
 
                 if (result?.Code == 0 && result.Data.insertCount == dataToInsert.Count)
@@ -155,6 +162,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             try
             {
                 var searchRequest = new SearchRequest(
+                    dbName: DatabaseName,
                     collectionName: collectionName,
                     vectors: new List<ReadOnlyMemory<float>> { queryVector },
                     annsField: FieldEmbedding,
@@ -200,7 +208,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         {
             try
             {
-                return await _milvusClient.DropCollectionAsync(collectionName, cancellationToken);
+                return await _milvusClient.DropCollectionAsync(DatabaseName, collectionName, cancellationToken);
             }
             catch (Exception ex)
             {

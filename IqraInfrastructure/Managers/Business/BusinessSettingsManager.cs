@@ -86,7 +86,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (logoValidateResult == 0)
                 {
                     result.Code = "UpdateUserBusinessSettings:4";
-                    result.Message = "The business logo file is too big. Maximum size is 5MB.";
+                    result.Message = "The business logo file is too big. Maximum size is 3MB.";
                     return result;
                 }
                 else if (logoValidateResult == 1)
@@ -710,7 +710,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (logoValidateResult == 0)
                 {
                     result.Code = "AddOrUpdateUserBusinessSubUser:7";
-                    result.Message = "The whitelabel style logo file is too big. Maximum size is 5MB.";
+                    result.Message = "The whitelabel style logo file is too big. Maximum size is 3MB.";
                     return result;
                 }
                 else if (logoValidateResult == 1)
@@ -735,7 +735,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (faviconValidateResult == 0)
                 {
                     result.Code = "AddOrUpdateUserBusinessSubUser:10";
-                    result.Message = "The whitelabel style favicon file is too big. Maximum size is 5MB.";
+                    result.Message = "The whitelabel style favicon file is too big. Maximum size is 3MB.";
                     return result;
                 }
                 else if (faviconValidateResult == 1)

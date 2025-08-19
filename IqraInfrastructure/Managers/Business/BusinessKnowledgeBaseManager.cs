@@ -1,8 +1,13 @@
-﻿using IqraCore.Entities.Business.App.KnowledgeBase;
+﻿using Deepgram.Models.Manage.v1;
+using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Retrival;
+using IqraCore.Entities.Business.App.KnowledgeBase.Document;
+using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.AI;
+using IqraCore.Models.KnowledgeBase;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Document;
 using IqraInfrastructure.Repositories.Business;
@@ -881,7 +886,11 @@ namespace IqraInfrastructure.Managers.Business
                 newKnowledgeBaseData.Id = ObjectId.GenerateNewId().ToString();
                 string collectionName = $"b{businessId}_kb{newKnowledgeBaseData.Id}";
 
-                bool vectorCollectionCreated = await _documentVectorRepository.CreateCollectionAsync(collectionName, (int)newKnowledgeBaseData.Configuration.Embedding.FieldValues["vector_size"], newKnowledgeBaseData.Configuration.Retrieval.Type == KnowledgeBaseRetrievalType.HybirdSearch);
+                bool vectorCollectionCreated = await _documentVectorRepository.CreateCollectionAsync(
+                    collectionName,
+                    (int)newKnowledgeBaseData.Configuration.Embedding.FieldValues["model_vector_dimension"],
+                    newKnowledgeBaseData.Configuration.Retrieval.Type == KnowledgeBaseRetrievalType.HybirdSearch
+                );
                 if (!vectorCollectionCreated)
                 {
                     return result.SetFailureResult(
@@ -921,73 +930,110 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             return result.SetSuccessResult(newKnowledgeBaseData);
-        }  
+        }
 
-        //public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> ProcessAndAddDocumentAsync(long businessId, string knowledgeBaseId, IFormCollection formData, IFormFile file)
-        //{
-        //    var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> ProcessAndAddDocumentAsync(long businessId, string knowledgeBaseId, IFormCollection formData, IFormFile file)
+        {
+            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
 
-        //    // 1. Get KB Settings
-        //    var businessApp = await _parentBusinessManager.GetUserBusinessAppById(businessId, "SYSTEM"); // Assuming a way to get the app
-        //    var kb = businessApp.Data?.KnowledgeBases.FirstOrDefault(k => k.Id == knowledgeBaseId);
-        //    if (kb == null)
-        //        return result.SetFailureResult("ProcessDoc:1", "Knowledge Base not found.");
+            var businessApp = await _parentBusinessManager.GetUserBusinessAppById(businessId, "SYSTEM");
+            if (!businessApp.Success)
+            {
+                return result.SetFailureResult(
+                    "ProcessAndAddDocumentAsync:BUSINESS_APP_NOT_FOUND",
+                    "Business app not found."
+                );
+            }
 
-        //    // 2. Extract Text from File
-        //    var textContent = await _unstructuredManager.ExtractTextAsync(file);
-        //    if (string.IsNullOrWhiteSpace(textContent))
-        //        return result.SetFailureResult("ProcessDoc:2", "Could not extract any text from the uploaded file.");
+            var kb = businessApp.Data?.KnowledgeBases.FirstOrDefault(k => k.Id == knowledgeBaseId);
+            if (kb == null)
+            {
+                return result.SetFailureResult(
+                    "ProcessAndAddDocumentAsync:KNOWLEDGE_BASE_NOT_FOUND",
+                    "Knowledge Base not found in business data."
+                );
+            }
 
-        //    // 3. Chunk the Text
-        //    var chunks = ChunkText(textContent, kb.Configuration.Chunking);
+            // TODO: Validate File
 
-        //    // 4. Get Embeddings for each chunk
-        //    var vectorizedChunks = new List<KnowledgeBaseChunkModel>(); // Model for vector DB
-        //    foreach (var chunk in chunks)
-        //    {
-        //        var embeddingVector = await _embeddingService.GetEmbeddingAsync(chunk.Text, kb.Configuration.Embedding);
-        //        vectorizedChunks.Add(new KnowledgeBaseChunkModel { Id = chunk.Id, Vector = embeddingVector });
-        //    }
+            var newDocument = new BusinessAppKnowledgeBaseDocument
+            {
+                Id = await _knowledgeBaseDocumentRepository.GetNextDocumentId(),
+                Name = file.FileName,
+                Enabled = true,
+                Status = KnowledgeBaseDocumentStatus.Processing,
+                Chunks = new List<BusinessAppKnowledgeBaseDocumentChunk>()
+            };
 
-        //    // 5. Add vectors to the Vector Database
-        //    string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
-        //    await _documentVectorRepository.AddChunksAsync(collectionName, vectorizedChunks);
 
-        //    // 6. Create and Save Document Metadata
-        //    var newDocument = new BusinessAppKnowledgeBaseDocument
-        //    {
-        //        Id = await _knowledgeBaseDocumentRepository.GetNextDocumentId(),
-        //        Name = file.FileName,
-        //        Enabled = true,
-        //        Status = KnowledgeBaseDocumentStatus.Ready,
-        //        Chunks = chunks
-        //    };
+            // TURN BELOW INTO MONGO SESSION
+            bool docCreated = await _knowledgeBaseDocumentRepository.CreateDocumentAsync(newDocument);
+            if (!docCreated)
+            {
+                return result.SetFailureResult(
+                    "ProcessAndAddDocumentAsync:DOCUMENT_CREATION_FAILED",
+                    "Failed to save document metadata."
+                );
+            }
+            bool docAddedToKb = await _businessAppRepository.AddDocumentIdToKnowledgeBaseAsync(businessId, knowledgeBaseId, newDocument.Id);
+            if (!docAddedToKb)
+            {
+                return result.SetFailureResult(
+                    "ProcessAndAddDocumentAsync:DOCUMENT_ADDITION_FAILED",
+                    "Failed to add document to knowledge base."
+                );
+            }
 
-        //    bool docCreated = await _knowledgeBaseDocumentRepository.CreateDocumentAsync(newDocument);
-        //    if (!docCreated)
-        //        return result.SetFailureResult("ProcessDoc:3", "Failed to save document metadata.");
+            // Run Background Processing Task
+            _ = ProcessDocumentBackgroundAsync(file, businessId, kb);
 
-        //    // 7. Link Document ID to Knowledge Base
-        //    await _businessAppRepository.AddDocumentIdToKnowledgeBaseAsync(businessId, knowledgeBaseId, newDocument.Id);
+            return result.SetSuccessResult(newDocument);
+        }
 
-        //    result.Success = true;
-        //    result.Data = newDocument;
-        //    return result;
-        //}
+        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb)
+        {
+            var textContent = await _unstructuredManager.ExtractTextAsync(file);
+            if (string.IsNullOrWhiteSpace(textContent))
+                return result.SetFailureResult("ProcessDoc:2", "Could not extract any text from the uploaded file.");
 
-        // This is a simplified helper. A real implementation would be more complex.
-        //private List<BusinessAppKnowledgeBaseDocumentChunk> ChunkText(string text, BusinessAppKnowledgeBaseChunking config)
-        //{
-        //    var chunks = new List<BusinessAppKnowledgeBaseDocumentChunk>();
-        //    // TODO: Implement the actual chunking logic based on config.Mode (General vs ParentChild)
-        //    // For now, a simple split:
-        //    var textChunks = text.Split(new[] { config.General.Delimiter }, StringSplitOptions.RemoveEmptyEntries);
-        //    foreach (var textChunk in textChunks)
-        //    {
-        //        chunks.Add(new BusinessAppKnowledgeBaseDocumentGeneralChunk { Id = ObjectId.GenerateNewId().ToString(), Text = textChunk });
-        //    }
-        //    return chunks;
-        //}
+            var chunks = ChunkText(textContent, kb.Configuration.Chunking);
+
+            var vectorizedChunks = new List<KnowledgeBaseChunkModel>(); // Model for vector DB
+            foreach (var chunk in chunks)
+            {
+                var embeddingVector = await _embeddingService.GetEmbeddingAsync(chunk.Text, kb.Configuration.Embedding);
+                vectorizedChunks.Add(new KnowledgeBaseChunkModel { Id = chunk.Id, Vector = embeddingVector });
+            }
+
+            string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
+            await _documentVectorRepository.AddChunksAsync(collectionName, vectorizedChunks);
+        }
+
+        private List<BusinessAppKnowledgeBaseDocumentChunk> ChunkText(string text, BusinessAppKnowledgeBaseConfigurationChunking config)
+        {
+            var chunks = new List<BusinessAppKnowledgeBaseDocumentChunk>();
+            
+            if (config is BusinessAppKnowledgeBaseConfigurationGeneralChunking generalChunkingConfig)
+            {
+                var textChunks = text.Split(new[] { generalChunkingConfig.Delimiter }, StringSplitOptions.RemoveEmptyEntries);
+
+                // TODO max chunk length and overlapping
+
+                foreach (var textChunk in textChunks)
+                {
+                    chunks.Add(new BusinessAppKnowledgeBaseDocumentGeneralChunk { Id = ObjectId.GenerateNewId().ToString(), Text = textChunk });
+                }
+                return chunks;
+            }
+            else if (config is BusinessAppKnowledgeBaseConfigurationParentChildChunking parentChildChunkingConfig)
+            {
+                throw new NotImplementedException("Parent-Child chunking not implemented yet.");
+            }
+            else
+            {
+                throw new NotImplementedException("Unknown chunking configuration.");
+            }
+        }
 
         // TODO: Implement other public methods like UpdateChunksAsync, TestRetrievalAsync, etc.
     }
