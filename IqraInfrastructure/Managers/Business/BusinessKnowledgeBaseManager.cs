@@ -1,4 +1,5 @@
-﻿using Deepgram.Models.Manage.v1;
+﻿using Google.Apis.Http;
+using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Retrival;
@@ -6,10 +7,10 @@ using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Entities.Helpers;
-using IqraCore.Interfaces.AI;
-using IqraCore.Models.KnowledgeBase;
+using IqraCore.Models.RAG;
 using IqraInfrastructure.Helpers.Business;
-using IqraInfrastructure.Managers.Document;
+using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using Microsoft.AspNetCore.Http;
@@ -25,10 +26,9 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessKnowledgeBaseDocumentRepository _knowledgeBaseDocumentRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
-        // --- Services to be Injected ---
         private readonly KnowledgeBaseVectorRepository _documentVectorRepository;
-        private readonly UnstructuredManager _unstructuredManager;
-
+        private readonly IndexProcessorFactory _indexProcessorFactory;
+        private readonly ExtractProcessor _extractProcessor;
 
         public BusinessKnowledgeBaseManager(
             BusinessManager parentBusinessManager,
@@ -36,14 +36,17 @@ namespace IqraInfrastructure.Managers.Business
             BusinessKnowledgeBaseDocumentRepository knowledgeBaseDocumentRepository,
             IntegrationConfigurationManager integrationConfigurationManager,
             KnowledgeBaseVectorRepository documentVectorRepository,
-            UnstructuredManager unstructuredManager)
+            IndexProcessorFactory indexProcessorFactory,
+            ExtractProcessor extractProcessor
+        )
         {
             _parentBusinessManager = parentBusinessManager;
             _businessAppRepository = businessAppRepository;
             _knowledgeBaseDocumentRepository = knowledgeBaseDocumentRepository;
             _integrationConfigurationManager = integrationConfigurationManager;
             _documentVectorRepository = documentVectorRepository;
-            _unstructuredManager = unstructuredManager;
+            _indexProcessorFactory = indexProcessorFactory;
+            _extractProcessor = extractProcessor;
         }
 
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> GetKnowledgeBaseById(long businessId, string existingKbId)
@@ -985,53 +988,66 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Run Background Processing Task
-            _ = ProcessDocumentBackgroundAsync(file, businessId, kb);
+            _ = ProcessDocumentBackgroundAsync(file, businessId, kb, newDocument.Id, businessApp.Data!);
 
             return result.SetSuccessResult(newDocument);
         }
 
-        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb)
+        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, long knowledgeBaseDocumentId, BusinessApp businessApp)
         {
-            var textContent = await _unstructuredManager.ExtractTextAsync(file);
-            if (string.IsNullOrWhiteSpace(textContent))
-                return result.SetFailureResult("ProcessDoc:2", "Could not extract any text from the uploaded file.");
+            string? tempFilePath = null;
 
-            var chunks = ChunkText(textContent, kb.Configuration.Chunking);
-
-            var vectorizedChunks = new List<KnowledgeBaseChunkModel>(); // Model for vector DB
-            foreach (var chunk in chunks)
+            try
             {
-                var embeddingVector = await _embeddingService.GetEmbeddingAsync(chunk.Text, kb.Configuration.Embedding);
-                vectorizedChunks.Add(new KnowledgeBaseChunkModel { Id = chunk.Id, Vector = embeddingVector });
-            }
-
-            string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
-            await _documentVectorRepository.AddChunksAsync(collectionName, vectorizedChunks);
-        }
-
-        private List<BusinessAppKnowledgeBaseDocumentChunk> ChunkText(string text, BusinessAppKnowledgeBaseConfigurationChunking config)
-        {
-            var chunks = new List<BusinessAppKnowledgeBaseDocumentChunk>();
-            
-            if (config is BusinessAppKnowledgeBaseConfigurationGeneralChunking generalChunkingConfig)
-            {
-                var textChunks = text.Split(new[] { generalChunkingConfig.Delimiter }, StringSplitOptions.RemoveEmptyEntries);
-
-                // TODO max chunk length and overlapping
-
-                foreach (var textChunk in textChunks)
+                var embeddingIntegrationData = businessApp.Integrations.Find(integration => integration.Id == kb.Configuration.Embedding.Id);
+                if (embeddingIntegrationData == null)
                 {
-                    chunks.Add(new BusinessAppKnowledgeBaseDocumentGeneralChunk { Id = ObjectId.GenerateNewId().ToString(), Text = textChunk });
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");
+                    return;
                 }
-                return chunks;
+           
+                tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
+                using (var stream = new FileStream(tempFilePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var extractor = _extractProcessor.GetExtractor(tempFilePath);
+                List<ExtractorDocumentModel> extractedDocuments = await extractor.ExtractAsync();
+                if (extractedDocuments == null || !extractedDocuments.Any())
+                {
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "Extraction resulted in no content.");
+                    return;
+                }
+
+                IIndexProcessor indexProcessor = _indexProcessorFactory.Create(kb);
+
+                List<ProcessedDocumentChunkModel> processedChunks = await indexProcessor.TransformAsync(extractedDocuments, kb, knowledgeBaseDocumentId);
+                if (processedChunks == null || !processedChunks.Any())
+                {
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "Transformation resulted in no processable chunks.");
+                    return;
+                }
+
+                var result = await indexProcessor.LoadAsync(processedChunks, kb, embeddingIntegrationData);
+                if (!result.Success)
+                {
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, $"[{result.Code}]: {result.Message}");
+                    return;
+                }
+
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Ready);
             }
-            else if (config is BusinessAppKnowledgeBaseConfigurationParentChildChunking parentChildChunkingConfig)
+            catch (Exception ex)
             {
-                throw new NotImplementedException("Parent-Child chunking not implemented yet.");
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, $"Processing failed: {ex.Message}");
             }
-            else
+            finally
             {
-                throw new NotImplementedException("Unknown chunking configuration.");
+                if (!string.IsNullOrWhiteSpace(tempFilePath) && File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
             }
         }
 

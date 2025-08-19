@@ -4,9 +4,10 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
-using IqraInfrastructure.Managers.Document;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
+using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Repositories.Business;
@@ -74,7 +75,8 @@ namespace IqraInfrastructure.Managers.Business
             IntegrationConfigurationManager? integrationConfigurationManager,
             BusinessKnowledgeBaseDocumentRepository? businessKnowledgeBaseDocumentRepository,
             KnowledgeBaseVectorRepository? knowledgeBaseVectorRepository,
-            UnstructuredManager? unstructuredManager
+            IndexProcessorFactory? indexProcessorFactory,
+            ExtractProcessor? extractProcessor
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -160,11 +162,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeKnowledgeBaseManager)
             {
-                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || unstructuredManager == null)
+                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || indexProcessorFactory == null || extractProcessor == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
-                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, unstructuredManager);
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor);
             }
         }
 

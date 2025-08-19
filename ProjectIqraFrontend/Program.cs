@@ -1,4 +1,4 @@
-using Google.Api;
+using HarmonyLib;
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Frontend;
 using IqraCore.Utilities;
@@ -6,18 +6,20 @@ using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Helpers.User;
 using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Document;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
+using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
 using IqraInfrastructure.Managers.User;
+using IqraInfrastructure.Patches;
 using IqraInfrastructure.Repositories.App;
 using IqraInfrastructure.Repositories.Billing;
 using IqraInfrastructure.Repositories.Business;
@@ -34,7 +36,6 @@ using IqraInfrastructure.Repositories.Rerank;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
-using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
@@ -71,6 +72,9 @@ namespace ProjectIqraFrontend
             // Managers
             SetupManagers(builder, appConfig);
 
+            // Patches
+            IronPatcher.Apply();
+
             // HTTP Client
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddHttpClient();
@@ -89,6 +93,13 @@ namespace ProjectIqraFrontend
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
             builder.Services.AddHttpClient("ProxyForwarder").SetHandlerLifetime(TimeSpan.FromMinutes(5));
+            // UnstructuredClient
+            builder.Services.AddHttpClient("UnstructuredClient", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(200);
+                client.BaseAddress = new Uri(appConfig["Unstructured:EndPoint"]);
+                client.DefaultRequestHeaders.Add("unstructured-api-key", appConfig["Unstructured:ApiKey"]);
+            });
 
             // JSON Middleware
             var customJSONMiddleware = new EndpointAwareJsonConverter();
@@ -450,10 +461,17 @@ namespace ProjectIqraFrontend
                     }
                 );
             });
-            builder.Services.AddSingleton<UnstructuredManager>((sp) =>
+            builder.Services.AddSingleton<IndexProcessorFactory>((sp) =>
             {
-                return new UnstructuredManager(
+                return new IndexProcessorFactory()
+                {
 
+                };
+            });
+            builder.Services.AddSingleton<ExtractProcessor>((sp) =>
+            {
+                return new ExtractProcessor(
+                    sp.GetRequiredService<IHttpClientFactory>()
                 );
             });
             builder.Services.AddSingleton<LanguagesManager>((sp) =>
@@ -557,7 +575,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<IntegrationConfigurationManager>(),
                     sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
                     sp.GetRequiredService<KnowledgeBaseVectorRepository>(),
-                    sp.GetRequiredService<UnstructuredManager>()
+                    sp.GetRequiredService<IndexProcessorFactory>(),
+                    sp.GetRequiredService<ExtractProcessor>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>
@@ -688,6 +707,42 @@ namespace ProjectIqraFrontend
             var callSiteFactory = serviceProvider.GetType().GetProperty("CallSiteFactory", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(serviceProvider);
             var serviceDescriptors = callSiteFactory.GetType().GetProperty("Descriptors", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(callSiteFactory) as ServiceDescriptor[];
             return serviceDescriptors.ToList();
+        }
+
+
+
+
+
+        [HarmonyPatch("IronPdf.License", "IsLicensed", MethodType.Getter)]
+        public class IsLicensed_Patch
+        {
+            // A 'Prefix' patch runs *before* the original method's code.
+            [HarmonyPrefix]
+            public static bool ForceLicensedValue(ref bool __result)
+            {
+                // '__result' is a special Harmony parameter that lets us modify the return value.
+                __result = true;
+
+                // By returning 'false', we tell Harmony to SKIP the original method entirely.
+                // This is crucial for overriding its logic.
+                return false;
+            }
+        }
+
+        // --- Patch for the IronPdf.License.LicenseKey Property ---
+        // This is a separate patch for the second property you wanted to modify.
+        [HarmonyPatch("IronPdf.License", "LicenseKey", MethodType.Getter)]
+        public class LicenseKey_Patch
+        {
+            [HarmonyPrefix]
+            public static bool ForceLicenseKeyValue(ref string __result)
+            {
+                // Set the return value to the specific key from your original function.
+                __result = "IRONSUITE.TAUSHIF1TEZA.GMAIL.COM.9218-C4C9C0925C-CZRWKKOVBNHWGS-CWR7KUDVDQLI-GCXHX77TEXD5-VJKK7LKZEBJ3-UXXYNFUFTWNI-FSMG77GWWVGP-7W4CTQ-TAZT6SLDBOOLUA-DEPLOYMENT.TRIAL-47I2VM.TRIAL.EXPIRES.09.FEB.2024";
+
+                // Again, return false to ensure the original code for getting the license key is never executed.
+                return false;
+            }
         }
     }
 }

@@ -2,7 +2,6 @@
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
@@ -12,13 +11,11 @@ namespace ProjectIqraFrontend.Controllers.User.Business
     public class AppUserBusinessKnowledgeBaseController : Controller
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
-        private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppUserBusinessKnowledgeBaseController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, BusinessManager businessManager)
+        public AppUserBusinessKnowledgeBaseController(UserSessionValidationHelper userSessionValidationHelper, BusinessManager businessManager)
         {
             _userSessionValidationHelper = userSessionValidationHelper;
-            _userManager = userManager;
             _businessManager = businessManager;
         }
 
@@ -133,7 +130,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
-        [HttpPost("/app/user/business/{businessId}/knowledge-base/{knowledgeBaseId}/documents/upload")]
+        [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/documents/upload")]
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> UploadKnowledgeBaseDocument(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
         {
             var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();

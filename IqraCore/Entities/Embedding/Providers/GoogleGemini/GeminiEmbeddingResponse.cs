@@ -8,6 +8,12 @@ namespace IqraCore.Entities.Embedding.Providers.GoogleGemini
         public EmbeddingObject Embedding { get; set; }
     }
 
+    public class GeminiEmbeddingsListResponse
+    {
+        [JsonPropertyName("embeddings")]
+        public List<EmbeddingObject> Embeddings { get; set; }
+    }
+
     public class EmbeddingObject
     {
         [JsonPropertyName("values")]

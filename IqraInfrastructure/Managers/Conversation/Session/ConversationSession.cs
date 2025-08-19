@@ -851,15 +851,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session
         {
             try
             {
-                _logger.LogInformation("Executing end call action for session {SessionId}", _sessionId);
-
                 if (_sessionContextData.CallEndedAction.SelectedToolId == null)
                 {
-
                     return;
                 }
-
-                _logger.LogInformation("Executing end call action for session {SessionId} found tool", _sessionId);
 
                 BusinessAppTool? endCallTool = _sessionBusinessAppData.Tools.Find(t => t.Id == _sessionContextData.CallEndedAction.SelectedToolId);
                 if (endCallTool == null)

@@ -201,44 +201,23 @@ function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
 }
 
 function SaveAndProcessDocument(formData, successCallback, errorCallback) {
-    // This would be a real multipart/form-data POST
-    const docFile = formData.get('file');
-    console.log(`Simulating processing for file: ${docFile.name}`);
-
-    // Create more realistic sample chunk data
-    const sampleChunks = [
-        {
-            id: 'p1', type: 'parent', text: 'Dubai is a city and emirate in the United Arab Emirates known for luxury shopping, ultramodern architecture and a lively nightlife scene.',
-            children: [
-                { id: 'c1-1', type: 'child', text: 'Known for luxury shopping and ultramodern architecture.' },
-                { id: 'c1-2', type: 'child', text: 'It has a lively nightlife scene.' }
-            ]
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${ManageCurrentKnowledgeBaseData.id}/documents/upload`,
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
         },
-        {
-            id: 'p2', type: 'parent', text: 'Burj Khalifa, an 830m-tall tower, dominates the skyscraper-filled skyline. At its foot lies Dubai Fountain, with jets and lights choreographed to music.',
-            children: [
-                { id: 'c2-1', type: 'child', text: 'The Burj Khalifa is 830m tall.' }
-            ]
-        }
-    ];
-
-    const sampleGeneralChunks = [
-        { id: 'g1', text: 'Dubai is a city in the UAE.' },
-        { id: 'g2', text: 'It is known for the Burj Khalifa.' },
-        { id: 'g3', text: 'The Dubai Mall is a large shopping center.' }
-    ];
-
-    const response = {
-        success: true,
-        data: {
-            id: `doc_${new Date().getTime()}`,
-            name: docFile.name,
-            enabled: true,
-            status: 'Ready',
-            chunks: ManageCurrentKnowledgeBaseData.configuration.chunking.mode === ChunkingModeENUM.ParentChild ? sampleChunks : sampleGeneralChunks
-        }
-    };
-    setTimeout(() => successCallback(response), 1500);
+        error: (error) => {
+            errorCallback(error, false);
+        },
+    });
 }
 
 function SaveDocumentChunks(kbId, docId, changes, successCallback, errorCallback) {
@@ -407,7 +386,7 @@ function populateDocumentModalSettings() {
     const chunkingConfig = ManageCurrentKnowledgeBaseData.configuration.chunking;
     let settingsHtml = '';
 
-    if (chunkingConfig.type === KnowledgeBaseChunkingType.General) {
+    if (chunkingConfig.type.value === KnowledgeBaseChunkingType.General) {
         settingsHtml = `
             <div class="row">
                 <div class="col-md-4">
@@ -658,7 +637,7 @@ function fillKnowledgeBaseManagerTab() {
     }
     else if (chunkingConfig.type.value === KnowledgeBaseChunkingType.ParentChild)
     {
-        const parentType = chunkingConfig.parent.type === KnowledgeBaseChunkingParentChunkType.Paragraph ? 'paragraph' : 'full_doc';
+        const parentType = chunkingConfig.parent.type.value === KnowledgeBaseChunkingParentChunkType.Paragraph ? 'paragraph' : 'full_doc';
         $(`input[name="parentChunkType"][value="${parentType}"]`).prop('checked', true).trigger('change');
         parentDelimiterInput.val(chunkingConfig.parent.delimiter);
         parentMaxLengthInput.val(chunkingConfig.parent.maxLength);

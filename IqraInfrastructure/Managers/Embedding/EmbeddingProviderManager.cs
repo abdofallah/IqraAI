@@ -470,7 +470,7 @@ namespace IqraInfrastructure.Managers.Embedding
             return result;
         }
 
-        public async Task<FunctionReturnResult<IEmbeddingService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData, Dictionary<string, string> metaData)
+        public async Task<FunctionReturnResult<IEmbeddingService?>> BuildProviderServiceByIntegration(BusinessAppIntegration integrationData, BusinessAppAgentIntegrationData agentIntegrationData)
         {
             var result = new FunctionReturnResult<IEmbeddingService?>();
             try

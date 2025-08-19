@@ -1,14 +1,11 @@
-﻿namespace IqraCore.Interfaces.AI
-{
-    public class EmbeddingResult
-    {
-        public float[]? Vector { get; set; }
-        public bool Success { get; set; }
-        public string? ErrorMessage { get; set; }
-    }
+﻿using IqraCore.Entities.Helpers;
 
+namespace IqraCore.Interfaces.AI
+{
     public interface IEmbeddingService : IDisposable
     {
-        Task<EmbeddingResult> GenerateEmbeddingAsync(string text, int? dimensions = null);
+        Task<FunctionReturnResult<float[]?>> GenerateEmbeddingForTextAsync(string text);
+
+        Task<FunctionReturnResult<List<float[]>?>> GenerateEmbeddingForTextListAsync(List<string> texts);
     }
 }

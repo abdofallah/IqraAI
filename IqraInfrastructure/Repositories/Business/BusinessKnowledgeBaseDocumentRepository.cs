@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
+using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Models.Business.KnowledgeBase;
 using IqraInfrastructure.Repositories.Counter;
 using Microsoft.Extensions.Logging;
@@ -78,6 +79,19 @@ namespace IqraInfrastructure.Repositories.Business
                 : await _documentsCollection.DeleteOneAsync(filter);
 
             return result.IsAcknowledged && result.DeletedCount > 0;
+        }
+
+        /// <summary>
+        /// Update document status with optional error for failed
+        /// </summary>
+        public async Task<bool> UpdateDocumentStatusAsync(long documentId, KnowledgeBaseDocumentStatus status, string? failedReason = null, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
+            var update = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(d => d.Status, status).Set(d => d.FailedReason, failedReason);
+            var result = session != null
+                ? await _documentsCollection.UpdateOneAsync(session, filter, update)
+                : await _documentsCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
         }
 
         /// <summary>

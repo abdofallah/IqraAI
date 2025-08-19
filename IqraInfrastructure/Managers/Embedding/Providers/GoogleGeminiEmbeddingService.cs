@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Embedding.Providers.GoogleGemini;
+using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
 using Microsoft.Extensions.Logging;
@@ -15,17 +16,20 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
 
         private readonly string _apiKey;
         private readonly string _model;
+        private readonly int _vectorDimension;
 
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
 
-        public GoogleGeminiEmbeddingService(ILogger<GoogleGeminiEmbeddingService> logger, string apiKey, string model)
+        public GoogleGeminiEmbeddingService(ILogger<GoogleGeminiEmbeddingService> logger, string apiKey, string model, int vectorDimension)
         {
             _logger = logger;
-            _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
-            _model = model ?? throw new ArgumentNullException(nameof(model));
+
+            _apiKey = apiKey;
+            _model = model;
+            _vectorDimension = vectorDimension;
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("x-goog-api-key", _apiKey);
@@ -37,30 +41,27 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
             return InterfaceEmbeddingProviderEnum.GoogleGemini;
         }
 
-        public async Task<EmbeddingResult> GenerateEmbeddingAsync(string text, int? dimensions = null)
+        public async Task<FunctionReturnResult<float[]?>> GenerateEmbeddingForTextAsync(string text)
         {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return new EmbeddingResult { Success = false, ErrorMessage = "Input text cannot be null or empty." };
-            }
-
-            var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:embedContent";
-            var requestPayload = new GeminiEmbeddingRequest
-            {
-                Model = $"models/{_model}",
-                Content = new EmbeddingContent
-                {
-                    Parts = new List<ContentPart> { new ContentPart { Text = text } }
-                },
-                TaskType = "RETRIEVAL_DOCUMENT",
-                OutputDimensionality = dimensions
-            };
-
-            var jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+            var result = new FunctionReturnResult<float[]?>();  
 
             try
             {
+                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:embedContent";
+                var requestPayload = new GeminiEmbeddingRequest
+                {
+                    Model = $"models/{_model}",
+                    Content = new EmbeddingContent
+                    {
+                        Parts = new List<ContentPart> { new ContentPart { Text = text } }
+                    },
+                    TaskType = "RETRIEVAL_DOCUMENT",
+                    OutputDimensionality = _vectorDimension
+                };
+
+                var jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
                 using var response = await _httpClient.PostAsync(requestUrl, content);
 
                 if (response.IsSuccessStatusCode)
@@ -68,20 +69,19 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
                     var responseJson = await response.Content.ReadAsStringAsync();
                     var embeddingResponse = JsonSerializer.Deserialize<GeminiEmbeddingResponse>(responseJson);
 
-                    if (embeddingResponse?.Embedding?.Values == null)
+                    if (embeddingResponse == null || embeddingResponse?.Embedding == null || embeddingResponse?.Embedding?.Values == null || embeddingResponse?.Embedding?.Values.Length == 0)
                     {
-                        return new EmbeddingResult { Success = false, ErrorMessage = "API response was successful but did not contain embedding values." };
+                        return result.SetFailureResult(
+                            "GenerateEmbeddingAsync:EMPTY_EMBEDDING",
+                            "API response was successful but did not contain embedding values."
+                        );
                     }
 
                     // NOTE: According to Gemini docs, if using smaller dimensions, the vector should be normalized.
                     // The default 768-dim output from text-embedding-004 is already normalized.
                     // This is left as an exercise if you plan to use other dimensions frequently.
 
-                    return new EmbeddingResult
-                    {
-                        Success = true,
-                        Vector = embeddingResponse.Embedding.Values
-                    };
+                    return result.SetSuccessResult(embeddingResponse.Embedding.Values);
                 }
                 else
                 {
@@ -89,27 +89,121 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
                     var errorResponse = JsonSerializer.Deserialize<GeminiErrorResponse>(errorJson);
                     var errorMessage = errorResponse?.Error?.Message ?? "An unknown error occurred.";
 
-                    _logger?.LogError("Google Gemini API returned an error. Status: {StatusCode}, Message: {ErrorMessage}", response.StatusCode, errorMessage);
-
-                    return new EmbeddingResult { Success = false, ErrorMessage = $"API Error: {errorMessage} (Status: {response.StatusCode})" };
+                    return result.SetFailureResult(
+                        "GenerateEmbeddingAsync:API_ERROR",
+                        $"API Error: {errorMessage} (Status: {response.StatusCode})"
+                    );
                 }
             }
             catch (HttpRequestException ex)
             {
-                _logger?.LogError(ex, "HTTP request to Google Gemini API failed.");
-                return new EmbeddingResult { Success = false, ErrorMessage = $"Network error: {ex.Message}" };
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:HTTP_ERROR",
+                    $"HTTP request error: {ex.Message}"
+                );
             }
             catch (JsonException ex)
             {
-                _logger?.LogError(ex, "Failed to deserialize Google Gemini API response.");
-                return new EmbeddingResult { Success = false, ErrorMessage = $"JSON parsing error: {ex.Message}" };
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:JSON_ERROR",
+                    $"JSON parsing error: {ex.Message}"
+                );
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "An unexpected error occurred while generating embedding.");
-                return new EmbeddingResult { Success = false, ErrorMessage = $"An unexpected error occurred: {ex.Message}" };
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:UNEXPECTED_ERROR",
+                    $"An unexpected error occurred: {ex.Message}"
+                );
             }
         }
+
+        public async Task<FunctionReturnResult<List<float[]>?>> GenerateEmbeddingForTextListAsync(List<string> texts)
+        {
+            var result = new FunctionReturnResult<List<float[]>?>();
+
+            try
+            {
+                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:batchEmbedContents";
+                var requestPayload = new GeminiEmbeddingRequest
+                {
+                    Model = $"models/{_model}",
+                    Content = new EmbeddingContent
+                    {
+                        Parts = texts.Select(text => new ContentPart { Text = text }).ToList()
+                    },
+                    TaskType = "RETRIEVAL_DOCUMENT",
+                    OutputDimensionality = _vectorDimension
+                };
+
+                var jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
+                var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+                using var response = await _httpClient.PostAsync(requestUrl, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseJson = await response.Content.ReadAsStringAsync();
+                    var embeddingResponse = JsonSerializer.Deserialize<GeminiEmbeddingsListResponse>(responseJson);
+
+                    if (embeddingResponse == null || embeddingResponse?.Embeddings == null || embeddingResponse?.Embeddings.Count == 0)
+                    {
+                        return result.SetFailureResult(
+                            "GenerateEmbeddingAsync:EMPTY_EMBEDDING",
+                            "API response was successful but did not contain embedding values."
+                        );
+                    }
+
+                    // NOTE: According to Gemini docs, if using smaller dimensions, the vector should be normalized.
+                    // The default 768-dim output from text-embedding-004 is already normalized.
+                    // This is left as an exercise if you plan to use other dimensions frequently.
+
+                    var convertedData = embeddingResponse.Embeddings.Select(embedding => embedding.Values).ToList();
+                    if (convertedData.Any(d => d == null || d.Length == 0))
+                    {
+                        return result.SetFailureResult(
+                            "GenerateEmbeddingAsync:EMPTY_EMBEDDING",
+                            "API response was successful but did not contain embedding values."
+                        );
+                    }
+
+                    return result.SetSuccessResult(convertedData);
+                }
+                else
+                {
+                    var errorJson = await response.Content.ReadAsStringAsync();
+                    var errorResponse = JsonSerializer.Deserialize<GeminiErrorResponse>(errorJson);
+                    var errorMessage = errorResponse?.Error?.Message ?? "An unknown error occurred.";
+
+                    return result.SetFailureResult(
+                        "GenerateEmbeddingAsync:API_ERROR",
+                        $"API Error: {errorMessage} (Status: {response.StatusCode})"
+                    );
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:HTTP_ERROR",
+                    $"HTTP request error: {ex.Message}"
+                );
+            }
+            catch (JsonException ex)
+            {
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:JSON_ERROR",
+                    $"JSON parsing error: {ex.Message}"
+                );
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GenerateEmbeddingAsync:UNEXPECTED_ERROR",
+                    $"An unexpected error occurred: {ex.Message}"
+                );
+            }
+        }
+        
 
         public void Dispose()
         {
