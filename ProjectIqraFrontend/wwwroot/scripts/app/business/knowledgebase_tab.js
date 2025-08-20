@@ -12,7 +12,7 @@ const KnowledgeBaseChunkingParentChunkType = {
 const KnowledgeBaseRetrievalType = {
     VectorSearch: 0,
     FullTextSearch: 1,
-    HybirdSearch: 2 // Corrected from 'Hybrid' in C#
+    HybirdSearch: 2
 };
 
 const KnowledgeBaseHybridRetrievalMode = {
@@ -32,6 +32,11 @@ const RetrievalTypeDisplayMap = {
     2: "Hybrid Search"
 };
 
+const KnowledgeBaseDocumentChunkType = {
+    General: 0,
+    Parent: 1,
+    Child: 2
+}
 
 /** Dynamic Variables **/
 let ManageKnowledgeBaseType = null;
@@ -450,12 +455,19 @@ function populateDocumentModalSettings() {
 
 // NEW CHUNK DISPLAY FUNCTIONS
 function createParentChunkCard(parentChunk) {
-    const childPills = parentChunk.children.map(child => `
-        <div class="d-inline-flex align-items-center me-2 mb-2 chunk-pill" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">
-            <button class="btn btn-sm btn-outline-secondary" button-type="edit-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">${child.text.substring(0, 50)}...</button>
-            <button class="btn btn-sm btn-outline-danger ms-1" button-type="delete-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}"><i class="fa-regular fa-xmark"></i></button>
-        </div>
-    `).join('');
+    const childPills = parentChunk.childrenIds.map(childId => {
+        var child = ManageCurrentDocumentData.chunks.find(c => c.id == childId);
+        if (!child || child == null) return '';
+
+        var elementString = `
+            <div class="d-inline-flex align-items-center me-2 mb-2 chunk-pill" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">
+                <button class="btn btn-sm btn-outline-secondary" button-type="edit-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">${child.text.substring(0, 50)}...</button>
+                <button class="btn btn-sm btn-outline-danger ms-1" button-type="delete-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}"><i class="fa-regular fa-xmark"></i></button>
+            </div>
+        `;
+
+        return elementString;
+    }).join('');
 
     const cardId = `chunk-card-${parentChunk.id}`;
 
@@ -475,7 +487,7 @@ function createParentChunkCard(parentChunk) {
             <hr>
             <div class="child-chunk-header" data-bs-toggle="collapse" href="#collapse-${parentChunk.id}">
                 <i class="fa-regular fa-chevron-down me-2"></i>
-                <span>${parentChunk.children.length} CHILD CHUNK${parentChunk.children.length !== 1 ? 'S' : ''}</span>
+                <span>${parentChunk.childrenIds.length} CHILD CHUNK${parentChunk.childrenIds.length !== 1 ? 'S' : ''}</span>
             </div>
             <div class="collapse mt-2" id="collapse-${parentChunk.id}">
                 <div class="child-chunk-pills">
@@ -522,7 +534,7 @@ function fillChunksList() {
     chunksListContainer.empty();
     const chunks = ManageCurrentDocumentData.chunks || [];
 
-    const chunkingType = ManageCurrentKnowledgeBaseData.configuration.chunking.type;
+    const chunkingType = ManageCurrentKnowledgeBaseData.configuration.chunking.type.value;
 
     if (chunks.length === 0) {
         chunksListContainer.html('<h6 class="text-center mt-5">No chunks found for this document.</h6>');
@@ -530,7 +542,7 @@ function fillChunksList() {
     }
 
     if (chunkingType === KnowledgeBaseChunkingType.ParentChild) {
-        chunks.filter(c => c.children).forEach(parentChunk => {
+        chunks.filter(c => c.type.value == KnowledgeBaseDocumentChunkType.Parent).forEach(parentChunk => {
             chunksListContainer.append(createParentChunkCard(parentChunk));
         });
     } else { // General Mode
@@ -1512,7 +1524,7 @@ function initKnowledgeBaseTab() {
         // Chunk Management Events
         addNewChunkButton.on('click', (e) => {
             e.preventDefault();
-            const mode = ManageCurrentKnowledgeBaseData.configuration.chunking.mode;
+            const mode = ManageCurrentKnowledgeBaseData.configuration.chunking.mode.value;
             const type = mode === ChunkingModeENUM.General ? 'general' : 'parent';
 
             editingChunkInfo = { mode: 'add', type: type };
@@ -1548,7 +1560,7 @@ function initKnowledgeBaseTab() {
                 let chunkToEdit;
                 if (childId) {
                     editingChunkInfo = { mode: 'edit', type: 'child', chunkId: childId, parentId: parentId };
-                    chunkToEdit = ManageCurrentDocumentData.chunks.find(p => p.id === parentId).children.find(c => c.id === childId);
+                    chunkToEdit = ManageCurrentDocumentData.chunks.find(c => (c.id === childId && c.parentId === parentId));
                 } else if (parentId) {
                     editingChunkInfo = { mode: 'edit', type: 'parent', chunkId: parentId };
                     chunkToEdit = ManageCurrentDocumentData.chunks.find(p => p.id === parentId);

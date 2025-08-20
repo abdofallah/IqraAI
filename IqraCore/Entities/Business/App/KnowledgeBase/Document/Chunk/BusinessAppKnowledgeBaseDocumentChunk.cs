@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk
@@ -9,6 +10,8 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        public abstract KnowledgeBaseDocumentType Type { get; }
 
         public string Text { get; set; } = string.Empty;
 

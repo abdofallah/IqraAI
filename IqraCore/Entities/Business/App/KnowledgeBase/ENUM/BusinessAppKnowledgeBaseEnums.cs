@@ -31,4 +31,11 @@
         Ready = 1,
         Failed = 2
     }
+
+    public enum KnowledgeBaseDocumentType
+    {
+        General = 0,
+        Parent = 1,
+        Child = 2
+    }
 }
