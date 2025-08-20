@@ -906,9 +906,9 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
         }
 
         const generalMaxLength = parseInt(generalMaxLengthInput.val());
-        if (isNaN(generalMaxLength) || generalMaxLength <= 0) {
+        if (isNaN(generalMaxLength) || generalMaxLength < 1 || generalMaxLength > 4000) {
             validated = false;
-            errors.push("General chunk max length is invalid.");
+            errors.push("General chunk max length is invalid. Must be between 1 and 4000.");
             if (!onlyRemove) {
                 generalMaxLengthInput.addClass("is-invalid");
             }
@@ -917,9 +917,9 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
         }
 
         const chunkOverlap = parseInt(generalOverlapInput.val());
-        if (isNaN(chunkOverlap) || chunkOverlap < 0) {
+        if (isNaN(chunkOverlap) || chunkOverlap < 0 || chunkOverlap > generalMaxLength) {
             validated = false;
-            errors.push("General chunk overlap is invalid.");
+            errors.push("General chunk overlap is invalid. Must be between 0 and max length.");
             if (!onlyRemove) {
                 generalOverlapInput.addClass("is-invalid");
             }
@@ -942,9 +942,9 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
             }
 
             const parentMaxLength = parseInt(parentMaxLengthInput.val());
-            if (isNaN(parentMaxLength) || parentMaxLength <= 0) {
+            if (isNaN(parentMaxLength) || parentMaxLength < 1 || parentMaxLength > 4000) {
                 validated = false;
-                errors.push("Parent chunk max length is invalid.");
+                errors.push("Parent chunk max length is invalid. Must be between 1 and 4000.");
                 if (!onlyRemove) {
                     parentMaxLengthInput.addClass("is-invalid");
                 }
@@ -965,9 +965,9 @@ function validateKnowledgeBaseTab(onlyRemove = false) {
         }
 
         const childMaxLength = parseInt(childMaxLengthInput.val());
-        if (isNaN(childMaxLength) || childMaxLength <= 0) {
+        if (isNaN(childMaxLength) || childMaxLength < 1 || childMaxLength > 4000) {
             validated = false;
-            errors.push("Child chunk max length is invalid.");
+            errors.push("Child chunk max length is invalid. Must be between 1 and 4000.");
             if (!onlyRemove) {
                 childMaxLengthInput.addClass("is-invalid");
             }

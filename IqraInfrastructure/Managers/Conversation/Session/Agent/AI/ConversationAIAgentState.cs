@@ -1,10 +1,10 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
-using IqraCore.Interfaces.AI;
-using IqraCore.Interfaces.VAD;
 using System.Text;
 using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Conversation.Context;
+using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.VAD;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {

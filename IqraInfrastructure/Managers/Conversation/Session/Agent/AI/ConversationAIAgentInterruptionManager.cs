@@ -1,5 +1,4 @@
-﻿using IqraCore.Interfaces.AI;
-using IqraCore.Interfaces.VAD;
+﻿using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.LLM.Providers.Helpers;
 using Microsoft.Extensions.Logging;
@@ -10,6 +9,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Business;
 using System.Diagnostics;
 using IqraInfrastructure.Managers.VAD.Silero;
+using IqraCore.Interfaces.AI;
 
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI

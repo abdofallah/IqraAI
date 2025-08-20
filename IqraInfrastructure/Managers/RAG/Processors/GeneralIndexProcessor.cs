@@ -2,9 +2,10 @@
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
+using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
-using IqraCore.Models.Business.KnowledgeBase;
+using IqraCore.Interfaces.RAG;
 using IqraCore.Models.KnowledgeBase;
 using IqraCore.Models.RAG;
 using IqraInfrastructure.Managers.Embedding;
@@ -42,19 +43,14 @@ namespace IqraInfrastructure.Managers.RAG.Processors
         {
             var generalConfig = (BusinessAppKnowledgeBaseConfigurationGeneralChunking)knowledgeBase.Configuration.Chunking;
 
-            // 1. Combine all extracted pages into a single text block.
             var fullText = string.Join("\n\n", rawDocuments.Select(d => d.PageContent));
 
-            // 2. Clean the text based on the user's rules.
             var cleanedText = TextCleaner.Clean(fullText, generalConfig.Preprocess);
 
-            // 3. Create the appropriate text splitter.
             var splitter = _textSplitterFactory.Create(generalConfig);
 
-            // 4. Split the cleaned text into chunks.
             var textChunks = splitter.SplitText(cleanedText);
 
-            // 5. Convert text chunks into our processed DTO.
             var processedChunks = textChunks.Select(textChunk => new ProcessedDocumentChunkModel
             {
                 Id = ObjectId.GenerateNewId().ToString(),
@@ -110,27 +106,47 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                     chunks[i].Vector = vectorsResult.Data[i];
                 }
 
-                var collectionName = $"b{businessId}_kb{knowledgeBase.Id}";
-                var chunksForVectorStore = chunks.Select(c => new KnowledgeBaseChunkModel
+                var chunksForMetaStore = chunks.Select(c =>
                 {
-                    DocumentName = knowledgeBaseDocument.Name,
-                    TextChunk = c.Text,
-                    Embedding = new ReadOnlyMemory<float>(c.Vector)
+                    BusinessAppKnowledgeBaseDocumentChunk chunk = new BusinessAppKnowledgeBaseDocumentGeneralChunk()
+                    {
+                        Id = c.Id,
+                        Text = c.Text,
+                        IsEnabled = true
+                    };
+
+                    return chunk;
                 });
-                bool chunksAdded = await _vectorRepository.AddChunksAsync(collectionName, chunksForVectorStore);
-                if (!chunksAdded)
+                bool chunksMetaAdded = await _documentRepository.AddDocumentChunksAsync(knowledgeBaseDocument.Id, chunksForMetaStore);
+                if (!chunksMetaAdded)
+                {
+                    return result.SetFailureResult(
+                        "LoadAsync:DOCUMENT_STORE_ERROR",
+                        "Failed to add chunks to document store."
+                    );
+                }
+
+                var collectionName = $"b{businessId}_kb{knowledgeBase.Id}";
+                var chunksForVectorStore = chunks.Select(c =>
+                {
+                    var vectorChunk = new VectorKnowledgeBaseChunkModel
+                    {
+                        DocumentId = knowledgeBaseDocument.Id,
+                        ChunkId = c.Id,
+                        TextChunk = c.Text,
+                        Embedding = new ReadOnlyMemory<float>(c.Vector)
+                    };
+
+                    return vectorChunk;
+                });
+                bool chunksVectorAdded = await _vectorRepository.AddChunksAsync(collectionName, chunksForVectorStore);
+                if (!chunksVectorAdded)
                 {
                     return result.SetFailureResult(
                         "LoadAsync:VECTOR_STORE_ERROR",
                         "Failed to add chunks to vector store."
                     );
-                }
-
-                var updateRequest = new UpdateChunksRequest
-                {
-                    Added = chunks.Select(c => new AddedChunkInfo { Id = c.Id, Text = c.Text }).ToList()
-                };
-                await _documentRepository.UpdateDocumentChunksAsync(knowledgeBaseDocument.Id, updateRequest);
+                } 
 
                 return result.SetSuccessResult();
             }

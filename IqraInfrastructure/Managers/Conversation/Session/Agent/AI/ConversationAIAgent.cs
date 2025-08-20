@@ -6,7 +6,6 @@ using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
-using IqraInfrastructure.Managers.Conversation.Session;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;

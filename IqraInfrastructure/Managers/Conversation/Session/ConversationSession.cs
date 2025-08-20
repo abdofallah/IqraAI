@@ -1,5 +1,4 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Queue;
 using IqraCore.Entities.Conversation;
 using IqraCore.Entities.Conversation.Configuration;
@@ -16,14 +15,12 @@ using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
-using IqraInfrastructure.Managers.Conversation.Session.Client;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Conversation.Session.Helpers;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using System.Web;
 
 namespace IqraInfrastructure.Managers.Conversation.Session
 {

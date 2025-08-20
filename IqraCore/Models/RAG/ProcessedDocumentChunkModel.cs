@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace IqraCore.Models.RAG
+﻿namespace IqraCore.Models.RAG
 {
     public class ProcessedDocumentChunkModel
     {
@@ -19,5 +13,10 @@ namespace IqraCore.Models.RAG
         public long OriginalDocumentId { get; set; }
 
         public Dictionary<string, object> Metadata { get; set; } = new();
+
+        // Properties for parent-child relationship
+        public bool IsParent { get; set; } = false;
+        public string? ParentId { get; set; }
+        public List<ProcessedDocumentChunkModel>? Children { get; set; }
     }
 }

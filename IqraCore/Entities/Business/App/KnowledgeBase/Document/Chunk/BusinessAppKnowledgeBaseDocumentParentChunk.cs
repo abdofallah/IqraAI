@@ -2,6 +2,6 @@
 {
     public class BusinessAppKnowledgeBaseDocumentParentChunk : BusinessAppKnowledgeBaseDocumentChunk
     {
-        public List<BusinessAppKnowledgeBaseDocumentChildChunk> Children { get; set; } = new();
+        public List<string> ChildrenIds { get; set; } = new List<string>();
     }
 }

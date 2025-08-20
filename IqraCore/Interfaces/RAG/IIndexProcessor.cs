@@ -2,8 +2,9 @@
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
+using IqraCore.Models.RAG;
 
-namespace IqraCore.Models.RAG
+namespace IqraCore.Interfaces.RAG
 {
     public interface IIndexProcessor
     {

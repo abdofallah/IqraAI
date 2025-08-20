@@ -1,6 +1,6 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
-using IqraCore.Models.RAG;
+using IqraCore.Interfaces.RAG;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Repositories.Business;
@@ -42,9 +42,12 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                     );
 
                 case KnowledgeBaseChunkingType.ParentChild:
-                    // When we implement ParentChildIndexProcessor, we will construct it here.
-                    // return new ParentChildIndexProcessor(...);
-                    throw new NotImplementedException("ParentChild indexing strategy is not yet implemented.");
+                    return new ParentChildIndexProcessor(
+                        _textSplitterFactory,
+                        _embeddingManager,
+                        _documentRepository,
+                        _vectorRepository
+                    );
 
                 default:
                     throw new NotSupportedException($"Chunking type '{chunkingType}' is not supported by the factory.");

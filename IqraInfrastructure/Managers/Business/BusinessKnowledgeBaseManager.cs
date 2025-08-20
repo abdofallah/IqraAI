@@ -1,5 +1,4 @@
-﻿using Google.Apis.Http;
-using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Retrival;
@@ -7,6 +6,7 @@ using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.RAG;
 using IqraCore.Models.RAG;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.RAG.Extractors;
@@ -213,11 +213,11 @@ namespace IqraInfrastructure.Managers.Business
                                 "Configuration chunking general max length not found."
                             );
                         }
-                        if (!maxLengthElement.TryGetInt32(out var maxLengthInt) || maxLengthInt <= 1)
+                        if (!maxLengthElement.TryGetInt32(out var maxLengthInt) || maxLengthInt < 1 || maxLengthInt > 4000)
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateKnowledgeBaseAsync:CONFIGURATION_CHUNKING_GENERAL_MAX_LENGTH_INVALID",
-                                "Configuration chunking general max length invalid."
+                                "Configuration chunking general max length invalid. Must be between 1 and 4000."
                             );
                         }
                         generalChunking.MaxLength = maxLengthInt;
@@ -230,11 +230,11 @@ namespace IqraInfrastructure.Managers.Business
                                 "Configuration chunking general overlap not found."
                             );
                         }
-                        if (!overlapElement.TryGetInt32(out var overlapInt) || overlapInt < 0)
+                        if (!overlapElement.TryGetInt32(out var overlapInt) || overlapInt < 0 || overlapInt > maxLengthInt)
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateKnowledgeBaseAsync:CONFIGURATION_CHUNKING_GENERAL_OVERLAP_INVALID",
-                                "Configuration chunking general overlap invalid."
+                                "Configuration chunking general overlap invalid. Must be between 0 and max length."
                             );
                         }
                         generalChunking.Overlap = overlapInt;
@@ -337,7 +337,7 @@ namespace IqraInfrastructure.Managers.Business
                                     );
                                 }
                                 string? paragraphDelimiter = delimiterElement.GetString();
-                                if (string.IsNullOrEmpty(parentChildChunking.Parent.Delimiter))
+                                if (string.IsNullOrEmpty(paragraphDelimiter))
                                 {
                                     return result.SetFailureResult(
                                         "AddOrUpdateKnowledgeBaseAsync:CONFIGURATION_CHUNKING_PARENT_DELIMITER_INVALID",
@@ -354,11 +354,11 @@ namespace IqraInfrastructure.Managers.Business
                                         "Configuration chunking parent max length not found."
                                     );
                                 }
-                                if (!maxLengthElement.TryGetInt32(out var maxLengthInt))
+                                if (!maxLengthElement.TryGetInt32(out var maxLengthInt) || maxLengthInt < 1 || maxLengthInt > 4000)
                                 {
                                     return result.SetFailureResult(
                                         "AddOrUpdateKnowledgeBaseAsync:CONFIGURATION_CHUNKING_PARENT_MAX_LENGTH_INVALID",
-                                        "Configuration chunking parent max length invalid."
+                                        "Configuration chunking parent max length invalid. Must be between 1 and 4000."
                                     );
                                 }
                                 parentChildChunking.Parent.MaxLength = maxLengthInt;
@@ -408,11 +408,11 @@ namespace IqraInfrastructure.Managers.Business
                                     "Configuration chunking child max length not found."
                                 );
                             }
-                            if (!maxLengthElement.TryGetInt32(out var maxLengthInt))
+                            if (!maxLengthElement.TryGetInt32(out var maxLengthInt) || maxLengthInt < 1 || maxLengthInt > 4000)
                             {
                                 return result.SetFailureResult(
                                     "AddOrUpdateKnowledgeBaseAsync:CONFIGURATION_CHUNKING_CHILD_MAX_LENGTH_INVALID",
-                                    "Configuration chunking child max length invalid."
+                                    "Configuration chunking child max length invalid. Must be between 1 and 4000."
                                 );
                             }
                             parentChildChunking.Child.MaxLength = maxLengthInt;

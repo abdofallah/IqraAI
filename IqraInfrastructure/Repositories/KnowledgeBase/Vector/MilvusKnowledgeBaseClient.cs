@@ -32,27 +32,39 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
     public record CreateCollectionRequest(
         string dbName,
         string collectionName,
-        int dimension,
-        string metricType,
+        string vectorFieldName,
         string primaryFieldName,
-        string idType,
-        bool autoId,
-        string vectorFieldName
+        SchemaParameter schema,
+        List<IndexParameter> indexParams
     );
 
     public record DropCollectionRequest(string dbName, string collectionName);
     public record LoadCollectionRequest(string dbName, string collectionName);
     public record ReleaseCollectionRequest(string dbName, string collectionName);
 
+    // DTOs for Schemea Management
+    public record SchemaParameter(
+        bool autoID,
+        bool enabledDynamicField,
+        List<SchemaFieldParameter> fields
+    );
+
+    public record SchemaFieldParameter(
+        string fieldName,
+        string dataType,
+        bool nullable,
+        bool isPrimary,
+        Dictionary<string, object> elementTypeParams
+    );
+
     // DTOs for Index Management
-    public record CreateIndexRequest(string dbName, string collectionName, List<IndexParameter> indexParams);
-    public record DropIndexRequest(string dbName, string collectionName, string indexName);
     public record IndexParameter(
         string indexType,
         string metricType,
         string fieldName,
         string indexName,
-        Dictionary<string, object> @params);
+        Dictionary<string, object> @params
+    );
 
     // DTOs for Entity (Data) Management
     public record InsertRequest(string dbName, string collectionName, [property: JsonPropertyName("data")] List<Dictionary<string, object>> Data);
@@ -132,20 +144,6 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
         {
             var request = new ReleaseCollectionRequest(databaseName, collectionName);
             var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/collections/release", request, cancellationToken);
-            return response?.Code == 0;
-        }
-
-        // --- Index Endpoints ---
-
-        public async Task<bool> CreateIndexAsync(CreateIndexRequest request, CancellationToken cancellationToken = default)
-        {
-            var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/indexes/create", request, cancellationToken);
-            return response?.Code == 0;
-        }
-
-        public async Task<bool> DropIndexAsync(DropIndexRequest request, CancellationToken cancellationToken = default)
-        {
-            var response = await PostAsync<MilvusEmptyResponse>("/v2/vectordb/indexes/drop", request, cancellationToken);
             return response?.Code == 0;
         }
 

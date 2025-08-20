@@ -1,5 +1,5 @@
-﻿using IqraCore.Interfaces.RAG;
-using IqraCore.Models.RAG;
+﻿using IqraCore.Models.RAG;
+using IqraCore.Interfaces.RAG;
 using System.Net.Http.Headers;
 using System.Text.Json;
 

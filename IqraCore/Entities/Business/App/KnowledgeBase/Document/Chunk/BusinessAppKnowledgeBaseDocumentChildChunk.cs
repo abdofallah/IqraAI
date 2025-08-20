@@ -2,5 +2,6 @@
 {
     public class BusinessAppKnowledgeBaseDocumentChildChunk : BusinessAppKnowledgeBaseDocumentChunk
     {
+        public string ParentId { get; set; } = string.Empty;
     }
 }

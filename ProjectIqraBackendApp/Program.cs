@@ -1,6 +1,6 @@
 using IqraCore.Entities.Configuration;
 using IqraCore.Entities.Server;
-using IqraCore.Interfaces.Server;
+using IqraCore.Models.Server;
 using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Billing;

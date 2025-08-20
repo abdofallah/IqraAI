@@ -1,15 +1,10 @@
 ﻿using IqraCore.Entities.Helpers;
 using IqraCore.Models.KnowledgeBase;
 using Microsoft.Extensions.Logging;
-using System.Xml.Linq;
+using System;
 
 namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 {
-    /// <summary>
-    /// A high-level repository for interacting with the knowledge base.
-    /// It uses the MilvusKnowledgeBaseClient to communicate with the Milvus service
-    /// and translates between application-specific models and Milvus API DTOs.
-    /// </summary>
     public class KnowledgeBaseVectorRepository
     {
         private readonly MilvusKnowledgeBaseClient _milvusClient;
@@ -19,7 +14,8 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
 
         // Field names are defined as constants to ensure consistency
         private const string FieldChunkId = "chunk_id";
-        private const string FieldDocumentName = "document_name";
+        private const string FieldDocumentId = "document_id";
+        private const string FieldParentChunkId = "parent_chunk_id";
         private const string FieldTextChunk = "text_chunk";
         private const string FieldEmbedding = "vector";
 
@@ -30,10 +26,6 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             _logger = logger;
         }
 
-        /// <summary>
-        /// Creates a collection with a predefined schema and then creates an index on the vector field.
-        /// This is a correction and improvement over the original implementation.
-        /// </summary>
         public async Task<bool> CreateCollectionAsync(string collectionName, int vectorDimension, bool hybrirdSearchEnabled, CancellationToken cancellationToken = default)
         {
             try
@@ -41,12 +33,78 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
                 var createCollectionRequest = new CreateCollectionRequest(
                     dbName: DatabaseName,
                     collectionName: collectionName,
-                    dimension: vectorDimension,
-                    metricType: "IP",
                     primaryFieldName: FieldChunkId,
-                    idType: "Int64",
-                    autoId: true,
-                    vectorFieldName: FieldEmbedding
+                    vectorFieldName: FieldEmbedding,
+                    schema: new SchemaParameter(
+                        autoID: false,
+                        enabledDynamicField: false,
+                        fields: new List<SchemaFieldParameter>()
+                        {
+                            new SchemaFieldParameter(
+                                fieldName: FieldChunkId,
+                                dataType: "VarChar",
+                                nullable: false,
+                                isPrimary: true,
+                                elementTypeParams: new Dictionary<string, object>()
+                                {
+                                    { "max_length", 255 }
+                                }
+                            ),
+                            new SchemaFieldParameter(
+                                fieldName: FieldEmbedding,
+                                dataType: "FloatVector",
+                                nullable: false,
+                                isPrimary: false,
+                                elementTypeParams: new Dictionary<string, object> {
+                                    { "dim", vectorDimension }
+                                }
+                            ),
+                            new SchemaFieldParameter(
+                                fieldName: FieldDocumentId,
+                                dataType: "VarChar",
+                                nullable: false,
+                                isPrimary: false,
+                                elementTypeParams: new Dictionary<string, object>()
+                                {
+                                    { "max_length", 255 }
+                                }
+                            ),
+                            new SchemaFieldParameter(
+                                fieldName: FieldParentChunkId,
+                                dataType: "VarChar",
+                                nullable: true,
+                                isPrimary: false,
+                                elementTypeParams: new Dictionary<string, object>()
+                                {
+                                    { "max_length", 255 }
+                                }
+                            ),
+                            new SchemaFieldParameter(
+                                fieldName: FieldTextChunk,
+                                dataType: "VarChar",
+                                nullable: false,
+                                isPrimary: false,
+                                elementTypeParams: new Dictionary<string, object>()
+                                {
+                                    { "max_length", 4000 }
+                                }
+                            )
+                        }
+                    ),
+                    indexParams: new List<IndexParameter>
+                    {
+                        new IndexParameter(
+                            fieldName: FieldEmbedding,
+                            metricType: "IP",
+                            indexType: "HNSW",
+                            indexName: $"idx_{FieldEmbedding}",
+                            @params: new Dictionary<string, object> {
+                                { "dim", vectorDimension },
+                                { "M", 8 },
+                                { "efConstruction", 64 }
+                            }
+                        )
+                    }
                 );
 
                 bool collectionCreated = await _milvusClient.CreateCollectionAsync(createCollectionRequest, cancellationToken);
@@ -60,44 +118,7 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
                 if (!releaseCollection)
                 {
                     _logger.LogError("Failed to release collection {CollectionName} via Milvus client.", collectionName);
-                    return false;
-                }
-
-                bool dropDefaultIndex = await _milvusClient.DropIndexAsync(
-                    new DropIndexRequest(
-                        dbName: DatabaseName,
-                        collectionName: collectionName,
-                        indexName: FieldEmbedding
-                    ),
-                    cancellationToken
-                );
-                if (!dropDefaultIndex)
-                {
-                    _logger.LogError("Failed to drop default index for collection {CollectionName}.", collectionName);
-                    return false;
-                }
-
-                // Phase 2: Create the index immediately after collection creation.
-                var createIndexRequest = new CreateIndexRequest(
-                    dbName: DatabaseName,
-                    collectionName: collectionName,
-                    indexParams: new List<IndexParameter>
-                    {
-                        new IndexParameter(
-                            indexType: "HNSW",
-                            metricType: "IP",
-                            fieldName: FieldEmbedding,
-                            indexName: $"idx_{FieldEmbedding}",
-                            @params: new Dictionary<string, object> { { "M", 8 }, { "efConstruction", 64 } }
-                        )
-                    }
-                );
-
-                bool indexCreated = await _milvusClient.CreateIndexAsync(createIndexRequest, cancellationToken);
-                if (!indexCreated)
-                {
-                    _logger.LogError("Failed to create index for collection {CollectionName}.", collectionName);
-                    // Optionally, you might want to drop the collection here if index creation fails.
+                    // todo is this major? how to release for unused collection, maybe the collection load manager? but why did it fail?
                     return false;
                 }
 
@@ -110,19 +131,22 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             }
         }
 
-        /// <summary>
-        /// Inserts a batch of document chunks into the specified collection.
-        /// </summary>
-        public async Task<bool> AddChunksAsync(string collectionName, IEnumerable<KnowledgeBaseChunkModel> chunks, CancellationToken cancellationToken = default)
+        public async Task<bool> AddChunksAsync(string collectionName, IEnumerable<VectorKnowledgeBaseChunkModel> chunks, CancellationToken cancellationToken = default)
         {
             try
             {
-                // Translate our application's KnowledgeBaseChunk model into the format Milvus expects: List<Dictionary<string, object>>
-                var dataToInsert = chunks.Select(chunk => new Dictionary<string, object>
+                var dataToInsert = chunks.Select(chunk =>
                 {
-                    { FieldDocumentName, chunk.DocumentName },
-                    { FieldTextChunk, chunk.TextChunk },
-                    { FieldEmbedding, chunk.Embedding }
+                    var chunkData = new Dictionary<string, object?>
+                    {
+                        { FieldDocumentId, chunk.DocumentId },
+                        { FieldChunkId, chunk.ChunkId },
+                        { FieldTextChunk, chunk.TextChunk },
+                        { FieldEmbedding, chunk.Embedding },
+                        { FieldParentChunkId, chunk.ParentChunkId }
+                    };
+
+                    return chunkData;
                 }).ToList();
 
                 if (!dataToInsert.Any())
@@ -150,29 +174,29 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             }
         }
 
-        /// <summary>
-        /// Searches the specified collection.
-        /// IMPORTANT: This method now assumes the collection has already been loaded into memory.
-        /// The loading/releasing logic is handled by the new session manager (Phase 3).
-        /// </summary>
-        public async Task<FunctionReturnResult<List<KnowledgeBaseSearchResultModel>>> SearchAsync(string collectionName, ReadOnlyMemory<float> queryVector, int topK, string? filter = null, CancellationToken cancellationToken = default)
+        public async Task<FunctionReturnResult<List<KnowledgeBaseSearchResultModel>>> SearchAsync(string collectionName, ReadOnlyMemory<float> queryVector, int topK, bool parentChildSearch, string? filter = null, CancellationToken cancellationToken = default)
         {
             var result = new FunctionReturnResult<List<KnowledgeBaseSearchResultModel>>();
 
             try
             {
+                var outputFields = new List<string> { FieldChunkId, FieldTextChunk, FieldDocumentId };
+                if (parentChildSearch)
+                {
+                    outputFields.Add(FieldParentChunkId);
+                }
+
                 var searchRequest = new SearchRequest(
                     dbName: DatabaseName,
                     collectionName: collectionName,
                     vectors: new List<ReadOnlyMemory<float>> { queryVector },
                     annsField: FieldEmbedding,
                     limit: topK,
-                    outputFields: new List<string> { FieldTextChunk, FieldDocumentName },
+                    outputFields: outputFields,
                     filter: filter
                 );
 
                 var searchResponse = await _milvusClient.SearchAsync(searchRequest, cancellationToken);
-
                 if (searchResponse?.Code != 0 || searchResponse.Data == null)
                 {
                     _logger.LogError("Search failed for collection {CollectionName}. Milvus response code: {Code}", collectionName, searchResponse?.Code);
@@ -180,16 +204,22 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
                 }
 
                 var processedResults = new List<KnowledgeBaseSearchResultModel>();
-                // The response `Data` is a List of dictionaries, one for each result.
                 foreach (var item in searchResponse.Data)
                 {
-                    processedResults.Add(new KnowledgeBaseSearchResultModel
+                    var resultItem = new KnowledgeBaseSearchResultModel
                     {
-                        // The keys are "id", "distance", and the names of the output_fields.
                         Score = float.Parse(item["distance"].ToString()),
                         Text = item[FieldTextChunk].ToString() ?? string.Empty,
-                        DocumentName = item[FieldDocumentName].ToString() ?? string.Empty
-                    });
+                        DocumentId = item[FieldDocumentId].ToString() ?? string.Empty,
+                        ChunkId = item[FieldChunkId].ToString() ?? string.Empty
+                    };
+
+                    if (parentChildSearch)
+                    {
+                        resultItem.ParentChunkid = item[FieldParentChunkId].ToString() ?? string.Empty;
+                    }
+
+                    processedResults.Add(resultItem);
                 }
 
                 return result.SetSuccessResult(processedResults);
@@ -201,9 +231,6 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             }
         }
 
-        /// <summary>
-        /// Deletes an entire collection. Use with caution.
-        /// </summary>
         public async Task<bool> DeleteKnowledgeBaseAsync(string collectionName, CancellationToken cancellationToken = default)
         {
             try

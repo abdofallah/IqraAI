@@ -23,6 +23,7 @@ namespace IqraInfrastructure.Managers.RAG.Extractors
             switch (extension)
             {
                 case ".txt":
+                case ".md":
                     return new TextExtractor(filePath);
 
                 case ".pdf":
@@ -31,8 +32,7 @@ namespace IqraInfrastructure.Managers.RAG.Extractors
                 case ".doc":
                 case ".docx":
                 case ".ppt":
-                case ".pptx":
-                case ".md":
+                case ".pptx":        
                 case ".html":
                 case ".htm":
                 case ".xml":
