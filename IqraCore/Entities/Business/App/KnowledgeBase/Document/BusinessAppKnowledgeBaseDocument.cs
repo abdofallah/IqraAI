@@ -1,6 +1,5 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.Business.App.KnowledgeBase.Document
@@ -12,7 +11,6 @@ namespace IqraCore.Entities.Business.App.KnowledgeBase.Document
         public string Name { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
 
-        [BsonRepresentation(BsonType.String)]
         public KnowledgeBaseDocumentStatus Status { get; set; } = KnowledgeBaseDocumentStatus.Processing;
         public string? FailedReason { get; set; } = null;
 

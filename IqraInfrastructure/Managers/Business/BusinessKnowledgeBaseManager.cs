@@ -988,12 +988,12 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Run Background Processing Task
-            _ = ProcessDocumentBackgroundAsync(file, businessId, kb, newDocument.Id, businessApp.Data!);
+            _ = ProcessDocumentBackgroundAsync(file, businessId, kb, newDocument, businessApp.Data!);
 
             return result.SetSuccessResult(newDocument);
         }
 
-        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, long knowledgeBaseDocumentId, BusinessApp businessApp)
+        private async Task ProcessDocumentBackgroundAsync(IFormFile file, long businessId, BusinessAppKnowledgeBase kb, BusinessAppKnowledgeBaseDocument knowledgeBaseDocument, BusinessApp businessApp)
         {
             string? tempFilePath = null;
 
@@ -1002,7 +1002,7 @@ namespace IqraInfrastructure.Managers.Business
                 var embeddingIntegrationData = businessApp.Integrations.Find(integration => integration.Id == kb.Configuration.Embedding.Id);
                 if (embeddingIntegrationData == null)
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "No embedding integration found in business app.");
                     return;
                 }
            
@@ -1016,31 +1016,31 @@ namespace IqraInfrastructure.Managers.Business
                 List<ExtractorDocumentModel> extractedDocuments = await extractor.ExtractAsync();
                 if (extractedDocuments == null || !extractedDocuments.Any())
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "Extraction resulted in no content.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Extraction resulted in no content.");
                     return;
                 }
 
                 IIndexProcessor indexProcessor = _indexProcessorFactory.Create(kb);
 
-                List<ProcessedDocumentChunkModel> processedChunks = await indexProcessor.TransformAsync(extractedDocuments, kb, knowledgeBaseDocumentId);
+                List<ProcessedDocumentChunkModel> processedChunks = await indexProcessor.TransformAsync(extractedDocuments, kb, knowledgeBaseDocument.Id);
                 if (processedChunks == null || !processedChunks.Any())
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, "Transformation resulted in no processable chunks.");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, "Transformation resulted in no processable chunks.");
                     return;
                 }
 
-                var result = await indexProcessor.LoadAsync(processedChunks, kb, embeddingIntegrationData);
+                var result = await indexProcessor.LoadAsync(processedChunks, kb, knowledgeBaseDocument, embeddingIntegrationData, businessId);
                 if (!result.Success)
                 {
-                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, $"[{result.Code}]: {result.Message}");
+                    await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"[{result.Code}]: {result.Message}");
                     return;
                 }
 
-                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Ready);
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Ready);
             }
             catch (Exception ex)
             {
-                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocumentId, KnowledgeBaseDocumentStatus.Failed, $"Processing failed: {ex.Message}");
+                await _knowledgeBaseDocumentRepository.UpdateDocumentStatusAsync(knowledgeBaseDocument.Id, KnowledgeBaseDocumentStatus.Failed, $"Processing failed: {ex.Message}");
             }
             finally
             {
@@ -1048,6 +1048,49 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     File.Delete(tempFilePath);
                 }
+            }
+        }
+
+        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>> GetKnowledgeBaseDocuments(long businessId, string kbId)
+        {
+            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
+
+            try
+            {
+                var knowledgeBaseData = await _businessAppRepository.GetBusinessAppKnowledgeBaseAsync(businessId, kbId);
+                if (knowledgeBaseData == null)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:KNOWLEDGE_BASE_NOT_FOUND",
+                        "Knowledge base not found."
+                    );
+                }
+
+                var documents = await _knowledgeBaseDocumentRepository.GetDocumentsByIdsAsync(knowledgeBaseData.Documents);
+                if (documents == null)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:DOCUMENTS_NOT_FOUND",
+                        "Documents not found."
+                    );
+                }
+
+                if (documents.Count != knowledgeBaseData.Documents.Count)
+                {
+                    return result.SetFailureResult(
+                        "GetKnowledgeBaseDocuments:DOCUMENTS_INCOMPLETE_COUNT",
+                        "Incomplete document count."
+                    );
+                }
+
+                return result.SetSuccessResult(documents);
+            }
+            catch (Exception ex)
+            {
+                return result.SetFailureResult(
+                    "GetKnowledgeBaseDocuments:EXCEPTION",
+                    ex.Message
+                );
             }
         }
 

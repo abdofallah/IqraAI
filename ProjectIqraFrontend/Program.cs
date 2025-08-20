@@ -13,6 +13,7 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Processors;
+using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Rerank;
 using IqraInfrastructure.Managers.STT;
@@ -461,12 +462,19 @@ namespace ProjectIqraFrontend
                     }
                 );
             });
+            //TextSplitterFactory
+            builder.Services.AddSingleton<TextSplitterFactory>((sp) =>
+            {
+                return new TextSplitterFactory();
+            });
             builder.Services.AddSingleton<IndexProcessorFactory>((sp) =>
             {
-                return new IndexProcessorFactory()
-                {
-
-                };
+                return new IndexProcessorFactory(
+                    sp.GetRequiredService<TextSplitterFactory>(),
+                    sp.GetRequiredService<EmbeddingProviderManager>(),
+                    sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
+                    sp.GetRequiredService<KnowledgeBaseVectorRepository>()
+                );
             });
             builder.Services.AddSingleton<ExtractProcessor>((sp) =>
             {

@@ -200,9 +200,9 @@ function SaveBusinessKnowledgeBase(formData, successCallback, errorCallback) {
     });
 }
 
-function SaveAndProcessDocument(formData, successCallback, errorCallback) {
+function SaveAndProcessDocument(kbId, formData, successCallback, errorCallback) {
     $.ajax({
-        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${ManageCurrentKnowledgeBaseData.id}/documents/upload`,
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents/upload`,
         method: "POST",
         data: formData,
         processData: false,
@@ -236,6 +236,22 @@ function TestRetrievalQuery(kbId, query, successCallback, errorCallback) {
     setTimeout(() => successCallback({ success: true, data: results }), 1000);
 }
 
+function GetBusinessKnowledgeBaseDocuments(kbId, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents`,
+        method: "GET",
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (error) => {
+            errorCallback(error, false);
+        },
+    });
+}
 
 /** Functions **/
 
@@ -336,7 +352,7 @@ function fillKnowledgeBaseList() {
 // -- Document & Chunk Management --
 function createDocumentTableRow(docData) {
     let statusPill = '';
-    switch (docData.status) {
+    switch (docData.status.value) {
         case KnowledgeBaseDocumentStatus.Ready:
             statusPill = `<span class="badge bg-success">Ready</span>`;
             break;
@@ -356,12 +372,12 @@ function createDocumentTableRow(docData) {
             <td>${statusPill}</td>
             <td class="d-flex align-items-center">
                 <div class="form-check form-switch me-3">
-                    <input class="form-check-input" type="checkbox" role="switch" button-type="toggleDocumentStatus" title="Enable/Disable Document" ${docData.enabled ? 'checked' : ''}>
+                    <input class="form-check-input" type="checkbox" role="switch" button-type="toggleDocumentStatus" title="Enable/Disable Document" ${docData.enabled ? 'checked' : ''} ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
                 </div>
-                <button class="btn btn-info btn-sm me-2" button-type="viewDocumentChunks" title="View/Edit Chunks">
+                <button class="btn btn-info btn-sm me-2" button-type="viewDocumentChunks" title="View/Edit Chunks" ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
                     <i class="fa-regular fa-layer-group"></i>
                 </button>
-                <button class="btn btn-danger btn-sm" button-type="deleteDocument" title="Delete Document">
+                <button class="btn btn-danger btn-sm" button-type="deleteDocument" title="Delete Document" ${docData.status.value != KnowledgeBaseDocumentStatus.Processing ? '' : 'disabled'}>
                     <i class="fa-regular fa-trash"></i>
                 </button>
             </td>
@@ -571,6 +587,19 @@ function createDefaultKnowledgeBaseObject() {
 }
 
 function resetAndEmptyKnowledgeBaseManagerTab() {
+    // Data Reset
+    ManageKnowledgeBaseType = null;
+    ManageCurrentKnowledgeBaseData = null;
+    ManageCurrentKnowledgeBaseDocuments = [];
+    ManageCurrentDocumentData = null;
+    currentAddedChunks = [];
+    currentEditedChunks = [];
+    currentDeletedChunks = [];
+    editingChunkInfo = null;
+    IsSavingKnowledgeBase = false;
+    IsProcessingDocument = false;
+    IsSavingChunks = false;
+
     // General
     editKnowledgeBaseIconInput.text("🧠");
     editKnowledgeBaseNameInput.val("").removeClass('is-invalid');
@@ -599,7 +628,6 @@ function resetAndEmptyKnowledgeBaseManagerTab() {
     hybridWeightSlider.val(0.7).trigger('input');
 
     // Documents
-    ManageCurrentKnowledgeBaseDocuments = [];
     fillDocumentsTable();
 
     // Tabs & Buttons
@@ -689,8 +717,46 @@ function fillKnowledgeBaseManagerTab() {
     }
 
     // Documents
-    fillDocumentsTable();
+    const docsTableBody = documentsTable.find("tbody");
+    docsTableBody.empty();
+    docsTableBody.append('<tr tr-type="none-notice"><td colspan="3">Loading...</td></tr>');
 
+    uploadDocumentButton.prop('disabled', true);
+    GetBusinessKnowledgeBaseDocuments(kbData.id,
+        (successResponse) => {
+            if (!successResponse.success) {
+                AlertManager.createAlert({
+                    type: "danger",
+                    message: "Unable to retrieve knowledge base documents. Check console for details.",
+                    timeout: 6000,
+                });
+
+                console.log("Unable to retrieve knowledge base documents.", successResponse);
+
+                return;
+            }
+
+            ManageCurrentKnowledgeBaseDocuments = successResponse.data;
+            fillDocumentsTable();
+
+            uploadDocumentButton.prop('disabled', false);
+        },
+        (errorResponse) => {
+            AlertManager.createAlert({
+                type: "danger",
+                message: "Failed to retrieve knowledge base documents. Check console for details.",
+                timeout: 6000,
+            });
+
+            console.error("Failed to retrieve knowledge base documents.", errorResponse);
+
+            docsTableBody.empty();
+            docsTableBody.append('<tr tr-type="none-notice"><td colspan="3">Failed to retrieve knowledge base documents. Try refreshing the page.</td></tr>');
+
+            uploadDocumentButton.prop('disabled', false);
+        }
+    );
+    
     // Tabs & Buttons
     knowledgeBaseManagerDocumentsTabButton.removeClass('disabled').prop('disabled', false);
     saveKnowledgeBaseButton.addClass('disabled').prop("disabled", true);
@@ -1152,9 +1218,12 @@ function initKnowledgeBaseTab() {
         // View Switching & Navigation
         addNewKnowledgeBaseButton.on("click", (event) => {
             event.preventDefault();
+
+            resetAndEmptyKnowledgeBaseManagerTab();
+
             ManageCurrentKnowledgeBaseData = createDefaultKnowledgeBaseObject();
             currentKnowledgeBaseName.text("New Knowledge Base");
-            resetAndEmptyKnowledgeBaseManagerTab();
+
             showKnowledgeBaseManagerTab();
             ManageKnowledgeBaseType = "new";
         });
@@ -1169,12 +1238,19 @@ function initKnowledgeBaseTab() {
 
         knowledgeBaseListTable.on('click', '.routing-card', (event) => {
             event.preventDefault();
-            const kbId = $(event.currentTarget).attr('kb-id');
-            ManageCurrentKnowledgeBaseData = BusinessFullData.businessApp.knowledgeBases.find(kb => kb.id === kbId);
-            currentKnowledgeBaseName.text(ManageCurrentKnowledgeBaseData.general.name);
+
             resetAndEmptyKnowledgeBaseManagerTab();
+
+            const kbId = $(event.currentTarget).attr('kb-id');
+
+            ManageCurrentKnowledgeBaseData = BusinessFullData.businessApp.knowledgeBases.find(kb => kb.id === kbId);
+
+            currentKnowledgeBaseName.text(ManageCurrentKnowledgeBaseData.general.name);
+            
             fillKnowledgeBaseManagerTab();
+
             showKnowledgeBaseManagerTab();
+
             ManageKnowledgeBaseType = "edit";
         });
 
@@ -1293,24 +1369,50 @@ function initKnowledgeBaseTab() {
             formData.append('file', file);
             formData.append('knowledgeBaseId', ManageCurrentKnowledgeBaseData.id);
 
-            SaveAndProcessDocument(formData, (response) => {
-                const newDoc = response.data;
-                ManageCurrentKnowledgeBaseDocuments.push(newDoc); 
-                ManageCurrentKnowledgeBaseData.documents.push(newDoc.id); 
+            SaveAndProcessDocument(ManageCurrentKnowledgeBaseData.id, formData,
+                (response) => {
+                    if (!response.success) {
+                        spinner.addClass('d-none');
+                        saveAndProcessDocumentButton.prop('disabled', false);
+                        IsProcessingDocument = false;
 
-                fillDocumentsTable();
+                        AlertManager.createAlert({
+                            type: 'danger',
+                            message: 'Unable to add document for processing. Check console logs for more details.',
+                        });
+                        console.log("Unable to add document for processing.", response);
 
-                spinner.addClass('d-none');
-                saveAndProcessDocumentButton.prop('disabled', false);
-                IsProcessingDocument = false;
-                documentSettingsModal.hide();
+                        return;
+                    }
 
-                AlertManager.createAlert({ type: 'success', message: 'Document processed successfully.' });
-            }, (error) => {
-                spinner.addClass('d-none');
-                saveAndProcessDocumentButton.prop('disabled', false);
-                IsProcessingDocument = false;
-                AlertManager.createAlert({ type: 'danger', message: 'Failed to process document.' });
+                    const newDoc = response.data;
+                    ManageCurrentKnowledgeBaseDocuments.push(newDoc); 
+                    ManageCurrentKnowledgeBaseData.documents.push(newDoc.id); 
+
+                    fillDocumentsTable();
+
+                    spinner.addClass('d-none');
+                    saveAndProcessDocumentButton.prop('disabled', false);
+                    IsProcessingDocument = false;
+                    documentSettingsModal.hide();
+
+                    AlertManager.createAlert({
+                        type: 'success',
+                        message: 'Document added for processing. Refresh and check the status.',
+                        timeout: 6000
+                    });
+                },
+                (error) => {
+                    spinner.addClass('d-none');
+                    saveAndProcessDocumentButton.prop('disabled', false);
+                    IsProcessingDocument = false;
+
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Failed to add document for processing. Check console logs for more details.',
+                    });
+
+                    console.log("Failed to add document for processing.", error);
             });
         });
 

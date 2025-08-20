@@ -125,15 +125,20 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
             try
             {
                 var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:batchEmbedContents";
-                var requestPayload = new GeminiEmbeddingRequest
+                var requestPayload = new
                 {
-                    Model = $"models/{_model}",
-                    Content = new EmbeddingContent
-                    {
-                        Parts = texts.Select(text => new ContentPart { Text = text }).ToList()
-                    },
-                    TaskType = "RETRIEVAL_DOCUMENT",
-                    OutputDimensionality = _vectorDimension
+                    requests = texts.Select(text => {
+                        return new GeminiEmbeddingRequest
+                        {
+                            Model = $"models/{_model}",
+                            Content = new EmbeddingContent
+                            {
+                                Parts = [new ContentPart { Text = text }]
+                            },
+                            TaskType = "RETRIEVAL_DOCUMENT",
+                            OutputDimensionality = _vectorDimension
+                        };
+                    }).ToList()
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);

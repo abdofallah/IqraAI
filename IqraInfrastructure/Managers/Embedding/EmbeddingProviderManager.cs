@@ -4,6 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
 using IqraCore.Interfaces.AI;
+using IqraInfrastructure.Managers.Embedding.Providers;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Repositories.Embedding;
 using Microsoft.AspNetCore.Http;
@@ -486,16 +487,16 @@ namespace IqraInfrastructure.Managers.Embedding
 
                 switch (providerDataResult.Id)
                 {
-                    // TODO: Implement the actual service classes for each provider
+                    case InterfaceEmbeddingProviderEnum.GoogleGemini:
+                        {
+                            var service = new GoogleGeminiEmbeddingService(_loggerFactory.CreateLogger<GoogleGeminiEmbeddingService>(), apiKey, model, (int)agentIntegrationData.FieldValues["model_vector_dimension"]);
+                            return result.SetSuccessResult(service);
+                        }
 
                     default:
                         _logger.LogError("Business app Embedding provider {ProviderType} not supported for building service", providerDataResult.Id);
                         return result.SetFailureResult("BuildProviderService:2", $"Business app Embedding provider {providerDataResult.Id} not supported");
                 }
-
-                // Temporary result until services are implemented
-                _logger.LogWarning("Service implementation for {Provider} is not yet available.", providerDataResult.Id);
-                return result.SetFailureResult("BuildProviderService:NOT_IMPLEMENTED", $"Service for {providerDataResult.Id} not implemented.");
             }
             catch (Exception ex)
             {

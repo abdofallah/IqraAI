@@ -198,5 +198,50 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             return result.SetSuccessResult(addAndProcessResult.Data);
         }
+
+        [HttpGet("/app/user/business/{businessId}/knowledgebase/{kbId}/documents")]
+        public async Task<FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>> GetKnowledgebaseDocuments(long businessId, string kbId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<List<BusinessAppKnowledgeBaseDocument>?>();
+
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
+            {
+                result.Code = $"GetKnowledgebaseDocuments:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
+            }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+
+            // Knowledge Base Permission
+            if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+            {
+                return result.SetFailureResult(
+                    "GetKnowledgebaseDocuments:KNOWLEDGE_BASES_DISABLED",
+                    $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                );
+            }
+  
+            // Delegate to Manager
+            var addOrUpdateResult = await _businessManager.GetKnowledgeBaseManager().GetKnowledgeBaseDocuments(businessId, kbId);
+            if (!addOrUpdateResult.Success)
+            {
+                return result.SetFailureResult(
+                    $"GetKnowledgebaseDocuments:{addOrUpdateResult.Code}",
+                    addOrUpdateResult.Message
+                );
+            }
+
+            return result.SetSuccessResult(addOrUpdateResult.Data);
+        }
+
     }
 }

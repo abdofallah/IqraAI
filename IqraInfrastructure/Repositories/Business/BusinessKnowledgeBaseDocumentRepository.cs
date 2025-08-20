@@ -45,6 +45,15 @@ namespace IqraInfrastructure.Repositories.Business
         }
 
         /// <summary>
+        /// Retrieves multiple documents given a list of ids
+        /// </summary>
+        public async Task<List<BusinessAppKnowledgeBaseDocument>?> GetDocumentsByIdsAsync(List<long> documentIds)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.In(d => d.Id, documentIds);
+            return await _documentsCollection.Find(filter).ToListAsync();
+        }
+
+        /// <summary>
         /// Creates a new document in the collection.
         /// </summary>
         public async Task<bool> CreateDocumentAsync(BusinessAppKnowledgeBaseDocument document, IClientSessionHandle? session = null)

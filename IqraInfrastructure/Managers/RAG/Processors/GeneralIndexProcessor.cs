@@ -1,6 +1,7 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Chunking;
+using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
 using IqraCore.Models.Business.KnowledgeBase;
@@ -66,7 +67,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
             return Task.FromResult(processedChunks);
         }
 
-        public async Task<FunctionReturnResult> LoadAsync(List<ProcessedDocumentChunkModel> chunks, BusinessAppKnowledgeBase knowledgeBase, BusinessAppIntegration embeddingIntegration)
+        public async Task<FunctionReturnResult> LoadAsync(List<ProcessedDocumentChunkModel> chunks, BusinessAppKnowledgeBase knowledgeBase, BusinessAppKnowledgeBaseDocument knowledgeBaseDocument, BusinessAppIntegration embeddingIntegration, long businessId)
         {
             var result = new FunctionReturnResult();
 
@@ -109,22 +110,27 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                     chunks[i].Vector = vectorsResult.Data[i];
                 }
 
-                var collectionName = $"b{knowledgeBase.Id}_kb{knowledgeBase.Id}"; // Assuming your business ID is stored in the KB object or accessible here
-                var originalDocument = await _documentRepository.GetDocumentByIdAsync(chunks.First().OriginalDocumentId);
-
+                var collectionName = $"b{businessId}_kb{knowledgeBase.Id}";
                 var chunksForVectorStore = chunks.Select(c => new KnowledgeBaseChunkModel
                 {
-                    DocumentName = originalDocument?.Name ?? "Unknown",
+                    DocumentName = knowledgeBaseDocument.Name,
                     TextChunk = c.Text,
                     Embedding = new ReadOnlyMemory<float>(c.Vector)
                 });
-                await _vectorRepository.AddChunksAsync(collectionName, chunksForVectorStore);
+                bool chunksAdded = await _vectorRepository.AddChunksAsync(collectionName, chunksForVectorStore);
+                if (!chunksAdded)
+                {
+                    return result.SetFailureResult(
+                        "LoadAsync:VECTOR_STORE_ERROR",
+                        "Failed to add chunks to vector store."
+                    );
+                }
 
                 var updateRequest = new UpdateChunksRequest
                 {
                     Added = chunks.Select(c => new AddedChunkInfo { Id = c.Id, Text = c.Text }).ToList()
                 };
-                await _documentRepository.UpdateDocumentChunksAsync(chunks.First().OriginalDocumentId, updateRequest);
+                await _documentRepository.UpdateDocumentChunksAsync(knowledgeBaseDocument.Id, updateRequest);
 
                 return result.SetSuccessResult();
             }
