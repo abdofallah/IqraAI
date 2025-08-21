@@ -14,7 +14,7 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing.Rerank
         private readonly BusinessManager _businessManager;
         private readonly RerankProviderManager _rerankProviderManager;
 
-        private IRerankService _rerankService;
+        private IRerankService? _rerankService = null;
 
         public RerankModelService(BusinessManager businessManager, RerankProviderManager rerankProviderManager)
         {
@@ -111,6 +111,13 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing.Rerank
                 BusinessAppKnowledgeBaseConfigurationHybridRetrieval hyb => hyb.RerankIntegration,
                 _ => null
             };
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_rerankService != null) {
+                _rerankService.Dispose();
+            }
         }
     }
 }

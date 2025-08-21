@@ -1,5 +1,4 @@
-﻿using IqraCore.Entities.Business;
-using IqraCore.Entities.Business.App.KnowledgeBase;
+﻿using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Configuration.Retrival;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
@@ -15,9 +14,9 @@ using IqraInfrastructure.Repositories.RAG;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
-namespace IqraInfrastructure.Managers.KnowledgeBase
+namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
 {
-    public class KnowledgeBaseRetrievalManager
+    public class KnowledgeBaseRetrievalManager : IAsyncDisposable
     {
         private readonly BusinessManager _businessManager;
         private readonly RAGRetrievalService _retrievalService;
@@ -39,10 +38,16 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
             BusinessKnowledgeBaseDocumentRepository documentRepository,
             EmbeddingProviderManager embeddingProviderManager,
             RerankProviderManager rerankProviderManager,
+            KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager,
             long businessId,
-            string knowledgeBaseId
+            string knowledgeBaseId,
+            string vectorCollectionLoadSessionId,
+            TimeSpan vectorCollectionReleaseExpiry
         )
         {
+            _businessId = businessId;
+            _knowledgeBaseId = knowledgeBaseId;
+
             _businessManager = businessManager;
             _documentRepository = documentRepository;
 
@@ -52,9 +57,15 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                 knowledgeBaseVectorRepository,
                 ragKeywordStore,
                 embeddingProviderManager,
-                documentRepository
+                documentRepository,
+                knowledgeBaseCollectionsLoadManager,
+                vectorCollectionLoadSessionId,
+                vectorCollectionReleaseExpiry
             );
-            _dataPostProcessor = new RAGDataPostProcessor(businessManager, rerankProviderManager);
+            _dataPostProcessor = new RAGDataPostProcessor(
+                businessManager,
+                rerankProviderManager
+            );
         }
 
         public async Task<FunctionReturnResult> Initalize()
@@ -193,7 +204,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                     DocumentName = parentDocsMap.TryGetValue(docId, out var parentDoc) ? parentDoc.Name : "Unknown",
                     ChunkId = chunkIdObj?.ToString() ?? string.Empty,
                     Content = doc.PageContent,
-                    Score = scoreObj is double score ? score : 0.0,
+                    Score = scoreObj is float score ? score : 0.0f,
                 });
             }
 
@@ -219,5 +230,13 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
             BusinessAppKnowledgeBaseConfigurationHybridRetrieval c when c.UseScoreThreshold => c.ScoreThreshold,
             _ => null
         };
+
+        public async ValueTask DisposeAsync()
+        {
+            await _retrievalService.DisposeAsync();
+            await _dataPostProcessor.DisposeAsync();
+
+            GC.SuppressFinalize(this);
+        }
     }
 }

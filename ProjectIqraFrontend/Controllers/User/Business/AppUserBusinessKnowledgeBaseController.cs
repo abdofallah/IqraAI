@@ -1,7 +1,9 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Helpers;
+using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
+using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using ProjectIqraFrontend.Middlewares;
@@ -12,11 +14,17 @@ namespace ProjectIqraFrontend.Controllers.User.Business
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly BusinessManager _businessManager;
+        private readonly KnowledgeBaseRetrievalManagerFactory _knowledgeBaseRetrievalManagerFactory;
 
-        public AppUserBusinessKnowledgeBaseController(UserSessionValidationHelper userSessionValidationHelper, BusinessManager businessManager)
+        public AppUserBusinessKnowledgeBaseController(
+            UserSessionValidationHelper userSessionValidationHelper,
+            BusinessManager businessManager,
+            KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory
+        )
         {
             _userSessionValidationHelper = userSessionValidationHelper;
             _businessManager = businessManager;
+            _knowledgeBaseRetrievalManagerFactory = knowledgeBaseRetrievalManagerFactory;
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/save")]
@@ -243,5 +251,103 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             return result.SetSuccessResult(addOrUpdateResult.Data);
         }
 
+        [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/retrieve")]
+        public async Task<FunctionReturnResult<RAGRetrievalResultModel?>> RetrieveFromKnowledgeBase(long businessId, string knowledgeBaseId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<RAGRetrievalResultModel?>();
+
+            KnowledgeBaseRetrievalManager? knowledgeBaseRetrievalManager = null;
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkBusinessesDisabled: true
+                );
+
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"RetrieveFromKnowledgeBase:{userSessionAndBusinessValidationResult.Code}",
+                        userSessionAndBusinessValidationResult.Message);
+                }
+                var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
+
+                // Knowledge Base Permission
+                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "RetrieveFromKnowledgeBase:KNOWLEDGE_BASES_DISABLED",
+                        $"Knowledge Bases are disabled for this business: {(string.IsNullOrEmpty(businessData.Permission.KnowledgeBases.DisabledFullReason) ? "." : businessData.Permission.KnowledgeBases.DisabledFullReason)}");
+                }
+                if (businessData.Permission.KnowledgeBases.DisabledRetrievingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "RetrieveFromKnowledgeBase:RETRIEVING_KNOWLEDGE_BASES_DISABLED",
+                        $"Permission to retrieve knowledge bases results is disabled for this business{(string.IsNullOrEmpty(businessData.Permission.KnowledgeBases.DisabledRetrievingReason) ? "." : ": " + businessData.Permission.KnowledgeBases.DisabledRetrievingReason)}"
+                    );
+                }
+
+                string? retrievalQuery = null;
+                if (!formData.TryGetValue("query", out var queryValues))
+                {
+                    return result.SetFailureResult(
+                        "RetrieveFromKnowledgeBase:QUERY_NOT_FOUND",
+                        "Query not found in request."
+                    );
+                }
+                retrievalQuery = queryValues.FirstOrDefault();
+                if (string.IsNullOrEmpty(retrievalQuery))
+                {
+                    return result.SetFailureResult(
+                        "RetrieveFromKnowledgeBase:QUERY_INVALID",
+                        "Query is empty or null."
+                    );
+                }
+
+                // Create Retrieval Manager
+                var knowledgeBaseRetrievalManagerCreateResult = await _knowledgeBaseRetrievalManagerFactory.CreateManagerAsync(
+                    businessId,
+                    knowledgeBaseId,
+                    $"IQRAPPTESTRETRIEVAL{Guid.NewGuid().ToString()}",
+                    TimeSpan.FromMinutes(5)
+                );
+                if (!knowledgeBaseRetrievalManagerCreateResult.Success)
+                {
+                    return result.SetFailureResult(
+                        $"RetrieveFromKnowledgeBase:{knowledgeBaseRetrievalManagerCreateResult.Code}",
+                        knowledgeBaseRetrievalManagerCreateResult.Message
+                    );
+                }
+                knowledgeBaseRetrievalManager = knowledgeBaseRetrievalManagerCreateResult.Data!;
+
+                // Delegate to Manager
+                var retrievalResult = await knowledgeBaseRetrievalManager.RetrieveContextAsync(businessId, knowledgeBaseId, retrievalQuery);
+                if (retrievalResult == null)
+                {
+                    return result.SetFailureResult(
+                        "RetrieveFromKnowledgeBase:RETRIEVAL_FAILED",
+                        "Failed to retrieve context from the knowledge base. The knowledge base might not exist.");
+                }
+
+                // Return Result
+                return result.SetSuccessResult(retrievalResult.Data);
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "RetrieveFromKnowledgeBase:EXCEPTION",
+                    ex.Message
+                );
+            }
+            finally
+            {
+                if (knowledgeBaseRetrievalManager != null)
+                {
+                    await knowledgeBaseRetrievalManager.DisposeAsync();
+                }
+            }
+        }
     }
 }

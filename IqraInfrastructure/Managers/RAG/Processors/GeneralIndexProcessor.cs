@@ -14,6 +14,7 @@ using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.RAG;
 using MongoDB.Bson;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
@@ -28,7 +29,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
         private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;
         private readonly KnowledgeBaseVectorRepository _vectorRepository;
         private readonly KeywordExtractor _keywordExtractor;
-        private readonly IKeywordStore _keywordStore;
+        private readonly RAGKeywordStore _keywordStore;
 
         public GeneralIndexProcessor(
             TextSplitterFactory textSplitterFactory,
@@ -36,7 +37,7 @@ namespace IqraInfrastructure.Managers.RAG.Processors
             BusinessKnowledgeBaseDocumentRepository documentRepository,
             KnowledgeBaseVectorRepository vectorRepository,
             KeywordExtractor keywordExtractor,
-            IKeywordStore keywordStore
+            RAGKeywordStore keywordStore
         )
         {
             _textSplitterFactory = textSplitterFactory;

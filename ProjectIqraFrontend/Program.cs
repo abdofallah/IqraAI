@@ -8,10 +8,13 @@ using IqraInfrastructure.Managers.Billing;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
+using IqraInfrastructure.Managers.KnowledgeBase;
+using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.Mail;
 using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Managers.Region;
@@ -31,12 +34,14 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
 using IqraInfrastructure.Repositories.Rerank;
 using IqraInfrastructure.Repositories.STT;
 using IqraInfrastructure.Repositories.TTS;
 using IqraInfrastructure.Repositories.User;
+using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
@@ -120,6 +125,10 @@ namespace ProjectIqraFrontend
 
             // SetupDependencies
             SetupDependencies(app.Services);
+
+            // Run background tasks > will be moved to IqraBackgroundProcessor in the future
+            var knowledgeBaseCollectionsLoadManager = app.Services.GetRequiredService<KnowledgeBaseCollectionsLoadManager>();
+            await knowledgeBaseCollectionsLoadManager.StartAsync(CancellationToken.None);
 
             // Assign the HttpContextAccessor to JSON Middleware
             var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
@@ -436,6 +445,16 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<KnowledgeBaseVectorRepository>>()
                 );
             });
+
+            builder.Services.AddSingleton<RAGKeywordStore>((sp) =>
+            {
+                return new RAGKeywordStore(
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:RAGKeywordStoreDatabaseName"],
+                    sp.GetRequiredService<KeywordExtractor>(),
+                    sp.GetRequiredService<ILogger<RAGKeywordStore>>()
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -473,7 +492,9 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<TextSplitterFactory>(),
                     sp.GetRequiredService<EmbeddingProviderManager>(),
                     sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
-                    sp.GetRequiredService<KnowledgeBaseVectorRepository>()
+                    sp.GetRequiredService<KnowledgeBaseVectorRepository>(),
+                    sp.GetRequiredService<RAGKeywordStore>(),
+                    sp.GetRequiredService<KeywordExtractor>()
                 );
             });
             builder.Services.AddSingleton<ExtractProcessor>((sp) =>
@@ -675,6 +696,36 @@ namespace ProjectIqraFrontend
                     appConfig["User:EmailHashPepper"],
                     userApiKeyEncryptionService,
                     userApiKeyPayloadEncryptionService
+                );
+            });
+            builder.Services.AddSingleton<KnowledgeBaseRetrievalManagerFactory>((sp) =>
+            {
+                return new KnowledgeBaseRetrievalManagerFactory(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<BusinessManager>(),
+                    sp.GetRequiredService<KnowledgeBaseVectorRepository>(),
+                    sp.GetRequiredService<RAGKeywordStore>(),
+                    sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
+                    sp.GetRequiredService<EmbeddingProviderManager>(),
+                    sp.GetRequiredService<RerankProviderManager>(),
+                    sp.GetRequiredService<KnowledgeBaseCollectionsLoadManager>()
+                );
+            });
+            builder.Services.AddSingleton<KeywordExtractor>((sp) =>
+            {
+                // TODO load the keywords from a .json file
+                return new KeywordExtractor();
+            });
+            builder.Services.AddSingleton<KnowledgeBaseCollectionsLoadManager>((sp) =>
+            {
+                return new KnowledgeBaseCollectionsLoadManager(
+                    sp.GetRequiredService<ILogger<KnowledgeBaseCollectionsLoadManager>>(),
+                    sp.GetRequiredService<MilvusKnowledgeBaseClient>(),
+                    appConfig["Milvus:Database"],
+                    new RedisConnectionFactory(
+                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:RAGCollectionsLoadedDatabaseIndex"]}",
+                        sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
+                    )
                 );
             });
         }

@@ -231,14 +231,24 @@ function SaveDocumentChunks(kbId, docId, changes, successCallback, errorCallback
     setTimeout(() => successCallback({ success: true }), 1000);
 }
 
-function TestRetrievalQuery(kbId, query, successCallback, errorCallback) {
-    console.log(`Simulating retrieval test for query "${query}" in KB ${kbId}`);
-    const results = [
-        { score: 0.92, text: 'Known for luxury shopping and ultramodern architecture.' },
-        { score: 0.87, text: 'The Burj Khalifa is 830m tall.' },
-        { score: 0.75, text: 'The Dubai Mall is a large shopping center.' }
-    ];
-    setTimeout(() => successCallback({ success: true, data: results }), 1000);
+function TestRetrievalQuery(kbId, formData, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/retrieve`,
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (error) => {
+            errorCallback(error, false);
+        },
+    });
 }
 
 function GetBusinessKnowledgeBaseDocuments(kbId, successCallback, errorCallback) {
@@ -526,7 +536,7 @@ function createRetrievalResultCard(result, index) {
                 <span class="badge bg-info">Score: ${result.score.toFixed(4)}</span>
             </div>
             <div class="card-body">
-                <p class="card-text">${result.text}</p>
+                <p class="card-text">${result.content}</p>
             </div>
         </div>
     `;
@@ -1441,29 +1451,47 @@ function initKnowledgeBaseTab() {
             e.preventDefault();
             const query = retrievalQueryInput.val();
             if (!query.trim()) {
-                AlertManager.createAlert({ type: 'warning', message: 'Please enter a query.' });
+                AlertManager.createAlert({ type: 'warning', message: 'Please enter a query.', timeout: 6000 });
                 return;
             }
+
+            const formData = new FormData();
+            formData.append('query', query);
 
             const spinner = runQueryButton.find('.spinner-border');
             spinner.removeClass('d-none');
             runQueryButton.prop('disabled', true);
 
-            TestRetrievalQuery(ManageCurrentKnowledgeBaseData.id, query, (response) => {
-                retrievalResultsContainer.empty();
-                if (response.data.length === 0) {
-                    retrievalResultsContainer.html('<p class="text-muted">No results found for your query.</p>');
-                } else {
-                    response.data.forEach((result, index) => {
-                        retrievalResultsContainer.append(createRetrievalResultCard(result, index));
-                    });
-                }
-                spinner.addClass('d-none');
-                runQueryButton.prop('disabled', false);
-            }, (error) => {
-                retrievalResultsContainer.html('<p class="text-danger">An error occurred while fetching results.</p>');
-                spinner.addClass('d-none');
-                runQueryButton.prop('disabled', false);
+            TestRetrievalQuery(ManageCurrentKnowledgeBaseData.id, formData,
+                (response) => {
+                    retrievalResultsContainer.empty();
+
+                    if (!response.success) {
+                        AlertManager.createAlert({
+                            type: 'danger',
+                            message: 'Unable to fetch results. Check console logs for more details.',
+                            timeout: 6000
+                        });
+
+                        console.log("Unable to fetch results.", response);
+                    }
+                    else {
+                        if (response.data.sources.length === 0) {
+                            retrievalResultsContainer.html('<p class="text-muted">No results found for your query.</p>');
+                        } else {
+                            response.data.sources.forEach((result, index) => {
+                                retrievalResultsContainer.append(createRetrievalResultCard(result, index));
+                            });
+                        }
+                    }    
+
+                    spinner.addClass('d-none');
+                    runQueryButton.prop('disabled', false);
+                },
+                (error) => {
+                    retrievalResultsContainer.html('<p class="text-danger">An error occurred while fetching results.</p>');
+                    spinner.addClass('d-none');
+                    runQueryButton.prop('disabled', false);
             });
         });
 

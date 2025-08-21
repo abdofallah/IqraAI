@@ -6,6 +6,7 @@ using IqraCore.Interfaces.AI;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.KnowledgeBase;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.RAG;
@@ -20,7 +21,7 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         public double? ScoreThreshold { get; init; }
     }
 
-    public class RAGRetrievalService
+    public class RAGRetrievalService : IAsyncDisposable
     {
         private readonly ILogger<RAGRetrievalService> _logger;
 
@@ -28,12 +29,16 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         private readonly KnowledgeBaseVectorRepository _vectorRepository;
         private readonly RAGKeywordStore _keywordStore;
         private readonly EmbeddingProviderManager _embeddingManager;
-        private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;       
+        private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;
+        private readonly KnowledgeBaseCollectionsLoadManager _knowledgeBaseCollectionsLoadManager;
+        private readonly string _collectionLoadSessionId;
+        private readonly TimeSpan _collectionReleaseExpiry;
 
         private long _businessId;
         private BusinessAppKnowledgeBase _knowledgeBaseData;
 
         private IEmbeddingService? _embeddingService;
+        
 
         public RAGRetrievalService(
             ILogger<RAGRetrievalService> logger,
@@ -42,15 +47,23 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
             KnowledgeBaseVectorRepository vectorRepository,
             RAGKeywordStore keywordStore,
             EmbeddingProviderManager embeddingManager,
-            BusinessKnowledgeBaseDocumentRepository documentRepository  
+            BusinessKnowledgeBaseDocumentRepository documentRepository,
+            KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager,
+            string vectorCollectionLoadSessionId,
+            TimeSpan vectorCollectionReleaseExpiry
         )
         {
+            _logger = logger;
+
             _businessManager = businessManager;
             _vectorRepository = vectorRepository;
             _keywordStore = keywordStore;
             _embeddingManager = embeddingManager;
             _documentRepository = documentRepository;
-            _logger = logger;
+            _knowledgeBaseCollectionsLoadManager = knowledgeBaseCollectionsLoadManager;
+
+            _collectionLoadSessionId = vectorCollectionLoadSessionId;
+            _collectionReleaseExpiry = vectorCollectionReleaseExpiry;
         }
 
         public async Task<FunctionReturnResult> Initalize(long businessId, BusinessAppKnowledgeBase knowledgeBaseData)
@@ -86,6 +99,19 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
                         );
                     }
                     _embeddingService = embeddingProviderResult.Data;
+
+                    var collectionLoadResult = await _knowledgeBaseCollectionsLoadManager.RegisterUseAsync(
+                        $"b{_businessId}_kb{_knowledgeBaseData.Id}",
+                        _collectionLoadSessionId,
+                        _collectionReleaseExpiry
+                    );
+                    if (!collectionLoadResult)
+                    {
+                        return result.SetFailureResult(
+                            "Initalize:COLLECTION_LOAD_FAILED",
+                            "Collection load failed."
+                        );
+                    }
                 }
 
                 return result.SetSuccessResult();
@@ -229,6 +255,32 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
 
                 return doc;
             }).ToList();
+        }
+        
+        public async ValueTask DisposeAsync()
+        {
+            if (_embeddingService != null)
+            {
+                try
+                {
+                    _embeddingService.Dispose();
+                }
+                catch { /** Ignore **/ }
+
+                var deregisterResult = await _knowledgeBaseCollectionsLoadManager.DeregisterUseAsync(
+                    $"b{_businessId}_kb{_knowledgeBaseData.Id}",
+                    _collectionLoadSessionId!
+                );
+                if (!deregisterResult)
+                {
+                    _logger.LogWarning(
+                        "Failed to deregister collection load session: {CollectionLoadSessionId}",
+                        _collectionLoadSessionId
+                    );
+                }
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

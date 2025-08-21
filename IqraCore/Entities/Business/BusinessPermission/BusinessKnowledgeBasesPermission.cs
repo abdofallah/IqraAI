@@ -13,5 +13,8 @@
 
         public DateTime? DisabledDeletingAt { get; set; } = null;
         public string? DisabledDeletingReason { get; set; } = null;
+
+        public DateTime? DisabledRetrievingAt { get; set; } = null;
+        public string? DisabledRetrievingReason { get; set; } = null;
     }
 }

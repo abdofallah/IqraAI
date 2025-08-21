@@ -2,9 +2,11 @@
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Interfaces.RAG;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.RAG;
 
 namespace IqraInfrastructure.Managers.RAG.Processors
 {
@@ -14,17 +16,24 @@ namespace IqraInfrastructure.Managers.RAG.Processors
         private readonly EmbeddingProviderManager _embeddingManager;
         private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;
         private readonly KnowledgeBaseVectorRepository _vectorRepository;
+        private readonly RAGKeywordStore _keywordStore;
+        private readonly KeywordExtractor _keywordExtractor;
 
         public IndexProcessorFactory(
             TextSplitterFactory textSplitterFactory,
             EmbeddingProviderManager embeddingManager,
             BusinessKnowledgeBaseDocumentRepository documentRepository,
-            KnowledgeBaseVectorRepository vectorRepository)
+            KnowledgeBaseVectorRepository vectorRepository,
+            RAGKeywordStore keywordStore,
+            KeywordExtractor keywordExtractor
+        )
         {
             _textSplitterFactory = textSplitterFactory;
             _embeddingManager = embeddingManager;
             _documentRepository = documentRepository;
             _vectorRepository = vectorRepository;
+            _keywordStore = keywordStore;
+            _keywordExtractor = keywordExtractor;
         }
 
         public IIndexProcessor Create(BusinessAppKnowledgeBase knowledgeBase)
@@ -38,7 +47,9 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                         _textSplitterFactory,
                         _embeddingManager,
                         _documentRepository,
-                        _vectorRepository
+                        _vectorRepository,
+                        _keywordExtractor,
+                        _keywordStore
                     );
 
                 case KnowledgeBaseChunkingType.ParentChild:
@@ -46,7 +57,9 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                         _textSplitterFactory,
                         _embeddingManager,
                         _documentRepository,
-                        _vectorRepository
+                        _vectorRepository,
+                        _keywordExtractor,
+                        _keywordStore
                     );
 
                 default:

@@ -16,7 +16,7 @@
         public string? ErrorMessage { get; set; }
     }
 
-    public interface IRerankService
+    public interface IRerankService : IDisposable
     {
         Task<RerankResult> RerankAsync(string query, List<string> documents, int topN);
     }

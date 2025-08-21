@@ -63,6 +63,10 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing.Rerank
 
             return Task.FromResult(rerankedDocs);
         }
-    }
 
+        public async ValueTask DisposeAsync()
+        {
+            GC.SuppressFinalize(this);
+        }
+    }
 }

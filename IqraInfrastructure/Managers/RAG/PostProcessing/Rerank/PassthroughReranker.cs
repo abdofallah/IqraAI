@@ -19,5 +19,10 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing.Rerank
             // Does nothing, just returns the original list.
             return Task.FromResult(documents);
         }
+
+        public async ValueTask DisposeAsync()
+        {
+            // do nothing
+        }
     }
 }

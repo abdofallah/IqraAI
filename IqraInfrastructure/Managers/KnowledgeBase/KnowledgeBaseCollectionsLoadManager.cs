@@ -38,7 +38,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
         /// Registers a session's intent to use a collection, providing its expiry.
         /// Uses a Redis Transaction to atomically handle loading if it's the first session.
         /// </summary>
-        public async Task<bool> RegisterUseAsync(string databaseName, string collectionName, string sessionId, TimeSpan expiry)
+        public async Task<bool> RegisterUseAsync(string collectionName, string sessionId, TimeSpan expiry)
         {
             var db = _redisFactory.GetDatabase();
             var sessionsKey = string.Format(SessionsKeyPrefix, collectionName);
@@ -64,7 +64,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                     return false;
                 }
 
-                bool loaded = await _milvusClient.LoadCollectionAsync(databaseName, collectionName);
+                bool loaded = await _milvusClient.LoadCollectionAsync(_databaseName, collectionName);
                 if (!loaded)
                 {
                     _logger.LogError("CRITICAL: Failed to load collection {CollectionName}. Rolling back registration.", collectionName);
@@ -94,8 +94,9 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                 return true;
             }
 
-            // ZREM is atomic, no transaction needed here.
-            await db.SortedSetRemoveAsync(sessionsKey, sessionId);
+            var redisKey = new RedisKey(sessionsKey);
+            var redisValue = new RedisValue(sessionId);
+            await db.SortedSetUpdateAsync(redisKey, redisValue, 0);
             return true;
         }
 
@@ -132,7 +133,6 @@ namespace IqraInfrastructure.Managers.KnowledgeBase
                     finally
                     {
                         await db.LockReleaseAsync(JanitorLockKey, lockToken);
-                        _logger.LogInformation("Janitor released lock.");
                     }
                 }
 

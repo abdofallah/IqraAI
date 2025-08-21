@@ -15,11 +15,11 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing
         public double? ScoreThreshold { get; init; }
     }
 
-    public class RAGDataPostProcessor
+    public class RAGDataPostProcessor : IAsyncDisposable
     {
         private readonly RerankerFactory _rerankerFactory;
 
-        private IReranker _reranker;
+        private IReranker? _reranker = null;
 
         public RAGDataPostProcessor(BusinessManager businessManager, RerankProviderManager rerankProviderManager)
         {
@@ -74,6 +74,17 @@ namespace IqraInfrastructure.Managers.RAG.PostProcessing
             var finalDocuments = reorderedDocuments.Take(options.TopN).ToList();
 
             return finalDocuments;
+        }
+
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_reranker != null)
+            {
+                await _reranker.DisposeAsync();
+            }
+
+            GC.SuppressFinalize(this);
         }
     }
 }
