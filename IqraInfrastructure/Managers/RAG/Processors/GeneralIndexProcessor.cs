@@ -10,6 +10,7 @@ using IqraCore.Models.KnowledgeBase;
 using IqraCore.Models.RAG;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.RAG.Cleaning;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Splitters;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
@@ -26,17 +27,24 @@ namespace IqraInfrastructure.Managers.RAG.Processors
         private readonly EmbeddingProviderManager _embeddingManager;
         private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;
         private readonly KnowledgeBaseVectorRepository _vectorRepository;
+        private readonly KeywordExtractor _keywordExtractor;
+        private readonly IKeywordStore _keywordStore;
 
         public GeneralIndexProcessor(
             TextSplitterFactory textSplitterFactory,
             EmbeddingProviderManager embeddingManager,
             BusinessKnowledgeBaseDocumentRepository documentRepository,
-            KnowledgeBaseVectorRepository vectorRepository)
+            KnowledgeBaseVectorRepository vectorRepository,
+            KeywordExtractor keywordExtractor,
+            IKeywordStore keywordStore
+        )
         {
             _textSplitterFactory = textSplitterFactory;
             _embeddingManager = embeddingManager;
             _documentRepository = documentRepository;
             _vectorRepository = vectorRepository;
+            _keywordExtractor = keywordExtractor;
+            _keywordStore = keywordStore;
         }
 
         public Task<List<ProcessedDocumentChunkModel>> TransformAsync(List<ExtractorDocumentModel> rawDocuments, BusinessAppKnowledgeBase knowledgeBase, long documentId)
@@ -105,6 +113,13 @@ namespace IqraInfrastructure.Managers.RAG.Processors
                 {
                     chunks[i].Vector = vectorsResult.Data[i];
                 }
+
+                var chunkKeywords = new Dictionary<string, List<string>>();
+                foreach (var chunk in chunks)
+                {
+                    chunkKeywords[chunk.Id] = _keywordExtractor.Extract(chunk.Text);
+                }
+                await _keywordStore.AddChunksKeywordsAsync(knowledgeBase.Id, chunkKeywords);
 
                 var chunksForMetaStore = chunks.Select(c =>
                 {

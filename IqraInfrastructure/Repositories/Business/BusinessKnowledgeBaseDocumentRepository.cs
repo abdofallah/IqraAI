@@ -91,7 +91,33 @@ namespace IqraInfrastructure.Repositories.Business
          * Document Chunks
          * 
          * 
-        **/ 
+        **/
+
+        public async Task<List<BusinessAppKnowledgeBaseDocumentChunk>> GetChunksByIdsAsync(List<string> chunkIds, long? documentIdHint = null)
+        {
+            var objectIdChunkIds = chunkIds.Select(id => new ObjectId(id)).ToList();
+
+            var filterBuilder = Builders<BusinessAppKnowledgeBaseDocument>.Filter;
+            var filter = filterBuilder.In("Chunks._id", objectIdChunkIds);
+
+            // If a documentId is provided, we can make the initial match more efficient
+            if (documentIdHint.HasValue)
+            {
+                filter &= filterBuilder.Eq(d => d.Id, documentIdHint.Value);
+            }
+
+            var pipeline = new BsonDocument[]
+            {
+                new BsonDocument("$match", filter.ToBsonDocument()),
+                new BsonDocument("$unwind", "$Chunks"),
+                new BsonDocument("$match", new BsonDocument("Chunks._id", new BsonDocument("$in", new BsonArray(objectIdChunkIds)))),
+                new BsonDocument("$replaceRoot", new BsonDocument("newRoot", "$Chunks"))
+            };
+
+            var aggregationResult = await _documentsCollection.Aggregate<BusinessAppKnowledgeBaseDocumentChunk>(pipeline).ToListAsync();
+
+            return aggregationResult;
+        }
 
         public async Task<bool> AddDocumentChunkAsync(long documentId, BusinessAppKnowledgeBaseDocumentChunk chunk, IClientSessionHandle? session = null)
         {
