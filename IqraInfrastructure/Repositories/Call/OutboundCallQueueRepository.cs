@@ -63,6 +63,14 @@ namespace IqraInfrastructure.Repositories.Call
                     new CreateIndexModel<OutboundCallQueueData>(
                         Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.CampaignId),
                         new CreateIndexOptions { Name = "Idx_Active_CampaignId" }),
+
+                    // For paginated conversation logs
+                    new CreateIndexModel<OutboundCallQueueData>(
+                        Builders<OutboundCallQueueData>.IndexKeys
+                            .Ascending(c => c.BusinessId)
+                            .Descending(c => c.CreatedAt)
+                            .Descending(c => c.Id),
+                        new CreateIndexOptions { Name = "Idx_Active_Business_CreatedAt_Id" })
                 };
             _outboundActiveQueueCollection.Indexes.CreateManyAsync(activeIndexes).GetAwaiter().GetResult();
 
@@ -80,6 +88,14 @@ namespace IqraInfrastructure.Repositories.Call
                     new CreateIndexModel<OutboundCallQueueData>(
                         Builders<OutboundCallQueueData>.IndexKeys.Ascending(c => c.CampaignId),
                         new CreateIndexOptions { Name = "Idx_Archived_CampaignId" }),
+
+                    // For paginated conversation logs
+                    new CreateIndexModel<OutboundCallQueueData>(
+                        Builders<OutboundCallQueueData>.IndexKeys
+                            .Ascending(c => c.BusinessId)
+                            .Descending(c => c.CreatedAt)
+                            .Descending(c => c.Id),
+                        new CreateIndexOptions { Name = "Idx_Archived_Business_CreatedAt_Id" })
                 };
             _outboundArchivedQueueCollection.Indexes.CreateManyAsync(archivedIndexes).GetAwaiter().GetResult();
         }
@@ -95,6 +111,152 @@ namespace IqraInfrastructure.Repositories.Call
             {
                 _logger.LogError(ex, "Error enqueueing outbound call for BusinessId {BusinessId}, QueueId {QueueId}", callQueueData.BusinessId, callQueueData.Id);
                 return null;
+            }
+        }
+
+        public async Task<(List<OutboundCallQueueData> Items, bool HasMore)> GetOutboundCallQueuesForBusinessPaginatedAsync(long businessId, int limit, PaginationCursor? cursor, bool fetchNext = true)
+        {
+            try
+            {
+                var filterBuilder = Builders<OutboundCallQueueData>.Filter;
+                var baseFilter = filterBuilder.Eq(c => c.BusinessId, businessId);
+
+                FilterDefinition<OutboundCallQueueData> finalFilter = baseFilter;
+                SortDefinition<OutboundCallQueueData> sortDefinition;
+
+                if (fetchNext)
+                {
+                    sortDefinition = Builders<OutboundCallQueueData>.Sort
+                        .Descending(c => c.CreatedAt)
+                        .Descending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Lt(c => c.CreatedAt, cursor.Timestamp),
+                            filterBuilder.And(
+                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
+                                filterBuilder.Lt(c => c.Id, cursor.Id)
+                            )
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                }
+                else // Fetching Previous Page
+                {
+                    sortDefinition = Builders<OutboundCallQueueData>.Sort
+                        .Ascending(c => c.CreatedAt)
+                        .Ascending(c => c.Id);
+
+                    if (cursor != null)
+                    {
+                        var cursorFilter = filterBuilder.Or(
+                            filterBuilder.Gt(c => c.CreatedAt, cursor.Timestamp),
+                            filterBuilder.And(
+                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
+                                filterBuilder.Gt(c => c.Id, cursor.Id)
+                            )
+                        );
+                        finalFilter = filterBuilder.And(baseFilter, cursorFilter);
+                    }
+                    else
+                    {
+                        return (new List<OutboundCallQueueData>(), false);
+                    }
+                }
+
+                // 1. Query both collections in parallel. We fetch 'limit' from each.
+                // This is a reasonable amount, ensuring we have enough data to merge
+                // without fetching excessive amounts.
+                var activeCallsTask = _outboundActiveQueueCollection.Find(finalFilter)
+                    .Sort(sortDefinition)
+                    .Limit(limit)
+                    .ToListAsync();
+
+                var archivedCallsTask = _outboundArchivedQueueCollection.Find(finalFilter)
+                    .Sort(sortDefinition)
+                    .Limit(limit)
+                    .ToListAsync();
+
+                await Task.WhenAll(activeCallsTask, archivedCallsTask);
+
+                var activeCalls = await activeCallsTask;
+                var archivedCalls = await archivedCallsTask;
+
+                // 2. Merge the two sorted lists.
+                var mergedResults = new List<OutboundCallQueueData>();
+                int activePtr = 0;
+                int archivedPtr = 0;
+
+                while (mergedResults.Count < limit && (activePtr < activeCalls.Count || archivedPtr < archivedCalls.Count))
+                {
+                    if (activePtr < activeCalls.Count && archivedPtr < archivedCalls.Count)
+                    {
+                        // Both lists have items, compare them based on the sort direction
+                        var activeCall = activeCalls[activePtr];
+                        var archivedCall = archivedCalls[archivedPtr];
+                        int comparison = activeCall.CreatedAt.CompareTo(archivedCall.CreatedAt);
+                        if (comparison == 0)
+                        {
+                            // Use ID as tie-breaker (string comparison on ObjectId works)
+                            comparison = string.Compare(activeCall.Id, archivedCall.Id, StringComparison.Ordinal);
+                        }
+
+                        if (fetchNext) // Descending order, so higher value comes first
+                        {
+                            if (comparison > 0)
+                            {
+                                mergedResults.Add(activeCall);
+                                activePtr++;
+                            }
+                            else
+                            {
+                                mergedResults.Add(archivedCall);
+                                archivedPtr++;
+                            }
+                        }
+                        else // Ascending order, so lower value comes first
+                        {
+                            if (comparison < 0)
+                            {
+                                mergedResults.Add(activeCall);
+                                activePtr++;
+                            }
+                            else
+                            {
+                                mergedResults.Add(archivedCall);
+                                archivedPtr++;
+                            }
+                        }
+                    }
+                    else if (activePtr < activeCalls.Count)
+                    {
+                        mergedResults.Add(activeCalls[activePtr]);
+                        activePtr++;
+                    }
+                    else if (archivedPtr < archivedCalls.Count)
+                    {
+                        mergedResults.Add(archivedCalls[archivedPtr]);
+                        archivedPtr++;
+                    }
+                }
+
+                // 3. Determine if there are more items.
+                // 'hasMore' is true if there are any items left in either list after we've filled our page.
+                bool hasMore = activePtr < activeCalls.Count || archivedPtr < archivedCalls.Count;
+
+                // 4. If fetching previous, reverse the results to maintain Descending order for the user.
+                if (!fetchNext)
+                {
+                    mergedResults.Reverse();
+                }
+
+                return (mergedResults, hasMore);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting paginated outbound calls for business {BusinessId}", businessId);
+                return (new List<OutboundCallQueueData>(), false);
             }
         }
 

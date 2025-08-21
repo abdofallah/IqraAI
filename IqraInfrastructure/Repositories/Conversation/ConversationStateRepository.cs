@@ -105,9 +105,9 @@ namespace IqraInfrastructure.Repositories.Conversation
                 var filter = Builders<ConversationState>.Filter.In(c => c.QueueId, queueIds);
                 var states = await _conversationStateCollection.Find(filter).ToListAsync(cancellationToken);
 
-                // Ensure QueueId is unique per state if that's the design, otherwise handle potential duplicates if needed.
-                // Assuming QueueId uniquely identifies a conversation state here.
-                return states.ToDictionary(s => s.QueueId);
+                return states
+                    .GroupBy(s => s.QueueId)
+                    .ToDictionary(g => g.Key, g => g.First());
             }
             catch (Exception ex)
             {

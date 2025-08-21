@@ -13,7 +13,7 @@ namespace IqraInfrastructure.Repositories.Call
         private readonly IMongoCollection<InboundCallQueueData> _inboundCallQueueCollection;
         private readonly ILogger<InboundCallQueueRepository> _logger;
 
-        private const string InboundCollectionName = "InboundCallQueue"; 
+        private const string InboundCollectionName = "InboundCallQueue";
 
         public InboundCallQueueRepository(ILogger<InboundCallQueueRepository> logger, IMongoClient client, string databaseName)
         {
@@ -42,9 +42,9 @@ namespace IqraInfrastructure.Repositories.Call
                     new CreateIndexModel<InboundCallQueueData>(
                         Builders<InboundCallQueueData>.IndexKeys
                             .Ascending(c => c.BusinessId)
-                            .Descending(c => c.EnqueuedAt) // For default pagination order
-                            .Descending(c => c.Id),        // Tie-breaker
-                        new CreateIndexOptions { Name = "Idx_Inbound_Business_EnqueuedAt_Id" }),
+                            .Descending(c => c.CreatedAt)
+                            .Descending(c => c.Id),
+                        new CreateIndexOptions { Name = "Idx_Inbound_Business_CreatedAt_Id" })
                 };
 
             _inboundCallQueueCollection.Indexes.CreateManyAsync(inboundIndexes).GetAwaiter().GetResult();
@@ -111,16 +111,16 @@ namespace IqraInfrastructure.Repositories.Call
                 {
                     // Sort for fetching the 'next' page (most recent first)
                     sortDefinition = Builders<InboundCallQueueData>.Sort
-                        .Descending(c => c.EnqueuedAt)
+                        .Descending(c => c.CreatedAt)
                         .Descending(c => c.Id); // Use Id for tie-breaking
 
                     if (cursor != null)
                     {
                         // Apply cursor filter for 'next' page
                         var cursorFilter = filterBuilder.Or(
-                            filterBuilder.Lt(c => c.EnqueuedAt, cursor.Timestamp),
+                            filterBuilder.Lt(c => c.CreatedAt, cursor.Timestamp),
                             filterBuilder.And(
-                                filterBuilder.Eq(c => c.EnqueuedAt, cursor.Timestamp),
+                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
                                 filterBuilder.Lt(c => c.Id, cursor.Id) // MongoDB compares ObjectIds correctly
                             )
                         );
@@ -131,16 +131,16 @@ namespace IqraInfrastructure.Repositories.Call
                 {
                     // Sort for fetching the 'previous' page (oldest first temporarily)
                     sortDefinition = Builders<InboundCallQueueData>.Sort
-                        .Ascending(c => c.EnqueuedAt)
+                        .Ascending(c => c.CreatedAt)
                         .Ascending(c => c.Id);
 
                     if (cursor != null)
                     {
                         // Apply cursor filter for 'previous' page
                         var cursorFilter = filterBuilder.Or(
-                            filterBuilder.Gt(c => c.EnqueuedAt, cursor.Timestamp),
+                            filterBuilder.Gt(c => c.CreatedAt, cursor.Timestamp),
                             filterBuilder.And(
-                                filterBuilder.Eq(c => c.EnqueuedAt, cursor.Timestamp),
+                                filterBuilder.Eq(c => c.CreatedAt, cursor.Timestamp),
                                 filterBuilder.Gt(c => c.Id, cursor.Id)
                             )
                         );
@@ -243,7 +243,8 @@ namespace IqraInfrastructure.Repositories.Call
 
                 await _inboundCallQueueCollection.UpdateOneAsync(filter, update);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 _logger.LogError(ex, "Error updating processing server for queue {QueueId}", queueId);
             }
         }

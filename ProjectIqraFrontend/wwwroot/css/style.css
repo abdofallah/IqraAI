@@ -2185,3 +2185,12 @@ table.table > thead > * > * {
 {
 	color: #dee2e6;
 }
+
+#documentChunkManagerTab #chunksListContainer .chunk-card
+{
+	background: #1a1a1a;
+}
+
+#documentChunkManagerTab #chunksListContainer .chunk-card .child-chunk-header {
+	cursor: pointer;
+}

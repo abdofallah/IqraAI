@@ -375,16 +375,18 @@ function createDocumentTableRow(docData) {
         <tr doc-id="${docData.id}">
             <td>${docData.name}</td>
             <td>${statusPill}</td>
-            <td class="d-flex align-items-center">
-                <div class="form-check form-switch me-3">
-                    <input class="form-check-input" type="checkbox" role="switch" button-type="toggleDocumentStatus" title="Enable/Disable Document" ${docData.enabled ? 'checked' : ''} ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-3">
+                        <input class="form-check-input" type="checkbox" role="switch" button-type="toggleDocumentStatus" title="Enable/Disable Document" ${docData.enabled ? 'checked' : ''} ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
+                    </div>
+                    <button class="btn btn-info btn-sm me-2" button-type="viewDocumentChunks" title="View/Edit Chunks" ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
+                        <i class="fa-regular fa-layer-group"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" button-type="deleteDocument" title="Delete Document" ${docData.status.value != KnowledgeBaseDocumentStatus.Processing ? '' : 'disabled'}>
+                        <i class="fa-regular fa-trash"></i>
+                    </button>
                 </div>
-                <button class="btn btn-info btn-sm me-2" button-type="viewDocumentChunks" title="View/Edit Chunks" ${docData.status.value == KnowledgeBaseDocumentStatus.Ready ? '' : 'disabled'}>
-                    <i class="fa-regular fa-layer-group"></i>
-                </button>
-                <button class="btn btn-danger btn-sm" button-type="deleteDocument" title="Delete Document" ${docData.status.value != KnowledgeBaseDocumentStatus.Processing ? '' : 'disabled'}>
-                    <i class="fa-regular fa-trash"></i>
-                </button>
             </td>
         </tr>
     `;
@@ -461,7 +463,7 @@ function createParentChunkCard(parentChunk) {
 
         var elementString = `
             <div class="d-inline-flex align-items-center me-2 mb-2 chunk-pill" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">
-                <button class="btn btn-sm btn-outline-secondary" button-type="edit-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">${child.text.substring(0, 50)}...</button>
+                <button class="btn btn-sm btn-outline-secondary" button-type="edit-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}">${child.text.length > 128 ? (`${child.text.substring(0, 128)}...`) : child.text}</button>
                 <button class="btn btn-sm btn-outline-danger ms-1" button-type="delete-chunk" data-parent-id="${parentChunk.id}" data-child-id="${child.id}"><i class="fa-regular fa-xmark"></i></button>
             </div>
         `;
@@ -475,13 +477,13 @@ function createParentChunkCard(parentChunk) {
         <div class="chunk-card mb-3 p-3 border rounded" id="${cardId}" data-parent-id="${parentChunk.id}">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <p class="mb-1 chunk-text">${parentChunk.text}</p>
+                    <p class="mb-1 chunk-text">${parentChunk.text.length > 128 ? (`${parentChunk.text.substring(0, 128)}...`) : parentChunk.text}</p>
                     <small class="text-muted">ID: ${parentChunk.id} | <span class="char-count">${parentChunk.text.length}</span> characters</small>
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-sm btn-light" button-type="edit-chunk" data-parent-id="${parentChunk.id}" title="Edit Parent Chunk"><i class="fa-regular fa-pen-to-square"></i></button>
-                    <button class="btn btn-sm btn-light" button-type="add-child-chunk" data-parent-id="${parentChunk.id}" title="Add Child Chunk"><i class="fa-regular fa-plus"></i></button>
-                    <button class="btn btn-sm btn-light" button-type="delete-chunk" data-parent-id="${parentChunk.id}" title="Delete Parent & Children"><i class="fa-regular fa-trash"></i></button>
+                    <button class="btn btn-sm btn-info" button-type="add-child-chunk" data-parent-id="${parentChunk.id}" title="Add Child Chunk"><i class="fa-regular fa-plus"></i></button>
+                    <button class="btn btn-sm btn-danger" button-type="delete-chunk" data-parent-id="${parentChunk.id}" title="Delete Parent & Children"><i class="fa-regular fa-trash"></i></button>
                 </div>
             </div>
             <hr>
@@ -504,12 +506,12 @@ function createGeneralChunkCard(chunk) {
         <div class="chunk-card mb-3 p-3 border rounded" id="${cardId}" data-chunk-id="${chunk.id}">
             <div class="d-flex justify-content-between align-items-start">
                  <div>
-                    <p class="mb-1 chunk-text">${chunk.text}</p>
+                    <p class="mb-1 chunk-text">${chunk.text.length > 128 ? (`${chunk.text.substring(0, 128)}...`) : chunk.text}</p>
                     <small class="text-muted">ID: ${chunk.id} | <span class="char-count">${chunk.text.length}</span> characters</small>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-light" button-type="edit-chunk" data-chunk-id="${chunk.id}" title="Edit Chunk"><i class="fa-regular fa-pen-to-square"></i></button>
-                    <button class="btn btn-sm btn-light" button-type="delete-chunk" data-chunk-id="${chunk.id}" title="Delete Chunk"><i class="fa-regular fa-trash"></i></button>
+                    <button class="btn btn-sm btn-info" button-type="edit-chunk" data-chunk-id="${chunk.id}" title="Edit Chunk"><i class="fa-regular fa-pen-to-square"></i></button>
+                    <button class="btn btn-sm btn-danger" button-type="delete-chunk" data-chunk-id="${chunk.id}" title="Delete Chunk"><i class="fa-regular fa-trash"></i></button>
                 </div>
             </div>
         </div>
