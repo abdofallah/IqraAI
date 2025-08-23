@@ -1554,8 +1554,8 @@ function initKnowledgeBaseTab() {
         // Chunk Management Events
         addNewChunkButton.on('click', (e) => {
             e.preventDefault();
-            const mode = ManageCurrentKnowledgeBaseData.configuration.chunking.mode.value;
-            const type = mode === ChunkingModeENUM.General ? 'general' : 'parent';
+            const mode = ManageCurrentKnowledgeBaseData.configuration.chunking.type.value;
+            const type = mode === KnowledgeBaseChunkingType.General ? 'general' : 'parent';
 
             editingChunkInfo = { mode: 'add', type: type };
             editChunkModalLabel.text(type === 'general' ? 'Add New Chunk' : 'Add New Parent Chunk');
@@ -1576,58 +1576,87 @@ function initKnowledgeBaseTab() {
             });
         });
 
-        chunksListContainer.on('click', 'button', async function (e) {
+        chunksListContainer.on('click', 'button[button-type="edit-chunk"]', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const parentId = $(this).data('parent-id');
+            const childId = $(this).data('child-id');
+            const chunkId = $(this).data('chunk-id');
+
+            let chunkToEdit;
+            if (childId) {
+                editingChunkInfo = { mode: 'edit', type: 'child', chunkId: childId, parentId: parentId };
+                chunkToEdit = ManageCurrentDocumentData.chunks.find(c => (c.id === childId && c.parentId === parentId));
+            } else if (parentId) {
+                editingChunkInfo = { mode: 'edit', type: 'parent', chunkId: parentId };
+                chunkToEdit = ManageCurrentDocumentData.chunks.find(p => p.id === parentId);
+            } else {
+                editingChunkInfo = { mode: 'edit', type: 'general', chunkId: chunkId };
+                chunkToEdit = ManageCurrentDocumentData.chunks.find(c => c.id === chunkId);
+            }
+            editChunkModalLabel.text(`Edit ${editingChunkInfo.type.charAt(0).toUpperCase() + editingChunkInfo.type.slice(1)} Chunk`);
+            editChunkTextarea.val(chunkToEdit.text).trigger('input');
+            editChunkModal.show();
+        });
+
+        chunksListContainer.on('click', 'button[button-type="add-child-chunk"]', function (e) {
             e.preventDefault();
             e.stopPropagation();
             const button = $(this);
-            const buttonType = button.attr('button-type');
+            const parentId = button.data('parent-id');
+
+            editingChunkInfo = { mode: 'add', type: 'child', parentId: parentId };
+            editChunkModalLabel.text('Add New Child Chunk');
+            editChunkTextarea.val('').trigger('input');
+            editChunkModal.show();
+        });
+
+        chunksListContainer.on('click', 'button[button-type="delete-chunk"]', async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const button = $(this);
 
             const parentId = button.data('parent-id');
             const childId = button.data('child-id');
             const chunkId = button.data('chunk-id');
 
-            if (buttonType === 'edit-chunk') {
-                let chunkToEdit;
-                if (childId) {
-                    editingChunkInfo = { mode: 'edit', type: 'child', chunkId: childId, parentId: parentId };
-                    chunkToEdit = ManageCurrentDocumentData.chunks.find(c => (c.id === childId && c.parentId === parentId));
-                } else if (parentId) {
-                    editingChunkInfo = { mode: 'edit', type: 'parent', chunkId: parentId };
-                    chunkToEdit = ManageCurrentDocumentData.chunks.find(p => p.id === parentId);
-                } else {
-                    editingChunkInfo = { mode: 'edit', type: 'general', chunkId: chunkId };
-                    chunkToEdit = ManageCurrentDocumentData.chunks.find(c => c.id === chunkId);
+            const confirmDialog = new BootstrapConfirmDialog({
+                title: "Confirm Deletion",
+                message: `Are you sure you want to delete this chunk?`,
+                confirmText: "Delete",
+                confirmButtonClass: 'btn-danger'
+            });
+
+            if (await confirmDialog.show()) {
+                if (childId) { // Deleting a child
+                    currentDeletedChunks.push(childId);
+                    button.closest('.chunk-pill').remove();
+
+                    const parentChunk = ManageCurrentDocumentData.chunks.find(c => c.id === parentId);
+                    parentChunk.childrenIds.splice(parentChunk.childrenIds.indexOf(childId), 1);
+
+                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === childId), 1);
                 }
-                editChunkModalLabel.text(`Edit ${editingChunkInfo.type.charAt(0).toUpperCase() + editingChunkInfo.type.slice(1)} Chunk`);
-                editChunkTextarea.val(chunkToEdit.text).trigger('input');
-                editChunkModal.show();
-            }
-            else if (buttonType === 'add-child-chunk') {
-                editingChunkInfo = { mode: 'add', type: 'child', parentId: parentId };
-                editChunkModalLabel.text('Add New Child Chunk');
-                editChunkTextarea.val('').trigger('input');
-                editChunkModal.show();
-            }
-            else if (buttonType === 'delete-chunk') {
-                const confirmDialog = new BootstrapConfirmDialog({
-                    title: "Confirm Deletion",
-                    message: `Are you sure you want to delete this chunk?`,
-                    confirmText: "Delete",
-                    confirmButtonClass: 'btn-danger'
-                });
-                if (await confirmDialog.show()) {
-                    if (childId) { // Deleting a child
-                        currentDeletedChunks.push(childId);
-                        button.closest('.chunk-pill').remove();
-                    } else if (parentId) { // Deleting a parent
-                        currentDeletedChunks.push(parentId);
-                        button.closest('.chunk-card').remove();
-                    } else { // Deleting a general chunk
-                        currentDeletedChunks.push(chunkId);
-                        button.closest('.chunk-card').remove();
-                    }
-                    updateSaveChangesButtonState();
+                else if (parentId) { // Deleting a parent
+                    currentDeletedChunks.push(parentId);
+                    button.closest('.chunk-card').remove();
+
+                    const parentChunk = ManageCurrentDocumentData.chunks.find(c => c.id === parentId);
+                    const parentChunkChildIds = parentChunk.childrenIds;
+
+                    parentChunkChildIds.forEach(childId => {
+                        ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === childId), 1);
+                    });
+
+                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === parentId), 1);
                 }
+                else { // Deleting a general chunk
+                    currentDeletedChunks.push(chunkId);
+                    button.closest('.chunk-card').remove();
+
+                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === chunkId), 1);
+                }
+                updateSaveChangesButtonState();
             }
         });
 
@@ -1638,7 +1667,11 @@ function initKnowledgeBaseTab() {
         saveChunkChangesButton.on('click', () => {
             const newText = editChunkTextarea.val().trim();
             if (!newText) {
-                AlertManager.createAlert({ type: 'warning', message: 'Chunk text cannot be empty.' });
+                AlertManager.createAlert({
+                    type: 'warning',
+                    message: 'Chunk text cannot be empty.',
+                    timeout: 6000
+                });
                 return;
             }
 
@@ -1647,17 +1680,30 @@ function initKnowledgeBaseTab() {
                     id: `new_${new Date().getTime()}`,
                     text: newText,
                 };
-                if (editingChunkInfo.type === 'child') {
-                    newChunk.parentId = editingChunkInfo.parentId;
-                }
-                currentAddedChunks.push(newChunk);
 
-            } else { // 'edit' mode
+                if (editingChunkInfo.type === 'parent') {
+                    newChunk.type = KnowledgeBaseDocumentChunkType.Parent;
+                }
+                else if (editingChunkInfo.type === 'child') {
+                    newChunk.parentId = editingChunkInfo.parentId;
+                    newChunk.type = KnowledgeBaseDocumentChunkType.Child;
+                }
+                else if (editingChunkInfo.type === 'general') {
+                    newChunk.type = KnowledgeBaseDocumentChunkType.General;
+                }
+
+                currentAddedChunks.push(newChunk);
+            }
+            else
+            { // 'edit' mode
                 const existingEdit = currentEditedChunks.find(c => c.id === editingChunkInfo.chunkId);
                 if (existingEdit) {
                     existingEdit.text = newText;
                 } else {
-                    currentEditedChunks.push({ id: editingChunkInfo.chunkId, text: newText });
+                    currentEditedChunks.push({
+                        id: editingChunkInfo.chunkId,
+                        text: newText
+                    });
                 }
             }
 
@@ -1666,19 +1712,46 @@ function initKnowledgeBaseTab() {
             if (editingChunkInfo.type === 'child') {
                 const parent = ManageCurrentDocumentData.chunks.find(p => p.id === editingChunkInfo.parentId);
                 if (editingChunkInfo.mode === 'add') {
-                    parent.children.push({ id: `new_${new Date().getTime()}`, text: newText, type: 'child' });
+                    var newChunkId = `new_${new Date().getTime()}`;
+
+                    parent.childrenIds.push(newChunkId);
+                    ManageCurrentDocumentData.chunks.push({
+                        id: newChunkId,
+                        text: newText,
+                        isEnabled: true,
+                        type: {
+                            value: KnowledgeBaseDocumentChunkType.Child
+                        },
+                        parentId: editingChunkInfo.parentId
+                    });
                 } else {
-                    parent.children.find(c => c.id === editingChunkInfo.chunkId).text = newText;
+                    var existingChild = ManageCurrentDocumentData.chunks.find(c => c.id === editingChunkInfo.chunkId);
+                    existingChild.text = newText;
                 }
             } else if (editingChunkInfo.type === 'parent') {
                 if (editingChunkInfo.mode === 'add') {
-                    ManageCurrentDocumentData.chunks.push({ id: `new_${new Date().getTime()}`, text: newText, type: 'parent', children: [] });
+                    ManageCurrentDocumentData.chunks.push({
+                        id: `new_${new Date().getTime()}`,
+                        text: newText,
+                        isEnabled: true,
+                        type: {
+                            value: KnowledgeBaseDocumentChunkType.Parent
+                        },
+                        childrenIds: []
+                    });
                 } else {
                     ManageCurrentDocumentData.chunks.find(c => c.id === editingChunkInfo.chunkId).text = newText;
                 }
             } else { // general
                 if (editingChunkInfo.mode === 'add') {
-                    ManageCurrentDocumentData.chunks.push({ id: `new_${new Date().getTime()}`, text: newText, type: 'general' });
+                    ManageCurrentDocumentData.chunks.push({
+                        id: `new_${new Date().getTime()}`,
+                        text: newText,
+                        isEnabled: true,
+                        type: {
+                            value: KnowledgeBaseDocumentChunkType.General
+                        }
+                    });
                 } else {
                     ManageCurrentDocumentData.chunks.find(c => c.id === editingChunkInfo.chunkId).text = newText;
                 }
@@ -1737,7 +1810,6 @@ function initKnowledgeBaseTab() {
                 }
             );
         });
-
 
         // Main Save Button
         saveKnowledgeBaseButton.on('click', (event) => {
@@ -1815,7 +1887,6 @@ function initKnowledgeBaseTab() {
                 }
             );
         });
-
 
         // Initial Load
         if (!BusinessFullData.businessApp.knowledgeBases) {
