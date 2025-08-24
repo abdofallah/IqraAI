@@ -16,8 +16,6 @@
     <div class="inner-container">
         <!-- Conversations List Tab -->
         <div class="show fade w-100" id="conversationListTab">
-
-
             <div class="tab-content w-100" id="conversations-tabContent">
                 <!-- Inbound Tab -->
                 <div class="tab-pane fade show active w-100" id="conversations-inbound" role="tabpanel" aria-labelledby="conversations-inbound-nav-tab" tabindex="0">
@@ -36,25 +34,23 @@
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <!-- Added for potential horizontal scroll on small screens -->
                         <table id="conversationInboundTable" class="table w-100">
                             <thead>
                                 <tr>
                                     <th scope="col">Queue ID</th>
                                     <th scope="col">Queued At</th>
-                                    <th scope="col" class="text-center">Queue Status</th> <!-- Centered Header -->
+                                    <th scope="col" class="text-center">Queue Status</th>
                                     <th scope="col">Routing</th>
                                     <th scope="col">From</th>
                                     <th scope="col">To</th>
                                     <th scope="col">Session ID</th>
-                                    <th scope="col" class="text-center">Session Status</th> <!-- Centered Header -->
+                                    <th scope="col" class="text-center">Session Status</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Dynamically Generated -->
                                 <tr class="loading-row">
-                                    <td colspan="7" class="text-center p-4">
+                                    <td colspan="9" class="text-center p-4">
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Loading...</span>
                                         </div>
@@ -63,7 +59,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <!-- Pagination Controls -->
                     <div class="d-flex justify-content-center align-items-center mt-3" id="inboundPaginationControls">
                         <button class="btn btn-primary me-2" id="inboundPrevButton" disabled>
                             <i class="fa-regular fa-arrow-left me-1"></i>
@@ -77,149 +72,53 @@
 
                 <!-- Outbound Tab -->
                 <div class="tab-pane fade w-100" id="conversations-outbound" role="tabpanel" aria-labelledby="conversations-outbound-tab" tabindex="0">
-                    <div class="w-100 fade show" id="conversationOutboundList">
-                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                            <div style="min-width: 200px" class="me-4">
-                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
-                                    <i class="fa-regular fa-bars-filter me-1"></i>
-                                    <span>Filter</span>
-                                </button>
-                            </div>
-                            <div class="input-group w-100">
-                                <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundButton">
-                                <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
-                                    <i class='fa-regular fa-magnifying-glass'></i>
-                                </button>
-                            </div>
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundCallButton">
+                                <i class="fa-regular fa-bars-filter me-1"></i>
+                                <span>Filter</span>
+                            </button>
                         </div>
-                        <div>
-                            <table id="conversationOutboundTable" class="table w-100">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" style="width: 50px;"></th>
-                                        <th scope="col">Indentifier</th>
-                                        <th scope="col">Type</th>
-                                        <th scope="col">Information</th>
-                                        <th scope="col">Datetime</th>
-                                        <th scope="col">Session</th>
-                                        <th scope="col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <th scope="row" style="text-align: center;">
-                                            <span class="in-progress">
-                                                <i class="fa-regular fa-loader fa-spin"></i>
-                                            </span>
-                                        </th>
-                                        <th scope="row">
-                                            Eid Marketing Test
-                                        </th>
-                                        <td>
-                                            <b>Single</b>
-                                        </td>
-                                        <td>From +968 91257744<br>to +968 72233384</td>
-                                        <td>6/16/2024 11:51 PM</td>
-                                        <td>12-31511212</td>
-                                        <td>
-                                            <button class="btn btn-info btn-sm">
-                                                <i class="fa-regular fa-table-list"></i>
-                                            </button>
-                                            <button class="btn btn-danger btn-sm">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row" style="text-align: center;">
-                                            <span class="complete">
-                                                <i class="fa-regular fa-check"></i>
-                                            </span>
-                                        </th>
-                                        <th scope="row">
-                                            Ramadan Marketing
-                                        </th>
-                                        <td>
-                                            <b>Bulk</b>
-                                        </td>
-                                        <td>1024 Calls</td>
-                                        <td>6/16/2024 11:51 PM</td>
-                                        <td>13-52352352</td>
-                                        <td>
-                                            <button class="btn btn-info btn-sm">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-danger btn-sm">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Recipient Number or Session" aria-label="Recipient Number or Session" aria-describedby="searchConversationOutboundButton">
+                            <button class="input-group-button btn btn-primary" id="searchConversationOutboundButton">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="w-100 fade d-none" id="conversationOutboundBulkList">
-                        <nav class="mb-3" aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-0">
-                                <li class="breadcrumb-item"><a href="#" id="switchBackToOuntboundCallTab">Outbound Call</a></li>
-                                <li class="breadcrumb-item active" aria-current="page">
-                                    <span id="currentOutboundBulkCallName">Ramadan Marketing</span>
-                                </li>
-                            </ol>
-                        </nav>
-                        <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                            <div style="min-width: 200px" class="me-4">
-                                <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary btn-ic-span-align" id="filterOutboundBulkCallsButton">
-                                    <i class="fa-regular fa-bars-filter me-1"></i>
-                                    <span>Filter</span>
-                                </button>
-                            </div>
-                            <div class="input-group w-100">
-                                <input type="text" class="form-control" placeholder="Call Identifier or Session" aria-label="Call Identifier or Session" aria-describedby="searchConversationOutboundBulkButton">
-                                <button class="input-group-button btn btn-primary" id="searchConversationOutboundBulkButton">
-                                    <i class='fa-regular fa-magnifying-glass'></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <table id="conversationOutboundBulkTable" class="table w-100">
-                                <thead>
-                                    <tr>
-                                        <th scope="col" style="width: 50px;"></th>
-                                        <th scope="col">From</th>
-                                        <th scope="col">To</th>
-                                        <th scope="col">Datetime</th>
-                                        <th scope="col">Session</th>
-                                        <th scope="col">Agent</th>
-                                        <th scope="col">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <th scope="row" style="text-align: center;">
-                                            <span class="in-progress">
-                                                <i class="fa-regular fa-loader fa-spin"></i>
-                                            </span>
-                                        </th>
-                                        <td>
-                                            +968 72233384
-                                        </td>
-                                        <td>+968 91257744</td>
-                                        <td>6/16/2024 11:51 PM</td>
-                                        <td>12-31511212</td>
-                                        <td>🤖 Opening Agent</td>
-                                        <td>
-                                            <button class="btn btn-info btn-sm">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-danger btn-sm">
-                                                <i class="fa-regular fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="table-responsive">
+                        <table id="conversationOutboundTable" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Queue ID</th>
+                                    <th scope="col">Queued At</th>
+                                    <th scope="col" class="text-center">Queue Status</th>
+                                    <th scope="col">From</th>
+                                    <th scope="col">To</th>
+                                    <th scope="col">Session ID</th>
+                                    <th scope="col" class="text-center">Session Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="loading-row">
+                                    <td colspan="8" class="text-center p-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center mt-3" id="outboundPaginationControls">
+                        <button class="btn btn-primary me-2" id="outboundPrevButton" disabled>
+                            <i class="fa-regular fa-arrow-left me-1"></i>
+                        </button>
+                        <span class="text-muted mx-2" id="outboundPageInfo">Page 1</span>
+                        <button class="btn btn-primary ms-2" id="outboundNextButton" disabled>
+                            <i class="fa-regular fa-arrow-right ms-1"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -295,7 +194,7 @@
                 </ol>
             </nav>
 
-            <!-- Loading Overlay (Optional but recommended) -->
+            <!-- Loading Overlay -->
             <div id="manageViewLoader" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-light bg-opacity-75 d-none" style="z-index: 10;">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading Details...</span>
@@ -308,13 +207,14 @@
                     <button class="nav-link active" id="conversationsManage-general-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-general" type="button" role="tab" aria-controls="conversationsManage-general" aria-selected="true">General</button>
                 </li>
                 <li class="nav-item me-2 d-none" role="presentation" id="conversationsManage-metrics-tab-item">
-                    <!-- Hide initially -->
                     <button class="nav-link" id="conversationsManage-metrics-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-metrics" type="button" role="tab" aria-controls="conversationsManage-metrics" aria-selected="false">Metrics</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="conversationsManage-conversation-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-conversation" type="button" role="tab" aria-controls="conversationsManage-conversation" aria-selected="false">Conversation</button>
                 </li>
-                <!-- Removed Number, Configuration, Agent, Actions Tabs -->
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="conversationsManage-logs-tab" data-bs-toggle="pill" data-bs-target="#conversationsManage-logs" type="button" role="tab" aria-controls="conversationsManage-logs" aria-selected="false">Logs</button>
+                </li>
             </ul>
 
             <!-- Tab Content -->
@@ -327,14 +227,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Queue Status</label>
-                        <!-- Status displayed as badge below label -->
                         <div id="manageViewQueueStatus" class="mt-1">N/A</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="manageViewEnqueuedAt">Queued At</label>
                         <input type="text" class="form-control" id="manageViewEnqueuedAt" readonly>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3" id="manageViewRoutingContainer">
                         <label class="form-label" for="manageViewRouting">Routing</label>
                         <input type="text" class="form-control" id="manageViewRouting" readonly>
                     </div>
@@ -346,14 +245,13 @@
                         <label class="form-label" for="manageViewToNumber">To Number</label>
                         <input type="text" class="form-control" id="manageViewToNumber" readonly>
                     </div>
-                    <hr> <!-- Separator -->
+                    <hr>
                     <div class="mb-3">
                         <label class="form-label" for="manageViewSessionId">Session ID</label>
                         <input type="text" class="form-control" id="manageViewSessionId" readonly>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Session Status</label>
-                        <!-- Status displayed as badge below label -->
                         <div id="manageViewSessionStatus" class="mt-1">N/A</div>
                     </div>
                     <div class="mb-3">
@@ -420,53 +318,38 @@
                         <label class="form-label" for="metricTtsAverageLatencyMs">Avg. TTS Latency (ms)</label>
                         <input type="text" class="form-control" id="metricTtsAverageLatencyMs" readonly>
                     </div>
-
-                    <!-- Placeholder for additional metrics (will be populated by JS) -->
-                    <div id="metricAdditionalMetricsContainer">
-                        <!-- JS will add label/input pairs here if needed -->
-                    </div>
+                    <div id="metricAdditionalMetricsContainer"></div>
                 </div>
 
                 <!-- Conversation Tab -->
                 <div class="tab-pane fade w-100" id="conversationsManage-conversation" role="tabpanel" aria-labelledby="conversationsManage-conversation-tab" tabindex="0">
-                    <!-- Audio Players -->
                     <div class="conversation-recording mb-4">
-                        <!-- Agent Audio -->
                         <div id="agentAudioContainer" class="mb-2 d-none">
-                            <!-- Hide initially -->
                             <h5>Agent Audio</h5>
                             <div class="recording-container agent-recording">
-                                <i class="typeofconvo fa-regular fa-headset"></i> <!-- Agent Icon -->
+                                <i class="typeofconvo fa-regular fa-headset"></i>
                                 <div class="recording-container-waveform" id="waveform-agent-audio">
-                                    <!-- Loader -->
                                     <div class="audio-loader position-absolute top-50 start-50 translate-middle d-none">
                                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                     </div>
                                 </div>
                                 <div class="audio-controller">
-                                    <!-- Controls for Agent Audio -->
                                     <button class="btn btn-sm btn-light me-2 agent-audio-play" disabled><i class="fa-regular fa-play"></i></button>
                                     <button class="btn btn-sm btn-light agent-audio-download" disabled><i class="fa-regular fa-circle-down"></i></button>
-                                    <!-- Add volume/speed later if needed -->
                                 </div>
                             </div>
                             <div class="text-danger small mt-1 agent-audio-error d-none">Failed to load audio.</div>
                         </div>
-
-                        <!-- Client Audio -->
                         <div id="clientAudioContainer" class="mb-2 d-none">
-                            <!-- Hide initially -->
                             <h5>Client Audio</h5>
                             <div class="recording-container client-recording">
-                                <i class="typeofconvo fa-regular fa-user"></i> <!-- Client Icon -->
+                                <i class="typeofconvo fa-regular fa-user"></i>
                                 <div class="recording-container-waveform" id="waveform-client-audio">
-                                    <!-- Loader -->
                                     <div class="audio-loader position-absolute top-50 start-50 translate-middle d-none">
                                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                     </div>
                                 </div>
                                 <div class="audio-controller">
-                                    <!-- Controls for Client Audio -->
                                     <button class="btn btn-sm btn-light me-2 client-audio-play" disabled><i class="fa-regular fa-play"></i></button>
                                     <button class="btn btn-sm btn-light client-audio-download" disabled><i class="fa-regular fa-circle-down"></i></button>
                                 </div>
@@ -474,11 +357,22 @@
                             <div class="text-danger small mt-1 client-audio-error d-none">Failed to load audio.</div>
                         </div>
                     </div>
-
-                    <!-- Messages -->
                     <div class="conversation-messages">
-                        <!-- Dynamically populated -->
                         <div class="text-center p-3 text-muted messages-placeholder">No messages found or session not loaded.</div>
+                    </div>
+                </div>
+
+                <!-- Logs Tab -->
+                <div class="tab-pane fade w-100" id="conversationsManage-logs" role="tabpanel" aria-labelledby="conversationsManage-logs-tab" tabindex="0">
+                    <div class="logs-container">
+                        <h5 class="mb-2">Queue Logs</h5>
+                        <div class="log-box mb-4 p-3 border rounded bg-dark" id="queueLogsContainer" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-muted">No queue logs found.</div>
+                        </div>
+                        <h5 class="mb-2">Session Logs</h5>
+                        <div class="log-box p-3 border rounded bg-dark" id="sessionLogsContainer" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-muted">No session logs found or session not loaded.</div>
+                        </div>
                     </div>
                 </div>
             </div>

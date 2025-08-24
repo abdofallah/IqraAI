@@ -729,6 +729,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session
                 return;
             }
 
+            var originalState = (ConversationSessionState)((int)_state);
+
             // Update state
             await UpdateStateAsync(ConversationSessionState.Ending, "Session ending: " + reason);
 
@@ -773,27 +775,25 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             // Update state
             await UpdateStateAsync(finalState, reason);
 
-            // Calculate final metrics
-            double? durationSeconds = await UpdateFinalMetricsAsync();
-            if (durationSeconds == null)
+            if (originalState == ConversationSessionState.Active)
             {
-                _logger.LogError("Failed to update final metrics for session {SessionId}", _sessionId);
-                durationSeconds = 0;
-            }
+                double? durationSeconds = await UpdateFinalMetricsAsync();
+                if (durationSeconds == null)
+                {
+                    _logger.LogError("Failed to update final metrics for session {SessionId}", _sessionId);
+                    durationSeconds = 0;
+                }
 
-            // Add Minutes Usage to the Account if atleast 5 seconds of call
-            if (durationSeconds >= 5)
-            {
                 await _billingProcessingManager.ProcessAndBillUsageAsync(_sessionId, _sessionBusinessData.Id, _sessionBusinessData.MasterUserEmail, durationSeconds.Value);
-            }
 
-            _ = Task.Run(async () =>
-            {
-                await ExecuteEndCallAction();
-            });
+                _ = Task.Run(async () =>
+                {
+                    await ExecuteEndCallAction();
+                });
 
-            // Run Audio Compilation in the background
-            RunAudioCompilationAsync();
+                // Run Audio Compilation in the background
+                RunAudioCompilationAsync();
+            }  
 
             SessionEnded?.Invoke(this, null);
 

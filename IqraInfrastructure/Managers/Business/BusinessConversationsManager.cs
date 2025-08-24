@@ -335,6 +335,18 @@ namespace IqraInfrastructure.Managers.Business
                     resultModel.Messages.Add(messageModel);
                 }
 
+                foreach (var log in state.Logs)
+                {
+                    var logModel = new ConversationStateLogViewModel()
+                    {
+                        Level = log.Level,
+                        Timestamp = log.Timestamp,
+                        Message = log.Message
+                    };
+
+                    resultModel.Logs.Add(logModel);
+                }
+
                 result.SetSuccessResult(resultModel);
                 return result;
             }

@@ -1,4 +1,6 @@
 /** Dynamic Variables **/
+
+// Inbound
 let CurrentInboundConversationsData = [];
 let CurrentInboundNextCursor = null;
 let CurrentInboundPrevCursor = null;
@@ -6,6 +8,15 @@ let IsLoadingInboundConversations = false;
 const InboundConversationsPageSize = 12;
 let currentInboundPageNumber = 1;
 
+// Outbound
+let CurrentOutboundConversationsData = [];
+let CurrentOutboundNextCursor = null;
+let CurrentOutboundPrevCursor = null;
+let IsLoadingOutboundConversations = false;
+const OutboundConversationsPageSize = 12;
+let currentOutboundPageNumber = 1;
+
+// Conversation Manager
 let CurrentViewStateData = null;
 let IsLoadingManageView = false;
 let waveSurferAgent = null;
@@ -50,12 +61,22 @@ const conversationsTab = $("#conversations-tab");
 
 // List View Elements
 const conversationListTab = conversationsTab.find("#conversationListTab");
-const conversationInboundTable = conversationsTab.find("#conversationInboundTable");
+
+// Inbound
+const conversationInboundTable = conversationListTab.find("#conversationInboundTable");
 const conversationInboundTableBody = conversationInboundTable.find("tbody");
 const inboundPaginationControls = conversationsTab.find("#inboundPaginationControls");
 const inboundPrevButton = conversationsTab.find("#inboundPrevButton");
 const inboundNextButton = conversationsTab.find("#inboundNextButton");
 const inboundPageInfo = conversationsTab.find("#inboundPageInfo"); // Optional page info element
+
+// Outbound
+const conversationOutboundTable = conversationsTab.find("#conversationOutboundTable");
+const conversationOutboundTableBody = conversationOutboundTable.find("tbody");
+const outboundPaginationControls = conversationsTab.find("#outboundPaginationControls");
+const outboundPrevButton = conversationsTab.find("#outboundPrevButton");
+const outboundNextButton = conversationsTab.find("#outboundNextButton");
+const outboundPageInfo = conversationsTab.find("#outboundPageInfo");
 
 // Manage View Elements
 const conversationManageTab = conversationsTab.find("#conversationManageTab");
@@ -77,6 +98,8 @@ const manageViewEndTime = $("#manageViewEndTime");
 const manageViewRouting = $("#manageViewRouting");
 
 // Manage View - Metrics Tab Elements
+const conversationsManageMetricsTab = $("#conversationsManage-metrics-tab");
+
 const metricsTabItem = $("#conversationsManage-metrics-tab-item");
 const metricsTabPane = $("#conversationsManage-metrics");
 const metricDurationSeconds = $("#metricDurationSeconds");
@@ -94,8 +117,9 @@ const metricLlmAverageLatencyMs = $("#metricLlmAverageLatencyMs");
 const metricTtsAverageLatencyMs = $("#metricTtsAverageLatencyMs");
 const metricAdditionalMetricsContainer = $("#metricAdditionalMetricsContainer");
 
-
 // Manage View - Conversation Tab Elements
+const conversationsManageConversationTab = $("#conversationsManage-conversation-tab");
+
 const agentAudioContainer = $("#agentAudioContainer");
 const waveformAgentAudio = $("#waveform-agent-audio");
 const agentAudioLoader = waveformAgentAudio.find(".audio-loader");
@@ -112,6 +136,12 @@ const clientAudioError = clientAudioContainer.find(".client-audio-error");
 
 const conversationMessagesContainer = conversationManageTab.find(".conversation-messages");
 const messagesPlaceholder = conversationMessagesContainer.find(".messages-placeholder");
+
+// Manage View - Logs Tab Elements
+const manageViewRoutingContainer = $("#manageViewRoutingContainer");
+const logsTabButton = $("#conversationsManage-logs-tab");
+const queueLogsContainer = $("#queueLogsContainer");
+const sessionLogsContainer = $("#sessionLogsContainer");
 
 /** API Functions **/
 function FetchInboundConversationsMetaDataFromAPI(limit, nextCursor, prevCursor, successCallback, errorCallback) {
@@ -135,13 +165,45 @@ function FetchInboundConversationsMetaDataFromAPI(limit, nextCursor, prevCursor,
         },
         error: (jqXHR, textStatus, errorThrown) => {
             // Try to parse JSON error response from backend if available
-            let errorMsg = "An error occurred while fetching conversations.";
+            let errorMsg = "An error occurred while fetching inbound conversations.";
             if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                 errorMsg = jqXHR.responseJSON.message;
             } else if (typeof errorThrown === 'string' && errorThrown.length > 0) {
                 errorMsg = errorThrown;
             }
             console.error("Fetch Inbound Conversations Error:", jqXHR.responseJSON || textStatus || errorThrown);
+            errorCallback({ message: errorMsg, code: jqXHR.status });
+        },
+    });
+}
+function FetchOutboundConversationsMetaDataFromAPI(limit, nextCursor, prevCursor, successCallback, errorCallback) {
+    let url = `/app/user/business/${CurrentBusinessId}/conversations/outbound/metadata?limit=${limit}`;
+    if (nextCursor) {
+        url += `&next=${encodeURIComponent(nextCursor)}`;
+    } else if (prevCursor) {
+        url += `&prev=${encodeURIComponent(prevCursor)}`;
+    }
+
+    $.ajax({
+        url: url,
+        type: "GET", // Changed to GET as per backend modification
+        dataType: "json",
+        success: (response) => {
+            if (!response || !response.success) {
+                errorCallback(response || { message: "Unknown error occurred." });
+                return;
+            }
+            successCallback(response.data); // Pass the PaginatedConversationMetadataResult
+        },
+        error: (jqXHR, textStatus, errorThrown) => {
+            // Try to parse JSON error response from backend if available
+            let errorMsg = "An error occurred while fetching outbound conversations.";
+            if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                errorMsg = jqXHR.responseJSON.message;
+            } else if (typeof errorThrown === 'string' && errorThrown.length > 0) {
+                errorMsg = errorThrown;
+            }
+            console.error("Fetch Outbound Conversations Error:", jqXHR.responseJSON || textStatus || errorThrown);
             errorCallback({ message: errorMsg, code: jqXHR.status });
         },
     });
@@ -359,7 +421,6 @@ function CreateInboundConversationRow(item) {
     const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus);
     const queuedAtFormatted = formatDateTime(item.enqueuedAt);
 
-    // Look up route and number display names (ensure BusinessFullData is loaded)
     let routeDisplay = item.routeId || "N/A";
     if (BusinessFullData && BusinessFullData.businessApp && BusinessFullData.businessApp.routings) {
         const routeData = BusinessFullData.businessApp.routings.find(r => r.id === item.routeId);
@@ -373,10 +434,9 @@ function CreateInboundConversationRow(item) {
     }
 
     const hasSession = item.sessionId !== null && item.sessionId !== "";
-    const viewButtonDisabled = !hasSession ? 'disabled' : '';
 
-    // Store data needed for the manage view directly on the button
     const viewButtonData = `
+        data-call-type="inbound"
         data-queue-id="${item.queueId}"
         data-queue-status-val="${item.status ? item.status.value : ''}"
         data-enqueued-at="${item.enqueuedAt || ''}"
@@ -384,6 +444,7 @@ function CreateInboundConversationRow(item) {
         data-caller-number="${item.callerNumber || ''}"
         data-to-number-display="${$('<div>').text(numberDisplay).html()}"
         data-session-id="${item.sessionId || ''}"
+        data-logs='${JSON.stringify(item.logs || [])}'
     `;
 
     const element = $(`
@@ -397,7 +458,7 @@ function CreateInboundConversationRow(item) {
              <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
             <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
             <td>
-                <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData} ${viewButtonDisabled}>
+                <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
                     <i class="fa-regular fa-eye"></i>
                 </button>
                 <button class="btn btn-danger btn-sm delete-conversation-button" title="Delete Conversation" data-queue-id="${item.queueId}" disabled>
@@ -407,7 +468,6 @@ function CreateInboundConversationRow(item) {
         </tr>
     `);
 
-    // Add simple click-to-copy for input fields
     element.find('.copy-on-click').on('click', function () {
         navigator.clipboard.writeText($(this).val()).then(() => {
             AlertManager.createAlert({ type: 'success', message: 'Copied to clipboard!', timeout: 1500 });
@@ -417,6 +477,61 @@ function CreateInboundConversationRow(item) {
         });
     });
 
+
+    return element;
+}
+function CreateOutboundConversationRow(item) {
+    const queueStatusBadge = getStatusBadgeElement('queue', item.status);
+    const sessionStatusBadge = getStatusBadgeElement('session', item.sessionStatus);
+    const queuedAtFormatted = formatDateTime(item.enqueuedAt);
+
+    let fromNumberDisplay = item.numberId || "N/A";
+    if (BusinessFullData && BusinessFullData.businessApp && BusinessFullData.businessApp.numbers) {
+        const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === item.numberId);
+        if (numberData) fromNumberDisplay = (numberData.countryCode || '') + " " + (numberData.number || item.numberId);
+    }
+
+    const hasSession = item.sessionId !== null && item.sessionId !== "";
+
+    const viewButtonData = `
+        data-call-type="outbound"
+        data-queue-id="${item.queueId}"
+        data-queue-status-val="${item.status ? item.status.value : ''}"
+        data-enqueued-at="${item.enqueuedAt || ''}"
+        data-from-number-display="${$('<div>').text(fromNumberDisplay).html()}"
+        data-to-number="${item.recipientNumber || ''}"
+        data-session-id="${item.sessionId || ''}"
+        data-logs='${JSON.stringify(item.logs || [])}'
+    `;
+
+    const element = $(`
+        <tr>
+            <td><input type="text" class="form-control form-control-sm copy-on-click" value="${item.queueId}" readonly title="Click to copy"></td>
+            <td>${queuedAtFormatted}</td>
+            <td class="text-center">${queueStatusBadge}</td>
+            <td>${$('<div>').text(fromNumberDisplay).html()}</td>
+            <td><b>${$('<div>').text(item.recipientNumber).html()}</b></td>
+            <td>${hasSession ? `<input type="text" class="form-control form-control-sm copy-on-click" value="${item.sessionId}" readonly title="Click to copy">` : '-'}</td>
+            <td class="text-center">${hasSession ? sessionStatusBadge : '-'}</td>
+            <td>
+                <button class="btn btn-info btn-sm view-conversation-button" title="View Details" ${viewButtonData}>
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+                <button class="btn btn-danger btn-sm delete-conversation-button" title="Delete Conversation" data-queue-id="${item.queueId}" disabled>
+                    <i class="fa-regular fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `);
+
+    element.find('.copy-on-click').on('click', function () {
+        navigator.clipboard.writeText($(this).val()).then(() => {
+            AlertManager.createAlert({ type: 'success', message: 'Copied to clipboard!', timeout: 1500 });
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            AlertManager.createAlert({ type: 'danger', message: 'Failed to copy.', timeout: 2000 });
+        });
+    });
 
     return element;
 }
@@ -438,6 +553,21 @@ function RenderInboundConversationsTable(items) {
         conversationInboundTableBody.append(rowElement);
     });
 }
+function RenderOutboundConversationsTable(items) {
+    conversationOutboundTableBody.empty();
+    if (!items || items.length === 0) {
+        conversationOutboundTableBody.append(`
+            <tr>
+                <td colspan="8" class="text-center p-4 text-muted">No outbound conversations found.</td>
+            </tr>
+        `);
+        return;
+    }
+    items.forEach(item => {
+        const rowElement = CreateOutboundConversationRow(item);
+        conversationOutboundTableBody.append(rowElement);
+    });
+}
 
 function ShowTableLoading(isLoading) {
     if (isLoading) {
@@ -456,6 +586,23 @@ function ShowTableLoading(isLoading) {
         inboundPaginationControls.removeClass('d-none');
     }
 }
+function ShowOutboundTableLoading(isLoading) {
+    if (isLoading) {
+        conversationOutboundTableBody.empty().append(`
+            <tr class="loading-row">
+                <td colspan="8" class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `);
+        outboundPaginationControls.addClass('d-none');
+    } else {
+        conversationOutboundTableBody.find('.loading-row').remove();
+        outboundPaginationControls.removeClass('d-none');
+    }
+}
 
 function UpdatePaginationButtons(hasNext, hasPrev) {
     inboundNextButton.prop('disabled', !hasNext);
@@ -464,6 +611,11 @@ function UpdatePaginationButtons(hasNext, hasPrev) {
     // Optional: Update page info display if needed (requires tracking page number)
     // For cursor pagination, page number isn't strictly necessary, but you could estimate it.
     // inboundPageInfo.text(`Page X`); // Update if you implement page tracking
+}
+function UpdateOutboundPaginationButtons(hasNext, hasPrev) {
+    outboundNextButton.prop('disabled', !hasNext);
+    outboundPrevButton.prop('disabled', !hasPrev);
+    outboundPageInfo.text(`Page ${currentOutboundPageNumber}`);
 }
 
 function ClearManageView() {
@@ -482,13 +634,13 @@ function ClearManageView() {
     manageViewStartTime.val('');
     manageViewEndTime.val('');
     manageViewRouting.val('');
+    manageViewRoutingContainer.removeClass('d-none'); // Show routing by default
 
     // Metrics Tab
     metricsTabItem.addClass('d-none'); // Hide tab button
     metricsTabPane.addClass('d-none'); // Hide tab content
     metricsTabPane.find('dd').text('-'); // Reset all metric values
     metricAdditionalMetricsContainer.empty(); // Clear additional metrics
-
 
     // Conversation Tab
     conversationMessagesContainer.empty().append(messagesPlaceholder.clone().removeClass('d-none')); // Clear messages
@@ -500,6 +652,14 @@ function ClearManageView() {
     clientAudioPlayBtn.prop('disabled', true).find('i').removeClass('fa-pause').addClass('fa-play');
     agentAudioDownloadBtn.prop('disabled', true).attr('href', '#'); // Reset download link
     clientAudioDownloadBtn.prop('disabled', true).attr('href', '#');
+
+    // Logs Tab
+    queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>');
+    sessionLogsContainer.html('<div class="text-muted">No session logs found or session not loaded.</div>');
+
+    // Re-enable tabs that might have been disabled
+    //conversationsManageMetricsTab.removeClass('disabled');
+    conversationsManageConversationTab.removeClass('disabled');
 
     // Destroy wavesurfer instances
     if (waveSurferAgent) {
@@ -515,48 +675,68 @@ function ClearManageView() {
     $('#conversationsManage-general-tab').tab('show');
 }
 
-function PopulateManageView(queueDataFromButton, stateData) {
-    // Populate General Tab (Part 1: From Queue Data)
-    manageViewQueueId.val(queueDataFromButton.queueId);
-    manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueDataFromButton.queueStatusVal) }, true)); // Recreate badge from stored value
-    manageViewEnqueuedAt.val(formatDateTime(queueDataFromButton.enqueuedAt));
-    manageViewFromNumber.val(queueDataFromButton.callerNumber);
-    manageViewToNumber.val(queueDataFromButton.toNumberDisplay);
-    manageViewRouting.val(queueDataFromButton.routeDisplay);
-    manageViewSessionId.val(queueDataFromButton.sessionId || 'N/A');
+function PopulateManageView(queueData, stateData) {
+    const callType = queueData.callType; // 'inbound' or 'outbound'
 
-    // Populate General Tab (Part 2: From State Data)
+    // Populate General Tab (Part 1: From Queue Data)
+    manageViewQueueId.val(queueData.queueId);
+    manageViewQueueStatus.html(getStatusBadgeElement('queue', { value: parseInt(queueData.queueStatusVal) }, true));
+    manageViewEnqueuedAt.val(formatDateTime(queueData.enqueuedAt));
+    manageViewSessionId.val(queueData.sessionId || 'N/A');
+
+    if (callType === 'inbound') {
+        manageViewRoutingContainer.removeClass('d-none');
+        manageViewFromNumber.val(queueData.callerNumber);
+        manageViewToNumber.val(queueData.toNumberDisplay);
+        manageViewRouting.val(queueData.routeDisplay);
+    } else { // outbound
+        manageViewRoutingContainer.addClass('d-none');
+        manageViewFromNumber.val(queueData.fromNumberDisplay);
+        manageViewToNumber.val(queueData.toNumber);
+        manageViewRouting.val('N/A');
+    }
+
+    const queueLogs = queueData.logs;
+    PopulateLogsTab(queueLogs, stateData ? stateData.logs : []);
+
+    // Assume tabs are enabled unless a reason to disable is found
+    //conversationsManageMetricsTab.removeClass('disabled');
+    conversationsManageConversationTab.removeClass('disabled');
+
+    // Populate from State Data (if it exists)
     if (stateData) {
         manageViewSessionStatus.html(getStatusBadgeElement('session', stateData.status, true));
         manageViewStartTime.val(formatDateTime(stateData.startTime));
         manageViewEndTime.val(stateData.endTime ? formatDateTime(stateData.endTime) : 'N/A');
 
-        // Populate Metrics Tab
         PopulateMetricsTab(stateData.metrics);
-
-        // Show/Hide Metrics Tab based on final state
-        if (stateData.status && stateData.status.value === ConversationSessionState.Ended) {
-            metricsTabItem.removeClass('d-none');
-            metricsTabPane.removeClass('d-none');
-        } else {
-            metricsTabItem.addClass('d-none');
-            metricsTabPane.addClass('d-none');
-        }
-
-        // Populate Conversation Tab
         RenderConversationMessages(stateData.messages);
         LoadConversationAudio(stateData);
 
+        const isSessionEnded = stateData.status && stateData.status.value === ConversationSessionState.Ended;
+        if (isSessionEnded) {
+            metricsTabItem.removeClass('d-none');
+        } else {
+            metricsTabItem.addClass('d-none');
+        }
+
+        const isSessionFailed = stateData.status && stateData.status.value === ConversationSessionState.Failed;
+        if (isSessionFailed) {
+            conversationsManageMetricsTab.addClass('disabled').parent().tooltip({ title: 'Metrics are not available for failed sessions.', trigger: 'hover' });
+            conversationsManageConversationTab.addClass('disabled').parent().tooltip({ title: 'Conversation is not available for failed sessions.', trigger: 'hover' });
+        }
+
     } else {
-        // No state data (maybe view clicked before session started?)
-        manageViewSessionStatus.html(getStatusBadgeElement('session', null)); // Show N/A
+        manageViewSessionStatus.html(getStatusBadgeElement('session', null));
         manageViewStartTime.val('N/A');
         manageViewEndTime.val('N/A');
         metricsTabItem.addClass('d-none');
-        metricsTabPane.addClass('d-none');
-        conversationMessagesContainer.empty().append(messagesPlaceholder.clone().removeClass('d-none').text('Session data not yet available.'));
+        conversationMessagesContainer.empty().append(messagesPlaceholder.clone().removeClass('d-none').text('Session data not available.'));
         agentAudioContainer.addClass('d-none');
         clientAudioContainer.addClass('d-none');
+
+        conversationsManageMetricsTab.addClass('disabled').parent().tooltip({ title: 'Metrics require a completed session.', trigger: 'hover' });
+        conversationsManageConversationTab.addClass('disabled').parent().tooltip({ title: 'Conversation requires an active session.', trigger: 'hover' });
     }
 
     IsLoadingManageView = false;
@@ -698,6 +878,49 @@ function LoadConversationAudio(stateData) {
     }
 }
 
+function PopulateLogsTab(queueLogs, sessionLogs) {
+    const createLogEntry = (log) => {
+        let iconClass = 'fa-regular fa-circle-info';
+        let textClass = 'text-muted';
+        const logType = log.type?.name || log.level?.name || 'Information';
+
+        switch (logType) {
+            case 'Warning':
+                iconClass = 'fa-regular fa-triangle-exclamation';
+                textClass = 'text-warning';
+                break;
+            case 'Error':
+                iconClass = 'fa-regular fa-circle-exclamation';
+                textClass = 'text-danger';
+                break;
+        }
+        const timestamp = formatDateTime(log.createdAt || log.timestamp);
+        return `
+            <div class="log-entry d-flex align-items-start mb-2 ${textClass}">
+                <i class="${iconClass} me-2 mt-1"></i>
+                <div>
+                    <strong class="me-2">[${timestamp}]</strong>
+                    <span>${$('<div>').text(log.message).html()}</span>
+                </div>
+            </div>
+        `;
+    };
+
+    queueLogsContainer.empty();
+    if (queueLogs && queueLogs.length > 0) {
+        queueLogs.forEach(log => queueLogsContainer.append(createLogEntry(log)));
+    } else {
+        queueLogsContainer.html('<div class="text-muted">No queue logs found.</div>');
+    }
+
+    sessionLogsContainer.empty();
+    if (sessionLogs && sessionLogs.length > 0) {
+        sessionLogs.forEach(log => sessionLogsContainer.append(createLogEntry(log)));
+    } else {
+        sessionLogsContainer.html('<div class="text-muted">No session logs found or session not loaded.</div>');
+    }
+}
+
 /** Event Handlers **/
 function handleAudioUrlSuccess(url, containerId, loader, playBtn, downloadBtn, errorEl) {
     try {
@@ -765,6 +988,21 @@ function handleFetchSuccess(data, targetPageNumber) {
 
     IsLoadingInboundConversations = false;
 }
+function handleOutboundFetchSuccess(data) {
+    CurrentOutboundConversationsData = data.items;
+    CurrentOutboundNextCursor = data.nextCursor;
+    CurrentOutboundPrevCursor = data.previousCursor;
+
+    if (!data.hasPreviousPage) {
+        currentOutboundPageNumber = 1;
+    }
+
+    RenderOutboundConversationsTable(CurrentOutboundConversationsData);
+    ShowOutboundTableLoading(false);
+    UpdateOutboundPaginationButtons(data.hasNextPage, data.hasPreviousPage);
+
+    IsLoadingOutboundConversations = false;
+}
 
 function handleFetchError(error, pageNumberBeforeAttempt) {
     console.error("Error fetching inbound conversations:", error);
@@ -780,6 +1018,17 @@ function handleFetchError(error, pageNumberBeforeAttempt) {
     conversationInboundTableBody.empty().append(`
         <tr>
              <td colspan="9" class="text-center p-4 text-danger">Failed to load conversations.</td> <!-- Adjusted colspan -->
+        </tr>
+    `);
+}
+function handleOutboundFetchError(error) {
+    console.error("Error fetching outbound conversations:", error);
+    IsLoadingOutboundConversations = false;
+    ShowOutboundTableLoading(false);
+    UpdateOutboundPaginationButtons(CurrentOutboundNextCursor !== null, CurrentOutboundPrevCursor !== null);
+    conversationOutboundTableBody.empty().append(`
+        <tr>
+             <td colspan="8" class="text-center p-4 text-danger">Failed to load conversations.</td>
         </tr>
     `);
 }
@@ -822,21 +1071,48 @@ function LoadInboundConversations(cursor = null, direction = 'next') {
         (error) => handleFetchError(error, currentInboundPageNumber) // Pass CURRENT page number in case of error
     );
 }
+function LoadOutboundConversations(cursor = null, direction = 'next') {
+    if (IsLoadingOutboundConversations) return;
 
-function SwitchToManageView(buttonElement) { // Accept the button element
-    const queueData = buttonElement.data(); // Get all data-* attributes
+    IsLoadingOutboundConversations = true;
+    ShowOutboundTableLoading(true);
 
-    // Clear previous data and show loading
+    if (direction === 'next') {
+        if (CurrentOutboundNextCursor || cursor) {
+            currentOutboundPageNumber++;
+        }
+    } else { // 'prev'
+        if (currentOutboundPageNumber > 1) {
+            currentOutboundPageNumber--;
+        }
+    }
+
+    FetchOutboundConversationsMetaDataFromAPI(
+        OutboundConversationsPageSize,
+        direction === 'next' ? cursor : null,
+        direction === 'prev' ? cursor : null,
+        handleOutboundFetchSuccess,
+        handleOutboundFetchError
+    );
+}
+
+function SwitchToManageView(buttonElement) {
+    const queueData = buttonElement.data();
+
     ClearManageView();
     manageViewLoader.removeClass('d-none');
     IsLoadingManageView = true;
 
-    // Pre-fill breadcrumbs and known data
-    currentConversationTypeName.text("Inbound Call");
-    currentConversationName.text(`From ${queueData.callerNumber}`);
-    PopulateManageView(queueData, null); // Populate with queue data first
+    if (queueData.callType === 'inbound') {
+        currentConversationTypeName.text("Inbound Call");
+        currentConversationName.text(`From ${queueData.callerNumber}`);
+    } else {
+        currentConversationTypeName.text("Outbound Call");
+        currentConversationName.text(`To ${queueData.toNumber}`);
+    }
 
-    // Transition the view
+    PopulateManageView(queueData, null);
+
     conversationListTab.removeClass("show");
     conversationListTab.one('transitionend', () => {
         conversationListTab.addClass("d-none");
@@ -844,27 +1120,23 @@ function SwitchToManageView(buttonElement) { // Accept the button element
         setTimeout(() => {
             conversationManageTab.addClass("show");
 
-            // Fetch full state data if sessionId exists
             if (queueData.sessionId) {
                 FetchConversationStateBySessionId(queueData.sessionId,
                     (stateData) => {
-                        CurrentViewStateData = stateData; // Store full state
-                        PopulateManageView(queueData, stateData); // Populate rest of the fields
+                        CurrentViewStateData = stateData;
+                        PopulateManageView(queueData, stateData);
                     },
                     (error) => {
                         console.error("Failed to fetch conversation state:", error);
                         AlertManager.createAlert({ type: 'danger', message: `Failed to load conversation details: ${error.message}`, timeout: 6000 });
                         IsLoadingManageView = false;
                         manageViewLoader.addClass('d-none');
-                        // Maybe show error message in the manage view
                     }
                 );
             } else {
-                // No session ID, loading is done
                 IsLoadingManageView = false;
                 manageViewLoader.addClass('d-none');
                 console.warn("No session ID found for this queue item.");
-                // PopulateManageView already handled the 'no stateData' case
             }
 
         }, 10);
@@ -887,6 +1159,7 @@ function SwitchToListView() {
 function initConversationsTab() {
     // Initial Load
     LoadInboundConversations(); // Load first page
+    LoadOutboundConversations(); // Load first page
 
     // --- Event Listeners ---
 
@@ -896,17 +1169,26 @@ function initConversationsTab() {
             LoadInboundConversations(CurrentInboundNextCursor, 'next');
         }
     });
-
     inboundPrevButton.on("click", () => {
         if (!inboundPrevButton.prop('disabled')) {
             LoadInboundConversations(CurrentInboundPrevCursor, 'prev');
         }
     });
 
+    outboundNextButton.on("click", () => {
+        if (!outboundNextButton.prop('disabled')) {
+            LoadOutboundConversations(CurrentOutboundNextCursor, 'next');
+        }
+    });
+    outboundPrevButton.on("click", () => {
+        if (!outboundPrevButton.prop('disabled')) {
+            LoadOutboundConversations(CurrentOutboundPrevCursor, 'prev');
+        }
+    });
+
     // View Button Click (using event delegation)
-    conversationInboundTableBody.on("click", ".view-conversation-button", function (event) {
+    conversationListTab.on("click", ".view-conversation-button", function (event) {
         event.preventDefault();
-        if ($(this).prop('disabled')) return; 
         SwitchToManageView($(this));
     });
 
