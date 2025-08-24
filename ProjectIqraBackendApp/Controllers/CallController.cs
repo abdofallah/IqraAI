@@ -62,30 +62,51 @@ namespace ProjectIqraBackendApp.Controllers
         public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCall([FromBody] BackendOutboundCallRequest request)
         {
             var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
+            var resultData = new InitiateOutboundCallResultModel()
+            {
+                ShouldRequeue = false
+            };
 
             if (!ValidateApiKey())
             {
-                return result.SetFailureResult("InitiateOutboundCall:INVALID_API_KEY", "Invalid API key");
+                return result.SetFailureResult(
+                    "InitiateOutboundCall:INVALID_API_KEY",
+                    "Invalid API key",
+                    resultData
+                );
             }
 
             try
             {
                 if (string.IsNullOrEmpty(request.QueueId))
                 {
-                    return result.SetFailureResult("InitiateOutboundCall:INVALID_QUEUE_ID", "Invalid queue ID");
+                    return result.SetFailureResult(
+                        "InitiateOutboundCall:INVALID_QUEUE_ID",
+                        "Invalid queue ID",
+                        resultData
+                    );
                 }
 
                 var initateOutboundCallResult = await _callProcessorManager.InitiateOutboundCallAsync(request.QueueId);
+                resultData = initateOutboundCallResult.Data;
                 if (!initateOutboundCallResult.Success)
                 {
-                    return result.SetFailureResult("InitiateOutboundCall:" + initateOutboundCallResult.Code, initateOutboundCallResult.Message);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCall:" + initateOutboundCallResult.Code,
+                        initateOutboundCallResult.Message,
+                        resultData
+                    );
                 }
 
-                return result.SetSuccessResult(initateOutboundCallResult.Data);
+                return result.SetSuccessResult(resultData);
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult("InitiateOutboundCall:EXCEPTION", "Internal server error: " + ex.Message);
+                return result.SetFailureResult(
+                    "InitiateOutboundCall:EXCEPTION",
+                    "Internal server error: " + ex.Message,
+                    resultData
+                );
             }
         }
 

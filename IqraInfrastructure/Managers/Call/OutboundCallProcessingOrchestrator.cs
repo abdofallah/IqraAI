@@ -161,43 +161,77 @@ namespace IqraInfrastructure.Managers.Call
                 };
 
                 var forwardResponse = await ForwardToBackendAsync(backendServerDetails, requestDto);
-                if (forwardResponse.Success)
+                if (!forwardResponse.Success)
                 {
-                    successfullyForwarded = true;
-
-                    if (forwardResponse.Data != null && forwardResponse.Data.ShouldRequeue)
-                    {
-                        shouldRequeCall = true;
-                    }
-
+                    await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                        call.Id,
+                        CallQueueStatusEnum.Failed,
+                        new CallQueueLog
+                        {
+                            Message = $"Failed to forward to backend. [{forwardResponse.Code}] {forwardResponse.Message}",
+                            Type = CallQueueLogTypeEnum.Error
+                        }
+                    );
                     break;
                 }
                 else
                 {
-                    if (forwardResponse.Data != null && forwardResponse.Data.ShouldRequeue)
+                    var backendResult = forwardResponse.Data!;
+
+                    if (!backendResult.Success)
                     {
-                        shouldRequeCall = true;
+                        successfullyForwarded = false;
+                        shouldRequeCall = backendResult.Data!.ShouldRequeue;
+
+                        await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                            call.Id,
+                            CallQueueStatusEnum.Failed,
+                            new CallQueueLog
+                            {
+                                Message = $"Backend call processing failure: [{backendResult.Code}] {backendResult.Message}",
+                                Type = CallQueueLogTypeEnum.Error
+                            }
+                        );
                     }
                     else
                     {
-                        await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = $"Failed to forward to backend {backendServerDetails.Endpoint}. {forwardResponse.Message}", Type = CallQueueLogTypeEnum.Error });
+                        successfullyForwarded = true;
+                        shouldRequeCall = false;
                     }
+
+                    break;
                 }
             }
 
             if (shouldRequeCall)
             {
-                await _outboundCallQueueRepo.UpdateCallStatusAsync(call.Id, CallQueueStatusEnum.Queued);
+                await _outboundCallQueueRepo.UpdateCallStatusAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Queued,
+                    new CallQueueLog
+                    {
+                        Message = "Requeuing call.",
+                        Type = CallQueueLogTypeEnum.Information
+                    }
+                );
             }
             else if (!successfullyForwarded)
             {
-                await _outboundCallQueueRepo.MoveToArchivedAsync(call.Id, CallQueueStatusEnum.Failed, new CallQueueLog { Message = "Failed to forward to any backend server.", Type = CallQueueLogTypeEnum.Error });
+                await _outboundCallQueueRepo.MoveToArchivedAsync(
+                    call.Id,
+                    CallQueueStatusEnum.Failed,
+                    new CallQueueLog
+                    {
+                        Message = "Failed to forward to backend server.",
+                        Type = CallQueueLogTypeEnum.Error
+                    }
+                );
             }
         }
 
-        private async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
+        private async Task<FunctionReturnResult<FunctionReturnResult<InitiateOutboundCallResultModel>>> ForwardToBackendAsync(RegionServerData backendServer, BackendOutboundCallRequest requestDto)
         {
-            var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
+            var result = new FunctionReturnResult<FunctionReturnResult<InitiateOutboundCallResultModel>>();
             string endpoint = (backendServer.UseSSL ? "https://" : "http://") + backendServer.Endpoint;
 
             var baseUri = new Uri(endpoint);
@@ -225,13 +259,28 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult($"ForwardToBackend:{response.StatusCode}", $"Backend returned error: {response.StatusCode}. Details: {responseContentString}");
                 }
 
-                var backendResponse = JsonSerializer.Deserialize<FunctionReturnResult<InitiateOutboundCallResultModel>>(responseContentString, _camelCaseSerializationOptions);
-                if (backendResponse == null || !backendResponse.Success)
+                FunctionReturnResult<InitiateOutboundCallResultModel?>? backendResponse;
+                try
                 {
-                    return result.SetFailureResult(backendResponse?.Code ?? "BackendParseFail", backendResponse?.Message ?? "Backend failed to process or invalid response format.");
+                    backendResponse = JsonSerializer.Deserialize<FunctionReturnResult<InitiateOutboundCallResultModel?>?>(responseContentString, _camelCaseSerializationOptions);
+                }
+                catch (Exception ex)
+                {
+                    return result.SetFailureResult(
+                        "ForwardToBackend:BACKEND_RESPONSE_PARSE_FAIL",
+                        $"Backend failed to process or invalid response format. Exception: {ex.Message}, Response: {responseContentString}"
+                    );
                 }
 
-                return result.SetSuccessResult(backendResponse.Data);
+                if (backendResponse == null || backendResponse.Data == null)
+                {
+                    return result.SetFailureResult(
+                        "ForwardToBackend:BACKEND_RESPONSE_PARSED_BUT_NULL",
+                        $"Backend returned null response. Response: {responseContentString}"
+                    );
+                }
+
+                return result.SetSuccessResult(backendResponse!);
             }
             catch (HttpRequestException httpEx)
             {

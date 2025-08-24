@@ -56,11 +56,11 @@ namespace ProjectIqraBackendProxy
             builder.Services.AddHttpClient("CallManagerServerForward").ConfigureHttpMessageHandlerBuilder(builder => builder.PrimaryHandler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true });
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(10);
             });
             builder.Services.AddHttpClient("TwilioClient", client =>
             {
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(10);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
             builder.Services.AddHttpClient("OutboundCallForwardClient");

@@ -259,6 +259,10 @@ namespace IqraInfrastructure.Managers.Call
         public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCallAsync(string queueId)
         {
             var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
+            var resultData = new InitiateOutboundCallResultModel()
+            {
+                ShouldRequeue = false
+            };
 
             FunctionReturnResult<ConversationSession?>? sessionResult = null;
 
@@ -267,7 +271,7 @@ namespace IqraInfrastructure.Managers.Call
                 OutboundCallQueueData? outboundQueueData = await _outboundCallQueueRepository.GetOutboundCallQueueByIdAsync(queueId);
                 if (outboundQueueData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:QUEUE_NOT_FOUND", "Queue not found");
+                    return result.SetFailureResult("InitiateOutboundCallAsync:QUEUE_NOT_FOUND", "Queue not found", resultData);
                 }
                 await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend, newProcessingServerId: _backendAppConfig.ServerId);
 
@@ -289,42 +293,45 @@ namespace IqraInfrastructure.Managers.Call
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
                 if (businessNumber == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:BUSINESS_NUMBER_NOT_FOUND", "Business number not found");
+                    return result.SetFailureResult("InitiateOutboundCallAsync:BUSINESS_NUMBER_NOT_FOUND", "Business number not found", resultData);
                 }
 
                 var integrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(outboundQueueData.BusinessId, businessNumber.IntegrationId);
                 if (!integrationResult.Success || integrationResult.Data == null)
                 {
-                    return result.SetFailureResult($"InitiateOutboundCallAsync:{integrationResult.Code}", integrationResult.Message);
+                    return result.SetFailureResult($"InitiateOutboundCallAsync:{integrationResult.Code}", integrationResult.Message, resultData);
                 }
 
                 var regionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (regionData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_NOT_FOUND", "Region not found");
+                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_NOT_FOUND", "Region not found", resultData);
                 }
                 var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == _backendAppConfig.ServerId);
                 if (regionServerData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found");
+                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found", resultData);
                 }
                 var anyRegionProxyServerData = regionData.Servers.FirstOrDefault(s => s.Type == ServerTypeEnum.Proxy);
                 if (anyRegionProxyServerData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND", "Region proxy server not found");
+                    resultData.ShouldRequeue = true;
+                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND", "Region proxy server not found", resultData);
                 }
 
                 sessionResult = await CreateConversationSessionAsync(outboundQueueData);
                 if (!sessionResult.Success)
                 {
                     // CHECK WHY THEN REQUEUE
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", sessionResult.Message);
+                    resultData.ShouldRequeue = true;
+                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", sessionResult.Message, resultData);
                 }
                 var startSessionResult = await sessionResult.Data.InitalizeAsync();
                 if (!startSessionResult.Success)
                 {
                     // CHECK WHY THEN REQUEUE
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_INIT_FAILED", startSessionResult.Message);
+                    resultData.ShouldRequeue = true;
+                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_INIT_FAILED", startSessionResult.Message, resultData);
                 }
 
                 var taskResultSuccess = false;
@@ -397,7 +404,8 @@ namespace IqraInfrastructure.Managers.Call
                     await sessionResult.Data.EndAsync("InitiateOutboundCallAsync Failed", ConversationSessionState.Error);
                     await CleanupSessionAsync(sessionResult.Data.SessionId);
 
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", "Session creation failed");
+                    resultData.ShouldRequeue = true;
+                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", "Session creation failed", resultData);
                 }
 
                 var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
@@ -422,8 +430,7 @@ namespace IqraInfrastructure.Managers.Call
 
                             if (!callResultModel.Success)
                             {
-                                result.Data.ShouldRequeue = false;
-                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message);
+                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message, resultData);
                             }
 
                             break;
@@ -442,25 +449,28 @@ namespace IqraInfrastructure.Managers.Call
 
                             if (!callResultModel.Success)
                             {
-                                result.Data.ShouldRequeue = false;
-                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message);
+                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message, resultData);
                             }
 
                             break;
                         }
 
                     default:
-                        return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider");
+                        return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider", resultData);
                 }
 
                 await sessionResult.Data.StartAsync();
 
                 await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
-                return result.SetSuccessResult(null);
+                return result.SetSuccessResult(result.Data);
             }
             catch (Exception ex)
             {
-                return result.SetFailureResult("InitiateOutboundCallAsync:EXCEPTION", ex.Message);
+                return result.SetFailureResult(
+                    "InitiateOutboundCallAsync:EXCEPTION",
+                    $"{ex.Message} {ex.Source} {ex.StackTrace}",
+                    resultData
+                );
             }
             finally
             {
@@ -780,14 +790,18 @@ namespace IqraInfrastructure.Managers.Call
 
                 if (!callResult.Success || callResult.Data == null)
                 {
-                    result.Message = $"Failed to initiate Twilio call: {callResult.Message}"; return result;
+                    result.Message = $"Failed to initiate Twilio call: [{callResult.Code}] {callResult.Message}";
+                    return result;
                 }
-                result.Success = true; result.CallId = callResult.Data.Sid; result.Status = callResult.Data.Status;
+                result.Success = true;
+                result.CallId = callResult.Data.Sid;
+                result.Status = callResult.Data.Status;
                 return result;
             }
             catch (Exception ex)
             {
-                result.Message = $"Error initiating call: {ex.Message}"; return result;
+                result.Message = $"Error initiating call: {ex.Message}";
+                return result;
             }
         }
         private async Task<OutboundCallResultModel> InitiateSipTrunkOutboundCallAsync(BusinessNumberData sipNumber, string toNumber)

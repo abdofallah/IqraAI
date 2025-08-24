@@ -74,11 +74,11 @@ namespace ProjectIqraBackendApp
             builder.Services.AddHttpClient();
             builder.Services.AddHttpClient("ModemTelClient", client =>
             {
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(10);
             });
             builder.Services.AddHttpClient("TwilioClient", client =>
             {
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(10);
                 client.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
             });
 
