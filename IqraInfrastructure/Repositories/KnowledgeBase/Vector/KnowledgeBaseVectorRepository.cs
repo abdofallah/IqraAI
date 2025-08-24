@@ -231,6 +231,29 @@ namespace IqraInfrastructure.Repositories.KnowledgeBase.Vector
             }
         }
 
+        public async Task<bool> DeleteChunksAsync(string collectionName, List<string> chunkIds, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var formattedIds = string.Join(", ", chunkIds.Select(id => $"\"{id}\""));
+                var filterExpression = $"{FieldChunkId} in [{formattedIds}]";
+
+                var request = new DeleteRequest(
+                    dbName: DatabaseName,
+                    collectionName: collectionName,
+                    filter: filterExpression
+                );
+
+                bool success = await _milvusClient.DeleteAsync(request, cancellationToken);
+                return success;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An exception occurred while trying to delete chunks from collection {CollectionName}.", collectionName);
+                return false;
+            }
+        }
+
         public async Task<bool> DeleteKnowledgeBaseAsync(string collectionName, CancellationToken cancellationToken = default)
         {
             try

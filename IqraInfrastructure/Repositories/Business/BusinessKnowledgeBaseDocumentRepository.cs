@@ -84,6 +84,13 @@ namespace IqraInfrastructure.Repositories.Business
             return result.IsAcknowledged;
         }
 
+        public async Task<bool> UpdateDocumentWithUpdateDefinition(long documentId, UpdateDefinition<BusinessAppKnowledgeBaseDocument> update, IClientSessionHandle session)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
+            var result = await _documentsCollection.UpdateOneAsync(session, filter, update);
+            return result.IsAcknowledged && result.ModifiedCount > 0;
+        }
+
         /**
          * 
          * 

@@ -4,6 +4,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Utilities;
 using IqraCore.Utilities.Audio;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.RAG.Extractors;
@@ -76,7 +77,8 @@ namespace IqraInfrastructure.Managers.Business
             BusinessKnowledgeBaseDocumentRepository? businessKnowledgeBaseDocumentRepository,
             KnowledgeBaseVectorRepository? knowledgeBaseVectorRepository,
             IndexProcessorFactory? indexProcessorFactory,
-            ExtractProcessor? extractProcessor
+            ExtractProcessor? extractProcessor,
+            EmbeddingProviderManager? embeddingProviderManager
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -162,11 +164,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeKnowledgeBaseManager)
             {
-                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || indexProcessorFactory == null || extractProcessor == null)
+                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || indexProcessorFactory == null || extractProcessor == null || embeddingProviderManager == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
-                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor);
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, embeddingProviderManager);
             }
         }
 

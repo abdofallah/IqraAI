@@ -444,7 +444,6 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                             );
                         }
 
-                        await mongoSession.CommitTransactionAsync();
                         return result.SetSuccessResult(forwardResult.Data);                  
                     }
                 }

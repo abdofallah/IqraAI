@@ -11,6 +11,7 @@ using IqraCore.Interfaces.RAG;
 using IqraCore.Models.KnowledgeBase;
 using IqraCore.Models.RAG;
 using IqraInfrastructure.Helpers.Business;
+using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.RAG.Extractors;
 using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Repositories.Business;
@@ -34,6 +35,8 @@ namespace IqraInfrastructure.Managers.Business
         private readonly IndexProcessorFactory _indexProcessorFactory;
         private readonly ExtractProcessor _extractProcessor;
 
+        private readonly EmbeddingProviderManager _embeddingProviderManager;
+
         public BusinessKnowledgeBaseManager(
             BusinessManager parentBusinessManager,
             BusinessAppRepository businessAppRepository,
@@ -41,7 +44,8 @@ namespace IqraInfrastructure.Managers.Business
             IntegrationConfigurationManager integrationConfigurationManager,
             KnowledgeBaseVectorRepository documentVectorRepository,
             IndexProcessorFactory indexProcessorFactory,
-            ExtractProcessor extractProcessor
+            ExtractProcessor extractProcessor,
+            EmbeddingProviderManager embeddingProviderManager
         )
         {
             _parentBusinessManager = parentBusinessManager;
@@ -51,6 +55,7 @@ namespace IqraInfrastructure.Managers.Business
             _documentVectorRepository = documentVectorRepository;
             _indexProcessorFactory = indexProcessorFactory;
             _extractProcessor = extractProcessor;
+            _embeddingProviderManager = embeddingProviderManager;
         }
 
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> GetKnowledgeBaseById(long businessId, string existingKbId)
@@ -1115,7 +1120,7 @@ namespace IqraInfrastructure.Managers.Business
                 KnowledgeBaseDocumentUpdateChunksModel documentUpdateChunksModel;
                 try
                 {
-                    documentUpdateChunksModel = JsonSerializer.Deserialize<KnowledgeBaseDocumentUpdateChunksModel>(changesJsonString.ToString());
+                    documentUpdateChunksModel = JsonSerializer.Deserialize<KnowledgeBaseDocumentUpdateChunksModel>(changesJsonString.ToString(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                 }
                 catch (Exception ex)
                 {
@@ -1158,176 +1163,288 @@ namespace IqraInfrastructure.Managers.Business
                         "Document not found."
                     );
                 }
+                var originalDocumentChunks = knowledgeBaseDocumentData.Chunks.ToList();
 
-                // Delete Chunks
-                if (documentUpdateChunksModel.Deleted.Count > 0)
+                // Build In-Memory Lookups for fast validation.
+                var existingChunksMap = originalDocumentChunks.ToDictionary(c => c.Id);
+                var deletedChunkIds = new HashSet<string>(documentUpdateChunksModel.Deleted);
+                var editedChunksMap = documentUpdateChunksModel.Edited.ToDictionary(c => c.Id);
+                var addedChunksMap = documentUpdateChunksModel.Added.ToDictionary(c => c.Id);
+
+                // Check for overlapping operations
+                foreach (var id in deletedChunkIds)
                 {
-                    await _knowledgeBaseDocumentRepository.DeleteDocumentChunksAsync(documentId, documentUpdateChunksModel.Deleted, mongoSessionHandle);
+                    if (editedChunksMap.ContainsKey(id))
+                    {
+                        return result.SetFailureResult(
+                            "UpdateKnowledgeBaseDocumentChunksAsync:CONFLICT",
+                            $"Chunk {id} cannot be both deleted and edited."
+                        );
+                    }
                 }
 
-                // Add Chunks
-                List<BusinessAppKnowledgeBaseDocumentChunk> newChunksList = new List<BusinessAppKnowledgeBaseDocumentChunk>();
-                if (documentUpdateChunksModel.Added.Count > 0)
+                // Validate that edited/deleted chunks actually exist
+                foreach (var id in editedChunksMap.Keys.Concat(deletedChunkIds))
                 {
-                    var parentChunks = documentUpdateChunksModel.Added.Where(c => c.Type == KnowledgeBaseDocumentType.Parent).ToList();
-                    var childChunks = documentUpdateChunksModel.Added.Where(c => c.Type == KnowledgeBaseDocumentType.Child).ToList();
-                    var generalChunks = documentUpdateChunksModel.Added.Where(c => c.Type == KnowledgeBaseDocumentType.General).ToList();
-
-                    foreach (var generalChunk in generalChunks)
+                    if (!existingChunksMap.ContainsKey(id))
                     {
-                        var newGeneralChunk = new BusinessAppKnowledgeBaseDocumentGeneralChunk()
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            IsEnabled = true,
-                            Text = generalChunk.Text,
-                        };
-
-                        newChunksList.Add(newGeneralChunk);
+                        return result.SetFailureResult(
+                            "UpdateKnowledgeBaseDocumentChunksAsync:CHUNK_NOT_FOUND",
+                            $"Chunk {id} not found. The data might be stale."
+                        );
                     }
+                }
 
-                    var mappedParentChunks = new Dictionary<string, string>();
-                    foreach (var parentChunk in parentChunks)
+                // Validate Parent-Child integrity
+                foreach (var deletedId in deletedChunkIds)
+                {
+                    if (existingChunksMap[deletedId] is BusinessAppKnowledgeBaseDocumentParentChunk parentChunk)
                     {
-                        var newParentChunk = new BusinessAppKnowledgeBaseDocumentParentChunk()
+                        foreach (var childId in parentChunk.ChildrenIds)
                         {
-                            Id = Guid.NewGuid().ToString(),
-                            IsEnabled = true,
-                            Text = parentChunk.Text,
-                            ChildrenIds = new List<string>()
-                        };
-
-                        newChunksList.Add(newParentChunk);
-
-                        mappedParentChunks.Add(parentChunk.Id, newParentChunk.Id);
-                    }
-
-                    foreach (var childChunk in childChunks)
-                    {
-                        if (string.IsNullOrEmpty(childChunk.ParentId))
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:CHILD_CHUNK_MISSING_PARENT_ID",
-                                $"Child chunk {childChunk.Id} is missing parent id."
-                            );
-                        }
-
-                        string? mappedParentChunkId = null;
-
-                        int exisitingParentChunkInDocumentIndex = knowledgeBaseDocumentData.Chunks.FindIndex(c => c.Id == childChunk.ParentId && c.Type == KnowledgeBaseDocumentType.Parent);
-                        if (exisitingParentChunkInDocumentIndex != -1)
-                        {
-                            mappedParentChunkId = knowledgeBaseDocumentData.Chunks[exisitingParentChunkInDocumentIndex].Id;
-                        }
-                        else if (!mappedParentChunks.TryGetValue(childChunk.ParentId, out mappedParentChunkId))
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:CHILD_CHUNK_PARENT_NOT_FOUND",
-                                $"Child chunk {childChunk.Id} parent not found."
-                            );
-                        }
-
-                        var newChildChunk = new BusinessAppKnowledgeBaseDocumentChildChunk()
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            IsEnabled = true,
-                            Text = childChunk.Text,
-                            ParentId = mappedParentChunkId
-                        };
-
-                        newChunksList.Add(newChildChunk);
-
-                        if (exisitingParentChunkInDocumentIndex == -1)
-                        {
-                            var newParentChunk = newChunksList.Find(c => c.Id == mappedParentChunks[childChunk.ParentId]) as BusinessAppKnowledgeBaseDocumentParentChunk;
-                            newParentChunk!.ChildrenIds.Add(newChildChunk.Id);
-                        }
-                        else
-                        {
-                            var update = Builders<BusinessAppKnowledgeBaseDocument>.Update.Push(
-                                d => ((BusinessAppKnowledgeBaseDocumentParentChunk)d.Chunks.FirstMatchingElement()).ChildrenIds,
-                                newChildChunk.Id
-                            );
-
-                            var updateParentChunkChildIdsResult = await _knowledgeBaseDocumentRepository.UpdateDocumentChunkByDefinitionAsync(documentId, mappedParentChunkId, update, mongoSessionHandle);
-                            if (!updateParentChunkChildIdsResult)
+                            if (editedChunksMap.ContainsKey(childId))
                             {
                                 return result.SetFailureResult(
-                                    "UpdateKnowledgeBaseDocumentChunksAsync:UPDATE_PARENT_CHUNK_CHILD_IDS_FAILED",
-                                    $"Failed to update parent chunk {mappedParentChunkId} child ids."
+                                    "UpdateKnowledgeBaseDocumentChunksAsync:PARENT_CHILD_CONFLICT",
+                                    $"Cannot edit child chunk {childId} because its parent {deletedId} is being deleted."
                                 );
                             }
                         }
                     }
+                }
 
-                    var addChunksResult = await _knowledgeBaseDocumentRepository.AddDocumentChunksAsync(documentId, newChunksList, mongoSessionHandle);
-                    if (!addChunksResult)
+                foreach (var addedChunk in documentUpdateChunksModel.Added)
+                {
+                    if (addedChunk.Type == KnowledgeBaseDocumentType.Child)
+                    {
+                        if (string.IsNullOrEmpty(addedChunk.ParentId))
+                        {
+                            return result.SetFailureResult(
+                                "UpdateKnowledgeBaseDocumentChunksAsync:CHILD_MISSING_PARENT",
+                                $"Added child chunk {addedChunk.Id} is missing a ParentId."
+                            );
+                        }
+
+                        bool parentExists = (existingChunksMap.ContainsKey(addedChunk.ParentId) && !deletedChunkIds.Contains(addedChunk.ParentId)) ||
+                                            (addedChunksMap.ContainsKey(addedChunk.ParentId));
+                        if (!parentExists)
+                        {
+                            return result.SetFailureResult(
+                                "UpdateKnowledgeBaseDocumentChunksAsync:CHILD_PARENT_NOT_FOUND",
+                                $"Parent {addedChunk.ParentId} for new child chunk {addedChunk.Id} does not exist or is being deleted."
+                            );
+                        }
+                    }
+                }
+
+                // Prepare MongoDB and Vector DB Payloads
+                var finalMongoChunks = new List<BusinessAppKnowledgeBaseDocumentChunk>();
+                var chunksToUpsertInVectorDB = new List<VectorKnowledgeBaseChunkModel>();
+                var chunkIdsToDeleteFromVectorDB = new HashSet<string>(deletedChunkIds);
+                var frontendToBackendIdMap = new Dictionary<string, string>();
+
+                // Process existing chunks (keep, edit, or implicitly delete)
+                foreach (var chunk in originalDocumentChunks)
+                {
+                    if (deletedChunkIds.Contains(chunk.Id))
+                    {
+                        // If a parent is deleted, all its children must also be deleted from the vector DB.
+                        if (chunk is BusinessAppKnowledgeBaseDocumentParentChunk parent)
+                        {
+                            foreach (var childId in parent.ChildrenIds) chunkIdsToDeleteFromVectorDB.Add(childId);
+                        }
+                        continue; // Skip adding to the final list
+                    }
+
+                    if (chunk is BusinessAppKnowledgeBaseDocumentParentChunk parentChunk)
+                    {
+                        var updatedChildrenIds = parentChunk.ChildrenIds
+                            .Where(childId => !deletedChunkIds.Contains(childId))
+                            .ToList();
+                        parentChunk.ChildrenIds = updatedChildrenIds;
+                    }
+
+                    if (editedChunksMap.TryGetValue(chunk.Id, out var editedChunkData))
+                    {
+                        chunk.Text = editedChunkData.Text; // Mutate the text
+                                                           // Edited chunks need to be re-embedded and upserted
+                        chunksToUpsertInVectorDB.Add(new VectorKnowledgeBaseChunkModel
+                        {
+                            ChunkId = chunk.Id,
+                            DocumentId = documentId,
+                            TextChunk = chunk.Text,
+                            ParentChunkId = (chunk is BusinessAppKnowledgeBaseDocumentChildChunk child) ? child.ParentId : null
+                        });
+                    }
+                    finalMongoChunks.Add(chunk);
+                }
+
+                // Process newly added chunks
+                // Add General and Parent chunks first to generate their backend IDs
+                foreach (var addedChunk in documentUpdateChunksModel.Added.Where(c => c.Type != KnowledgeBaseDocumentType.Child))
+                {
+                    var newChunkId = ObjectId.GenerateNewId().ToString();
+                    frontendToBackendIdMap[addedChunk.Id] = newChunkId;
+                    BusinessAppKnowledgeBaseDocumentChunk newMongoChunk;
+
+                    if (addedChunk.Type == KnowledgeBaseDocumentType.General)
+                    {
+                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentGeneralChunk {
+                            Id = newChunkId,
+                            Text = addedChunk.Text
+                        };
+                    }
+                    else // Parent
+                    {
+                        newMongoChunk = new BusinessAppKnowledgeBaseDocumentParentChunk {
+                            Id = newChunkId,
+                            Text = addedChunk.Text,
+                            ChildrenIds = new List<string>()
+                        };
+                    }
+
+                    finalMongoChunks.Add(newMongoChunk);
+
+                    // Only add general chunk as parent chunk is only for context
+                    if (addedChunk.Type == KnowledgeBaseDocumentType.General)
+                    {
+                        chunksToUpsertInVectorDB.Add(new VectorKnowledgeBaseChunkModel
+                        {
+                            ChunkId = newChunkId,
+                            DocumentId = documentId,
+                            TextChunk = addedChunk.Text,
+                            ParentChunkId = null // General chunks have no parent
+                        });
+                    }
+                }
+
+                // Add Child chunks, linking them to existing or new parents
+                foreach (var addedChunk in documentUpdateChunksModel.Added.Where(c => c.Type == KnowledgeBaseDocumentType.Child))
+                {
+                    var newChunkId = ObjectId.GenerateNewId().ToString();
+                    frontendToBackendIdMap[addedChunk.Id] = newChunkId;
+
+                    // Find the backend ID for the parent
+                    string backendParentId;
+                    if (!frontendToBackendIdMap.TryGetValue(addedChunk.ParentId, out backendParentId))
+                    {
+                        backendParentId = addedChunk.ParentId; // It must be an existing parent
+                    }
+
+                    var newChildChunk = new BusinessAppKnowledgeBaseDocumentChildChunk {
+                        Id = newChunkId,
+                        Text = addedChunk.Text,
+                        ParentId = backendParentId
+                    };
+                    finalMongoChunks.Add(newChildChunk);
+
+                    // Find the parent (new or existing) in the final list and add this child's ID
+                    var parentInFinalList = finalMongoChunks.FirstOrDefault(c => c.Id == backendParentId) as BusinessAppKnowledgeBaseDocumentParentChunk;
+                    parentInFinalList?.ChildrenIds.Add(newChunkId);
+
+                    chunksToUpsertInVectorDB.Add(new VectorKnowledgeBaseChunkModel
+                    {
+                        ChunkId = newChunkId,
+                        DocumentId = documentId,
+                        TextChunk = addedChunk.Text,
+                        ParentChunkId = backendParentId
+                    });
+                }
+
+                // Generate Embeddings (Critical failure point before the saga)
+                if (chunksToUpsertInVectorDB.Any())
+                {
+                    var embeddingIntegrationResult = await _parentBusinessManager.GetIntegrationsManager().getBusinessIntegrationById(businessId, knowledgeBaseData.Configuration.Embedding.Id);
+                    if (!embeddingIntegrationResult.Success)
                     {
                         return result.SetFailureResult(
-                            "UpdateKnowledgeBaseDocumentChunksAsync:ADD_CHUNKS_FAILED",
-                            "Failed to add chunks to document database."
+                            $"UpdateKnowledgeBaseDocumentChunksAsync:{embeddingIntegrationResult.Code}",
+                            embeddingIntegrationResult.Message
                         );
                     }
-                    // also add to vector database
-                }
 
-                if (documentUpdateChunksModel.Edited.Count > 0)
-                {
-                    foreach (var editedChunk in documentUpdateChunksModel.Edited)
+                    var embeddingProviderResult = await _embeddingProviderManager.BuildProviderServiceByIntegration(embeddingIntegrationResult.Data!, knowledgeBaseData.Configuration.Embedding);
+                    if (!embeddingProviderResult.Success)
                     {
-                        var update = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(
-                            d => d.Chunks.FirstMatchingElement().Text,
-                            editedChunk.Text
+                        return result.SetFailureResult(
+                            $"UpdateKnowledgeBaseDocumentChunksAsync:{embeddingProviderResult.Code}",
+                            embeddingProviderResult.Message
                         );
-                        var editChunkResult = await _knowledgeBaseDocumentRepository.UpdateDocumentChunkByDefinitionAsync(documentId, editedChunk.Id, update, mongoSessionHandle);
-                        // also update in vector database
                     }
-                }
 
-                if (documentUpdateChunksModel.Deleted.Count > 0)
-                {
-                    foreach (string deletedChunkId in documentUpdateChunksModel.Deleted)
+                    var textsToEmbed = chunksToUpsertInVectorDB.Select(c => c.TextChunk).ToList();
+                    var vectorsResult = await embeddingProviderResult.Data!.GenerateEmbeddingForTextListAsync(textsToEmbed);
+                    if (!vectorsResult.Success)
                     {
-                        if (newChunksList.FindIndex(c => c.Id == deletedChunkId) != -1)
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:DELETED_CHUNK_ALSO_ADDED",
-                                $"Deleted chunk {deletedChunkId} is also being added at the same time."
-                            );
-                        }
-                        if (documentUpdateChunksModel.Edited.FindIndex(c => c.Id == deletedChunkId) != -1)
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:DELETED_CHUNK_ALSO_EDITED",
-                                $"Deleted chunk {deletedChunkId} is also being edited at the same time."
-                            );
-                        }
+                        return result.SetFailureResult(
+                            $"UpdateKnowledgeBaseDocumentChunksAsync:{vectorsResult.Code}",
+                            vectorsResult.Message
+                        );
+                    }
 
-                        var exisitingChunkIndex = knowledgeBaseDocumentData.Chunks.FindIndex(c => c.Id == deletedChunkId);
-                        if (exisitingChunkIndex == -1)
-                        {
-                            return result.SetFailureResult(
-                                "UpdateKnowledgeBaseDocumentChunksAsync:DELETED_CHUNK_NOT_FOUND_IN_DATABASE",
-                                $"Deleted chunk {deletedChunkId} not found in database."
-                            );
-                        }
-
-                        var exisitingChunkType = knowledgeBaseDocumentData.Chunks[exisitingChunkIndex].Type;
-
-                        if (exisitingChunkType == KnowledgeBaseDocumentType.Parent)
-                        {
-                            // check if any added or edit chunk is a child of deleted chunk
-                        }
-                        else if (exisitingChunkType == KnowledgeBaseDocumentType.Child)
-                        {
-                            // check if any added or edit chunk is a parent of deleted chunk
-                        }
-
-                        var deleteChunkResult = await _knowledgeBaseDocumentRepository.DeleteDocumentChunkAsync(documentId, deletedChunkId, mongoSessionHandle);
-                        // also delete from the vector database
+                    // Populate vectors back into the payload
+                    for (int i = 0; i < chunksToUpsertInVectorDB.Count; i++)
+                    {
+                        chunksToUpsertInVectorDB[i].Embedding = new ReadOnlyMemory<float>(vectorsResult.Data![i]);
                     }
                 }
 
-                return result.SetSuccessResult(null);
+                // EXECUTE THE TRANSACTION WITH COMPENSATION LOGIC (THE SAGA)
+                try
+                {
+                    // Execute MongoDB Operation (Single atomic update)
+                    var mongoFilter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId);
+                    var mongoUpdate = Builders<BusinessAppKnowledgeBaseDocument>.Update.Set(d => d.Chunks, finalMongoChunks);
+                    var updateResult = await _knowledgeBaseDocumentRepository.UpdateDocumentWithUpdateDefinition(documentId, mongoUpdate, mongoSessionHandle);
+                    if (!updateResult)
+                    {
+                        return result.SetFailureResult(
+                            "UpdateKnowledgeBaseDocumentChunksAsync:MONGODB_FAILED",
+                            "Failed to update document in MongoDB. The transaction will be aborted, reverting vector database changes."
+                        );
+                    }
+
+                    // Execute Vector DB Operations
+                    string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
+
+                    if (chunkIdsToDeleteFromVectorDB.Any())
+                    {
+                        var deleteSuccess = await _documentVectorRepository.DeleteChunksAsync(collectionName, chunkIdsToDeleteFromVectorDB.ToList());
+                        if (!deleteSuccess)
+                        {
+                            return result.SetFailureResult(
+                                "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
+                                "Failed to delete chunks from vector database. The transaction will be aborted, reverting MongoDB changes."
+                            );
+                        }
+                    }
+
+                    if (chunksToUpsertInVectorDB.Any())
+                    {
+                        var addSuccess = await _documentVectorRepository.AddChunksAsync(collectionName, chunksToUpsertInVectorDB);
+                        if (!addSuccess)
+                        {
+                            return result.SetFailureResult(
+                                "UpdateKnowledgeBaseDocumentChunksAsync:VECTORDB_FAILED",
+                                "Failed to add chunks to vector database. The transaction will be aborted, reverting MongoDB changes."
+                            );
+                        }
+                    }
+
+                    // Commit Mongo Changes
+                    await mongoSessionHandle.CommitTransactionAsync();
+
+                    // If all operations succeed, we're done.
+                    var finalDocument = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(documentId);
+                    return result.SetSuccessResult(finalDocument);
+                }
+                catch (Exception ex)
+                {
+                    return result.SetFailureResult(
+                        "UpdateKnowledgeBaseDocumentChunksAsync:SAGA_FAILED",
+                        $"An error occurred: {ex.Message}. The transaction will be aborted, reverting MongoDB changes. The vector database may be inconsistent."
+                    );
+                }
             }
             catch (Exception ex)
             {

@@ -1632,44 +1632,83 @@ function initKnowledgeBaseTab() {
 
             const parentId = button.data('parent-id');
             const childId = button.data('child-id');
-            const chunkId = button.data('chunk-id');
+            const chunkId = button.data('chunk-id'); // This will be the ID for general chunks or parent chunks
 
             const confirmDialog = new BootstrapConfirmDialog({
                 title: "Confirm Deletion",
-                message: `Are you sure you want to delete this chunk?`,
+                message: `Are you sure you want to delete this chunk? This action cannot be undone.`,
                 confirmText: "Delete",
                 confirmButtonClass: 'btn-danger'
             });
 
             if (await confirmDialog.show()) {
-                if (childId) { // Deleting a child
-                    currentDeletedChunks.push(childId);
-                    button.closest('.chunk-pill').remove();
+                if (childId) { // Deleting a single child
+                    // Rule A: Clean up any pending edits for this child
+                    currentEditedChunks = currentEditedChunks.filter(c => c.id !== childId);
 
+                    // If the child was newly added, just remove it from the added list.
+                    // If it's an existing chunk, add its ID to the deleted list.
+                    const wasNewlyAdded = currentAddedChunks.some(c => c.id === childId);
+                    if (wasNewlyAdded) {
+                        currentAddedChunks = currentAddedChunks.filter(c => c.id !== childId);
+                    } else {
+                        currentDeletedChunks.push(childId);
+                    }
+
+                    // Update the master data and UI
                     const parentChunk = ManageCurrentDocumentData.chunks.find(c => c.id === parentId);
-                    parentChunk.childrenIds.splice(parentChunk.childrenIds.indexOf(childId), 1);
-
-                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === childId), 1);
+                    parentChunk.childrenIds = parentChunk.childrenIds.filter(id => id !== childId);
+                    ManageCurrentDocumentData.chunks = ManageCurrentDocumentData.chunks.filter(c => c.id !== childId);
                 }
-                else if (parentId) { // Deleting a parent
-                    currentDeletedChunks.push(parentId);
-                    button.closest('.chunk-card').remove();
-
+                else if (parentId) { // Deleting a parent (CASCADING DELETE)
                     const parentChunk = ManageCurrentDocumentData.chunks.find(c => c.id === parentId);
-                    const parentChunkChildIds = parentChunk.childrenIds;
+                    if (!parentChunk) return; // Safety check
 
-                    parentChunkChildIds.forEach(childId => {
-                        ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === childId), 1);
+                    const allChildrenIds = parentChunk.childrenIds;
+
+                    // Rule B: Delete all children associated with this parent.
+                    allChildrenIds.forEach(idOfChild => {
+                        // Rule A for each child: Clean up pending edits/adds
+                        currentEditedChunks = currentEditedChunks.filter(c => c.id !== idOfChild);
+                        const wasChildNewlyAdded = currentAddedChunks.some(c => c.id === idOfChild);
+                        if (wasChildNewlyAdded) {
+                            currentAddedChunks = currentAddedChunks.filter(c => c.id !== idOfChild);
+                        } else {
+                            // Only add existing children to the delete list
+                            if (!currentDeletedChunks.includes(idOfChild)) {
+                                currentDeletedChunks.push(idOfChild);
+                            }
+                        }
                     });
 
-                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === parentId), 1);
+                    // Now, handle the parent itself
+                    // Rule A for the parent: Clean up pending edits/adds
+                    currentEditedChunks = currentEditedChunks.filter(c => c.id !== parentId);
+                    const wasParentNewlyAdded = currentAddedChunks.some(c => c.id === parentId);
+                    if (wasParentNewlyAdded) {
+                        currentAddedChunks = currentAddedChunks.filter(c => c.id !== parentId);
+                    } else {
+                        currentDeletedChunks.push(parentId);
+                    }
+
+                    // Update the master data by removing the parent and all its children
+                    ManageCurrentDocumentData.chunks = ManageCurrentDocumentData.chunks.filter(c => c.id !== parentId && !allChildrenIds.includes(c.id));
                 }
                 else { // Deleting a general chunk
-                    currentDeletedChunks.push(chunkId);
-                    button.closest('.chunk-card').remove();
+                    // Rule A: Clean up pending edits/adds
+                    currentEditedChunks = currentEditedChunks.filter(c => c.id !== chunkId);
+                    const wasNewlyAdded = currentAddedChunks.some(c => c.id === chunkId);
+                    if (wasNewlyAdded) {
+                        currentAddedChunks = currentAddedChunks.filter(c => c.id !== chunkId);
+                    } else {
+                        currentDeletedChunks.push(chunkId);
+                    }
 
-                    ManageCurrentDocumentData.chunks.splice(ManageCurrentDocumentData.chunks.indexOf(c => c.id === chunkId), 1);
+                    // Update master data
+                    ManageCurrentDocumentData.chunks = ManageCurrentDocumentData.chunks.filter(c => c.id !== chunkId);
                 }
+
+                fillChunksList(); // Re-render the entire list to reflect all changes
                 updateSaveChangesButtonState();
             }
         });
@@ -1821,12 +1860,21 @@ function initKnowledgeBaseTab() {
                         currentEditedChunks = [];
                         currentDeletedChunks = [];
 
+                        ManageCurrentDocumentData = response.data;
+                        
+                        const documentIndex = ManageCurrentKnowledgeBaseDocuments.findIndex(doc => doc.id === ManageCurrentDocumentData.id);
+                        ManageCurrentKnowledgeBaseDocuments[documentIndex] = ManageCurrentDocumentData;
+
+                        fillChunksList();
+
+                        // todo maybe update the document list element too
+
                         AlertManager.createAlert({
                             type: 'success',
                             message: 'Chunks saved successfully and submitted for processing.',
                             timeout: 6000
                         });
-                    }                 
+                    }   
 
                     spinner.addClass('d-none');
                     IsSavingChunks = false;
