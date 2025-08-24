@@ -8,6 +8,7 @@ using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Managers.Region;
 using IqraInfrastructure.Managers.Telephony;
@@ -15,6 +16,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.RAG;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -78,7 +80,9 @@ namespace IqraInfrastructure.Managers.Business
             KnowledgeBaseVectorRepository? knowledgeBaseVectorRepository,
             IndexProcessorFactory? indexProcessorFactory,
             ExtractProcessor? extractProcessor,
-            EmbeddingProviderManager? embeddingProviderManager
+            EmbeddingProviderManager? embeddingProviderManager,
+            KeywordExtractor? keywordExtractor,
+            RAGKeywordStore? ragKeywordStore
         )
         {
             _logger = loggerFactory.CreateLogger<BusinessManager>();
@@ -164,11 +168,11 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeKnowledgeBaseManager)
             {
-                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || indexProcessorFactory == null || extractProcessor == null || embeddingProviderManager == null)
+                if (businessKnowledgeBaseDocumentRepository == null || knowledgeBaseVectorRepository == null || indexProcessorFactory == null || extractProcessor == null || embeddingProviderManager == null || keywordExtractor == null || ragKeywordStore == null)
                 {
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
-                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, embeddingProviderManager);
+                _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, keywordExtractor, embeddingProviderManager, ragKeywordStore);
             }
         }
 

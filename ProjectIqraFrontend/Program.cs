@@ -606,7 +606,9 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<KnowledgeBaseVectorRepository>(),
                     sp.GetRequiredService<IndexProcessorFactory>(),
                     sp.GetRequiredService<ExtractProcessor>(),
-                    sp.GetRequiredService<EmbeddingProviderManager>()
+                    sp.GetRequiredService<EmbeddingProviderManager>(),
+                    sp.GetRequiredService<KeywordExtractor>(),
+                    sp.GetRequiredService<RAGKeywordStore>()
                 );
             });
             builder.Services.AddSingleton<LLMProviderManager>((sp) =>

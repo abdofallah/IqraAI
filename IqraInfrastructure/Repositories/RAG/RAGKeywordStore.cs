@@ -42,7 +42,7 @@ namespace IqraInfrastructure.Repositories.RAG
             _keywordCollection.Indexes.CreateOne(indexModel);
         }
 
-        public async Task AddChunksKeywordsAsync(string knowledgeBaseId, Dictionary<string, List<string>> chunkKeywords)
+        public async Task AddChunksKeywordsAsync(string knowledgeBaseId, Dictionary<string, List<string>> chunkKeywords, IClientSessionHandle? session = null)
         {
             if (chunkKeywords == null || !chunkKeywords.Any())
             {
@@ -89,7 +89,72 @@ namespace IqraInfrastructure.Repositories.RAG
                 bulkOps.Add(upsertModel);
             }
 
-            await _keywordCollection.BulkWriteAsync(bulkOps);
+            if (session != null)
+            {
+                await _keywordCollection.BulkWriteAsync(session, bulkOps);
+            }
+            else
+            {
+                await _keywordCollection.BulkWriteAsync(bulkOps);
+            }
+        }
+
+        public async Task UpdateChunkKeywordsAsync(string knowledgeBaseId, string chunkId, List<string> oldKeywords, List<string> newKeywords, IClientSessionHandle session)
+        {
+            var keywordsToRemove = oldKeywords.Except(newKeywords).ToList();
+            var keywordsToAdd = newKeywords.Except(oldKeywords).ToList();
+
+            var bulkOps = new List<WriteModel<KeywordIndex>>();
+
+            // Operation to remove chunkId from old keywords
+            if (keywordsToRemove.Any())
+            {
+                var pullFilter = Builders<KeywordIndex>.Filter.And(
+                    Builders<KeywordIndex>.Filter.Eq(i => i.KnowledgeBaseId, knowledgeBaseId),
+                    Builders<KeywordIndex>.Filter.In(i => i.Keyword, keywordsToRemove)
+                );
+                var pullUpdate = Builders<KeywordIndex>.Update.Pull(i => i.ChunkIds, chunkId);
+                bulkOps.Add(new UpdateManyModel<KeywordIndex>(pullFilter, pullUpdate));
+            }
+
+            // Operation to add chunkId to new keywords (upsert logic)
+            if (keywordsToAdd.Any())
+            {
+                foreach (var keyword in keywordsToAdd)
+                {
+                    var pushFilter = Builders<KeywordIndex>.Filter.And(
+                        Builders<KeywordIndex>.Filter.Eq(i => i.KnowledgeBaseId, knowledgeBaseId),
+                        Builders<KeywordIndex>.Filter.Eq(i => i.Keyword, keyword)
+                    );
+                    var pushUpdate = Builders<KeywordIndex>.Update
+                        .AddToSet(i => i.ChunkIds, chunkId) // Use AddToSet for safety
+                        .SetOnInsert(i => i.KnowledgeBaseId, knowledgeBaseId)
+                        .SetOnInsert(i => i.Keyword, keyword);
+
+                    bulkOps.Add(new UpdateOneModel<KeywordIndex>(pushFilter, pushUpdate) { IsUpsert = true });
+                }
+            }
+
+            if (!bulkOps.Any()) return;
+
+            await _keywordCollection.BulkWriteAsync(session, bulkOps);
+        }
+
+        public async Task RemoveChunkReferencesAsync(string knowledgeBaseId, List<string> chunkIds, IClientSessionHandle session)
+        {
+            if (chunkIds == null || !chunkIds.Any())
+            {
+                return;
+            }
+
+            var filter = Builders<KeywordIndex>.Filter.And(
+                Builders<KeywordIndex>.Filter.Eq(i => i.KnowledgeBaseId, knowledgeBaseId),
+                Builders<KeywordIndex>.Filter.AnyIn(i => i.ChunkIds, chunkIds) // Find docs where ChunkIds array contains any of the specified chunkIds
+            );
+
+            var update = Builders<KeywordIndex>.Update.PullAll(i => i.ChunkIds, chunkIds);
+
+            await _keywordCollection.UpdateManyAsync(session, filter, update);
         }
 
         public async Task<List<string>> SearchAsync(string knowledgeBaseId, string query, int topK)

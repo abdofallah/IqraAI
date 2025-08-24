@@ -13,9 +13,11 @@ using IqraCore.Models.RAG;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Managers.Embedding;
 using IqraInfrastructure.Managers.RAG.Extractors;
+using IqraInfrastructure.Managers.RAG.Keywords;
 using IqraInfrastructure.Managers.RAG.Processors;
 using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
+using IqraInfrastructure.Repositories.RAG;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -34,8 +36,10 @@ namespace IqraInfrastructure.Managers.Business
         private readonly KnowledgeBaseVectorRepository _documentVectorRepository;
         private readonly IndexProcessorFactory _indexProcessorFactory;
         private readonly ExtractProcessor _extractProcessor;
+        private readonly KeywordExtractor _keywordExtractor;
 
         private readonly EmbeddingProviderManager _embeddingProviderManager;
+        private readonly RAGKeywordStore _ragKeywordStore;
 
         public BusinessKnowledgeBaseManager(
             BusinessManager parentBusinessManager,
@@ -45,7 +49,9 @@ namespace IqraInfrastructure.Managers.Business
             KnowledgeBaseVectorRepository documentVectorRepository,
             IndexProcessorFactory indexProcessorFactory,
             ExtractProcessor extractProcessor,
-            EmbeddingProviderManager embeddingProviderManager
+            KeywordExtractor keywordExtractor,
+            EmbeddingProviderManager embeddingProviderManager,
+            RAGKeywordStore ragKeywordStore
         )
         {
             _parentBusinessManager = parentBusinessManager;
@@ -55,7 +61,9 @@ namespace IqraInfrastructure.Managers.Business
             _documentVectorRepository = documentVectorRepository;
             _indexProcessorFactory = indexProcessorFactory;
             _extractProcessor = extractProcessor;
+            _keywordExtractor = keywordExtractor;
             _embeddingProviderManager = embeddingProviderManager;
+            _ragKeywordStore = ragKeywordStore;
         }
 
         public async Task<FunctionReturnResult<BusinessAppKnowledgeBase?>> GetKnowledgeBaseById(long businessId, string existingKbId)
@@ -1242,6 +1250,8 @@ namespace IqraInfrastructure.Managers.Business
                 var chunksToUpsertInVectorDB = new List<VectorKnowledgeBaseChunkModel>();
                 var chunkIdsToDeleteFromVectorDB = new HashSet<string>(deletedChunkIds);
                 var frontendToBackendIdMap = new Dictionary<string, string>();
+                var keywordsForAddedChunks = new Dictionary<string, List<string>>();
+                var keywordsForEditedChunks = new List<(string chunkId, List<string> oldKeywords, List<string> newKeywords)>();
 
                 // Process existing chunks (keep, edit, or implicitly delete)
                 foreach (var chunk in originalDocumentChunks)
@@ -1266,8 +1276,15 @@ namespace IqraInfrastructure.Managers.Business
 
                     if (editedChunksMap.TryGetValue(chunk.Id, out var editedChunkData))
                     {
-                        chunk.Text = editedChunkData.Text; // Mutate the text
-                                                           // Edited chunks need to be re-embedded and upserted
+                        string originalText = chunk.Text;
+                        chunk.Text = editedChunkData.Text;
+
+                        keywordsForEditedChunks.Add((
+                            chunk.Id,
+                            _keywordExtractor.Extract(originalText),
+                            _keywordExtractor.Extract(chunk.Text)
+                        ));
+
                         chunksToUpsertInVectorDB.Add(new VectorKnowledgeBaseChunkModel
                         {
                             ChunkId = chunk.Id,
@@ -1351,6 +1368,16 @@ namespace IqraInfrastructure.Managers.Business
                     });
                 }
 
+                // Extract keywords for added chunks that will be indexed
+                foreach (var addedChunk in documentUpdateChunksModel.Added)
+                {
+                    if (addedChunk.Type == KnowledgeBaseDocumentType.General || addedChunk.Type == KnowledgeBaseDocumentType.Child)
+                    {
+                        var backendId = frontendToBackendIdMap[addedChunk.Id];
+                        keywordsForAddedChunks[backendId] = _keywordExtractor.Extract(addedChunk.Text);
+                    }
+                }
+
                 // Generate Embeddings (Critical failure point before the saga)
                 if (chunksToUpsertInVectorDB.Any())
                 {
@@ -1404,9 +1431,22 @@ namespace IqraInfrastructure.Managers.Business
                         );
                     }
 
+                    // Update Keyword Store
+                    if (chunkIdsToDeleteFromVectorDB.Any())
+                    {
+                        await _ragKeywordStore.RemoveChunkReferencesAsync(knowledgeBaseId, chunkIdsToDeleteFromVectorDB.ToList(), mongoSessionHandle);
+                    }
+                    foreach (var edited in keywordsForEditedChunks)
+                    {
+                        await _ragKeywordStore.UpdateChunkKeywordsAsync(knowledgeBaseId, edited.chunkId, edited.oldKeywords, edited.newKeywords, mongoSessionHandle);
+                    }
+                    if (keywordsForAddedChunks.Any())
+                    {
+                        await _ragKeywordStore.AddChunksKeywordsAsync(knowledgeBaseId, keywordsForAddedChunks, mongoSessionHandle);
+                    }
+
                     // Execute Vector DB Operations
                     string collectionName = $"b{businessId}_kb{knowledgeBaseId}";
-
                     if (chunkIdsToDeleteFromVectorDB.Any())
                     {
                         var deleteSuccess = await _documentVectorRepository.DeleteChunksAsync(collectionName, chunkIdsToDeleteFromVectorDB.ToList());
@@ -1418,7 +1458,6 @@ namespace IqraInfrastructure.Managers.Business
                             );
                         }
                     }
-
                     if (chunksToUpsertInVectorDB.Any())
                     {
                         var addSuccess = await _documentVectorRepository.AddChunksAsync(collectionName, chunksToUpsertInVectorDB);
@@ -1433,7 +1472,6 @@ namespace IqraInfrastructure.Managers.Business
 
                     // Commit Mongo Changes
                     await mongoSessionHandle.CommitTransactionAsync();
-
                     // If all operations succeed, we're done.
                     var finalDocument = await _knowledgeBaseDocumentRepository.GetDocumentByIdAsync(documentId);
                     return result.SetSuccessResult(finalDocument);
