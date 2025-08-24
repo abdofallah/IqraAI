@@ -1,7 +1,6 @@
 ﻿using IqraCore.Entities.Business.App.KnowledgeBase.Document;
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
-using IqraCore.Models.Business.KnowledgeBase;
 using IqraInfrastructure.Repositories.Counter;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
@@ -185,6 +184,23 @@ namespace IqraInfrastructure.Repositories.Business
             var result = session != null
                 ? await _documentsCollection.UpdateOneAsync(session, filter, update)
                 : await _documentsCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> UpdateDocumentChunkByDefinitionAsync(long documentId, string chunkId, UpdateDefinition<BusinessAppKnowledgeBaseDocument> updateChunkDef, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<BusinessAppKnowledgeBaseDocument>.Filter.And(
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.Eq(d => d.Id, documentId),
+                Builders<BusinessAppKnowledgeBaseDocument>.Filter.ElemMatch(
+                    d => d.Chunks,
+                    c => c.Id == chunkId
+                )
+            );
+
+            var result = session != null
+                ? await _documentsCollection.UpdateOneAsync(session, filter, updateChunkDef)
+                : await _documentsCollection.UpdateOneAsync(filter, updateChunkDef);
 
             return result.IsAcknowledged;
         }

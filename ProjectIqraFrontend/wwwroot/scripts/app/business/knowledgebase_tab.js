@@ -225,10 +225,24 @@ function SaveAndProcessDocument(kbId, formData, successCallback, errorCallback) 
     });
 }
 
-function SaveDocumentChunks(kbId, docId, changes, successCallback, errorCallback) {
-    console.log(`Simulating save for chunks of document ${docId} in KB ${kbId}`);
-    console.log("Changes to send:", changes);
-    setTimeout(() => successCallback({ success: true }), 1000);
+function SaveDocumentChunks(kbId, docId, formData, successCallback, errorCallback) {
+    $.ajax({
+        url: `/app/user/business/${CurrentBusinessId}/knowledgebase/${kbId}/documents/${docId}/chunks/save`,
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: (response) => {
+            if (response.success) {
+                successCallback(response);
+            } else {
+                errorCallback(response, true);
+            }
+        },
+        error: (error) => {
+            errorCallback(error, false);
+        },
+    });
 }
 
 function TestRetrievalQuery(kbId, formData, successCallback, errorCallback) {
@@ -1788,25 +1802,48 @@ function initKnowledgeBaseTab() {
                 deleted: currentDeletedChunks,
             };
 
-            SaveDocumentChunks(ManageCurrentKnowledgeBaseData.id, ManageCurrentDocumentData.id, payload,
+            const formData = new FormData();
+            formData.append('changes', JSON.stringify(payload));
+
+            SaveDocumentChunks(ManageCurrentKnowledgeBaseData.id, ManageCurrentDocumentData.id, formData,
                 (response) => {
-                    // This is where the permanent merge happens after successful save
-                    // For now, our temporary merge in the modal save handler suffices for UI
-                    // A real implementation would now update the master `ManageCurrentDocumentData` from the server response
-                    currentAddedChunks = [];
-                    currentEditedChunks = [];
-                    currentDeletedChunks = [];
+                    if (!response.success) {
+                        AlertManager.createAlert({
+                            type: 'success',
+                            message: 'Unable to save chunks. Check console logs for more details.',
+                            timeout: 6000
+                        });
+
+                        console.error("Unable to save chunks:", response);
+                    }
+                    else {
+                        currentAddedChunks = [];
+                        currentEditedChunks = [];
+                        currentDeletedChunks = [];
+
+                        AlertManager.createAlert({
+                            type: 'success',
+                            message: 'Chunks saved successfully and submitted for processing.',
+                            timeout: 6000
+                        });
+                    }                 
 
                     spinner.addClass('d-none');
                     IsSavingChunks = false;
-                    updateSaveChangesButtonState(); // Will disable the button
-                    AlertManager.createAlert({ type: 'success', message: 'Chunks saved successfully.' });
+                    updateSaveChangesButtonState();
                 },
                 (error) => {
                     spinner.addClass('d-none');
                     IsSavingChunks = false;
-                    updateSaveChangesButtonState(); // Re-enable on failure
-                    AlertManager.createAlert({ type: 'danger', message: 'Failed to save chunks.' });
+                    updateSaveChangesButtonState();
+
+                    AlertManager.createAlert({
+                        type: 'danger',
+                        message: 'Failed to save chunks and submit for processing. Check console logs for more details.',
+                        timeout: 6000
+                    });
+
+                    console.error("Failed to save chunks and submit for processing:", error);
                 }
             );
         });

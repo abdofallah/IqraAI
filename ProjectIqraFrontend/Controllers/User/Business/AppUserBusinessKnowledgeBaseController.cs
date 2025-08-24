@@ -6,6 +6,7 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.KnowledgeBase.Retrieval;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using MongoDB.Driver;
 using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
@@ -16,15 +17,19 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         private readonly BusinessManager _businessManager;
         private readonly KnowledgeBaseRetrievalManagerFactory _knowledgeBaseRetrievalManagerFactory;
 
+        private readonly IMongoClient _mongoClient;
+
         public AppUserBusinessKnowledgeBaseController(
             UserSessionValidationHelper userSessionValidationHelper,
             BusinessManager businessManager,
-            KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory
+            KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory,
+            IMongoClient mongoClient
         )
         {
             _userSessionValidationHelper = userSessionValidationHelper;
             _businessManager = businessManager;
             _knowledgeBaseRetrievalManagerFactory = knowledgeBaseRetrievalManagerFactory;
+            _mongoClient = mongoClient;
         }
 
         [HttpPost("/app/user/business/{businessId}/knowledgebase/save")]
@@ -177,6 +182,22 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 );
             }
 
+            if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
+            {
+                return result.SetFailureResult(
+                    "UploadKnowledgeBaseDocument:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
+                    $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
+                );
+            }
+
+            if (businessData.Permission.KnowledgeBases.Documents.DisabledAddingAt != null)
+            {
+                return result.SetFailureResult(
+                    "UploadKnowledgeBaseDocument:ADDING_KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
+                    $"Permission to add documents is disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledAddingReason}"
+                );
+            }
+
             // Logic
             var file = formData.Files.FirstOrDefault();
             if (file == null || file.Length == 0)
@@ -235,6 +256,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 return result.SetFailureResult(
                     "GetKnowledgebaseDocuments:KNOWLEDGE_BASES_DISABLED",
                     $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                );
+            }
+
+            if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
+            {
+                return result.SetFailureResult(
+                    "GetKnowledgebaseDocuments:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
+                    $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
                 );
             }
   
@@ -347,6 +376,91 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 {
                     await knowledgeBaseRetrievalManager.DisposeAsync();
                 }
+            }
+        }
+
+        [HttpPost("/app/user/business/{businessId}/knowledgebase/{knowledgeBaseId}/documents/{documentId}/chunks/save")]
+        public async Task<FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>> SaveDocumentChunks(long businessId, string knowledgeBaseId, long documentId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessAppKnowledgeBaseDocument?>();
+
+            try
+            {
+                // Validation
+                var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                    Request,
+                    businessId,
+                    checkUserDisabled: true,
+                    checkBusinessesDisabled: true,
+                    checkBusinessesEditingEnabled: true
+                );
+                if (!userSessionAndBusinessValidationResult.Success)
+                {
+                    result.Code = $"SaveDocumentChunks:{userSessionAndBusinessValidationResult.Code}";
+                    result.Message = userSessionAndBusinessValidationResult.Message;
+                    return result;
+                }
+                var userData = userSessionAndBusinessValidationResult.Data.userData;
+                var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+
+                // Knowledge Base Permission
+                if (businessData.Permission.KnowledgeBases.DisabledFullAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveDocumentChunks:KNOWLEDGE_BASES_DISABLED",
+                        $"Knowledge Bases are disabled for this business: {businessData.Permission.KnowledgeBases.DisabledFullReason}"
+                    );
+                }
+                if (businessData.Permission.KnowledgeBases.Documents.DisabledFullReason != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveDocumentChunks:KNOWLEDGE_BASES_DOCUMENTS_DISABLED",
+                        $"Documents are disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledFullReason}"
+                    );
+                }
+                if (businessData.Permission.KnowledgeBases.Documents.DisabledEditingAt != null)
+                {
+                    return result.SetFailureResult(
+                        "SaveDocumentChunks:KNOWLEDGE_BASES_DOCUMENTS_DISABLED_EDITING",
+                        $"Documents editing is disabled for knowledge base for this business: {businessData.Permission.KnowledgeBases.Documents.DisabledEditingReason}"
+                    );
+                }
+
+                // Delegate to Manager
+                try
+                {
+                    using (var mongoSession = _mongoClient.StartSession())
+                    {
+                        mongoSession.StartTransaction();
+
+                        var forwardResult = await _businessManager.GetKnowledgeBaseManager()
+                            .UpdateKnowledgeBaseDocumentChunksAsync(businessId, knowledgeBaseId, documentId, formData, mongoSession);
+                        if (!forwardResult.Success)
+                        {
+                            await mongoSession.AbortTransactionAsync();
+                            return result.SetFailureResult(
+                                $"SaveDocumentChunks:{forwardResult.Code}",
+                                forwardResult.Message
+                            );
+                        }
+
+                        await mongoSession.CommitTransactionAsync();
+                        return result.SetSuccessResult(forwardResult.Data);                  
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return result.SetFailureResult(
+                        "SaveDocumentChunks:MONGO_SESSION_EXCEPTION",
+                        "Exception occured during mongo session."
+                    );
+                }
+            }
+            catch (Exception ex) {
+                return result.SetFailureResult(
+                    "SaveDocumentChunks:EXCEPTION",
+                    ex.Message
+                );
             }
         }
     }
