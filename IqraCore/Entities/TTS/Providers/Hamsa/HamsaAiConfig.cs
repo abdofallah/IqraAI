@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Hamsa
 {
-    public class HamsaAiConfig : ITtsConfig
+    public class HamsaAiConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string Speaker { get; set; }

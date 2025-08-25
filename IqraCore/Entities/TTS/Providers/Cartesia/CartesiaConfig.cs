@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Cartesia
 {
-    public class CartesiaConfig : ITtsConfig
+    public class CartesiaConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string VoiceId { get; set; }

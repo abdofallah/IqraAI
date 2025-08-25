@@ -20,9 +20,5 @@ namespace IqraCore.Entities.TTS
 
         public DateTime CreatedAtUtc { get; set; }
         public DateTime LastAccessedAtUtc { get; set; }
-
-
-        public long BusinessId { get; set; }
-        public string AgentId { get; set; }
     }
 }

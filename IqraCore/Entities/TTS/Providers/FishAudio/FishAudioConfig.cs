@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.FishAudio
 {
-    public class FishAudioConfig : ITtsConfig
+    public class FishAudioConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string ReferenceId { get; set; }

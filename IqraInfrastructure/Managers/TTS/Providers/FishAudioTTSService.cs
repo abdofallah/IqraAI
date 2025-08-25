@@ -141,7 +141,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.FishAudioTextToSpeech;
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

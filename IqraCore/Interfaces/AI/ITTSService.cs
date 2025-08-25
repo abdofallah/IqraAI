@@ -15,6 +15,6 @@ namespace IqraCore.Interfaces.AI
         {
             return InterfaceTTSProviderEnum.Unknown;
         }
-        ITtsConfig GetCacheableConfig();
+        ITTSConfig GetCacheableConfig();
     }
 }

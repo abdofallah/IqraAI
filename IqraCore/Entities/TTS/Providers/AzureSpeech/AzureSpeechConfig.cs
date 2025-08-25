@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.AzureSpeech
 {
-    public class AzureSpeechConfig : ITtsConfig
+    public class AzureSpeechConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string Language { get; set; }

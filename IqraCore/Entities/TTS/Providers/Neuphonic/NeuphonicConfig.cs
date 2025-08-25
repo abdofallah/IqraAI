@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Neuphonic
 {
-    public class NeuphonicConfig : ITtsConfig
+    public class NeuphonicConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string LanguageCode { get; set; }

@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Minimax
 {
-    public class MinimaxConfig : ITtsConfig
+    public class MinimaxConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string ModelId { get; set; }

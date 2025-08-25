@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Interfaces.Embedding;
 
 namespace IqraCore.Interfaces.AI
 {
@@ -7,5 +8,7 @@ namespace IqraCore.Interfaces.AI
         Task<FunctionReturnResult<float[]?>> GenerateEmbeddingForTextAsync(string text);
 
         Task<FunctionReturnResult<List<float[]>?>> GenerateEmbeddingForTextListAsync(List<string> texts);
+
+        IEmbeddingConfig GetCacheableConfig();
     }
 }

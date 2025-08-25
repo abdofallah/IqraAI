@@ -28,6 +28,7 @@ namespace IqraCore.Models.Business.Conversations
 
         public ConversationMemberAudioCompilationStatus AudioCompilationStatus { get; set; }   
         public string? AudioUrl { get; set; }
+        public string? AudioFailedReason { get; set; }
     }
 
     public class ConversationStateAgentViewModel
@@ -40,6 +41,7 @@ namespace IqraCore.Models.Business.Conversations
 
         public ConversationMemberAudioCompilationStatus AudioCompilationStatus { get; set; }
         public string? AudioUrl { get; set; }
+        public string? AudioFailedReason { get; set; }
     }
 
     public class ConversationStateMessageViewModel

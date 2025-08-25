@@ -10,7 +10,7 @@ namespace IqraInfrastructure.Managers.TTS.Helpers
     {
         private static readonly JsonSerializerOptions _serializerOptions = new() { WriteIndented = false };
 
-        public static string Generate(string text, InterfaceTTSProviderEnum providerType, ITtsConfig config)
+        public static string Generate(string text, InterfaceTTSProviderEnum providerType, ITTSConfig config)
         {
             string settingsJson = JsonSerializer.Serialize(config, config.GetType(), _serializerOptions);
 

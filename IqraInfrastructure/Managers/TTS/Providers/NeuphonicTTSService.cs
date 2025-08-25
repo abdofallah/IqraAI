@@ -152,7 +152,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.NeuphonicTextToSpeech;
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

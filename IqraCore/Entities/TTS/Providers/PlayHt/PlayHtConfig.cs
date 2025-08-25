@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.PlayHt
 {
-    public class PlayHtConfig : ITtsConfig
+    public class PlayHtConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string VoiceId { get; set; }

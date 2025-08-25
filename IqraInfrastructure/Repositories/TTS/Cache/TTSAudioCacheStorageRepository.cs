@@ -66,5 +66,22 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
                 // Optionally re-throw if this is a critical failure
             }
         }
+
+        public async Task<bool> FileExistsAsync(string minioPath, CancellationToken none)
+        {
+            try
+            {
+                var result = await _minioClient.StatObjectAsync(new StatObjectArgs()
+                    .WithBucket(_bucketName)
+                    .WithObject(minioPath));
+
+                return result != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", minioPath, _bucketName);
+                return false;
+            }
+        }
     }
 }

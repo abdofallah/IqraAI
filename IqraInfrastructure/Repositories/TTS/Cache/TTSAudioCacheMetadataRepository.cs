@@ -79,5 +79,18 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
                 _logger.LogWarning(ex, "Failed to update LastAccessedAt for TTSAudioCacheEntry with key {CacheKey}", cacheKey);
             }
         }
+
+        public async Task<bool> ExistsAsync(string cacheKey, CancellationToken none)
+        {
+            try
+            {
+                var filter = Builders<TTSAudioCacheEntry>.Filter.Eq(e => e.Id, cacheKey);
+                return await _collection.Find(filter).AnyAsync(none);
+            }
+            catch (Exception ex) {
+                _logger.LogError(ex, "Error checking existence of TTSAudioCacheEntry with key {CacheKey}", cacheKey);
+                return false;
+            }
+        }
     }
 }

@@ -262,7 +262,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.MurfAITextToSpeech;
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.ZyphraZonos
 {
-    public class ZyphraZonosConfig : ITtsConfig
+    public class ZyphraZonosConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string Model { get; set; }

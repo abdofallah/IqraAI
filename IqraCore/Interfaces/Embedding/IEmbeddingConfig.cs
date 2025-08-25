@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace IqraCore.Interfaces.TTS
+namespace IqraCore.Interfaces.Embedding
 {
-    public class ITTSConfig
+    public class IEmbeddingConfig
     {
         [JsonPropertyOrder(-1)]
         public int ConfigVersion { get; }

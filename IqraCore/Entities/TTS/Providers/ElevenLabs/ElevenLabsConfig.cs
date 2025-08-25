@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.ElevenLabs
 {
-    public class ElevenLabsConfig : ITtsConfig
+    public class ElevenLabsConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string ModelId { get; set; }

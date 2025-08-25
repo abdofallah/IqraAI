@@ -158,7 +158,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return GetProviderTypeStatic();
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

@@ -294,7 +294,8 @@ namespace IqraInfrastructure.Managers.Business
                         LeftAt = client.LeftAt,
                         LeaveReason = client.LeaveReason,
                         AudioCompilationStatus = client.AudioInfo.AudioCompilationStatus,
-                        AudioUrl = audioUrl
+                        AudioUrl = audioUrl,
+                        AudioFailedReason = client.AudioInfo.FailedReason
                     };
 
                     resultModel.Clients.Add(clientModel);
@@ -316,7 +317,8 @@ namespace IqraInfrastructure.Managers.Business
                         LeftAt = agent.LeftAt,
                         LeaveReason = agent.LeaveReason,
                         AudioCompilationStatus = agent.AudioInfo.AudioCompilationStatus,
-                        AudioUrl = audioUrl
+                        AudioUrl = audioUrl,
+                        AudioFailedReason = agent.AudioInfo.FailedReason
                     };
 
                     resultModel.Agents.Add(clientModel);

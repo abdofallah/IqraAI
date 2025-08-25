@@ -374,7 +374,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.SpeechifyTextToSpeech;
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

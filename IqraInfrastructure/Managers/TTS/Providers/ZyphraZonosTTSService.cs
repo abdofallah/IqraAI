@@ -337,7 +337,7 @@ namespace IqraInfrastructure.Managers.TTS.Providers
             return InterfaceTTSProviderEnum.ZyphraZonosTextToSpeech;
         }
 
-        public ITtsConfig GetCacheableConfig()
+        public ITTSConfig GetCacheableConfig()
         {
             return _serviceConfig;
         }

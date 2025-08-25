@@ -2,6 +2,7 @@
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.Embedding;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text;
@@ -13,23 +14,21 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
     {
         private readonly ILogger<GoogleGeminiEmbeddingService>? _logger;
         private readonly HttpClient _httpClient;
+        private readonly GoogleGeminiEmbeddingServiceConfig _config;
 
         private readonly string _apiKey;
-        private readonly string _model;
-        private readonly int _vectorDimension;
 
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
 
-        public GoogleGeminiEmbeddingService(ILogger<GoogleGeminiEmbeddingService> logger, string apiKey, string model, int vectorDimension)
+        public GoogleGeminiEmbeddingService(ILogger<GoogleGeminiEmbeddingService> logger, string apiKey, GoogleGeminiEmbeddingServiceConfig config)
         {
             _logger = logger;
 
             _apiKey = apiKey;
-            _model = model;
-            _vectorDimension = vectorDimension;
+            _config = config;
 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("x-goog-api-key", _apiKey);
@@ -47,16 +46,16 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
 
             try
             {
-                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:embedContent";
+                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_config.Model}:embedContent";
                 var requestPayload = new GeminiEmbeddingRequest
                 {
-                    Model = $"models/{_model}",
+                    Model = $"models/{_config.Model}",
                     Content = new EmbeddingContent
                     {
                         Parts = new List<ContentPart> { new ContentPart { Text = text } }
                     },
                     TaskType = "RETRIEVAL_DOCUMENT",
-                    OutputDimensionality = _vectorDimension
+                    OutputDimensionality = _config.VectorDimension
                 };
 
                 var jsonPayload = JsonSerializer.Serialize(requestPayload, _jsonSerializerOptions);
@@ -124,19 +123,19 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
 
             try
             {
-                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:batchEmbedContents";
+                var requestUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{_config.Model}:batchEmbedContents";
                 var requestPayload = new
                 {
                     requests = texts.Select(text => {
                         return new GeminiEmbeddingRequest
                         {
-                            Model = $"models/{_model}",
+                            Model = $"models/{_config.Model}",
                             Content = new EmbeddingContent
                             {
                                 Parts = [new ContentPart { Text = text }]
                             },
                             TaskType = "RETRIEVAL_DOCUMENT",
-                            OutputDimensionality = _vectorDimension
+                            OutputDimensionality = _config.VectorDimension
                         };
                     }).ToList()
                 };
@@ -208,12 +207,17 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
                 );
             }
         }
-        
+
+        public IEmbeddingConfig GetCacheableConfig()
+        {
+            return _config;
+        }
 
         public void Dispose()
         {
             _httpClient?.Dispose();
             GC.SuppressFinalize(this);
         }
+        
     }
 }

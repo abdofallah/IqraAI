@@ -274,12 +274,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 bool isCacheable = await IsTextCacheable(text);
                 string cacheKey = string.Empty;
-                ITtsConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
+                ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
 
                 if (isCacheable)
                 {
                     cacheKey = TTSCacheKeyGenerator.Generate(text, _agentState.TTSService.GetProviderType(), ttsConfig);
-                    var (hit, cachedAudio, cachedDuration) = await _cacheManager.GetAudioFromCacheAsync(cacheKey, ttsToken);
+                    var (hit, cachedAudio, cachedDuration) = await _cacheManager.GetAudioFromCacheAsync(cacheKey, _agentState!.BusinessApp!.Id, ttsToken);
 
                     if (hit && !cachedAudio.IsEmpty)
                     {
@@ -304,14 +304,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (isCacheable && !string.IsNullOrEmpty(cacheKey))
                 {
-                    var context = new TTSAudioCacheEntry
-                    {
-                        BusinessId = _agentState.BusinessApp.Id,
-                        AgentId = _agentState.AgentId,
-                        ProviderName = _agentState.TTSService.GetProviderType()
-                    };
-
-                    _ = _cacheManager.StoreAudioInCacheAsync(cacheKey, audioData, audioDuration.Value, ttsConfig, context);
+                    _ = _cacheManager.StoreAudioInCacheAsync(cacheKey, audioData, audioDuration.Value, ttsConfig, _agentState.TTSService.GetProviderType());
                 }
 
                 var segment = new SpeechSegment(audioData, audioDuration.Value);

@@ -462,7 +462,7 @@ namespace IqraInfrastructure.Managers.Call
                 await sessionResult.Data.StartAsync();
 
                 await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
-                return result.SetSuccessResult(result.Data);
+                return result.SetSuccessResult(resultData);
             }
             catch (Exception ex)
             {

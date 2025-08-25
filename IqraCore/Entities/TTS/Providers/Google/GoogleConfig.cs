@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Google
 {
-    public class GoogleConfig : ITtsConfig
+    public class GoogleConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string LanguageCode { get; set; }

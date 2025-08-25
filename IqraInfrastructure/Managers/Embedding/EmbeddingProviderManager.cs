@@ -1,5 +1,6 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Embedding;
+using IqraCore.Entities.Embedding.Providers.GoogleGemini;
 using IqraCore.Entities.Helpers;
 using IqraCore.Entities.Interfaces;
 using IqraCore.Entities.ProviderBase;
@@ -489,7 +490,13 @@ namespace IqraInfrastructure.Managers.Embedding
                 {
                     case InterfaceEmbeddingProviderEnum.GoogleGemini:
                         {
-                            var service = new GoogleGeminiEmbeddingService(_loggerFactory.CreateLogger<GoogleGeminiEmbeddingService>(), apiKey, model, (int)agentIntegrationData.FieldValues["model_vector_dimension"]);
+                            var config = new GoogleGeminiEmbeddingServiceConfig()
+                            {
+                                Model = model,
+                                VectorDimension = (int)agentIntegrationData.FieldValues["model_vector_dimension"]
+                            };
+
+                            var service = new GoogleGeminiEmbeddingService(_loggerFactory.CreateLogger<GoogleGeminiEmbeddingService>(), apiKey, config);
                             return result.SetSuccessResult(service);
                         }
 

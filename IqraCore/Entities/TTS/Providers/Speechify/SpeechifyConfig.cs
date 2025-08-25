@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.Speechify
 {
-    public class SpeechifyConfig : ITtsConfig
+    public class SpeechifyConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string VoiceId { get; set; }

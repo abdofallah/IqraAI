@@ -3,7 +3,7 @@ using IqraCore.Interfaces.TTS;
 
 namespace IqraCore.Entities.TTS.Providers.MurfAI
 {
-    public class MurfAiConfig : ITtsConfig
+    public class MurfAiConfig : ITTSConfig
     {
         public int ConfigVersion => 1;
         public string Model { get; set; }

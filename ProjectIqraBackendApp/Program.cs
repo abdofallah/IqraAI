@@ -409,7 +409,7 @@ namespace ProjectIqraBackendApp
                 return new TTSAudioCacheIndexRepository(
                     sp.GetRequiredService<ILogger<TTSAudioCacheIndexRepository>>(),
                     new RedisConnectionFactory(
-                        $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:TTSAudioCacheIndex"]}",
+                        $"{appConfig["LocalRedisDatabase:ConnectionString"]},defaultDatabase={appConfig["LocalRedisDatabase:TTSAudioCacheIndex"]}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     )
                 );
