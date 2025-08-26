@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.Embedding;
 
 namespace IqraCore.Interfaces.AI
@@ -9,6 +10,11 @@ namespace IqraCore.Interfaces.AI
 
         Task<FunctionReturnResult<List<float[]>?>> GenerateEmbeddingForTextListAsync(List<string> texts);
 
+        InterfaceEmbeddingProviderEnum GetProviderType();
+        static InterfaceEmbeddingProviderEnum GetProviderTypeStatic()
+        {
+            return InterfaceEmbeddingProviderEnum.Unknown;
+        }
         IEmbeddingConfig GetCacheableConfig();
     }
 }

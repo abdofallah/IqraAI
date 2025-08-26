@@ -3,6 +3,7 @@ using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Entities.Helpers;
 using IqraCore.Interfaces.AI;
+using IqraCore.Models.Embedding.Cache;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
@@ -19,6 +20,12 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         public required string Query { get; init; }
         public required int TopK { get; init; }
         public double? ScoreThreshold { get; init; }
+
+        public bool IsCachable { get; init; } = false;      
+        public string? CacheKey { get; init; }
+        public string? CacheGroupId { get; init; }
+        public string? CacheGroupEntryId { get; init; }
+        public string? CacheReference { get; init; }
     }
 
     public class RAGRetrievalService : IAsyncDisposable
@@ -31,6 +38,7 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         private readonly EmbeddingProviderManager _embeddingManager;
         private readonly BusinessKnowledgeBaseDocumentRepository _documentRepository;
         private readonly KnowledgeBaseCollectionsLoadManager _knowledgeBaseCollectionsLoadManager;
+        private readonly EmbeddingCacheManager _embeddingCacheManager;
         private readonly string _collectionLoadSessionId;
         private readonly TimeSpan _collectionReleaseExpiry;
 
@@ -49,6 +57,7 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
             EmbeddingProviderManager embeddingManager,
             BusinessKnowledgeBaseDocumentRepository documentRepository,
             KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager,
+            EmbeddingCacheManager embeddingCacheManager,
             string vectorCollectionLoadSessionId,
             TimeSpan vectorCollectionReleaseExpiry
         )
@@ -61,6 +70,7 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
             _embeddingManager = embeddingManager;
             _documentRepository = documentRepository;
             _knowledgeBaseCollectionsLoadManager = knowledgeBaseCollectionsLoadManager;
+            _embeddingCacheManager = embeddingCacheManager;
 
             _collectionLoadSessionId = vectorCollectionLoadSessionId;
             _collectionReleaseExpiry = vectorCollectionReleaseExpiry;
@@ -191,17 +201,48 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
 
         private async Task<List<RAGRetrievalDocumentModal>> SearchByVectorAsync(RAGRetrievalOptions options)
         {
-            var queryVectorResult = await _embeddingService!.GenerateEmbeddingForTextAsync(options.Query);
-            if (!queryVectorResult.Success || queryVectorResult.Data == null)
+            EmbeddingCacheGetResult? cacheResult = null;
+            if (options.IsCachable)
             {
-                _logger.LogWarning("Vector embedding failed: {Message}", queryVectorResult.Message);
-                return new List<RAGRetrievalDocumentModal>();
+                cacheResult = await _embeddingCacheManager.TryGetEmbeddingAsync(options.CacheKey, new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupEntryId, options.CacheReference), CancellationToken.None);
+            }
+
+            ReadOnlyMemory<float> vectorsArray;
+            if (cacheResult != null && cacheResult.IsHit)
+            {
+                vectorsArray = new ReadOnlyMemory<float>(cacheResult.Vector.ToArray());
+            }
+            else
+            {
+                var queryVectorResult = await _embeddingService!.GenerateEmbeddingForTextAsync(options.Query);
+                if (!queryVectorResult.Success || queryVectorResult.Data == null)
+                {
+                    _logger.LogWarning("Vector embedding failed: {Message}", queryVectorResult.Message);
+                    return new List<RAGRetrievalDocumentModal>();
+                }
+
+                vectorsArray = new ReadOnlyMemory<float>(queryVectorResult.Data);
+
+                if (options.IsCachable)
+                {
+                    if (cacheResult == null || !cacheResult.IsHit)
+                    {
+                        _ = _embeddingCacheManager.StoreEmbeddingAsync(
+                            options.CacheKey,
+                            vectorsArray.ToArray().ToList(),
+                            options.Query,
+                            _embeddingService.GetProviderType(),
+                            _embeddingService.GetCacheableConfig(),
+                            new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupEntryId, options.CacheReference)
+                        );
+                    }
+                }
             }
 
             var collectionName = $"b{_businessId}_kb{_knowledgeBaseData.Id}";
             var searchResult = await _vectorRepository.SearchAsync(
                 collectionName,
-                new ReadOnlyMemory<float>(queryVectorResult.Data),
+                vectorsArray,
                 options.TopK,
                 _knowledgeBaseData.Configuration.Chunking.Type == KnowledgeBaseChunkingType.ParentChild
             );
