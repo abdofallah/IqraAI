@@ -26,18 +26,12 @@ namespace IqraInfrastructure.Managers.Embedding
         public async Task<EmbeddingCacheGetResult> TryGetEmbeddingAsync(string cacheKey, BusinessReferenceInfo businessReference, CancellationToken token)
         {
             var cachedEntry = await _repository.GetAsync(cacheKey, token);
-
             if (cachedEntry != null)
             {
-                _logger.LogDebug("Cache HIT for embedding key {CacheKey}", cacheKey);
-
-                // Fire-and-forget the updates so the current request is not blocked.
                 _ = UpdateReferencesOnHitAsync(cacheKey, businessReference, token);
-
                 return new EmbeddingCacheGetResult(CacheHitStatus.HIT, cachedEntry.Vector);
             }
 
-            _logger.LogDebug("Cache MISS for embedding key {CacheKey}", cacheKey);
             return EmbeddingCacheGetResult.Miss();
         }
 
@@ -46,10 +40,7 @@ namespace IqraInfrastructure.Managers.Embedding
             var now = DateTime.UtcNow;
             var reference = CreateReferenceFromInfo(businessReference, now);
 
-            // Atomically update the specific business reference.
             await _repository.AddOrUpdateBusinessReferenceAsync(cacheKey, reference, token);
-
-            // Update the top-level last accessed time.
             await _repository.UpdateLastAccessedAsync(cacheKey, now, token);
         }
 
@@ -63,7 +54,8 @@ namespace IqraInfrastructure.Managers.Embedding
             string originalText,
             InterfaceEmbeddingProviderEnum providerType,
             IEmbeddingConfig config,
-            BusinessReferenceInfo initialBusinessReference)
+            BusinessReferenceInfo initialBusinessReference
+        )
         {
             var now = DateTime.UtcNow;
 
@@ -77,10 +69,7 @@ namespace IqraInfrastructure.Managers.Embedding
                 Vector = vector,
                 CreatedAtUtc = now,
                 LastAccessedAtUtc = now,
-                ReferencedBy = new List<EmbeddingCacheEntryReference>
-                {
-                    CreateReferenceFromInfo(initialBusinessReference, now)
-                }
+                ReferencedBy = new List<EmbeddingCacheEntryReference>()
             };
 
             // The repository's CreateAsync gracefully handles the race condition.
@@ -88,7 +77,7 @@ namespace IqraInfrastructure.Managers.Embedding
             try
             {
                 await _repository.CreateAsync(newEntry);
-                _logger.LogInformation("Successfully stored new embedding for cache key {CacheKey}", cacheKey);
+                await UpdateReferencesOnHitAsync(cacheKey, initialBusinessReference, CancellationToken.None);
             }
             catch (Exception ex)
             {
