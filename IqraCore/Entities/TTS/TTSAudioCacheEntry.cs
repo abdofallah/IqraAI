@@ -4,21 +4,56 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace IqraCore.Entities.TTS
 {
+    public enum TTSAudioCacheStatus
+    {
+        GENERATING = 1,
+        COMPLETE = 2,
+        FAILED = 3
+    }
+
     public class TTSAudioCacheEntry
     {
         [BsonId]
         [BsonRepresentation(BsonType.String)]
-        public string Id { get; set; }
+        public string Id { get; set; } // The CacheKey
 
         public InterfaceTTSProviderEnum ProviderName { get; set; }
-
         public string TtsConfigJson { get; set; }
         public int TtsConfigVersion { get; set; }
+        public List<TTSAudioCacheEntryReference> ReferencedBy { get; set; } = new List<TTSAudioCacheEntryReference>();
+
+        // --- Fields populated upon successful generation ---
+        [BsonIgnoreIfNull]
         public string MinioObjectPath { get; set; }
 
-        public TimeSpan Duration { get; set; }
+        [BsonIgnoreIfNull]
+        public TimeSpan? Duration { get; set; }
+
+        // --- New Fields for State Management & Multi-Region ---
+        [BsonRepresentation(BsonType.String)] // Store enum as string for readability
+        public TTSAudioCacheStatus Status { get; set; }
+
+        public string OriginRegion { get; set; } // e.g., "US-WEST-1", "OM-MUSCAT-1"
 
         public DateTime CreatedAtUtc { get; set; }
+        public DateTime LastUpdatedAtUtc { get; set; }
+
+        [BsonIgnoreIfNull]
+        public string ErrorMessage { get; set; }
+
+        [BsonIgnoreIfNull]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? ExpiresAtUtc { get; set; } // For TTL index on stale 'GENERATING' entries
+    }
+
+    public class TTSAudioCacheEntryReference
+    {
+        public long BusinessId { get; set; }       
+        public string AudioCacheGroupId { get; set; }
+        public string AudioCacheEntryId { get; set; }
+
+        public List<string> ReferencedByAgents { get; set; }
+        public int ReferencedCount { get; set; } = 0;
         public DateTime LastAccessedAtUtc { get; set; }
     }
 }

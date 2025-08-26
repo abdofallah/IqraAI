@@ -278,19 +278,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
                 if (isCacheable)
                 {
-                    cacheKey = TTSCacheKeyGenerator.Generate(text, _agentState.TTSService.GetProviderType(), ttsConfig);
-                    var (hit, cachedAudio, cachedDuration) = await _cacheManager.GetAudioFromCacheAsync(cacheKey, _agentState!.BusinessApp!.Id, ttsToken);
-
-                    if (hit && !cachedAudio.IsEmpty)
+                    var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsToken);
+                    if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                     {
-                        var cachedSegment = new SpeechSegment(cachedAudio, cachedDuration);
+                        var cachedSegment = new SpeechSegment(cacheResult.AudioData, cacheResult.Duration);
                         _speechAudioQueue.Add(cachedSegment, _audioSendingCTS.Token);
                         return (true, cachedSegment.Duration);
                     }
                 }
 
                 var (audioData, audioDuration) = await _agentState.TTSService.SynthesizeTextAsync(text, ttsToken, null);
-
                 if (ttsToken.IsCancellationRequested)
                 {
                     return (false, TimeSpan.Zero);
@@ -302,9 +299,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     return (false, TimeSpan.Zero);
                 }
 
-                if (isCacheable && !string.IsNullOrEmpty(cacheKey))
+                if (isCacheable && audioData.Length != 0)
                 {
-                    _ = _cacheManager.StoreAudioInCacheAsync(cacheKey, audioData, audioDuration.Value, ttsConfig, _agentState.TTSService.GetProviderType());
+                    _ = _cacheManager.StoreAudioAsync(
+                        cacheKey,
+                        audioData,
+                        audioDuration.Value,
+                        ttsConfig,
+                        _agentState.TTSService.GetProviderType()
+                    );
                 }
 
                 var segment = new SpeechSegment(audioData, audioDuration.Value);

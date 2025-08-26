@@ -1,30 +1,27 @@
 ﻿using CommunityToolkit.HighPerformance;
+using IqraInfrastructure.Repositories.MinIO;
 using Microsoft.Extensions.Logging;
-using Minio;
 using Minio.DataModel.Args;
+using System.Drawing;
 
 namespace IqraInfrastructure.Repositories.TTS.Cache
 {
     public class TTSAudioCacheStorageRepository
     {
         private readonly ILogger<TTSAudioCacheStorageRepository> _logger;
-        private readonly IMinioClient _minioClient;
-        public string _bucketName;
+        private readonly IqraMinioClientFactory _minioClientFactory;
+        private readonly string _currentRegion;
+        public readonly string _bucketName;
 
-        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, IMinioClient minioClient, string bucketName)
+        public TTSAudioCacheStorageRepository(ILogger<TTSAudioCacheStorageRepository> logger, IqraMinioClientFactory minioClientFactory, string currentRegion, string bucketName)
         {
             _logger = logger;
-            _minioClient = minioClient;
+            _minioClientFactory = minioClientFactory;
+            _currentRegion = currentRegion;
             _bucketName = bucketName;
-
-            bool bucketExists = _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
-            if (!bucketExists)
-            {
-                throw new ArgumentException("Bucket " + bucketName + " does not exist");
-            }
         }
 
-        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default)
+        public async Task<ReadOnlyMemory<byte>> GetFileAsByteArrayAsync(string objectPath, CancellationToken token = default, string region = null)
         {
             try
             {
@@ -34,7 +31,14 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
                     .WithObject(objectPath)
                     .WithCallbackStream(async (s, ct) => await s.CopyToAsync(stream, ct));
 
-                await _minioClient.GetObjectAsync(args, token);
+                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
+                if (minioClient == null)
+                {
+                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
+                    return ReadOnlyMemory<byte>.Empty;
+                }
+
+                await minioClient.GetObjectAsync(args, token);
                 stream.Position = 0; // Reset position for reading
                 return new ReadOnlyMemory<byte>(stream.ToArray());
             }
@@ -45,7 +49,7 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
             }
         }
 
-        public async Task PutFileAsByteDataAsync(string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default)
+        public async Task PutFileAsByteDataAsync(string objectPath, ReadOnlyMemory<byte> fileBytes, Dictionary<string, string> metaData, CancellationToken token = default, string region = null)
         {
             try
             {
@@ -58,7 +62,14 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
                     .WithContentType("audio/pcm") // A more specific content type
                     .WithHeaders(metaData);
 
-                await _minioClient.PutObjectAsync(args, token);
+                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
+                if (minioClient == null)
+                {
+                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
+                    return;
+                }
+
+                await minioClient.PutObjectAsync(args, token);
             }
             catch (Exception ex)
             {
@@ -67,11 +78,18 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
             }
         }
 
-        public async Task<bool> FileExistsAsync(string minioPath, CancellationToken none)
+        public async Task<bool> FileExistsAsync(string minioPath, CancellationToken none = default, string region = null)
         {
             try
             {
-                var result = await _minioClient.StatObjectAsync(new StatObjectArgs()
+                var minioClient = _minioClientFactory.GetLocalClientForRegion(region ?? _currentRegion);
+                if (minioClient == null)
+                {
+                    _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
+                    return false;
+                }
+
+                var result = await minioClient.StatObjectAsync(new StatObjectArgs()
                     .WithBucket(_bucketName)
                     .WithObject(minioPath));
 
@@ -82,6 +100,22 @@ namespace IqraInfrastructure.Repositories.TTS.Cache
                 _logger.LogError(ex, "Failed to get file {ObjectPath} from Minio bucket {BucketName}", minioPath, _bucketName);
                 return false;
             }
+        }
+
+        public async Task<string?> GetPresignedUrlForGetAsync(string objectPath, string? region = null, int expirySeconds = 3600)
+        {
+            var minioClient = _minioClientFactory.GetPublicUrlClientForRegion(region ?? _currentRegion);
+            if (minioClient == null)
+            {
+                _logger.LogError("Failed to get Minio client for region {Region}", region ?? _currentRegion);
+                return null;
+            }
+
+            var args = new PresignedGetObjectArgs()
+                .WithBucket(_bucketName)
+                .WithObject(objectPath)
+                .WithExpiry(expirySeconds);
+            return await minioClient.PresignedGetObjectAsync(args);
         }
     }
 }
