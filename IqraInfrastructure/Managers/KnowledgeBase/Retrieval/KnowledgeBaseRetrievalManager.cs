@@ -5,6 +5,7 @@ using IqraCore.Entities.Helpers;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Embedding;
+using IqraInfrastructure.Managers.Embedding.Helpers;
 using IqraInfrastructure.Managers.RAG.PostProcessing;
 using IqraInfrastructure.Managers.RAG.Retrieval;
 using IqraInfrastructure.Managers.Rerank;
@@ -39,6 +40,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
             EmbeddingProviderManager embeddingProviderManager,
             RerankProviderManager rerankProviderManager,
             KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager,
+            EmbeddingCacheManager embeddingCacheManager,
             long businessId,
             string knowledgeBaseId,
             string vectorCollectionLoadSessionId,
@@ -59,6 +61,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
                 embeddingProviderManager,
                 documentRepository,
                 knowledgeBaseCollectionsLoadManager,
+                embeddingCacheManager,
                 vectorCollectionLoadSessionId,
                 vectorCollectionReleaseExpiry
             );
@@ -119,7 +122,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
             }
         }
 
-        public async Task<FunctionReturnResult<RAGRetrievalResultModel?>> RetrieveContextAsync(long businessId, string knowledgeBaseId, string query)
+        public async Task<FunctionReturnResult<RAGRetrievalResultModel?>> RetrieveContextAsync(long businessId, string knowledgeBaseId, string query, bool checkEmbeddingCache = false, string? cacheEmbeddingGroupLanguage = null, string? cacheReference = null)
         {
             var result = new FunctionReturnResult<RAGRetrievalResultModel?>();
 
@@ -144,6 +147,52 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
                     TopK = topK,
                     ScoreThreshold = scoreThreshold
                 };
+
+                if (checkEmbeddingCache)
+                {
+                    if (string.IsNullOrEmpty(cacheEmbeddingGroupLanguage))
+                    {
+                        return result.SetFailureResult(
+                            "RetrieveContextAsync:MISSING_LANGUAGE",
+                            "Missing cache embedding group language."
+                        );
+                    }
+                    if (string.IsNullOrEmpty(cacheReference))
+                    {
+                        return result.SetFailureResult(
+                            "RetrieveContextAsync:MISSING_REFERENCE",
+                            "Missing cache reference."
+                        );
+                    }
+
+                    var embeddingGroupWithQueries = await _businessManager.GetCacheManager().FindCacheEmbeddingGroupsWithCacheQuery(businessId, knowledgeBaseId, query);
+                    if (embeddingGroupWithQueries != null && embeddingGroupWithQueries.Any())
+                    {
+                        // just use the first group in case of multiple
+                        var embeddingGroup = embeddingGroupWithQueries.First();
+                        // mongodb will only return the entry with query
+                        var queryEntry = embeddingGroup.Embeddings[cacheEmbeddingGroupLanguage].First();
+
+                        var embeddingProviderType = _retrievalService.GetEmbeddingServiceType();
+                        var embeddingConfig = _retrievalService.GetEmbeddingServiceConfig();
+                        if (embeddingProviderType == null || embeddingConfig == null)
+                        {
+                            return result.SetFailureResult(
+                                "RetrieveContextAsync:MISSING_EMBEDDING_CONFIG",
+                                "Missing embedding provider type or config."
+                            );
+                        }
+
+                        string cacheKey = EmbeddingCacheKeyGenerator.Generate(query, embeddingProviderType.Value, embeddingConfig);
+
+                        retrievalOptions.IsCachable = true;
+                        retrievalOptions.CacheKey = cacheKey;
+                        retrievalOptions.CacheGroupId = embeddingGroup.Id;
+                        retrievalOptions.CacheGroupEntryId = queryEntry.Id;
+                        retrievalOptions.CacheReference = cacheReference;
+                    }
+                }
+
                 var rawDocs = await _retrievalService.RetrieveAsync(retrievalOptions);
 
                 // 2. Post-process the documents

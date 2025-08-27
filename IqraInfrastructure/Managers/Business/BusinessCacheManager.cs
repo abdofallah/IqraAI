@@ -2,19 +2,24 @@
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
 {
     public class BusinessCacheManager
     {
+        private readonly ILogger<BusinessCacheManager> _logger;
+
         private readonly BusinessManager _parentBusinessManager;
 
         private readonly BusinessAppRepository _businessAppRepository;
         private readonly BusinessRepository _businessRepository;
 
-        public BusinessCacheManager(BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository)
+        public BusinessCacheManager( ILogger<BusinessCacheManager> logger, BusinessManager businessManager, BusinessAppRepository businessAppRepository, BusinessRepository businessRepository)
         {
+            _logger = logger;
+
             _parentBusinessManager = businessManager;
 
             _businessAppRepository = businessAppRepository;
@@ -442,6 +447,26 @@ namespace IqraInfrastructure.Managers.Business
         {
             var result = await _businessAppRepository.CheckCacheAudioGroupAudioExists(businessId, groupId, language, existingCacheId);
             return result;
+        }
+
+        /**
+         * 
+         * Cache Tab
+         * Embedding Group | Embedding Cache
+         * 
+        **/
+
+        public async Task<List<BusinessAppCacheEmbeddingGroup>> FindCacheEmbeddingGroupsWithCacheQuery(long businessId, string language, string query)
+        {
+            try
+            {
+                return await _businessAppRepository.FindCacheEmbeddingGroupsWithCacheQuery(businessId, language, query);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[BusinessCacheManager] FindCacheEmbeddingGroupsWithCacheQuery: " + ex.Message);
+                return new List<BusinessAppCacheEmbeddingGroup>();
+            }
         }
     }
 }

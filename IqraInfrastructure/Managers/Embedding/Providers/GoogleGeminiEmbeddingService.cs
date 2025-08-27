@@ -213,11 +213,15 @@ namespace IqraInfrastructure.Managers.Embedding.Providers
             return _config;
         }
 
+        public InterfaceEmbeddingProviderEnum GetProviderType()
+        {
+            return GetProviderTypeStatic();
+        }
+
         public void Dispose()
         {
             _httpClient?.Dispose();
             GC.SuppressFinalize(this);
         }
-        
     }
 }

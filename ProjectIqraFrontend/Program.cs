@@ -30,6 +30,7 @@ using IqraInfrastructure.Repositories.Business;
 using IqraInfrastructure.Repositories.Call;
 using IqraInfrastructure.Repositories.Conversation;
 using IqraInfrastructure.Repositories.Embedding;
+using IqraInfrastructure.Repositories.Embedding.Cache;
 using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
@@ -455,6 +456,15 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ILogger<RAGKeywordStore>>()
                 );
             });
+            //EmbeddingCacheRepository
+            builder.Services.AddSingleton<EmbeddingCacheRepository>((sp) =>
+            {
+                return new EmbeddingCacheRepository(
+                    sp.GetRequiredService<ILogger<EmbeddingCacheRepository>>(),
+                    sp.GetRequiredService<IMongoClient>(),
+                    appConfig["MongoDatabase:EmbeddingCacheRepositoryDatabaseName"]
+                );
+            });
         }
 
         private static void SetupManagers(WebApplicationBuilder builder, IConfiguration appConfig)
@@ -711,7 +721,8 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<BusinessKnowledgeBaseDocumentRepository>(),
                     sp.GetRequiredService<EmbeddingProviderManager>(),
                     sp.GetRequiredService<RerankProviderManager>(),
-                    sp.GetRequiredService<KnowledgeBaseCollectionsLoadManager>()
+                    sp.GetRequiredService<KnowledgeBaseCollectionsLoadManager>(),
+                    sp.GetRequiredService<EmbeddingCacheManager>()
                 );
             });
             builder.Services.AddSingleton<KeywordExtractor>((sp) =>
@@ -729,6 +740,13 @@ namespace ProjectIqraFrontend
                         $"{appConfig["RedisDatabase:ConnectionString"]},defaultDatabase={appConfig["RedisDatabase:RAGCollectionsLoadedDatabaseIndex"]}",
                         sp.GetRequiredService<ILogger<RedisConnectionFactory>>()
                     )
+                );
+            });
+            builder.Services.AddSingleton<EmbeddingCacheManager>((sp) =>
+            {
+                return new EmbeddingCacheManager(
+                    sp.GetRequiredService<ILogger<EmbeddingCacheManager>>(),
+                    sp.GetRequiredService<EmbeddingCacheRepository>()
                 );
             });
         }

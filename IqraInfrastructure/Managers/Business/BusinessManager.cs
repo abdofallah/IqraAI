@@ -124,7 +124,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             if (_settings.InitalizeCacheManager)
             {
-                _businessCacheManager = new BusinessCacheManager(this, businessAppRepository, businessRepository);
+                _businessCacheManager = new BusinessCacheManager(loggerFactory.CreateLogger<BusinessCacheManager>(), this, businessAppRepository, businessRepository);
             }
             if (_settings.InitalizeIntegrationsManager)
             {

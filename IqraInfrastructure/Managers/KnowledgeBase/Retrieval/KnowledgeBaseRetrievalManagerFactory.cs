@@ -19,6 +19,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
         private readonly EmbeddingProviderManager _embeddingProviderManager;
         private readonly RerankProviderManager _rerankProviderManager;
         private readonly KnowledgeBaseCollectionsLoadManager _knowledgeBaseCollectionsLoadManager;
+        private readonly EmbeddingCacheManager _embeddingCacheManager;
 
         public KnowledgeBaseRetrievalManagerFactory(
             ILoggerFactory loggerFactory,
@@ -28,7 +29,8 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
             BusinessKnowledgeBaseDocumentRepository documentRepository,
             EmbeddingProviderManager embeddingProviderManager,
             RerankProviderManager rerankProviderManager,
-            KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager
+            KnowledgeBaseCollectionsLoadManager knowledgeBaseCollectionsLoadManager,
+            EmbeddingCacheManager embeddingCacheManager
         )
         {
             _loggerFactory = loggerFactory;
@@ -39,6 +41,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
             _embeddingProviderManager = embeddingProviderManager;
             _rerankProviderManager = rerankProviderManager;
             _knowledgeBaseCollectionsLoadManager = knowledgeBaseCollectionsLoadManager;
+            _embeddingCacheManager = embeddingCacheManager;
         }
 
         public async Task<FunctionReturnResult<KnowledgeBaseRetrievalManager?>> CreateManagerAsync(long businessId, string knowledgeBaseId, string vectorCollectionLoadSessionId, TimeSpan vectorCollectionReleaseExpiry)
@@ -56,6 +59,7 @@ namespace IqraInfrastructure.Managers.KnowledgeBase.Retrieval
                     _embeddingProviderManager,
                     _rerankProviderManager,
                     _knowledgeBaseCollectionsLoadManager,
+                    _embeddingCacheManager,
                     businessId,
                     knowledgeBaseId,
                     vectorCollectionLoadSessionId,

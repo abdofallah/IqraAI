@@ -7,7 +7,6 @@ namespace IqraCore.Interfaces.AI
     public interface IEmbeddingService : IDisposable
     {
         Task<FunctionReturnResult<float[]?>> GenerateEmbeddingForTextAsync(string text);
-
         Task<FunctionReturnResult<List<float[]>?>> GenerateEmbeddingForTextListAsync(List<string> texts);
 
         InterfaceEmbeddingProviderEnum GetProviderType();
@@ -15,6 +14,7 @@ namespace IqraCore.Interfaces.AI
         {
             return InterfaceEmbeddingProviderEnum.Unknown;
         }
+
         IEmbeddingConfig GetCacheableConfig();
     }
 }

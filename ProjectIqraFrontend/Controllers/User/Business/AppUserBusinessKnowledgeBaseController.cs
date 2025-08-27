@@ -353,7 +353,8 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 knowledgeBaseRetrievalManager = knowledgeBaseRetrievalManagerCreateResult.Data!;
 
                 // Delegate to Manager
-                var retrievalResult = await knowledgeBaseRetrievalManager.RetrieveContextAsync(businessId, knowledgeBaseId, retrievalQuery);
+                // TODO GET CACHE SETTINGS FROM FRONTEND
+                var retrievalResult = await knowledgeBaseRetrievalManager.RetrieveContextAsync(businessId, knowledgeBaseId, retrievalQuery.ToLower(), true, businessData.DefaultLanguage, "TEST_RETRIVAL_UI");
                 if (retrievalResult == null)
                 {
                     return result.SetFailureResult(

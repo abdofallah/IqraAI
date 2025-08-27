@@ -389,6 +389,145 @@ namespace IqraInfrastructure.Repositories.Business
             return result != null;
         }
 
+        /**
+         * 
+         * Cache Tab
+         * Embedding Group | Embedding Cache
+         * 
+        **/
+
+        public async Task<bool> AddCacheEmbeddingGroup(long businessId, BusinessAppCacheEmbeddingGroup newEmbeddingGroup)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.EmbeddingGroups, newEmbeddingGroup);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateEmbeddingGroupName(long businessId, string embeddingGroupId, string newEmbeddingGroupName)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, t => t.Id == embeddingGroupId)
+            );
+            var update = Builders<BusinessApp>.Update.Set(b => b.Cache.EmbeddingGroups.FirstMatchingElement().Name, newEmbeddingGroupName);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> AddEmbeddingToGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, t => t.Id == groupId)
+            );
+            var update = Builders<BusinessApp>.Update.Push(b => b.Cache.EmbeddingGroups.FirstMatchingElement().Embeddings[language], newEmbedding);
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<bool> UpdateEmbeddingInGroup(long businessId, string groupId, string language, BusinessAppCacheEmbedding newEmbedding)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, g => g.Id == groupId)
+            );
+            var update = Builders<BusinessApp>.Update.Set(
+                $"Cache.EmbeddingGroups.$.Embeddings.{language}",
+                new BsonArray(new[] { newEmbedding.ToBsonDocument() })
+            );
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheEmbeddingGroupExists(long businessId, string existingGroupId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, t => t.Id == existingGroupId)
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<bool> CheckCacheEmbeddingGroupEmbeddingExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Cache.EmbeddingGroups, g =>
+                    g.Id == groupId &&
+                    g.Embeddings[language].Any(a => a.Id == existingCacheId)
+                )
+            );
+            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        public async Task<List<BusinessAppCacheEmbeddingGroup>> FindCacheEmbeddingGroupsWithCacheQuery(long businessId, string language, string query)
+        {
+            var pipeline = _businessAppCollection.Aggregate()
+                .Match(b => b.Id == businessId &&
+                    b.Cache.EmbeddingGroups.Any(g =>
+                        g.Embeddings.ContainsKey(language) &&
+                        g.Embeddings[language].Any(e => e.Query == query)
+                    )
+                )
+                .Unwind<BusinessApp, BsonDocument>(b => b.Cache.EmbeddingGroups)
+                .Match(new BsonDocument
+                {
+                    { $"Cache.EmbeddingGroups.Embeddings.{language}.Query", query }
+                })
+                .Project(new BsonDocument
+                {
+                    { "_id", 0 },
+                    { "Id", "$Cache.EmbeddingGroups.Id" },
+                    { "Name", "$Cache.EmbeddingGroups.Name" },
+                    {
+                        "Embeddings",
+                        new BsonDocument(language,
+                            new BsonDocument("$filter",
+                                new BsonDocument
+                                {
+                                    { "input", $"$Cache.EmbeddingGroups.Embeddings.{language}" },
+                                    { "as", "emb" },
+                                    { "cond", new BsonDocument("$eq", new BsonArray { "$$emb.Query", query }) }
+                                }
+                            )
+                        )
+                    }
+                })
+                .As<BusinessAppCacheEmbeddingGroup>();
+
+            return await pipeline.ToListAsync();
+        }
+
+        public async Task<bool> AddCacheLinkToEmbeddingCacheGroupEntry(long businessId, string groupId, string embeddingId, string language, BusinessAppCacheEmbeddingCacheLink cacheLinkToAdd)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+
+            var update = Builders<BusinessApp>.Update.AddToSet(
+                $"Cache.EmbeddingGroups.$[group].Embeddings.{language}.$[embedding].GeneratedCacheLinks",
+                cacheLinkToAdd
+            );
+
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group.Id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("embedding.Id", embeddingId))
+            };
+
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, options);
+
+            return result.IsAcknowledged;
+        }
+
+        /**
+         * 
+         * Integrations
+         * 
+        **/
         public async Task<BusinessAppIntegration?> getBusinessIntegrationById(long businessId, string currentIntegrationId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
@@ -422,9 +561,10 @@ namespace IqraInfrastructure.Repositories.Business
             return result.ModifiedCount > 0;
         }
 
+
         /**
          * 
-         * Agents Tab
+         * Agents
          * 
         **/
 
@@ -528,7 +668,7 @@ namespace IqraInfrastructure.Repositories.Business
 
         /**
         * 
-        * Numbers Tab
+        * Numbers
         * 
         **/
 
@@ -600,7 +740,7 @@ namespace IqraInfrastructure.Repositories.Business
 
         /**
         * 
-        * Routes Tab
+        * Routes
         * 
         **/
 
@@ -662,7 +802,7 @@ namespace IqraInfrastructure.Repositories.Business
 
         /**
         * 
-        * Knowledge Base Tab
+        * Knowledge Base
         * 
         **/
 

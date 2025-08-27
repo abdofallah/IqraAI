@@ -33,7 +33,7 @@ namespace IqraCore.Entities.Embedding
         public long BusinessId { get; set; }
 
         public string EmbeddingCacheGroupId { get; set; }
-
+        public string EmbeddingCacheGroupEmbeddingLanguage { get; set; }
         public string EmbeddingCacheEmbeddingId { get; set; }
 
         public List<string> ReferencedByAgents { get; set; } = new List<string>();

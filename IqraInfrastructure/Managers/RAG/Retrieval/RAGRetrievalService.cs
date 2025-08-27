@@ -2,7 +2,9 @@
 using IqraCore.Entities.Business.App.KnowledgeBase.Document.Chunk;
 using IqraCore.Entities.Business.App.KnowledgeBase.ENUM;
 using IqraCore.Entities.Helpers;
+using IqraCore.Entities.Interfaces;
 using IqraCore.Interfaces.AI;
+using IqraCore.Interfaces.Embedding;
 using IqraCore.Models.Embedding.Cache;
 using IqraCore.Models.RAG.Retrieval;
 using IqraInfrastructure.Managers.Business;
@@ -21,11 +23,12 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         public required int TopK { get; init; }
         public double? ScoreThreshold { get; init; }
 
-        public bool IsCachable { get; init; } = false;      
-        public string? CacheKey { get; init; }
-        public string? CacheGroupId { get; init; }
-        public string? CacheGroupEntryId { get; init; }
-        public string? CacheReference { get; init; }
+        public bool IsCachable { get; set; } = false;      
+        public string? CacheKey { get; set; } = null;
+        public string? CacheGroupId { get; set; } = null;
+        public string? CacheGroupLanguage { get; set; } = null;
+        public string? CacheGroupEntryId { get; set; } = null;
+        public string? CacheReference { get; set; } = null;
     }
 
     public class RAGRetrievalService : IAsyncDisposable
@@ -46,7 +49,6 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
         private BusinessAppKnowledgeBase _knowledgeBaseData;
 
         private IEmbeddingService? _embeddingService;
-        
 
         public RAGRetrievalService(
             ILogger<RAGRetrievalService> logger,
@@ -204,7 +206,13 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
             EmbeddingCacheGetResult? cacheResult = null;
             if (options.IsCachable)
             {
-                cacheResult = await _embeddingCacheManager.TryGetEmbeddingAsync(options.CacheKey, new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupEntryId, options.CacheReference), CancellationToken.None);
+                cacheResult = await _embeddingCacheManager.TryGetEmbeddingAsync(
+                    options.CacheKey,
+                    _embeddingService.GetProviderType(),
+                    _embeddingService.GetCacheableConfig(),
+                    new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupLanguage, options.CacheGroupEntryId, options.CacheReference),
+                    CancellationToken.None
+                );
             }
 
             ReadOnlyMemory<float> vectorsArray;
@@ -233,7 +241,7 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
                             options.Query,
                             _embeddingService.GetProviderType(),
                             _embeddingService.GetCacheableConfig(),
-                            new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupEntryId, options.CacheReference)
+                            new BusinessReferenceInfo(_businessId, options.CacheGroupId, options.CacheGroupLanguage, options.CacheGroupEntryId, options.CacheReference)
                         );
                     }
                 }
@@ -298,6 +306,26 @@ namespace IqraInfrastructure.Managers.RAG.Retrieval
             }).ToList();
         }
         
+        public InterfaceEmbeddingProviderEnum? GetEmbeddingServiceType()
+        {
+            if (_embeddingService != null)
+            {
+                return _embeddingService.GetProviderType();
+            }
+
+            return null;
+        }
+
+        public IEmbeddingConfig? GetEmbeddingServiceConfig()
+        {
+            if (_embeddingService != null)
+            {
+                return _embeddingService.GetCacheableConfig();
+            }
+
+            return null;
+        }
+
         public async ValueTask DisposeAsync()
         {
             if (_embeddingService != null)
