@@ -272,13 +272,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             try
             {
-                bool isCacheable = await IsTextCacheable(text);
+                (bool isCacheable, string? cacheGroupId, string? cacheEntryId) = await IsTextCacheable(text);
                 string cacheKey = string.Empty;
                 ITTSConfig ttsConfig = _agentState.TTSService.GetCacheableConfig();
 
                 if (isCacheable)
                 {
-                    var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsToken);
+                    var cacheResult = await _cacheManager.TryGetAudioAsync(cacheKey, ttsConfig, _agentState.TTSService.GetProviderType(), _agentState.BusinessApp.Id, cacheGroupId, _agentState.CurrentLanguageCode, cacheEntryId, ttsToken);
                     if (cacheResult.IsHit && !cacheResult.AudioData.IsEmpty)
                     {
                         var cachedSegment = new SpeechSegment(cacheResult.AudioData, cacheResult.Duration);
@@ -306,7 +306,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         audioData,
                         audioDuration.Value,
                         ttsConfig,
-                        _agentState.TTSService.GetProviderType()
+                        _agentState.TTSService.GetProviderType(),
+                        _agentState.BusinessApp.Id,
+                        cacheGroupId,
+                        _agentState.CurrentLanguageCode,
+                        cacheEntryId,
+                        ttsToken
                     );
                 }
 
@@ -340,10 +345,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        private async Task<bool> IsTextCacheable(string text)
+        private async Task<(bool isHit, string? cacheGroupId, string? cacheEntryId)> IsTextCacheable(string text)
         {
             var agent = _agentState.BusinessAppAgent;
-            if (agent == null) return false;
+            if (agent == null) return (false, null, null);
 
             // --- Step 1: Check manually assigned cache groups (existing logic) ---
             var manuallyAssignedGroupIds = agent.Cache.Audios;
@@ -356,10 +361,11 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     if (group.Audios.TryGetValue(_agentState.CurrentLanguageCode, out var audioList))
                     {
-                        if (audioList.Any(audio => audio.Query.Equals(text, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (manual group).", _agentState.AgentId, text);
-                            return true;
+                        foreach (var audio in audioList) {
+                            if (audio.Query.Equals(text, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return (true, group.Id, audio.Id);
+                            }
                         }
                     }
                 }
@@ -372,7 +378,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 string.IsNullOrWhiteSpace(autoCacheSettings.AutoCacheAudioResponseCacheGroupId))
             {
                 _logger.LogTrace("Agent {AgentId}: Text '{Text}' is not cacheable (auto-cache disabled or not configured).", _agentState.AgentId, text);
-                return false;
+                return (false, null, null);
             }
 
             // --- Step 3: Handle auto-caching logic ---
@@ -382,7 +388,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             if (autoCacheGroup == null)
             {
                 _logger.LogWarning("Agent {AgentId}: Auto-cache group ID '{GroupId}' not found in BusinessApp.", _agentState.AgentId, autoCacheGroupId);
-                return false;
+                return (false, null, null);
             }
 
             // Ensure the language list exists for the current language
@@ -399,7 +405,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             {
                 // The query was likely added by another process, but it is now cacheable.
                 _logger.LogTrace("Agent {AgentId}: Text '{Text}' is eligible for caching (already in auto-cache group).", _agentState.AgentId, text);
-                return true;
+                return (true, autoCacheGroupId, existingQuery.Id);
             }
             else
             {
@@ -442,7 +448,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                         }
                     });
 
-                return true;
+                return (true, autoCacheGroupId, newCacheAudio.Id);
             }
         }
 

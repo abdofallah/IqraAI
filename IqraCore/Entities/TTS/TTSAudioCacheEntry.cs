@@ -50,6 +50,7 @@ namespace IqraCore.Entities.TTS
     {
         public long BusinessId { get; set; }       
         public string AudioCacheGroupId { get; set; }
+        public string AudioCacheGroupEntryLanguage { get; set; }
         public string AudioCacheEntryId { get; set; }
 
         public List<string> ReferencedByAgents { get; set; }

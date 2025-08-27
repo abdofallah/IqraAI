@@ -746,7 +746,8 @@ namespace ProjectIqraFrontend
             {
                 return new EmbeddingCacheManager(
                     sp.GetRequiredService<ILogger<EmbeddingCacheManager>>(),
-                    sp.GetRequiredService<EmbeddingCacheRepository>()
+                    sp.GetRequiredService<EmbeddingCacheRepository>(),
+                    sp.GetRequiredService<BusinessAppRepository>()
                 );
             });
         }

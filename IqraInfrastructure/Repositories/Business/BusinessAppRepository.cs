@@ -389,6 +389,29 @@ namespace IqraInfrastructure.Repositories.Business
             return result != null;
         }
 
+        public async Task<bool> AddCacheLinkToAudioCacheGroupEntry(long businessId, string groupId, string audioId, string language, BusinessAppCacheAudioCacheLink cacheLinkToAdd)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+
+            var update = Builders<BusinessApp>.Update.AddToSet(
+                $"Cache.AudioGroups.$[group].Audios.{language}.$[audio].GeneratedCacheLinks",
+                cacheLinkToAdd
+            );
+
+            var arrayFilters = new List<ArrayFilterDefinition>
+            {
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("group.Id", groupId)),
+                new BsonDocumentArrayFilterDefinition<BsonDocument>(new BsonDocument("audio.Id", audioId))
+            };
+
+            var options = new UpdateOptions { ArrayFilters = arrayFilters };
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update, options);
+
+            return result.IsAcknowledged;
+        }
+
+
         /**
          * 
          * Cache Tab
