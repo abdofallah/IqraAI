@@ -1,0 +1,402 @@
+﻿<div class="main-container d-none show w-100" id="campaigns-tab">
+    <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-bullhorn'></i> <span>Campaigns</span></h3>
+
+    <!-- Header Container -->
+    <div class="inner-header-container w-100 mb-3 fade d-none" id="campaigns-header">
+        <div class="d-flex flex-column align-items-start justify-content-between" id="campaigns-manager-header-inner">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToCampaignsTab">Campaigns</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><span id="currentCampaignName">Campaign</span></li>
+                    </ol>
+                </nav>
+                <div>
+                    <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveCampaignButton" disabled>
+                        <i class='fa-regular fa-floppy-disk'></i>
+                        <span> Save</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation for Campaigns -->
+            <ul class="nav w-100" id="campaigns-manager-tab" role="tablist">
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link active" id="campaigns-manager-general-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-general" type="button" role="tab" aria-controls="campaigns-manager-general" aria-selected="true">General</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="campaigns-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-agent" type="button" role="tab" aria-controls="campaigns-manager-agent" aria-selected="true">Agent</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="campaigns-manager-numbers-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-numbers" type="button" role="tab" aria-controls="campaigns-manager-numbers" aria-selected="true">Numbers</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="campaigns-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-configuration" type="button" role="tab" aria-controls="campaigns-manager-configuration" aria-selected="true">Configuration</button>
+                </li>
+                <!-- *** NEW: Voicemail Detection Tab *** -->
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="campaigns-manager-voicemail-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-voicemail" type="button" role="tab" aria-controls="campaigns-manager-voicemail" aria-selected="true">Voicemail Detection</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="campaigns-manager-actions-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-actions" type="button" role="tab" aria-controls="campaigns-manager-actions" aria-selected="true">Actions</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="inner-container">
+        <!-- Campaigns List View -->
+        <div class="fade show w-100" id="campaignsListTab">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                <div style="min-width: 200px" class="me-4">
+                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCampaignButton">
+                        <span>+ Add New Campaign</span>
+                    </button>
+                </div>
+                <div class="input-group w-100">
+                    <input type="text" class="form-control" placeholder="Campaign name" aria-label="Campaign Name" aria-describedby="searchCampaignButton">
+                    <button class="input-group-button btn btn-primary" id="searchCampaignButton">
+                        <i class='fa-regular fa-magnifying-glass'></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row" id="campaignsListTable">
+                <!-- Dynamically Generated Campaign Cards -->
+            </div>
+        </div>
+
+        <!-- Campaign Manager View -->
+        <div class="fade d-none w-100" id="campaignManagerTab">
+            <div class="tab-content w-100" id="campaigns-manager-tabContent">
+
+                <!-- General Tab -->
+                <div class="tab-pane fade show active w-100" id="campaigns-manager-general" role="tabpanel" aria-labelledby="campaigns-manager-general-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label" for="editCampaignNameInput">Name</label>
+                        <div class="input-group">
+                            <button class="btn btn-light" id="editCampaignIconInput">📣</button>
+                            <input type="text" class="form-control" id="editCampaignNameInput" placeholder="Campaign Name">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="editCampaignDescriptionInput">Description</label>
+                        <input type="text" class="form-control" id="editCampaignDescriptionInput" placeholder="Campaign Description">
+                    </div>
+                </div>
+
+                <!-- Agent Tab -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-agent" role="tabpanel" aria-labelledby="campaigns-manager-agent-tab" tabindex="0">
+                    <!-- Agent Selection -->
+                    <div class="mb-3">
+                        <label class="form-label" for="editSelectedCampaignAgentName">
+                            Campaign Agent
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="editSelectedCampaignAgentIcon">-</span>
+                            <input type="text" class="form-control" id="editSelectedCampaignAgentName" placeholder="Select Agent" disabled>
+                            <button class="btn btn-primary" id="editChangeCampaignAgentButton" data-bs-toggle="modal" data-bs-target="#editChangeCampaignAgentModal">
+                                Select
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Opening Script -->
+                    <div class="mb-3">
+                        <label class="form-label" for="editCampaignAgentDefaultScriptSelect">Opening Script</label>
+                        <select class="form-select" id="editCampaignAgentDefaultScriptSelect" disabled>
+                            <option value="" disabled selected>Select Script</option>
+                        </select>
+                    </div>
+                    <!-- Language Selection -->
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editCampaignAgentLanguageSelect">
+                            <span>Language </span>
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Select the language the agent will use for this campaign. This affects voice synthesis and recognition.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editCampaignAgentLanguageSelect">
+                            <option value="" disabled selected>Select Language</option>
+                            <!-- Dynamically Generated -->
+                        </select>
+                    </div>
+                    <!-- Interruption Type -->
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editCampaignAgentInterruptionTypeSelect">
+                            <span>Interruption Type </span>
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Conversation type of the agent.<br><strong>Interruptible</strong>, Agent is interruptible by user.<br><strong>Turn by Turn</strong>, User and agent speak turn by turn.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editCampaignAgentInterruptionTypeSelect">
+                            <option value="0" selected>Turn by Turn</option>
+                            <option value="1">Interruptible via VAD</option>
+                            <option value="2">Interruptible via AI</option>
+                            <option value="3">Interruptible via Response</option>
+                        </select>
+                    </div>
+                    <!-- Timezone -->
+                    <div class="mb-3">
+                        <label class="form-label" for="editCampaignNumberTimezoneSelect">Timezone</label>
+                        <select class="form-select" id="editCampaignNumberTimezoneSelect">
+                            <option value="" selected disabled>Select Timezone</option>
+                            <!-- Timezone Options... -->
+                        </select>
+                    </div>
+                    <!-- Context Checks -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="editCampaignAgentFromNumberInContextCheck" checked>
+                            <label class="form-label mb-0" for="editCampaignAgentFromNumberInContextCheck">Include 'From' Number in Context</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" role="switch" class="form-check-input" id="editCampaignAgentToNumberInContextCheck" checked>
+                            <label class="form-label mb-0" for="editCampaignAgentToNumberInContextCheck">Include 'To' Number in Context</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Numbers Tab -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-numbers" role="tabpanel" aria-labelledby="campaigns-manager-numbers-tab" tabindex="0">
+                    <h5 class="mb-3">Default 'Call From' Numbers</h5>
+                    <p class="text-muted small mb-3">Select one or more numbers that this campaign will use to make outbound calls. The system will cycle through these numbers if multiple are provided.</p>
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 200px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="editChangeCampaignNumberButton">
+                                <span>+ Add Number</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Search added numbers..." aria-label="Number" aria-describedby="searchCampaignAddedNumber">
+                            <button class="input-group-button btn btn-primary" id="searchCampaignAddedNumber">
+                                <i class="fa-regular fa-magnifying-glass"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <table id="campaignNumbersList" class="table w-100">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Country Code</th>
+                                    <th scope="col">Number</th>
+                                    <th scope="col">Provider</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dynamically Generated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Configuration Tab -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-configuration" role="tabpanel" aria-labelledby="campaigns-manager-configuration-tab" tabindex="0">
+                    <!-- Retry Logic Section (from make-calls-tab) -->
+                    <h5 class="mb-3 mt-4">Retry Logic</h5>
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="form-check form-switch mb-2">
+                            <input type="checkbox" role="switch" class="form-check-input" id="editCampaignRetryOnDeclineCheck">
+                            <label class="form-check-label" for="editCampaignRetryOnDeclineCheck">Enable Retry on Decline/Busy</label>
+                        </div>
+                        <div class="d-none fade ms-4 my-2" id="editCampaignRetryOnDeclineOptionsContainer">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto"><label for="editCampaignRetryDeclineCountInput" class="col-form-label">Retries:</label></div>
+                                <div class="col-auto"><input type="number" class="form-control form-control-sm" id="editCampaignRetryDeclineCountInput" value="3" min="1"></div>
+                                <div class="col-auto"><label for="editCampaignRetryDeclineDelayInput" class="col-form-label">Delay:</label></div>
+                                <div class="col-auto"><input type="number" class="form-control form-control-sm" id="editCampaignRetryDeclineDelayInput" value="10" min="1"></div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm" id="editCampaignRetryDeclineUnitSelect">
+                                        <option value="seconds">Seconds</option>
+                                        <option value="minutes" selected>Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4 p-3 border rounded">
+                        <div class="form-check form-switch mb-2">
+                            <input type="checkbox" role="switch" class="form-check-input" id="editCampaignRetryOnMissCheck">
+                            <label class="form-check-label" for="editCampaignRetryOnMissCheck">Enable Retry on No Answer</label>
+                        </div>
+                        <div class="d-none fade ms-4 my-2" id="editCampaignRetryOnMissOptionsContainer">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto"><label for="editCampaignRetryMissCountInput" class="col-form-label">Retries:</label></div>
+                                <div class="col-auto"><input type="number" class="form-control form-control-sm" id="editCampaignRetryMissCountInput" value="3" min="1"></div>
+                                <div class="col-auto"><label for="editCampaignRetryMissDelayInput" class="col-form-label">Delay:</label></div>
+                                <div class="col-auto"><input type="number" class="form-control form-control-sm" id="editCampaignRetryMissDelayInput" value="10" min="1"></div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm" id="editCampaignRetryMissUnitSelect">
+                                        <option value="seconds">Seconds</option>
+                                        <option value="minutes" selected>Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeout Settings Section -->
+                    <h5 class="mb-3 mt-4">Timeout Settings</h5>
+                    <div class="mb-3"><label class="form-label" for="editCampaignNumberPickupDelay">Pick up delay (ms)</label><input type="number" class="form-control" id="editCampaignNumberPickupDelay" value="0"></div>
+                    <div class="mb-3"><label class="form-label" for="editCampaignNumberSilenceNotify">Notify on silence (ms)</label><input type="number" class="form-control" id="editCampaignNumberSilenceNotify" value="10000"></div>
+                    <div class="mb-3"><label class="form-label" for="editCampaignNumberSilenceEnd">End call on silence (ms)</label><input type="number" class="form-control" id="editCampaignNumberSilenceEnd" value="30000"></div>
+                    <div class="mb-3"><label class="form-label" for="editCampaignNumberTotalCallTime">Max call time (s)</label><input type="number" class="form-control" id="editCampaignNumberTotalCallTime" value="600"></div>
+                </div>
+
+                <!-- *** NEW: Voicemail Detection Tab *** -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-voicemail" role="tabpanel" aria-labelledby="campaigns-manager-voicemail-tab" tabindex="0">
+                    <div class="card card-body mb-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0">Voicemail Detection</h6>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="editCampaignVoicemailIsEnabled">
+                                <label class="form-check-label" for="editCampaignVoicemailIsEnabled">Enable</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="editCampaignVoicemailSettingsContainer" style="opacity: 0.5; pointer-events: none;">
+                        <div class="card card-body mb-3">
+                            <p class="fw-bold mb-2">Detection Timing & Method</p>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label for="editCampaignVoicemailInitialCheckDelayMS" class="form-label">Initial Check Delay (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailInitialCheckDelayMS" value="1000" min="0"></div>
+                                <div class="col-md-6 mb-3"><label for="editCampaignVoicemailMLCheckDurationMS" class="form-label">ML Check Duration (ms)</label><input type="range" class="form-range" id="editCampaignVoicemailMLCheckDurationMS" min="1000" max="4000" step="100" value="1000"><div class="text-center small"><span id="editCampaignVoicemailMLCheckDurationMSValue">1000</span> ms</div></div>
+                                <div class="col-md-6 mb-3"><label for="editCampaignVoicemailMaxMLCheckTries" class="form-label">Max ML Check Tries</label><input type="number" class="form-control" id="editCampaignVoicemailMaxMLCheckTries" value="2" min="1"></div>
+                                <div class="col-md-6 mb-3"><label for="editCampaignVoicemailVADSilenceThresholdMS" class="form-label">VAD Silence Threshold (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailVADSilenceThresholdMS" value="1000" min="0"></div>
+                                <div class="col-md-6 mb-3"><label for="editCampaignVoicemailVADMaxSpeechDurationMS" class="form-label">VAD Max Speech Duration (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailVADMaxSpeechDurationMS" value="4000" min="0"></div>
+                            </div>
+                        </div>
+                        <div class="card card-body mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="editCampaignVoicemailEnableAdvancedVerification">
+                                <label class="form-check-label" for="editCampaignVoicemailEnableAdvancedVerification">Enable Advanced Verification</label>
+                            </div>
+                            <div id="editCampaignVoicemailAdvancedVerificationContainer" class="d-none mt-3">
+                                <div class="row">
+                                    <div class="col-12 col-md-6 mb-3 mb-md-0"><label class="form-label">STT for Transcription</label><div id="campaignVoicemailSTTIntegrationContainer"></div></div>
+                                    <div class="col-12 col-md-6 mb-0"><label class="form-label">LLM for Verification</label><div id="campaignVoicemailLLMIntegrationContainer"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-body mb-3">
+                            <p class="fw-bold mb-2">Action Triggers</p>
+                            <div class="row">
+                                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                    <p class="fw-bold mb-2 small">Stop Agent Speaking Triggers</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="editCampaignStopAgentOnML"><label class="form-check-label" for="editCampaignStopAgentOnML">After ML Check Success</label></div>
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="editCampaignStopAgentOnVAD"><label class="form-check-label" for="editCampaignStopAgentOnVAD">After VAD Silence</label></div>
+                                            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="editCampaignStopAgentOnLLM"><label class="form-check-label" for="editCampaignStopAgentOnLLM">After LLM Confirmation</label></div>
+                                            <label for="editCampaignVoicemailStopSpeakingDelay" class="form-label">Delay Action (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailStopSpeakingDelay" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 mb-0">
+                                    <p class="fw-bold mb-2 small">End Call / Leave Message Triggers</p>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="editCampaignEndLeaveOnML"><label class="form-check-label" for="editCampaignEndLeaveOnML">After ML Check Success</label></div>
+                                            <div class="form-check"><input class="form-check-input" type="checkbox" id="editCampaignEndLeaveOnVAD"><label class="form-check-label" for="editCampaignEndLeaveOnVAD">After VAD Silence</label></div>
+                                            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="editCampaignEndLeaveOnLLM"><label class="form-check-label" for="editCampaignEndLeaveOnLLM">After LLM Confirmation</label></div>
+                                            <label for="editCampaignVoicemailEndLeaveDelay" class="form-label">Delay Action (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailEndLeaveDelay" value="1000" min="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-body">
+                            <p class="fw-bold mb-2">Final Action on Detect</p>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="editCampaignFinalAction" id="editCampaignVoicemailEndCall" value="end" checked><label class="form-check-label" for="editCampaignVoicemailEndCall">End Call</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="editCampaignFinalAction" id="editCampaignVoicemailLeaveMessage" value="leave"><label class="form-check-label" for="editCampaignVoicemailLeaveMessage">Leave a Message</label></div>
+                            <div class="mt-3 d-none" id="editCampaignVoicemailLeaveMessageContainer">
+                                <div class="mb-3"><label class="form-label" for="editCampaignVoicemailMessageToLeave"><span>Message to Leave</span> <i class="fa-regular fa-language"></i></label><textarea class="form-control" id="editCampaignVoicemailMessageToLeave" rows="3" placeholder="Enter message..."></textarea></div>
+                                <div><label for="editCampaignVoicemailWaitAfterMessage" class="form-label">Wait Before End (ms)</label><input type="number" class="form-control" id="editCampaignVoicemailWaitAfterMessage" value="1000" min="0"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Tab -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-actions" role="tabpanel" aria-labelledby="campaigns-manager-actions-tab" tabindex="0">
+                    <!-- On Call Answered Action -->
+                    <div class="mb-3" id="editCampaignActionToolAnsweredContainer">
+                        <label class="form-label btn-ic-span-align" for="editCampaignActionToolAnswered">On Call Answered Action</label>
+                        <select class="form-select" id="editCampaignActionToolAnswered"></select>
+                        <div class="custom-tool-input-arguments mt-2 d-none">
+                            <label class="form-label d-block" for="editCampaignActionToolAnsweredInputArgumentsSelect">Input Arguments</label>
+                            <select class="form-select mb-2" id="editCampaignActionToolAnsweredInputArgumentsSelect"></select>
+                            <div class="mt-1" id="editCampaignActionToolAnsweredInputArgumentsList"></div>
+                        </div>
+                    </div>
+                    <!-- On Call Declined/Busy Action -->
+                    <div class="mb-3" id="editCampaignActionToolDeclinedContainer">
+                        <label class="form-label btn-ic-span-align" for="editCampaignActionToolDeclined">On Call Declined/Busy Action</label>
+                        <select class="form-select" id="editCampaignActionToolDeclined"></select>
+                        <div class="custom-tool-input-arguments mt-2 d-none">
+                            <label class="form-label d-block" for="editCampaignActionToolDeclinedInputArgumentsSelect">Input Arguments</label>
+                            <select class="form-select mb-2" id="editCampaignActionToolDeclinedInputArgumentsSelect"></select>
+                            <div class="mt-1" id="editCampaignActionToolDeclinedInputArgumentsList"></div>
+                        </div>
+                    </div>
+                    <!-- On No Answer Action -->
+                    <div class="mb-3" id="editCampaignActionToolNoAnswerContainer">
+                        <label class="form-label btn-ic-span-align" for="editCampaignActionToolNoAnswer">On No Answer Action</label>
+                        <select class="form-select" id="editCampaignActionToolNoAnswer"></select>
+                        <div class="custom-tool-input-arguments mt-2 d-none">
+                            <label class="form-label d-block" for="editCampaignActionToolNoAnswerInputArgumentsSelect">Input Arguments</label>
+                            <select class="form-select mb-2" id="editCampaignActionToolNoAnswerInputArgumentsSelect"></select>
+                            <div class="mt-1" id="editCampaignActionToolNoAnswerInputArgumentsList"></div>
+                        </div>
+                    </div>
+                    <!-- On Call Ended Action -->
+                    <div class="" id="editCampaignActionToolEndedContainer">
+                        <label class="form-label btn-ic-span-align" for="editCampaignActionToolEnded">On Call Ended Action</label>
+                        <select class="form-select" id="editCampaignActionToolEnded"></select>
+                        <div class="custom-tool-input-arguments mt-2 d-none">
+                            <label class="form-label d-block" for="editCampaignActionToolEndedInputArgumentsSelect">Input Arguments</label>
+                            <select class="form-select mb-2" id="editCampaignActionToolEndedInputArgumentsSelect"></select>
+                            <div class="mt-1" id="editCampaignActionToolEndedInputArgumentsList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Campaign 'From' Number Modal -->
+    <div class="modal fade" id="editChangeCampaignNumberModal" tabindex="-1" aria-labelledby="editChangeCampaignNumberModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h1 class="modal-title fs-5" id="editChangeCampaignNumberModalLabel">Select 'Call From' Number</h1><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-primary" id="saveChangeCampaignNumberButton" disabled>Select Number</button></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Campaign Agent Modal -->
+    <div class="modal fade" id="editChangeCampaignAgentModal" tabindex="-1" aria-labelledby="editChangeCampaignAgentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h1 class="modal-title fs-5" id="editChangeCampaignAgentModalLabel">Select Agent</h1><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body">
+                    <div class="list-group" id="campaigns-manager-select-agent-modal-list">
+                        <!-- Dynamically Generated Agent List -->
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="button" class="btn btn-primary" id="saveChangeCampaignAgentButton" disabled>Select Agent</button></div>
+            </div>
+        </div>
+    </div>
+</div>

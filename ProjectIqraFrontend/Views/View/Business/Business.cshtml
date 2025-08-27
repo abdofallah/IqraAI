@@ -49,7 +49,7 @@
                         <i class='fa-regular fa-chalkboard nav_icon'></i>
                         <span class="nav_name">Overview</span>
                     </a>
-                    <span class="mt-4 nav-category-label">Routing</span>
+                    <span class="mt-4 nav-category-label">Inbound</span>
                     <a class="nav_link active" for="routing-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-code-fork nav_icon'></i>
                         <span class="nav_name">Routing</span>
@@ -85,7 +85,11 @@
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
-                    <span class="mt-4 nav-category-label">Actions</span>
+                    <span class="mt-4 nav-category-label">Outbound</span>
+                    <a class="nav_link" for="campaigns-tab" is-new-tutorial-disabled="true">
+                        <i class='fa-regular fa-megaphone nav_icon'></i>
+                        <span class="nav_name">Campaigns</span>
+                    </a>
                     <a class="nav_link" for="make-calls-tab" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-phone nav_icon'></i>
                         <span class="nav_name">Make Calls</span>
@@ -119,7 +123,7 @@
 
         <!--
 
-            Routing
+            Inbound
 
         -->
         <!-- Routing Container -->
@@ -153,9 +157,12 @@
 
         <!--
 
-            Actions
+            Outbound
 
         -->
+        <!-- Campaigns Container -->
+        <partial name="_CampaignsTab.cshtml" />
+
         <!-- Make Calls Container -->
         <partial name="_MakeCallsTab.cshtml" />
 
@@ -731,6 +738,7 @@
     <script src="~/scripts/app/business/agents_tab.js"></script>
     <script src="~/scripts/app/business/overview_tab.js"></script>
     <script src="~/scripts/app/business/routing_tab.js"></script>
+    <script src="~/scripts/app/business/campaigns_tab.js"></script>
     <script src="~/scripts/app/business/make_calls_tab.js"></script>
     <script src="~/scripts/app/business/conversations_tab.js"></script>
 
@@ -923,6 +931,7 @@
                                                 initRoutingTab();
                                                 initNumbersTab();
                                                 initConversationsTab();
+                                                initCampaignsTab();
                                                 initMakeCallsTab();
                                                 initKnowledgeBaseTab();
 
