@@ -31,7 +31,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             ClientTelephonyProviderType = TelephonyProviderEnum.Unknown;
         }
 
-        public abstract Task SendDTMFAsync(string digits, CancellationToken cancellationToken);
+        public abstract Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken);
 
         /// <summary>
         /// Telephony clients typically cannot render text. This implementation prevents sending text.

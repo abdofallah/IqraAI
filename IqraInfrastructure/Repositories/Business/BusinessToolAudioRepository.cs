@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.HighPerformance;
+using IqraInfrastructure.Repositories.MinIO;
 using Microsoft.Extensions.Logging;
-using Minio;
 using Minio.DataModel.Args;
 
 namespace IqraInfrastructure.Repositories.Business
@@ -9,17 +9,17 @@ namespace IqraInfrastructure.Repositories.Business
     {
         private readonly ILogger<BusinessToolAudioRepository> _logger;
 
-        private IMinioClient MinioClient;
+        private MinioPrivatePublicClient _minioClient;
         public string BucketName;
 
-        public BusinessToolAudioRepository(ILogger<BusinessToolAudioRepository> logger, IMinioClient client, string bucketName)
+        public BusinessToolAudioRepository(ILogger<BusinessToolAudioRepository> logger, MinioPrivatePublicClient client, string bucketName)
         {
             _logger = logger;
 
-            MinioClient = client;
+            _minioClient = client;
             BucketName = bucketName;
 
-            bool bucketExists = MinioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
+            bool bucketExists = _minioClient.PrivateClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName)).GetAwaiter().GetResult();
             if (!bucketExists)
             {
                 throw new ArgumentException("Bucket " + bucketName + " does not exist");
@@ -43,7 +43,7 @@ namespace IqraInfrastructure.Repositories.Business
                 .WithContentType("application/octet-stream")
                 .WithHeaders(metaData);
 
-            await MinioClient.PutObjectAsync(args);
+            await _minioClient.PrivateClient.PutObjectAsync(args);
         }
 
         public async Task<MemoryStream> GetFileAtPath(string fileId, string filePath)
@@ -55,7 +55,7 @@ namespace IqraInfrastructure.Repositories.Business
                 .WithObject(fileId)
                 .WithFile(filePath);
 
-            await MinioClient.GetObjectAsync(args);
+            await _minioClient.PrivateClient.GetObjectAsync(args);
 
             return stream;
         }
@@ -68,7 +68,7 @@ namespace IqraInfrastructure.Repositories.Business
                     .WithBucket(BucketName)
                     .WithObject(fileId);
 
-                await MinioClient.StatObjectAsync(args);
+                await _minioClient.PrivateClient.StatObjectAsync(args);
                 return true;
             }
             catch (Minio.Exceptions.ObjectNotFoundException)
@@ -89,7 +89,7 @@ namespace IqraInfrastructure.Repositories.Business
                     await s.CopyToAsync(stream);
                 });
 
-            await MinioClient.GetObjectAsync(args);
+            await _minioClient.PrivateClient.GetObjectAsync(args);
 
             return stream;
         }

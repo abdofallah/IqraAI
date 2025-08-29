@@ -125,10 +125,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             return Transport.SendTextAsync(mediaMessage, cancellationToken);
         }
 
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
             // Implementation remains similar, but uses the transport
-            var dtmfPayload = new { @event = "dtmf", streamSid = _streamSidFromTwilio, dtmf = new { digits } };
+            var dtmfPayload = new { @event = "dtmf", streamSid = _streamSidFromTwilio, dtmf = string.Join("", digits) };
             string jsonPayload = JsonSerializer.Serialize(dtmfPayload);
             return Transport.SendTextAsync(jsonPayload, cancellationToken);
         }

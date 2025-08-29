@@ -64,9 +64,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             return Transport.SendBinaryAsync(audioData, cancellationToken);
         }
 
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
-            string dtmfMessage = $"DTMF:{digits}";
+            string dtmfMessage = $"DTMF:{string.Join("", digits)}";
             // Delegate sending to the transport
             return Transport.SendTextAsync(dtmfMessage, cancellationToken);
         }

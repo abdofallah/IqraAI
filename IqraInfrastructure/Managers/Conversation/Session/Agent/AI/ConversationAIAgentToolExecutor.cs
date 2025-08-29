@@ -17,7 +17,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event Func<string, Task>? EndConversationRequested;
         public event Func<string, string?, Task>? TransferToAIAgentRequested; // (reason, nodeId)
         public event Func<string, string?, Task>? TransferToHumanAgentRequested; // (reason, nodeId)
-        public event Func<string, Task>? SendDTMFRequested;
+        public event Func<List<char>, Task>? SendDTMFRequested;
         public event Func<string, Task>? AddContextRequested;
         public event Func<string, Task>? ChangeLanguageRequested;
         public event Func<Task>? InitiateLanguageSelectionRequested;
@@ -31,7 +31,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
 
         // Static Regex for basic DTMF validation (0-9, *, #, A-D, W - W for pause if needed)
-        private static readonly Regex ValidDtmfCharsRegex = new Regex("^[0-9*#A-DW]+$", RegexOptions.Compiled);
+        private static readonly Regex ValidDtmfCharsRegex = new Regex(@"^[0-9*#A-DW\s,""\[\]]+$", RegexOptions.Compiled);
+        private static readonly Regex DtmfSanitizerRegex = new Regex(@"[^0-9*#A-DW]", RegexOptions.Compiled);
 
         public ConversationAIAgentToolExecutor(
             ILoggerFactory loggerFactory,
@@ -250,23 +251,29 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     // Format: press_dtmf_keypad: string <reason>, array of char <digits to press> -> interpreted as string
                     // string reason = arguments.Count > 0 ? UnescapeArgument(arguments[0]) : "Sending DTMF";
                     string? digitsToPress = arguments.Count > 1 ? UnescapeNullableArgument(arguments[1]) : null;
-
                     if (string.IsNullOrWhiteSpace(digitsToPress))
                     {
                         await ToolResultAvailable?.Invoke("Error: press_dtmf_keypad requires the digits to press as the second argument.");
                         return;
                     }
 
-                    // Validate digits
                     if (!ValidDtmfCharsRegex.IsMatch(digitsToPress))
                     {
-                        await ToolResultAvailable?.Invoke($"Error: press_dtmf_keypad received invalid characters. Only 0-9, *, #, A-D, W are allowed. Got: '{digitsToPress}'.");
+                        // The input contains illegal characters. Fail fast and inform the AI.
+                        await ToolResultAvailable?.Invoke($"Error: press_dtmf_keypad received invalid characters. Input must only contain 0-9, *, #, A-D, W and basic formatting (spaces, quotes, commas, brackets). Got: '{digitsToPress}'.");
+                        return;
+                    }
+
+                    string finalDigits = DtmfSanitizerRegex.Replace(digitsToPress, "");
+                    if (string.IsNullOrEmpty(finalDigits))
+                    {
+                        await ToolResultAvailable?.Invoke($"Error: press_dtmf_keypad received invalid or empty characters after sanitizing. Only 0-9, *, #, A-D, W are allowed. Raw input was: '{digitsToPress}'.");
                         return;
                     }
 
                     if (SendDTMFRequested != null)
                     {
-                        await SendDTMFRequested.Invoke(digitsToPress);
+                        await SendDTMFRequested.Invoke(finalDigits.ToCharArray().ToList());
                         // Acknowledge the request was sent
                         // TODO whether to acknowledge or not?
                         // maybe just add to the conversation messages history and force ai to say acknowledge

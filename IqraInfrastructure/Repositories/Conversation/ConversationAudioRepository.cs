@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.HighPerformance;
+using IqraInfrastructure.Repositories.MinIO;
 using Microsoft.Extensions.Logging;
 using Minio;
 using Minio.DataModel;
@@ -10,14 +11,14 @@ namespace IqraInfrastructure.Repositories.Conversation
 {
     public class ConversationAudioRepository
     {
-        private readonly IMinioClient _minioClient;
+        private readonly MinioPrivatePublicClient _minioClient;
         private readonly string _bucketName;
         private readonly ILogger<ConversationAudioRepository> _logger;
 
         private readonly string? _localMinioHostName;
         private readonly string? _publicMinioHostName;
 
-        public ConversationAudioRepository(ILogger<ConversationAudioRepository> logger, IMinioClient client, string bucketName, string? publicMinioUrl, bool? publicMinioUrlIsSecure)
+        public ConversationAudioRepository(ILogger<ConversationAudioRepository> logger, MinioPrivatePublicClient client, string bucketName)
         {
             _logger = logger;
 
@@ -25,13 +26,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             _bucketName = bucketName;
 
             // Ensure the bucket exists
-            EnsureBucketExistsAsync().GetAwaiter().GetResult();
-
-            if (publicMinioUrl != null && publicMinioUrlIsSecure != null)
-            {
-                _localMinioHostName = MakeTargetURL(client.Config.BaseUrl, client.Config.Secure, bucketName, client.Config.Region, true).ToString();
-                _publicMinioHostName = MakeTargetURL(publicMinioUrl, publicMinioUrlIsSecure.Value, bucketName, client.Config.Region, false).ToString();
-            }    
+            EnsureBucketExistsAsync().GetAwaiter().GetResult();   
         }
 
         private static Uri MakeTargetURL(string endPoint, bool secure, string bucketName = null, string region = null, bool usePathStyle = true)
@@ -50,12 +45,12 @@ namespace IqraInfrastructure.Repositories.Conversation
         {
             try
             {
-                bool bucketExists = await _minioClient.BucketExistsAsync(
+                bool bucketExists = await _minioClient.PrivateClient.BucketExistsAsync(
                     new BucketExistsArgs().WithBucket(_bucketName));
 
                 if (!bucketExists)
                 {
-                    await _minioClient.MakeBucketAsync(
+                    await _minioClient.PrivateClient.MakeBucketAsync(
                         new MakeBucketArgs().WithBucket(_bucketName));
 
                     _logger.LogInformation("Created conversation audio bucket: {BucketName}", _bucketName);
@@ -99,7 +94,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     .WithContentType("audio/wav") // Adjust content type as needed
                     .WithHeaders(metadata);
 
-                await _minioClient.PutObjectAsync(args);
+                await _minioClient.PrivateClient.PutObjectAsync(args);
 
                 return true;
             }
@@ -128,7 +123,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                 var statArgs = new StatObjectArgs()
                     .WithBucket(_bucketName)
                     .WithObject(reference);
-                stat = await _minioClient.StatObjectAsync(statArgs);
+                stat = await _minioClient.PrivateClient.StatObjectAsync(statArgs);
 
                 if (stat.Size == 0)
                 {
@@ -154,7 +149,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                         }
                     });
 
-                ObjectStat resultStat = await _minioClient.GetObjectAsync(args);
+                ObjectStat resultStat = await _minioClient.PrivateClient.GetObjectAsync(args);
                 data = memoryStream.ToArray();
 
                 if (data != null)
@@ -189,7 +184,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     return false;
                 }
 
-                await _minioClient.RemoveObjectAsync(
+                await _minioClient.PrivateClient.RemoveObjectAsync(
                     new RemoveObjectArgs().WithBucket(_bucketName).WithObject(reference));
 
                 return true;
@@ -218,7 +213,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     .WithPrefix(prefix)
                     .WithRecursive(true);
 
-                var observable = _minioClient.ListObjectsEnumAsync(listArgs);
+                var observable = _minioClient.PrivateClient.ListObjectsEnumAsync(listArgs);
 
                 await foreach (var item in observable)
                 {
@@ -250,7 +245,7 @@ namespace IqraInfrastructure.Repositories.Conversation
                     .WithBucket(_bucketName)
                     .WithObject(reference);
 
-                var objectStat = await _minioClient.StatObjectAsync(statArgs);
+                var objectStat = await _minioClient.PrivateClient.StatObjectAsync(statArgs);
 
                 if (objectStat.MetaData == null || !objectStat.MetaData.Any())
                 {
@@ -293,18 +288,14 @@ namespace IqraInfrastructure.Repositories.Conversation
                 var statArgs = new StatObjectArgs()
                     .WithBucket(_bucketName)
                     .WithObject(reference);
-                await _minioClient.StatObjectAsync(statArgs);
+                await _minioClient.PublicClient.StatObjectAsync(statArgs);
 
                 var presignedGetObjectArgs = new PresignedGetObjectArgs()
                     .WithBucket(_bucketName)
                     .WithObject(reference)
                     .WithExpiry(expiresInSeconds);
 
-                string presignedUrl = await _minioClient.PresignedGetObjectAsync(presignedGetObjectArgs);
-                if (!string.IsNullOrWhiteSpace(_localMinioHostName + _publicMinioHostName))
-                {
-                    presignedUrl = presignedUrl.Replace(_localMinioHostName, _publicMinioHostName);
-                }
+                string presignedUrl = await _minioClient.PublicClient.PresignedGetObjectAsync(presignedGetObjectArgs);
 
                 return presignedUrl;
             }

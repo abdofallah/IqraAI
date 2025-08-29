@@ -119,7 +119,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
             return Transport.SendTextAsync(jsonPayload, cancellationToken);
         }
 
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
             // Sending DTMF is a REST API call, not a WebSocket message for Telnyx.
             // This requires adding a 'SendDtmfAsync' method to the TelnyxManager.

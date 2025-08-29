@@ -7,6 +7,7 @@ using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
+using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
 using IqraInfrastructure.Managers.Integrations;
 using IqraInfrastructure.Managers.Languages;
 using IqraInfrastructure.Managers.LLM;
@@ -164,7 +165,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
              _toolExecutor.TransferToHumanAgentRequested += async (reason, nodeId) => {
                  _logger.LogInformation("Agent {AgentId} requested transfer to Human Agent via tool. Reason: {Reason}, Node: {NodeId}", AgentId, reason, nodeId);
              };
-
+            _toolExecutor.SendDTMFRequested += async (digits) =>
+            {
+                IConversationClient? client = _conversationSessionManager.PrimaryClient;
+                if (client != null && client is BaseTelephonyConversationClient telephonyClient)
+                {
+                    await telephonyClient.SendDTMFAsync(digits, _conversationCTS.Token);
+                }
+            };
 
              // NEW: DTMF Session Manager Events -> Orchestrator/LLM
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;

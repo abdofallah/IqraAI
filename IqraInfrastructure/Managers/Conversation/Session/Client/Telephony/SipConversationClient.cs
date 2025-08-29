@@ -116,7 +116,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         }
 
         // DTMF implementation would go here, similar to the Softphone example.
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
             _logger.LogWarning("SendDTMFAsync for SIP is not yet implemented.");
             return Task.CompletedTask;

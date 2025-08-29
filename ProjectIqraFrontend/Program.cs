@@ -35,6 +35,7 @@ using IqraInfrastructure.Repositories.Integrations;
 using IqraInfrastructure.Repositories.KnowledgeBase.Vector;
 using IqraInfrastructure.Repositories.Languages;
 using IqraInfrastructure.Repositories.LLM;
+using IqraInfrastructure.Repositories.MinIO;
 using IqraInfrastructure.Repositories.RAG;
 using IqraInfrastructure.Repositories.Redis;
 using IqraInfrastructure.Repositories.Region;
@@ -60,8 +61,8 @@ namespace ProjectIqraFrontend
             var appConfig = builder.Configuration;
             builder.Services.AddSingleton<ViewLinkConfiguration>((sp) =>
             {
-                var baseMinioUrl = appConfig["MinioStorage:PublicURL"];
-                var minioUrlIsSecure = bool.Parse(appConfig["MinioStorage:PublicUrlIsSecure"]) ? "https://" : "http://";
+                var baseMinioUrl = appConfig["MinioStorage:PublicEndpoint"];
+                var minioUrlIsSecure = bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]) ? "https://" : "http://";
                 baseMinioUrl = minioUrlIsSecure + baseMinioUrl;
 
                 return new ViewLinkConfiguration()
@@ -157,13 +158,18 @@ namespace ProjectIqraFrontend
                 return new MongoClient(appConfig["MongoDatabase:ConnectionString"]);
             });
 
-            builder.Services.AddSingleton<IMinioClient>((sp) =>
+            builder.Services.AddSingleton<MinioPrivatePublicClient>((sp) =>
             {
-                return new MinioClient()
-                    .WithEndpoint(appConfig["MinioStorage:Endpoint"], int.Parse(appConfig["MinioStorage:Port"]))
-                    .WithCredentials(appConfig["MinioStorage:AccessKey"], appConfig["MinioStorage:SecretKey"])
-                    .WithSSL(bool.Parse(appConfig["MinioStorage:IsSecure"]))
-                    .Build();
+                return new MinioPrivatePublicClient(
+                    appConfig["MinioStorage:PrivateEndpoint"],
+                    int.Parse(appConfig["MinioStorage:PrivateEndpointPort"]),
+                    bool.Parse(appConfig["MinioStorage:IsPrivateEndpointSecure"]),
+                    appConfig["MinioStorage:PublicEndpoint"],
+                    int.Parse(appConfig["MinioStorage:PublicEndpointPort"]),
+                    bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]),
+                    appConfig["MinioStorage:AccessKey"],
+                    appConfig["MinioStorage:SecretKey"]
+                );
             });
 
             builder.Services.AddSingleton<MilvusKnowledgeBaseClient>((sp) =>
@@ -359,7 +365,7 @@ namespace ProjectIqraFrontend
             {
                 return new IntegrationsLogoRepository(
                     sp.GetRequiredService<ILogger<IntegrationsLogoRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:IntegrationsLogoRepositoryBucketName"]
                 );
             });
@@ -368,7 +374,7 @@ namespace ProjectIqraFrontend
             {
                 return new BusinessLogoRepository(
                     sp.GetRequiredService<ILogger<BusinessLogoRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:BusinessLogoRepositoryBucketName"]
                 );
             });
@@ -377,7 +383,7 @@ namespace ProjectIqraFrontend
             {
                 return new BusinessToolAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessToolAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:BusinessToolAudioRepositoryBucketName"]
                 );
             });
@@ -386,7 +392,7 @@ namespace ProjectIqraFrontend
             {
                 return new BusinessAgentAudioRepository(
                     sp.GetRequiredService<ILogger<BusinessAgentAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
                     appConfig["MinioStorage:BusinessAgentAudioRepositoryBucketName"]
                 );
             });
@@ -395,10 +401,8 @@ namespace ProjectIqraFrontend
             {
                 return new ConversationAudioRepository(
                     sp.GetRequiredService<ILogger<ConversationAudioRepository>>(),
-                    sp.GetRequiredService<IMinioClient>(),
-                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"],
-                    appConfig["MinioStorage:PublicURL"],
-                    bool.Parse(appConfig["MinioStorage:PublicUrlIsSecure"])
+                    sp.GetRequiredService<MinioPrivatePublicClient>(),
+                    appConfig["MinioStorage:ConversationAudioRepositoryBucketName"]
                 );
             });
 

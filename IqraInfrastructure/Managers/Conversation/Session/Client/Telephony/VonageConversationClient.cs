@@ -77,12 +77,12 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Client.Telephony
         /// <summary>
         /// Sends DTMF digits by wrapping them in Vonage's expected JSON format.
         /// </summary>
-        public override Task SendDTMFAsync(string digits, CancellationToken cancellationToken)
+        public override Task SendDTMFAsync(List<char> digits, CancellationToken cancellationToken)
         {
             //var dtmfMessage = $"{{\"dtmf\":\"{digits}\"}}";
             //return Transport.SendTextAsync(dtmfMessage, cancellationToken);
 
-            return _vonageManager.SendDtmfAsync(_jwt, _callUuid, digits);
+            return _vonageManager.SendDtmfAsync(_jwt, _callUuid, string.Join("", digits));
         }
 
         /// <summary>
