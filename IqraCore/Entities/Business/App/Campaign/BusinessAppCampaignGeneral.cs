@@ -1,15 +1,11 @@
-﻿using IqraCore.Attributes;
-
-namespace IqraCore.Entities.Business
+﻿namespace IqraCore.Entities.Business
 {
     public class BusinessAppCampaignGeneral
     {
         public string Emoji { get; set; } = "🤖";
 
-        [MultiLanguageProperty]
-        public Dictionary<string, string> Name { get; set; } = new Dictionary<string, string>();
+        public string Name { get; set; } = string.Empty;
 
-        [MultiLanguageProperty]
-        public Dictionary<string, string> Description { get; set; } = new Dictionary<string, string>();
+        public string Description { get; set; } = string.Empty;
     }
 }

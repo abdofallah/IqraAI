@@ -2,10 +2,10 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppCampaignConfiguration
+    public class BusinessAppCampaignConfiguration 
     {
-        public BusinessAppCampaignConfigurationRetryConfig RetryDecline { get; set; } = new BusinessAppCampaignConfigurationRetryConfig();
-        public BusinessAppCampaignConfigurationRetryConfig RetryMiss { get; set; } = new BusinessAppCampaignConfigurationRetryConfig();
+        public BusinessAppCampaignConfigurationRetryConfig RetryOnDecline { get; set; } = new BusinessAppCampaignConfigurationRetryConfig();
+        public BusinessAppCampaignConfigurationRetryConfig RetryOnMiss { get; set; } = new BusinessAppCampaignConfigurationRetryConfig();
         public BusinessAppCampaignConfigurationTimeoutsConfig Timeouts { get; set; } = new BusinessAppCampaignConfigurationTimeoutsConfig();
     }
 

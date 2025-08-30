@@ -970,67 +970,84 @@ function validateRoutingTab(onlyRemove = true) {
 
 	// Actions Tab
 	function validateActionsTab() {
-		// Validate Ringing Tool Arguments
-		if (editRouteActionToolRinging.val() !== "none") {
-			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolRinging.val());
+		function validateToolArguments($toolSelect, $argumentsContainer, errorPrefix, onlyRemove = false) {
+			// If no tool is selected, it's valid by default.
+			if ($toolSelect.val() === "none") {
+				return { isValid: true, messages: [] };
+			}
+
+			const localErrors = [];
+			let localIsValid = true;
+
+			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === $toolSelect.val());
+
+			// Safety check in case the tool isn't found
+			if (!toolData) {
+				console.error(`Tool with ID '${$toolSelect.val()}' not found.`);
+				return { isValid: true, messages: [] }; // Or handle as an error
+			}
+
 			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
-			const currentArguments = editRouteActionToolRingingInputArgumentsList.find(".input-group input");
+			const currentArguments = $argumentsContainer.find(".input-group input");
 
 			requiredArguments.forEach((reqArg) => {
-				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
-				if (argInput.length === 0 || !argInput.val().trim()) {
-					validated = false;
-					errors.push(`Ringing tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
+				const $argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
 
-					if (!onlyRemove && argInput.length > 0) {
-						argInput.addClass("is-invalid");
+				// Check if the input element doesn't exist or its value is empty
+				if ($argInput.length === 0 || !$argInput.val().trim()) {
+					localIsValid = false;
+					localErrors.push(`${errorPrefix}: ${reqArg.name[BusinessDefaultLanguage]} is required`);
+
+					// Add 'is-invalid' class only if we are in full validation mode
+					if (!onlyRemove && $argInput.length > 0) {
+						$argInput.addClass("is-invalid");
 					}
 				} else {
-					argInput.removeClass("is-invalid");
+					// If the input is valid, always remove the class
+					$argInput.removeClass("is-invalid");
 				}
 			});
+
+			return {
+				isValid: localIsValid,
+				messages: localErrors,
+			};
 		}
 
-		// Validate Picked Tool Arguments
-		if (editRouteActionToolPicked.val() !== "none") {
-			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolPicked.val());
-			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
-			const currentArguments = editRouteActionToolPickedInputArgumentsList.find(".input-group input");
-
-			requiredArguments.forEach((reqArg) => {
-				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
-				if (argInput.length === 0 || !argInput.val().trim()) {
-					validated = false;
-					errors.push(`Picked tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
-
-					if (!onlyRemove && argInput.length > 0) {
-						argInput.addClass("is-invalid");
-					}
-				} else {
-					argInput.removeClass("is-invalid");
-				}
-			});
+		// 1. Validate Ringing Tool Arguments
+		const ringingResult = validateToolArguments(
+			editRouteActionToolRinging,
+			editRouteActionToolRingingInputArgumentsList,
+			"Ringing tool",
+			onlyRemove
+		);
+		if (!ringingResult.isValid) {
+			validated = false;
+			errors.push(...ringingResult.messages);
 		}
 
-		// Validate Ended Tool Arguments
-		if (editRouteActionToolEnded.val() !== "none") {
-			const toolData = BusinessFullData.businessApp.tools.find((tool) => tool.id === editRouteActionToolEnded.val());
-			const requiredArguments = toolData.configuration.inputSchemea.filter((arg) => arg.isRequired);
-			const currentArguments = editRouteActionToolEndedInputArgumentsList.find(".input-group input");
+		// 2. Validate Picked Tool Arguments
+		const pickedResult = validateToolArguments(
+			editRouteActionToolPicked,
+			editRouteActionToolPickedInputArgumentsList,
+			"Picked tool",
+			onlyRemove
+		);
+		if (!pickedResult.isValid) {
+			validated = false;
+			errors.push(...pickedResult.messages);
+		}
 
-			requiredArguments.forEach((reqArg) => {
-				const argInput = currentArguments.filter(`[input_arguement="${reqArg.id}"]`);
-				if (argInput.length === 0 || !argInput.val().trim()) {
-					validated = false;
-					errors.push(`Ended tool: ${reqArg.name[BusinessDefaultLanguage]} is required`);
-
-					if (!onlyRemove && argInput.length > 0) {
-						argInput.addClass("is-invalid");
-					}
-				} else {
-					argInput.removeClass("is-invalid");
-				}
-			});
+		// 3. Validate Ended Tool Arguments
+		const endedResult = validateToolArguments(
+			editRouteActionToolEnded,
+			editRouteActionToolEndedInputArgumentsList,
+			"Ended tool",
+			onlyRemove
+		);
+		if (!endedResult.isValid) {
+			validated = false;
+			errors.push(...endedResult.messages);
 		}
 	}
 
