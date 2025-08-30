@@ -54,9 +54,9 @@ namespace IqraInfrastructure.Managers.VAD.Silero
 
             try
             {
-                _minSilenceSamples = SileroVadSampleRate * _options.MinSilenceDurationMs / 1000;
-                _minSpeechSamples = SileroVadSampleRate * _options.MinSpeechDurationMs / 1000;
-                _speechPadSamples = SileroVadSampleRate * _options.SpeechPadMs / 1000;
+                _minSilenceSamples = (SileroVadSampleRate * _options.MinSilenceDurationMs) / 1000;
+                _minSpeechSamples = (SileroVadSampleRate * _options.MinSpeechDurationMs) / 1000;
+                _speechPadSamples = (SileroVadSampleRate * _options.SpeechPadMs) / 1000;
 
                 _loopTask = Task.Run(RunLoop, _cancellationTokenSource.Token);
             }

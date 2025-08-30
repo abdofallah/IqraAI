@@ -2,7 +2,7 @@
 
 namespace IqraCore.Entities.Business
 {
-    public class BusinessAppAgentGeneral
+    public class BusinessAppCampaignGeneral
     {
         public string Emoji { get; set; } = "🤖";
 

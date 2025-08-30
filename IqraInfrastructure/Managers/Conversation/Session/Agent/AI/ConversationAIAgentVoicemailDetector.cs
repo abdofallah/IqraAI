@@ -42,7 +42,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private List<(string, float)> _currentCheckResult = new List<(string, float)>();
         private bool _hasCompletedMLChecks = false;
 
-        private List<float> _audioBuffer;
+        private List<float> _audioBuffer; // 16khz 32bit
         private Task _audioBufferProcessingTask;
 
         // VAD RELATED STATE
@@ -80,7 +80,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _audioBuffer = new List<float>();
 
-            _voicemailSettings = _agentState.BusinessAppAgent.Voicemail;
+            //_voicemailSettings = _agentState.BusinessAppAgent.Voicemail;
         }
 
         public async Task InitializeAsync(CancellationToken token)
@@ -188,7 +188,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             );
 
-            var sourcePcm32ResampleTo16khz = AudioConversationHelper.CreateResampler(
+            var sourcePcm32ResampleTo16khz32bit = AudioConversationHelper.CreateResampler(
                 sourcePcm32FloatProvider,
                 new AudioRequestDetails()
                 {
@@ -198,10 +198,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             );
 
-            float[] floatArray = new float[sourcePcm32ResampleTo16khz.WaveFormat.AverageBytesPerSecond / 4];
+            float[] floatArray = new float[sourcePcm32ResampleTo16khz32bit.WaveFormat.AverageBytesPerSecond / 4];
 
             int currentRead = 0;
-            while ((currentRead = sourcePcm32ResampleTo16khz.Read(floatArray, 0, floatArray.Length)) > 0)
+            while ((currentRead = sourcePcm32ResampleTo16khz32bit.Read(floatArray, 0, floatArray.Length)) > 0)
             {
                 var currentBuffer = floatArray.Take(currentRead).ToArray();
 
@@ -213,7 +213,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private async Task ProcessAudioBuffer()
         {
             double mlCheckDurationInSeconds = _voicemailSettings.MLCheckDurationMS / 1000.0;
-            long samplesLength = (long)(16000 * mlCheckDurationInSeconds); // (long)(sampleRate * (bitDepth / 8.0) * numberOfChannels * durationInSeconds);
+            long samplesLength = (long)(16000 * mlCheckDurationInSeconds);
 
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
@@ -223,6 +223,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 {
                     _hasCompletedMLChecks = true;
                     break;
+                }
+                if (_voicemailSettings.WaitForVADSpeechForMLCheck && _firstSpeechDetected == null)
+                {
+                    await Task.Delay(50, _cancellationTokenSource.Token);
+                    continue;
+                }
+                if (_silenceDetected == null)
+                {
+                    await Task.Delay(50, _cancellationTokenSource.Token);
+                    continue;
                 }
 
                 if (_audioBuffer.Count > samplesLength)
@@ -434,7 +444,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (args.IsSpeechDetected && _firstSpeechDetected == null)
             {
-                _firstSpeechDetected = DateTime.UtcNow;
+                if (_voicemailSettings.WaitForVADSpeechForMLCheck)
+                {
+                    // remove all initial silence audio from buffer
+                    var timespan = args.Timestamp;
+                    double audioBufferSample = (timespan.TotalSeconds - 0.25 /** speech min vad options **/) * 16000;
+                    _audioBuffer.RemoveRange(0, Math.Min((int)audioBufferSample, _audioBuffer.Count));
+                }
+
+                _firstSpeechDetected = DateTime.UtcNow;                
 
                 // make sure we are not stuck in loop of no silence ending
                 Task.Run(async () =>

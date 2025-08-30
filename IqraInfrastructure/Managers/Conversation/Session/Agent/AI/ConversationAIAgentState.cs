@@ -11,37 +11,37 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
     public class ConversationAIAgentState
     {
         // Configuration & Identification
-        public string AgentId { get; internal set; } = string.Empty;
-        public CancellationToken MasterCancellationToken { get; internal set; } = CancellationToken.None;
-        public ConversationAgentConfiguration? AgentConfiguration { get; internal set; }
-        public BusinessApp? BusinessApp { get; internal set; }
-        public ConversationSessionContext? CurrentSessionContext { get; internal set; }
-        public BusinessAppAgent? BusinessAppAgent { get; internal set; }
-        public AgentInterruptionTypeENUM CurrentConversationType { get; internal set; }
+        public string AgentId { get; set; } = string.Empty;
+        public CancellationToken MasterCancellationToken { get; set; } = CancellationToken.None;
+        public ConversationAgentConfiguration? AgentConfiguration { get; set; }
+        public BusinessApp? BusinessApp { get; set; }
+        public ConversationSessionContext? CurrentSessionContext { get; set; }
+        public BusinessAppAgent? BusinessAppAgent { get; set; }
+        public AgentInterruptionTypeENUM CurrentConversationType { get; set; }
 
         // Language
-        public string CurrentLanguageCode { get; internal set; } = string.Empty;
+        public string CurrentLanguageCode { get; set; } = string.Empty;
         public bool IsAwaitingLanguageSelectionInput { get; set; } = false;
 
         // Integration & Service Instances (Managed possibly by handlers, but accessible here)
-        public BusinessAppIntegration? STTBusinessIntegrationData { get; internal set; }
-        public ISTTService? STTService { get; internal set; }
+        public BusinessAppIntegration? STTBusinessIntegrationData { get; set; }
+        public ISTTService? STTService { get; set; }
         public bool IsSTTRecognizing { get; set; } = false;
 
-        public BusinessAppIntegration? TTSBusinessIntegrationData { get; internal set; }
-        public ITTSService? TTSService { get; internal set; }
+        public BusinessAppIntegration? TTSBusinessIntegrationData { get; set; }
+        public ITTSService? TTSService { get; set; }
 
-        public BusinessAppIntegration? LLMBusinessIntegrationData { get; internal set; }
-        public ILLMService? LLMService { get; internal set; }
-        public string LLMBaseSystemPrompt { get; internal set; } = string.Empty;
-        public ILLMService? InterruptingLLMService { get; internal set; }
+        public BusinessAppIntegration? LLMBusinessIntegrationData { get; set; }
+        public ILLMService? LLMService { get; set; }
+        public string LLMBaseSystemPrompt { get; set; } = string.Empty;
+        public ILLMService? InterruptingLLMService { get; set; }
 
         public bool IsVadEnabled { get; set; } = false;
-        public IVadService? VadService { get; internal set; }
-        public VadOptions? VadOptions { get; internal set; } 
+        public IVadService? VadService { get; set; }
+        public VadOptions? VadOptions { get; set; } 
 
         // Runtime State Flags & Variables
-        public bool IsInitialized { get; internal set; } = false;
+        public bool IsInitialized { get; set; } = false;
         public bool IsResponding { get; set; } = false;
         public bool IsExecutingSystemTool { get; set; } = false;
         public bool IsRespondingSystemToolRespone { get; set; } = false;
@@ -52,9 +52,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         // Audio Output State
         public float CurrentAgentVolumeFactor { get; set; } = 1.0f; // Volume for mixing
-        public bool IsBackgroundMusicEnabled { get; internal set; } = false;
-        public bool IsBackgroundMusicLoaded { get; internal set; } = false;
-        public float BackgroundMusicVolume { get; internal set; } = 0.3f; // Default, could be config
+        public bool IsBackgroundMusicEnabled { get; set; } = false;
+        public bool IsBackgroundMusicLoaded { get; set; } = false;
+        public float BackgroundMusicVolume { get; set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
         public TimeSpan AudioDurationLeftToPlay { get; set; } = TimeSpan.Zero;
         public bool IsAudioPlayingPaused { get; set; } = false;

@@ -63,7 +63,7 @@ namespace ProjectIqraFrontend
             {
                 var baseMinioUrl = appConfig["MinioStorage:PublicEndpoint"];
                 var minioUrlIsSecure = bool.Parse(appConfig["MinioStorage:IsPublicEndpointSecure"]) ? "https://" : "http://";
-                baseMinioUrl = minioUrlIsSecure + baseMinioUrl;
+                baseMinioUrl = minioUrlIsSecure + baseMinioUrl + ":" + appConfig["MinioStorage:PublicEndpointPort"];
 
                 return new ViewLinkConfiguration()
                 {

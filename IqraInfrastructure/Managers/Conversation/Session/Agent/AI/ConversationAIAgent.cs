@@ -184,23 +184,23 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         private async void OnVoicemailEndCallorLeaveMessageRecieved(object? sender, EventArgs e)
         {
-            if (_agentState.BusinessAppAgent.Voicemail.EndCallOnDetect)
-            {
-                await _conversationSessionManager.EndAsync("Voicemail detected");
-            }
-            else if (_agentState.BusinessAppAgent.Voicemail.LeaveMessageOnDetect)
-            {
-                string voicemailMessage = _agentState.BusinessAppAgent.Voicemail.MessageToLeave[_agentState.CurrentLanguageCode];
+            //if (_agentState.BusinessAppAgent.Voicemail.EndCallOnDetect)
+            //{
+            //    await _conversationSessionManager.EndAsync("Voicemail detected");
+            //}
+            //else if (_agentState.BusinessAppAgent.Voicemail.LeaveMessageOnDetect)
+            //{
+            //    string voicemailMessage = _agentState.BusinessAppAgent.Voicemail.MessageToLeave[_agentState.CurrentLanguageCode];
 
-                string llmHistoryMessage = "response_to_customer: " + voicemailMessage;
-                _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
-                AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
-                await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(voicemailMessage, _conversationCTS.Token);
+            //    string llmHistoryMessage = "response_to_customer: " + voicemailMessage;
+            //    _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
+            //    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
+            //    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(voicemailMessage, _conversationCTS.Token);
 
-                // TODO in future implement here a way if user joins the call while message is spoken
-                await Task.Delay(_agentState.BusinessAppAgent.Voicemail.WaitXMSAfterLeavingMessageToEndCall);
-                await _conversationSessionManager.EndAsync("Voicemail detected");
-            }
+            //    // TODO in future implement here a way if user joins the call while message is spoken
+            //    await Task.Delay(_agentState.BusinessAppAgent.Voicemail.WaitXMSAfterLeavingMessageToEndCall);
+            //    await _conversationSessionManager.EndAsync("Voicemail detected");
+            //}
         }
 
         private async void OnVoicemailStopAgentSpeaking(object? sender, EventArgs e)
@@ -267,10 +267,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _interruptionManager.InitializeAsync(_conversationCTS.Token);
                 await _audioInputHandler.InitializeAsync(_conversationCTS.Token);
 
-                if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
-                {
-                    await _voicemailDetector.InitializeAsync(_conversationCTS.Token);
-                }         
+                //if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
+                //{
+                //    await _voicemailDetector.InitializeAsync(_conversationCTS.Token);
+                //}         
 
                 _agentState.IsInitialized = true;
                 _logger.LogInformation("AI Agent {AgentId} initialized successfully. Lang: {Lang}, Type: {Type}",
@@ -299,10 +299,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (requiresLanguageSelection)
             {
-                if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
-                {
-                    await _voicemailDetector.StartAsync();
-                }
+                //if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
+                //{
+                //    await _voicemailDetector.StartAsync();
+                //}
 
                 await SetupLanguageSelectionViaDTMFAsync(_conversationCTS.Token);
             }
