@@ -53,7 +53,7 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
         }
-
+         
         public async Task<FunctionReturnResult<BusinessAppCampaign?>> AddOrUpdateCampaignAsync(long businessId, IFormCollection formData, string postType, BusinessAppCampaign? existingCampaignData)
         {
             var result = new FunctionReturnResult<BusinessAppCampaign?>();
@@ -494,35 +494,56 @@ namespace IqraInfrastructure.Managers.Business
                             }
 
                             // Timeouts
-                            if (!configTabRootElement.TryGetProperty("notifyOnSilenceMS", out var notifySilenceProp)
+                            if (!configTabRootElement.TryGetProperty("timeouts", out var timeoutsElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:CONFIG_TIMEOUTS_NOT_FOUND",
+                                    "Timeouts settings not found."
+                                );
+                            }
+                            else
+                            {
+                                // pickup delay
+                                if (!timeoutsElement.TryGetProperty("pickupDelayMS", out var pickupDelayProp)
+                                    || !pickupDelayProp.TryGetInt32(out var pickupDelay) || pickupDelay < 0)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:CONFIG_PICKUP_DELAY_INVALID",
+                                        "Invalid pickup delay value."
+                                    );
+                                }
+                                newBusinessAppCampaignData.Configuration.Timeouts.PickupDelayMS = pickupDelay;
+
+                                if (!timeoutsElement.TryGetProperty("notifyOnSilenceMS", out var notifySilenceProp)
                                 || !notifySilenceProp.TryGetInt32(out var notifySilence) || notifySilence < 0)
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:CONFIG_NOTIFY_SILENCE_INVALID",
-                                    "Invalid notify on silence value."
-                                );
-                            }
-                            newBusinessAppCampaignData.Configuration.Timeouts.NotifyOnSilenceMS = notifySilence;
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:CONFIG_NOTIFY_SILENCE_INVALID",
+                                        "Invalid notify on silence value."
+                                    );
+                                }
+                                newBusinessAppCampaignData.Configuration.Timeouts.NotifyOnSilenceMS = notifySilence;
 
-                            if (!configTabRootElement.TryGetProperty("endCallOnSilenceMS", out var endSilenceProp)
-                                || !endSilenceProp.TryGetInt32(out var endSilence) || endSilence < 0)
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:CONFIG_END_SILENCE_INVALID",
-                                    "Invalid end call on silence value."
-                                );
-                            }
-                            newBusinessAppCampaignData.Configuration.Timeouts.EndOnSilenceMS = endSilence;
+                                if (!timeoutsElement.TryGetProperty("endOnSilenceMS", out var endSilenceProp)
+                                    || !endSilenceProp.TryGetInt32(out var endSilence) || endSilence < 0)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:CONFIG_END_SILENCE_INVALID",
+                                        "Invalid end call on silence value."
+                                    );
+                                }
+                                newBusinessAppCampaignData.Configuration.Timeouts.EndOnSilenceMS = endSilence;
 
-                            if (!configTabRootElement.TryGetProperty("maxCallTimeS", out var maxCallTimeProp)
-                                || !maxCallTimeProp.TryGetInt32(out var maxCallTime) || maxCallTime < 0)
-                            {
-                                return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:CONFIG_MAX_CALL_TIME_INVALID",
-                                    "Invalid max call time value."
-                                );
+                                if (!timeoutsElement.TryGetProperty("maxCallTimeS", out var maxCallTimeProp)
+                                    || !maxCallTimeProp.TryGetInt32(out var maxCallTime) || maxCallTime < 0)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:CONFIG_MAX_CALL_TIME_INVALID",
+                                        "Invalid max call time value."
+                                    );
+                                }
+                                newBusinessAppCampaignData.Configuration.Timeouts.MaxCallTimeS = maxCallTime;
                             }
-                            newBusinessAppCampaignData.Configuration.Timeouts.MaxCallTimeS = maxCallTime;
                         }
 
                         // Voicemail Tab

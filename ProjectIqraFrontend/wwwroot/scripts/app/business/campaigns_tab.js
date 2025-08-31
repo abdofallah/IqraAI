@@ -86,13 +86,13 @@ const editCampaignVoicemailWaitAfterMessage = campaignManagerTab.find("#editCamp
 
 // Actions Tab
 const editCampaignActionToolAnswered = campaignManagerTab.find("#editCampaignActionToolAnswered");
-const editCampaignActionToolAnsweredInputArgumentsList = editCampaignActionToolAnswered.find("#editCampaignActionToolAnsweredInputArgumentsList");
+const editCampaignActionToolAnsweredInputArgumentsList = campaignManagerTab.find("#editCampaignActionToolAnsweredInputArgumentsList");
 const editCampaignActionToolDeclined = campaignManagerTab.find("#editCampaignActionToolDeclined");
-const editCampaignActionToolDeclinedInputArgumentsList = editCampaignActionToolDeclined.find("#editCampaignActionToolDeclinedInputArgumentsList");
+const editCampaignActionToolDeclinedInputArgumentsList = campaignManagerTab.find("#editCampaignActionToolDeclinedInputArgumentsList");
 const editCampaignActionToolNoAnswer = campaignManagerTab.find("#editCampaignActionToolNoAnswer");
-const editCampaignActionToolNoAnswerInputArgumentsList = editCampaignActionToolNoAnswer.find("#editCampaignActionToolNoAnswerInputArgumentsList");
+const editCampaignActionToolNoAnswerInputArgumentsList = campaignManagerTab.find("#editCampaignActionToolNoAnswerInputArgumentsList");
 const editCampaignActionToolEnded = campaignManagerTab.find("#editCampaignActionToolEnded");
-const editCampaignActionToolEndedInputArgumentsList = editCampaignActionToolEnded.find("#editCampaignActionToolEndedInputArgumentsList");
+const editCampaignActionToolEndedInputArgumentsList = campaignManagerTab.find("#editCampaignActionToolEndedInputArgumentsList");
 
 // Modals
 const editChangeCampaignNumberModalElement = $("#editChangeCampaignNumberModal");
@@ -106,7 +106,7 @@ const saveChangeCampaignAgentButton = editChangeCampaignAgentModalElement.find("
 /** API FUNCTIONS **/
 function SaveBusinessCampaign(formData, successCallback, errorCallback) {
 	$.ajax({
-		url: `/app/user/business/${CurrentBusinessId}/campaigns/save`, // New endpoint
+		url: `/app/user/business/${CurrentBusinessId}/campaign/save`,
 		type: "POST",
 		data: formData,
 		processData: false,
@@ -210,12 +210,14 @@ function createDefaultCampaignObject() {
 			retryOnMiss: {
 				isEnabled: false,
 			},
-			pickupDelayMS: 0,
-			notifyOnSilenceMS: 10000,
-			endCallOnSilenceMS: 30000,
-			maxCallTimeS: 600,
+			timeouts: {
+				pickupDelayMS: 0,
+				notifyOnSilenceMS: 10000,
+				endOnSilenceMS: 30000,
+				maxCallTimeS: 600,
+			}
 		},
-		voicemail: {
+		voicemailDetection: {
 			isEnabled: false,
 			initialCheckDelayMS: 1000,
 			mlCheckDurationMS: 1000,
@@ -361,8 +363,8 @@ function fillCampaignManagerTab() {
 	data.numbers.forEach(numberId => {
 		const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
 		if (numberData) {
-			// Assumes createAddedRouteNumberListElement exists and is adaptable
-			// campaignNumbersListTable.find("tbody").append($(createAddedCampaignNumberListElement(numberData)));
+			campaignNumbersListTable.find("tbody").append($(createAddedCampaignNumberListElement(numberData)));
+			currentCampaignNumbersList.push(numberId);
 		}
 	});
 	if (data.numbers.length === 0) {
@@ -378,10 +380,10 @@ function fillCampaignManagerTab() {
 	editCampaignRetryMissCountInput.val(data.configuration.retryOnMiss.retryCount);
 	editCampaignRetryMissDelayInput.val(data.configuration.retryOnMiss.delay);
 	editCampaignRetryMissUnitSelect.val(data.configuration.retryOnMiss.unit);
-	editCampaignNumberPickupDelay.val(data.configuration.pickupDelayMS);
-	editCampaignNumberSilenceNotify.val(data.configuration.notifyOnSilenceMS);
-	editCampaignNumberSilenceEnd.val(data.configuration.endCallOnSilenceMS);
-	editCampaignNumberTotalCallTime.val(data.configuration.maxCallTimeS);
+	editCampaignNumberPickupDelay.val(data.configuration.timeouts.pickupDelayMS);
+	editCampaignNumberSilenceNotify.val(data.configuration.timeouts.notifyOnSilenceMS);
+	editCampaignNumberSilenceEnd.val(data.configuration.timeouts.endOnSilenceMS);
+	editCampaignNumberTotalCallTime.val(data.configuration.timeouts.maxCallTimeS);
 
 	// Voicemail (using adapted function)
 	fillCampaignVoicemailTab();
@@ -398,9 +400,9 @@ function fillCampaignManagerTab() {
 		argumentsList.empty();
 		selectElement.val("none");
 
-		if (toolData && toolData.selectedToolId) {
-			selectElement.val(toolData.selectedToolId);
-			const tool = BusinessFullData.businessApp.tools.find(t => t.id === toolData.selectedToolId);
+		if (toolData && toolData.toolId) {
+			selectElement.val(toolData.toolId);
+			const tool = BusinessFullData.businessApp.tools.find(t => t.id === toolData.toolId);
 			if (tool) {
 				argumentsContainer.removeClass('d-none');
 				const usedArguments = toolData.arguments ? Object.keys(toolData.arguments) : [];
@@ -497,10 +499,12 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 			retryOnMiss: {
 				isEnabled: editCampaignRetryOnMissCheck.is(":checked")
 			},
-			pickupDelayMS: parseInt(editCampaignNumberPickupDelay.val()),
-			notifyOnSilenceMS: parseInt(editCampaignNumberSilenceNotify.val()),
-			endCallOnSilenceMS: parseInt(editCampaignNumberSilenceEnd.val()),
-			maxCallTimeS: parseInt(editCampaignNumberTotalCallTime.val()),
+			timeouts: {
+				pickupDelayMS: parseInt(editCampaignNumberPickupDelay.val()),
+				notifyOnSilenceMS: parseInt(editCampaignNumberSilenceNotify.val()),
+				endOnSilenceMS: parseInt(editCampaignNumberSilenceEnd.val()),
+				maxCallTimeS: parseInt(editCampaignNumberTotalCallTime.val()),
+			}
 		};
 
 		// Retry Decline
@@ -523,40 +527,40 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 	}
 
 	function checkVoicemailTab() {
-		changes.voicemail = {
+		changes.voicemailDetection = {
 			isEnabled: editCampaignVoicemailIsEnabled.is(":checked")
 		}
 
-		if (changes.voicemail.isEnabled) {
-			changes.voicemail.initialCheckDelayMS = parseInt(editCampaignVoicemailInitialCheckDelayMS.val(), 10);
-			changes.voicemail.mlCheckDurationMS = parseInt(editCampaignVoicemailMLCheckDurationMS.val(), 10);
-			changes.voicemail.maxMLCheckTries = parseInt(editCampaignVoicemailMaxMLCheckTries.val(), 10);
-			changes.voicemail.voiceMailMessageVADSilenceThresholdMS = parseInt(editCampaignVoicemailVADSilenceThresholdMS.val(), 10);
-			changes.voicemail.voiceMailMessageVADMaxSpeechDurationMS = parseInt(editCampaignVoicemailVADMaxSpeechDurationMS.val(), 10);
+		if (changes.voicemailDetection.isEnabled) {
+			changes.voicemailDetection.initialCheckDelayMS = parseInt(editCampaignVoicemailInitialCheckDelayMS.val(), 10);
+			changes.voicemailDetection.mlCheckDurationMS = parseInt(editCampaignVoicemailMLCheckDurationMS.val(), 10);
+			changes.voicemailDetection.maxMLCheckTries = parseInt(editCampaignVoicemailMaxMLCheckTries.val(), 10);
+			changes.voicemailDetection.voiceMailMessageVADSilenceThresholdMS = parseInt(editCampaignVoicemailVADSilenceThresholdMS.val(), 10);
+			changes.voicemailDetection.voiceMailMessageVADMaxSpeechDurationMS = parseInt(editCampaignVoicemailVADMaxSpeechDurationMS.val(), 10);
 
-			changes.voicemail.onVoiceMailMessageDetectVerifySTTAndLLM = editCampaignVoicemailEnableAdvancedVerification.is(":checked");
-			if (changes.voicemail.onVoiceMailMessageDetectVerifySTTAndLLM) {
-				changes.voicemail.transcribeVoiceMessageSTT = campaignVoicemailSTTIntegrationManager.getData();
-				changes.voicemail.verifyVoiceMessageLLM = campaignVoicemailLLMIntegrationManager.getData();
+			changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM = editCampaignVoicemailEnableAdvancedVerification.is(":checked");
+			if (changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM) {
+				changes.voicemailDetection.transcribeVoiceMessageSTT = campaignVoicemailSTTIntegrationManager.getData();
+				changes.voicemailDetection.verifyVoiceMessageLLM = campaignVoicemailLLMIntegrationManager.getData();
 			}
 
-			changes.voicemail.stopSpeakingAgentAfterXMlCheckSuccess = editCampaignStopAgentOnML.is(':checked');
-			changes.voicemail.stopSpeakingAgentAfterVadSilence = editCampaignStopAgentOnVAD.is(':checked');
-			changes.voicemail.stopSpeakingAgentAfterLLMConfirm = editCampaignStopAgentOnLLM.is(':checked');
-			changes.voicemail.stopSpeakingAgentDelayAfterMatchMS = parseInt(editCampaignVoicemailStopSpeakingDelay.val(), 10);
+			changes.voicemailDetection.stopSpeakingAgentAfterXMlCheckSuccess = editCampaignStopAgentOnML.is(':checked');
+			changes.voicemailDetection.stopSpeakingAgentAfterVadSilence = editCampaignStopAgentOnVAD.is(':checked');
+			changes.voicemailDetection.stopSpeakingAgentAfterLLMConfirm = editCampaignStopAgentOnLLM.is(':checked');
+			changes.voicemailDetection.stopSpeakingAgentDelayAfterMatchMS = parseInt(editCampaignVoicemailStopSpeakingDelay.val(), 10);
 
-			changes.voicemail.endOrLeaveMessageAfterXMLCheckSuccess = editCampaignEndLeaveOnML.is(':checked');
-			changes.voicemail.endOrLeaveMessageAfterVadSilence = editCampaignEndLeaveOnVAD.is(':checked');
-			changes.voicemail.endOrLeaveMessageAfterLLMConfirm = editCampaignEndLeaveOnLLM.is(':checked');
-			changes.voicemail.endOrLeaveMessageDelayAfterMatchMS = parseInt(editCampaignVoicemailEndLeaveDelay.val(), 10);
+			changes.voicemailDetection.endOrLeaveMessageAfterXMLCheckSuccess = editCampaignEndLeaveOnML.is(':checked');
+			changes.voicemailDetection.endOrLeaveMessageAfterVadSilence = editCampaignEndLeaveOnVAD.is(':checked');
+			changes.voicemailDetection.endOrLeaveMessageAfterLLMConfirm = editCampaignEndLeaveOnLLM.is(':checked');
+			changes.voicemailDetection.endOrLeaveMessageDelayAfterMatchMS = parseInt(editCampaignVoicemailEndLeaveDelay.val(), 10);
 
 			const finalAction = editCampaignFinalActionRadios.filter(":checked").val();
-			changes.voicemail.endCallOnDetect = finalAction === 'end';
-			changes.voicemail.leaveMessageOnDetect = finalAction === 'leave';
+			changes.voicemailDetection.endCallOnDetect = finalAction === 'end';
+			changes.voicemailDetection.leaveMessageOnDetect = finalAction === 'leave';
 
-			if (changes.voicemail.leaveMessageOnDetect) {
-				changes.voicemail.waitXMSAfterLeavingMessageToEndCall = parseInt(editCampaignVoicemailWaitAfterMessage.val(), 10);
-				changes.voicemail.messageToLeave = CurrentCampaignVoicemailMessageToLeaveMultiLangData;
+			if (changes.voicemailDetection.leaveMessageOnDetect) {
+				changes.voicemailDetection.waitXMSAfterLeavingMessageToEndCall = parseInt(editCampaignVoicemailWaitAfterMessage.val(), 10);
+				changes.voicemailDetection.messageToLeave = CurrentCampaignVoicemailMessageToLeaveMultiLangData;
 			}
 		}
 
@@ -586,14 +590,14 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 			});
 
 			// Compare complex/nested objects
-			if (changes.voicemail.onVoiceMailMessageDetectVerifySTTAndLLM) {
-				if (JSON.stringify(changes.voicemail.transcribeVoiceMessageSTT) !== JSON.stringify(original.transcribeVoiceMessageSTT)) hasChanges = true;
-				if (JSON.stringify(changes.voicemail.verifyVoiceMessageLLM) !== JSON.stringify(original.verifyVoiceMessageLLM)) hasChanges = true;
+			if (changes.voicemailDetection.onVoiceMailMessageDetectVerifySTTAndLLM) {
+				if (JSON.stringify(changes.voicemailDetection.transcribeVoiceMessageSTT) !== JSON.stringify(original.voicemailDetection.transcribeVoiceMessageSTT)) hasChanges = true;
+				if (JSON.stringify(changes.voicemailDetection.verifyVoiceMessageLLM) !== JSON.stringify(original.voicemailDetection.verifyVoiceMessageLLM)) hasChanges = true;
 			}
 
-			if (changes.voicemail.leaveMessageOnDetect) {
-				if (changes.voicemail.waitXMSAfterLeavingMessageToEndCall !== original.waitXMSAfterLeavingMessageToEndCall) hasChanges = true;
-				if (JSON.stringify(changes.voicemail.messageToLeave) !== JSON.stringify(original.messageToLeave)) hasChanges = true;
+			if (changes.voicemailDetection.leaveMessageOnDetect) {
+				if (changes.voicemailDetection.waitXMSAfterLeavingMessageToEndCall !== original.voicemailDetection.waitXMSAfterLeavingMessageToEndCall) hasChanges = true;
+				if (JSON.stringify(changes.voicemailDetection.messageToLeave) !== JSON.stringify(original.voicemailDetection.messageToLeave)) hasChanges = true;
 			}
 		}
 	}
@@ -758,7 +762,7 @@ function validateCampaignTab(onlyRemove = true) {
 	function validateConfigurationTab() {
 		// Pickup Delay
 		const pickupDelayValue = parseInt(editCampaignNumberPickupDelay.val());
-		if (!pickupDelayValue || isNaN(pickupDelayValue) || pickupDelayValue < 0) {
+		if (isNaN(pickupDelayValue) || pickupDelayValue < 0) {
 			validated = false;
 			errors.push("Pick up delay must be a valid number");
 
@@ -771,7 +775,7 @@ function validateCampaignTab(onlyRemove = true) {
 
 		// Silence Notify
 		const silenceNotifyValue = parseInt(editCampaignNumberSilenceNotify.val());
-		if (!silenceNotifyValue || isNaN(silenceNotifyValue) || silenceNotifyValue < 0) {
+		if (isNaN(silenceNotifyValue) || silenceNotifyValue < 0) {
 			validated = false;
 			errors.push("Notify on silence must be a valid number");
 
@@ -784,7 +788,7 @@ function validateCampaignTab(onlyRemove = true) {
 
 		// Silence End
 		const silenceEndValue = parseInt(editCampaignNumberSilenceEnd.val());
-		if (!silenceEndValue || isNaN(silenceEndValue) || silenceEndValue < 0) {
+		if (isNaN(silenceEndValue) || silenceEndValue < 0) {
 			validated = false;
 			errors.push("End call on silence must be a valid number");
 
@@ -797,7 +801,7 @@ function validateCampaignTab(onlyRemove = true) {
 
 		// Max Call Time
 		const maxCallTimeValue = parseInt(editCampaignNumberTotalCallTime.val());
-		if (!maxCallTimeValue || isNaN(maxCallTimeValue) || maxCallTimeValue < 0) {
+		if (isNaN(maxCallTimeValue) || maxCallTimeValue < 0) {
 			validated = false;
 			errors.push("Max call time must be a valid number");
 
@@ -1085,8 +1089,6 @@ function createCampaignNumberModalListElement(numberData) {
 }
 
 function fillCampaignNumberModalNumbersList() {
-	// This function can be more complex if you add provider tabs, but for a single list, it's simpler.
-	// Let's assume the modal body in the HTML is just a single list-group container for now.
 	const modalBody = editChangeCampaignNumberModalElement.find('.modal-body');
 	modalBody.empty();
 
@@ -1097,9 +1099,6 @@ function fillCampaignNumberModalNumbersList() {
 		listGroup.append("<span>No numbers found for your business.</span>");
 	} else {
 		availableNumbers.forEach((number) => {
-			// We only add numbers that are capable of making outbound calls.
-			// This might be a property on your number object, e.g., `number.capabilities.outbound === true`
-			// For now, we'll assume all numbers are capable.
 			listGroup.append($(createCampaignNumberModalListElement(number)));
 		});
 	}
@@ -1197,7 +1196,7 @@ function initCampaignConfigurationEventHandlers() {
 
 /** Voicemail Detection Tab **/
 function fillCampaignVoicemailTab() {
-	const data = ManageCurrentCampaignData.voicemail;
+	const data = ManageCurrentCampaignData.voicemailDetection;
 	editCampaignVoicemailIsEnabled.prop('checked', data.isEnabled).change();
 	editCampaignVoicemailInitialCheckDelayMS.val(data.initialCheckDelayMS);
 	editCampaignVoicemailMLCheckDurationMS.val(data.mlCheckDurationMS).trigger('input');

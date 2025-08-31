@@ -21,6 +21,7 @@ namespace IqraCore.Entities.Business
 
     public class BusinessAppCampaignConfigurationTimeoutsConfig
     {
+        public int PickupDelayMS { get; set; } = 0;
         public int NotifyOnSilenceMS { get; set; } = 10000;
         public int EndOnSilenceMS { get; set; } = 30000;
         public int MaxCallTimeS { get; set; } = 600;

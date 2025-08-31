@@ -595,7 +595,8 @@ namespace ProjectIqraFrontend
                         InitalizeToolsManager = true,
                         InitalizeConversationsManager = true,
                         InitalizeMakeCallManager = true,
-                        InitalizeKnowledgeBaseManager = true
+                        InitalizeKnowledgeBaseManager = true,
+                        InitalizeCampaignManager = true
                     },
                     sp.GetRequiredService<BusinessRepository>(),
                     sp.GetRequiredService<BusinessAppRepository>(),
