@@ -290,11 +290,11 @@ function resetAndEmptyCampaignManagerTab() {
 	editCampaignRetryOnDeclineCheck.prop("checked", false).change();
 	editCampaignRetryDeclineCountInput.val(3);
 	editCampaignRetryDeclineDelayInput.val(10);
-	editCampaignRetryDeclineUnitSelect.val('minutes');
+	editCampaignRetryDeclineUnitSelect.val(1);
 	editCampaignRetryOnMissCheck.prop("checked", false).change();
 	editCampaignRetryMissCountInput.val(3);
 	editCampaignRetryMissDelayInput.val(10);
-	editCampaignRetryMissUnitSelect.val('minutes');
+	editCampaignRetryMissUnitSelect.val(1);
 	editCampaignNumberPickupDelay.val(0);
 	editCampaignNumberSilenceNotify.val(10000);
 	editCampaignNumberSilenceEnd.val(30000);
@@ -372,14 +372,14 @@ function fillCampaignManagerTab() {
 	}
 
 	// Configuration
-	editCampaignRetryOnDeclineCheck.prop("checked", data.configuration.retryOnDecline.isEnabled).change();
-	editCampaignRetryDeclineCountInput.val(data.configuration.retryOnDecline.retryCount);
+	editCampaignRetryOnDeclineCheck.prop("checked", data.configuration.retryOnDecline.enabled).change();
+	editCampaignRetryDeclineCountInput.val(data.configuration.retryOnDecline.count);
 	editCampaignRetryDeclineDelayInput.val(data.configuration.retryOnDecline.delay);
-	editCampaignRetryDeclineUnitSelect.val(data.configuration.retryOnDecline.unit);
-	editCampaignRetryOnMissCheck.prop("checked", data.configuration.retryOnMiss.isEnabled).change();
-	editCampaignRetryMissCountInput.val(data.configuration.retryOnMiss.retryCount);
+	editCampaignRetryDeclineUnitSelect.val(data.configuration.retryOnDecline.unit.value).change();
+	editCampaignRetryOnMissCheck.prop("checked", data.configuration.retryOnMiss.enabled).change();
+	editCampaignRetryMissCountInput.val(data.configuration.retryOnMiss.count);
 	editCampaignRetryMissDelayInput.val(data.configuration.retryOnMiss.delay);
-	editCampaignRetryMissUnitSelect.val(data.configuration.retryOnMiss.unit);
+	editCampaignRetryMissUnitSelect.val(data.configuration.retryOnMiss.unit.value).change();
 	editCampaignNumberPickupDelay.val(data.configuration.timeouts.pickupDelayMS);
 	editCampaignNumberSilenceNotify.val(data.configuration.timeouts.notifyOnSilenceMS);
 	editCampaignNumberSilenceEnd.val(data.configuration.timeouts.endOnSilenceMS);
@@ -497,13 +497,13 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 				enabled: editCampaignRetryOnDeclineCheck.is(":checked"),
 				retryCount: parseInt(editCampaignRetryDeclineCountInput.val()),
 				delay: parseInt(editCampaignRetryDeclineDelayInput.val()),
-				unit: editCampaignRetryDeclineUnitSelect.val()
+				unit: parseInt(editCampaignRetryDeclineUnitSelect.find("option:selected").val())
 			},
 			retryOnMiss: {
 				enabled: editCampaignRetryOnMissCheck.is(":checked"),
 				retryCount: parseInt(editCampaignRetryMissCountInput.val()),
 				delay: parseInt(editCampaignRetryMissDelayInput.val()),
-				unit: editCampaignRetryMissUnitSelect.val()
+				unit: parseInt(editCampaignRetryMissUnitSelect.find("option:selected").val())
 			},
 			timeouts: {
 				pickupDelayMS: parseInt(editCampaignNumberPickupDelay.val()),
@@ -1196,6 +1196,8 @@ function initCampaignNumbersEventHandlers() {
 /** Configuration Tab **/
 function initCampaignConfigurationEventHandlers() {
 	editCampaignRetryOnDeclineCheck.on('change', function () {
+		if (!ManageCampaignType || ManageCampaignType == null) return;
+
 		var isSelected = $(this).is(':checked');
 
 		if (isSelected) {
@@ -1211,6 +1213,8 @@ function initCampaignConfigurationEventHandlers() {
 		}
 	});
 	editCampaignRetryOnMissCheck.on('change', function () {
+		if (!ManageCampaignType || ManageCampaignType == null) return;
+
 		var isSelected = $(this).is(':checked');
 
 		if (isSelected) {
@@ -1442,8 +1446,8 @@ function initCampaignsTab() {
 			ManageCurrentCampaignData = createDefaultCampaignObject();
 			currentCampaignName.text("New Campaign");
 			resetAndEmptyCampaignManagerTab();
-			showCampaignManagerTab();
 			ManageCampaignType = "new";
+			showCampaignManagerTab();	
 		});
 		switchBackToCampaignsTabButton.on("click", async (e) => {
 			e.preventDefault();
@@ -1460,9 +1464,9 @@ function initCampaignsTab() {
 			currentCampaignNumbersList = [...ManageCurrentCampaignData.numbers];
 			currentCampaignName.text(ManageCurrentCampaignData.general.name);
 			resetAndEmptyCampaignManagerTab();
-			fillCampaignManagerTab();
-			showCampaignManagerTab();
 			ManageCampaignType = "edit";
+			fillCampaignManagerTab();
+			showCampaignManagerTab();		
 		});
 
 		// Universal handler for simple inputs

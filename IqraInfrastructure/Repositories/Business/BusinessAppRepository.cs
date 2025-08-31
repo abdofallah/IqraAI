@@ -946,7 +946,11 @@ namespace IqraInfrastructure.Repositories.Business
 
         public async Task<bool> UpdateBusinessAppCampaign(long businessId, BusinessAppCampaign newBusinessAppCampaignData)
         {
-            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, t => t.Id == newBusinessAppCampaignData.Id)
+            );
+
             var update = Builders<BusinessApp>.Update
                 .Set(b => b.Campaigns.FirstMatchingElement(), newBusinessAppCampaignData);
 

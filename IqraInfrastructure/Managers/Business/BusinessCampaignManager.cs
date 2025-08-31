@@ -392,11 +392,11 @@ namespace IqraInfrastructure.Managers.Business
                             }
                             else
                             {
-                                if (!retryDeclineElement.TryGetProperty("isEnabled", out var retryDeclineEnabledProp) || (retryDeclineEnabledProp.ValueKind != JsonValueKind.True && retryDeclineEnabledProp.ValueKind != JsonValueKind.False))
+                                if (!retryDeclineElement.TryGetProperty("enabled", out var retryDeclineEnabledProp) || (retryDeclineEnabledProp.ValueKind != JsonValueKind.True && retryDeclineEnabledProp.ValueKind != JsonValueKind.False))
                                 {
                                     return result.SetFailureResult(
                                         "AddOrUpdateCampaignAsync:CONFIG_RETRY_DECLINE_ENABLED_INVALID",
-                                        "Invalid 'isEnabled' value for retry on decline."
+                                        "Invalid 'enabled' value for retry on decline."
                                     );
                                 }
                                 else
@@ -425,14 +425,22 @@ namespace IqraInfrastructure.Managers.Business
                                         newBusinessAppCampaignData.Configuration.RetryOnDecline.Delay = delay;
 
                                         if (!retryDeclineElement.TryGetProperty("unit", out var unitProp)
-                                            || !Enum.TryParse<OutboundCallRetryDelayUnitType>(unitProp.GetString(), true, out var unit))
+                                            || !unitProp.TryGetInt32(out int unitEnumInt))
                                         {
                                             return result.SetFailureResult(
                                                 "AddOrUpdateCampaignAsync:CONFIG_RETRY_DECLINE_UNIT_INVALID",
                                                 "Invalid unit for decline retry."
                                             );
                                         }
-                                        newBusinessAppCampaignData.Configuration.RetryOnDecline.Unit = unit;
+                                        if (!Enum.IsDefined(typeof(OutboundCallRetryDelayUnitType), unitEnumInt))
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:CONFIG_RETRY_DECLINE_UNIT_ENUM_INVALID",
+                                                "Invalid unit enum for decline retry."
+                                            );
+                                        }
+
+                                        newBusinessAppCampaignData.Configuration.RetryOnDecline.Unit = (OutboundCallRetryDelayUnitType)unitEnumInt;
                                     }
                                 }
                             }
@@ -447,12 +455,12 @@ namespace IqraInfrastructure.Managers.Business
                             }
                             else
                             {
-                                if (!retryMissElement.TryGetProperty("isEnabled", out var retryMissEnabledProp)
+                                if (!retryMissElement.TryGetProperty("enabled", out var retryMissEnabledProp)
                                     || (retryMissEnabledProp.ValueKind != JsonValueKind.True && retryMissEnabledProp.ValueKind != JsonValueKind.False))
                                 {
                                     return result.SetFailureResult(
                                         "AddOrUpdateCampaignAsync:CONFIG_RETRY_MISS_ENABLED_INVALID",
-                                        "Invalid 'isEnabled' value for retry on miss."
+                                        "Invalid 'enabled' value for retry on miss."
                                     );
                                 }
                                 else
@@ -481,14 +489,22 @@ namespace IqraInfrastructure.Managers.Business
                                         newBusinessAppCampaignData.Configuration.RetryOnMiss.Delay = delay;
 
                                         if (!retryMissElement.TryGetProperty("unit", out var unitProp)
-                                            || !Enum.TryParse<OutboundCallRetryDelayUnitType>(unitProp.GetString(), true, out var unit))
+                                            || !unitProp.TryGetInt32(out var unit))
                                         {
                                             return result.SetFailureResult(
                                                 "AddOrUpdateCampaignAsync:CONFIG_RETRY_MISS_UNIT_INVALID",
                                                 "Invalid unit for miss retry."
                                             );
                                         }
-                                        newBusinessAppCampaignData.Configuration.RetryOnMiss.Unit = unit;
+                                        if (!Enum.IsDefined(typeof(OutboundCallRetryDelayUnitType), unit))
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateCampaignAsync:CONFIG_RETRY_MISS_UNIT_ENUM_INVALID",
+                                                "Invalid unit enum for miss retry."
+                                            );
+                                        }
+
+                                        newBusinessAppCampaignData.Configuration.RetryOnMiss.Unit = (OutboundCallRetryDelayUnitType)unit;
                                     }
                                 }
                             }
@@ -547,11 +563,11 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         // Voicemail Tab
-                        if (!changes.RootElement.TryGetProperty("voicemail", out var voicemailElement))
+                        if (!changes.RootElement.TryGetProperty("voicemailDetection", out var voicemailElement))
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateCampaignAsync:VOICEMAIL_SECTION_MISSING",
-                                "Voicemail section not found."
+                                "Voicemail section 'voicemailDetection' not found."
                             );
                         }
                         else
