@@ -850,19 +850,19 @@ namespace IqraInfrastructure.Managers.Business
                             }
                             newBusinessAppCampaignData.Actions.DeclinedTool = declinedToolValidationResult.Data;
 
-                            if (!actionsTabRootElement.TryGetProperty("noAnswerTool", out var noAnswerToolElement))
+                            if (!actionsTabRootElement.TryGetProperty("missedTool", out var missedToolElement))
                             {
                                 return result.SetFailureResult(
-                                    "AddOrUpdateCampaignAsync:ACTIONS_NOANSWER_TOOL_NOT_FOUND",
-                                    "No Answer tool not found."
+                                    "AddOrUpdateCampaignAsync:ACTIONS_MISSED_TOOL_NOT_FOUND",
+                                    "No Missed tool not found."
                                 );
                             }
-                            var noAnswerToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], noAnswerToolElement, "No Answer");
-                            if (!noAnswerToolValidationResult.Success)
+                            var missedToolValidationResult = await ValidateBusinessCampaignActionData(businessId, businessLanguages[0], missedToolElement, "Missed");
+                            if (!missedToolValidationResult.Success)
                             {
-                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + noAnswerToolValidationResult.Code, noAnswerToolValidationResult.Message);
+                                return result.SetFailureResult("AddOrUpdateCampaignAsync:" + missedToolValidationResult.Code, missedToolValidationResult.Message);
                             }
-                            newBusinessAppCampaignData.Actions.MissedTool = noAnswerToolValidationResult.Data;
+                            newBusinessAppCampaignData.Actions.MissedTool = missedToolValidationResult.Data;
 
                             if (!actionsTabRootElement.TryGetProperty("endedTool", out var endedToolElement))
                             {
@@ -923,17 +923,17 @@ namespace IqraInfrastructure.Managers.Business
             var result = new FunctionReturnResult<BusinessAppCampaignActionConfig>();          
             var resultData = new BusinessAppCampaignActionConfig();
 
-            if (!actionToolElement.TryGetProperty("selectedToolId", out var selectedToolIdProperty))
+            if (!actionToolElement.TryGetProperty("toolId", out var toolIdProperty))
             {
                 throw new Exception($"{actionType} selected tool id not found.");
             }
 
-            string? selectedToolId = selectedToolIdProperty.GetString();
-            if (selectedToolId == null)
+            string? toolId = toolIdProperty.GetString();
+            if (toolId == null)
             {
                 return result.SetSuccessResult(resultData);
             }
-            var selectedToolData = await _businessAppRepository.GetBusinessAppTool(businessId, selectedToolId);
+            var selectedToolData = await _businessAppRepository.GetBusinessAppTool(businessId, toolId);
             if (selectedToolData == null)
             {
                 return result.SetFailureResult(
@@ -941,7 +941,7 @@ namespace IqraInfrastructure.Managers.Business
                     $"{actionType} tool not found in business."
                 );
             }
-            resultData.ToolId = selectedToolId;
+            resultData.ToolId = toolId;
             resultData.Arguments = new Dictionary<string, object>();
 
             if (!actionToolElement.TryGetProperty("arguments", out var argumentsProperty))

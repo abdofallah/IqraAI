@@ -205,10 +205,10 @@ function createDefaultCampaignObject() {
 		numbers: [], // Array of number IDs for 'call from'
 		configuration: {
 			retryOnDecline: {
-				isEnabled: false,
+				enabled: false,
 			},
 			retryOnMiss: {
-				isEnabled: false,
+				enabled: false,
 			},
 			timeouts: {
 				pickupDelayMS: 0,
@@ -242,19 +242,19 @@ function createDefaultCampaignObject() {
 		},
 		actions: {
 			answeredTool: {
-				selectedToolId: null,
+				toolId: null,
 				arguments: null
 			},
 			declinedTool: {
-				selectedToolId: null,
+				toolId: null,
 				arguments: null
 			},
-			noAnswerTool: {
-				selectedToolId: null,
+			missedTool: {
+				toolId: null,
 				arguments: null
 			},
 			endedTool: {
-				selectedToolId: null,
+				toolId: null,
 				arguments: null
 			},
 		},
@@ -432,7 +432,7 @@ function fillCampaignManagerTab() {
 
 	fillCampaignActionTool(data.actions.answeredTool, editCampaignActionToolAnswered);
 	fillCampaignActionTool(data.actions.declinedTool, editCampaignActionToolDeclined);
-	fillCampaignActionTool(data.actions.noAnswerTool, editCampaignActionToolNoAnswer);
+	fillCampaignActionTool(data.actions.missedTool, editCampaignActionToolNoAnswer);
 	fillCampaignActionTool(data.actions.endedTool, editCampaignActionToolEnded);
 }
 
@@ -494,10 +494,16 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 	function checkConfigurationTab() {
 		changes.configuration = {
 			retryOnDecline: {
-				isEnabled: editCampaignRetryOnDeclineCheck.is(":checked")
+				enabled: editCampaignRetryOnDeclineCheck.is(":checked"),
+				retryCount: parseInt(editCampaignRetryDeclineCountInput.val()),
+				delay: parseInt(editCampaignRetryDeclineDelayInput.val()),
+				unit: editCampaignRetryDeclineUnitSelect.val()
 			},
 			retryOnMiss: {
-				isEnabled: editCampaignRetryOnMissCheck.is(":checked")
+				enabled: editCampaignRetryOnMissCheck.is(":checked"),
+				retryCount: parseInt(editCampaignRetryMissCountInput.val()),
+				delay: parseInt(editCampaignRetryMissDelayInput.val()),
+				unit: editCampaignRetryMissUnitSelect.val()
 			},
 			timeouts: {
 				pickupDelayMS: parseInt(editCampaignNumberPickupDelay.val()),
@@ -508,21 +514,48 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 		};
 
 		// Retry Decline
-		if (changes.configuration.retryOnDecline.isEnabled) {
-            changes.configuration.retryOnDecline.retryCount = parseInt(editCampaignRetryDeclineCountInput.val());
-            changes.configuration.retryOnDecline.delay = parseInt(editCampaignRetryDeclineDelayInput.val());
-            changes.configuration.retryOnDecline.unit = editCampaignRetryDeclineUnitSelect.val();
+		if (changes.configuration.retryOnDecline.enabled != original.configuration.retryOnDecline.enabled) {
+			hasChanges = true;
+		}
+		if (changes.configuration.retryOnDecline.enabled == true &&
+			original.configuration.retryOnDecline.enabled == true)
+		{
+			if (changes.configuration.retryOnDecline.retryCount != original.configuration.retryOnDecline.retryCount) {
+                hasChanges = true;
+            }
+            if (changes.configuration.retryOnDecline.delay != original.configuration.retryOnDecline.delay) {
+                hasChanges = true;
+            }
+            if (changes.configuration.retryOnDecline.unit != original.configuration.retryOnDecline.unit) {
+                hasChanges = true;
+            }
 		}
 
 		// Retry Miss
-		if (changes.configuration.retryOnMiss.isEnabled) {
-            changes.configuration.retryOnMiss.retryCount = parseInt(editCampaignRetryMissCountInput.val());
-            changes.configuration.retryOnMiss.delay = parseInt(editCampaignRetryMissDelayInput.val());
-            changes.configuration.retryOnMiss.unit = editCampaignRetryMissUnitSelect.val();
+		if (changes.configuration.retryOnMiss.enabled != original.configuration.retryOnMiss.enabled) {
+			hasChanges = true;
 		}
+		if (changes.configuration.retryOnMiss.enabled == true &&
+			original.configuration.retryOnMiss.enabled == true)
+		{
+            if (changes.configuration.retryOnMiss.retryCount != original.configuration.retryOnMiss.retryCount) {
+                hasChanges = true;
+            }
+            if (changes.configuration.retryOnMiss.delay != original.configuration.retryOnMiss.delay) {
+                hasChanges = true;
+            }
+            if (changes.configuration.retryOnMiss.unit != original.configuration.retryOnMiss.unit) {
+                hasChanges = true;
+            }
+        }
 
-		if (JSON.stringify(changes.configuration) !== JSON.stringify(original.configuration)) {
-			hasChanges = true; // JSON is acceptable for this self-contained, simple object
+		// Timeouts
+		if (changes.configuration.timeouts.pickupDelayMS != original.configuration.timeouts.pickupDelayMS
+			|| changes.configuration.timeouts.notifyOnSilenceMS != original.configuration.timeouts.notifyOnSilenceMS
+			|| changes.configuration.timeouts.endOnSilenceMS != original.configuration.timeouts.endOnSilenceMS
+			|| changes.configuration.timeouts.maxCallTimeS != original.configuration.timeouts.maxCallTimeS)
+		{
+			hasChanges = true;
 		}
 	}
 
@@ -613,7 +646,7 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 		}
 		function compareToolData(newTool, originalTool) {
 			// Compare selectedToolId
-			if (newTool.selectedToolId !== originalTool.selectedToolId) {
+			if (newTool.toolId !== originalTool.toolId) {
 				return true;
 			}
 
@@ -650,41 +683,41 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 
 		changes.actions = {
 			answeredTool: {
-				selectedToolId: editCampaignActionToolAnswered.val() === 'none' ? null : editCampaignActionToolAnswered.val(),
+				toolId: editCampaignActionToolAnswered.val() === 'none' ? null : editCampaignActionToolAnswered.val(),
 				arguments: null
 			},
 			declinedTool: {
-				selectedToolId: editCampaignActionToolDeclined.val() === 'none' ? null : editCampaignActionToolDeclined.val(),
+				toolId: editCampaignActionToolDeclined.val() === 'none' ? null : editCampaignActionToolDeclined.val(),
 				arguments: null
 			},
-			noAnswerTool: {
-				selectedToolId: editCampaignActionToolNoAnswer.val() === 'none' ? null : editCampaignActionToolNoAnswer.val(),
+			missedTool: {
+				toolId: editCampaignActionToolNoAnswer.val() === 'none' ? null : editCampaignActionToolNoAnswer.val(),
 				arguments: null
 			},
 			endedTool: {
-				selectedToolId: editCampaignActionToolEnded.val() === 'none' ? null : editCampaignActionToolEnded.val(),
+				toolId: editCampaignActionToolEnded.val() === 'none' ? null : editCampaignActionToolEnded.val(),
 				arguments: null
 			},
 		};
 
 		// Collect arguments for each tool
-		if (changes.actions.answeredTool.selectedToolId) {
+		if (changes.actions.answeredTool.toolId) {
 			changes.actions.answeredTool.arguments = collectToolArguments(editCampaignActionToolAnsweredInputArgumentsList);
 		}
-		if (changes.actions.declinedTool.selectedToolId) {
+		if (changes.actions.declinedTool.toolId) {
 			changes.actions.declinedTool.arguments = collectToolArguments(editCampaignActionToolDeclinedInputArgumentsList);
 		}
-		if (changes.actions.noAnswerTool.selectedToolId) {
-			changes.actions.noAnswerTool.arguments = collectToolArguments(editCampaignActionToolNoAnswerInputArgumentsList);
+		if (changes.actions.missedTool.toolId) {
+			changes.actions.missedTool.arguments = collectToolArguments(editCampaignActionToolNoAnswerInputArgumentsList);
 		}
-        if (changes.actions.endedTool.selectedToolId) {
+		if (changes.actions.endedTool.toolId) {
 			changes.actions.endedTool.arguments = collectToolArguments(editCampaignActionToolEndedInputArgumentsList);
         }
 
 		if (
 			compareToolData(changes.actions.answeredTool, original.actions.answeredTool) ||
 			compareToolData(changes.actions.declinedTool, original.actions.declinedTool) ||
-			compareToolData(changes.actions.noAnswerTool, original.actions.noAnswerTool) ||
+			compareToolData(changes.actions.missedTool, original.actions.missedTool) ||
             compareToolData(changes.actions.endedTool, original.actions.endedTool)
 		) {
 			hasChanges = true;
