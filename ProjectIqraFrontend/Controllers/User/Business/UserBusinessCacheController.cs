@@ -8,12 +8,12 @@ using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessCacheController : Controller
+    public class UserBusinessCacheController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppUserBusinessCacheController(UserManager userManager, BusinessManager businessManager)
+        public UserBusinessCacheController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;

@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers
 {
-    public class AppAuthenticationController : Controller
+    public class AuthenticationController : Controller
     {
         private readonly UserManager _userManager;
         private readonly AppRepository _appRepository;
 
-        public AppAuthenticationController(UserManager userManager, AppRepository appRepository)
+        public AuthenticationController(UserManager userManager, AppRepository appRepository)
         {
             _userManager = userManager;
             _appRepository = appRepository;

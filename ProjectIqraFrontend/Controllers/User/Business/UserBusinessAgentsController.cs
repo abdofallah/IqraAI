@@ -12,7 +12,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessAgentsController : Controller
+    public class UserBusinessAgentsController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
@@ -21,7 +21,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         private readonly STTProviderManager _sttProviderManager;
         private readonly TTSProviderManager _ttsProviderManager;
 
-        public AppUserBusinessAgentsController(
+        public UserBusinessAgentsController(
             UserManager userManager,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,

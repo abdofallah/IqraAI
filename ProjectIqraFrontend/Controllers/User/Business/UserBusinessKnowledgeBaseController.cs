@@ -11,7 +11,7 @@ using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessKnowledgeBaseController : Controller
+    public class UserBusinessKnowledgeBaseController : Controller
     {
         private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly BusinessManager _businessManager;
@@ -19,7 +19,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
         private readonly IMongoClient _mongoClient;
 
-        public AppUserBusinessKnowledgeBaseController(
+        public UserBusinessKnowledgeBaseController(
             UserSessionValidationHelper userSessionValidationHelper,
             BusinessManager businessManager,
             KnowledgeBaseRetrievalManagerFactory knowledgeBaseRetrievalManagerFactory,

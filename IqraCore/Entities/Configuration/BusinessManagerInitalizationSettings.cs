@@ -13,5 +13,6 @@
         public bool InitalizeConversationsManager { get; set; } = false;
         public bool InitalizeMakeCallManager { get; set; } = false;
         public bool InitalizeKnowledgeBaseManager { get; set; } = false;
+        public bool InitalizeCampaignManager { get; set; } = false;
     }
 }

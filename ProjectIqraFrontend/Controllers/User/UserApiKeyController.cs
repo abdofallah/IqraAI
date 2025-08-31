@@ -7,12 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace ProjectIqraFrontend.Controllers.User
 {
     [ApiController]
-    public class AppUserApiKeyController : ControllerBase
+    public class UserApiKeyController : ControllerBase
     {
         private readonly UserManager _userManager;
         private readonly UserApiKeyManager _userApiKeyManager;
 
-        public AppUserApiKeyController(UserManager userManager, UserApiKeyManager userApiKeyManager)
+        public UserApiKeyController(UserManager userManager, UserApiKeyManager userApiKeyManager)
         {
             _userManager = userManager;
             _userApiKeyManager = userApiKeyManager;

@@ -53,6 +53,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly BusinessConversationsManager? _businessConversationsManager;
         private readonly BusinessMakeCallManager? _businessMakeCallManager;
         private readonly BusinessKnowledgeBaseManager? _businessKnowledgeBaseManager;
+        private readonly BusinessCampaignManager? _businessCampaignManager;
 
         public BusinessManager(
             ILoggerFactory loggerFactory,
@@ -173,6 +174,15 @@ namespace IqraInfrastructure.Managers.Business
                     throw new Exception("Null constructor input variable for BusinessKnowledgeBaseManager");
                 }
                 _businessKnowledgeBaseManager = new BusinessKnowledgeBaseManager(this, businessAppRepository, businessKnowledgeBaseDocumentRepository, integrationConfigurationManager, knowledgeBaseVectorRepository, indexProcessorFactory, extractProcessor, keywordExtractor, embeddingProviderManager, ragKeywordStore);
+            }
+            if (_settings.InitalizeCampaignManager)
+            {
+                if (businessAppRepository == null || businessRepository == null || integrationConfigurationManager == null)
+                {
+                    throw new Exception("Null constructor input variable for BusinessCampaignManager");
+                }
+
+                _businessCampaignManager = new BusinessCampaignManager(this, businessAppRepository, businessRepository, integrationConfigurationManager);
             }
         }
 
@@ -547,6 +557,12 @@ namespace IqraInfrastructure.Managers.Business
         {
             if (!_settings.InitalizeKnowledgeBaseManager || _businessKnowledgeBaseManager == null) throw new Exception("Knowledge Base manager not initialized");
             return _businessKnowledgeBaseManager;
+        }
+    
+        public BusinessCampaignManager GetCampaignManager()
+        {
+            if (!_settings.InitalizeCampaignManager || _businessCampaignManager == null) throw new Exception("Campaign manager not initialized");
+            return _businessCampaignManager;
         }
     }
 }

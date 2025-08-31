@@ -22,7 +22,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers
 {
-    public class AppSpecificationController : Controller
+    public class SpecificationController : Controller
     {
         private readonly UserManager _userManager;
         private readonly LanguagesManager _languagesManager;
@@ -34,7 +34,7 @@ namespace ProjectIqraFrontend.Controllers
         private readonly EmbeddingProviderManager _embeddingProviderManager;
         private readonly RerankProviderManager _rerankProviderManager;
 
-        public AppSpecificationController(
+        public SpecificationController(
             UserManager userManager,
             LanguagesManager languagesManager,
             RegionManager regionManager,

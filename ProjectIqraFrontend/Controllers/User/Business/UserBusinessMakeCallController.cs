@@ -9,13 +9,13 @@ using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessMakeCallController : Controller
+    public class UserBusinessMakeCallController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly BillingValidationManager _billingValidationManager;
 
-        public AppUserBusinessMakeCallController(UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
+        public UserBusinessMakeCallController(UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;

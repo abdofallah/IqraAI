@@ -10,13 +10,13 @@ using Microsoft.Extensions.Primitives;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessIntegrationsController : Controller
+    public class UserBusinessIntegrationsController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
 
-        public AppUserBusinessIntegrationsController(
+        public UserBusinessIntegrationsController(
             UserManager userManager,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager)

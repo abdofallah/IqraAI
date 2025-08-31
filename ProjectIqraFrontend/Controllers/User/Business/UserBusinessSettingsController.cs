@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessSettingsController : Controller
+    public class UserBusinessSettingsController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
 
-        public AppUserBusinessSettingsController(UserManager userManager, BusinessManager businessManager)
+        public UserBusinessSettingsController(UserManager userManager, BusinessManager businessManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;

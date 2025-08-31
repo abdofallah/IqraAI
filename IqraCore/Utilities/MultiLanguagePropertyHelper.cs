@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace IqraCore.Utilities
 {
-    public class MultiLanguagePropertyHelper
+    public static class MultiLanguagePropertyHelper
     {
         public static FunctionReturnResult ValidateAndAssignMultiLanguageProperty(
             IEnumerable<string> languages,

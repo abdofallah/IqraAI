@@ -11,18 +11,20 @@
         public DateTime? DisabledDeletingAt { get; set; } = null;
         public string? DisabledDeletingReason { get; set; } = null;
 
+        // UI Facing Permissions
         public BusinessRoutesPermission Routings { get; set; } = new BusinessRoutesPermission();
         public BusinessAgentsPermission Agents { get; set; } = new BusinessAgentsPermission();
         public BusinessCachePermission Cache { get; set; } = new BusinessCachePermission();
         public BusnessIntegrationsPermission Integrations { get; set; } = new BusnessIntegrationsPermission();
         public BusinessToolsPermission Tools { get; set; } = new BusinessToolsPermission();
         public BusinessContextPermission Context { get; set; } = new BusinessContextPermission();
-        public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
         public BusinessConversationsPermission Conversations { get; set; } = new BusinessConversationsPermission();
         public BusinessNumbersPermission Numbers { get; set; } = new BusinessNumbersPermission();
         public BusinessKnowledgeBasesPermission KnowledgeBases { get; set; } = new BusinessKnowledgeBasesPermission();
+        public BusinessCampaignsPermission Campaigns { get; set; } = new BusinessCampaignsPermission();
 
         // Non-Client Facing Permissions
         public BusinessRecieveCallPermission RecieveCall { get; set; } = new BusinessRecieveCallPermission();
+        public BusinessMakeCallPermission MakeCall { get; set; } = new BusinessMakeCallPermission();
     }
 }

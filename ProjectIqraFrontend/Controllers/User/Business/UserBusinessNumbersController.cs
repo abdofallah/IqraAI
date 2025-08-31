@@ -13,13 +13,13 @@ using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
-    public class AppUserBusinessNumbersController : Controller
+    public class UserBusinessNumbersController : Controller
     {
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly RegionManager _regionManager;
         
-        public AppUserBusinessNumbersController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager)
+        public UserBusinessNumbersController(UserManager userManager, BusinessManager businessManager, RegionManager regionManager)
         {
             _userManager = userManager;
             _businessManager = businessManager;

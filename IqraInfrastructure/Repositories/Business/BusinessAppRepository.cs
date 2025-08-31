@@ -912,5 +912,47 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
             return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
         }
+
+        /**
+        * 
+        * Campaign
+        * 
+        **/
+
+        public async Task<BusinessAppCampaign?> GetBusinessCampaignById(long businessId, string existingCampaignId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, k => k.Id == existingCampaignId)
+            );
+
+            var projection = Builders<BusinessApp>.Projection
+                .Include(f => f.Id)
+                .Include(f => f.Campaigns.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.Campaigns.FirstOrDefault();
+        }
+
+        public async Task<bool> AddBusinessAppCampaign(long businessId, BusinessAppCampaign newBusinessAppCampaignData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.Campaigns, newBusinessAppCampaignData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> UpdateBusinessAppCampaign(long businessId, BusinessAppCampaign newBusinessAppCampaignData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.Campaigns.FirstMatchingElement(), newBusinessAppCampaignData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged;
+        }
     }
 }

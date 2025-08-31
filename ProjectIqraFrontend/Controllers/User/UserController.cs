@@ -18,7 +18,7 @@ using PhoneNumbers;
 
 namespace ProjectIqraFrontend.Controllers.User
 {
-    public class AppUserController : Controller
+    public class UserController : Controller
     {
         private readonly AppRepository _appRepository;
         private readonly UserManager _userManager;
@@ -30,7 +30,7 @@ namespace ProjectIqraFrontend.Controllers.User
 
         private static readonly PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.GetInstance();
 
-        public AppUserController(
+        public UserController(
             AppRepository appRepository,
             UserManager userManager,
             UserUsageManager userUsageManager,
