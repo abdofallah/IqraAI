@@ -45,62 +45,62 @@
                     <img class="nav_logo-icon" src="~/img/logo/logo-colored-light.png">
                 </a>
                 <div class="nav_list">
-                    <a class="nav_link" for="overview-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link active" for="overview-tab" nav-url-path="overview" is-default="true" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-chalkboard nav_icon'></i>
                         <span class="nav_name">Overview</span>
                     </a>
                     <span class="mt-4 nav-category-label">Inbound</span>
-                    <a class="nav_link active" for="routing-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="routing-tab" nav-url-path="routings" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-code-fork nav_icon'></i>
                         <span class="nav_name">Routing</span>
                     </a>
                     <span class="mt-4 nav-category-label">Setup</span>
-                    <a class="nav_link" for="agents-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="agents-tab" nav-url-path="agents" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-headset nav_icon'></i>
                         <span class="nav_name">Agents</span>
                     </a>
-                    <a class="nav_link" for="cache-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="cache-tab" nav-url-path="cache" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-recycle nav_icon'></i>
                         <span class="nav_name">Cache</span>
                     </a>
-                    <a class="nav_link" for="tools-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="tools-tab" nav-url-path="tools" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-wrench nav_icon'></i>
                         <span class="nav_name">Tools</span>
                     </a>
                     <span class="mt-4 nav-category-label">Data</span>
-                    <a class="nav_link" for="context-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="context-tab" nav-url-path="context" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-book nav_icon'></i>
                         <span class="nav_name">Context</span>
                     </a>
-                    <a class="nav_link" for="knowledge-base-tab">
+                    <a class="nav_link" for="knowledge-base-tab" nav-url-path="knowledgebases">
                         <i class='fa-regular fa-database nav_icon'></i>
                         <span class="nav_name">Knowledge Base</span>
                     </a>
                     <span class="mt-4 nav-category-label">Connections</span>
-                    <a class="nav_link" for="integrations-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="integrations-tab" nav-url-path="integrations" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-cube nav_icon'></i>
                         <span class="nav_name">Integrations</span>
                     </a>
-                    <a class="nav_link" for="phone-numbers-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="phone-numbers-tab" nav-url-path="numbers" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-hashtag nav_icon'></i>
                         <span class="nav_name">Numbers</span>
                     </a>
                     <span class="mt-4 nav-category-label">Outbound</span>
-                    <a class="nav_link" for="campaigns-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="campaigns-tab" nav-url-path="campaigns" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-megaphone nav_icon'></i>
                         <span class="nav_name">Campaigns</span>
                     </a>
-                    <a class="nav_link" for="make-calls-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="make-calls-tab" nav-url-path="makecalls" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-phone nav_icon'></i>
                         <span class="nav_name">Make Calls</span>
                     </a>
                     <span class="mt-4 nav-category-label">Analytics</span>
-                    <a class="nav_link" for="conversations-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link" for="conversations-tab" nav-url-path="conversations" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-messages nav_icon'></i>
                         <span class="nav_name">Conversations</span>
                     </a>
                     <span class="mt-4 nav-category-label">Other</span>
-                    <a class="nav_link mb-0" for="settings-tab" is-new-tutorial-disabled="true">
+                    <a class="nav_link mb-0" for="settings-tab" nav-url-path="settings" is-new-tutorial-disabled="true">
                         <i class='fa-regular fa-gear nav_icon'></i>
                         <span class="nav_name">Settings</span>
                     </a>
@@ -112,7 +112,6 @@
                     <span class="nav_name">Log out</span>
                 </a>
             </div>
-
         </nav>
     </div>
 
@@ -293,13 +292,19 @@
     <!-- Scripts -->
     <script>
         function GetIdFromURLPath() {
-            let urlPath = window.location.pathname;
+            const pathSegments = window.location.pathname.split('/');
 
-            if (urlPath.endsWith("/")) {
-                urlPath = urlPath.substring(0, urlPath.length - 1);
+            const businessIndex = pathSegments.indexOf('business');
+
+            if (businessIndex > -1 && pathSegments.length > businessIndex + 1) {
+                const potentialId = pathSegments[businessIndex + 1];
+
+                if (potentialId) {
+                    return potentialId;
+                }
             }
 
-            return urlPath.split("/").pop();
+            return null;
         }
 
         function SetPermissionInput(checkboxElement, reasonInputElement, disabledAt, disabledReason) {
@@ -644,6 +649,8 @@
 
     <!-- PageLoader -->
     <script>
+        var EverythingInitalized = false;
+
         const pageLoader = $("#page-loader");
         var HasNumbersLoaded = false;
 
@@ -665,6 +672,8 @@
                     BusinessEmbeddingProvidersForIntegrations != null
                     && 
                     BusinessRerankProvidersForIntegrations != null
+                    &&
+                    EverythingInitalized == true
                 ) {
                     clearInterval(PageLoaderInterval);
 
@@ -674,7 +683,7 @@
                     }, 300);
                 }
             }
-            , 100);
+        , 100);
 
         function RunActionAfterBusinessDataLoad(action) {
             var businessDataCheckInterval = setInterval(
@@ -717,6 +726,17 @@
     <!-- Main Init Script -->
     <script>
         $(window).on('load', () => {
+
+            if (!CurrentBusinessId || CurrentBusinessId == null)
+            {
+                AlertManager.createAlert({
+                    type: 'danger',
+                    message: 'Business ID not found in the URL path.',
+                    enableDismiss: false
+                });
+
+                return;
+            }
 
             FetchSpecificationLanguagesDataFromAPI(
                 (langaugesListData) => {
@@ -914,6 +934,8 @@
                                                         //InitalizeNewBusinessTutorial();
                                                     }
                                                 }
+
+                                                EverythingInitalized = true;
                                             },
                                             (businessDataError) => {
                                                 AlertManager.createAlert({

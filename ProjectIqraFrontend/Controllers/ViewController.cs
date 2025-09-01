@@ -117,6 +117,7 @@ namespace ProjectIqraFrontend.Controllers
 
 
         [HttpGet("/business/{businessId}")]
+        [HttpGet("/business/{businessId}/{*tabPath}")]
         public async Task<IActionResult> Business(long? businessId)
         {
             string? sessionId = Request.Cookies["sessionId"];

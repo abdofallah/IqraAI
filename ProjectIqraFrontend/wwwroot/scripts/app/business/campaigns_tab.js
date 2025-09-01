@@ -288,13 +288,19 @@ function resetAndEmptyCampaignManagerTab() {
 
 	// Configuration
 	editCampaignRetryOnDeclineCheck.prop("checked", false).change();
+	editCampaignRetryOnDeclineOptionsContainer.addClass('d-none');
+	editCampaignRetryOnDeclineOptionsContainer.removeClass('show');
 	editCampaignRetryDeclineCountInput.val(3);
 	editCampaignRetryDeclineDelayInput.val(10);
 	editCampaignRetryDeclineUnitSelect.val(1);
+
 	editCampaignRetryOnMissCheck.prop("checked", false).change();
+	editCampaignRetryOnMissOptionsContainer.addClass('d-none');
+	editCampaignRetryOnMissOptionsContainer.removeClass('show');
 	editCampaignRetryMissCountInput.val(3);
 	editCampaignRetryMissDelayInput.val(10);
 	editCampaignRetryMissUnitSelect.val(1);
+
 	editCampaignNumberPickupDelay.val(0);
 	editCampaignNumberSilenceNotify.val(10000);
 	editCampaignNumberSilenceEnd.val(30000);
@@ -373,13 +379,25 @@ function fillCampaignManagerTab() {
 
 	// Configuration
 	editCampaignRetryOnDeclineCheck.prop("checked", data.configuration.retryOnDecline.enabled).change();
-	editCampaignRetryDeclineCountInput.val(data.configuration.retryOnDecline.count);
-	editCampaignRetryDeclineDelayInput.val(data.configuration.retryOnDecline.delay);
-	editCampaignRetryDeclineUnitSelect.val(data.configuration.retryOnDecline.unit.value).change();
+	if (data.configuration.retryOnDecline.enabled) {
+		editCampaignRetryOnDeclineOptionsContainer.removeClass('d-none');
+        editCampaignRetryOnDeclineOptionsContainer.addClass('show');
+
+		editCampaignRetryDeclineCountInput.val(data.configuration.retryOnDecline.count);
+		editCampaignRetryDeclineDelayInput.val(data.configuration.retryOnDecline.delay);
+		editCampaignRetryDeclineUnitSelect.val(data.configuration.retryOnDecline.unit.value).change();
+	}
+	
 	editCampaignRetryOnMissCheck.prop("checked", data.configuration.retryOnMiss.enabled).change();
-	editCampaignRetryMissCountInput.val(data.configuration.retryOnMiss.count);
-	editCampaignRetryMissDelayInput.val(data.configuration.retryOnMiss.delay);
-	editCampaignRetryMissUnitSelect.val(data.configuration.retryOnMiss.unit.value).change();
+	if (data.configuration.retryOnMiss.enabled) {
+        editCampaignRetryOnMissOptionsContainer.removeClass('d-none');
+        editCampaignRetryOnMissOptionsContainer.addClass('show');
+
+		editCampaignRetryMissCountInput.val(data.configuration.retryOnMiss.count);
+		editCampaignRetryMissDelayInput.val(data.configuration.retryOnMiss.delay);
+		editCampaignRetryMissUnitSelect.val(data.configuration.retryOnMiss.unit.value).change();
+	}
+
 	editCampaignNumberPickupDelay.val(data.configuration.timeouts.pickupDelayMS);
 	editCampaignNumberSilenceNotify.val(data.configuration.timeouts.notifyOnSilenceMS);
 	editCampaignNumberSilenceEnd.val(data.configuration.timeouts.endOnSilenceMS);
@@ -495,13 +513,13 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 		changes.configuration = {
 			retryOnDecline: {
 				enabled: editCampaignRetryOnDeclineCheck.is(":checked"),
-				retryCount: parseInt(editCampaignRetryDeclineCountInput.val()),
+				count: parseInt(editCampaignRetryDeclineCountInput.val()),
 				delay: parseInt(editCampaignRetryDeclineDelayInput.val()),
 				unit: parseInt(editCampaignRetryDeclineUnitSelect.find("option:selected").val())
 			},
 			retryOnMiss: {
 				enabled: editCampaignRetryOnMissCheck.is(":checked"),
-				retryCount: parseInt(editCampaignRetryMissCountInput.val()),
+				count: parseInt(editCampaignRetryMissCountInput.val()),
 				delay: parseInt(editCampaignRetryMissDelayInput.val()),
 				unit: parseInt(editCampaignRetryMissUnitSelect.find("option:selected").val())
 			},
@@ -520,13 +538,13 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 		if (changes.configuration.retryOnDecline.enabled == true &&
 			original.configuration.retryOnDecline.enabled == true)
 		{
-			if (changes.configuration.retryOnDecline.retryCount != original.configuration.retryOnDecline.retryCount) {
+			if (changes.configuration.retryOnDecline.count != original.configuration.retryOnDecline.count) {
                 hasChanges = true;
             }
             if (changes.configuration.retryOnDecline.delay != original.configuration.retryOnDecline.delay) {
                 hasChanges = true;
             }
-            if (changes.configuration.retryOnDecline.unit != original.configuration.retryOnDecline.unit) {
+            if (changes.configuration.retryOnDecline.unit != original.configuration.retryOnDecline.unit.value) {
                 hasChanges = true;
             }
 		}
@@ -538,13 +556,13 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 		if (changes.configuration.retryOnMiss.enabled == true &&
 			original.configuration.retryOnMiss.enabled == true)
 		{
-            if (changes.configuration.retryOnMiss.retryCount != original.configuration.retryOnMiss.retryCount) {
+			if (changes.configuration.retryOnMiss.count != original.configuration.retryOnMiss.count) {
                 hasChanges = true;
             }
             if (changes.configuration.retryOnMiss.delay != original.configuration.retryOnMiss.delay) {
                 hasChanges = true;
             }
-            if (changes.configuration.retryOnMiss.unit != original.configuration.retryOnMiss.unit) {
+			if (changes.configuration.retryOnMiss.unit != original.configuration.retryOnMiss.unit.value) {
                 hasChanges = true;
             }
         }
@@ -1024,6 +1042,45 @@ async function canLeaveCampaignsTab(leaveMessage = "") {
 	return true;
 }
 
+function handleCampaignRouting(subPath) {
+	if (ManageCampaignType === 'new' || ManageCampaignType === 'edit') {
+		let correctPath;
+		if (ManageCampaignType === 'new') {
+			correctPath = 'campaigns/new';
+		} else {
+			correctPath = `campaigns/${ManageCurrentCampaignData.id}`;
+		}
+
+		replaceUrlForTab(correctPath);
+		return;
+	}
+
+	if (!subPath || subPath.length === 0) {
+		showCampaignsListTab();
+		return;
+	}
+
+	const action = subPath[0];
+	const campaignCard = campaignsListTable.find(`.routing-card[campaign-id="${action}"]`);
+
+	if (action === 'new') {
+		if (!campaignManagerTab.hasClass('show')) {
+			addNewCampaignButton.trigger('click');
+		}
+		replaceUrlForTab("campaigns/new");
+	} else if (campaignCard.length > 0) {
+		if (!campaignManagerTab.hasClass('show')) {
+			campaignCard.trigger('click');
+		}
+		replaceUrlForTab(`campaigns/${action}`);
+	} else {
+		console.warn(`Invalid campaign sub-path detected: '${action}'. Defaulting to list view.`);
+		showCampaignsListTab();
+
+		replaceUrlForTab("campaigns");
+	}
+}
+
 /** Agent Tab **/
 function createCampaignAgentModalListElement(agentData) {
 	return `
@@ -1441,6 +1498,12 @@ function initCampaignsTab() {
 		});
 
 		/** Event Handlers **/
+		$(document).on("tabShown", function (event, data) {
+			if (data.tabId === 'campaigns-tab') {
+				handleCampaignRouting(data.urlSubPath);
+			}
+		});
+
 		addNewCampaignButton.on("click", (e) => {
 			e.preventDefault();
 			ManageCurrentCampaignData = createDefaultCampaignObject();
@@ -1448,12 +1511,14 @@ function initCampaignsTab() {
 			resetAndEmptyCampaignManagerTab();
 			ManageCampaignType = "new";
 			showCampaignManagerTab();	
+			updateUrlForTab("campaigns/new");
 		});
 		switchBackToCampaignsTabButton.on("click", async (e) => {
 			e.preventDefault();
 			if (await canLeaveCampaignsTab(" Discard changes?")) {
 				showCampaignsListTab();
 				ManageCampaignType = null;
+				updateUrlForTab("campaigns");
 			}
 		});
 		campaignsListTable.on("click", ".routing-card", (e) => {
@@ -1463,10 +1528,11 @@ function initCampaignsTab() {
 			if (!ManageCurrentCampaignData) return;
 			currentCampaignNumbersList = [...ManageCurrentCampaignData.numbers];
 			currentCampaignName.text(ManageCurrentCampaignData.general.name);
-			resetAndEmptyCampaignManagerTab();
-			ManageCampaignType = "edit";
+			resetAndEmptyCampaignManagerTab()	
 			fillCampaignManagerTab();
-			showCampaignManagerTab();		
+			ManageCampaignType = "edit";
+			showCampaignManagerTab();
+			updateUrlForTab(`campaigns/${campaignId}`);
 		});
 
 		// Universal handler for simple inputs
@@ -1528,7 +1594,8 @@ function initCampaignsTab() {
 					saveCampaignButton.prop("disabled", true).find('.spinner-border').addClass('d-none');
 					AlertManager.createAlert({
 						type: "success",
-						message: "Campaign saved successfully."
+						message: "Campaign saved successfully.",
+						timeout: 6000
 					});
 					ManageCampaignType = "edit";
 				},
@@ -1538,7 +1605,8 @@ function initCampaignsTab() {
 					saveCampaignButton.prop("disabled", false).find('.spinner-border').addClass('d-none');
 					AlertManager.createAlert({
 						type: "danger",
-						message: "Failed to save campaign. Check console for details."
+						message: "Failed to save campaign. Check console for details.",
+                        timeout: 6000
 					});
 				}
 			);
