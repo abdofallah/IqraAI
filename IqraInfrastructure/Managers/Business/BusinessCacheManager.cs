@@ -164,15 +164,6 @@ namespace IqraInfrastructure.Managers.Business
             }
             newMessage.Response = response;
 
-            // Case sensitivity
-            if (!changes.RootElement.TryGetProperty("isQueryCaseSensitive", out var isCaseSensitiveElement))
-            {
-                result.Code = "AddOrUpdateMessageGroupMessage:7";
-                result.Message = "Query case sensitivity flag not found.";
-                return result;
-            }
-            newMessage.IsQueryCaseSensitive = isCaseSensitiveElement.GetBoolean();
-
             // Saving or updating
             if (postType == "new")
             {
@@ -456,6 +447,12 @@ namespace IqraInfrastructure.Managers.Business
          * 
         **/
 
+        public async Task<bool> CheckBusinessCacheEmbeddingGroupExists(long businessId, string embeddingsCacheGroupId)
+        {
+            var result = await _businessAppRepository.CheckCacheEmbeddingGroupExists(businessId, embeddingsCacheGroupId);
+            return result;
+        }
+
         public async Task<List<BusinessAppCacheEmbeddingGroup>> FindCacheEmbeddingGroupsWithCacheQuery(long businessId, string language, string query)
         {
             try
@@ -467,6 +464,167 @@ namespace IqraInfrastructure.Managers.Business
                 _logger.LogError("[BusinessCacheManager] FindCacheEmbeddingGroupsWithCacheQuery: " + ex.Message);
                 return new List<BusinessAppCacheEmbeddingGroup>();
             }
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>> AddOrUpdateEmbeddingGroup(long businessId, IFormCollection formData, string postType, string? existingGroupId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroup:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateEmbeddingGroup:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newEmbeddingGroup = new BusinessAppCacheEmbeddingGroup();
+
+            // Name validation
+            if (!changes.RootElement.TryGetProperty("name", out var nameElement))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroup:3";
+                result.Message = "Name not found.";
+                return result;
+            }
+
+            string? name = nameElement.GetString();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroup:4";
+                result.Message = "Name is required.";
+                return result;
+            }
+            newEmbeddingGroup.Name = name;
+
+            // Initialize embeddings dictionary for all business languages
+            List<string> businessLanguages = await _businessRepository.GetBusinessLanguages(businessId);
+            foreach (var language in businessLanguages)
+            {
+                newEmbeddingGroup.Embeddings[language] = new List<BusinessAppCacheEmbedding>();
+            }
+
+            // Saving or Updating
+            if (postType == "new")
+            {
+                newEmbeddingGroup.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddCacheEmbeddingGroup(businessId, newEmbeddingGroup);
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateEmbeddingGroup:5";
+                    result.Message = "Failed to add embedding group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newEmbeddingGroup.Id = existingGroupId;
+
+                var updateResult = await _businessAppRepository.UpdateEmbeddingGroupName(businessId, newEmbeddingGroup.Id, newEmbeddingGroup.Name);
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateEmbeddingGroup:6";
+                    result.Message = "Failed to update embedding group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newEmbeddingGroup;
+            return result;
+        }
+
+        public async Task<bool> CheckBusinessCacheEmbeddingGroupEmbeddingExists(long businessId, string groupId, string language, string existingCacheId)
+        {
+            var result = await _businessAppRepository.CheckCacheEmbeddingGroupEmbeddingExists(businessId, groupId, language, existingCacheId);
+            return result;
+        }
+
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbedding?>> AddOrUpdateEmbeddingGroupEmbedding(long businessId, string groupId, IFormCollection formData, string postType, string language, string? existingCacheId)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheEmbedding?>();
+
+            if (!formData.TryGetValue("changes", out var changesJsonString))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroupEmbedding:1";
+                result.Message = "Changes not found in form data.";
+                return result;
+            }
+
+            JsonDocument? changes = JsonDocument.Parse(changesJsonString);
+            if (changes == null)
+            {
+                result.Code = "AddOrUpdateEmbeddingGroupEmbedding:2";
+                result.Message = "Unable to parse changes json string.";
+                return result;
+            }
+
+            var newEmbedding = new BusinessAppCacheEmbedding();
+
+            // Query validation
+            if (!changes.RootElement.TryGetProperty("query", out var queryElement))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroupEmbedding:3";
+                result.Message = "Query not found.";
+                return result;
+            }
+
+            string? query = queryElement.GetString();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                result.Code = "AddOrUpdateEmbeddingGroupEmbedding:4";
+                result.Message = "Query is required.";
+                return result;
+            }
+            newEmbedding.Query = query;
+
+            // Saving or updating
+            if (postType == "new")
+            {
+                newEmbedding.Id = Guid.NewGuid().ToString();
+
+                var addResult = await _businessAppRepository.AddEmbeddingToGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newEmbedding
+                );
+                if (!addResult)
+                {
+                    result.Code = "AddOrUpdateEmbeddingGroupEmbedding:5";
+                    result.Message = "Failed to add embedding to group.";
+                    return result;
+                }
+            }
+            else if (postType == "edit")
+            {
+                newEmbedding.Id = existingCacheId;
+
+                var updateResult = await _businessAppRepository.UpdateEmbeddingInGroup(
+                    businessId,
+                    groupId,
+                    language,
+                    newEmbedding
+                );
+                if (!updateResult)
+                {
+                    result.Code = "AddOrUpdateEmbeddingGroupEmbedding:6";
+                    result.Message = "Failed to update embedding in group.";
+                    return result;
+                }
+            }
+
+            result.Success = true;
+            result.Data = newEmbedding;
+            return result;
         }
     }
 }

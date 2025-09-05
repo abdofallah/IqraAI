@@ -161,7 +161,7 @@ function createCampaignListElement(campaignData) {
 
 	return `
         <div class="col-lg-4 col-md-6 col-12">
-            <div class="routing-card d-flex flex-column align-items-start justify-content-center" campaign-id="${campaignData.id}">
+            <div class="campaign-card d-flex flex-column align-items-start justify-content-center" campaign-id="${campaignData.id}">
                 <div class="d-flex flex-row align-items-center justify-content-start mb-4">
                     <span class="route-icon">${campaignData.general.emoji}</span>
                     <div class="card-data">
@@ -1061,7 +1061,7 @@ function handleCampaignRouting(subPath) {
 	}
 
 	const action = subPath[0];
-	const campaignCard = campaignsListTable.find(`.routing-card[campaign-id="${action}"]`);
+	const campaignCard = campaignsListTable.find(`.campaign-card[campaign-id="${action}"]`);
 
 	if (action === 'new') {
 		if (!campaignManagerTab.hasClass('show')) {
@@ -1080,6 +1080,46 @@ function handleCampaignRouting(subPath) {
 		replaceUrlForTab("campaigns");
 	}
 }
+
+function SetCampaignCardDynamicWidth() {
+	if (!campaignsTab.hasClass("show")) return;
+
+	const anyCampaignCard = campaignsListTable.find(".campaign-card");
+	if (anyCampaignCard.length > 0) {
+		const firstCampaignCard = anyCampaignCard.first();
+
+		const campaignCardWidth = firstCampaignCard.innerWidth();
+
+		const campaignCardLeftRightPadding = parseInt(firstCampaignCard.css("padding-left")) + parseInt(firstCampaignCard.css("padding-right"));
+		const campaignCardIconWidthAndPadding = firstCampaignCard.find(".route-icon").innerWidth();
+
+		// .campaign-card h4
+		const marginLeftForH4 = 20; // .campaign-card h4 in style.css
+
+		const currentUsedUpSpace = campaignCardLeftRightPadding + campaignCardIconWidthAndPadding + marginLeftForH4;
+
+		let availableH4Space = campaignCardWidth - currentUsedUpSpace;
+
+		if (availableH4Space < 5) {
+			availableH4Space = 5;
+		}
+
+		// .campaign-card h5-info
+		let availableH5Space = campaignCardWidth - campaignCardLeftRightPadding;
+
+		// FINAL
+		$("#dynamicCampaignCardCSS").html(`
+            .campaign-card .card-data {
+				width: ${availableH4Space}px;
+			}
+
+            .campaign-card .h5-info {
+                width: ${availableH5Space}px;
+            }
+		`);
+	}
+}
+
 
 /** Agent Tab **/
 function createCampaignAgentModalListElement(agentData) {
@@ -1167,7 +1207,6 @@ function createCampaignNumberModalListElement(numberData) {
 	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
 	const isNumberActiveInCampaign = currentCampaignNumbersList.includes(numberData.id);
 
-	// Unlike routing, a number can be used in multiple outbound campaigns, so we don't check for other usage.
 	const elementClass = isNumberActiveInCampaign ? "disabled" : "";
 	const elementText = isNumberActiveInCampaign ? "(Already added)" : "";
 
@@ -1504,6 +1543,14 @@ function initCampaignsTab() {
 			}
 		});
 
+		$(window).resize(() => {
+			SetCampaignCardDynamicWidth();
+		});
+
+		$(document).on("containerResizeProgress", (event) => {
+			SetCampaignCardDynamicWidth();
+		})
+
 		addNewCampaignButton.on("click", (e) => {
 			e.preventDefault();
 			ManageCurrentCampaignData = createDefaultCampaignObject();
@@ -1521,7 +1568,7 @@ function initCampaignsTab() {
 				updateUrlForTab("campaigns");
 			}
 		});
-		campaignsListTable.on("click", ".routing-card", (e) => {
+		campaignsListTable.on("click", ".campaign-card", (e) => {
 			e.preventDefault();
 			const campaignId = $(e.currentTarget).attr("campaign-id");
 			ManageCurrentCampaignData = BusinessFullData.businessApp.campaigns.find(c => c.id === campaignId);
@@ -1598,6 +1645,8 @@ function initCampaignsTab() {
 						timeout: 6000
 					});
 					ManageCampaignType = "edit";
+
+					replaceUrlForTab(`campaigns/${ManageCurrentCampaignData.id}`);
 				},
 				(error) => {
 					console.error("Error saving campaign:", error);

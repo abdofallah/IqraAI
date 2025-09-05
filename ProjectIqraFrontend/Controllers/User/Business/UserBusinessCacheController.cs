@@ -5,17 +5,21 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class UserBusinessCacheController : Controller
     {
-        private readonly UserManager _userManager;
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly BusinessManager _businessManager;
 
-        public UserBusinessCacheController(UserManager userManager, BusinessManager businessManager)
+        public UserBusinessCacheController(
+            UserSessionValidationHelper userSessionValidationHelper,
+            BusinessManager businessManager
+        )
         {
-            _userManager = userManager;
+            _userSessionValidationHelper = userSessionValidationHelper;
             _businessManager = businessManager;
         }
 
@@ -24,104 +28,44 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         {
             var result = new FunctionReturnResult<BusinessAppCacheMessageGroup?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "SaveBusinessMessageGroup:1";
-                result.Message = "Invalid session data";
+                result.Code = $"SaveBusinessMessageGroup:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessMessageGroup:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessMessageGroup:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessMessageGroup:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessMessageGroup:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessMessageGroup:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessMessageGroup:8";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            if (businessData.Permission.Cache.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroup:9";
                 result.Message = "Business does not have permission to access cache";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Cache.MessageGroup.DisabledFullAt != null)
+            if (businessData.Permission.Cache.MessageGroup.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroup:10";
                 result.Message = "Business does not have permission to access message groups";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledFullReason;
                 }
 
                 return result;
@@ -140,14 +84,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (postType == "edit")
             {
-                if (businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingAt != null)
+                if (businessData.Permission.Cache.MessageGroup.DisabledEditingAt != null)
                 {
                     result.Code = "SaveBusinessMessageGroup:12";
                     result.Message = "Business does not have permission to edit message groups";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingReason;
+                        result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledEditingReason;
                     }
 
                     return result;
@@ -170,14 +114,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             else if (postType == "new")
             {
-                if (businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingAt != null)
+                if (businessData.Permission.Cache.MessageGroup.DisabledAddingAt != null)
                 {
                     result.Code = "SaveBusinessMessageGroup:15";
                     result.Message = "Business does not have permission to add message groups";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingReason;
+                        result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledAddingReason;
                     }
 
                     return result;
@@ -202,104 +146,44 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         {
             var result = new FunctionReturnResult<BusinessAppCacheMessage?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "SaveBusinessMessageGroupMessage:1";
-                result.Message = "Invalid session data";
+                result.Code = $"SaveBusinessMessageGroupMessage:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:5";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:6";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessMessageGroupMessage:7";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            if (businessData.Permission.Cache.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroupMessage:8";
                 result.Message = "Business does not have permission to access cache";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Cache.MessageGroup.DisabledFullAt != null)
+            if (businessData.Permission.Cache.MessageGroup.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessMessageGroupMessage:9";
                 result.Message = "Business does not have permission to access message groups";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledFullReason;
                 }
 
                 return result;
@@ -331,7 +215,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             string language = languageValue.ToString();
 
-            if (!businessResult.Data.Languages.Contains(language))
+            if (!businessData.Languages.Contains(language))
             {
                 result.Code = "SaveBusinessMessageGroupMessage:13";
                 result.Message = "Language not found for business.";
@@ -350,14 +234,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             string? existingCacheId = existingCacheIdValue.ToString();
             if (postType == "edit")
             {
-                if (businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingAt != null)
+                if (businessData.Permission.Cache.MessageGroup.DisabledEditingAt != null)
                 {
                     result.Code = "SaveBusinessMessageGroupMessage:15";
                     result.Message = "Business does not have permission to edit messages";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledEditingReason;
+                        result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledEditingReason;
                     }
 
                     return result;
@@ -386,14 +270,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             else if (postType == "new")
             {
-                if (businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingAt != null)
+                if (businessData.Permission.Cache.MessageGroup.DisabledAddingAt != null)
                 {
                     result.Code = "SaveBusinessMessageGroupMessage:18";
                     result.Message = "Business does not have permission to add messages";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.MessageGroup.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.MessageGroup.DisabledAddingReason;
+                        result.Message += ": " + businessData.Permission.Cache.MessageGroup.DisabledAddingReason;
                     }
 
                     return result;
@@ -425,104 +309,44 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         {
             var result = new FunctionReturnResult<BusinessAppCacheAudioGroup?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "SaveBusinessAudioGroup:1";
-                result.Message = "Invalid session data";
+                result.Code = $"SaveBusinessAudioGroup:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessAudioGroup:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessAudioGroup:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessAudioGroup:4";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessAudioGroup:5";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessAudioGroup:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessAudioGroup:8";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            if (businessData.Permission.Cache.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessAudioGroup:9";
                 result.Message = "Business does not have permission to access cache";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Cache.AudioGroup.DisabledFullAt != null)
+            if (businessData.Permission.Cache.AudioGroup.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessAudioGroup:10";
                 result.Message = "Business does not have permission to access audio groups";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledFullReason;
                 }
 
                 return result;
@@ -541,14 +365,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
 
             if (postType == "edit")
             {
-                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingAt != null)
+                if (businessData.Permission.Cache.AudioGroup.DisabledEditingAt != null)
                 {
                     result.Code = "SaveBusinessAudioGroup:12";
                     result.Message = "Business does not have permission to edit audio groups";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason;
+                        result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledEditingReason;
                     }
 
                     return result;
@@ -571,14 +395,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             else if (postType == "new")
             {
-                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingAt != null)
+                if (businessData.Permission.Cache.AudioGroup.DisabledAddingAt != null)
                 {
                     result.Code = "SaveBusinessAudioGroup:15";
                     result.Message = "Business does not have permission to add audio groups";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason;
+                        result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledAddingReason;
                     }
 
                     return result;
@@ -603,104 +427,44 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         {
             var result = new FunctionReturnResult<BusinessAppCacheAudio?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                result.Code = "SaveBusinessAudioGroupAudio:1";
-                result.Message = "Invalid session data";
+                result.Code = $"SaveBusinessAudioGroupAudio:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
                 return result;
             }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
 
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:2";
-                result.Message = "Session validation failed";
-                return result;
-            }
-
-            UserData? user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:3";
-                result.Message = "User not found";
-                return result;
-            }
-
-            if (user.Permission.Business.DisableBusinessesAt != null || user.Permission.Business.EditBusinessDisabledAt != null)
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:5";
-                result.Message = "User does not have permission to edit businesses";
-
-                if (user.Permission.Business.DisableBusinessesAt != null && !string.IsNullOrEmpty(user.Permission.Business.DisableBusinessesReason))
-                {
-                    result.Message += ": " + user.Permission.Business.DisableBusinessesReason;
-                }
-
-                if (!string.IsNullOrEmpty(user.Permission.Business.EditBusinessDisableReason))
-                {
-                    result.Message += ": " + user.Permission.Business.EditBusinessDisableReason;
-                }
-
-                return result;
-            }
-
-            if (!user.Businesses.Contains(businessId))
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:6";
-                result.Message = "User does not own this business";
-                return result;
-            }
-
-            FunctionReturnResult<BusinessData?> businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success)
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:" + businessResult.Code;
-                result.Message = businessResult.Message;
-                return result;
-            }
-
-            if (businessResult.Data.Permission.DisabledFullAt != null || businessResult.Data.Permission.DisabledEditingAt != null)
-            {
-                result.Code = "SaveBusinessAudioGroupAudio:7";
-                result.Message = "Business is currently disabled";
-
-                if (businessResult.Data.Permission.DisabledFullAt != null && !string.IsNullOrEmpty(businessResult.Data.Permission.DisabledFullReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledFullReason;
-                }
-
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.DisabledEditingReason))
-                {
-                    result.Message += ": " + businessResult.Data.Permission.DisabledEditingReason;
-                }
-
-                return result;
-            }
-
-            if (businessResult.Data.Permission.Cache.DisabledFullAt != null)
+            if (businessData.Permission.Cache.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessAudioGroupAudio:8";
                 result.Message = "Business does not have permission to access cache";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
                 }
 
                 return result;
             }
 
-            if (businessResult.Data.Permission.Cache.AudioGroup.DisabledFullAt != null)
+            if (businessData.Permission.Cache.AudioGroup.DisabledFullAt != null)
             {
                 result.Code = "SaveBusinessAudioGroupAudio:9";
                 result.Message = "Business does not have permission to access audio groups";
 
-                if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason))
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledFullReason))
                 {
-                    result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledFullReason;
+                    result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledFullReason;
                 }
 
                 return result;
@@ -732,7 +496,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             string language = languageValue.ToString();
 
-            if (!businessResult.Data.Languages.Contains(language))
+            if (!businessData.Languages.Contains(language))
             {
                 result.Code = "SaveBusinessAudioGroupAudio:13";
                 result.Message = "Language not found for business.";
@@ -751,14 +515,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             string? existingCacheId = existingCacheIdValue.ToString();
             if (postType == "edit")
             {
-                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingAt != null)
+                if (businessData.Permission.Cache.AudioGroup.DisabledEditingAt != null)
                 {
                     result.Code = "SaveBusinessAudioGroupAudio:15";
                     result.Message = "Business does not have permission to edit audios";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledEditingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledEditingReason;
+                        result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledEditingReason;
                     }
 
                     return result;
@@ -787,14 +551,14 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             }
             else if (postType == "new")
             {
-                if (businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingAt != null)
+                if (businessData.Permission.Cache.AudioGroup.DisabledAddingAt != null)
                 {
                     result.Code = "SaveBusinessAudioGroupAudio:18";
                     result.Message = "Business does not have permission to add audios";
 
-                    if (!string.IsNullOrEmpty(businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason))
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.AudioGroup.DisabledAddingReason))
                     {
-                        result.Message += ": " + businessResult.Data.Permission.Cache.AudioGroup.DisabledAddingReason;
+                        result.Message += ": " + businessData.Permission.Cache.AudioGroup.DisabledAddingReason;
                     }
 
                     return result;
@@ -820,5 +584,283 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             result.Data = updateResult.Data;
             return result;
         }
+
+        [HttpPost("/app/user/business/{businessId}/cache/embeddinggroups/save")]
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>> SaveBusinessEmbeddingGroup(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheEmbeddingGroup?>();
+
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
+            {
+                result.Code = $"SaveBusinessEmbeddingGroup:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
+            }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+
+            if (businessData.Permission.Cache.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessEmbeddingGroup:9";
+                result.Message = "Business does not have permission to access cache";
+
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
+                {
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            if (businessData.Permission.Cache.EmbeddingGroup.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessEmbeddingGroup:10";
+                result.Message = "Business does not have permission to access embedding groups";
+
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledFullReason))
+                {
+                    result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            string? postType = formData["postType"].ToString();
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
+            {
+                result.Code = "SaveBusinessEmbeddingGroup:11";
+                result.Message = "Invalid post type";
+                return result;
+            }
+
+            formData.TryGetValue("existingGroupId", out StringValues existingGroupIdValue);
+            string? existingGroupId = existingGroupIdValue.ToString();
+
+            if (postType == "edit")
+            {
+                if (businessData.Permission.Cache.EmbeddingGroup.DisabledEditingAt != null)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroup:12";
+                    result.Message = "Business does not have permission to edit embedding groups";
+
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledEditingReason))
+                    {
+                        result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledEditingReason;
+                    }
+
+                    return result;
+                }
+
+                if (string.IsNullOrWhiteSpace(existingGroupId))
+                {
+                    result.Code = "SaveBusinessEmbeddingGroup:13";
+                    result.Message = "Missing existing group id";
+                    return result;
+                }
+
+                bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheEmbeddingGroupExists(businessId, existingGroupId);
+                if (!groupExists)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroup:14";
+                    result.Message = "Group not found";
+                    return result;
+                }
+            }
+            else if (postType == "new")
+            {
+                if (businessData.Permission.Cache.EmbeddingGroup.DisabledAddingAt != null)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroup:15";
+                    result.Message = "Business does not have permission to add embedding groups";
+
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledAddingReason))
+                    {
+                        result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledAddingReason;
+                    }
+
+                    return result;
+                }
+            }
+
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateEmbeddingGroup(businessId, formData, postType, existingGroupId);
+            if (!updateResult.Success)
+            {
+                result.Code = "SaveBusinessEmbeddingGroup:" + updateResult.Code;
+                result.Message = updateResult.Message;
+                return result;
+            }
+
+            return result.SetSuccessResult(updateResult.Data);
+        }
+
+        [HttpPost("/app/user/business/{businessId}/cache/embeddinggroups/embeddings/save")]
+        public async Task<FunctionReturnResult<BusinessAppCacheEmbedding?>> SaveBusinessEmbeddingGroupEmbedding(long businessId, [FromForm] IFormCollection formData)
+        {
+            var result = new FunctionReturnResult<BusinessAppCacheEmbedding?>();
+
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
+            {
+                result.Code = $"SaveBusinessEmbeddingGroupEmbedding:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
+            }
+            var userData = userSessionAndBusinessValidationResult.Data.userData;
+            var businessData = userSessionAndBusinessValidationResult.Data.businessData;
+
+            if (businessData.Permission.Cache.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:8";
+                result.Message = "Business does not have permission to access cache";
+
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.DisabledFullReason))
+                {
+                    result.Message += ": " + businessData.Permission.Cache.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            if (businessData.Permission.Cache.EmbeddingGroup.DisabledFullAt != null)
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:9";
+                result.Message = "Business does not have permission to access embedding groups";
+
+                if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledFullReason))
+                {
+                    result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledFullReason;
+                }
+
+                return result;
+            }
+
+            formData.TryGetValue("groupId", out StringValues groupIdValue);
+            string? groupId = groupIdValue.ToString();
+
+            if (string.IsNullOrWhiteSpace(groupId))
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:10";
+                result.Message = "Missing group id";
+                return result;
+            }
+
+            bool groupExists = await _businessManager.GetCacheManager().CheckBusinessCacheEmbeddingGroupExists(businessId, groupId);
+            if (!groupExists)
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:11";
+                result.Message = "Group not found";
+                return result;
+            }
+
+            if (!formData.TryGetValue("language", out var languageValue))
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:12";
+                result.Message = "Language not specified.";
+                return result;
+            }
+            string language = languageValue.ToString();
+
+            if (!businessData.Languages.Contains(language))
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:13";
+                result.Message = "Language not found for business.";
+                return result;
+            }
+
+            string? postType = formData["postType"].ToString();
+            if (string.IsNullOrWhiteSpace(postType) || postType != "new" && postType != "edit")
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:14";
+                result.Message = "Invalid post type";
+                return result;
+            }
+
+            formData.TryGetValue("existingCacheId", out StringValues existingCacheIdValue);
+            string? existingCacheId = existingCacheIdValue.ToString();
+            if (postType == "edit")
+            {
+                if (businessData.Permission.Cache.EmbeddingGroup.DisabledEditingAt != null)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroupEmbedding:15";
+                    result.Message = "Business does not have permission to edit embeddings";
+
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledEditingReason))
+                    {
+                        result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledEditingReason;
+                    }
+
+                    return result;
+                }
+
+                if (string.IsNullOrWhiteSpace(existingCacheId))
+                {
+                    result.Code = "SaveBusinessEmbeddingGroupEmbedding:16";
+                    result.Message = "Missing existing cache id";
+                    return result;
+                }
+
+                bool embeddingExists = await _businessManager.GetCacheManager().CheckBusinessCacheEmbeddingGroupEmbeddingExists(
+                    businessId,
+                    groupId,
+                    language,
+                    existingCacheId
+                );
+
+                if (!embeddingExists)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroupEmbedding:17";
+                    result.Message = "Embedding not found";
+                    return result;
+                }
+            }
+            else if (postType == "new")
+            {
+                if (businessData.Permission.Cache.EmbeddingGroup.DisabledAddingAt != null)
+                {
+                    result.Code = "SaveBusinessEmbeddingGroupEmbedding:18";
+                    result.Message = "Business does not have permission to add embeddings";
+
+                    if (!string.IsNullOrEmpty(businessData.Permission.Cache.EmbeddingGroup.DisabledAddingReason))
+                    {
+                        result.Message += ": " + businessData.Permission.Cache.EmbeddingGroup.DisabledAddingReason;
+                    }
+
+                    return result;
+                }
+            }
+
+            var updateResult = await _businessManager.GetCacheManager().AddOrUpdateEmbeddingGroupEmbedding(
+                businessId,
+                groupId,
+                formData,
+                postType,
+                language,
+                existingCacheId
+            );
+            if (!updateResult.Success)
+            {
+                result.Code = "SaveBusinessEmbeddingGroupEmbedding:" + updateResult.Code;
+                result.Message = updateResult.Message;
+                return result;
+            }
+
+            return result.SetSuccessResult(updateResult.Data);
+        }
+
     }
 }

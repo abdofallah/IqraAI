@@ -34,6 +34,18 @@ const AGENT_SCRIPT_END_CALL_SYSTEM_TOOL_TYPE = {
 	WITH_MESSAGE: 2,
 };
 
+const AGENT_INTERRUPTION_TURN_END_TYPE = {
+	VAD: 0,
+	STT: 1,
+	AI: 2,
+	ML: 3
+};
+
+const AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE = {
+	VAD: 0,
+	STT: 1
+}
+
 const AGENT_SCRIPT_NODE_WIDTH = 520; // todo make dynamic
 const AGENT_SCRIPT_NODE_MIN_HEIGHT = 300;
 
@@ -53,9 +65,17 @@ let agentSTTIntegrationManager = null;
 let agentLLMIntegrationManager = null;
 let agentTTSIntegrationManager = null;
 
+// Integrations Interruption Configuration Manager
+let agentTurnEndLLMIntegrationManager = null;
+let agentInterruptionVerifyLLMIntegrationManager = null;
+
 // Cache related states
 let CurrentAgentCacheMessages = [];
+let CurrentAgentCacheMessagesIndex = 0;
 let CurrentAgentCacheAudios = [];
+let CurrentAgentCacheAudiosIndex = 0;
+let CurrentAgentCacheEmbeddings = [];
+let CurrentAgentCacheEmbeddingsIndex = 0;
 
 // Multi Language
 let CurrentAgentGeneralNameMultiLangData = {};
@@ -161,16 +181,51 @@ const addSTTIntegrationButton = agentIntegrationsTab.find("#addSTTIntegration");
 const addLLMIntegrationButton = agentIntegrationsTab.find("#addLLMIntegration");
 const addTTSIntegrationButton = agentIntegrationsTab.find("#addTTSIntegration");
 
+// SUB | Interruptions Tab
+const agentsManagerInterruptionsTab = agentTab.find("#agents-manager-interruptions");
+// Turn-end Detection
+const editAgentTurnEndTypeSelect = agentsManagerInterruptionsTab.find("#editAgentTurnEndTypeSelect");
+const agentTurnEndViaVADBox = agentsManagerInterruptionsTab.find('.agent-turn-end-type-box[box-type="turnendviavad"]');
+const editAgentTurnEndViaVADAudioActivityDuration = agentsManagerInterruptionsTab.find("#editAgentTurnEndViaVADAudioActivityDuration");
+const agentTurnEndViaAIBox = agentsManagerInterruptionsTab.find('.agent-turn-end-type-box[box-type="turnendviaai"]');
+const editAgentTurnEndViaAIUseAgentLLM = agentsManagerInterruptionsTab.find("#editAgentTurnEndViaAIUseAgentLLM");
+const agentTurnEndViaLLMIntegrationSelectBox = agentsManagerInterruptionsTab.find("#agentTurnEndViaLLMIntegrationSelectBox");
+// Turn by Turn/Disable Interruptions
+const editAgentTurnByTurnMode = agentsManagerInterruptionsTab.find("#editAgentTurnByTurnMode");
+const editAgentTurnByTurnIncludeInterruptedSpeech = agentsManagerInterruptionsTab.find("#editAgentTurnByTurnIncludeInterruptedSpeech");
+// Agent Pause Trigger
+const agentInterruptionPauseTypeSelect = agentsManagerInterruptionsTab.find("#agentInterruptionPauseTypeSelect");
+const agentInterruptionPauseViaVADBox = agentsManagerInterruptionsTab.find('.agent-interruption-pause-type-box[box-type="pauseviavad"]');
+const agentInterruptionPauseVADDuration = agentsManagerInterruptionsTab.find("#agentInterruptionPauseVADDuration");
+const agentInterruptionPauseViaWordsBox = agentsManagerInterruptionsTab.find('.agent-interruption-pause-type-box[box-type="pauseviawords"]');
+const agentInterruptionPauseWordCount = agentsManagerInterruptionsTab.find("#agentInterruptionPauseWordCount");
+// Interruption Verification
+const enableAgentInterruptionVerification = agentsManagerInterruptionsTab.find("#enableAgentInterruptionVerification");
+const agentInterruptionVerificationContainer = agentsManagerInterruptionsTab.find("#agentInterruptionVerificationContainer");
+const agentInterruptionVerifyAIUseAgentLLM = agentsManagerInterruptionsTab.find("#agentInterruptionVerifyAIUseAgentLLM");
+const agentInterruptionVerifyLLMIntegrationSelectBox = agentsManagerInterruptionsTab.find("#agentInterruptionVerifyLLMIntegrationSelectBox");
+
 // SUB | Cache Tab
 const agentCacheTab = $("#agents-manager-cache");
+// Messages
 const messageCacheGroupsList = agentCacheTab.find("#messageCacheGroupsList");
-const audioCacheGroupsList = agentCacheTab.find("#audioCacheGroupsList");
 const addMessageCacheGroupButton = agentCacheTab.find("#addMessageCacheGroup");
+// Audios
+const audioCacheGroupsList = agentCacheTab.find("#audioCacheGroupsList");
 const addAudioCacheGroupButton = agentCacheTab.find("#addAudioCacheGroup");
+// Embeddings
+const embeddingsCacheGroupsList = agentCacheTab.find("#embeddingsCacheGroupsList");
+const addEmbeddingCacheGroupButton = agentCacheTab.find("#addEmbeddingCacheGroup");
+// Audio Settings
 const agentCacheSettingsAutoCacheAudioCheckbox = agentCacheTab.find("#agentCacheSettingsAutoCacheAudio");
 const agentCacheSettingsAutoCacheAudioBox = agentCacheTab.find("#agentCacheSettingsAutoCacheAudioBox");
 const agentAutoCacheAudioGroupSelect = agentCacheTab.find("#agentAutoCacheAudioGroupSelect");
-const agentAutoCacheExpiryInput = agentCacheTab.find("#agentAutoCacheExpiryInput");
+const agentAutoCacheAudioExpiryInput = agentCacheTab.find("#agentAutoCacheAudioExpiryInput");
+// Embedding Settings
+const agentCacheSettingsAutoCacheEmbeddingCheckbox = agentCacheTab.find("#agentCacheSettingsAutoCacheEmbedding");
+const agentCacheSettingsAutoCacheEmbeddingBox = agentCacheTab.find("#agentCacheSettingsAutoCacheEmbeddingBox");
+const agentAutoCacheEmbeddingGroupSelect = agentCacheTab.find("#agentAutoCacheEmbeddingGroupSelect");
+const agentAutoCacheEmbeddingExpiryInput = agentCacheTab.find("#agentAutoCacheEmbeddingExpiryInput");
 
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
@@ -299,6 +354,13 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
+	// Check Interruptions tab changes
+	const interruptionsChanges = CheckAgentInterruptionsTabChanges(false);
+	changes.interruptions = interruptionsChanges.changes;
+	if (interruptionsChanges.hasChanges) {
+		hasChanges = true;
+	}
+
 	// Check Integrations tab changes
 	changes.integrations = {
 		stt: agentSTTIntegrationManager.getData(),
@@ -395,6 +457,30 @@ function createDefaultAgentObject() {
 			},
 			greetingMessage: {}
 		},
+		interruptions: {
+			turnEnd: {
+				type: {
+					value: 0 // 0: VAD, 1: Response, 2: AI, 3: ML
+				},
+				vadSilenceDurationMS: 700,
+				useAgentLLM: true,
+				llmIntegration: null
+			},
+			useTurnByTurnMode: false,
+			includeInterruptedSpeechInTurnByTurnMode: false,
+			pauseTrigger: {
+				type: {
+                    value: 0 // 0: VAD, 1: Words
+				},
+				vadDurationMS: 100,
+				wordCount: 2
+			},
+			verification: {
+				enabled: false,
+				useAgentLLM: true,
+				llmIntegration: null
+			}
+		},
 		scripts: [],
 		integrations: {
 			stt: {},
@@ -408,6 +494,12 @@ function createDefaultAgentObject() {
 				autoCacheAudioResponses: false,
 				autoCacheAudioResponseCacheGroupId: null,
 				autoCacheAudioResponsesDefaultExpiryHours: null
+			},
+			embeddings: [],
+			embeddingsCacheSettings: {
+				autoCacheEmbeddingResponses: false,
+				autoCacheEmbeddingResponseCacheGroupId: null,
+				autoCacheEmbeddingResponsesDefaultExpiryHours: null
 			}
 		},
 		settings: {
@@ -543,6 +635,20 @@ function ResetAndEmptyAgentsManageTab() {
 	// Utterances Tab
 	CurrentAgentUtterancesGreetingMessageMultiLangData = {};
 
+	// Reset Interruptions Tab
+	editAgentTurnEndTypeSelect.val("0").change(); // Default to VAD
+	editAgentTurnEndViaVADAudioActivityDuration.val(700);
+	editAgentTurnEndViaAIUseAgentLLM.prop("checked", true).change();
+	if (agentTurnEndLLMIntegrationManager) agentTurnEndLLMIntegrationManager.reset();
+
+	agentInterruptionPauseTypeSelect.val("vad").change(); // Default to VAD
+	agentInterruptionPauseVADDuration.val(100);
+	agentInterruptionPauseWordCount.val(2);
+
+	enableAgentInterruptionVerification.prop("checked", false).change();
+	agentInterruptionVerifyAIUseAgentLLM.prop("checked", true).change();
+	if (agentInterruptionVerifyLLMIntegrationManager) agentInterruptionVerifyLLMIntegrationManager.reset();
+
 	// Integration Tab
 	if (agentSTTIntegrationManager) agentSTTIntegrationManager.reset();
 	if (agentLLMIntegrationManager) agentLLMIntegrationManager.reset();
@@ -571,15 +677,23 @@ function ResetAndEmptyAgentsManageTab() {
 		manageAgentsLanguageDropdown.setLanguageStatus(language, "incomplete");
 	});
 
+	// Audio Settings
 	agentCacheSettingsAutoCacheAudioCheckbox.prop("checked", false).change();
 	agentAutoCacheAudioGroupSelect.empty();
 	agentAutoCacheAudioGroupSelect.append($(`<option value="" disabled selected>Select Audio Group</option>`));
 	BusinessFullData.businessApp.cache.audioGroups.forEach((group) => {
 		agentAutoCacheAudioGroupSelect.append($(`<option value="${group.id}">${group.name}</option>`));
 	});
+	agentAutoCacheAudioExpiryInput.val(24);
 
-	agentAutoCacheExpiryInput.val(24);
-
+	// Embedding Settings
+    agentCacheSettingsAutoCacheEmbeddingCheckbox.prop("checked", false).change();
+    agentAutoCacheEmbeddingGroupSelect.empty();
+    agentAutoCacheEmbeddingGroupSelect.append($(`<option value="" disabled selected>Select Embedding Group</option>`));
+    BusinessFullData.businessApp.cache.embeddingGroups.forEach((group) => {
+        agentAutoCacheEmbeddingGroupSelect.append($(`<option value="${group.id}">${group.name}</option>`));
+	});
+    agentAutoCacheEmbeddingExpiryInput.val(24);
 
 	// Scripts
 	agentScriptsListTab.find("tbody").empty();
@@ -660,6 +774,12 @@ function ValidateAgentTab(onlyRemove = true) {
 		errors.push(...isUtterancesTabValid.errors);
 	}
 
+	const isInterruptionsTabValid = validateAgentInterruptionsTab(onlyRemove);
+	if (!isInterruptionsTabValid.isValid) {
+		isValid = false;
+		errors.push(...isInterruptionsTabValid.errors);
+	}
+
 	const isIntegrationsTabValid = validateAgentIntegrationsTab(onlyRemove);
 	if (!isIntegrationsTabValid.isValid) {
 		isValid = false;
@@ -720,6 +840,7 @@ function FillAgentsManagerTab() {
 	FillAgentContextTab();
 	fillAgentPersonalityTab();
 	fillAgentUtterancesTab();
+	fillAgentInterruptionsTab();
 	fillAgentScriptsListTab();
 	fillIntegrationsFromAgentData();
 	fillAgentCacheTab();
@@ -1111,6 +1232,206 @@ function validateAgentUtterancesTab(onlyRemove = true) {
 	};
 }
 
+// Interruptions Tab Functions
+function fillAgentInterruptionsTab() {
+	const interruptions = CurrentManageAgentData.interruptions;
+
+	if (!interruptions) return; // Safeguard for older data models
+
+	// Fill Turn-end
+	editAgentTurnEndTypeSelect.val(interruptions.turnEnd.type.value).change();
+	editAgentTurnEndViaVADAudioActivityDuration.val(interruptions.turnEnd.vadSilenceDurationMS);
+	editAgentTurnEndViaAIUseAgentLLM.prop("checked", interruptions.turnEnd.useAgentLLM).change();
+	if (!interruptions.turnEnd.useAgentLLM && interruptions.turnEnd.llmIntegration) {
+		agentTurnEndLLMIntegrationManager.load(interruptions.turnEnd.llmIntegration);
+	} else {
+		agentTurnEndLLMIntegrationManager.reset();
+	}
+
+	// Fill Pause Trigger
+	agentInterruptionPauseTypeSelect.val(interruptions.pauseTrigger.type).change();
+	agentInterruptionPauseVADDuration.val(interruptions.pauseTrigger.vadDurationMS);
+	agentInterruptionPauseWordCount.val(interruptions.pauseTrigger.wordCount);
+
+	// Fill Verification
+	enableAgentInterruptionVerification.prop("checked", interruptions.verification.enabled).change();
+	agentInterruptionVerifyAIUseAgentLLM.prop("checked", interruptions.verification.useAgentLLM).change();
+	if (interruptions.verification.enabled && !interruptions.verification.useAgentLLM && interruptions.verification.llmIntegration) {
+		agentInterruptionVerifyLLMIntegrationManager.load(interruptions.verification.llmIntegration);
+	} else {
+		agentInterruptionVerifyLLMIntegrationManager.reset();
+	}
+}
+
+function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+	const original = CurrentManageAgentData.interruptions;
+
+	// Build changes object from UI
+	changes.turnEnd = {
+		type: parseInt(editAgentTurnEndTypeSelect.val())
+	};
+
+	if (changes.turnEnd.type != original.turnEnd.type.value) {
+        hasChanges = true;
+	}
+
+	if (changes.turnEnd == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) {
+		changes.turnEnd.vadSilenceDurationMS = parseInt(editAgentTurnEndViaVADAudioActivityDuration.val());
+
+		if (original.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.VAD &&
+			original.turnEnd.vadSilenceDurationMS != changes.turnEnd.vadSilenceDurationMS) {
+            hasChanges = true;
+		}
+	}
+	else if (changes.turnEnd == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
+		changes.turnEnd.useAgentLLM = editAgentTurnEndViaAIUseAgentLLM.is(":checked");
+
+		if (!changes.turnEnd.useAgentLLM) {
+			changes.turnEnd.llmIntegration = agentTurnEndLLMIntegrationManager.getData();
+		}
+
+		if (original.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.AI &&
+			(
+				original.turnEnd.useAgentLLM != changes.turnEnd.useAgentLLM || 
+				(original.turnEnd.useAgentLLM && changes.turnEnd.useAgentLLM && original.turnEnd.llmIntegration != changes.turnEnd.llmIntegration) // todo might need better difference checking
+			)
+		) {
+            hasChanges = true;
+		}
+	}
+
+	changes.useTurnByTurnMode = editAgentTurnByTurnMode.is(":checked");
+
+	if (original.useTurnByTurnMode != changes.useTurnByTurnMode) {
+        hasChanges = true;
+    }
+
+	if (changes.useTurnByTurnMode) {
+		changes.includeInterruptedSpeechInTurnByTurnMode = editAgentTurnByTurnIncludeInterruptedSpeech.is(":checked");
+
+		if (original.useTurnByTurnMode && original.includeInterruptedSpeechInTurnByTurnMode != changes.includeInterruptedSpeechInTurnByTurnMode) {
+            hasChanges = true;
+        }
+	}
+	else {
+		changes.pauseTrigger = {
+			type: agentInterruptionPauseTypeSelect.val()
+		};
+
+		if (changes.pauseTrigger.type != original.pauseTrigger.type.value) {
+			hasChanges = true;
+        }
+
+		if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
+			changes.pauseTrigger.vadDurationMS = parseInt(agentInterruptionPauseVADDuration.val());
+
+			if (original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD &&
+				original.pauseTrigger.vadDurationMS != changes.pauseTrigger.vadDurationMS) {
+                hasChanges = true;
+            }
+		}
+		else if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
+			changes.pauseTrigger.wordCount = parseInt(agentInterruptionPauseWordCount.val());
+
+			if (original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT &&
+				original.pauseTrigger.wordCount != changes.pauseTrigger.wordCount) {
+                hasChanges = true;
+            }
+        }
+
+		changes.verification = {
+			enabled: enableAgentInterruptionVerification.is(":checked")
+		};
+
+		if (original.verification.enabled != changes.verification.enabled) {
+			hasChanges = true;
+        }
+
+		if (changes.verification.enabled) {
+			changes.verification.useAgentLLM = agentInterruptionVerifyAIUseAgentLLM.is(":checked");
+
+			if (!changes.verification.useAgentLLM) {
+				changes.verification.llmIntegration = agentInterruptionVerifyLLMIntegrationManager.getData();
+			}
+
+			if (original.verification.enabled &&
+				(
+					changes.verification.useAgentLLM != original.verification.useAgentLLM ||
+					(changes.verification.useAgentLLM && original.verification.useAgentLLM && changes.verification.llmIntegration != original.verification.llmIntegration) // todo might need better difference checking
+				)
+			) {
+                hasChanges = true;
+			}
+
+		}
+	}
+
+	return { hasChanges, changes };
+}
+
+function validateAgentInterruptionsTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// Validate Turn-end
+	const turnEndType = parseInt(editAgentTurnEndTypeSelect.val());
+	if (turnEndType == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) { // VAD
+		const duration = parseInt(editAgentTurnEndViaVADAudioActivityDuration.val());
+		if (isNaN(duration) || duration <= 0) {
+			isValid = false;
+			errors.push("Turn-end silence duration must be a positive number.");
+			if (!onlyRemove) editAgentTurnEndViaVADAudioActivityDuration.addClass("is-invalid");
+		} else {
+			editAgentTurnEndViaVADAudioActivityDuration.removeClass("is-invalid");
+		}
+	} else if (turnEndType == AGENT_INTERRUPTION_TURN_END_TYPE.AI) { // AI
+		if (!editAgentTurnEndViaAIUseAgentLLM.is(":checked")) {
+			const validation = agentTurnEndLLMIntegrationManager.validate();
+			if (!validation.isValid) {
+				isValid = false;
+				errors.push(...validation.errors.map(e => `Turn-end LLM: ${e}`));
+			}
+		}
+	}
+
+	// Validate Pause Trigger
+	const pauseTriggerType = parseInt(agentInterruptionPauseTypeSelect.val());
+	if (pauseTriggerType == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
+		const duration = parseInt(agentInterruptionPauseVADDuration.val());
+		if (isNaN(duration) || duration <= 0) {
+			isValid = false;
+			errors.push("Pause trigger voice duration must be a positive number.");
+			if (!onlyRemove) agentInterruptionPauseVADDuration.addClass("is-invalid");
+		} else {
+			agentInterruptionPauseVADDuration.removeClass("is-invalid");
+		}
+	} else if (pauseTriggerType == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
+		const count = parseInt(agentInterruptionPauseWordCount.val());
+		if (isNaN(count) || count <= 0) {
+			isValid = false;
+			errors.push("Pause trigger word count must be a positive number.");
+			if (!onlyRemove) agentInterruptionPauseWordCount.addClass("is-invalid");
+		} else {
+			agentInterruptionPauseWordCount.removeClass("is-invalid");
+		}
+	}
+
+	// Validate Verification
+	if (enableAgentInterruptionVerification.is(":checked")) {
+		if (!agentInterruptionVerifyAIUseAgentLLM.is(":checked")) {
+			const validation = agentInterruptionVerifyLLMIntegrationManager.validate();
+			if (!validation.isValid) {
+				isValid = false;
+				errors.push(...validation.errors.map(e => `Verification LLM: ${e}`));
+			}
+		}
+	}
+
+	return { isValid, errors };
+}
+
 // Integration Tab Functions
 function fillIntegrationsFromAgentData() {
 	agentSTTIntegrationManager.load(CurrentManageAgentData.integrations.stt);
@@ -1177,17 +1498,38 @@ function validateAgentIntegrationsTab() {
 function fillAgentCacheTab() {
 	fillCacheGroupsList("message");
 	fillCacheGroupsList("audio");
+	fillCacheGroupsList("embedding");
 
 	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses) {
 		agentCacheSettingsAutoCacheAudioCheckbox.prop("checked", true).change();
 
 		agentAutoCacheAudioGroupSelect.val(CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId).change();
-		agentAutoCacheExpiryInput.val(CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours);
+		agentAutoCacheAudioExpiryInput.val(CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours);
+	}
+
+	if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses) {
+		agentCacheSettingsAutoCacheEmbeddingCheckbox.prop("checked", true).change();
+
+        agentAutoCacheEmbeddingGroupSelect.val(CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId).change();
+		agentAutoCacheEmbeddingExpiryInput.val(CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours);
 	}
 }
 
 function createCacheGroupSelectElement(type, index) {
-	const groups = type === "message" ? BusinessFullData.businessApp.cache.messageGroups : BusinessFullData.businessApp.cache.audioGroups;
+	var groups = [];
+	var index = 0;
+	if (type === "message") {
+		groups = BusinessFullData.businessApp.cache.messageGroups;
+		index = CurrentAgentCacheMessagesIndex++;
+	}
+	else if (type === "audio") {
+		groups = BusinessFullData.businessApp.cache.audioGroups;
+		index = CurrentAgentCacheAudiosIndex++;
+    }
+    else if (type === "embedding") {
+		groups = BusinessFullData.businessApp.cache.embeddingGroups;
+		index = CurrentAgentCacheEmbeddingsIndex++;
+	}
 
 	let options = '<option value="" disabled selected>Select Group</option>';
 	groups.forEach((group) => {
@@ -1209,14 +1551,22 @@ function createCacheGroupSelectElement(type, index) {
 }
 
 function fillCacheGroupsList(type) {
-	if (type === "message") {
-		CurrentAgentCacheMessages = structuredClone(CurrentManageAgentData.cache.messages);
-	} else if (type === "audio") {
-		CurrentAgentCacheAudios = structuredClone(CurrentManageAgentData.cache.audios);
-	}
+	var container = [];
+	var currentGroups = [];
 
-	const container = type === "message" ? messageCacheGroupsList : audioCacheGroupsList;
-	const currentGroups = type === "message" ? CurrentAgentCacheMessages : CurrentAgentCacheAudios;
+	if (type === "message") {
+		container = messageCacheGroupsList;
+		CurrentAgentCacheMessages = structuredClone(CurrentManageAgentData.cache.messages);
+		currentGroups = CurrentAgentCacheMessages;
+	} else if (type === "audio") {
+		container = audioCacheGroupsList;
+		CurrentAgentCacheAudios = structuredClone(CurrentManageAgentData.cache.audios);
+		currentGroups = CurrentAgentCacheAudios;
+	} else if (type === "embedding") {
+		container = embeddingsCacheGroupsList;
+		CurrentAgentCacheEmbeddings = structuredClone(CurrentManageAgentData.cache.embeddings);
+		currentGroups = CurrentAgentCacheEmbeddings;
+	}
 
 	// Clear existing items except alert
 	container.find(".cache-group-item").remove();
@@ -1245,27 +1595,55 @@ function CheckAgentCacheTabChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
-	// Auto Cache Audio Settings
-	changes.autoCacheAudioSettings = {};
+	// Embeddings
+    changes.embeddings = CurrentAgentCacheEmbeddings;
+    if (JSON.stringify(CurrentManageAgentData.cache.embeddings) !== JSON.stringify(changes.embeddings)) {
+        hasChanges = true;
+    }
 
-	changes.autoCacheAudioSettings.autoCacheAudioResponses = agentCacheSettingsAutoCacheAudioCheckbox.is(":checked");
-	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses !== changes.autoCacheAudioSettings.autoCacheAudioResponses) {
+	// Auto Cache Audio Settings
+	changes.audioCacheSettings = {};
+
+	changes.audioCacheSettings.autoCacheAudioResponses = agentCacheSettingsAutoCacheAudioCheckbox.is(":checked");
+	if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses !== changes.audioCacheSettings.autoCacheAudioResponses) {
 		hasChanges = true;
 	} 
 
-	if (changes.autoCacheAudioSettings.autoCacheAudioResponses) {
-		changes.autoCacheAudioSettings.autoCacheAudioResponseCacheGroupId = agentAutoCacheAudioGroupSelect.val();
+	if (changes.audioCacheSettings.autoCacheAudioResponses) {
+		changes.audioCacheSettings.autoCacheAudioResponseCacheGroupId = agentAutoCacheAudioGroupSelect.val();
 		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
-			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId !== changes.autoCacheAudioSettings.autoCacheAudioResponseCacheGroupId) {
+			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponseCacheGroupId !== changes.audioCacheSettings.autoCacheAudioResponseCacheGroupId) {
             hasChanges = true;
         }
 
-		changes.autoCacheAudioSettings.autoCacheAudioResponsesDefaultExpiryHours = parseInt(agentAutoCacheExpiryInput.val(), 10) || 0;
+		changes.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours = parseInt(agentAutoCacheAudioExpiryInput.val(), 10) || 0;
 		if (CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponses == true &&
-			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours !== changes.autoCacheAudioSettings.autoCacheAudioResponsesDefaultExpiryHours) {
+			CurrentManageAgentData.cache.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours !== changes.audioCacheSettings.autoCacheAudioResponsesDefaultExpiryHours) {
             hasChanges = true;
 		}
 	}
+
+	// Auto Cache Embedding Settings
+	changes.embeddingsCacheSettings = {};
+
+	changes.embeddingsCacheSettings.autoCacheEmbeddingResponses = agentCacheSettingsAutoCacheEmbeddingCheckbox.is(":checked");
+	if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponses) {
+        hasChanges = true;
+	}
+
+	if (changes.embeddingsCacheSettings.autoCacheEmbeddingResponses) {
+		changes.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId = agentAutoCacheEmbeddingGroupSelect.val();
+        if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses == true &&
+			CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponseCacheGroupId) {
+			hasChanges = true;
+		}
+
+		changes.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours = parseInt(agentAutoCacheEmbeddingExpiryInput.val(), 10) || 0;
+        if (CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponses == true &&
+			CurrentManageAgentData.cache.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours !== changes.embeddingsCacheSettings.autoCacheEmbeddingResponsesDefaultExpiryHours) {
+            hasChanges = true;
+        }
+    }
 
 
 	if (enableDisableButton) {
@@ -1296,20 +1674,6 @@ function validateAgentCacheTab(onlyRemove = true) {
 		}
 	});
 
-	// Validate Audio Cache Groups
-	audioCacheGroupsList.find('select[select-type^="cache-audio-group"]').each((index, select) => {
-		const value = $(select).val();
-		if (!value) {
-			isValid = false;
-			errors.push(`Audio cache group at position ${index + 1} must be selected`);
-			if (!onlyRemove) {
-				$(select).addClass("is-invalid");
-			}
-		} else {
-			$(select).removeClass("is-invalid");
-		}
-	});
-
 	// Validate unique selections for message cache groups
 	const selectedMessageGroups = new Set();
 	messageCacheGroupsList.find('select[select-type^="cache-message-group"]').each((index, select) => {
@@ -1325,6 +1689,20 @@ function validateAgentCacheTab(onlyRemove = true) {
 			selectedMessageGroups.add(value);
 		}
 	});
+
+	// Validate Audio Cache Groups
+	audioCacheGroupsList.find('select[select-type^="cache-audio-group"]').each((index, select) => {
+		const value = $(select).val();
+		if (!value) {
+			isValid = false;
+			errors.push(`Audio cache group at position ${index + 1} must be selected`);
+			if (!onlyRemove) {
+				$(select).addClass("is-invalid");
+			}
+		} else {
+			$(select).removeClass("is-invalid");
+		}
+	});	
 
 	// Validate unique selections for audio cache groups
 	const selectedAudioGroups = new Set();
@@ -1342,6 +1720,37 @@ function validateAgentCacheTab(onlyRemove = true) {
 		}
 	});
 
+	// Validate Embeddings Cache Groups
+	embeddingsCacheGroupsList.find('select[select-type^="cache-embeddings-group"]').each((index, select) => {
+        const value = $(select).val();
+        if (!value) {
+            isValid = false;
+            errors.push(`Embeddings cache group at position ${index + 1} must be selected`);
+            if (!onlyRemove) {
+                $(select).addClass("is-invalid");
+            }
+        } else {
+            $(select).removeClass("is-invalid");
+        }
+	});
+
+    // Validate unique selections for embeddings cache groups
+    const selectedEmbeddingsGroups = new Set();
+	embeddingsCacheGroupsList.find('select[select-type^="cache-embeddings-group"]').each((index, select) => {
+        const value = $(select).val();
+        if (value) {
+            if (selectedEmbeddingsGroups.has(value)) {
+                isValid = false;
+                errors.push(`Duplicate embeddings cache group selection at position ${index + 1}`);
+                if (!onlyRemove) {
+                    $(select).addClass("is-invalid");
+                }
+            }
+            selectedEmbeddingsGroups.add(value);
+        }
+    });
+
+	// Validate Auto Cache Audio
 	if (agentCacheSettingsAutoCacheAudioCheckbox.is(":checked")) {
 		// Validate that a cache group is selected
 		const autoCacheGroupId = agentAutoCacheAudioGroupSelect.val();
@@ -1356,17 +1765,44 @@ function validateAgentCacheTab(onlyRemove = true) {
 		}
 
 		// Validate that the expiry hours is a non-negative number
-		const autoCacheExpiryHours = parseInt(agentAutoCacheExpiryInput.val(), 10);
+		const autoCacheExpiryHours = parseInt(agentAutoCacheAudioExpiryInput.val(), 10);
 		if (isNaN(autoCacheExpiryHours) || autoCacheExpiryHours < 0) {
 			isValid = false;
 			errors.push("Auto Cache Expiry (Hours) must be a valid, non-negative number.");
 			if (!onlyRemove) {
-				agentAutoCacheExpiryInput.addClass("is-invalid");
+				agentAutoCacheAudioExpiryInput.addClass("is-invalid");
 			}
 		} else {
-			agentAutoCacheExpiryInput.removeClass("is-invalid");
+			agentAutoCacheAudioExpiryInput.removeClass("is-invalid");
 		}
 	}
+
+	// Validate Auto Cache Embedding
+	if (agentCacheSettingsAutoCacheEmbeddingCheckbox.is(":checked")) {
+        // Validate that a cache group is selected
+        const autoCacheGroupId = agentAutoCacheEmbeddingGroupSelect.val();
+        if (!autoCacheGroupId || autoCacheGroupId.trim() === "") {
+            isValid = false;
+            errors.push("Auto Cache Embedding Group must be selected when auto-caching is enabled.");
+            if (!onlyRemove) {
+                agentAutoCacheEmbeddingGroupSelect.addClass("is-invalid");
+            }
+        } else {
+            agentAutoCacheEmbeddingGroupSelect.removeClass("is-invalid");
+		}
+
+        // Validate that the expiry hours is a non-negative number
+        const autoCacheExpiryHours = parseInt(agentAutoCacheEmbeddingExpiryInput.val(), 10);
+        if (isNaN(autoCacheExpiryHours) || autoCacheExpiryHours < 0) {
+            isValid = false;
+            errors.push("Auto Cache Expiry (Hours) must be a valid, non-negative number.");
+            if (!onlyRemove) {
+                agentAutoCacheEmbeddingExpiryInput.addClass("is-invalid");
+            }
+        } else {
+            agentAutoCacheEmbeddingExpiryInput.removeClass("is-invalid");
+        }
+    }
 
 	return {
 		isValid,
@@ -3963,6 +4399,28 @@ function initAgentTab() {
 			providersData: BusinessTTSProvidersForIntegrations,
 		});
 
+		agentTurnEndLLMIntegrationManager = new IntegrationConfigurationManager('#agentTurnEndViaLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+			isLanguageBound: false, // Turn-end logic is universal, not per-language
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentInterruptionsTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentInterruptionsTab(true); },
+		});
+
+		agentInterruptionVerifyLLMIntegrationManager = new IntegrationConfigurationManager('#agentInterruptionVerifyLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+			isLanguageBound: false, // Verification logic is also universal
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentInterruptionsTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentInterruptionsTab(true); },
+		});
+
 		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
 			event.preventDefault();
@@ -4225,13 +4683,102 @@ function initAgentTab() {
 		}
 		initAgentUtterancesTabHandlers();
 
+		// Interruptions Tab Changes
+		function initAgentInterruptionsTabHandlers() {
+			// --- Turn-end Detection ---
+			editAgentTurnEndTypeSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+				agentTurnEndViaVADBox.hide();
+				agentTurnEndViaAIBox.hide();
+
+				if (selectedValue === "0") { // Turn End via VAD
+					agentTurnEndViaVADBox.show();
+				} else if (selectedValue === "2") { // Turn End via AI
+					agentTurnEndViaAIBox.show();
+				}
+
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			editAgentTurnEndViaAIUseAgentLLM.on("change", (event) => {
+				const isChecked = $(event.currentTarget).is(":checked");
+				agentTurnEndViaLLMIntegrationSelectBox.toggle(!isChecked);
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			editAgentTurnEndViaVADAudioActivityDuration.on("input", () => {
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			// Turn by Turn
+			editAgentTurnByTurnMode.on("change", () => {
+				var isChecked = editAgentTurnByTurnMode.is(":checked");
+
+				if (isChecked) {
+					editAgentTurnByTurnIncludeInterruptedSpeech.prop("disabled", false);
+					agentInterruptionPauseTypeSelect.children().first().prop("selected", true).change();
+					agentInterruptionPauseTypeSelect.change().prop("disabled", true);
+					enableAgentInterruptionVerification.prop("checked", false).change().prop("disabled", true);
+				}
+				else {
+					editAgentTurnByTurnIncludeInterruptedSpeech.prop("checked", false).change().prop("disabled", true);
+					agentInterruptionPauseTypeSelect.prop("disabled", false);
+                    enableAgentInterruptionVerification.prop("disabled", false);
+				}
+			});
+
+			// --- Agent Pause Trigger ---
+			agentInterruptionPauseTypeSelect.on("change", (event) => {
+				const selectedValue = $(event.currentTarget).val();
+				agentInterruptionPauseViaVADBox.hide();
+				agentInterruptionPauseViaWordsBox.hide();
+
+				if (selectedValue === "vad") {
+					agentInterruptionPauseViaVADBox.show();
+				} else if (selectedValue === "words") {
+					agentInterruptionPauseViaWordsBox.show();
+				}
+
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			agentInterruptionPauseVADDuration.on("input", () => {
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			agentInterruptionPauseWordCount.on("input", () => {
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			// --- Interruption Verification ---
+			enableAgentInterruptionVerification.on("change", (event) => {
+				const isChecked = $(event.currentTarget).is(":checked");
+				agentInterruptionVerificationContainer.toggle(isChecked);
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+
+			agentInterruptionVerifyAIUseAgentLLM.on("change", (event) => {
+				const isChecked = $(event.currentTarget).is(":checked");
+				agentInterruptionVerifyLLMIntegrationSelectBox.toggle(!isChecked);
+				CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+			});
+		}
+		initAgentInterruptionsTabHandlers();
+
 		// Cache Tab Changes
 		function initAgentCacheTabHandlers() {
 			// Message Cache
 			addMessageCacheGroupButton.on("click", (event) => {
 				event.preventDefault();
-				const newIndex = messageCacheGroupsList.find(".cache-group-item").length;
-				messageCacheGroupsList.append(createCacheGroupSelectElement("message", newIndex));
+				messageCacheGroupsList.append(createCacheGroupSelectElement("message"));
 
 				CheckAgentTabHasChanges();
 			});
@@ -4279,8 +4826,7 @@ function initAgentTab() {
 			// Audio Cache
 			addAudioCacheGroupButton.on("click", (event) => {
 				event.preventDefault();
-				const newIndex = audioCacheGroupsList.find(".cache-group-item").length;
-				audioCacheGroupsList.append(createCacheGroupSelectElement("audio", newIndex));
+				audioCacheGroupsList.append(createCacheGroupSelectElement("audio"));
 
 				CheckAgentTabHasChanges();
 			});
@@ -4321,7 +4867,55 @@ function initAgentTab() {
 				CheckAgentTabHasChanges();
 			});
 
-			// Settings
+			// Embeddings
+			addEmbeddingCacheGroupButton.on("click", (event) => {
+				event.preventDefault();
+				embeddingsCacheGroupsList.append(createCacheGroupSelectElement("embedding"));
+
+                CheckAgentTabHasChanges();
+			});
+
+			embeddingsCacheGroupsList.on("change", 'select[select-type^="cache-embedding-group"]', (event) => {
+				const currentElement = $(event.currentTarget);
+				const currentValue = currentElement.val();
+
+                // check if select has this value
+				const allSelectElements = embeddingsCacheGroupsList.find(`select[select-type="cache-embedding-group"]`);
+				const anyHasSelectedValue = allSelectElements.filter((index, select) => $(select).val() === currentValue).length > 1;
+
+				if (anyHasSelectedValue) {
+                    AlertManager.createAlert({
+                        type: "warning",
+                        message: "Embedding cache group has already been selected.",
+                        timeout: 6000,
+                    });
+					currentElement.val("");
+					return;
+				}
+
+				const index = currentElement.closest(".cache-group-item").data("index");
+				if (currentValue) {
+					CurrentAgentCacheEmbeddings[index] = currentValue;
+				} else {
+                    CurrentAgentCacheEmbeddings.splice(index, 1);
+				}
+
+				validateAgentCacheTab(true);
+				CheckAgentTabHasChanges();
+			});
+
+			embeddingsCacheGroupsList.on("click", '[button-type="remove-cache-group"]', (event) => {
+				const parent = $(event.currentTarget).closest(".cache-group-item");
+				const index = parent.data("index");
+				CurrentAgentCacheEmbeddings.splice(index, 1);
+
+				parent.remove();
+
+                validateAgentCacheTab(true);
+                CheckAgentTabHasChanges();
+			});
+
+			// Auto Cache Audio Settings
 			agentCacheSettingsAutoCacheAudioCheckbox.on("change", (e) => {
 				var isChecked = $(e.currentTarget).is(":checked");
 
@@ -4336,10 +4930,30 @@ function initAgentTab() {
 				CheckAgentTabHasChanges();
 			});
 
-			agentAutoCacheExpiryInput.on("change", (e) => {
+			agentAutoCacheAudioExpiryInput.on("change", (e) => {
                 validateAgentCacheTab(true);
                 CheckAgentTabHasChanges();
 			});
+
+			// Auto Cache Embedding Settings
+			agentCacheSettingsAutoCacheEmbeddingCheckbox.on("change", (e) => {
+				var isChecked = $(e.currentTarget).is(":checked");
+
+				agentCacheSettingsAutoCacheEmbeddingBox.toggleClass("d-none", !isChecked);
+
+                validateAgentCacheTab(true);
+                CheckAgentTabHasChanges();
+			});
+
+			agentAutoCacheEmbeddingGroupSelect.on("change", (e) => {
+                validateAgentCacheTab(true);
+                CheckAgentTabHasChanges();
+			});
+
+			agentAutoCacheEmbeddingExpiryInput.on("change", (e) => {
+                validateAgentCacheTab(true);
+				CheckAgentTabHasChanges();
+            });
 		}
 		initAgentCacheTabHandlers();
 

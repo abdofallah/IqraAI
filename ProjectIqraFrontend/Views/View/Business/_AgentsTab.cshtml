@@ -69,10 +69,16 @@
                     <button class="nav-link" id="agents-manager-utterances-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-utterances" type="button" role="tab" aria-controls="agents-manager-utterances" aria-selected="true">Utterances</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="agents-manager-interruptions-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-interruptions" type="button" role="tab" aria-controls="agents-manager-interruptions" aria-selected="true">Interruptions</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="agents-manager-scripts-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-scripts" type="button" role="tab" aria-controls="agents-manager-scripts" aria-selected="true">Scripts</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="agents-manager-integrations-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-integrations" type="button" role="tab" aria-controls="agents-manager-integrations" aria-selected="true">Integrations</button>
+                </li>
+                <li class="nav-item me-2" role="presentation">
+                    <button class="nav-link" id="agents-manager-knowledgebases-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-knowledgebases" type="button" role="tab" aria-controls="agents-manager-knowledgebases" aria-selected="true">Knowledge Base</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="agents-manager-cache-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache" type="button" role="tab" aria-controls="agents-manager-cache" aria-selected="true">Cache</button>
@@ -244,6 +250,162 @@
                         <textarea class="form-control" id="editAgentPersonalityGreetingInput" placeholder="The opening message agent speaks"></textarea>
                     </div>
                 </div>
+                <!-- Interruptions -->
+                <div class="tab-pane fade w-100" id="agents-manager-interruptions" role="tabpanel" aria-labelledby="agents-manager-interruptions-tab" tabindex="0">
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="editAgentTurnEndTypeSelect">
+                            <span>Turn-end Detection </span>
+
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Defines how the system detects that the <strong>user</strong> has finished speaking.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="editAgentTurnEndTypeSelect">
+                            <option disabled selected>Select End-Turn Detection Type</option>
+                            <option value="0">Turn End via VAD (Voice Activity Detection)</option>
+                            <option value="1">Turn End via Response (STT transcription)</option>
+                            <option value="2">Turn End via AI (LLM decides)</option>
+                            <option value="3">Turn End via ML (Smart-turn end Classification)</option>
+                        </select>
+                        <div class="w-100 agent-turn-end-type-box" box-type="turnendviavad">
+                            <div class="">
+                                <label class="form-label btn-ic-span-align" for="editAgentTurnEndViaVADAudioActivityDuration">
+                                    <span>Silence Duration (Milliseconds) </span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Duration of silence after user speech to trigger turn-end.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="editAgentTurnEndViaVADAudioActivityDuration" value="300">
+                            </div>
+                        </div>
+                        <div class="w-100 agent-turn-end-type-box" box-type="turnendviaai">
+                            <div class="form-check form-switch">
+                                <div style="display: inline-block; vertical-align: middle;">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="editAgentTurnEndViaAIUseAgentLLM">
+                                    <label class="form-label mb-0" for="editAgentTurnEndViaAIUseAgentLLM">
+                                        <span>Use Agent's LLM for turn-end detection?</span>
+                                    </label>
+                                </div>
+
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the main LLM of the agent to check for user speech turn end. If unchecked, you can specify a separate, potentially faster LLM.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+
+                            <div class="mt-3" id="agentTurnEndViaLLMIntegrationSelectBox">
+                                <label class="form-label">Turn-End LLM Integration</label>
+                                <div id="agentTurnEndViaLLMIntegrationContainer">
+                                    <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Turn by Turn/Disable Interruption -->
+                    <div class="mb-3 agent-interruption-llm-verify-box">
+                        <div class="form-check form-switch mb-2">
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <input type="checkbox" role="switch" class="form-check-input" id="editAgentTurnByTurnMode">
+                                <label class="form-label mb-0" for="editAgentTurnByTurnMode">
+                                    <span>Disable Interruptions (Use Turn by Turn)?</span>
+                                </label>
+                            </div>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Use Turn by Turn mode by letting only agent or user speak during their turn without interrupting each other.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </div>
+
+                        <div class="form-check form-switch">
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <input type="checkbox" role="switch" class="form-check-input" id="editAgentTurnByTurnIncludeInterruptedSpeech" disabled>
+                                <label class="form-label mb-0" for="editAgentTurnByTurnIncludeInterruptedSpeech">
+                                    <span>Include Interrupted Speech in Next Turn?</span>
+                                </label>
+                            </div>
+
+                            <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Include the user speech spoken during the agent's turn in the next user turn instead of discarding it.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!--  Agent Pause Trigger -->
+                    <div class="mb-3">
+                        <label class="form-label btn-ic-span-align" for="agentInterruptionPauseTypeSelect">
+                            <span>Agent Speech Interrupted Pause Trigger </span>
+                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="What initially triggers the agent's speech to pause when a user beigns to interrupt the agent's speech.">
+                                <i class="fa-regular fa-circle-question"></i>
+                            </a>
+                        </label>
+                        <select class="form-select" id="agentInterruptionPauseTypeSelect">
+                            <option disabled selected>Select Agent Pause Trigger</option>
+                            <option value="vad">Pause via VAD (Voice Activity Duration)</option>
+                            <option value="words">Pause via Transcription (Word Count)</option>
+                        </select>
+
+                        <!-- Conditional box for VAD -->
+                        <div class="w-100 agent-interruption-pause-type-box" box-type="pauseviavad" style="display: none;">
+                            <div class="">
+                                <label class="form-label btn-ic-span-align" for="agentInterruptionPauseVADDuration">
+                                    <span>User Voice Duration (Milliseconds)</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The agent will pause its speech after the user has spoken for this duration.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="agentInterruptionPauseVADDuration" value="100">
+                            </div>
+                        </div>
+
+                        <!-- Conditional box for Word Count -->
+                        <div class="w-100 agent-interruption-pause-type-box" box-type="pauseviawords" style="display: none;">
+                            <div class="">
+                                <label class="form-label btn-ic-span-align" for="agentInterruptionPauseWordCount">
+                                    <span>Transcribed Word Count</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="The agent will pause its speech after this many words have been transcribed from the user's speech.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <input type="number" class="form-control" id="agentInterruptionPauseWordCount" value="2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interruption Verification -->
+                    <div class="agent-interruption-llm-verify-box">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enableAgentInterruptionVerification">
+                            <label class="form-check-label btn-ic-span-align" for="enableAgentInterruptionVerification">
+                                <span>Enable AI Interruption Verification</span>
+                                <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="If enabled, after the user finishes speaking, an LLM will verify if the interruption was valid (e.g., a question) or just noise (e.g., a cough). If invalid, the agent may resume its original speech.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </label>
+                        </div>
+
+                        <!-- Conditional container for AI Verification settings -->
+                        <div class="w-100" id="agentInterruptionVerificationContainer" style="display: none;">
+                            <div class="form-check form-switch mt-3">
+                                <div style="display: inline-block; vertical-align: middle;">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="agentInterruptionVerifyAIUseAgentLLM">
+                                    <label class="form-label mb-0" for="agentInterruptionVerifyAIUseAgentLLM">
+                                        <span>Use Agent's main LLM for verification?</span>
+                                    </label>
+                                </div>
+                                <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the main LLM of the agent to decide if the user's speech is a valid interruption. If unchecked, you can specify a separate, potentially faster LLM.">
+                                    <i class="fa-regular fa-circle-question"></i>
+                                </a>
+                            </div>
+
+                            <div class="mt-3" id="agentInterruptionVerifyLLMIntegrationSelectBox">
+                                <label class="form-label">Interruption Verification LLM</label>
+                                <div id="agentInterruptionVerifyLLMIntegrationContainer">
+                                    <!-- The IntegrationConfigurationManager class will automatically build the UI here. -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Scripts -->
                 <div class="tab-pane fade w-100" id="agents-manager-scripts" role="tabpanel" aria-labelledby="agents-manager-scripts-tab" tabindex="0">
                     <!-- Scripts List Tab -->
@@ -411,6 +573,10 @@
                         </div>
                     </div>
                 </div>
+                <!-- Knowledge Base-->
+                <div class="tab-pane fade w-100" id="agents-manager-knowledgebases" role="tabpanel" aria-labelledby="agents-manager-knowledgebases-tab" tabindex="0">
+
+                </div>
                 <!-- Cache -->
                 <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">
                     <ul class="nav mb-3" id="agents-manager-cache-inner-tab" role="tablist">
@@ -419,6 +585,9 @@
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link me-2" id="agents-manager-cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-audio" type="button" role="tab" aria-controls="agents-manager-cache-inner-audio" aria-selected="false">Audio</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link me-2" id="agents-manager-cache-inner-embeddings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-embeddings" type="button" role="tab" aria-controls="agents-manager-cache-inner-embeddings" aria-selected="false">Embeddings</button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="agents-manager-cache-inner-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-cache-inner-settings" type="button" role="tab" aria-controls="agents-manager-cache-inner-settings" aria-selected="false">Settings</button>
@@ -448,9 +617,20 @@
                             </button>
                         </div>
 
+                        <!-- Embeddings Cache -->
+                        <div class="tab-pane fade w-100" id="agents-manager-cache-inner-embeddings" role="tabpanel" tabindex="0">
+                            <div id="embeddingsCacheGroupsList">
+                                <!-- Dynamic list of embedding groups will be added here -->
+                            </div>
+                            <button class="btn btn-light mt-2" id="addEmbeddingCacheGroup">
+                                <i class="fa-regular fa-plus me-2"></i>
+                                <span>Add Embedding Group</span>
+                            </button>
+                        </div>
+
                         <!-- Settings -->
                         <div class="tab-pane fade w-100" id="agents-manager-cache-inner-settings" role="tabpanel" tabindex="0">
-                            <div class="w-100 agent-audio-cache-settings-box">
+                            <div class="w-100 agent-audio-cache-settings-box mb-3">
                                 <div class="form-check form-switch">
                                     <div style="display: inline-block; vertical-align: middle;">
                                         <input type="checkbox" role="switch" class="form-check-input" id="agentCacheSettingsAutoCacheAudio">
@@ -472,13 +652,47 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="form-label btn-ic-span-align" for="agentAutoCacheExpiryInput">
+                                        <label class="form-label btn-ic-span-align" for="agentAutoCacheAudioExpiryInput">
                                             <span>Auto Audio Cache Expiry (Hours)</span>
                                             <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long before auto-cached queries expire. Set to 0 for no expiry.">
                                                 <i class="fa-regular fa-circle-question"></i>
                                             </a>
                                         </label>
-                                        <input type="number" class="form-control" id="agentAutoCacheExpiryInput" min="0" value="24" step="1">
+                                        <input type="number" class="form-control" id="agentAutoCacheAudioExpiryInput" min="0" value="24" step="1">
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="w-100 agent-embedding-cache-settings-box">
+                                <div class="form-check form-switch">
+                                    <div style="display: inline-block; vertical-align: middle;">
+                                        <input type="checkbox" role="switch" class="form-check-input" id="agentCacheSettingsAutoCacheEmbedding">
+                                        <label class="form-label mb-0" for="agentCacheSettingsAutoCacheEmbedding">
+                                            <span>Auto Cache Embedding Queries?</span>
+                                        </label>
+                                    </div>
+
+                                    <a style="display: inline-block; vertical-align: middle;" href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="If enabled, will auto cache all vectors generated results into the specified embedding cache group.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </div>
+
+                                <div class="mt-3 d-none" id="agentCacheSettingsAutoCacheEmbeddingBox">
+                                    <div class="mb-2">
+                                        <label class="form-label" for="agentAutoCacheEmbeddingGroupSelect">Auto Embedding Cache Group</label>
+                                        <select class="form-select" id="agentAutoCacheEmbeddingGroupSelect">
+                                            <!-- Dynamically Generated -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label btn-ic-span-align" for="agentAutoCacheEmbeddingExpiryInput">
+                                            <span>Auto Embedding Cache Expiry (Hours)</span>
+                                            <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="How long before auto-cached queries expire. Set to 0 for no expiry.">
+                                                <i class="fa-regular fa-circle-question"></i>
+                                            </a>
+                                        </label>
+                                        <input type="number" class="form-control" id="agentAutoCacheEmbeddingExpiryInput" min="0" value="24" step="1">
                                     </div>
                                 </div>
 

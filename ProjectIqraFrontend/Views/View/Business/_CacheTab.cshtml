@@ -11,6 +11,9 @@
             <li class="nav-item me-2" role="presentation">
                 <button class="nav-link" id="cache-inner-audio-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-audio" type="button" role="tab" aria-controls="cache-inner-audio" aria-selected="false">Audios Group</button>
             </li>
+            <li class="nav-item me-2" role="presentation">
+                <button class="nav-link" id="cache-inner-embeddings-tab" data-bs-toggle="pill" data-bs-target="#cache-inner-embeddings" type="button" role="tab" aria-controls="cache-inner-embeddings" aria-selected="false">Embeddings Group</button>
+            </li>
         </ul>
 
         <!-- Message Group Breadcrumb -->
@@ -120,6 +123,63 @@
                 </ol>
             </nav>
             <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveAudioCacheButton">
+                <i class='fa-regular fa-floppy-disk'></i>
+                <span> Save</span>
+            </button>
+        </div>
+    
+        <!-- Embedding Group Breadcrumb -->
+        <div class="d-flex flex-column align-items-center justify-content-between fade d-none w-100" id="embeddingGroupBreadcrumb">
+            <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item">
+                            <a href="#" id="switchBackToEmbeddingGroupsListTab">Embeddings Group</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <span id="currentEmbeddingGroupName">Group Name</span>
+                        </li>
+                    </ol>
+                </nav>
+                <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveEmbeddingGroupButton">
+                    <i class='fa-regular fa-floppy-disk'></i>
+                    <span> Save</span>
+                </button>
+            </div>
+
+            <div class="d-flex flex-row align-items-center justify-content-between w-100">
+                <!-- Group Manager Tabs -->
+                <ul class="nav w-100" id="embeddingGroupManagerInnerTab" role="tablist">
+                    <li class="nav-item me-2" role="presentation">
+                        <button class="nav-link active" id="embeddingGroupManagerGeneralTab" data-bs-toggle="pill" data-bs-target="#embeddingGroupManagerGeneral" type="button" role="tab">General</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="embeddingGroupManagerListTab" data-bs-toggle="pill" data-bs-target="#embeddingGroupManagerList" type="button" role="tab">List</button>
+                    </li>
+                </ul>
+                <div id="embeddingCacheGroupManagerMultilanguageContainer">
+                </div>
+            </div>
+        </div>
+
+        <!-- Embeddng Cache Breadcrumb -->
+        <div class="d-flex flex-row align-items-center justify-content-between fade d-none w-100" id="embeddingCacheBreadcrumb">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <span>Embeddings Group</span>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="#" id="switchBackToEmbeddingCacheListTab">
+                            <span id="currentEmbeddingGroupNameInCache">Group Name</span>
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        <span id="currentEmbeddingCacheName">Cache Name</span>
+                    </li>
+                </ol>
+            </nav>
+            <button class="btn btn-primary btn-sm btn-ic-span-align" id="saveEmbeddingCacheButton">
                 <i class='fa-regular fa-floppy-disk'></i>
                 <span> Save</span>
             </button>
@@ -247,12 +307,6 @@
                         <label class="form-label" for="messageCacheResponseInput">Response</label>
                         <input type="text" class="form-control" id="messageCacheResponseInput" placeholder="Message Response">
                     </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="messageCacheCaseSensitiveCheck">
-                        <label class="form-check-label" for="messageCacheCaseSensitiveCheck">
-                            Is query case sensitive?
-                        </label>
-                    </div>
                 </div>
             </div>
 
@@ -369,6 +423,114 @@
                             </a>
                         </label>
                         <input type="number" class="form-control" id="audioCacheExpiryInput" placeholder="Use group default">
+                    </div>
+                </div>
+            </div>
+        
+            <!-- Embeddings Groups Section -->
+            <div class="tab-pane fade w-100" id="cache-inner-embeddings" role="tabpanel">
+                <!-- Embedding Groups List -->
+                <div class="fade show w-100" id="embeddingGroupsListTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 300px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingGroupButton">
+                                <span>+ Add New Embedding Group</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Embedding Group" aria-label="Embedding Group">
+                            <button class="input-group-button btn btn-primary">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="embeddingGroupsTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Groups will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            
+                <!-- Embedding Groups Manager -->
+                <div class="fade d-none w-100" id="embeddingGroupManagerTab">
+                    <div class="tab-content" id="embeddingGroupManagerTabContent">
+                        <!-- General Tab -->
+                        <div class="tab-pane fade show active" id="embeddingGroupManagerGeneral" role="tabpanel" tabindex="0">
+                            <div>
+                                <label class="form-label" for="embeddingGroupNameInput">Name</label>
+                                <input type="text" class="form-control" id="embeddingGroupNameInput" placeholder="Group Name">
+                            </div>
+                        </div>
+
+                        <!-- List Tab -->
+                        <div class="tab-pane fade" id="embeddingGroupManagerList" role="tabpanel" tabindex="0">
+                            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                                <div style="min-width: 300px" class="me-4">
+                                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingCacheButton">
+                                        <span>+ Add New Embedding</span>
+                                    </button>
+                                </div>
+                                <div class="input-group w-100">
+                                    <input type="text" class="form-control" placeholder="Embedding Query" aria-label="Embedding Query">
+                                    <button class="input-group-button btn btn-primary">
+                                        <i class='fa-regular fa-magnifying-glass'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <table id="embeddingCacheTable" class="table w-100">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Query</th>
+                                        <th scope="col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Embedding cache entries will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Embedding Cache List -->
+                <div class="fade d-none w-100" id="embeddingCacheListTab">
+                    <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                        <div style="min-width: 300px" class="me-4">
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewEmbeddingCacheButton">
+                                <span>+ Add New Embedding</span>
+                            </button>
+                        </div>
+                        <div class="input-group w-100">
+                            <input type="text" class="form-control" placeholder="Embedding Query" aria-label="Embedding Query">
+                            <button class="input-group-button btn btn-primary">
+                                <i class='fa-regular fa-magnifying-glass'></i>
+                            </button>
+                        </div>
+                    </div>
+                    <table id="embeddingCacheTable" class="table w-100">
+                        <thead>
+                            <tr>
+                                <th scope="col">Query</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Embedding entries will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            
+                <!-- Embedding Cache Manager -->
+                <div class="fade d-none w-100" id="embeddingCacheManagerTab">
+                    <div class="mb-3">
+                        <label class="form-label" for="embeddingCacheQueryInput">Query</label>
+                        <input type="text" class="form-control" id="embeddingCacheQueryInput" placeholder="Embedding Query">
                     </div>
                 </div>
             </div>

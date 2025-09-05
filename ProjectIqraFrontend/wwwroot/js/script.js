@@ -104,6 +104,11 @@ function changeActiveSidebarLink(toggleId, navId, bodyId, headerId) {
 			toggle.classList.toggle("fa-xmark");
 			bodypd.classList.toggle("body-pd");
 			headerpd.classList.toggle("header-body-pd");
+
+			setTimeout(() => {
+				setDynamicNavHeight();
+				setDynamicBodyHeight();
+			}, 50);
 		});
 	}
 }
@@ -258,10 +263,11 @@ async function handleNavLinkClick(event) {
 		newTabElement.removeClass("d-none");
 		setTimeout(() => {
 			newTabElement.addClass("show");
-			setTimeout(() => setDynamicBodyHeight(forTab), 10);
-
-			const subPath = getUrlSubPath();
-			$(document).trigger("tabShown", { tabId: forTab, urlSubPath: subPath });
+			setTimeout(() => {
+				setDynamicBodyHeight(forTab);
+				const subPath = getUrlSubPath();
+				$(document).trigger("tabShown", { tabId: forTab, urlSubPath: subPath });
+			}, 10);
 		}, 10);
 	}, 150);
 }

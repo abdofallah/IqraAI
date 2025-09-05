@@ -396,6 +396,270 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
+            // Interruptions
+            if (!changesRootElement.TryGetProperty("interruptions", out var interruptionsElement))
+            {
+                return result.SetFailureResult(
+                    "AddOrUpdateAgent:INTERRUPTION_MISSING",
+                    "Interruptions section not found."
+                );
+            }
+            else
+            {
+                if (!interruptionsElement.TryGetProperty("turnEnd", out var turnEndElement))
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:INTERRUPTION_TURN_END_MISSING",
+                        "Interruptions turn end section not found."
+                    );
+                }
+                else
+                {
+                    if (!turnEndElement.TryGetProperty("type", out var turnEndTypeElement) || turnEndTypeElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:INTERRUPTION_TURN_END_TYPE_INVALID",
+                            "Interruptions turn end type not found or invalid."
+                        );
+                    }
+                    var turnEndTypeInt = turnEndTypeElement.GetInt32();
+                    if (!Enum.IsDefined(typeof(AgentInterruptionTurnEndTypeENUM), turnEndTypeInt))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:INTERRUPTION_TURN_END_TYPE_UNDEFINED",
+                            "Interruptions turn end type not defined."
+                        );
+                    }
+                    newAgentData.Interruptions.TurnEnd.Type = (AgentInterruptionTurnEndTypeENUM)turnEndTypeInt;
+
+                    if (newAgentData.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
+                    {
+                        if (!interruptionsElement.TryGetProperty("vadSilenceDurationMS", out var vadSilenceDurationMSElement) || vadSilenceDurationMSElement.ValueKind != JsonValueKind.Number)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:INTERRUPTION_VAD_SILENCE_DURATION_MS_INVALID",
+                                "Interruptions VAD silence duration not found or invalid."
+                            );
+                        }
+
+                        newAgentData.Interruptions.TurnEnd.VadSilenceDurationMS = vadSilenceDurationMSElement.GetInt32();
+
+                        if (newAgentData.Interruptions.TurnEnd.VadSilenceDurationMS <= 0)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:INTERRUPTION_VAD_SILENCE_DURATION_MS_INVALID_VALUE",
+                                "Interruptions VAD silence duration must be greater than 0."
+                            );
+                        }
+                    }
+                    else if (newAgentData.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.AI)
+                    {
+                        if (!interruptionsElement.TryGetProperty("useAgentLLM", out var useAgentLlmElement) || 
+                            (useAgentLlmElement.ValueKind != JsonValueKind.False || useAgentLlmElement.ValueKind != JsonValueKind.True))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:INTERRUPTION_USE_AGENT_LLM_INVALID",
+                                "Interruptions use agent LLM not found or invalid."
+                            );
+                        }
+
+                        newAgentData.Interruptions.TurnEnd.UseAgentLLM = useAgentLlmElement.GetBoolean();
+                        if (newAgentData.Interruptions.TurnEnd.UseAgentLLM.Value)
+                        {
+                            if (!interruptionsElement.TryGetProperty("llmIntegration", out var llmIntegrationElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:INTERRUPTION_LLM_INTEGRATION_MISSING",
+                                    "Interruptions LLM integration not found."
+                                );
+                            }
+
+                            var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                                    businessId,
+                                    llmIntegrationElement,
+                                    "LLM",
+                                    null
+                                );
+                            if (!validationBuildResult.Success)
+                            {
+                                result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                                result.Message = validationBuildResult.Message;
+                                return result;
+                            }
+
+                            newAgentData.Interruptions.TurnEnd.LLMIntegration = validationBuildResult.Data;
+                        }
+                    }
+
+                    if (!interruptionsElement.TryGetProperty("useTurnByTurnMode", out var useTurnByTurnModeElement) || 
+                        (useTurnByTurnModeElement.ValueKind != JsonValueKind.False || useTurnByTurnModeElement.ValueKind != JsonValueKind.True))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:INTERRUPTION_USE_TURN_BY_TURN_MODE_INVALID",
+                            "Interruptions use turn by turn mode not found or invalid."
+                        );
+                    }
+                    else
+                    {
+                        // IF TURN BY TURN
+                        newAgentData.Interruptions.UseTurnByTurnMode = useTurnByTurnModeElement.GetBoolean();
+                        if (newAgentData.Interruptions.UseTurnByTurnMode)
+                        {
+                            if (!interruptionsElement.TryGetProperty("includeInterruptedSpeechInTurnByTurnMode", out var includeInterruptedSpeechInTurnByTurnModeElement) ||
+                                (includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.False || includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.True))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:INTERRUPTION_INCLUDE_INTERRUPTED_SPEECH_IN_TURN_BY_TURN_MODE_INVALID",
+                                    "Interruptions include interrupted speech in turn by turn mode not found or invalid."
+                                );
+                            }
+                            else
+                            {
+                                newAgentData.Interruptions.IncludeInterruptedSpeechInTurnByTurnMode = includeInterruptedSpeechInTurnByTurnModeElement.GetBoolean();
+                            }
+                        }
+                        // IF NOT TURN BY TURN
+                        // USE PAUSE TRIGGER AND LLM VERIFICATION
+                        else
+                        {
+                            if (!interruptionsElement.TryGetProperty("pauseTrigger", out var pauseTriggerElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_MISSING",
+                                    "Interruptions pause trigger not found."
+                                );
+                            }
+                            else
+                            {
+                                newAgentData.Interruptions.PauseTrigger = new BusinessAppAgentInterruptionPauseTrigger();
+
+                                if (!pauseTriggerElement.TryGetProperty("type", out var pauseTriggerTypeElement) ||
+                                    pauseTriggerTypeElement.ValueKind != JsonValueKind.Number)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_TYPE_INVALID",
+                                        "Interruptions pause trigger type not found or invalid."
+                                    );
+                                }
+                                var pauseTriggerTypeInt = pauseTriggerElement.GetInt32();
+                                if (!Enum.IsDefined(typeof(AgentInterruptionPauseTriggerTypeENUM), pauseTriggerTypeInt))
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_TYPE_INVALID",
+                                        "Interruptions pause trigger type not found or invalid."
+                                    );
+                                }
+                                newAgentData.Interruptions.PauseTrigger.Type = (AgentInterruptionPauseTriggerTypeENUM)pauseTriggerTypeInt;
+
+                                if (newAgentData.Interruptions.PauseTrigger.Type == AgentInterruptionPauseTriggerTypeENUM.VAD)
+                                {
+                                    if (!pauseTriggerElement.TryGetProperty("vadDurationMS", out var vadDurationMSElement) ||
+                                        vadDurationMSElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_VAD_DURATION_MS_INVALID",
+                                            "Interruptions pause trigger VAD duration not found or invalid."
+                                        );
+                                    }
+                                    newAgentData.Interruptions.PauseTrigger.VadDurationMS = vadDurationMSElement.GetInt32();
+                                    if (newAgentData.Interruptions.PauseTrigger.VadDurationMS <= 0)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_VAD_DURATION_MS_INVALID_VALUE",
+                                            "Interruptions pause trigger VAD duration must be greater than 0."
+                                        );
+                                    }
+                                }
+                                else if (newAgentData.Interruptions.PauseTrigger.Type == AgentInterruptionPauseTriggerTypeENUM.STT)
+                                {
+                                    if (!pauseTriggerElement.TryGetProperty("wordCount", out var wordCountElement) ||
+                                        wordCountElement.ValueKind != JsonValueKind.Number)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_WORD_COUNT_INVALID",
+                                            "Interruptions pause trigger word count not found or invalid."
+                                        );
+                                    }
+                                    newAgentData.Interruptions.PauseTrigger.WordCount = wordCountElement.GetInt32();
+                                    if (newAgentData.Interruptions.PauseTrigger.WordCount <= 0)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_WORD_COUNT_INVALID_VALUE",
+                                            "Interruptions pause trigger word count must be greater than 0."
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (!interruptionsElement.TryGetProperty("verification", out var verificationElement))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:INTERRUPTION_VERIFICATION_MISSING",
+                                    "Interruptions verification not found."
+                                );
+                            }
+                            else
+                            {
+                                newAgentData.Interruptions.Verification = new BusinessAppAgentInterruptionVerification();
+
+                                if (!verificationElement.TryGetProperty("enabled", out var enabledElement) ||
+                                    (enabledElement.ValueKind != JsonValueKind.True || enabledElement.ValueKind != JsonValueKind.False)
+                                )
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateAgent:INTERRUPTION_VERIFICATION_ENABLED_INVALID",
+                                        "Interruptions verification enabled not found or invalid."
+                                    );
+                                }
+                                newAgentData.Interruptions.Verification.Enabled = enabledElement.GetBoolean();
+
+                                if (newAgentData.Interruptions.Verification.Enabled)
+                                {
+                                    // UseAgentLLM bool
+                                    if (!verificationElement.TryGetProperty("useAgentLLM", out var useAgentLLMElement) ||
+                                        (useAgentLLMElement.ValueKind != JsonValueKind.True || useAgentLLMElement.ValueKind != JsonValueKind.False)
+                                    )
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateAgent:INTERRUPTION_VERIFICATION_USE_AGENT_LLM_INVALID",
+                                            "Interruptions verification use agent LLM not found or invalid."
+                                        );
+                                    }
+                                    newAgentData.Interruptions.Verification.UseAgentLLM = useAgentLLMElement.GetBoolean();
+
+                                    if (!newAgentData.Interruptions.Verification.UseAgentLLM)
+                                    {
+                                        if (!verificationElement.TryGetProperty("llmIntegration", out var llmIntegrationElement) ||
+                                            llmIntegrationElement.ValueKind != JsonValueKind.Object)
+                                        {
+                                            return result.SetFailureResult(
+                                                "AddOrUpdateAgent:INTERRUPTION_VERIFICATION_LLM_INTEGRATION_INVALID",
+                                                "Interruptions verification LLM integration not found or invalid."
+                                            );
+                                        }
+
+                                        var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                                            businessId,
+                                            llmIntegrationElement,
+                                            "LLM",
+                                            null
+                                        );
+                                        if (!validationBuildResult.Success)
+                                        {
+                                            result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                                            result.Message = validationBuildResult.Message;
+                                            return result;
+                                        }
+
+                                        newAgentData.Interruptions.TurnEnd.LLMIntegration = validationBuildResult.Data;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Cache Section
             if (!changesRootElement.TryGetProperty("cache", out var cacheTabElement))
             {
@@ -405,6 +669,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             else
             {
+                // Messages
                 if (!cacheTabElement.TryGetProperty("messages", out var messagesElement))
                 {
                     result.Code = "AddOrUpdateAgent:16";
@@ -442,7 +707,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
                 
-
+                // Audios
                 if (!cacheTabElement.TryGetProperty("audios", out var audiosElement))
                 {
                     result.Code = "AddOrUpdateAgent:20";
@@ -480,35 +745,36 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (!cacheTabElement.TryGetProperty("autoCacheAudioSettings", out var autoCacheSettingsElement)
-                    || autoCacheSettingsElement.ValueKind != JsonValueKind.Object)
+                // Audio Settings
+                if (!cacheTabElement.TryGetProperty("audioCacheSettings", out var audioCacheSettingsElement)
+                    || audioCacheSettingsElement.ValueKind != JsonValueKind.Object)
                 {
                     return result.SetFailureResult(
                             "AddOrUpdateAgent:CACHE_AUDIOCACHESETTINGS_INVALID",
-                            "Cache autoCacheAudioSettings parameter is missing or invalid."
+                            "Cache audioCacheSettings parameter is missing or invalid."
                         );
                 }
                 else
                 {
                     var audioSettings = new BusinessAppAgentAutoCacheAudioSettings();
 
-                    if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponses", out var autoCacheEnabledElement) ||
-                        (autoCacheEnabledElement.ValueKind != JsonValueKind.True && autoCacheEnabledElement.ValueKind != JsonValueKind.False))
+                    if (!audioCacheSettingsElement.TryGetProperty("autoCacheAudioResponses", out var autoCacheAudioEnabledElement) ||
+                        (autoCacheAudioEnabledElement.ValueKind != JsonValueKind.True && autoCacheAudioEnabledElement.ValueKind != JsonValueKind.False))
                     {
                         return result.SetFailureResult(
-                            "AddOrUpdateAgent:CACHE_AUTOCACHEENABLED_INVALID",
+                            "AddOrUpdateAgent:CACHE_AUTO_CACHE_AUDIO_ENABLED_INVALID",
                             "Cache autoCacheAudioResponses parameter is missing or invalid."
                         );
                     }
-                    audioSettings.AutoCacheAudioResponses = autoCacheEnabledElement.GetBoolean();
+                    audioSettings.AutoCacheAudioResponses = autoCacheAudioEnabledElement.GetBoolean();
 
                     if (audioSettings.AutoCacheAudioResponses)
                     {
-                        if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponseCacheGroupId", out var groupIdElement)
+                        if (!audioCacheSettingsElement.TryGetProperty("autoCacheAudioResponseCacheGroupId", out var groupIdElement)
                             || groupIdElement.ValueKind != JsonValueKind.String)
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateAgent:CACHE_GROUPID_INVALID",
+                                "AddOrUpdateAgent:AUDIO_CACHE_GROUPID_INVALID",
                                 "Cache autoCacheAudioResponseCacheGroupId parameter is missing or invalid."
                             );
                         }
@@ -516,7 +782,7 @@ namespace IqraInfrastructure.Managers.Business
                         if (string.IsNullOrWhiteSpace(cacheGroupId))
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateAgent:CACHE_GROUPID_EMPTY",
+                                "AddOrUpdateAgent:AUDIO_CACHE_GROUPID_EMPTY",
                                 "An audio cache group must be selected when auto-caching is enabled."
                             );
                         }
@@ -525,16 +791,16 @@ namespace IqraInfrastructure.Managers.Business
                         if (!checkAudioCacheGroupExistsResult)
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateAgent:CACHE_GROUPID_NOTFOUND",
+                                "AddOrUpdateAgent:AUDIO_CACHE_GROUPID_NOTFOUND",
                                 $"The selected auto-cache audio group (ID: {cacheGroupId}) does not exist."
                             );
                         }
                         audioSettings.AutoCacheAudioResponseCacheGroupId = cacheGroupId;
 
-                        if (!autoCacheSettingsElement.TryGetProperty("autoCacheAudioResponsesDefaultExpiryHours", out var expiryElement) || expiryElement.ValueKind != JsonValueKind.Number)
+                        if (!audioCacheSettingsElement.TryGetProperty("autoCacheAudioResponsesDefaultExpiryHours", out var expiryElement) || expiryElement.ValueKind != JsonValueKind.Number)
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateAgent:CACHE_EXPIRY_INVALID",
+                                "AddOrUpdateAgent:AUDIO_CACHE_EXPIRY_INVALID",
                                 "Cache autoCacheAudioResponsesDefaultExpiryHours parameter is missing or invalid."
                             );
                         }
@@ -542,7 +808,7 @@ namespace IqraInfrastructure.Managers.Business
                         if (expiryHours < 0)
                         {
                             return result.SetFailureResult(
-                                "AddOrUpdateAgent:CACHE_EXPIRY_NEGATIVE",
+                                "AddOrUpdateAgent:AUDIO_CACHE_EXPIRY_NEGATIVE",
                                 "Cache expiry hours cannot be negative."
                             );
                         }
@@ -550,6 +816,121 @@ namespace IqraInfrastructure.Managers.Business
                     }
 
                     newAgentData.Cache.AudioCacheSettings = audioSettings;
+                }
+
+                // Embeddings
+                if (!cacheTabElement.TryGetProperty("embeddings", out var embeddingsElement))
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:CACHE_EMBEDDINGS_INVALID",
+                        "Cache embeddings parameter is missing or invalid."
+                    );
+                }
+                else
+                {
+                    foreach (var embeddingCacheIdElement in embeddingsElement.EnumerateArray())
+                    {
+                        if (embeddingCacheIdElement.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_EMBEDDINGS_ITEM_INVALID",
+                                "Invalid array item type for cache embeddings. Found: " + embeddingCacheIdElement.ValueKind
+                            );
+                        }
+
+                        var embeddingsCacheGroupId = embeddingCacheIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(embeddingsCacheGroupId))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_EMBEDDINGS_ITEM_EMPTY",
+                                "Empty array item type for cache embeddings."
+                            );
+                        }
+
+                        var checkEmbeddingCacheGroupExistsResult = await _parentBusinessManager.GetCacheManager().CheckBusinessCacheEmbeddingGroupExists(businessId, embeddingsCacheGroupId);
+                        if (!checkEmbeddingCacheGroupExistsResult)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_EMBEDDINGS_ITEM_NOT_FOUND",
+                                $"Cache embedding group does not exist with id: {embeddingsCacheGroupId}"
+                            );
+                        }
+
+                        newAgentData.Cache.Embeddings.Add(embeddingsCacheGroupId);
+                    }
+                }
+
+                // Embedding Settings
+                if (!cacheTabElement.TryGetProperty("embeddingsCacheSettings", out var embeddingsCacheSettingsElement)
+                    || embeddingsCacheSettingsElement.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                            "AddOrUpdateAgent:CACHE_EMBEDDING_CACHE_SETTINGS_INVALID",
+                            "Cache embeddingsCacheSettings parameter is missing or invalid."
+                        );
+                }
+                else
+                {
+                    var embeddingSettings = new BusinessAppAgentAutoCacheEmbeddingsSettings();
+
+                    if (!embeddingsCacheSettingsElement.TryGetProperty("autoCacheEmbeddingResponses", out var autoCacheEmbeddingEnabledElement) ||
+                        (autoCacheEmbeddingEnabledElement.ValueKind != JsonValueKind.True && autoCacheEmbeddingEnabledElement.ValueKind != JsonValueKind.False))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:CACHE_AUTO_CACHE_EMBEDDING_ENABLED_INVALID",
+                            "Cache autoCacheEmbeddingResponses parameter is missing or invalid."
+                        );
+                    }
+                    embeddingSettings.AutoCacheEmbeddingResponses = autoCacheEmbeddingEnabledElement.GetBoolean();
+
+                    if (embeddingSettings.AutoCacheEmbeddingResponses)
+                    {
+                        if (!embeddingsCacheSettingsElement.TryGetProperty("autoCacheEmbeddingResponseCacheGroupId", out var embeddingGroupIdElement)
+                            || embeddingGroupIdElement.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:EMBEDDING_CACHE_GROUPID_INVALID",
+                                "Cache autoCacheEmbeddingResponseCacheGroupId parameter is missing or invalid."
+                            );
+                        }
+                        var embeddingCacheGroupId = embeddingGroupIdElement.GetString();
+                        if (string.IsNullOrWhiteSpace(embeddingCacheGroupId))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:CACHE_GROUPID_EMPTY",
+                                "An embedding cache group must be selected when auto-caching is enabled."
+                            );
+                        }
+
+                        var checkEmbeddingCacheGroupExistsResult = await _parentBusinessManager.GetCacheManager().CheckBusinessCacheEmbeddingGroupExists(businessId, embeddingCacheGroupId);
+                        if (!checkEmbeddingCacheGroupExistsResult)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:EMBEDDING_CACHE_GROUPID_NOTFOUND",
+                                $"The selected auto-cache embedding group (ID: {embeddingCacheGroupId}) does not exist."
+                            );
+                        }
+                        embeddingSettings.AutoCacheEmbeddingResponseCacheGroupId = embeddingCacheGroupId;
+
+                        if (!embeddingsCacheSettingsElement.TryGetProperty("autoCacheEmbeddingResponsesDefaultExpiryHours", out var expiryElement) || expiryElement.ValueKind != JsonValueKind.Number)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:EMBEDDING_CACHE_EXPIRY_INVALID",
+                                "Cache autoCacheEmbeddingResponsesDefaultExpiryHours parameter is missing or invalid."
+                            );
+                        }
+                        var expiryHours = expiryElement.GetInt32();
+                        if (expiryHours < 0)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:EMBEDDING_CACHE_EXPIRY_NEGATIVE",
+                                "Embedding cache expiry hours cannot be negative."
+                            );
+                        }
+                        embeddingSettings.AutoCacheEmbeddingResponsesDefaultExpiryHours = expiryHours;
+                    }
+
+                    newAgentData.Cache.EmbeddingsCacheSettings = embeddingSettings;
                 }
             }
 

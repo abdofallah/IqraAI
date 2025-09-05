@@ -988,13 +988,20 @@ table.table > thead > * > * {
 	color: black;
 }
 
-.route-conversation-type-box, .knowledgebase-document-chunking-type-box, .knowledgebase-document-retrival-type-box {
+.agent-turn-end-type-box, .agent-interruption-pause-type-box, .agent-interruption-llm-verify-box, .knowledgebase-document-chunking-type-box, .knowledgebase-document-retrival-type-box
+{
 	background-color: #1a1a1a;
 	border-bottom-left-radius: 6px;
 	border-bottom-right-radius: 6px;
 	border: var(--bs-border-width) solid var(--bs-border-color);
 	border-top: none;
 	padding: 10px;
+}
+
+.agent-interruption-llm-verify-box
+{
+	border-radius: 6px !important;
+	border: var(--bs-border-width) solid var(--bs-border-color) !important;
 }
 
 .agent-background-audio-box {
@@ -2056,8 +2063,8 @@ table.table > thead > * > * {
 		min-width: 130px !important;
 	}
 }
- 
-.agent-audio-cache-settings-box
+
+.agent-audio-cache-settings-box, .agent-embedding-cache-settings-box
 {
 	background-color: #1a1a1a;
 	border-radius: 6px;
@@ -2193,4 +2200,79 @@ table.table > thead > * > * {
 
 #documentChunkManagerTab #chunksListContainer .chunk-card .child-chunk-header {
 	cursor: pointer;
+}
+
+.campaign-card
+{
+	padding: 2em;
+	background-color: var(--tcolor-light-green);
+	width: 100%;
+	border-radius: 16px;
+	margin-bottom: 30px;
+	color: var(--tcolor-dark);
+	border: 3px solid var(--tcolor-lighter-green);
+	transition: 0.15s ease-in-out;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+	cursor: pointer;
+	z-index: 9999;
+	position: relative;
+}
+
+.campaign-card:hover
+{
+	transform: scale(1.02);
+	box-shadow: 2px 1px 10px 1px rgba(209, 191, 174, 0.2);
+}
+
+.campaign-card .route-icon
+{
+	max-width: 100%;
+	width: 60px;
+	text-align: center;
+	font-size: 28px;
+	background-color: var(--tcolor-lighter-green);
+	border-radius: 10px;
+	padding: 8px;
+	transition: 1s;
+}
+
+.campaign-card:hover .route-icon
+{
+	transform: rotate(360deg);
+}
+
+.campaign-card h4
+{
+	margin: 0;
+	font-weight: 700;
+	line-height: normal;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.campaign-card .h5-info
+{
+	margin-bottom: 0;
+	font-weight: 600;
+	opacity: 0.7;
+	font-size: 18px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.campaign-card .card-data
+{
+	margin-left: 20px;
+}
+
+.campaign-card .card-data h6
+{
+	margin-bottom: 0px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }

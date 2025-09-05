@@ -404,7 +404,7 @@ namespace IqraInfrastructure.Managers.Business
                                     newBusinessAppCampaignData.Configuration.RetryOnDecline.Enabled = retryDeclineEnabledProp.GetBoolean();
                                     if (newBusinessAppCampaignData.Configuration.RetryOnDecline.Enabled)
                                     {
-                                        if (!retryDeclineElement.TryGetProperty("retryCount", out var retryCountProp)
+                                        if (!retryDeclineElement.TryGetProperty("count", out var retryCountProp)
                                             || !retryCountProp.TryGetInt32(out var retryCount) || retryCount < 1)
                                         {
                                             return result.SetFailureResult(
@@ -468,7 +468,7 @@ namespace IqraInfrastructure.Managers.Business
                                     newBusinessAppCampaignData.Configuration.RetryOnMiss.Enabled = retryMissEnabledProp.GetBoolean();
                                     if (newBusinessAppCampaignData.Configuration.RetryOnMiss.Enabled)
                                     {
-                                        if (!retryMissElement.TryGetProperty("retryCount", out var retryCountProp)
+                                        if (!retryMissElement.TryGetProperty("count", out var retryCountProp)
                                             || !retryCountProp.TryGetInt32(out var retryCount) || retryCount < 1)
                                         {
                                             return result.SetFailureResult(
