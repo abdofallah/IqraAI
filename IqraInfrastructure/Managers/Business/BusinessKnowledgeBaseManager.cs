@@ -1492,5 +1492,10 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
         }
+
+        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
+        {
+            return await _businessAppRepository.CheckKnowledgeBaseGroupExistsById(businessId, linkedGroupId);
+        }
     }
 }

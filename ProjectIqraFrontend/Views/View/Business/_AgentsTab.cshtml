@@ -340,8 +340,8 @@
                         </label>
                         <select class="form-select" id="agentInterruptionPauseTypeSelect">
                             <option disabled selected>Select Agent Pause Trigger</option>
-                            <option value="vad">Pause via VAD (Voice Activity Duration)</option>
-                            <option value="words">Pause via Transcription (Word Count)</option>
+                            <option value="0">Pause via VAD (Voice Activity Duration)</option>
+                            <option value="1">Pause via Transcription (Word Count)</option>
                         </select>
 
                         <!-- Conditional box for VAD -->
@@ -575,7 +575,137 @@
                 </div>
                 <!-- Knowledge Base-->
                 <div class="tab-pane fade w-100" id="agents-manager-knowledgebases" role="tabpanel" aria-labelledby="agents-manager-knowledgebases-tab" tabindex="0">
+                    <!-- Sub-tab Navigation -->
+                    <ul class="nav mb-3" id="agents-manager-kb-inner-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link me-2 active" id="agents-manager-kb-inner-list-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-kb-inner-list" type="button" role="tab" aria-controls="agents-manager-kb-inner-list" aria-selected="true">List</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="agents-manager-kb-inner-settings-tab" data-bs-toggle="pill" data-bs-target="#agents-manager-kb-inner-settings" type="button" role="tab" aria-controls="agents-manager-kb-inner-settings" aria-selected="false">Settings</button>
+                        </li>
+                    </ul>
 
+                    <!-- Sub-tab Content -->
+                    <div class="tab-content w-100" id="agents-manager-kb-inner-tabContent">
+                        <!-- List Sub-tab -->
+                        <div class="tab-pane fade show active w-100" id="agents-manager-kb-inner-list" role="tabpanel" tabindex="0">
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align d-block">
+                                    <span>Link a Knowledge Base Group</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Connect one or more Knowledge Base Groups for this agent to search.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <div class="input-group">
+                                    <select class="form-select" id="agentKbGroupSelect">
+                                        <option selected disabled>Select a group to add...</option>
+                                        <!-- Backend populates this with available, un-linked KB groups -->
+                                    </select>
+                                    <button class="btn btn-light" type="button" id="addAgentKbGroupButton">Add</button>
+                                </div>
+                                <div class="mt-2" id="linkedKnowledgeBasesContainer">
+                                    <!-- Backend populates this with linked KB groups -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Sub-tab -->
+                        <div class="tab-pane fade w-100" id="agents-manager-kb-inner-settings" role="tabpanel" tabindex="0">
+                            <!-- Section 1: Search Strategy -->
+                            <div class="mb-3">
+                                <label class="form-label btn-ic-span-align" for="agentKbSearchStrategySelect">
+                                    <span>Search Trigger Strategy</span>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Define when the agent should search the knowledge base.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </label>
+                                <select class="form-select" id="agentKbSearchStrategySelect">
+                                    <option selected disabled>Select Strategy</option>
+                                    <option value="0">Always Search</option>
+                                    <option value="1">Query with Specific Keyword Match</option>
+                                    <option value="2">Query with Knowledge Base's Keywords</option>
+                                    <option value="3">Smart LLM Query Classifier</option>
+                                </select>
+                            </div>
+
+                            <!-- Conditional Settings for Search Strategy -->
+                            <div id="agentKbStrategySettingsContainer" class="mb-3">
+                                <!-- Box for Specific Keyword Match -->
+                                <div class="p-3 border rounded bg-dark bg-opacity-50" id="agentKbSpecificKeywordsBox" style="display: none;">
+                                    <label for="agentKbSpecificKeywordsTextarea" class="form-label">
+                                        <span>Trigger Keywords</span> <i class="fa-regular fa-language"></i>
+                                    </label>
+                                    <textarea class="form-control" id="agentKbSpecificKeywordsTextarea" rows="4" placeholder="Enter keywords, one per line. If a user's query contains any of these words, a search will be triggered. e.g.,&#10;price&#10;how to&#10;what is&#10;policy"></textarea>
+                                </div>
+
+                                <!-- Box for Knowledge Base Keyword Match -->
+                                <div class="p-3 border rounded bg-dark bg-opacity-50" id="agentKbKbKeywordsBox" style="display: none;">
+                                    <p class="mb-0 text-muted"><i class="fa-solid fa-circle-info me-2"></i>The system will automatically trigger a search if the user's query contains keywords that have been extracted from the documents in your linked knowledge bases. No additional configuration is needed.</p>
+                                </div>
+
+                                <!-- Box for Smart LLM Classifier -->
+                                <div class="p-3 border rounded bg-dark bg-opacity-50" id="agentKbLlmClassifierBox" style="display: none;">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" role="switch" class="form-check-input" id="agentKbClassifierUseAgentLLM" checked>
+                                        <label class="form-label mb-0" for="agentKbClassifierUseAgentLLM">
+                                            <span>Use Agent's main LLM for classification?</span>
+                                        </label>
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the agent's primary LLM to decide if a query is a question for the knowledge base. Uncheck to use a separate, potentially faster/cheaper model for this task.">
+                                            <i class="fa-regular fa-circle-question"></i>
+                                        </a>
+                                    </div>
+
+                                    <div class="mt-3" id="agentKbClassifierLLMIntegrationSelectBox" style="display: none;">
+                                        <label class="form-label">Classifier LLM Integration</label>
+                                        <div id="agentKbClassifierLLMIntegrationContainer">
+                                            <!-- Your IntegrationConfigurationManager class will build the UI here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Optional Query Refinement -->
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="agentKbEnableQueryRefinement">
+                                    <label class="form-check-label btn-ic-span-align" for="agentKbEnableQueryRefinement">
+                                        <span>Enable AI Query Refinement</span>
+                                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="If enabled, an LLM will rewrite the user's conversational query into optimized search queries before searching the knowledge base. This significantly improves search accuracy.">
+                                            <i class="fa-regular fa-circle-question"></i>
+                                        </a>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Conditional container for AI Refinement settings -->
+                            <div class="p-3 border rounded bg-dark bg-opacity-50" id="agentKbQueryRefinementOptionsBox" style="display: none;">
+                                <div class="mb-3">
+                                    <label class="form-label" for="agentKbRefinementQueryCount">
+                                        <span>Number of Queries to Generate</span>
+                                    </label>
+                                    <input type="number" class="form-control" id="agentKbRefinementQueryCount" min="1" max="5" value="3" step="1">
+                                    <div class="form-text">The AI will generate this many variations of the user's question to find the best possible results. (e.g., 3 is recommended).</div>
+                                </div>
+
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" role="switch" class="form-check-input" id="agentKbRefinementUseAgentLLM" checked>
+                                    <label class="form-label mb-0" for="agentKbRefinementUseAgentLLM">
+                                        <span>Use Agent's main LLM for refinement?</span>
+                                    </label>
+                                    <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="Utilize the agent's primary LLM to rewrite queries. Uncheck to use a separate model for this task.">
+                                        <i class="fa-regular fa-circle-question"></i>
+                                    </a>
+                                </div>
+
+                                <div class="mt-3" id="agentKbRefinementLLMIntegrationSelectBox" style="display: none;">
+                                    <label class="form-label">Refinement LLM Integration</label>
+                                    <div id="agentKbRefinementLLMIntegrationContainer">
+                                        <!-- Your IntegrationConfigurationManager class will build the UI here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <!-- Cache -->
                 <div class="tab-pane fade w-100" id="agents-manager-cache" role="tabpanel" aria-labelledby="agents-manager-cache-tab" tabindex="0">

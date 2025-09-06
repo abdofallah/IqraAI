@@ -46,6 +46,13 @@ const AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE = {
 	STT: 1
 }
 
+const AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE = {
+	ALWAYS: 0,
+	SPECIFIC_KEYWORD: 1,
+	KNOWLEDGEBASE_KEYWORD: 2,
+	LLM: 3
+}
+
 const AGENT_SCRIPT_NODE_WIDTH = 520; // todo make dynamic
 const AGENT_SCRIPT_NODE_MIN_HEIGHT = 300;
 
@@ -69,6 +76,10 @@ let agentTTSIntegrationManager = null;
 let agentTurnEndLLMIntegrationManager = null;
 let agentInterruptionVerifyLLMIntegrationManager = null;
 
+// Integrations Knowledge Base Configuration Manager
+let agentKbClassifierLLMIntegrationManager = null;
+let agentKbRefinementLLMIntegrationManager = null;
+
 // Cache related states
 let CurrentAgentCacheMessages = [];
 let CurrentAgentCacheMessagesIndex = 0;
@@ -76,6 +87,9 @@ let CurrentAgentCacheAudios = [];
 let CurrentAgentCacheAudiosIndex = 0;
 let CurrentAgentCacheEmbeddings = [];
 let CurrentAgentCacheEmbeddingsIndex = 0;
+
+// Knowledge Base related states
+let CurrentAgentLinkedKBs = [];
 
 // Multi Language
 let CurrentAgentGeneralNameMultiLangData = {};
@@ -227,6 +241,26 @@ const agentCacheSettingsAutoCacheEmbeddingBox = agentCacheTab.find("#agentCacheS
 const agentAutoCacheEmbeddingGroupSelect = agentCacheTab.find("#agentAutoCacheEmbeddingGroupSelect");
 const agentAutoCacheEmbeddingExpiryInput = agentCacheTab.find("#agentAutoCacheEmbeddingExpiryInput");
 
+// SUB | Knowledge Base Tab
+const agentKbTab = $("#agents-manager-knowledgebases");
+// List
+const agentKbGroupSelect = agentKbTab.find("#agentKbGroupSelect");
+const addAgentKbGroupButton = agentKbTab.find("#addAgentKbGroupButton");
+const linkedKnowledgeBasesContainer = agentKbTab.find("#linkedKnowledgeBasesContainer");
+// Settings
+const agentKbSearchStrategySelect = agentKbTab.find("#agentKbSearchStrategySelect");
+const agentKbSpecificKeywordsBox = agentKbTab.find("#agentKbSpecificKeywordsBox");
+const agentKbSpecificKeywordsTextarea = agentKbTab.find("#agentKbSpecificKeywordsTextarea");
+const agentKbKbKeywordsBox = agentKbTab.find("#agentKbKbKeywordsBox");
+const agentKbLlmClassifierBox = agentKbTab.find("#agentKbLlmClassifierBox");
+const agentKbClassifierUseAgentLLM = agentKbTab.find("#agentKbClassifierUseAgentLLM");
+const agentKbClassifierLLMIntegrationSelectBox = agentKbTab.find("#agentKbClassifierLLMIntegrationSelectBox");
+const agentKbEnableQueryRefinement = agentKbTab.find("#agentKbEnableQueryRefinement");
+const agentKbQueryRefinementOptionsBox = agentKbTab.find("#agentKbQueryRefinementOptionsBox");
+const agentKbRefinementQueryCount = agentKbTab.find("#agentKbRefinementQueryCount");
+const agentKbRefinementUseAgentLLM = agentKbTab.find("#agentKbRefinementUseAgentLLM");
+const agentKbRefinementLLMIntegrationSelectBox = agentKbTab.find("#agentKbRefinementLLMIntegrationSelectBox");
+
 // SUB | Settings Tab
 const editAgentBackgroundAudioSelect = agentTab.find("#editAgentBackgroundAudioSelect");
 
@@ -377,6 +411,13 @@ function CheckAgentTabHasChanges(enableDisableButton = true) {
 		hasChanges = true;
 	}
 
+	// Check Knowledge Base tab changes
+	const knowledgeBaseChanges = CheckAgentKnowledgeBaseTabChanges(false);
+	changes.knowledgeBase = knowledgeBaseChanges.changes;
+	if (knowledgeBaseChanges.hasChanges) {
+		hasChanges = true;
+	}
+
 	// Check Cache tab changes
 	const cacheChanges = CheckAgentCacheTabChanges(false);
 	changes.cache = cacheChanges.changes;
@@ -460,24 +501,40 @@ function createDefaultAgentObject() {
 		interruptions: {
 			turnEnd: {
 				type: {
-					value: 0 // 0: VAD, 1: Response, 2: AI, 3: ML
+					value: AGENT_INTERRUPTION_TURN_END_TYPE.VAD
 				},
 				vadSilenceDurationMS: 700,
-				useAgentLLM: true,
+				useAgentLLM: null,
 				llmIntegration: null
 			},
 			useTurnByTurnMode: false,
 			includeInterruptedSpeechInTurnByTurnMode: false,
 			pauseTrigger: {
 				type: {
-                    value: 0 // 0: VAD, 1: Words
+					value: AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD
 				},
 				vadDurationMS: 100,
-				wordCount: 2
+				wordCount: null
 			},
 			verification: {
 				enabled: false,
 				useAgentLLM: true,
+				llmIntegration: null
+			}
+		},
+		knowledgeBase: {
+			linkedGroups: [],
+			searchStrategy: {
+				type: {
+					value: AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.ALWAYS
+				},
+				specificKeywords: null,
+				llmClassifier: null,
+			},
+			refinement: {
+				enabled: false,
+				queryCount: null,
+				useAgentLLM: null,
 				llmIntegration: null
 			}
 		},
@@ -658,6 +715,9 @@ function ResetAndEmptyAgentsManageTab() {
 	CurrentAgentCacheMessages = [];
 	CurrentAgentCacheAudios = [];
 
+	// Knowledge Base
+	ResetAndEmptyAgentKnowledgeBaseTab();
+
 	// Reset languages
 	BusinessFullData.businessData.languages.forEach((language) => {
 		// General Tab
@@ -786,6 +846,12 @@ function ValidateAgentTab(onlyRemove = true) {
 		errors.push(...isIntegrationsTabValid.errors);
 	}
 
+	const isKnowledgeBaseTabValid = validateAgentKnowledgeBaseTab(onlyRemove);
+	if (!isKnowledgeBaseTabValid.isValid) {
+		isValid = false;
+		errors.push(...isKnowledgeBaseTabValid.errors);
+	}
+
 	const isCacheTabValid = validateAgentCacheTab(onlyRemove);
 	if (!isCacheTabValid.isValid) {
 		isValid = false;
@@ -842,6 +908,7 @@ function FillAgentsManagerTab() {
 	fillAgentUtterancesTab();
 	fillAgentInterruptionsTab();
 	fillAgentScriptsListTab();
+	fillAgentKnowledgeBaseTab();
 	fillIntegrationsFromAgentData();
 	fillAgentCacheTab();
 	fillAgentSettingsTab();
@@ -1240,26 +1307,47 @@ function fillAgentInterruptionsTab() {
 
 	// Fill Turn-end
 	editAgentTurnEndTypeSelect.val(interruptions.turnEnd.type.value).change();
-	editAgentTurnEndViaVADAudioActivityDuration.val(interruptions.turnEnd.vadSilenceDurationMS);
-	editAgentTurnEndViaAIUseAgentLLM.prop("checked", interruptions.turnEnd.useAgentLLM).change();
-	if (!interruptions.turnEnd.useAgentLLM && interruptions.turnEnd.llmIntegration) {
-		agentTurnEndLLMIntegrationManager.load(interruptions.turnEnd.llmIntegration);
-	} else {
-		agentTurnEndLLMIntegrationManager.reset();
+
+	if (interruptions.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) {
+		editAgentTurnEndViaVADAudioActivityDuration.val(interruptions.turnEnd.vadSilenceDurationMS);
+	}
+	else if (interruptions.turnEnd.type.value == AGENT_INTERRUPTION_TURN_END_TYPE.AI) {
+		editAgentTurnEndViaAIUseAgentLLM.prop("checked", interruptions.turnEnd.useAgentLLM).change();
+		if (!interruptions.turnEnd.useAgentLLM && interruptions.turnEnd.llmIntegration) {
+			agentTurnEndLLMIntegrationManager.load(interruptions.turnEnd.llmIntegration);
+		} else {
+			agentTurnEndLLMIntegrationManager.reset();
+		}
 	}
 
-	// Fill Pause Trigger
-	agentInterruptionPauseTypeSelect.val(interruptions.pauseTrigger.type).change();
-	agentInterruptionPauseVADDuration.val(interruptions.pauseTrigger.vadDurationMS);
-	agentInterruptionPauseWordCount.val(interruptions.pauseTrigger.wordCount);
+	// Turn by Turn
+	editAgentTurnByTurnMode.prop("checked", interruptions.useTurnByTurnMode).change();
 
-	// Fill Verification
-	enableAgentInterruptionVerification.prop("checked", interruptions.verification.enabled).change();
-	agentInterruptionVerifyAIUseAgentLLM.prop("checked", interruptions.verification.useAgentLLM).change();
-	if (interruptions.verification.enabled && !interruptions.verification.useAgentLLM && interruptions.verification.llmIntegration) {
-		agentInterruptionVerifyLLMIntegrationManager.load(interruptions.verification.llmIntegration);
-	} else {
-		agentInterruptionVerifyLLMIntegrationManager.reset();
+	if (interruptions.useTurnByTurnMode) {
+		editAgentTurnByTurnIncludeInterruptedSpeech.prop("checked", interruptions.includeInterruptedSpeechInTurnByTurnMode).change();
+	}
+	else {
+		// Fill Pause Trigger
+		agentInterruptionPauseTypeSelect.val(interruptions.pauseTrigger.type.value).change();
+
+		if (interruptions.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
+			agentInterruptionPauseVADDuration.val(interruptions.pauseTrigger.vadDurationMS);
+		}
+		else if (interruptions.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
+			agentInterruptionPauseWordCount.val(interruptions.pauseTrigger.wordCount);
+		}
+
+		// Fill Verification
+		enableAgentInterruptionVerification.prop("checked", interruptions.verification.enabled).change();
+		if (interruptions.verification.enabled) {
+			agentInterruptionVerifyAIUseAgentLLM.prop("checked", interruptions.verification.useAgentLLM).change();
+			
+			if (interruptions.verification.enabled && !interruptions.verification.useAgentLLM && interruptions.verification.llmIntegration) {
+				agentInterruptionVerifyLLMIntegrationManager.load(interruptions.verification.llmIntegration);
+			} else {
+				agentInterruptionVerifyLLMIntegrationManager.reset();
+			}
+		}		
 	}
 }
 
@@ -1317,26 +1405,37 @@ function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
 	}
 	else {
 		changes.pauseTrigger = {
-			type: agentInterruptionPauseTypeSelect.val()
+			type: parseInt(agentInterruptionPauseTypeSelect.val())
 		};
 
-		if (changes.pauseTrigger.type != original.pauseTrigger.type.value) {
+		if (
+			!original.pauseTrigger ||
+			changes.pauseTrigger.type != original.pauseTrigger.type.value
+		) {
 			hasChanges = true;
         }
 
 		if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
 			changes.pauseTrigger.vadDurationMS = parseInt(agentInterruptionPauseVADDuration.val());
 
-			if (original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD &&
-				original.pauseTrigger.vadDurationMS != changes.pauseTrigger.vadDurationMS) {
+			if (!original.pauseTrigger ||
+				(
+					original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD &&
+					original.pauseTrigger.vadDurationMS != changes.pauseTrigger.vadDurationMS
+				)
+			) {
                 hasChanges = true;
             }
 		}
 		else if (changes.pauseTrigger.type == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
 			changes.pauseTrigger.wordCount = parseInt(agentInterruptionPauseWordCount.val());
 
-			if (original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT &&
-				original.pauseTrigger.wordCount != changes.pauseTrigger.wordCount) {
+			if (!original.pauseTrigger ||
+				(
+					original.pauseTrigger.type.value == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT &&
+					original.pauseTrigger.wordCount != changes.pauseTrigger.wordCount
+				)
+			) {
                 hasChanges = true;
             }
         }
@@ -1345,7 +1444,9 @@ function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
 			enabled: enableAgentInterruptionVerification.is(":checked")
 		};
 
-		if (original.verification.enabled != changes.verification.enabled) {
+		if (
+			original.verification && original.verification.enabled != changes.verification.enabled
+		) {
 			hasChanges = true;
         }
 
@@ -1356,7 +1457,9 @@ function CheckAgentInterruptionsTabChanges(enableDisableButton = true) {
 				changes.verification.llmIntegration = agentInterruptionVerifyLLMIntegrationManager.getData();
 			}
 
-			if (original.verification.enabled &&
+			if (
+				original.verification &&
+				original.verification.enabled &&
 				(
 					changes.verification.useAgentLLM != original.verification.useAgentLLM ||
 					(changes.verification.useAgentLLM && original.verification.useAgentLLM && changes.verification.llmIntegration != original.verification.llmIntegration) // todo might need better difference checking
@@ -1492,6 +1595,250 @@ function validateAgentIntegrationsTab() {
 	}
 
 	return { isValid, errors };
+}
+
+// Knowledge Base Tab Functions
+function renderLinkedKbGroups() {
+	linkedKnowledgeBasesContainer.empty();
+	CurrentAgentLinkedKBs.forEach(kbId => {
+		const kbGroup = BusinessFullData.businessApp.knowledgeBases.find(g => g.id === kbId);
+		if (kbGroup) {
+			const badge = `
+                <span class="badge text-bg-secondary p-2 me-2 mb-2">
+                    <span>${kbGroup.general.name}</span>
+                    <button type="button" class="btn-close ms-2" aria-label="Remove" data-kb-id="${kbId}"></button>
+                </span>`;
+			linkedKnowledgeBasesContainer.append(badge);
+		}
+	});
+}
+
+function updateKbGroupSelectOptions() {
+	agentKbGroupSelect.empty().append('<option selected disabled>Select Group</option>');
+	const availableGroups = BusinessFullData.businessApp.knowledgeBases.filter(g => !CurrentAgentLinkedKBs.includes(g.id));
+	availableGroups.forEach(group => {
+		agentKbGroupSelect.append(`<option value="${group.id}">${group.general.name}</option>`);
+	});
+}
+
+function fillAgentKnowledgeBaseTab() {
+	// Ensure data model exists
+	if (!CurrentManageAgentData.knowledgeBase) {
+		CurrentManageAgentData.knowledgeBase = createDefaultAgentObject().knowledgeBase;
+	}
+	const kbData = CurrentManageAgentData.knowledgeBase;
+
+	// List
+	CurrentAgentLinkedKBs = [...kbData.linkedGroups];
+	renderLinkedKbGroups();
+	updateKbGroupSelectOptions();
+
+	// Settings
+	agentKbSearchStrategySelect.val(kbData.searchStrategy.value).trigger('change');
+
+	if (kbData.searchStrategy.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
+		agentKbSpecificKeywordsTextarea.val(kbData.specificKeywords);
+	}
+	else if (kbData.searchStrategy.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
+		agentKbClassifierUseAgentLLM.prop('checked', kbData.classifier.useAgentLLM).trigger('change');
+		if (!kbData.classifier.useAgentLLM && kbData.classifier.llmIntegration) {
+			agentKbClassifierLLMIntegrationManager.load(kbData.classifier.llmIntegration);
+		}
+    }
+
+	if (kbData.refinement.enabled) {
+		agentKbEnableQueryRefinement.prop('checked',).trigger('change');
+		agentKbRefinementQueryCount.val(kbData.refinement.queryCount);
+		agentKbRefinementUseAgentLLM.prop('checked', kbData.refinement.useAgentLLM).trigger('change');
+		if (!kbData.refinement.useAgentLLM && kbData.refinement.llmIntegration) {
+			agentKbRefinementLLMIntegrationManager.load(kbData.refinement.llmIntegration);
+		}
+	}	
+}
+
+function ResetAndEmptyAgentKnowledgeBaseTab() {
+	CurrentAgentLinkedKBs = [];
+	renderLinkedKbGroups();
+	updateKbGroupSelectOptions();
+
+	agentKbSearchStrategySelect.val('none').trigger('change');
+	agentKbSpecificKeywordsTextarea.val('');
+
+	agentKbClassifierUseAgentLLM.prop('checked', true).trigger('change');
+	if (agentKbClassifierLLMIntegrationManager) agentKbClassifierLLMIntegrationManager.reset();
+
+	agentKbEnableQueryRefinement.prop('checked', false).trigger('change');
+	agentKbRefinementQueryCount.val(3);
+	agentKbRefinementUseAgentLLM.prop('checked', true).trigger('change');
+	if (agentKbRefinementLLMIntegrationManager) agentKbRefinementLLMIntegrationManager.reset();
+}
+
+function CheckAgentKnowledgeBaseTabChanges(enableDisableButton = true) {
+	const changes = {};
+	let hasChanges = false;
+	const original = CurrentManageAgentData.knowledgeBase;
+
+	// List
+	changes.linkedGroups = CurrentAgentLinkedKBs;
+	if (JSON.stringify(original.linkedGroups.sort()) !== JSON.stringify(changes.linkedGroups.sort())) {
+		hasChanges = true;
+	}
+
+	// Settings
+	changes.searchStrategy = agentKbSearchStrategySelect.val();
+	if (original.searchStrategy !== changes.searchStrategy) hasChanges = true;
+
+	changes.specificKeywords = agentKbSpecificKeywordsTextarea.val();
+	if (original.specificKeywords !== changes.specificKeywords) hasChanges = true;
+
+	changes.classifier = {
+		useAgentLLM: agentKbClassifierUseAgentLLM.is(':checked'),
+		llmIntegration: agentKbClassifierUseAgentLLM.is(':checked') ? null : agentKbClassifierLLMIntegrationManager.getData()
+	};
+	if (original.classifier.useAgentLLM !== changes.classifier.useAgentLLM || JSON.stringify(original.classifier.llmIntegration) !== JSON.stringify(changes.classifier.llmIntegration)) {
+		hasChanges = true;
+	}
+
+	changes.refinement = {
+		enabled: agentKbEnableQueryRefinement.is(':checked'),
+		queryCount: parseInt(agentKbRefinementQueryCount.val(), 10),
+		useAgentLLM: agentKbRefinementUseAgentLLM.is(':checked'),
+		llmIntegration: agentKbRefinementUseAgentLLM.is(':checked') ? null : agentKbRefinementLLMIntegrationManager.getData()
+	};
+	if (original.refinement.enabled !== changes.refinement.enabled || original.refinement.queryCount !== changes.refinement.queryCount || original.refinement.useAgentLLM !== changes.refinement.useAgentLLM || JSON.stringify(original.refinement.llmIntegration) !== JSON.stringify(changes.refinement.llmIntegration)) {
+		hasChanges = true;
+	}
+
+	if (enableDisableButton) {
+		confirmPublishAgentButton.prop("disabled", !hasChanges);
+	}
+	return { hasChanges, changes };
+}
+
+function validateAgentKnowledgeBaseTab(onlyRemove = true) {
+	const errors = [];
+	let isValid = true;
+
+	// If a strategy is chosen, at least one KB should be linked.
+	if (agentKbSearchStrategySelect.val() !== 'none' && CurrentAgentLinkedKBs.length === 0) {
+		isValid = false;
+		errors.push("Knowledge Base: At least one Knowledge Base group must be linked to use a search strategy.");
+	}
+
+	// Strategy Specific Validations
+	const strategy = agentKbSearchStrategySelect.val();
+	if (strategy === 'specific_keywords') {
+		if (!agentKbSpecificKeywordsTextarea.val().trim()) {
+			isValid = false;
+			errors.push("Knowledge Base: Trigger Keywords cannot be empty when using the 'Specific Keyword Match' strategy.");
+			if (!onlyRemove) agentKbSpecificKeywordsTextarea.addClass('is-invalid');
+		} else {
+			agentKbSpecificKeywordsTextarea.removeClass('is-invalid');
+		}
+	} else if (strategy === 'llm_classifier') {
+		if (!agentKbClassifierUseAgentLLM.is(':checked')) {
+			const validation = agentKbClassifierLLMIntegrationManager.validate();
+			if (!validation.isValid) {
+				isValid = false;
+				errors.push(...validation.errors.map(e => `KB Classifier LLM: ${e}`));
+			}
+		}
+	}
+
+	// Refinement Validations
+	if (agentKbEnableQueryRefinement.is(':checked')) {
+		const count = parseInt(agentKbRefinementQueryCount.val(), 10);
+		if (isNaN(count) || count < 1 || count > 5) {
+			isValid = false;
+			errors.push("Knowledge Base: 'Number of Queries to Generate' must be between 1 and 5.");
+			if (!onlyRemove) agentKbRefinementQueryCount.addClass('is-invalid');
+		} else {
+			agentKbRefinementQueryCount.removeClass('is-invalid');
+		}
+
+		if (!agentKbRefinementUseAgentLLM.is(':checked')) {
+			const validation = agentKbRefinementLLMIntegrationManager.validate();
+			if (!validation.isValid) {
+				isValid = false;
+				errors.push(...validation.errors.map(e => `KB Refinement LLM: ${e}`));
+			}
+		}
+	}
+
+	return { isValid, errors };
+}
+
+function initAgentKnowledgeBaseTabHandlers() {
+	// --- List Sub-tab ---
+	addAgentKbGroupButton.on("click", () => {
+		const selectedId = agentKbGroupSelect.val();
+		if (!selectedId) return;
+
+		if (CurrentAgentLinkedKBs.includes(selectedId)) {
+			AlertManager.createAlert({ type: 'warning', message: 'This Knowledge Base group is already linked.', timeout: 3000 });
+			return;
+		}
+
+		CurrentAgentLinkedKBs.push(selectedId);
+		renderLinkedKbGroups();
+		updateKbGroupSelectOptions();
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	linkedKnowledgeBasesContainer.on("click", ".btn-close", function () {
+		const kbIdToRemove = $(this).data("kb-id");
+		CurrentAgentLinkedKBs = CurrentAgentLinkedKBs.filter(id => id !== kbIdToRemove);
+		renderLinkedKbGroups();
+		updateKbGroupSelectOptions();
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	// --- Settings Sub-tab ---
+	agentKbSearchStrategySelect.on("change", function () {
+		const strategy = parseInt($(this).val());
+		// Hide all boxes first
+		$("#agentKbStrategySettingsContainer > div").hide();
+
+		if (strategy == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
+			agentKbSpecificKeywordsBox.show();
+		} else if (strategy == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.KNOWLEDGEBASE_KEYWORD) {
+			agentKbKbKeywordsBox.show();
+		} else if (strategy == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
+			agentKbLlmClassifierBox.show();
+		}
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	agentKbSpecificKeywordsTextarea.on("input", () => {
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	agentKbClassifierUseAgentLLM.on("change", function () {
+		agentKbClassifierLLMIntegrationSelectBox.toggle(!$(this).is(":checked"));
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	agentKbEnableQueryRefinement.on("change", function () {
+		agentKbQueryRefinementOptionsBox.toggle($(this).is(":checked"));
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	agentKbRefinementQueryCount.on("input", () => {
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
+
+	agentKbRefinementUseAgentLLM.on("change", function () {
+		agentKbRefinementLLMIntegrationSelectBox.toggle(!$(this).is(":checked"));
+		CheckAgentTabHasChanges();
+		validateAgentKnowledgeBaseTab(true);
+	});
 }
 
 // Cache Tab Functions
@@ -4421,6 +4768,28 @@ function initAgentTab() {
 			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentInterruptionsTab(true); },
 		});
 
+		agentKbClassifierLLMIntegrationManager = new IntegrationConfigurationManager('#agentKbClassifierLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+			isLanguageBound: false,
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentKnowledgeBaseTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentKnowledgeBaseTab(true); },
+		});
+
+		agentKbRefinementLLMIntegrationManager = new IntegrationConfigurationManager('#agentKbRefinementLLMIntegrationContainer', {
+			integrationType: 'LLM',
+			allowMultiple: false,
+			isLanguageBound: false,
+			allIntegrations: BusinessFullData.businessApp.integrations,
+			providersData: BusinessLLMProvidersForIntegrations,
+			modalSelector: '#integrationConfigurationModal',
+			onSaveSuccessful: () => { CheckAgentTabHasChanges(); validateAgentKnowledgeBaseTab(true); },
+			onIntegrationChange: () => { CheckAgentTabHasChanges(); validateAgentKnowledgeBaseTab(true); },
+		});
+
 		/** Event Handlers **/
 		addNewAgentButton.on("click", (event) => {
 			event.preventDefault();
@@ -4495,7 +4864,7 @@ function initAgentTab() {
 			SetAgentCardDynamicWidth();
 		})
 
-		// General Tab Changes
+		// General Tab Handlers
 		function initAgentGeneralTabHandlers() {
 			// Name input changes
 			$("#editAgentIdentifierInput").on("input", (event) => {
@@ -4529,12 +4898,12 @@ function initAgentTab() {
 		}
 		initAgentGeneralTabHandlers();
 
-		// Context Tab Changes
+		// Context Tab Handlers
 		$("#agentEditContextEnableBranding, #agentEditContextEnableBranches, #agentEditContextEnableServices, #agentEditContextEnableProducts").on("change", () => {
 			CheckAgentTabHasChanges();
 		});
 
-		// Personality Tab Changes
+		// Personality Tab Handlers
 		function initAgentPersonalityTabHandlers() {
 			// Name input changes
 			$("#editAgentPersonalityNameInput").on("input", (event) => {
@@ -4655,7 +5024,7 @@ function initAgentTab() {
 		}
 		initAgentPersonalityTabHandlers();
 
-		// Utterances Tab Changes
+		// Utterances Tab Handlers
 		function initAgentUtterancesTabHandlers() {
 			// Opening Type changes
 			$("#editAgentGreetingStartTypeInput").on("change", () => {
@@ -4683,17 +5052,17 @@ function initAgentTab() {
 		}
 		initAgentUtterancesTabHandlers();
 
-		// Interruptions Tab Changes
+		// Interruptions Tab Handlers
 		function initAgentInterruptionsTabHandlers() {
 			// --- Turn-end Detection ---
 			editAgentTurnEndTypeSelect.on("change", (event) => {
-				const selectedValue = $(event.currentTarget).val();
+				const selectedValue = parseInt($(event.currentTarget).val());
 				agentTurnEndViaVADBox.hide();
 				agentTurnEndViaAIBox.hide();
 
-				if (selectedValue === "0") { // Turn End via VAD
+				if (selectedValue == AGENT_INTERRUPTION_TURN_END_TYPE.VAD) { // Turn End via VAD
 					agentTurnEndViaVADBox.show();
-				} else if (selectedValue === "2") { // Turn End via AI
+				} else if (selectedValue == AGENT_INTERRUPTION_TURN_END_TYPE.AI) { // Turn End via AI
 					agentTurnEndViaAIBox.show();
 				}
 
@@ -4728,17 +5097,25 @@ function initAgentTab() {
 					agentInterruptionPauseTypeSelect.prop("disabled", false);
                     enableAgentInterruptionVerification.prop("disabled", false);
 				}
+
+                CheckAgentTabHasChanges();
+                validateAgentInterruptionsTab(true);
 			});
+
+			editAgentTurnByTurnIncludeInterruptedSpeech.on("change", () => {
+                CheckAgentTabHasChanges();
+				validateAgentInterruptionsTab(true);
+            });
 
 			// --- Agent Pause Trigger ---
 			agentInterruptionPauseTypeSelect.on("change", (event) => {
-				const selectedValue = $(event.currentTarget).val();
+				const selectedValue = parseInt($(event.currentTarget).val());
 				agentInterruptionPauseViaVADBox.hide();
 				agentInterruptionPauseViaWordsBox.hide();
 
-				if (selectedValue === "vad") {
+				if (selectedValue == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.VAD) {
 					agentInterruptionPauseViaVADBox.show();
-				} else if (selectedValue === "words") {
+				} else if (selectedValue == AGENT_INTERRUPTION_PAUSE_TRIGGER_TYPE.STT) {
 					agentInterruptionPauseViaWordsBox.show();
 				}
 
@@ -4773,7 +5150,10 @@ function initAgentTab() {
 		}
 		initAgentInterruptionsTabHandlers();
 
-		// Cache Tab Changes
+		// Knowledge Base Tab Handlers
+		initAgentKnowledgeBaseTabHandlers();
+
+		// Cache Tab Handlers
 		function initAgentCacheTabHandlers() {
 			// Message Cache
 			addMessageCacheGroupButton.on("click", (event) => {
@@ -4957,7 +5337,7 @@ function initAgentTab() {
 		}
 		initAgentCacheTabHandlers();
 
-		// Settings Tab Changes
+		// Settings Tab Handlers
 		function initAgentSettingsTabHandlers() {
 			agentBackgroundAudioVolumeInput.on("input", () => {
 				CheckAgentTabHasChanges();

@@ -913,6 +913,21 @@ namespace IqraInfrastructure.Repositories.Business
             return result?.KnowledgeBases.FirstOrDefault(kb => kb.Id == existingKbId);
         }
 
+        public async Task<bool> CheckKnowledgeBaseGroupExistsById(long businessId, string linkedGroupId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.KnowledgeBases, k => k.Id == linkedGroupId)
+            );
+
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.KnowledgeBases.FirstMatchingElement());
+                
+            var result = await _businessAppCollection.Find(filter).Project(projection).FirstOrDefaultAsync();
+            return result != null;
+        }
+
         /**
         * 
         * Campaign
@@ -957,6 +972,6 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
             return result.IsAcknowledged;
-        }
+        }  
     }
 }

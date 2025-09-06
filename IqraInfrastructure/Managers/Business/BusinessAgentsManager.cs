@@ -415,7 +415,8 @@ namespace IqraInfrastructure.Managers.Business
                 }
                 else
                 {
-                    if (!turnEndElement.TryGetProperty("type", out var turnEndTypeElement) || turnEndTypeElement.ValueKind != JsonValueKind.Number)
+                    if (!turnEndElement.TryGetProperty("type", out var turnEndTypeElement) ||
+                        turnEndTypeElement.ValueKind != JsonValueKind.Number)
                     {
                         return result.SetFailureResult(
                             "AddOrUpdateAgent:INTERRUPTION_TURN_END_TYPE_INVALID",
@@ -434,7 +435,8 @@ namespace IqraInfrastructure.Managers.Business
 
                     if (newAgentData.Interruptions.TurnEnd.Type == AgentInterruptionTurnEndTypeENUM.VAD)
                     {
-                        if (!interruptionsElement.TryGetProperty("vadSilenceDurationMS", out var vadSilenceDurationMSElement) || vadSilenceDurationMSElement.ValueKind != JsonValueKind.Number)
+                        if (!interruptionsElement.TryGetProperty("vadSilenceDurationMS", out var vadSilenceDurationMSElement) ||
+                            vadSilenceDurationMSElement.ValueKind != JsonValueKind.Number)
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateAgent:INTERRUPTION_VAD_SILENCE_DURATION_MS_INVALID",
@@ -492,7 +494,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
 
                     if (!interruptionsElement.TryGetProperty("useTurnByTurnMode", out var useTurnByTurnModeElement) || 
-                        (useTurnByTurnModeElement.ValueKind != JsonValueKind.False || useTurnByTurnModeElement.ValueKind != JsonValueKind.True))
+                        (useTurnByTurnModeElement.ValueKind != JsonValueKind.False && useTurnByTurnModeElement.ValueKind != JsonValueKind.True))
                     {
                         return result.SetFailureResult(
                             "AddOrUpdateAgent:INTERRUPTION_USE_TURN_BY_TURN_MODE_INVALID",
@@ -506,7 +508,7 @@ namespace IqraInfrastructure.Managers.Business
                         if (newAgentData.Interruptions.UseTurnByTurnMode)
                         {
                             if (!interruptionsElement.TryGetProperty("includeInterruptedSpeechInTurnByTurnMode", out var includeInterruptedSpeechInTurnByTurnModeElement) ||
-                                (includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.False || includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.True))
+                                (includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.False && includeInterruptedSpeechInTurnByTurnModeElement.ValueKind != JsonValueKind.True))
                             {
                                 return result.SetFailureResult(
                                     "AddOrUpdateAgent:INTERRUPTION_INCLUDE_INTERRUPTED_SPEECH_IN_TURN_BY_TURN_MODE_INVALID",
@@ -541,12 +543,12 @@ namespace IqraInfrastructure.Managers.Business
                                         "Interruptions pause trigger type not found or invalid."
                                     );
                                 }
-                                var pauseTriggerTypeInt = pauseTriggerElement.GetInt32();
+                                var pauseTriggerTypeInt = pauseTriggerTypeElement.GetInt32();
                                 if (!Enum.IsDefined(typeof(AgentInterruptionPauseTriggerTypeENUM), pauseTriggerTypeInt))
                                 {
                                     return result.SetFailureResult(
-                                        "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_TYPE_INVALID",
-                                        "Interruptions pause trigger type not found or invalid."
+                                        "AddOrUpdateAgent:INTERRUPTION_PAUSE_TRIGGER_TYPE_UNDEFINED",
+                                        "Interruptions pause trigger type not defined."
                                     );
                                 }
                                 newAgentData.Interruptions.PauseTrigger.Type = (AgentInterruptionPauseTriggerTypeENUM)pauseTriggerTypeInt;
@@ -603,7 +605,7 @@ namespace IqraInfrastructure.Managers.Business
                                 newAgentData.Interruptions.Verification = new BusinessAppAgentInterruptionVerification();
 
                                 if (!verificationElement.TryGetProperty("enabled", out var enabledElement) ||
-                                    (enabledElement.ValueKind != JsonValueKind.True || enabledElement.ValueKind != JsonValueKind.False)
+                                    (enabledElement.ValueKind != JsonValueKind.True && enabledElement.ValueKind != JsonValueKind.False)
                                 )
                                 {
                                     return result.SetFailureResult(
@@ -617,7 +619,7 @@ namespace IqraInfrastructure.Managers.Business
                                 {
                                     // UseAgentLLM bool
                                     if (!verificationElement.TryGetProperty("useAgentLLM", out var useAgentLLMElement) ||
-                                        (useAgentLLMElement.ValueKind != JsonValueKind.True || useAgentLLMElement.ValueKind != JsonValueKind.False)
+                                        (useAgentLLMElement.ValueKind != JsonValueKind.True && useAgentLLMElement.ValueKind != JsonValueKind.False)
                                     )
                                     {
                                         return result.SetFailureResult(
@@ -655,6 +657,239 @@ namespace IqraInfrastructure.Managers.Business
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // Knowledge Base
+            if (!changesRootElement.TryGetProperty("knowledgeBase", out var knowledgeBaseElement))
+            {
+                return result.SetFailureResult(
+                    "AddOrUpdateAgent:KNOWLEDGE_BASE_NOT_FOUND",
+                    "Knowledge base section not found."
+                );
+            }
+            else
+            {
+                if (!knowledgeBaseElement.TryGetProperty("linkedGroups", out var linkedGroupsElement) ||
+                    linkedGroupsElement.ValueKind != JsonValueKind.Array)
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:KNOWLEDGE_BASE_LINKED_GROUPS_NOT_FOUND",
+                        "Knowledge base linked groups not found."
+                    );
+                }
+                else
+                {
+                    var linkedGroupsEnumerateArray = linkedGroupsElement.EnumerateArray();
+                    for (int i = 0; i < linkedGroupsEnumerateArray.Count(); i++)
+                    {
+                        var element = linkedGroupsEnumerateArray.ElementAt(i);
+                        if (element.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_LINKED_GROUPS_INVALID_TYPE",
+                                $"Invalid array item type for knowledge base linked groups at index {i}. Found: {element.ValueKind}"
+                            );
+                        }
+
+                        var linkedGroupId = element.GetString();
+                        if (string.IsNullOrWhiteSpace(linkedGroupId))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_LINKED_GROUPS_EMPTY",
+                                $"Empty array item type for knowledge base linked groups at index {i}."
+                            );
+                        }
+
+                        var kbGExists = await _parentBusinessManager.GetKnowledgeBaseManager().CheckKnowledgeBaseGroupExistsById(businessId, linkedGroupId);
+                        if (!kbGExists)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_LINKED_GROUPS_NOT_FOUND",
+                                $"Linked knowledge base group {linkedGroupId} not found for business."
+                            );
+                        }
+
+                        newAgentData.KnowledgeBase.LinkedGroups.Add(linkedGroupId);
+                    }
+                }
+
+                if (!knowledgeBaseElement.TryGetProperty("searchStrategy", out var searchStrategyElement) ||
+                    searchStrategyElement.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_NOT_FOUND",
+                        "Knowledge base search strategy not found."
+                    );
+                }
+                else
+                {
+                    if (!searchStrategyElement.TryGetProperty("type", out var typeElement) ||
+                        typeElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_TYPE_NOT_FOUND",
+                            "Knowledge base search strategy type not found."
+                        );
+                    }
+                    var typeInt = typeElement.GetInt32();
+                    if (!Enum.IsDefined(typeof(AgentKnowledgeBaseSearchStartegyTypeENUM), typeInt))
+                    {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_TYPE_INVALID",
+                            "Knowledge base search strategy type is invalid."
+                        );
+                    }
+                    newAgentData.KnowledgeBase.SearchStrategy.Type = (AgentKnowledgeBaseSearchStartegyTypeENUM)typeInt;
+
+                    if (newAgentData.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.SpecificKeyword)
+                    {
+                        if (!searchStrategyElement.TryGetProperty("specificKeywords", out var specificKeywordsElement) ||
+                            specificKeywordsElement.ValueKind != JsonValueKind.String)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_SPECIFIC_KEYWORDS_NOT_FOUND",
+                                "Knowledge base search strategy specific keywords not found."
+                            );
+                        }
+                        var specificKeywords = specificKeywordsElement.GetString();
+                        if (string.IsNullOrWhiteSpace(specificKeywords))
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_SPECIFIC_KEYWORDS_EMPTY",
+                                "Knowledge base search strategy specific keywords is empty."
+                            );
+                        }
+                        var splitSpecificKeywords = specificKeywords.Split(',').ToList();
+                        if (splitSpecificKeywords.Count == 0)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_SPECIFIC_KEYWORDS_SPLIT_EMPTY",
+                                "Knowledge base search strategy specific keywords is empty after comma split."
+                            );
+                        }
+                        newAgentData.KnowledgeBase.SearchStrategy.SpecificKeywords = splitSpecificKeywords;
+                    }
+                    else if (newAgentData.KnowledgeBase.SearchStrategy.Type == AgentKnowledgeBaseSearchStartegyTypeENUM.LLM)
+                    {
+                        newAgentData.KnowledgeBase.SearchStrategy.LLMClassifier = new();
+
+                        if (!searchStrategyElement.TryGetProperty("llmClassifier", out var llmClassifierElement) ||
+                            llmClassifierElement.ValueKind != JsonValueKind.Object)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_LLM_CLASSIFIER_NOT_FOUND",
+                                "Knowledge base search strategy LLM classifier not found."
+                            );
+                        }
+                        else
+                        {
+                            if (
+                                !llmClassifierElement.TryGetProperty("useAgentLLM", out var useAgentLLMElement) ||
+                                (useAgentLLMElement.ValueKind != JsonValueKind.True && useAgentLLMElement.ValueKind != JsonValueKind.False)
+                            ) {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_LLM_CLASSIFIER_USE_AGENT_LLM_NOT_FOUND",
+                                    "Knowledge base search strategy LLM classifier use agent LLM not found."
+                                );
+                            }
+                            newAgentData.KnowledgeBase.SearchStrategy.LLMClassifier.UseAgentLLM = useAgentLLMElement.GetBoolean();
+
+                            if (!newAgentData.KnowledgeBase.SearchStrategy.LLMClassifier.UseAgentLLM)
+                            {
+                                if (!llmClassifierElement.TryGetProperty("llmIntegration", out var llmIntegrationElement) ||
+                                    llmIntegrationElement.ValueKind != JsonValueKind.Object)
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateAgent:KNOWLEDGE_BASE_SEARCH_STRATEGY_LLM_CLASSIFIER_LLM_INTEGRATION_NOT_FOUND",
+                                        "Knowledge base search strategy LLM classifier LLM integration not found."
+                                    );
+                                }
+                                var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                                    businessId,
+                                    llmIntegrationElement,
+                                    "LLM",
+                                    null
+                                );
+                                if (!validationBuildResult.Success)
+                                {
+                                    result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                                    result.Message = validationBuildResult.Message;
+                                    return result;
+                                }
+                                newAgentData.KnowledgeBase.SearchStrategy.LLMClassifier.LLMIntegration = validationBuildResult.Data;
+                            }
+                        }
+                    }
+                }
+
+                if (!changesRootElement.TryGetProperty("refinement", out var refinementElement) ||
+                    refinementElement.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                        "AddOrUpdateAgent:KNOWLEDGE_BASE_REFINEMENT_NOT_FOUND",
+                        "Knowledge base refinement not found."
+                    );
+                }
+                else
+                {
+                    if (!refinementElement.TryGetProperty("enabled", out var enabledElement) ||
+                        (enabledElement.ValueKind != JsonValueKind.True && enabledElement.ValueKind != JsonValueKind.False)
+                    ) {
+                        return result.SetFailureResult(
+                            "AddOrUpdateAgent:KNOWLEDGE_BASE_REFINEMENT_ENABLED_NOT_FOUND",
+                            "Knowledge base refinement enabled not found."
+                        );
+                    }
+                    newAgentData.KnowledgeBase.Refinement.Enabled = enabledElement.GetBoolean();
+
+                    if (newAgentData.KnowledgeBase.Refinement.Enabled)
+                    {
+                        if (!refinementElement.TryGetProperty("queryCount", out var queryCountElement) ||
+                            queryCountElement.ValueKind != JsonValueKind.Number)
+                        {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_REFINEMENT_QUERY_COUNT_NOT_FOUND",
+                                "Knowledge base refinement query count not found."
+                            );
+                        }
+                        newAgentData.KnowledgeBase.Refinement.QueryCount = queryCountElement.GetInt32();
+
+                        if (!refinementElement.TryGetProperty("useAgentLLM", out var useAgentLLMElement) ||
+                            (useAgentLLMElement.ValueKind != JsonValueKind.True && useAgentLLMElement.ValueKind != JsonValueKind.False)
+                        ) {
+                            return result.SetFailureResult(
+                                "AddOrUpdateAgent:KNOWLEDGE_BASE_REFINEMENT_USE_AGENT_LLM_NOT_FOUND",
+                                "Knowledge base refinement use agent LLM not found."
+                            );
+                        }
+                        newAgentData.KnowledgeBase.Refinement.UseAgentLLM = useAgentLLMElement.GetBoolean();
+
+                        if (!newAgentData.KnowledgeBase.Refinement.UseAgentLLM.Value)
+                        {
+                            if (!refinementElement.TryGetProperty("llmIntegration", out var llmIntegrationElement) ||
+                                llmIntegrationElement.ValueKind != JsonValueKind.Object)
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateAgent:KNOWLEDGE_BASE_REFINEMENT_LLM_INTEGRATION_NOT_FOUND",
+                                    "Knowledge base refinement LLM integration not found."
+                                );
+                            }
+                            var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
+                                businessId,
+                                llmIntegrationElement,
+                                "LLM",
+                                null
+                            );
+                            if (!validationBuildResult.Success)
+                            {
+                                result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
+                                result.Message = validationBuildResult.Message;
+                                return result;
+                            }
+                            newAgentData.KnowledgeBase.Refinement.LLMIntegration = validationBuildResult.Data;
                         }
                     }
                 }
@@ -706,7 +941,7 @@ namespace IqraInfrastructure.Managers.Business
                         newAgentData.Cache.Messages.Add(messagesCacheGroupId);
                     }
                 }
-                
+
                 // Audios
                 if (!cacheTabElement.TryGetProperty("audios", out var audiosElement))
                 {
