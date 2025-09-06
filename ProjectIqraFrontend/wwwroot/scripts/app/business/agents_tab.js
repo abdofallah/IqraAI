@@ -526,7 +526,7 @@ function createDefaultAgentObject() {
 			linkedGroups: [],
 			searchStrategy: {
 				type: {
-					value: AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.ALWAYS
+					value: AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.KNOWLEDGEBASE_KEYWORD
 				},
 				specificKeywords: null,
 				llmClassifier: null,
@@ -1634,12 +1634,12 @@ function fillAgentKnowledgeBaseTab() {
 	updateKbGroupSelectOptions();
 
 	// Settings
-	agentKbSearchStrategySelect.val(kbData.searchStrategy.value).trigger('change');
+	agentKbSearchStrategySelect.val(kbData.searchStrategy.type.value).trigger('change');
 
-	if (kbData.searchStrategy.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
+	if (kbData.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
 		agentKbSpecificKeywordsTextarea.val(kbData.specificKeywords);
 	}
-	else if (kbData.searchStrategy.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
+	else if (kbData.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
 		agentKbClassifierUseAgentLLM.prop('checked', kbData.classifier.useAgentLLM).trigger('change');
 		if (!kbData.classifier.useAgentLLM && kbData.classifier.llmIntegration) {
 			agentKbClassifierLLMIntegrationManager.load(kbData.classifier.llmIntegration);
@@ -1661,7 +1661,7 @@ function ResetAndEmptyAgentKnowledgeBaseTab() {
 	renderLinkedKbGroups();
 	updateKbGroupSelectOptions();
 
-	agentKbSearchStrategySelect.val('none').trigger('change');
+	agentKbSearchStrategySelect.val('2').trigger('change');
 	agentKbSpecificKeywordsTextarea.val('');
 
 	agentKbClassifierUseAgentLLM.prop('checked', true).trigger('change');
@@ -1685,28 +1685,76 @@ function CheckAgentKnowledgeBaseTabChanges(enableDisableButton = true) {
 	}
 
 	// Settings
-	changes.searchStrategy = agentKbSearchStrategySelect.val();
-	if (original.searchStrategy !== changes.searchStrategy) hasChanges = true;
-
-	changes.specificKeywords = agentKbSpecificKeywordsTextarea.val();
-	if (original.specificKeywords !== changes.specificKeywords) hasChanges = true;
-
-	changes.classifier = {
-		useAgentLLM: agentKbClassifierUseAgentLLM.is(':checked'),
-		llmIntegration: agentKbClassifierUseAgentLLM.is(':checked') ? null : agentKbClassifierLLMIntegrationManager.getData()
+	changes.searchStrategy = {
+		type: parseInt(agentKbSearchStrategySelect.val())
 	};
-	if (original.classifier.useAgentLLM !== changes.classifier.useAgentLLM || JSON.stringify(original.classifier.llmIntegration) !== JSON.stringify(changes.classifier.llmIntegration)) {
+
+	if (original.searchStrategy.type.value !== changes.searchStrategy.type) {
 		hasChanges = true;
 	}
 
+	if (changes.searchStrategy.type == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
+		changes.specificKeywords = agentKbSpecificKeywordsTextarea.val();
+
+		if (
+            original.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD &&
+			original.specificKeywords !== changes.specificKeywords
+		) {
+			hasChanges = true;
+		}
+	}
+	else if (changes.searchStrategy.type == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
+        changes.llmClassifier = {
+            useAgentLLM: agentKbClassifierUseAgentLLM.is(':checked')
+		};
+
+		if (!changes.llmClassifier.useAgentLLM) {
+			changes.llmClassifier.llmIntegration
+		}
+
+		if (original.searchStrategy.type.value == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
+			if (original.llmClassifier.useAgentLLM !== changes.llmClassifier.useAgentLLM) {
+                hasChanges = true;
+			}
+
+			if (
+				(original.llmClassifier.useAgentLLM == true && changes.llmClassifier.useAgentLLM == true) &&
+				JSON.stringify(original.llmClassifier.llmIntegration) !== JSON.stringify(changes.llmClassifier.llmIntegration)
+			) {
+                hasChanges = true;
+			}
+		}
+    }
+
 	changes.refinement = {
-		enabled: agentKbEnableQueryRefinement.is(':checked'),
-		queryCount: parseInt(agentKbRefinementQueryCount.val(), 10),
-		useAgentLLM: agentKbRefinementUseAgentLLM.is(':checked'),
-		llmIntegration: agentKbRefinementUseAgentLLM.is(':checked') ? null : agentKbRefinementLLMIntegrationManager.getData()
+		enabled: agentKbEnableQueryRefinement.is(':checked')
 	};
-	if (original.refinement.enabled !== changes.refinement.enabled || original.refinement.queryCount !== changes.refinement.queryCount || original.refinement.useAgentLLM !== changes.refinement.useAgentLLM || JSON.stringify(original.refinement.llmIntegration) !== JSON.stringify(changes.refinement.llmIntegration)) {
-		hasChanges = true;
+
+	if (original.refinement.enabled !== changes.refinement.enabled) {
+        hasChanges = true;
+    }
+
+	if (changes.refinement.enabled) {
+		changes.refinement.queryCount = parseInt(agentKbRefinementQueryCount.val());
+		changes.refinement.useAgentLLM = agentKbRefinementUseAgentLLM.is(':checked');
+
+		if (!changes.refinement.useAgentLLM) {
+			changes.refinement.llmIntegration = agentKbRefinementLLMIntegrationManager.getData();
+		}
+
+		if (original.refinement.enabled) {
+			if (original.refinement.queryCount !== changes.refinement.queryCount ||
+				original.refinement.useAgentLLM !== changes.refinement.useAgentLLM) {
+                hasChanges = true;
+			}
+
+			if (
+				(original.refinement.useAgentLLM == true && changes.refinement.useAgentLLM == true) &&
+				JSON.stringify(original.refinement.llmIntegration) !== JSON.stringify(changes.refinement.llmIntegration)
+			) {
+                hasChanges = true;
+            }
+		}
 	}
 
 	if (enableDisableButton) {
@@ -1719,15 +1767,9 @@ function validateAgentKnowledgeBaseTab(onlyRemove = true) {
 	const errors = [];
 	let isValid = true;
 
-	// If a strategy is chosen, at least one KB should be linked.
-	if (agentKbSearchStrategySelect.val() !== 'none' && CurrentAgentLinkedKBs.length === 0) {
-		isValid = false;
-		errors.push("Knowledge Base: At least one Knowledge Base group must be linked to use a search strategy.");
-	}
-
 	// Strategy Specific Validations
-	const strategy = agentKbSearchStrategySelect.val();
-	if (strategy === 'specific_keywords') {
+	const strategy = parseInt(agentKbSearchStrategySelect.val());
+	if (strategy === AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.SPECIFIC_KEYWORD) {
 		if (!agentKbSpecificKeywordsTextarea.val().trim()) {
 			isValid = false;
 			errors.push("Knowledge Base: Trigger Keywords cannot be empty when using the 'Specific Keyword Match' strategy.");
@@ -1735,7 +1777,7 @@ function validateAgentKnowledgeBaseTab(onlyRemove = true) {
 		} else {
 			agentKbSpecificKeywordsTextarea.removeClass('is-invalid');
 		}
-	} else if (strategy === 'llm_classifier') {
+	} else if (strategy == AGENT_KNOWLEDGE_BASE_STRATEGY_TYPE.LLM) {
 		if (!agentKbClassifierUseAgentLLM.is(':checked')) {
 			const validation = agentKbClassifierLLMIntegrationManager.validate();
 			if (!validation.isValid) {
@@ -1747,8 +1789,8 @@ function validateAgentKnowledgeBaseTab(onlyRemove = true) {
 
 	// Refinement Validations
 	if (agentKbEnableQueryRefinement.is(':checked')) {
-		const count = parseInt(agentKbRefinementQueryCount.val(), 10);
-		if (isNaN(count) || count < 1 || count > 5) {
+		const count = parseInt(agentKbRefinementQueryCount.val());
+		if (isNaN(count) || count < 1) {
 			isValid = false;
 			errors.push("Knowledge Base: 'Number of Queries to Generate' must be between 1 and 5.");
 			if (!onlyRemove) agentKbRefinementQueryCount.addClass('is-invalid');

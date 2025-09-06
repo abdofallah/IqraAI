@@ -825,7 +825,7 @@ namespace IqraInfrastructure.Managers.Business
                     }
                 }
 
-                if (!changesRootElement.TryGetProperty("refinement", out var refinementElement) ||
+                if (!knowledgeBaseElement.TryGetProperty("refinement", out var refinementElement) ||
                     refinementElement.ValueKind != JsonValueKind.Object)
                 {
                     return result.SetFailureResult(

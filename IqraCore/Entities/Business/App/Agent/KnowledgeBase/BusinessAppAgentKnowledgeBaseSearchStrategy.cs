@@ -4,7 +4,7 @@ namespace IqraCore.Entities.Business
 {
     public class BusinessAppAgentKnowledgeBaseSearchStrategy
     {
-        public AgentKnowledgeBaseSearchStartegyTypeENUM Type { get; set; } = AgentKnowledgeBaseSearchStartegyTypeENUM.Always;
+        public AgentKnowledgeBaseSearchStartegyTypeENUM Type { get; set; } = AgentKnowledgeBaseSearchStartegyTypeENUM.KnowledgeBaseKeyword;
 
         // Specific Keyword
         public List<string>? SpecificKeywords { get; set; } = null;
