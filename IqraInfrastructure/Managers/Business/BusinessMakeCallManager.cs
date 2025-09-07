@@ -1,8 +1,6 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using IqraCore.Entities.Business;
+﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Call.Outbound;
 using IqraCore.Entities.Call.Queue;
-using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Helper.Call.Outbound;
 using IqraCore.Entities.Helper.Call.Queue;
 using IqraCore.Entities.Helper.Server;
@@ -16,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using nietras.SeparatedValues;
 using PhoneNumbers;
+using System.Globalization;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
@@ -46,493 +45,262 @@ namespace IqraInfrastructure.Managers.Business
             _integrationConfigurationManager = integrationConfigurationManager;
         }
 
-        public async Task<FunctionReturnResult> QueueCallInitiationRequestAsync(BusinessData businessData, MakeCallRequestDto callConfig, IFormFile? bulkCsvFile)
+        public async Task<FunctionReturnResult<List<string?>?>> QueueCallInitiationRequestAsync(BusinessData businessData, IFormCollection formData)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<List<string?>?>();
 
             long businessId = businessData.Id;
             string businessDefaultLanguage = businessData.DefaultLanguage;
             List<string> businessLanguages = businessData.Languages;
 
-            // General
-            if (callConfig.General == null)
+            BusinessAppCampaign campaignData;
+            var callConfigData = new MakeCallRequestDto();
+            if (!formData.TryGetValue("config", out var configStringValue))
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:1",
-                    "Missing 'General' in configuration."
+                    "QueueCallInitiationRequestAsync:FORM_DATA_CONFIG_NOT_FOUND",
+                    "Config not found in form data."
                 );
             }
-            if (string.IsNullOrEmpty(callConfig.General.Identifier))
+            else
             {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:2",
-                    "Missing 'General.Identifier' in configuration."
-                );
-            }
-            if (string.IsNullOrEmpty(callConfig.General.Description))
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:3",
-                    "Missing 'General.Description' in configuration."
-                );
-            }
-
-            // Number Details
-            if (callConfig.NumberDetails == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:4",
-                    "Missing 'NumberDetails' in configuration."
-                );
-            }
-            if (callConfig.NumberDetails.Type == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:5",
-                    "Invalid 'NumberDetails.Type' in configuration."
-                );
-            }
-            if (string.IsNullOrWhiteSpace(callConfig.NumberDetails.FromNumberId))
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:6",
-                    "Missing 'NumberDetails.FromNumberId' in configuration."
-                );
-            }
-            BusinessNumberData? defaultFromCallNumberData = await _parentBusinessManager.GetNumberManager().GetBusinessNumberById(businessId, callConfig.NumberDetails.FromNumberId);
-            if (defaultFromCallNumberData == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:7",
-                    "Unable to find 'NumberDetails.FromNumberId' in business data."
-                );
-            }
-            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Single)
-            {
-                if (string.IsNullOrWhiteSpace(callConfig.NumberDetails.ToNumber))
+                var configString = configStringValue.FirstOrDefault();
+                if (string.IsNullOrEmpty(configString))
                 {
                     return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:8",
-                        "Missing 'NumberDetails.ToNumber' in configuration for single call type."
+                        "QueueCallInitiationRequestAsync:FORM_DATA_CONFIG_EMPTY",
+                        "Config not found in form data."
                     );
                 }
 
-                PhoneNumber parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(callConfig.NumberDetails.ToNumber, "ZZ");
-                if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+                JsonDocument? callRequestDocElement = null;
+                try
                 {
-                    result.Code = "ForwardCallInitiationRequestAsync:9";
-                    result.Message = "Number validation failed for 'NumberDetails.ToNumber'.";
-                    return result;
+                    callRequestDocElement = JsonSerializer.Deserialize<JsonDocument>(configString);
                 }
-            }
-            else if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
-            {
-                if (bulkCsvFile == null)
-                {
+                catch (Exception ex) {
                     return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:10",
-                        "Missing 'bulk_file' for bulk call type."
+                        "QueueCallInitiationRequestAsync:CONFIG_DESERIALIZATION_ERROR",
+                        $"Invalid config data format: {ex.Message}"
                     );
                 }
-                // we validate the bulk calls at the end of the class validation
-            }
-            // Configuration
-            if (callConfig.Configuration == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:12",
-                    "Missing 'Configuration' in configuration."
-                );
-            }
-            // Configuration.Schedule
-            if (callConfig.Configuration.Schedule == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:13",
-                    "Missing 'Configuration.Schedule' in configuration."
-                );
-            }
-            if (callConfig.Configuration.Schedule.Type == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:14",
-                    "Missing 'Configuration.Schedule.Type' in configuration."
-                );
-            }
-            if (callConfig.Configuration.Schedule.Type == OutboundCallScheduleType.Scheduled)
-            {
-                if (callConfig.Configuration.Schedule.DateTimeUTC == null)
+                if (callRequestDocElement == null)
                 {
                     return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:15",
-                        "Missing 'Configuration.Schedule.DateTimeUTC' in configuration."
+                        "QueueCallInitiationRequestAsync:CONFIG_DESERIALIZATION_ERROR",
+                        "Invalid config data format."
                     );
                 }
+                var callRequestElement = callRequestDocElement.RootElement;
 
-                if (callConfig.Configuration.Schedule.DateTimeUTC.Value.AddMinutes(10) < DateTime.UtcNow)
+                // Campaign Id
+                if (!callRequestElement.TryGetProperty("campaignId", out var campaignIdElement)
+                    || campaignIdElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(campaignIdElement.GetString()))
                 {
                     return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:16",
-                        "Cannot schedule call in the past (must be atleast 10 minutes in the future)."
+                        "QueueCallInitiationRequestAsync:CONFIG_CAMPAIGN_ID_NOT_FOUND",
+                        "Campaign ID not found in config data."
                     );
                 }
-            }
-            // Configuration.RetryDecline
-            if (callConfig.Configuration.RetryDecline == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:17",
-                    "Missing 'Configuration.RetryDecline' in configuration."
-                );
-            }
-            if (callConfig.Configuration.RetryDecline.Enabled == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:18",
-                    "Missing 'Configuration.RetryDecline.Enabled' in configuration."
-                );
-            }
-            if (callConfig.Configuration.RetryDecline.Enabled == true)
-            {
-                if (callConfig.Configuration.RetryDecline.Count == null || callConfig.Configuration.RetryDecline.Count < 1 || callConfig.Configuration.RetryDecline.Count > 5) // todo can have retires max count based on user/business
+                else
                 {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:19",
-                        "Missing or invalid 'Configuration.RetryDecline.Count' in configuration. Must be between 1 and 5."
-                    );
-                }
-                if (callConfig.Configuration.RetryDecline.Delay == null || callConfig.Configuration.RetryDecline.Delay < 1)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:20",
-                        "Missing or invalid 'Configuration.RetryDecline.Delay' in configuration. Must be greater than 0."
-                    );
-                }
-                if (callConfig.Configuration.RetryDecline.Unit == null)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:21",
-                        "Missing or invalid 'Configuration.RetryDecline.Unit' in configuration."
-                    );
-                }
-            }
-            // Configuration.RetryMiss
-            if (callConfig.Configuration.RetryMiss == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:22",
-                    "Missing 'Configuration.RetryMiss' in configuration."
-                );
-            }
-            if (callConfig.Configuration.RetryMiss.Enabled == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:23",
-                    "Missing 'Configuration.RetryMiss.Enabled' in configuration."
-                );
-            }
-            if (callConfig.Configuration.RetryMiss.Enabled == true)
-            {
-                if (callConfig.Configuration.RetryMiss.Count == null || callConfig.Configuration.RetryMiss.Count < 1 || callConfig.Configuration.RetryMiss.Count > 5) // todo can have retires max count based on user/business, used below in a function too
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:24",
-                        "Missing or invalid 'Configuration.RetryMiss.Count' in configuration. Must be between 1 and 5."
-                    );
-                }
-                if (callConfig.Configuration.RetryMiss.Delay == null || callConfig.Configuration.RetryMiss.Delay < 1)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:25",
-                        "Missing or invalid 'Configuration.RetryMiss.Delay' in configuration. Must be greater than 0."
-                    );
-                }
-                if (callConfig.Configuration.RetryMiss.Unit == null)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:26",
-                        "Missing or invalid 'Configuration.RetryMiss.Unit' in configuration."
-                    );
-                }
-            }
-            // Configuration.Timeouts
-            if (callConfig.Configuration.Timeouts == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:27",
-                    "Missing 'Configuration.Timeouts' in configuration."
-                );
-            }
-            if (callConfig.Configuration.Timeouts.NotifyOnSilenceMS == null || callConfig.Configuration.Timeouts.NotifyOnSilenceMS < 0)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:28",
-                    "Missing or invalid 'Configuration.Timeouts.NotifyOnSilenceMS' in configuration. Set 0 for disabled."
-                );
-            }
-            if (callConfig.Configuration.Timeouts.EndOnSilenceMS == null || callConfig.Configuration.Timeouts.EndOnSilenceMS < 0)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:29",
-                    "Missing or invalid 'Configuration.Timeouts.EndOnSilenceMS' in configuration. Set 0 for disabled."
-                );
-            }
-            if (callConfig.Configuration.Timeouts.MaxCallTimeS == null || callConfig.Configuration.Timeouts.MaxCallTimeS < 1 || callConfig.Configuration.Timeouts.MaxCallTimeS > 1800) // this is also used in BusinessRoutings so we should make this a const
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:30",
-                    "Missing or invalid 'Configuration.Timeouts.CallTimeoutMS' in configuration. Must be between 1 and 1800 seconds."
-                );
-            }
-            // AgentSettings
-            if (callConfig.AgentSettings == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:31",
-                    "Missing 'AgentSettings' in configuration."
-                );
-            }
-            if (string.IsNullOrWhiteSpace(callConfig.AgentSettings.AgentId))
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:32",
-                    "Missing or invalid 'AgentSettings.AgentId' in configuration."
-                );
-            }
-            BusinessAppAgent? defaultAgentData = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessId, callConfig.AgentSettings.AgentId);
-            if (defaultAgentData == null) {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:33",
-                    $"Default selected agent with id {callConfig.AgentSettings.AgentId} not found in business data."
-                );
-            }
-            if (string.IsNullOrWhiteSpace(callConfig.AgentSettings.ScriptId))
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:34",
-                    "Missing or invalid 'AgentSettings.ScriptId' in configuration."
-                );
-            }
-            BusinessAppAgentScript? selectedDefaultAgentScriptData = defaultAgentData.Scripts.Find(s => s.Id == callConfig.AgentSettings.ScriptId);
-            if (selectedDefaultAgentScriptData == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:35",
-                    $"Default selected agent selected script with id {callConfig.AgentSettings.ScriptId} not found in business data."
-                );
-            }
-            if (string.IsNullOrEmpty(callConfig.AgentSettings.LanguageCode))
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:36",
-                    "Missing or invalid 'AgentSettings.LanguageCode' in configuration."
-                );
-            }
-            if (businessLanguages.Contains(callConfig.AgentSettings.LanguageCode) == false)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:37",
-                    $"Language code '{callConfig.AgentSettings.LanguageCode}' not found in business languages."
-                );
-            }
-            if (callConfig.AgentSettings.Timezones == null || callConfig.AgentSettings.Timezones.Count == 0)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:38",
-                    "Missing or invalid 'AgentSettings.Timezones' in configuration."
-                );
-            }
-            foreach (var timezone in callConfig.AgentSettings.Timezones)
-            {
-                if (TimeZoneHelper.ValidateOffsetString(timezone) == false)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:38.1",
-                        $"Failed to validate 'AgentSettings.Timezones' in configuration. Timezone: {timezone}"
-                    );
-                }
-            }    
-            if (callConfig.AgentSettings.IncludeFromNumberInContext == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:39",
-                    "Missing or invalid 'AgentSettings.IncludeFromNumberInContext' in configuration."
-                );
-            }
-            if (callConfig.AgentSettings.IncludeToNumberInContext == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:40",
-                    "Missing or invalid 'AgentSettings.IncludeToNumberInContext' in configuration."
-                );
-            }
-            // AgentSettings.Interruption
-            if (callConfig.AgentSettings.Interruption == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:41",
-                    "Missing 'AgentSettings.Interruption' in configuration."
-                );
-            }
-            if (callConfig.AgentSettings.Interruption.Type == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:42",
-                    "Missing or invalid 'AgentSettings.Interruption.Type' in configuration."
-                );
-            }
-            if (callConfig.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.TurnByTurn)
-            {
-                if (callConfig.AgentSettings.Interruption.UseInterruptedResponseInNextTurn == null)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:43",
-                        "Missing or invalid 'AgentSettings.Interruption.UseInterruptedResponseInNextTurn' in configuration for intertuption type 'Turn by Turn'."
-                    );
-                }
-            }
-            else if (callConfig.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.InterruptibleViaVAD)
-            {
-                if (callConfig.AgentSettings.Interruption.VadDurationMS == null || callConfig.AgentSettings.Interruption.VadDurationMS < 100) // todo this is also set in BusinessRoutingsmanager, make it const
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:44",
-                        "Missing or invalid 'AgentSettings.Interruption.VadDurationMS' in configuration. Must be at least 100 ms."
-                    );
-                }
-            }
-            else if (callConfig.AgentSettings.Interruption.Type == AgentInterruptionTypeENUM.InterruptibleViaAI)
-            {
-                if (callConfig.AgentSettings.Interruption.UseAgentLLM == null)
-                {
-                    return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:45",
-                        "Missing or invalid 'AgentSettings.Interruption.UseAgentLLM' in configuration for intertuption type 'Via AI'."
-                    );
-                }
-
-                if (callConfig.AgentSettings.Interruption.UseAgentLLM.Value == false)
-                {
-                    if (string.IsNullOrWhiteSpace(callConfig.AgentSettings.Interruption.LLMIntegrationId))
-                    {
-                        return result.SetFailureResult(
-                            "ForwardCallInitiationRequestAsync:AGENT_INTERRUPTION_INTEGRATION_ID_MISSING",
-                            "Intergation ID missing for Agent LLM Interruption."
-                        );
-                    }
-
+                    var campaignIdValue = campaignIdElement.GetString();
                     
-                    if (callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields == null)
+                    var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetCampaignById(businessId, campaignIdValue);
+                    if (!campaignDataResult.Success)
                     {
                         return result.SetFailureResult(
-                            "ForwardCallInitiationRequestAsync:AGENT_INTERRUPTION_INTEGRATION_DATA_MISSING",
-                            "Intergation config data missing for Agent LLM Interruption."
+                            "QueueCallInitiationRequestAsync:CAMPAIGN_NOT_FOUND",
+                            "Campaign not found in business."
                         );
                     }
+                    campaignData = campaignDataResult.Data;
 
-                    var fieldsToJsonElement = JsonSerializer.SerializeToDocument(callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields);
-                    var validationBuildResult = await _integrationConfigurationManager.ValidateAndBuildIntegrationData(
-                        businessId,
-                        callConfig.AgentSettings.Interruption.LLMIntegrationId,
-                        fieldsToJsonElement.RootElement,
-                        "LLM"
+                    callConfigData.CampaignId = campaignIdValue!;
+                }
+
+                // Number
+                if (!callRequestElement.TryGetProperty("number", out var numberElement) || numberElement.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                        "QueueCallInitiationRequestAsync:CONFIG_NUMBER_NOT_FOUND",
+                        "Number not found in config data."
                     );
-
-                    if (!validationBuildResult.Success || validationBuildResult.Data == null)
+                }
+                else
+                {
+                    if (!callRequestElement.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.Number)
                     {
-                        result.Code = "AddOrUpdateAgent:" + validationBuildResult.Code;
-                        result.Message = validationBuildResult.Message;
-                        return result;
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_NUMBER_TYPE_NOT_FOUND",
+                            "Number type not found in config data."
+                        );
                     }
+                    var typeIntValue = typeElement.GetInt32();
+                    if (!Enum.IsDefined(typeof(OutboundCallNumberType), typeIntValue))
+                    {
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_NUMBER_TYPE_UNDEFINED",
+                            "Number type enum not defined."
+                        );
+                    }
+                    callConfigData.Number.Type = ((OutboundCallNumberType)typeIntValue);
 
-                    callConfig.AgentSettings.Interruption.LLMIntegrationConfigFields = validationBuildResult.Data.FieldValues;
+                    // Single Call
+                    if (callConfigData.Number.Type == OutboundCallNumberType.Single)
+                    {
+                        // To Number
+                        if (
+                            !callRequestElement.TryGetProperty("toNumber", out var toNumberElement) ||
+                            toNumberElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(toNumberElement.GetString())
+                        ) {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_NUMBER_TO_NUMBER_NOT_FOUND",
+                                "to number not found in config data."
+                            );
+                        }
+                        var toNumberValue = toNumberElement.GetString()!;
+                        if (!toNumberValue.StartsWith("+"))
+                        {
+                            if (toNumberValue.StartsWith("00"))
+                            {
+                                toNumberValue = toNumberValue.Substring(2);
+                            }
+
+                            toNumberValue = "+" + toNumberValue;
+                        }
+
+                        var toNumberInstance = PhoneNumberUtil.GetInstance().Parse(toNumberValue, "ZZ");
+                        if (!PhoneNumberUtil.GetInstance().IsValidNumber(toNumberInstance))
+                        {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_NUMBER_TO_NUMBER_INVALID",
+                                "To number is invalid. Use E.164 format (+1234567890)."
+                            );
+                        }
+
+                        callConfigData.Number.ToNumber = toNumberValue;
+                    }
+                }
+
+                // Schedule
+                if (!callRequestElement.TryGetProperty("schedule", out var scheduleElement) || scheduleElement.ValueKind != JsonValueKind.Object)
+                {
+                    return result.SetFailureResult(
+                        "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_NOT_FOUND",
+                        "Schedule not found in config data."
+                    );
+                }
+                else
+                {
+                    if (!callRequestElement.TryGetProperty("type", out var scheduleTypeElement) || scheduleTypeElement.ValueKind != JsonValueKind.Number)
+                    {
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_TYPE_NOT_FOUND",
+                            "Schedule type not found in config data."
+                        );
+                    }
+                    var scheduleTypeIntValue = scheduleTypeElement.GetInt32();
+                    if (!Enum.IsDefined(typeof(OutboundCallScheduleType), scheduleTypeIntValue))
+                    {
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_TYPE_UNDEFINED",
+                            "Schedule type enum not defined."
+                        );
+                    }
+                    callConfigData.Schedule.Type = ((OutboundCallScheduleType)scheduleTypeIntValue);
+
+                    if (callConfigData.Schedule.Type == OutboundCallScheduleType.Now)
+                    {
+                        callConfigData.Schedule.DateTimeUTC = DateTime.UtcNow;
+                    }
+                    else if (callConfigData.Schedule.Type == OutboundCallScheduleType.Scheduled)
+                    {
+                        if (
+                            !callRequestElement.TryGetProperty("dateTimeUTC", out var dateTimeUTCElement) ||
+                            dateTimeUTCElement.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(dateTimeUTCElement.GetString())
+                        ) {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_NOT_FOUND",
+                                "Date time UTC not found in config data."
+                            );
+                        }
+                        var dateTimeUTCValue = dateTimeUTCElement.GetString()!;
+                        if (!DateTime.TryParse(dateTimeUTCValue, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeUTC))
+                        {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_SCHEDULE_DATETIMEUTC_PARSE_ERROR",
+                                "Failed to parse schedule date time UTC."
+                            );
+                        }
+                        callConfigData.Schedule.DateTimeUTC = dateTimeUTC;
+                    }
+                }
+
+                // DynamicVariables
+                if (callRequestElement.TryGetProperty("dynamicVariables", out var dynamicVariablesElement) && dynamicVariablesElement.ValueKind == JsonValueKind.Object)
+                {
+                    callConfigData.DynamicVariables = new Dictionary<string, string>();
+                    foreach (var dynamicVariableItem in dynamicVariablesElement.EnumerateObject())
+                    {
+                        if (
+                            dynamicVariableItem.Value.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(dynamicVariableItem.Value.GetString())
+                        ) {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_DYNAMIC_VARIABLES_VALUE_INVALID",
+                                $"Dynamic variable value not found or invalid in config data for {dynamicVariableItem.Name}. Must be string."
+                            );
+                        }
+                        callConfigData.DynamicVariables.Add(dynamicVariableItem.Name, dynamicVariableItem.Value.GetString()!);
+                    }
+                }
+
+                // Metadata
+                if (callRequestElement.TryGetProperty("metadata", out var metadataElement) && metadataElement.ValueKind == JsonValueKind.Object)
+                {
+                    callConfigData.Metadata = new Dictionary<string, string>();
+                    foreach (var metadataItem in metadataElement.EnumerateObject())
+                    {
+                        if (
+                            metadataItem.Value.ValueKind != JsonValueKind.String ||
+                            string.IsNullOrWhiteSpace(metadataItem.Value.GetString())
+                        ) {
+                            return result.SetFailureResult(
+                                "QueueCallInitiationRequestAsync:CONFIG_METADATA_VALUE_INVALID",
+                                $"Metadata value not found or invalid in config data for {metadataItem.Name}. Must be string."
+                            );
+                        }
+                        callConfigData.Metadata.Add(metadataItem.Name, metadataItem.Value.GetString()!);
+                    }
                 }
             }
-            // Actions
-            if (callConfig.Actions == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:48",
-                    "Missing 'Actions' in configuration."
-                );
-            }
-            // Actions.Declines
-            if (callConfig.Actions.Declined == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:49",
-                    "Missing 'Actions.Declined' in configuration."
-                );
-            }
-            var ringingToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Declined, "Declined");
-            if (ringingToolValidationResult.Success == false)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + ringingToolValidationResult.Code,
-                    ringingToolValidationResult.Message
-                );
-            }
-            callConfig.Actions.Declined.Arguments = ringingToolValidationResult.Data;
 
-            // Actions.Missed
-            if (callConfig.Actions.Missed == null)
+            BusinessAppAgent? campaignAgent = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessData.Id, campaignData.Agent.SelectedAgentId);
+            if (campaignAgent == null)
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:50",
-                    "Missing 'Actions.Missed' in configuration."
+                    "QueueCallInitiationRequestAsync:CAMPAIGN_AGENT_NOT_FOUND",
+                    "Campaign agent not found in business."
                 );
             }
-            var missedToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Missed, "Missed");
-            if (missedToolValidationResult.Success == false)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + missedToolValidationResult.Code,
-                    missedToolValidationResult.Message
-                );
-            }
-            callConfig.Actions.Missed.Arguments = missedToolValidationResult.Data;
-
-            // Actions.Answered
-            if (callConfig.Actions.Answered == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:51",
-                    "Missing 'Actions.Answered' in configuration."
-                );
-            }
-            var answeredToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Answered, "Answered");
-            if (answeredToolValidationResult.Success == false)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + answeredToolValidationResult.Code,
-                    answeredToolValidationResult.Message
-                );
-            }
-            callConfig.Actions.Answered.Arguments = answeredToolValidationResult.Data;
-
-            // Actions.Ended
-            if (callConfig.Actions.Ended == null)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:52",
-                    "Missing 'Actions.Ended' in configuration."
-                );
-            }
-            var endedToolValidationResult = await ValidateActionData(businessId, businessDefaultLanguage, callConfig.Actions.Ended, "Ended");
-            if (endedToolValidationResult.Success == false)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:" + endedToolValidationResult.Code,
-                    endedToolValidationResult.Message
-                );
-            }
-            callConfig.Actions.Ended.Arguments = endedToolValidationResult.Data;
+            
 
             // first check if bulk data converted/valid
-            FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>? bulkCallFileResult = null;
-            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
+            FunctionReturnResult<List<OutboundBulkCallRowData>?>? bulkCallFileResult = null;
+            if (callConfigData.Number.Type == OutboundCallNumberType.Bulk)
             {
-                bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfig, defaultFromCallNumberData, defaultAgentData);
+                var bulkCsvFile = formData.Files.FirstOrDefault(f => f.Name == "bulk_file");
+                if (bulkCsvFile == null || bulkCsvFile.Length == 0)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:52",
+                        "Bulk file not found in form data."
+                    );
+                }
+
+                bulkCallFileResult = await ValidateAndBuildBulkCSVCallFile(businessData, bulkCsvFile!, callConfigData);
                 if (!bulkCallFileResult.Success || bulkCallFileResult.Data == null)
                 {
                     return result.SetFailureResult(
@@ -542,28 +310,27 @@ namespace IqraInfrastructure.Managers.Business
                 }
             }
 
-            // Create a campaign
-            OutboundCallCampaignData outboundCallCampaignData = new OutboundCallCampaignData()
-            {
-                Id = Guid.NewGuid().ToString(),
-                CreatedAt = DateTime.UtcNow,
-                CallRequestData = callConfig,
-                IsBulkCall = (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk),
-                CallQueueIds = new List<string>()
-            };
-            var insertCampaignResult = await _outboundCallCampaignRepository.CreateOutboundCallCampaignAsync(outboundCallCampaignData);
-            if (!insertCampaignResult)
-            {
-                return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:53",
-                    "Failed to create outbound call campaign."
-                );
-            }
-
             // Forward the Call To Proxy
-            if (callConfig.NumberDetails.Type == OutboundCallNumberType.Single)
+            if (callConfigData.Number.Type == OutboundCallNumberType.Single)
             {
-                var singleForwardResult = await QueueSingleCall(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, outboundCallCampaignData.Id);
+                var singleNumberBusinessId = GetBusinessNumberIdForToNumber(callConfigData.Number.ToNumber!, campaignData);
+                if (!singleNumberBusinessId.Success)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:" + singleNumberBusinessId.Code,
+                        singleNumberBusinessId.Message
+                    );
+                }
+                var singleBusinessNumberData = await _parentBusinessManager.GetNumberManager().GetBusinessNumberById(businessData.Id, singleNumberBusinessId.Data!);
+                if (singleBusinessNumberData == null)
+                {
+                    return result.SetFailureResult(
+                        "ForwardCallInitiationRequestAsync:BUSINESS_NUMBER_NOT_FOUND",
+                        "Business number not found for single call."
+                    );
+                }
+
+                var singleForwardResult = await QueueSingleCall(callConfigData, businessData, campaignData, singleBusinessNumberData);
                 if (!singleForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -572,11 +339,11 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(singleForwardResult.Data);
             }
-            else if (callConfig.NumberDetails.Type == OutboundCallNumberType.Bulk)
+            else if (callConfigData.Number.Type == OutboundCallNumberType.Bulk)
             {
-                var bulkForwardResult = await QueueBulkCalls(businessData, callConfig, defaultAgentData, defaultFromCallNumberData, bulkCallFileResult!.Data!.Value.callsRows, bulkCallFileResult!.Data!.Value.numberRegions, outboundCallCampaignData.Id);
+                var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, campaignData, bulkCallFileResult!.Data);
                 if (!bulkForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -585,7 +352,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(bulkForwardResult.Data);
             }
             else
             {
@@ -596,11 +363,11 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
-        private async Task<FunctionReturnResult> QueueSingleCall(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, string outboundCallCampaignId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<List<string>?>();
 
-            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(businessData, callConfig, businessAppAgent, businessNumberData, outboundCallCampaignId, null, null);
+            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, null);
 
             // Enqueue outbound call queue
             string? callQueueIdResult = await _outboundCallQueueRepository.EnqueueOutboundCallAsync(outboundCallQueueData);
@@ -613,7 +380,7 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             // Add queue to campaign
-            var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, outboundCallCampaignId);
+            var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, campaignData.Id);
             if (!queueToCampaignResult)
             {
                 return result.SetFailureResult(
@@ -643,33 +410,64 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            return result.SetSuccessResult();
+            return result.SetSuccessResult(new List<string>() { callQueueIdResult });
         }
 
-        private async Task<FunctionReturnResult> QueueBulkCalls(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions, string outboundCallCampaignId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, List<OutboundBulkCallRowData> callsRows)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<List<string?>?>();
 
+            var businessNumberDataCache = new Dictionary<string, BusinessNumberData>();
 
             // Enqueue outbound call queues
+            var callQueueIds = new List<string?>();
             var errors = new List<string>();
             for (int i = 0; i < callsRows.Count; i++)
             {
                 var outboundCallRow  = callsRows[i];
 
-                OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(businessData, callConfig, businessAppAgent, businessNumberData, outboundCallCampaignId, numberRegions, outboundCallRow);
+                var businessNumberId = GetBusinessNumberIdForToNumber(outboundCallRow.ToNumber, campaignData);
+                if (!businessNumberId.Success)
+                {
+                    callQueueIds.Add(null);
+                    errors.Add("Failed to get business number id for to number " + outboundCallRow.ToNumber + " at row " + (i + 1) + ".");
+                    continue;
+                }
+
+                BusinessNumberData businessNumberData;
+                if (businessNumberDataCache.TryGetValue(businessNumberId.Data!, out var cachedBusinessNumberData))
+                {
+                    businessNumberData = cachedBusinessNumberData;
+                }
+                else
+                {
+                    var businessNumberResult = await _parentBusinessManager.GetNumberManager().GetBusinessNumberById(businessData.Id, businessNumberId.Data!);
+                    if (businessNumberResult == null)
+                    {
+                        callQueueIds.Add(null);
+                        errors.Add("Business number not found for to number " + outboundCallRow.ToNumber + " at row " + (i + 1) + ".");
+                        continue;
+                    }
+
+                    businessNumberData = businessNumberResult;
+                    businessNumberDataCache.Add(businessNumberId.Data!, businessNumberData);
+                }
+
+                OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, outboundCallRow);
 
                 // Enqueue outbound call queue
                 string? callQueueIdResult = await _outboundCallQueueRepository.EnqueueOutboundCallAsync(outboundCallQueueData);
                 if (callQueueIdResult == null)
                 {
+                    callQueueIds.Add(null);
                     errors.Add("Failed to enqueue outbound call queue at row " + (i + 1) + ".");
                     continue;
                 }
                 outboundCallQueueData.Id = callQueueIdResult;
+                callQueueIds.Add(callQueueIdResult);
 
                 // Add queue to campaign
-                var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, outboundCallCampaignId);
+                var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, campaignData.Id);
                 if (!queueToCampaignResult)
                 {
                     await _outboundCallQueueRepository.UpdateCallStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "Failed to add outbound call queue to campaign at row " + (i + 1) + "." });
@@ -682,159 +480,55 @@ namespace IqraInfrastructure.Managers.Business
 
             if (errors.Count > 0)
             {
-                var addErrorResult = await _outboundCallCampaignRepository.AddErrorLogs(outboundCallCampaignId, errors);
+                var addErrorResult = await _outboundCallCampaignRepository.AddErrorLogs(campaignData.Id, errors);
                 // ignore add error result for now, we need to figure out how to do this better (we will see if any major fails happen that can not notify the user)
             }
 
-            return result.SetSuccessResult();
+            return result.SetSuccessResult(callQueueIds);
         }
 
-        private OutboundCallQueueData BuildOutboundCallQueueData(BusinessData businessData, MakeCallRequestDto callConfig, BusinessAppAgent businessAppAgent, BusinessNumberData businessNumberData, string outboundCallCampaignId, Dictionary<string, string>? numberRegions, OutboundBulkCallRowData? bulkCallRowData)
+        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData)
         {
-            string CallingNumberId;
-            bool isDefaultNumberData = true;
-            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.FromNumberId))
-            {
-                CallingNumberId = callConfig.NumberDetails!.FromNumberId!;
-            }
-            else
-            {
-                CallingNumberId = bulkCallRowData!.FromNumberId;
-                isDefaultNumberData = false;
-            }
-
             string RecipientNumber;
             if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.ToNumber))
             {
-                RecipientNumber = callConfig.NumberDetails!.ToNumber!;
+                RecipientNumber = callConfig.Number.ToNumber!;
             }
             else
             {
                 RecipientNumber = bulkCallRowData!.ToNumber;
             }
 
-            Dictionary<string, string> DynamicVariables;
-            if (bulkCallRowData == null || bulkCallRowData.DynamicVariables == null)
+            Dictionary<string, string> DynamicVariables = callConfig.DynamicVariables;
+            if (bulkCallRowData != null && bulkCallRowData.DynamicVariables != null)
             {
-                DynamicVariables = callConfig.DynamicVariables ?? new Dictionary<string, string>();
-            }
-            else
-            {
-                DynamicVariables = bulkCallRowData.DynamicVariables;
-            }
-
-            Dictionary<string, string> Metadata;
-            if (bulkCallRowData == null || bulkCallRowData.Metadata == null)
-            {
-                Metadata = callConfig.Metadata ?? new Dictionary<string, string>();
-            }
-            else
-            {
-                Metadata = bulkCallRowData.Metadata;
-            }
-
-            OutboundCallRetryData RetryDeclineData = new OutboundCallRetryData() { Enabled = false };
-            if (bulkCallRowData == null || bulkCallRowData.OverrideRetryCallDeclinedData == null)
-            {
-                if (callConfig.Configuration!.RetryDecline!.Enabled! == true)
+                foreach (var bulkDynamicVar in bulkCallRowData.DynamicVariables)
                 {
-                    RetryDeclineData = new()
+                    if (!DynamicVariables.ContainsKey(bulkDynamicVar.Key))
                     {
-                        Enabled = true,
-                        RetryCount = callConfig.Configuration!.RetryDecline!.Count!,
-                        RetryDelay = callConfig.Configuration!.RetryDecline!.Delay!,
-                        RetryUnit = callConfig.Configuration!.RetryDecline!.Unit!,
-                        TimesTried = 0,
-                        LastTried = null,
-                    };
-                }
-            }
-            else
-            {
-                if (bulkCallRowData.OverrideRetryCallDeclinedData!.Enabled! == true)
-                {
-                    RetryDeclineData = new()
+                        DynamicVariables.Add(bulkDynamicVar.Key, bulkDynamicVar.Value);
+                    }
+                    else
                     {
-                        Enabled = true,
-                        RetryCount = bulkCallRowData.OverrideRetryCallDeclinedData.Count!,
-                        RetryDelay = bulkCallRowData.OverrideRetryCallDeclinedData.Delay!,
-                        RetryUnit = bulkCallRowData.OverrideRetryCallDeclinedData.Unit!,
-                        TimesTried = 0,
-                        LastTried = null,
-                    };
+                        DynamicVariables[bulkDynamicVar.Key] = bulkDynamicVar.Value;
+                    }
                 }
             }
 
-            OutboundCallRetryData RetryMissData = new OutboundCallRetryData() { Enabled = false };
-            if (bulkCallRowData == null || bulkCallRowData.OverrideRetryCallMissedData == null)
+            Dictionary<string, string> Metadata = callConfig.Metadata;
+            if (bulkCallRowData != null && bulkCallRowData.Metadata != null)
             {
-                if (callConfig.Configuration!.RetryMiss!.Enabled! == true)
+                foreach (var bulkMetadata in bulkCallRowData.Metadata)
                 {
-                    RetryMissData = new()
+                    if (!Metadata.ContainsKey(bulkMetadata.Key))
                     {
-                        Enabled = true,
-                        RetryCount = callConfig.Configuration!.RetryMiss!.Count!,
-                        RetryDelay = callConfig.Configuration!.RetryMiss!.Delay!,
-                        RetryUnit = callConfig.Configuration!.RetryMiss!.Unit!,
-                        TimesTried = 0,
-                        LastTried = null,
-                    };
-                }
-            }
-            else
-            {
-                if (bulkCallRowData.OverrideRetryCallMissedData!.Enabled! == true)
-                {
-                    RetryMissData = new()
+                        Metadata.Add(bulkMetadata.Key, bulkMetadata.Value);
+                    }
+                    else
                     {
-                        Enabled = true,
-                        RetryCount = bulkCallRowData.OverrideRetryCallMissedData.Count!,
-                        RetryDelay = bulkCallRowData.OverrideRetryCallMissedData.Delay!,
-                        RetryUnit = bulkCallRowData.OverrideRetryCallMissedData.Unit!,
-                        TimesTried = 0,
-                        LastTried = null,
-                    };
+                        Metadata[bulkMetadata.Key] = bulkMetadata.Value;
+                    }
                 }
-            }
-
-            string AgentId;
-            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideAgentId))
-            {
-                AgentId = callConfig.AgentSettings!.AgentId!;
-            }
-            else
-            {
-                AgentId = bulkCallRowData.OverrideAgentId;
-            }
-
-            string AgentScriptId;
-            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideSelectedAgentScriptId))
-            {
-                AgentScriptId = callConfig.AgentSettings!.ScriptId!;
-            }
-            else
-            {
-                AgentScriptId = bulkCallRowData.OverrideSelectedAgentScriptId;
-            }
-
-            string AgentLanguageCode;
-            if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.OverrideAgentLanguageCode))
-            {
-                AgentLanguageCode = callConfig.AgentSettings!.LanguageCode!;
-            }
-            else
-            {
-                AgentLanguageCode = bulkCallRowData.OverrideAgentLanguageCode;
-            }
-
-            List<string> AgentTimezones;
-            if (bulkCallRowData == null || bulkCallRowData.OverrideAgentTimezones == null)
-            {
-                AgentTimezones = callConfig.AgentSettings!.Timezones!;
-            }
-            else
-            {
-                AgentTimezones = bulkCallRowData.OverrideAgentTimezones;
             }
 
             OutboundCallQueueData outboundCallQueueData = new OutboundCallQueueData()
@@ -848,46 +542,27 @@ namespace IqraInfrastructure.Managers.Business
                 Logs = new List<CallQueueLog>(),
                 ProviderMetadata = new Dictionary<string, string>(),
                 // outbound related
-                CampaignId = outboundCallCampaignId,
-                CallingNumberId = CallingNumberId,
+                CampaignId = campaignData.Id,
+                CallingNumberId = businessNumberData.Id,
                 ProviderCallId = null,
                 CallingNumberProvider = businessNumberData.Provider,
                 RecipientNumber = RecipientNumber,
                 ScheduledForDateTime = DateTime.UtcNow.AddMinutes(1),
-                CallRetryOnDeclineData = RetryDeclineData,
-                CallRetryOnMissedData = RetryMissData,
                 DynamicVariables = DynamicVariables,
-                AgentId = AgentId,
-                AgentScriptId = AgentScriptId,
-                AgentLanguageCode = AgentLanguageCode,
-                AgentTimeZone = AgentTimezones
+                Metadata = Metadata,
             };
-            if (callConfig.Configuration!.Schedule!.Type! == OutboundCallScheduleType.Scheduled)
+            if (callConfig.Schedule.Type == OutboundCallScheduleType.Scheduled)
             {
-                outboundCallQueueData.ScheduledForDateTime = callConfig.Configuration!.Schedule!.DateTimeUTC!.Value;
-            }
-            if (!isDefaultNumberData && numberRegions != null && numberRegions.TryGetValue(CallingNumberId, out string callingNumberRegion))
-            {
-                // numberRegions should never be null in case of bulk call tho
-                outboundCallQueueData.RegionId = callingNumberRegion;
+                outboundCallQueueData.ScheduledForDateTime = callConfig.Schedule.DateTimeUTC!.Value;
             }
 
             return outboundCallQueueData;
         }
 
-        private async Task<FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, IFormFile formFile, MakeCallRequestDto callConfig, BusinessNumberData defaultCallNumber, BusinessAppAgent defaultCallAgent)
+        private async Task<FunctionReturnResult<List<OutboundBulkCallRowData>?>> ValidateAndBuildBulkCSVCallFile(BusinessData businessData, IFormFile formFile, MakeCallRequestDto callConfig)
         {
-            var result = new FunctionReturnResult<(List<OutboundBulkCallRowData> callsRows, Dictionary<string, string> numberRegions)?>();
-
+            var result = new FunctionReturnResult<List<OutboundBulkCallRowData>?>();
             long businessId = businessData.Id;
-
-            var cachedBusinessNumberRegionData = new Dictionary<string, string>();
-            // add default number and region to cache
-            cachedBusinessNumberRegionData.Add(defaultCallNumber.Id.ToString(), defaultCallNumber.RegionId);
-
-            var innerCachedBusinessAgentsScriptsData = new Dictionary<string, List<string>>();
-            // add default agent and scripts ids to cache
-            innerCachedBusinessAgentsScriptsData.Add(defaultCallAgent.Id.ToString(), defaultCallAgent.Scripts.Select(s => s.Id).ToList<string>());
 
             try
             {
@@ -896,10 +571,10 @@ namespace IqraInfrastructure.Managers.Business
                 using (var reader = Sep.Reader(o => o with { HasHeader = true, Sep = Sep.New(','), DisableQuotesParsing = false}).From(formFile.OpenReadStream()))
                 {
                     var header = reader.Header;
-                    if (header.ColNames.Count != 9)
+                    if (header.ColNames.Count != 5)
                     {
                         return result.SetFailureResult(
-                            "ValidateAndBuildBulkCSVCallFile:1",
+                            "ValidateAndBuildBulkCSVCallFile:INVAID_COLUMN_COUNT",
                             "Invalid number of columns in CSV file."
                         );
                     }
@@ -911,33 +586,11 @@ namespace IqraInfrastructure.Managers.Business
 
                         try
                         {
-                            string? from_number_id = readRow["from_number_id"].ToString();
                             string? to_number = readRow["to_number"].ToString();
                             string? dynamic_variables = readRow["dynamic_variables"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? metadata = readRow["metadata"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
-                            string? override_retry_on_call_declined = readRow["override_retry_on_call_declined"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
-                            string? override_retry_on_missed_call = readRow["override_retry_on_missed_call"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
-                            string? override_agent_id = readRow["override_agent_id"].ToString();
-                            string? override_agent_script_id = readRow["override_agent_script_id"].ToString();
                             string? override_agent_language_code = readRow["override_agent_language_code"].ToString();
                             string? override_agent_timezones = readRow["override_agent_timezones"].ToString().TrimStart('"').TrimEnd('"');
-
-                            if (!string.IsNullOrWhiteSpace(from_number_id))
-                            {
-                                if (!cachedBusinessNumberRegionData.ContainsKey(from_number_id))
-                                {
-                                    BusinessNumberData? defaultFromCallNumberData = await _parentBusinessManager.GetNumberManager().GetBusinessNumberById(businessId, from_number_id);
-                                    if (defaultFromCallNumberData == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:3",
-                                            $"Unable to find number {from_number_id} in row {currentRowLine} in business data."
-                                        );
-                                    }
-                                    cachedBusinessNumberRegionData.Add(from_number_id, defaultFromCallNumberData.RegionId);
-                                }
-                                currentOutboundCallRow.FromNumberId = from_number_id;
-                            }
 
                             if (string.IsNullOrWhiteSpace(to_number))
                             {
@@ -946,26 +599,39 @@ namespace IqraInfrastructure.Managers.Business
                                     $"Missing 'to_number' in row {currentRowLine}."
                                 );
                             }
-                            PhoneNumber parsedPhoneNumber;
-                            try
+                            else
                             {
-                                parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(to_number, "ZZ");
+                                if (!to_number.StartsWith("+"))
+                                {
+                                    if (to_number.StartsWith("00"))
+                                    {
+                                        to_number = to_number.Substring(2);
+                                    }
+
+                                    to_number = $"+{to_number}";
+                                }
+
+                                PhoneNumber parsedPhoneNumber;
+                                try
+                                {
+                                    parsedPhoneNumber = PhoneNumberUtil.GetInstance().Parse(to_number, "ZZ");
+                                }
+                                catch (Exception ex)
+                                {
+                                    return result.SetFailureResult(
+                                        "ValidateAndBuildBulkCSVCallFile:TO_NUMBER_PARSE_FAILED",
+                                        $"Error parsing 'to_number' in row {currentRowLine}. Make sure number start with +countrycode."
+                                    );
+                                }
+                                if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
+                                {
+                                    return result.SetFailureResult(
+                                        "ValidateAndBuildBulkCSVCallFile:INVALID_TO_NUMBER",
+                                        $"Number validation failed for 'to_number' in row {currentRowLine}."
+                                    );
+                                }
+                                currentOutboundCallRow.ToNumber = to_number;
                             }
-                            catch (Exception ex)
-                            {
-                                return result.SetFailureResult(
-                                    "ValidateAndBuildBulkCSVCallFile:5",
-                                    $"Error parsing 'to_number' in row {currentRowLine}. Make sure number start with +countrycode."
-                                );
-                            }
-                            if (!PhoneNumberUtil.GetInstance().IsValidNumber(parsedPhoneNumber))
-                            {
-                                return result.SetFailureResult(
-                                    "ValidateAndBuildBulkCSVCallFile:5.1",
-                                    $"Number validation failed for 'to_number' in row {currentRowLine}."
-                                );
-                            }
-                            currentOutboundCallRow.ToNumber = to_number;
 
                             Dictionary<string, string>? dynamicVariablesDictionary = null;
                             if (!string.IsNullOrWhiteSpace(dynamic_variables))
@@ -976,7 +642,7 @@ namespace IqraInfrastructure.Managers.Business
                                     if (dynamicVariablesDictionary == null)
                                     {
                                         return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:6",
+                                            "ValidateAndBuildBulkCSVCallFile:DYNAMIC_VARIABLES_DESERIALIZATION_FAILED",
                                             $"Error deserializing dynamic variables for row {currentRowLine}."
                                         );
                                     }
@@ -984,7 +650,7 @@ namespace IqraInfrastructure.Managers.Business
                                 catch (Exception ex)
                                 {
                                     return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:7",
+                                        "ValidateAndBuildBulkCSVCallFile:DYNAMIC_VARIABLES_DESERIALIZATION_FAILED",
                                         $"Error deserializing dynamic variables for row {currentRowLine}: {ex.Message}"
                                     );
                                 }
@@ -1000,7 +666,7 @@ namespace IqraInfrastructure.Managers.Business
                                     if (metadataDictionary == null)
                                     {
                                         return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:6",
+                                            "ValidateAndBuildBulkCSVCallFile:METADATA_DESERIALIZATION_FAILED",
                                             $"Error deserializing metadata for row {currentRowLine}."
                                         );
                                     }
@@ -1008,150 +674,10 @@ namespace IqraInfrastructure.Managers.Business
                                 catch (Exception ex)
                                 {
                                     return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:7",
+                                        "ValidateAndBuildBulkCSVCallFile:METADATA_DESERIALIZATION_FAILED",
                                         $"Error deserializing metadata for row {currentRowLine}: {ex.Message}"
                                     );
                                 }
-                            }
-
-                            OutboundBulkCallRowDataRetryData? outboundBulkCallRowDataRetryDeclinedData = null;
-                            if (!string.IsNullOrWhiteSpace(override_retry_on_call_declined))
-                            {
-                                try
-                                {
-                                    outboundBulkCallRowDataRetryDeclinedData = JsonSerializer.Deserialize<OutboundBulkCallRowDataRetryData>(override_retry_on_call_declined);
-                                    if (outboundBulkCallRowDataRetryDeclinedData == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:8",
-                                            $"Error deserializing retry declined data for row {currentRowLine}."
-                                        );
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:9",
-                                        $"Error deserializing retry declined data for row {currentRowLine}: {ex.Message}"
-                                    );
-                                }
-                                if (outboundBulkCallRowDataRetryDeclinedData.Enabled == null)
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:10",
-                                        $"Missing 'Enabled' in retry declined data for row {currentRowLine}."
-                                    );
-                                }
-                                if (outboundBulkCallRowDataRetryDeclinedData.Enabled == true)
-                                {
-                                    if (outboundBulkCallRowDataRetryDeclinedData.Count == null || outboundBulkCallRowDataRetryDeclinedData.Count < 1 || outboundBulkCallRowDataRetryDeclinedData.Count > 5) // todo can have retires max count based on user/business, used below in a function too
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:11",
-                                            $"Missing or invalid 'Count' in retry declined data for row {currentRowLine}. Should be between 1 and 5."
-                                        );
-                                    }
-                                    if (outboundBulkCallRowDataRetryDeclinedData.Delay == null || outboundBulkCallRowDataRetryDeclinedData.Delay < 1)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:12",
-                                            $"Missing or invalid 'Delay' in retry declined data for row {currentRowLine}. Should be greater than 0."
-                                        );
-                                    }
-                                    if (outboundBulkCallRowDataRetryDeclinedData.Unit == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:13",
-                                            $"Missing or invalid 'Unit' in retry declined data for row {currentRowLine}."
-                                        );
-                                    }
-                                }
-                            }
-                            currentOutboundCallRow.OverrideRetryCallDeclinedData = outboundBulkCallRowDataRetryDeclinedData;
-
-                            OutboundBulkCallRowDataRetryData? outboundBulkCallRowDataRetryMissedData = null;
-                            if (!string.IsNullOrWhiteSpace(override_retry_on_missed_call))
-                            {
-                                try
-                                {
-                                    outboundBulkCallRowDataRetryMissedData = JsonSerializer.Deserialize<OutboundBulkCallRowDataRetryData>(override_retry_on_missed_call);
-                                    if (outboundBulkCallRowDataRetryMissedData == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:14",
-                                            $"Error deserializing retry missed call data for row {currentRowLine}."
-                                        );
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:15",
-                                        $"Error deserializing retry missed call data for row {currentRowLine}: {ex.Message}"
-                                    );
-                                }
-                                if (outboundBulkCallRowDataRetryMissedData.Enabled == null)
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:16",
-                                        $"Missing 'Enabled' in retry missed call data for row {currentRowLine}."
-                                    );
-                                }
-                                if (outboundBulkCallRowDataRetryMissedData.Enabled == true)
-                                {
-                                    if (outboundBulkCallRowDataRetryMissedData.Count == null || outboundBulkCallRowDataRetryMissedData.Count < 1 || outboundBulkCallRowDataRetryMissedData.Count > 5) // todo can have retires max count based on user/business, used below in a function too
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:11",
-                                            $"Missing or invalid 'Count' in retry missed data for row {currentRowLine}. Should be between 1 and 5."
-                                        );
-                                    }
-                                    if (outboundBulkCallRowDataRetryMissedData.Delay == null || outboundBulkCallRowDataRetryMissedData.Delay < 1)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:12",
-                                            $"Missing or invalid 'Delay' in retry missed data for row {currentRowLine}. Should be greater than 0."
-                                        );
-                                    }
-                                    if (outboundBulkCallRowDataRetryMissedData.Unit == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:13",
-                                            $"Missing or invalid 'Unit' in retry missed data for row {currentRowLine}."
-                                        );
-                                    }
-                                }
-                            }
-                            currentOutboundCallRow.OverrideRetryCallMissedData = outboundBulkCallRowDataRetryMissedData;
-                           
-                            if (!string.IsNullOrWhiteSpace(override_agent_id))
-                            {
-                                if (!innerCachedBusinessAgentsScriptsData.ContainsKey(override_agent_id))
-                                {
-                                    BusinessAppAgent? agent = await _parentBusinessManager.GetAgentsManager().GetAgentById(businessId, override_agent_id);
-                                    if (agent == null)
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:17",
-                                            $"Agent with id {override_agent_id} not found in business for row {currentRowLine}."
-                                        );
-                                    }
-                                    innerCachedBusinessAgentsScriptsData.Add(override_agent_id, agent.Scripts.Select(s => s.Id).ToList<string>());
-                                }
-                                currentOutboundCallRow.OverrideAgentId = override_agent_id;
-                            }
-                  
-                            if (!string.IsNullOrWhiteSpace(override_agent_script_id))
-                            {
-                                string agentIdToCheckAgainst = string.IsNullOrWhiteSpace(override_agent_id) ? defaultCallAgent.Id : override_agent_id;
-                                if (!innerCachedBusinessAgentsScriptsData.TryGetValue(agentIdToCheckAgainst, out List<string>? overrideAgentScripts) || !overrideAgentScripts.Contains(override_agent_script_id))
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:18",
-                                        $"Agent {agentIdToCheckAgainst} does not have script with id {override_agent_script_id} not found in business for row {currentRowLine}."
-                                    );
-                                }
-                                currentOutboundCallRow.OverrideSelectedAgentScriptId = override_agent_script_id;
                             }
 
                             if (!string.IsNullOrEmpty(override_agent_language_code))
@@ -1159,7 +685,7 @@ namespace IqraInfrastructure.Managers.Business
                                 if (!businessData.Languages.Contains(override_agent_language_code))
                                 {
                                     return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:19",
+                                        "ValidateAndBuildBulkCSVCallFile:LANGUAGE_CODE_NOT_FOUND",
                                         $"Agent language code {override_agent_language_code} not found in business for row {currentRowLine}."
                                     );
                                 }
@@ -1174,7 +700,7 @@ namespace IqraInfrastructure.Managers.Business
                                     if (!TimeZoneHelper.ValidateOffsetString(zone))
                                     {
                                         return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:20",
+                                            "ValidateAndBuildBulkCSVCallFile:AGENT_TIMEZONE_VALIDATION_FAILED",
                                             $"Agent timezone {zone} validation failed for row {currentRowLine}. Must start with + or - followed by HH:MM format."
                                         );
                                     }
@@ -1187,7 +713,7 @@ namespace IqraInfrastructure.Managers.Business
                         catch (Exception ex)
                         {
                             return result.SetFailureResult(
-                                "ValidateAndBuildBulkCSVCallFile:",
+                                "ValidateAndBuildBulkCSVCallFile:CSV_FILE_EXCEPTION",
                                 $"Error reading row {currentRowLine}: {ex.Message}"
                             );
                         }
@@ -1198,99 +724,50 @@ namespace IqraInfrastructure.Managers.Business
                 if (rowsDataList.Count == 0)
                 {
                     return result.SetFailureResult(
-                        "ValidateAndBuildBulkCSVCallFile:21",
+                        "ValidateAndBuildBulkCSVCallFile:NO_ROWS_FOUND",
                         "No rows found in CSV file or were converted."
                     );
                 }
 
-                return result.SetSuccessResult(
-                    (rowsDataList, cachedBusinessNumberRegionData)
-                );
+                return result.SetSuccessResult(rowsDataList);
             }
             catch (Exception ex)
             {
                 return result.SetFailureResult(
-                    "ValidateAndBuildBulkCSVCallFile:-1",
+                    "ValidateAndBuildBulkCSVCallFile:EXCEPTION",
                     $"Error reading CSV file: {ex.Message}"
                 );
             }
         }
-
-        private async Task<FunctionReturnResult<Dictionary<string, object>?>> ValidateActionData(long businessId, string businessDefaultLanguage, MakeCallActionToolConfigDto data, string actionType)
+    
+        private FunctionReturnResult<string?> GetBusinessNumberIdForToNumber(string toNumber, BusinessAppCampaign campaignData)
         {
-            var result = new FunctionReturnResult<Dictionary<string, object>?>();
+            var result = new FunctionReturnResult<string?>();
 
-            string? selectedToolId = data.ToolId;
-            if (selectedToolId == null) return result.SetSuccessResult(null);
-
-            var selectedToolData = await _parentBusinessManager.GetToolsManager().GetBusinessAppTool(businessId, selectedToolId);
-            if (selectedToolData == null)
+            var phoneNumber = PhoneNumberUtil.GetInstance().Parse(toNumber, "ZZ");
+            if (phoneNumber == null)
             {
-                result.Code = "ValidateActionData:1";
-                result.Message = $"{actionType} tool not found in business.";
-                return result;
+                return result.SetFailureResult(
+                    "GetBusinessNumberIdForToNumber:TO_NUMBER_PARSE_FAILED",
+                    "Error parsing 'to_number'. Make sure number start with +countrycode."
+                );
             }
 
-            Dictionary<string, object>? argumentsList = data.Arguments;
-            if (argumentsList == null) argumentsList = new Dictionary<string, object>();
-
-            var convertedArgumentsList = new Dictionary<string, object>();
-
-            foreach (var toolInputArgument in selectedToolData.Configuration.InputSchemea)
+            var phoneNumberRegion = PhoneNumberUtil.GetInstance().GetRegionCodeForNumber(phoneNumber);
+            if (phoneNumberRegion == null)
             {
-                bool foundProperty = argumentsList.TryGetValue(toolInputArgument.Id, out var argumentValueProperty);
-
-                if (!foundProperty && toolInputArgument.IsRequired)
-                {
-                    return result.SetFailureResult(
-                        "ValidateActionData:2",
-                        $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} not found but is required."
-                    );
-                }
-                else if (foundProperty)
-                {
-                    var valueIsJsonElement = argumentValueProperty is JsonElement;
-
-                    string? stringValue;
-                    if (valueIsJsonElement)
-                    {
-                        var stringJsonElement = (JsonElement)argumentValueProperty;
-                        if (stringJsonElement.ValueKind != JsonValueKind.String)
-                        {
-                            result.Code = "ValidateArgumentValue:STRING_VALIDATION_FAILED";
-                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} type mismatch, expected string (received {stringJsonElement.ValueKind}).";
-                            return result;
-                        }
-
-                        stringValue = stringJsonElement.GetString();
-                    }
-                    else if (argumentValueProperty.GetType() != typeof(string))
-                    {
-                        result.Code = "ValidateArgumentValue:1";
-                        result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} type mismatch, expected string (received {argumentValueProperty.GetType().Name}).";
-                        return result;
-                    }
-                    else
-                    {
-                        stringValue = (string)argumentValueProperty;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(stringValue))
-                    {
-                        if (toolInputArgument.IsRequired)
-                        {
-                            result.Code = "ValidateArgumentValue:2";
-                            result.Message = $"{actionType} tool input argument {toolInputArgument.Name[businessDefaultLanguage]} value is empty but it is required.";
-                            return result;
-                        }
-                        break;
-                    }
-
-                    convertedArgumentsList.Add(toolInputArgument.Id, stringValue);
-                }
+                return result.SetFailureResult(
+                    "GetBusinessNumberIdForToNumber:TO_NUMBER_GET_REGION_FAILED",
+                    "Error parsing 'to_number'. Make sure number start with +countrycode."
+                );
             }
 
-            return result.SetSuccessResult(convertedArgumentsList);
+            if (campaignData.Numbers.RouteNumberList.TryGetValue(phoneNumberRegion, out var businessNumberId))
+            {
+                return result.SetSuccessResult(businessNumberId);
+            }
+
+            return result.SetSuccessResult(campaignData.Numbers.DefaultNumberId);
         }
     }
 }

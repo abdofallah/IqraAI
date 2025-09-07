@@ -5,6 +5,7 @@ using IqraCore.Utilities;
 using IqraInfrastructure.Helpers.Business;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.AspNetCore.Http;
+using PhoneNumbers;
 using System.Text.Json;
 
 namespace IqraInfrastructure.Managers.Business
@@ -340,7 +341,7 @@ namespace IqraInfrastructure.Managers.Business
                         }
 
                         // Numbers Tab
-                        if (!changes.RootElement.TryGetProperty("numbers", out var numbersProperty))
+                        if (!changes.RootElement.TryGetProperty("numbers", out var numbersProperty) || numbersProperty.ValueKind != JsonValueKind.Object)
                         {
                             return result.SetFailureResult(
                                 "AddOrUpdateCampaignAsync:NUMBERS_TAB_NOT_FOUND",
@@ -349,27 +350,93 @@ namespace IqraInfrastructure.Managers.Business
                         }
                         else
                         {
-                            newBusinessAppCampaignData.Numbers = new List<string>();
-                            foreach (var number in numbersProperty.EnumerateArray())
-                            {
-                                string? numberId = number.GetString();
-                                if (string.IsNullOrWhiteSpace(numberId))
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:NUMBER_ID_INVALID",
-                                        "Invalid number id found in numbers list."
-                                    );
-                                }
-                                var numberData = businessNumbers.Find(x => x.Id == numberId);
-                                if (numberData == null)
-                                {
-                                    return result.SetFailureResult(
-                                        "AddOrUpdateCampaignAsync:NUMBER_NOT_FOUND_IN_BUSINESS",
-                                        "Number with id " + numberId + " not found in business numbers list."
-                                    );
-                                }
-                                newBusinessAppCampaignData.Numbers.Add(numberId);
+                            // RouteNumberList object
+                            if (!numbersProperty.TryGetProperty("routeNumberList", out var routeNumberListProperty) ||
+                                routeNumberListProperty.ValueKind != JsonValueKind.Object
+                            ) {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_NOT_FOUND",
+                                    "Route number list not found or invalid."
+                                );
                             }
+                            else
+                            {
+                                var routeNumberListEnumerater = routeNumberListProperty.EnumerateObject();
+                                if (!routeNumberListEnumerater.Any())
+                                {
+                                    return result.SetFailureResult(
+                                        "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_EMPTY",
+                                        "Route number list is empty."
+                                    );
+                                }
+
+                                foreach (var routeNumberItem in routeNumberListEnumerater)
+                                {
+                                    if (routeNumberItem.Value.ValueKind != JsonValueKind.String ||
+                                        string.IsNullOrEmpty(routeNumberItem.Name) ||
+                                        string.IsNullOrWhiteSpace(routeNumberItem.Value.GetString())
+                                    ) {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_ITEM_INVALID",
+                                            $"Route number list item is invalid for country code route '{routeNumberItem.Name}'."
+                                        );
+                                    }
+                                    var phoneNumberInstance = PhoneNumberUtil.GetInstance().GetCountryCodeForRegion(routeNumberItem.Name);
+                                    if (phoneNumberInstance == 0)
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_ITEM_REGION_CODE_INVALID",
+                                            $"Route number list item region code is invalid for country code route '{routeNumberItem.Name}'."
+                                        );
+                                    }
+
+                                    if (newBusinessAppCampaignData.Numbers.RouteNumberList.ContainsKey(routeNumberItem.Name))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_ITEM_ALREADY_EXISTS",
+                                            $"Route number list item already exists for country code route '{routeNumberItem.Name}'."
+                                        );
+                                    }
+
+                                    var routeNumberValue = routeNumberItem.Value.GetString()!;
+                                    if (!businessNumbers.Any(x => x.Id == routeNumberValue))
+                                    {
+                                        return result.SetFailureResult(
+                                            "AddOrUpdateCampaignAsync:ROUTE_NUMBER_LIST_ITEM_NOT_FOUND_IN_BUSINESS",
+                                            $"Route number list item not found in business numbers list for country code route {routeNumberItem.Name}."
+                                        );
+                                    }
+                                    newBusinessAppCampaignData.Numbers.RouteNumberList.Add(routeNumberItem.Name, routeNumberValue);
+                                }
+                            }
+
+                            if (!numbersProperty.TryGetProperty("defaultNumberId", out var defaultNumberIdProperty) ||
+                                defaultNumberIdProperty.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(defaultNumberIdProperty.GetString())
+                            ) {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND",
+                                    "Default number id not found or invalid."
+                                );
+                            }
+                            var defaultNumberIdValue = defaultNumberIdProperty.GetString()!;
+
+                            if (!newBusinessAppCampaignData.Numbers.RouteNumberList.Values.Any(x => x == defaultNumberIdValue))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND_IN_ROUTE_NUMBER_LIST",
+                                    "Default number id not found in route number list."
+                                );
+                            }
+
+                            if (!businessNumbers.Any(x => x.Id == defaultNumberIdValue))
+                            {
+                                return result.SetFailureResult(
+                                    "AddOrUpdateCampaignAsync:DEFAULT_NUMBER_ID_NOT_FOUND_IN_BUSINESS",
+                                    "Default number id not found in business numbers list."
+                                );
+                            }
+                            newBusinessAppCampaignData.Numbers.DefaultNumberId = defaultNumberIdValue;
                         }
 
                         // Configuration Tab
@@ -1036,6 +1103,11 @@ namespace IqraInfrastructure.Managers.Business
             }
 
             return result.SetSuccessResult(resultData);
+        }
+
+        public async Task<bool> CheckCampaignExistsById(long businessId, string? campaignIdValue)
+        {
+            return await _businessAppRepository.CheckCampaignExistsById(businessId, campaignIdValue);
         }
     }
 }

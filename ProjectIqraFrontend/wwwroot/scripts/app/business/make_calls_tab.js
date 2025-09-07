@@ -174,13 +174,20 @@ function validateMakeCallConfig(onlyRemoveErrors = false) {
 function gatherMakeCallConfig() {
 	const config = {
 		campaignId: SelectedCampaignId,
-		callType: CurrentMakeCallType,
-		fromNumberId: SelectedFromNumberId,
-		toNumber: CurrentMakeCallType === OutboundCallNumberType.Single ? makeCallToNumberInput.val().trim() : null,
-		schedule: {
-			type: makeCallScheduleTypeLaterRadio.is(":checked") ? OutboundCallScheduleType.Later : OutboundCallScheduleType.Now,
-			dateTimeUTC: null,
+		number: {
+			type: CurrentMakeCallType,
+			forceFromNumber: SelectedFromNumberId,
+			toNumber: CurrentMakeCallType === OutboundCallNumberType.Single ? makeCallToNumberInput.val().trim() : null,
 		},
+		schedule: {
+			type: makeCallScheduleTypeLaterRadio.is(":checked") ? OutboundCallScheduleType.Later : OutboundCallScheduleType.Now
+		},
+		dynamicVariables: {
+			// keep empty for now
+		},
+		metadata: {
+			// keep empty for now
+		}
 	};
 
 	if (config.schedule.type === OutboundCallScheduleType.Later && makeCallScheduleDateTimeInput.val()) {

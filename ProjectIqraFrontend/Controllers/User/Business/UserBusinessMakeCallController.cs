@@ -5,18 +5,21 @@ using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.User;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
+using ProjectIqraFrontend.Middlewares;
 using System.Text.Json;
 
 namespace ProjectIqraFrontend.Controllers.User.Business
 {
     public class UserBusinessMakeCallController : Controller
     {
+        private readonly UserSessionValidationHelper _userSessionValidationHelper;
         private readonly UserManager _userManager;
         private readonly BusinessManager _businessManager;
         private readonly BillingValidationManager _billingValidationManager;
 
-        public UserBusinessMakeCallController(UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
+        public UserBusinessMakeCallController(UserSessionValidationHelper userSessionValidationHelper, UserManager userManager, BusinessManager businessManager, BillingValidationManager billingValidationManager)
         {
+            _userSessionValidationHelper = userSessionValidationHelper;
             _userManager = userManager;
             _businessManager = businessManager;
             _billingValidationManager = billingValidationManager;
@@ -25,50 +28,26 @@ namespace ProjectIqraFrontend.Controllers.User.Business
         [HttpPost("/app/user/business/{businessId}/calls/initiate")]
         [RequestSizeLimit(10 * 1024 * 1024)]
         [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)]
-        public async Task<FunctionReturnResult> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<List<string>?>> InitiateCalls(long businessId, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<List<string>?>();
 
-            string? sessionId = Request.Cookies["sessionId"];
-            string? authKey = Request.Cookies["authKey"];
-            string? userEmail = Request.Cookies["userEmail"];
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(authKey) || string.IsNullOrEmpty(userEmail))
+            // Validation
+            var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
+                Request,
+                businessId,
+                checkUserDisabled: true,
+                checkBusinessesDisabled: true,
+                checkBusinessesEditingEnabled: true
+            );
+            if (!userSessionAndBusinessValidationResult.Success)
             {
-                return result.SetFailureResult(
-                    "InitiateCalls:1",
-                    "Invalid session data"
-                );
+                result.Code = $"SaveBusinessCampaign:{userSessionAndBusinessValidationResult.Code}";
+                result.Message = userSessionAndBusinessValidationResult.Message;
+                return result;
             }
-            if (!await _userManager.ValidateSession(userEmail, sessionId, authKey))
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:2",
-                    "Session validation failed"
-                );
-            }
-            var user = await _userManager.GetUserByEmail(userEmail);
-            if (user == null)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:3",
-                    "User not found"
-                );
-            }
-            if (user.Permission.Business.DisableBusinessesAt != null)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:4",
-                    "User business editing disabled" + (string.IsNullOrWhiteSpace(user.Permission.Business.DisableBusinessesReason) ? "" : ": " + user.Permission.Business.DisableBusinessesReason)
-                );
-            }
-            if (!user.Businesses.Contains(businessId))
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:5",
-                    "User does not own this business."
-                );
-            }
+            var userData = userSessionAndBusinessValidationResult.Data!.userData!;
+            var businessData = userSessionAndBusinessValidationResult.Data!.businessData!;
 
             var checkBalanceOrMinutes = await _billingValidationManager.CheckCreditOrPackageMinutesOnly(businessId, "outbound call");
             if (!checkBalanceOrMinutes.Success)
@@ -79,32 +58,16 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 );
             }
 
-            var businessResult = await _businessManager.GetUserBusinessById(businessId, userEmail);
-            if (!businessResult.Success || businessResult.Data == null)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:" + businessResult.Code,
-                    businessResult.Message
-                );
-            }
-            var business = businessResult.Data;
-            if (business.Permission.DisabledFullAt != null)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:7",
-                    "Business is disabled for editing" + (string.IsNullOrWhiteSpace(business.Permission.DisabledFullReason) ? "" : ": " + business.Permission.DisabledFullReason)
-                );
-            }
-            if (business.Permission.MakeCall.DisabledCallingAt != null)
+            if (businessData.Permission.MakeCall.DisabledCallingAt != null)
             {
                 return result.SetFailureResult(
                     "InitiateCalls:8",
                     "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(business.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + business.Permission.MakeCall.DisabledCallingReason)
                 );
             }
-            if (business.AllocatedMonthlyMinuteCap.HasValue)
+            if (businessData.AllocatedMonthlyMinuteCap.HasValue)
             {
-                if (business.CurrentMonthlyMinuteUsage >= business.AllocatedMonthlyMinuteCap.Value)
+                if (businessData.CurrentMonthlyMinuteUsage >= businessData.AllocatedMonthlyMinuteCap.Value)
                 {
                     return result.SetFailureResult(
                         "InitiateCalls:9",
@@ -113,40 +76,9 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            if (!formData.TryGetValue("config", out StringValues configJsonValues) || string.IsNullOrWhiteSpace(configJsonValues.FirstOrDefault()))
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:10",
-                    "Missing 'config' data in request."
-                );
-            }
-            string configJson = configJsonValues.First() ?? "";
-
-            MakeCallRequestDto? callConfig;
             try
             {
-                callConfig = JsonSerializer.Deserialize<MakeCallRequestDto>(configJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (callConfig == null)
-                {
-                    return result.SetFailureResult(
-                        "InitiateCalls:11",
-                        "Unable to deserialize 'config' JSON."
-                    );
-                }
-            }
-            catch (JsonException ex)
-            {
-                return result.SetFailureResult(
-                    "InitiateCalls:12",
-                    $"Invalid 'config' JSON format: {ex.Message}"
-                );
-            }
-            IFormFile? bulkCsvFile = formData.Files.GetFile("bulk_file");
-
-            try
-            {
-                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessResult.Data, callConfig, bulkCsvFile);
-
+                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessData, formData);
                 if (!forwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -155,7 +87,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     );
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(forwardResult.Data);
             }
             catch (Exception ex)
             {

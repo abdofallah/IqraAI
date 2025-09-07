@@ -127,39 +127,9 @@ namespace ProjectIqraFrontend.Controllers.API.v1
                 }
             }
 
-            if (!formData.TryGetValue("config", out StringValues configJsonValues) || string.IsNullOrWhiteSpace(configJsonValues.FirstOrDefault()))
-            {
-                return result.SetFailureResult(
-                    "InitiateCall:CALL_CONFIG_MISSING",
-                    "Missing 'config' data in request."
-                );
-            }
-            string configJson = configJsonValues.First() ?? "";
-
-            MakeCallRequestDto? callConfig;
             try
             {
-                callConfig = JsonSerializer.Deserialize<MakeCallRequestDto>(configJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                if (callConfig == null)
-                {
-                    return result.SetFailureResult(
-                        "InitiateCall:CALL_CONFIG_INVALID",
-                        "Unable to deserialize 'config' JSON."
-                    );
-                }
-            }
-            catch (JsonException ex)
-            {
-                return result.SetFailureResult(
-                    "InitiateCall:CALL_CONFIG_INVALID",
-                    $"Invalid 'config' JSON format: {ex.Message}"
-                );
-            }
-            IFormFile? bulkCsvFile = formData.Files.GetFile("bulk_file");
-
-            try
-            {
-                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessResult.Data, callConfig, bulkCsvFile);
+                var forwardResult = await _businessManager.GetMakeCallManager().QueueCallInitiationRequestAsync(businessResult.Data, formData);
 
                 if (!forwardResult.Success)
                 {

@@ -735,7 +735,12 @@ namespace IqraInfrastructure.Repositories.Business
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
                 Builders<BusinessApp>.Filter.ElemMatch(b => b.Numbers, t => t.Id == exisitingNumberId)
             );
-            var result = await _businessAppCollection.Find(filter).FirstOrDefaultAsync();
+
+            var projection = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Numbers.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
             return result != null;
         }
 
@@ -972,6 +977,21 @@ namespace IqraInfrastructure.Repositories.Business
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
             return result.IsAcknowledged;
-        }  
+        }
+
+        public async Task<bool> CheckCampaignExistsById(long businessId, string? campaignIdValue)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, k => k.Id == campaignIdValue)
+            );
+
+            var project = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.Campaigns.FirstMatchingElement());
+                
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
+            return result != null;
+        }
     }
 }
