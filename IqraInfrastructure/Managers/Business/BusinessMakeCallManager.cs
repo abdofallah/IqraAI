@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly ILogger<BusinessMakeCallManager> _logger;
         private readonly BusinessManager _parentBusinessManager;
         private readonly RegionManager _regionManager;
-        private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
+        private readonly OutboundCallCampaignRepository _outboundCallQueueGroupRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.Business
             ILogger<BusinessMakeCallManager> logger,
             BusinessManager parentBusinessManager,
             RegionManager regionManager,
-            OutboundCallCampaignRepository outboundCallCampaignRepository,
+            OutboundCallCampaignRepository outboundCallQueueGroupRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             IntegrationConfigurationManager integrationConfigurationManager
         )
@@ -40,7 +40,7 @@ namespace IqraInfrastructure.Managers.Business
             _logger = logger;
             _parentBusinessManager = parentBusinessManager;
             _regionManager = regionManager;
-            _outboundCallCampaignRepository = outboundCallCampaignRepository;
+            _outboundCallQueueGroupRepository = outboundCallQueueGroupRepository;
             _outboundCallQueueRepository = outboundCallQueueRepository;
             _integrationConfigurationManager = integrationConfigurationManager;
         }
@@ -295,7 +295,7 @@ namespace IqraInfrastructure.Managers.Business
                 if (bulkCsvFile == null || bulkCsvFile.Length == 0)
                 {
                     return result.SetFailureResult(
-                        "ForwardCallInitiationRequestAsync:52",
+                        "ForwardCallInitiationRequestAsync:BULK_FILE_NOT_FOUND",
                         "Bulk file not found in form data."
                     );
                 }
@@ -308,6 +308,24 @@ namespace IqraInfrastructure.Managers.Business
                         bulkCallFileResult.Message
                     );
                 }
+            }
+
+            // Create Outbound Call Queue Group
+            var callQueueGroupData = new OutboundCallQueueGroupData()
+            {
+                Id = Guid.NewGuid().ToString(),
+                CreatedAt = DateTime.UtcNow,
+                BusinessId = businessData.Id,
+                CallRequestData = callConfigData,
+                IsBulkCall = callConfigData.Number.Type == OutboundCallNumberType.Bulk
+            };
+            var callQueueGroupAddResult = await _outboundCallQueueGroupRepository.CreateOutboundCallQueueGroupAsync(callQueueGroupData);
+            if (!callQueueGroupAddResult)
+            {
+                return result.SetFailureResult(
+                    "ForwardCallInitiationRequestAsync:OUTBOUND_CALL_QUEUE_GROUP_ADD_ERROR",
+                    "Failed to add outbound call queue group."
+                );
             }
 
             // Forward the Call To Proxy
@@ -330,7 +348,7 @@ namespace IqraInfrastructure.Managers.Business
                     );
                 }
 
-                var singleForwardResult = await QueueSingleCall(callConfigData, businessData, campaignData, singleBusinessNumberData);
+                var singleForwardResult = await QueueSingleCall(callConfigData, businessData, campaignData, singleBusinessNumberData, callQueueGroupData.Id);
                 if (!singleForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -343,7 +361,7 @@ namespace IqraInfrastructure.Managers.Business
             }
             else if (callConfigData.Number.Type == OutboundCallNumberType.Bulk)
             {
-                var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, campaignData, bulkCallFileResult!.Data);
+                var bulkForwardResult = await QueueBulkCalls(callConfigData, businessData, campaignData, bulkCallFileResult!.Data, callQueueGroupData.Id);
                 if (!bulkForwardResult.Success)
                 {
                     return result.SetFailureResult(
@@ -357,31 +375,31 @@ namespace IqraInfrastructure.Managers.Business
             else
             {
                 return result.SetFailureResult(
-                    "ForwardCallInitiationRequestAsync:54",
+                    "ForwardCallInitiationRequestAsync:INVALID_NUMBER_TYPE",
                     "Invalid number type."
                 );
             }
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, string queueGroupId)
         {
-            var result = new FunctionReturnResult<List<string>?>();
+            var result = new FunctionReturnResult<List<string?>?>();
 
-            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, null);
+            OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, null, queueGroupId);
 
             // Enqueue outbound call queue
             string? callQueueIdResult = await _outboundCallQueueRepository.EnqueueOutboundCallAsync(outboundCallQueueData);
             if (callQueueIdResult == null)
             {
                 return result.SetFailureResult(
-                    "ForwardSingleCallToRegionProxy:1",
+                    "ForwardSingleCallToRegionProxy:OUTBOUND_CALL_QUEUE_ENQUEUE_ERROR",
                     "Failed to enqueue outbound call queue."
                 );
             }
 
             // Add queue to campaign
-            var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, campaignData.Id);
-            if (!queueToCampaignResult)
+            var queueToQueueGroupResult = await _outboundCallQueueGroupRepository.AddQueueToQueueGroupAsync(outboundCallQueueData.Id, queueGroupId);
+            if (!queueToQueueGroupResult)
             {
                 return result.SetFailureResult(
                     "ForwardSingleCallToRegionProxy:2",
@@ -389,31 +407,10 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            var selectedRegion = businessNumberData.RegionId;
-            var regionData = await _regionManager.GetRegionById(selectedRegion);
-            if (regionData == null)
-            {
-                await _outboundCallQueueRepository.UpdateCallStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "Phone number region not found." });
-                return result.SetFailureResult(
-                    "ForwardSingleCallToRegionProxy:1",
-                    "Phone number region not found."
-                );
-            }
-
-            var anyProxyServerForRegion = regionData.Servers.Find(s => s.Type == ServerTypeEnum.Proxy);
-            if (anyProxyServerForRegion == null)
-            {
-                await _outboundCallQueueRepository.UpdateCallStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "No proxy server found for phone number region." });
-                return result.SetFailureResult(
-                    "ForwardSingleCallToRegionProxy:2",
-                    "No proxy server found for phone number region."
-                );
-            }
-
-            return result.SetSuccessResult(new List<string>() { callQueueIdResult });
+            return result.SetSuccessResult(new List<string?>() { callQueueIdResult });
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, List<OutboundBulkCallRowData> callsRows)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, List<OutboundBulkCallRowData> callsRows, string queueGroupId)
         {
             var result = new FunctionReturnResult<List<string?>?>();
 
@@ -453,7 +450,7 @@ namespace IqraInfrastructure.Managers.Business
                     businessNumberDataCache.Add(businessNumberId.Data!, businessNumberData);
                 }
 
-                OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, outboundCallRow);
+                OutboundCallQueueData outboundCallQueueData = BuildOutboundCallQueueData(callConfig, businessData, campaignData, businessNumberData, outboundCallRow, queueGroupId);
 
                 // Enqueue outbound call queue
                 string? callQueueIdResult = await _outboundCallQueueRepository.EnqueueOutboundCallAsync(outboundCallQueueData);
@@ -466,12 +463,12 @@ namespace IqraInfrastructure.Managers.Business
                 outboundCallQueueData.Id = callQueueIdResult;
                 callQueueIds.Add(callQueueIdResult);
 
-                // Add queue to campaign
-                var queueToCampaignResult = await _outboundCallCampaignRepository.AddQueueToCampaignAsync(outboundCallQueueData.Id, campaignData.Id);
-                if (!queueToCampaignResult)
+                // Add queue to queue group
+                var queueToQueueGroupResult = await _outboundCallQueueGroupRepository.AddQueueToQueueGroupAsync(outboundCallQueueData.Id, queueGroupId);
+                if (!queueToQueueGroupResult)
                 {
                     await _outboundCallQueueRepository.UpdateCallStatusAsync(outboundCallQueueData.Id, CallQueueStatusEnum.Failed, new CallQueueLog() { Type = CallQueueLogTypeEnum.Error, Message = "Failed to add outbound call queue to campaign at row " + (i + 1) + "." });
-                    errors.Add("Failed to add outbound call queue to campaign at row " + (i + 1) + ".");
+                    errors.Add("Failed to add outbound call queue to queue group at row " + (i + 1) + ".");
                     continue;
                 }
             }
@@ -480,14 +477,14 @@ namespace IqraInfrastructure.Managers.Business
 
             if (errors.Count > 0)
             {
-                var addErrorResult = await _outboundCallCampaignRepository.AddErrorLogs(campaignData.Id, errors);
+                var addErrorResult = await _outboundCallQueueGroupRepository.AddErrorLogs(campaignData.Id, errors);
                 // ignore add error result for now, we need to figure out how to do this better (we will see if any major fails happen that can not notify the user)
             }
 
             return result.SetSuccessResult(callQueueIds);
         }
 
-        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData)
+        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData, string queueGroupId)
         {
             string RecipientNumber;
             if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.ToNumber))
@@ -543,6 +540,7 @@ namespace IqraInfrastructure.Managers.Business
                 ProviderMetadata = new Dictionary<string, string>(),
                 // outbound related
                 CampaignId = campaignData.Id,
+                QueueGroupId = queueGroupId,
                 CallingNumberId = businessNumberData.Id,
                 ProviderCallId = null,
                 CallingNumberProvider = businessNumberData.Provider,
@@ -571,7 +569,7 @@ namespace IqraInfrastructure.Managers.Business
                 using (var reader = Sep.Reader(o => o with { HasHeader = true, Sep = Sep.New(','), DisableQuotesParsing = false}).From(formFile.OpenReadStream()))
                 {
                     var header = reader.Header;
-                    if (header.ColNames.Count != 5)
+                    if (header.ColNames.Count != 3)
                     {
                         return result.SetFailureResult(
                             "ValidateAndBuildBulkCSVCallFile:INVAID_COLUMN_COUNT",
@@ -590,7 +588,6 @@ namespace IqraInfrastructure.Managers.Business
                             string? dynamic_variables = readRow["dynamic_variables"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? metadata = readRow["metadata"].ToString().Replace("\"\"", "\"").TrimStart('"').TrimEnd('"');
                             string? override_agent_language_code = readRow["override_agent_language_code"].ToString();
-                            string? override_agent_timezones = readRow["override_agent_timezones"].ToString().TrimStart('"').TrimEnd('"');
 
                             if (string.IsNullOrWhiteSpace(to_number))
                             {
@@ -678,34 +675,6 @@ namespace IqraInfrastructure.Managers.Business
                                         $"Error deserializing metadata for row {currentRowLine}: {ex.Message}"
                                     );
                                 }
-                            }
-
-                            if (!string.IsNullOrEmpty(override_agent_language_code))
-                            {
-                                if (!businessData.Languages.Contains(override_agent_language_code))
-                                {
-                                    return result.SetFailureResult(
-                                        "ValidateAndBuildBulkCSVCallFile:LANGUAGE_CODE_NOT_FOUND",
-                                        $"Agent language code {override_agent_language_code} not found in business for row {currentRowLine}."
-                                    );
-                                }
-                                currentOutboundCallRow.OverrideAgentLanguageCode = override_agent_language_code;
-                            }
-                        
-                            if (!string.IsNullOrEmpty(override_agent_timezones))
-                            {
-                                List<string> timezonesSplit = override_agent_timezones.Split(',').ToList();
-                                foreach (string zone in timezonesSplit)
-                                {
-                                    if (!TimeZoneHelper.ValidateOffsetString(zone))
-                                    {
-                                        return result.SetFailureResult(
-                                            "ValidateAndBuildBulkCSVCallFile:AGENT_TIMEZONE_VALIDATION_FAILED",
-                                            $"Agent timezone {zone} validation failed for row {currentRowLine}. Must start with + or - followed by HH:MM format."
-                                        );
-                                    }
-                                }
-                                currentOutboundCallRow.OverrideAgentTimezones = timezonesSplit;
                             }
 
                             rowsDataList.Add(currentOutboundCallRow);

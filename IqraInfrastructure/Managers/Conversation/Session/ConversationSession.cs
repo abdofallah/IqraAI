@@ -201,7 +201,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             {
                 OutboundCallQueueData outboundCallQueue = _sessionCallQueueData as OutboundCallQueueData;
 
-                var campaignData = await _outboundCallCampaignRepository.GetOutboundCallCampaignByIdAsync(outboundCallQueue.CampaignId);
+                var campaignData = await _outboundCallCampaignRepository.GetOutboundCallQueueGroupByIdAsync(outboundCallQueue.CampaignId);
                 if (campaignData == null)
                 {
                     _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionCallQueueData.BusinessId, outboundCallQueue.Id);

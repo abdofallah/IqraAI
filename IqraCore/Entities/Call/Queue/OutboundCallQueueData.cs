@@ -8,6 +8,7 @@ namespace IqraCore.Entities.Call.Queue
         public override CallQueueTypeEnum Type { get; set; } = CallQueueTypeEnum.Outbound;
 
         public string CampaignId { get; set; } = string.Empty;
+        public string QueueGroupId { get; set; } = string.Empty;
 
         public string CallingNumberId { get; set; } = string.Empty;
         public TelephonyProviderEnum CallingNumberProvider { get; set; } = TelephonyProviderEnum.Unknown;
