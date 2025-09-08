@@ -40,6 +40,12 @@ using System.Net.WebSockets;
 
 namespace IqraInfrastructure.Managers.Call
 {
+    internal class SessionComponents
+    {
+        public IConversationAgent Agent { get; init; }
+        public IConversationClient Client { get; init; }
+    }
+
     public class CallProcessorManager
     {
         private BackendAppConfig _backendAppConfig;
@@ -49,7 +55,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly ServerMetricsMonitor _serverMetricsMonitor;
         private readonly InboundCallQueueRepository _inboundCallQueueRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
-        private readonly OutboundCallCampaignRepository _outboundCallCampaignRepository;
+        private readonly OutboundCallQueueGroupRepository _outboundCallCampaignRepository;
         private readonly ConversationStateRepository _conversationStateRepository;
         private readonly BusinessManager _businessManager;
         private readonly IntegrationsManager _integrationsManager;
@@ -57,7 +63,7 @@ namespace IqraInfrastructure.Managers.Call
         private readonly BillingUsageManager _billingProcessingManager;
 
         // combine the two
-        private readonly ConcurrentDictionary<string, ConversationSession> _activeSessions = new();
+        private readonly ConcurrentDictionary<string, ConversationSessionOrchestrator> _activeSessions = new();
         private readonly ConcurrentDictionary<string, CancellationTokenSource> _ctsSessions = new();
 
         private readonly SemaphoreSlim _sessionCreationLock = new SemaphoreSlim(1, 1);
@@ -71,7 +77,7 @@ namespace IqraInfrastructure.Managers.Call
             ServerMetricsMonitor serverMetricsMonitor,
             InboundCallQueueRepository inboundCallQueueRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
-            OutboundCallCampaignRepository outboundCallCampaignRepository,
+            OutboundCallQueueGroupRepository outboundCallCampaignRepository,
             ConversationStateRepository conversationStateRepository,
             BusinessManager businessManager,
             IntegrationsManager integrationsManager,
@@ -96,166 +102,101 @@ namespace IqraInfrastructure.Managers.Call
         public async Task<FunctionReturnResult<ProcessedInboundCallResponse?>> ProcessInboundCallAsync(string queueId)
         {
             var result = new FunctionReturnResult<ProcessedInboundCallResponse?>();
-
-            FunctionReturnResult<ConversationSession?>? sessionResult = null;
+            FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
 
             try
             {
                 InboundCallQueueData? inboundQueueData = await _inboundCallQueueRepository.GetInboundCallQueueByIdAsync(queueId);
                 if (inboundQueueData == null)
                 {
-                    return result.SetFailureResult("ProcessInboundCallAsync:QUEUE_NOT_FOUND", "Queue not found");
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:QUEUE_NOT_FOUND",
+                        "Queue not found"
+                    );
                 }
                 await _inboundCallQueueRepository.UpdateInboundCallQueueStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend);
-
-                int sessionBitPerSample = 16;
-                int sessionChannels = 1;
-                int sessionSampleRate = 8000;
-                AudioEncodingTypeEnum sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
-                if (inboundQueueData.RouteNumberProvider == TelephonyProviderEnum.ModemTel)
-                {
-                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
-                    sessionBitPerSample = 16;
-                }
-                else if (inboundQueueData.RouteNumberProvider == TelephonyProviderEnum.Twilio)
-                {
-                    sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
-                    sessionBitPerSample = 8;
-                }
 
                 RegionData? currentRegionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (currentRegionData == null)
                 {
-                    return result.SetFailureResult("ProcessInboundCallAsync:REGION_NOT_FOUND", "Region not found");
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:REGION_NOT_FOUND",
+                        "Region not found"
+                    );
                 }
-                RegionServerData? regionServerData = currentRegionData.Servers.First(x => x.Endpoint == _backendAppConfig.ServerId);
+                RegionServerData? regionServerData = currentRegionData.Servers.FirstOrDefault(x => x.Endpoint == _backendAppConfig.ServerId);
                 if (regionServerData == null)
                 {
-                    return result.SetFailureResult("ProcessInboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found");
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:REGION_SERVER_NOT_FOUND",
+                        "Region server not found"
+                    );
                 }
+
+                // --- Refactored Block Start ---
 
                 sessionResult = await CreateConversationSessionAsync(inboundQueueData);
                 if (!sessionResult.Success)
                 {
-                    return result.SetFailureResult("ProcessInboundCallAsync:SESSION_CREATION_FAILED", sessionResult.Message);
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:SESSION_CREATION_FAILED",
+                        sessionResult.Message
+                    );
                 }
-                var startSessionResult = await sessionResult.Data.InitalizeAsync();
+                var session = sessionResult.Data;
+
+                var startSessionResult = await session.InitalizeAsync();
                 if (!startSessionResult.Success)
                 {
-                    return result.SetFailureResult("ProcessInboundCallAsync:SESSION_INIT_FAILED", startSessionResult.Message);
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:SESSION_INIT_FAILED",
+                        startSessionResult.Message
+                    );
                 }
 
-                var taskResultSuccess = false;
-                IConversationAgent? primaryAIAgent = null;
-                bool hasAddedAgent = false;
-                IConversationClient? primaryTelephonyClient = null;
-                bool hasAddedClient = false;
-                await Task.Run(async () =>
+                var componentsResult = await BuildAndConfigureSessionAsync(session, inboundQueueData);
+                if (!componentsResult.Success)
                 {
-                    try
-                    {
-                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
-                        if (!sessionAIAgentResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{sessionAIAgentResult.Code}] {sessionAIAgentResult.Message}" });
-                            return;
-                        }
-                        primaryAIAgent = sessionAIAgentResult.Data;
-
-                        var sessionTelephonyResult = await CreateTelephonyClient(inboundQueueData, sessionResult.Data);
-                        if (!sessionTelephonyResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{sessionTelephonyResult.Code}] {sessionTelephonyResult.Message}" });
-                            return;
-                        }
-                        primaryTelephonyClient = sessionTelephonyResult.Data;
-
-                        var addSessionAgentResult = await sessionResult.Data.AddPrimaryAgent(primaryAIAgent);
-                        if (!addSessionAgentResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{addSessionAgentResult.Code}] {addSessionAgentResult.Message}" });
-                            return;
-                        }
-                        hasAddedAgent = true;
-
-                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = inboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
-                        if (!addSessionTelephonyResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:{addSessionTelephonyResult.Code}] {addSessionTelephonyResult.Message}" });
-                            return;
-                        }
-                        hasAddedClient = true;
-
-                        taskResultSuccess = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[ProcessInboundCallAsync:EXECEPTION] {ex.Message}" });
-                    }
-                    finally
-                    {
-                        if (!taskResultSuccess)
-                        {
-                            if (hasAddedAgent == false)
-                            {
-                                if (primaryAIAgent != null)
-                                {
-                                    primaryAIAgent.Dispose();
-                                }
-                            }
-
-                            if (hasAddedClient == false)
-                            {
-                                if (primaryTelephonyClient != null)
-                                {
-                                    primaryTelephonyClient.Dispose();
-                                }
-                            }
-
-                            await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionState.Error);
-                            await CleanupSessionAsync(sessionResult.Data.SessionId);
-                        }
-                    }
-                });
-
-                if (!taskResultSuccess)
-                {
-                    return result.SetFailureResult("ProcessInboundCallAsync:SESSION_CONNECTORS_INIT_FAILED", "Session (agent/telephony) init failed");
+                    return result.SetFailureResult(
+                        "ProcessInboundCallAsync:SESSION_COMPONENTS_FAILED",
+                        componentsResult.Message
+                    );
                 }
 
-                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
-                var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+                var primaryTelephonyClient = componentsResult.Data.Client;
+                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(session.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
+                var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
 
-                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
-                await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
+                // --- Refactored Block End ---
+
+                await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully so now waiting for primary telephony client to connect");
+                await _inboundCallQueueRepository.UpdateInboundCallQueueSessionIdAndStatusAsync(queueId, session.SessionId, CallQueueStatusEnum.ProcessedBackend);
 
                 return result.SetSuccessResult(
                     new ProcessedInboundCallResponse()
                     {
-                        SessionId = sessionResult.Data.SessionId,
+                        SessionId = session.SessionId,
                         WebhookUrl = webhookUrl.ToString()
                     }
                 );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error initiating outbound call");
-                result.Message = $"Error initiating call: {ex.Message}";
-                return result;
+                _logger.LogError(ex, "Error processing inbound call");
+                return result.SetFailureResult(
+                    "ProcessInboundCallAsync:EXCEPTION",
+                    $"Error processing inbound call: {ex.Message}"
+                );
             }
             finally
             {
-                if (!result.Success)
+                if (!result.Success && sessionResult?.Data != null)
                 {
-                    if (sessionResult != null && sessionResult.Data != null)
-                    {
-                        await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionState.Error);
-                        await CleanupSessionAsync(sessionResult.Data.SessionId);
-                    }
+                    await sessionResult.Data.EndAsync("ProcessInboundCall Failed", ConversationSessionState.Error);
+                    await CleanupSessionAsync(sessionResult.Data.SessionId);
                 }
             }
         }
-
         public async Task<FunctionReturnResult<InitiateOutboundCallResultModel>> InitiateOutboundCallAsync(string queueId)
         {
             var result = new FunctionReturnResult<InitiateOutboundCallResultModel>();
@@ -264,155 +205,116 @@ namespace IqraInfrastructure.Managers.Call
                 ShouldRequeue = false
             };
 
-            FunctionReturnResult<ConversationSession?>? sessionResult = null;
+            FunctionReturnResult<ConversationSessionOrchestrator?>? sessionResult = null;
 
             try
             {
                 OutboundCallQueueData? outboundQueueData = await _outboundCallQueueRepository.GetOutboundCallQueueByIdAsync(queueId);
                 if (outboundQueueData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:QUEUE_NOT_FOUND", "Queue not found", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:QUEUE_NOT_FOUND",
+                        "Queue not found",
+                        resultData
+                    );
                 }
                 await _outboundCallQueueRepository.UpdateCallStatusAsync(queueId, CallQueueStatusEnum.ProcessingBackend, newProcessingServerId: _backendAppConfig.ServerId);
 
-                int sessionBitPerSample = 16;
-                int sessionChannels = 1;
-                int sessionSampleRate = 8000;
-                AudioEncodingTypeEnum sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
-                if (outboundQueueData.CallingNumberProvider == TelephonyProviderEnum.ModemTel)
-                {
-                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
-                    sessionBitPerSample = 16;
-                }
-                else if (outboundQueueData.CallingNumberProvider == TelephonyProviderEnum.Twilio)
-                {
-                    sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
-                    sessionBitPerSample = 8;
-                }
-
+                // --- Start of Outbound-Specific Logic ---
                 var businessNumber = await _businessManager.GetNumberManager().GetBusinessNumberById(outboundQueueData.BusinessId, outboundQueueData.CallingNumberId);
                 if (businessNumber == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:BUSINESS_NUMBER_NOT_FOUND", "Business number not found", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:BUSINESS_NUMBER_NOT_FOUND",
+                        "Business number not found",
+                        resultData
+                    );
                 }
 
                 var integrationResult = await _businessManager.GetIntegrationsManager().getBusinessIntegrationById(outboundQueueData.BusinessId, businessNumber.IntegrationId);
                 if (!integrationResult.Success || integrationResult.Data == null)
                 {
-                    return result.SetFailureResult($"InitiateOutboundCallAsync:{integrationResult.Code}", integrationResult.Message, resultData);
+                    return result.SetFailureResult(
+                        $"InitiateOutboundCallAsync:{integrationResult.Code}",
+                        integrationResult.Message,
+                        resultData
+                    );
                 }
 
                 var regionData = await _regionManager.GetRegionById(_backendAppConfig.RegionId);
                 if (regionData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_NOT_FOUND", "Region not found", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:REGION_NOT_FOUND",
+                        "Region not found",
+                        resultData
+                    );
                 }
                 var regionServerData = regionData.Servers.FirstOrDefault(s => s.Endpoint == _backendAppConfig.ServerId);
                 if (regionServerData == null)
                 {
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND", "Region server not found", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:REGION_SERVER_NOT_FOUND",
+                        "Region server not found",
+                        resultData
+                    );
                 }
                 var anyRegionProxyServerData = regionData.Servers.FirstOrDefault(s => s.Type == ServerTypeEnum.Proxy);
                 if (anyRegionProxyServerData == null)
                 {
                     resultData.ShouldRequeue = true;
-                    return result.SetFailureResult("InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND", "Region proxy server not found", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:REGION_PROXY_SERVER_NOT_FOUND",
+                        "Region proxy server not found",
+                        resultData
+                    );
                 }
+                // --- End of Outbound-Specific Logic ---
 
+
+                // --- Start of Refactored Session Setup Block ---
                 sessionResult = await CreateConversationSessionAsync(outboundQueueData);
-                if (!sessionResult.Success)
+                if (!sessionResult.Success || sessionResult.Data == null)
                 {
-                    // CHECK WHY THEN REQUEUE
                     resultData.ShouldRequeue = true;
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", sessionResult.Message, resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:SESSION_CREATION_FAILED",
+                        sessionResult.Message,
+                        resultData
+                    );
                 }
-                var startSessionResult = await sessionResult.Data.InitalizeAsync();
+                var session = sessionResult.Data;
+
+                var startSessionResult = await session.InitalizeAsync();
                 if (!startSessionResult.Success)
                 {
-                    // CHECK WHY THEN REQUEUE
                     resultData.ShouldRequeue = true;
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_INIT_FAILED", startSessionResult.Message, resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:SESSION_INIT_FAILED",
+                        startSessionResult.Message,
+                        resultData
+                    );
                 }
 
-                var taskResultSuccess = false;
-                IConversationAgent? agent = null;
-                bool hasAddedAgent = false;
-                IConversationClient? primaryTelephonyClient = null;
-                bool hasAddedClient = false;
-                await Task.Run(async () =>
+                var componentsResult = await BuildAndConfigureSessionAsync(session, outboundQueueData);
+                if (!componentsResult.Success || componentsResult.Data == null)
                 {
-                    try
-                    {
-                        var sessionAIAgentResult = await CreateAIAgentAsync(sessionResult.Data, new ConversationAgentConfiguration() { BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
-                        if (!sessionAIAgentResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{sessionAIAgentResult.Code}] {sessionAIAgentResult.Message}" });
-                            return;
-                        }
-                        agent = sessionAIAgentResult.Data;
-
-                        var sessionTelephonyResult = await CreateTelephonyClient(outboundQueueData, sessionResult.Data);
-                        if (!sessionTelephonyResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{sessionTelephonyResult.Code}] {sessionTelephonyResult.Message}" });
-                            return;
-                        }
-                        primaryTelephonyClient = sessionTelephonyResult.Data;
-
-                        var addSessionAgentResult = await sessionResult.Data.AddPrimaryAgent(agent);
-                        if (!addSessionAgentResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{addSessionAgentResult.Code}] {addSessionAgentResult.Message}" });
-                            return;
-                        }
-                        hasAddedAgent = true;
-
-                        var addSessionTelephonyResult = await sessionResult.Data.AddPrimaryClient(primaryTelephonyClient, new ConversationClientConfiguration() { QueueData = outboundQueueData, BitsPerSample = sessionBitPerSample, Channels = sessionChannels, SampleRate = sessionSampleRate, AudioEncodingType = sessionAudioEncodingType });
-                        if (!addSessionTelephonyResult.Success)
-                        {
-                            await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:{addSessionTelephonyResult.Code}] {addSessionTelephonyResult.Message}" });
-                            return;
-                        }
-                        hasAddedClient = true;
-
-                        taskResultSuccess = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        await _conversationStateRepository.AddLogEntryAsync(sessionResult.Data.SessionId, new ConversationLogEntry() { Timestamp = DateTime.UtcNow, Message = $"[InitiateOutboundCallAsync:EXECEPTION] {ex.Message}" });
-                    }
-                });
-
-                if (!taskResultSuccess)
-                {
-                    if (hasAddedAgent == false)
-                    {
-                        if (agent != null)
-                        {
-                            agent.Dispose();
-                        }
-                    }
-
-                    if (hasAddedClient == false)
-                    {
-                        if (primaryTelephonyClient != null)
-                        {
-                            primaryTelephonyClient.Dispose();
-                        }
-                    }
-
-                    await sessionResult.Data.EndAsync("InitiateOutboundCallAsync Failed", ConversationSessionState.Error);
-                    await CleanupSessionAsync(sessionResult.Data.SessionId);
-
                     resultData.ShouldRequeue = true;
-                    return result.SetFailureResult("InitiateOutboundCallAsync:SESSION_CREATION_FAILED", "Session creation failed", resultData);
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:SESSION_COMPONENTS_FAILED",
+                        componentsResult.Message,
+                        resultData
+                    );
                 }
 
-                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
-                var webhookUrl = BuildWebhookUrl(regionServerData, sessionResult.Data.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
-                var callbackUrl = BuildStatusCallbackUrl(anyRegionProxyServerData, outboundQueueData.BusinessId, sessionResult.Data.SessionId, businessNumber.Provider, outboundQueueData.CallingNumberId);
+                var primaryTelephonyClient = componentsResult.Data.Client;
+                // --- End of Refactored Session Setup Block ---
 
-                await sessionResult.Data.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initalized successfully so now waiting for primary telephony client to connect");
+                var generatedWebhookToken = CallWebsocketTokenGenerator.GenerateHmacToken(session.SessionId, primaryTelephonyClient.ClientId, TimeSpan.FromMinutes(5), _backendAppConfig.WebhookTokenSecret);
+                var webhookUrl = BuildWebhookUrl(regionServerData, session.SessionId, primaryTelephonyClient.ClientId, generatedWebhookToken);
+                var callbackUrl = BuildStatusCallbackUrl(anyRegionProxyServerData, outboundQueueData.BusinessId, session.SessionId, businessNumber.Provider, outboundQueueData.CallingNumberId);
+
+                await session.UpdateStateAsync(ConversationSessionState.WaitingForPrimaryClient, "Initialized successfully, placing outbound call.");
 
                 OutboundCallResultModel? callResultModel = null;
                 switch (businessNumber.Provider)
@@ -420,48 +322,48 @@ namespace IqraInfrastructure.Managers.Call
                     case TelephonyProviderEnum.ModemTel:
                         {
                             callResultModel = await InitiateModemTelOutboundCallAsync(
-                                businessNumber as BusinessNumberModemTelData,
+                                (BusinessNumberModemTelData)businessNumber,
                                 integrationResult.Data,
                                 outboundQueueData.RecipientNumber,
-                                sessionResult.Data.SessionId,
+                                session.SessionId,
                                 webhookUrl,
                                 callbackUrl
                             );
-
-                            if (!callResultModel.Success)
-                            {
-                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message, resultData);
-                            }
-
                             break;
                         }
-
                     case TelephonyProviderEnum.Twilio:
                         {
                             callResultModel = await InitiateTwilioOutboundCallAsync(
-                                businessNumber as BusinessNumberTwilioData,
+                                (BusinessNumberTwilioData)businessNumber,
                                 integrationResult.Data,
                                 outboundQueueData.RecipientNumber,
                                 queueId,
                                 webhookUrl,
                                 callbackUrl
                             );
-
-                            if (!callResultModel.Success)
-                            {
-                                return result.SetFailureResult("InitiateOutboundCallAsync:CALL_FAILED", callResultModel.Message, resultData);
-                            }
-
                             break;
                         }
-
                     default:
-                        return result.SetFailureResult("InitiateOutboundCallAsync:INVALID_PROVIDER", "Invalid number provider", resultData);
+                        return result.SetFailureResult(
+                            "InitiateOutboundCallAsync:INVALID_PROVIDER",
+                            "Invalid number provider",
+                            resultData
+                        );
                 }
 
-                await sessionResult.Data.StartAsync();
+                if (callResultModel == null || !callResultModel.Success)
+                {
+                    resultData.ShouldRequeue = true; // Requeue if the provider fails to even initiate the call
+                    return result.SetFailureResult(
+                        "InitiateOutboundCallAsync:CALL_FAILED",
+                        callResultModel?.Message ?? "Call initiation failed.",
+                        resultData
+                    );
+                }
 
-                await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, sessionResult.Data.SessionId, CallQueueStatusEnum.ProcessedBackend);
+                await session.StartAsync();
+
+                await _outboundCallQueueRepository.UpdateOutboundCallQueueSessionIdAndStatusAsync(queueId, session.SessionId, CallQueueStatusEnum.ProcessedBackend);
                 return result.SetSuccessResult(resultData);
             }
             catch (Exception ex)
@@ -474,13 +376,10 @@ namespace IqraInfrastructure.Managers.Call
             }
             finally
             {
-                if (!result.Success)
+                if (!result.Success && sessionResult?.Data != null)
                 {
-                    if (sessionResult != null && sessionResult.Data != null)
-                    {
-                        await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionState.Error);
-                        await CleanupSessionAsync(sessionResult.Data.SessionId);
-                    }
+                    await sessionResult.Data.EndAsync("InitiateOutboundCall Failed", ConversationSessionState.Error);
+                    await CleanupSessionAsync(sessionResult.Data.SessionId);
                 }
             }
         }
@@ -546,6 +445,67 @@ namespace IqraInfrastructure.Managers.Call
                 return result.SetFailureResult("NotifyTelephonyClientStatus:EXCEPTION", ex.Message);
             }
         }
+        public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
+        {
+            var result = new FunctionReturnResult<CancellationTokenSource?>();
+
+            var validatedSessionTokenResult = CallWebsocketTokenGenerator.ValidateHmacToken(sessionToken, sessionId, clientId, _backendAppConfig.WebhookTokenSecret, out var validationError);
+            if (!validatedSessionTokenResult)
+            {
+                return result.SetFailureResult("AssignWebSocketToClientAsync:VALIDATION_FAILED", validationError);
+            }
+
+            if (_activeSessions.TryGetValue(sessionId, out var sessionManager) && _ctsSessions.TryGetValue(sessionId, out var sessionOverallCts))
+            {
+                IConversationClient? convClient = null;
+                if (sessionManager.PrimaryClient?.ClientId == clientId)
+                {
+                    convClient = sessionManager.PrimaryClient;
+                }
+
+                if (convClient is BaseConversationClient baseClient)
+                {
+                    if (baseClient.Transport is DeferredClientTransport deferredTransport)
+                    {
+                        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+
+                        var realTransport = new WebSocketClientTransport(
+                            webSocket,
+                            loggerFactory.CreateLogger<WebSocketClientTransport>(),
+                            sessionOverallCts.Token
+                        );
+
+                        deferredTransport.Activate(realTransport);
+
+                        if (convClient is TwilioConversationClient twilioClient)
+                        {
+                            await NotifyTelephonyClientStatus(sessionId, new TelephonyStatusNotifyToBackendModel()
+                            {
+                                PhoneNumberId = twilioClient.ClientTelephonyProviderPhoneNumberId,
+                                Provider = TelephonyProviderEnum.Twilio,
+                                Status = "in-progress"
+                            });
+                        }
+
+                        return result.SetSuccessResult(sessionOverallCts);
+                    }
+                    else
+                    {
+                        // This means the client was somehow initialized with a non-deferred transport, or transport is already activated.
+                        return result.SetFailureResult("AssignWebSocketToClientAsync:TRANSPORT_MISMATCH", "Client transport is not in a deferred state or is of an unexpected type.");
+                    }
+                }
+                else
+                {
+                    return result.SetFailureResult("AssignWebSocketToClientAsync:NOT_FOUND", "Conversation client not found or is not a BaseConversationClient.");
+                }
+            }
+            else
+            {
+                return result.SetFailureResult("AssignWebSocketToClientAsync:SESSION_NOT_FOUND", "Session or session cts not found");
+            }
+        }
+
         private async Task CleanupSessionAsync(string sessionId)
         {
             // Remove from active sessions
@@ -567,9 +527,9 @@ namespace IqraInfrastructure.Managers.Call
             }
         }
         
-        private async Task<FunctionReturnResult<ConversationSession?>> CreateConversationSessionAsync(CallQueueData queueData)
+        private async Task<FunctionReturnResult<ConversationSessionOrchestrator?>> CreateConversationSessionAsync(CallQueueData queueData)
         {
-            var result = new FunctionReturnResult<ConversationSession?>();
+            var result = new FunctionReturnResult<ConversationSessionOrchestrator?>();
 
             if (!_serverMetricsMonitor.HasCapacity())
             {
@@ -584,14 +544,13 @@ namespace IqraInfrastructure.Managers.Call
                 CancellationTokenSource newSessionCTS = new CancellationTokenSource();
                 CancellationTokenSource combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(newSessionCTS.Token, _processorCTS.Token);
 
-                var conversationSession = new ConversationSession(
+                var conversationSession = new ConversationSessionOrchestrator(
                     sessionId,
                     queueData,
                     "call",
                     combinedCTS,
 
                     _businessManager,
-                    _outboundCallCampaignRepository,
                     _conversationStateRepository,
                     _serviceProvider.GetRequiredService<ConversationAudioRepository>(),
                     _billingProcessingManager,
@@ -614,7 +573,145 @@ namespace IqraInfrastructure.Managers.Call
                 _sessionCreationLock.Release();
             }
         }
-        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSession sessionManager)
+        private async Task<FunctionReturnResult<SessionComponents>> BuildAndConfigureSessionAsync(ConversationSessionOrchestrator session, CallQueueData queueData)
+        {
+            var result = new FunctionReturnResult<SessionComponents>();
+
+            // 1. Determine Audio Configuration from Provider
+            TelephonyProviderEnum provider = (queueData is InboundCallQueueData inbound)
+                ? inbound.RouteNumberProvider
+                : ((OutboundCallQueueData)queueData).CallingNumberProvider;
+
+            int sessionBitPerSample;
+            AudioEncodingTypeEnum sessionAudioEncodingType;
+
+            switch (provider)
+            {
+                case TelephonyProviderEnum.ModemTel:
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.PCM;
+                    sessionBitPerSample = 16;
+                    break;
+                case TelephonyProviderEnum.Twilio:
+                    sessionAudioEncodingType = AudioEncodingTypeEnum.MULAW;
+                    sessionBitPerSample = 8;
+                    break;
+                default:
+                    return result.SetFailureResult(
+                        "BuildAndConfigureSessionAsync:UNSUPPORTED_PROVIDER",
+                        $"Unsupported telephony provider: {provider}"
+                    );
+            }
+
+            int sessionChannels = 1;
+            int sessionSampleRate = 8000;
+
+            var agentConfig = new ConversationAgentConfiguration()
+            {
+                BitsPerSample = sessionBitPerSample,
+                Channels = sessionChannels,
+                SampleRate = sessionSampleRate,
+                AudioEncodingType = sessionAudioEncodingType
+            };
+
+            var clientConfig = new ConversationClientConfiguration()
+            {
+                QueueData = queueData,
+                BitsPerSample = sessionBitPerSample,
+                Channels = sessionChannels,
+                SampleRate = sessionSampleRate,
+                AudioEncodingType = sessionAudioEncodingType
+            };
+
+            // 2. Create and Add Agent and Client within a Task to isolate logic
+            IConversationAgent? agent = null;
+            IConversationClient? client = null;
+            bool success = false;
+
+            try
+            {
+                // Create AI Agent
+                var agentResult = await CreateAIAgentAsync(session, agentConfig);
+                if (!agentResult.Success)
+                {
+                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationLogEntry {
+                            Timestamp = DateTime.UtcNow,
+                            Message = $"[BuildAndConfigureSessionAsync:{agentResult.Code}] {agentResult.Message}"
+                        });
+                    return result.SetFailureResult(agentResult.Code, agentResult.Message);
+                }
+                agent = agentResult.Data;
+
+                // Create Telephony Client
+                var clientResult = await CreateTelephonyClient(queueData, session);
+                if (!clientResult.Success)
+                {
+                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationLogEntry {
+                            Timestamp = DateTime.UtcNow,
+                            Message = $"[BuildAndConfigureSessionAsync:{clientResult.Code}] {clientResult.Message}"
+                        });
+                    agent?.Dispose(); // Clean up the successfully created agent
+                    return result.SetFailureResult(clientResult.Code, clientResult.Message);
+                }
+                client = clientResult.Data;
+
+                // Add Agent to Session
+                var addAgentResult = await session.AddPrimaryAgent(agent);
+                if (!addAgentResult.Success)
+                {
+                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationLogEntry {
+                            Timestamp = DateTime.UtcNow,
+                            Message = $"[BuildAndConfigureSessionAsync:{addAgentResult.Code}] {addAgentResult.Message}"
+                        });
+                    agent.Dispose();
+                    client.Dispose();
+                    return result.SetFailureResult(addAgentResult.Code, addAgentResult.Message);
+                }
+
+                // Add Client to Session
+                var addClientResult = await session.AddPrimaryClient(client, clientConfig);
+                if (!addClientResult.Success)
+                {
+                    await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
+                        new ConversationLogEntry {
+                            Timestamp = DateTime.UtcNow,
+                            Message = $"[BuildAndConfigureSessionAsync:{addClientResult.Code}] {addClientResult.Message}"
+                        });
+                    // The session will own the agent now, but the client failed to be added.
+                    client.Dispose();
+                    return result.SetFailureResult(addClientResult.Code, addClientResult.Message);
+                }
+
+                success = true;
+                return result.SetSuccessResult(new SessionComponents { Agent = agent, Client = client });
+            }
+            catch (Exception ex)
+            {
+                await _conversationStateRepository.AddLogEntryAsync(session.SessionId,
+                    new ConversationLogEntry {
+                        Timestamp = DateTime.UtcNow,
+                        Message = $"[BuildAndConfigureSessionAsync:EXCEPTION] {ex.Message}"
+                    });
+                return result.SetFailureResult(
+                    "BuildAndConfigureSessionAsync:EXCEPTION",
+                    ex.Message
+                );
+            }
+            finally
+            {
+                if (!success)
+                {
+                    // If anything failed, we attempt to dispose of any components that were created
+                    // but not successfully attached to the session (which would handle their disposal).
+                    // The AddPrimaryAgent/Client results handle more granular cleanup.
+                    agent?.Dispose();
+                    client?.Dispose();
+                }
+            }
+        }
+        private async Task<FunctionReturnResult<IConversationClient?>> CreateTelephonyClient(CallQueueData queueData, ConversationSessionOrchestrator sessionManager)
         {
             var result = new FunctionReturnResult<IConversationClient?>();
 
@@ -706,7 +803,7 @@ namespace IqraInfrastructure.Managers.Call
                     return result.SetFailureResult("CreateTelephonyClient:INVALID_PROVIDER", "Invalid provider");
             }
         }
-        private async Task<FunctionReturnResult<IConversationAgent?>> CreateAIAgentAsync(ConversationSession sessionManager, ConversationAgentConfiguration agentConfiguration)
+        private async Task<FunctionReturnResult<IConversationAgent?>> CreateAIAgentAsync(ConversationSessionOrchestrator sessionManager, ConversationAgentConfiguration agentConfiguration)
         {
             var result = new FunctionReturnResult<IConversationAgent?>();
 
@@ -843,74 +940,12 @@ namespace IqraInfrastructure.Managers.Call
 
             return result;
         }
-
-        public async Task<FunctionReturnResult<CancellationTokenSource?>> AssignWebSocketToClientAsync(string sessionId, string clientId, string sessionToken, WebSocket webSocket)
-        {
-            var result = new FunctionReturnResult<CancellationTokenSource?>();
-
-            var validatedSessionTokenResult = CallWebsocketTokenGenerator.ValidateHmacToken(sessionToken, sessionId, clientId, _backendAppConfig.WebhookTokenSecret, out var validationError);
-            if (!validatedSessionTokenResult)
-            {
-                return result.SetFailureResult("AssignWebSocketToClientAsync:VALIDATION_FAILED", validationError);
-            }
-
-            if (_activeSessions.TryGetValue(sessionId, out var sessionManager) && _ctsSessions.TryGetValue(sessionId, out var sessionOverallCts))
-            {
-                IConversationClient? convClient = null;
-                if (sessionManager.PrimaryClient?.ClientId == clientId)
-                {
-                    convClient = sessionManager.PrimaryClient;
-                }
-
-                if (convClient is BaseConversationClient baseClient)
-                {
-                    if (baseClient.Transport is DeferredClientTransport deferredTransport)
-                    {
-                        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
-
-                        var realTransport = new WebSocketClientTransport(
-                            webSocket,
-                            loggerFactory.CreateLogger<WebSocketClientTransport>(),
-                            sessionOverallCts.Token
-                        );
-
-                        deferredTransport.Activate(realTransport);
-
-                        if (convClient is TwilioConversationClient twilioClient)
-                        {
-                            await NotifyTelephonyClientStatus(sessionId, new TelephonyStatusNotifyToBackendModel()
-                            {
-                                PhoneNumberId = twilioClient.ClientTelephonyProviderPhoneNumberId,
-                                Provider = TelephonyProviderEnum.Twilio,
-                                Status = "in-progress"
-                            });
-                        }
-
-                        return result.SetSuccessResult(sessionOverallCts);
-                    }
-                    else
-                    {
-                        // This means the client was somehow initialized with a non-deferred transport, or transport is already activated.
-                        return result.SetFailureResult("AssignWebSocketToClientAsync:TRANSPORT_MISMATCH", "Client transport is not in a deferred state or is of an unexpected type.");
-                    }
-                }
-                else
-                {
-                    return result.SetFailureResult("AssignWebSocketToClientAsync:NOT_FOUND", "Conversation client not found or is not a BaseConversationClient.");
-                }
-            }
-            else
-            {
-                return result.SetFailureResult("AssignWebSocketToClientAsync:SESSION_NOT_FOUND", "Session or session cts not found");
-            }
-        }
-
+    
         private string BuildWebhookUrl(RegionServerData serverData, string sessionId, string clientId, string sessionToken)
         {
             var baseURI = new Uri((serverData.UseSSL ? "wss://" : "ws://") + serverData.Endpoint);
             return new Uri(baseURI, $"{(baseURI.AbsolutePath != "/" ? baseURI.AbsolutePath : "")}/ws/session/{sessionId}/client/{clientId}/{sessionToken}").ToString();
         }
-
         private string BuildStatusCallbackUrl(RegionServerData proxyServerData, long businessId, string sessionId, TelephonyProviderEnum telephonyProvider, string businessNumberId)
         {
             var providerName = telephonyProvider.ToString().ToLower();

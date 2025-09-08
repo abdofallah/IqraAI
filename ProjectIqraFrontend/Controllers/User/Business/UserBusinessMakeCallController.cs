@@ -62,7 +62,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             {
                 return result.SetFailureResult(
                     "InitiateCalls:8",
-                    "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(business.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + business.Permission.MakeCall.DisabledCallingReason)
+                    "Outbound calling is disabled for this business" + (string.IsNullOrWhiteSpace(businessData.Permission.MakeCall.DisabledCallingReason) ? "" : ": " + businessData.Permission.MakeCall.DisabledCallingReason)
                 );
             }
             if (businessData.AllocatedMonthlyMinuteCap.HasValue)

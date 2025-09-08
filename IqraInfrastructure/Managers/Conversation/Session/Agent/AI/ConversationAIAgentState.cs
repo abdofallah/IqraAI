@@ -1,10 +1,9 @@
 ﻿using IqraCore.Entities.Business;
 using IqraCore.Entities.Conversation.Configuration;
-using System.Text;
-using IqraCore.Entities.Helper.Agent;
 using IqraCore.Entities.Conversation.Context;
 using IqraCore.Interfaces.AI;
-using IqraCore.Interfaces.VAD;
+using IqraInfrastructure.Managers.VAD.Silero;
+using System.Text;
 
 namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
@@ -17,7 +16,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public BusinessApp? BusinessApp { get; set; }
         public ConversationSessionContext? CurrentSessionContext { get; set; }
         public BusinessAppAgent? BusinessAppAgent { get; set; }
-        public AgentInterruptionTypeENUM CurrentConversationType { get; set; }
 
         // Language
         public string CurrentLanguageCode { get; set; } = string.Empty;
@@ -36,9 +34,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public string LLMBaseSystemPrompt { get; set; } = string.Empty;
         public ILLMService? InterruptingLLMService { get; set; }
 
-        public bool IsVadEnabled { get; set; } = false;
-        public IVadService? VadService { get; set; }
-        public VadOptions? VadOptions { get; set; } 
+        // Vad Related
+        public SileroVadCore? SileroVadCore;
+
 
         // Runtime State Flags & Variables
         public bool IsInitialized { get; set; } = false;
@@ -47,7 +45,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public bool IsRespondingSystemToolRespone { get; set; } = false;
         public bool IsExecutingCustomTool { get; set; } = false;
         public bool IsRespondingCustomToolRespone { get; set; } = false;
-        public bool IsUserSpeakingVAD { get; set; } = false;
         public bool IsAcceptingSTTAudio { get; set; } = false;
 
         // Audio Output State
@@ -57,7 +54,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public float BackgroundMusicVolume { get; set; } = 0.3f; // Default, could be config
         public ReadOnlyMemory<byte> BackgroundAudioData { get; set; } = ReadOnlyMemory<byte>.Empty; // Loaded data
         public TimeSpan AudioDurationLeftToPlay { get; set; } = TimeSpan.Zero;
-        public bool IsAudioPlayingPaused { get; set; } = false;
 
         // Client Context
         public string? CurrentClientId { get; set; }
@@ -71,11 +67,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         // Timings / Durations (Managed by relevant handlers)
         public DateTime? CurrentResponseDurationSpeakingStarted { get; set; }
         public TimeSpan CurrentResponseDuration { get; set; } = TimeSpan.Zero;
-        public DateTime? UserSpeechStartTime { get; set; } // VAD related timing
 
         public ConversationAIAgentState(string agentId, CancellationToken masterCTS)
         {
-
             AgentId = agentId;
             MasterCancellationToken = masterCTS;
         }

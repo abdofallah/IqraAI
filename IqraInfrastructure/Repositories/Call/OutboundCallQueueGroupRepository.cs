@@ -4,12 +4,12 @@ using MongoDB.Driver;
 
 namespace IqraInfrastructure.Repositories.Call
 {
-    public class OutboundCallCampaignRepository
+    public class OutboundCallQueueGroupRepository
     {
         private readonly IMongoCollection<OutboundCallQueueGroupData> _callQueueGroupCollection;
-        private readonly ILogger<OutboundCallCampaignRepository> _logger;
+        private readonly ILogger<OutboundCallQueueGroupRepository> _logger;
 
-        public OutboundCallCampaignRepository(IMongoClient client, string databaseName, ILogger<OutboundCallCampaignRepository> logger)
+        public OutboundCallQueueGroupRepository(IMongoClient client, string databaseName, ILogger<OutboundCallQueueGroupRepository> logger)
         {
             var database = client.GetDatabase(databaseName);
             _callQueueGroupCollection = database.GetCollection<OutboundCallQueueGroupData>("OutboundCallQueueGroup");

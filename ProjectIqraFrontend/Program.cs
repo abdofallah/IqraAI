@@ -332,12 +332,12 @@ namespace ProjectIqraFrontend
                 );
             });
 
-            builder.Services.AddSingleton<OutboundCallCampaignRepository>((sp) =>
+            builder.Services.AddSingleton<OutboundCallQueueGroupRepository>((sp) =>
             {
-                return new OutboundCallCampaignRepository(
+                return new OutboundCallQueueGroupRepository(
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:OutboundCallCampaignRepositoryDatabaseName"],
-                    sp.GetRequiredService<ILogger<OutboundCallCampaignRepository>>()
+                    sp.GetRequiredService<ILogger<OutboundCallQueueGroupRepository>>()
                 );
             });
 
@@ -612,7 +612,7 @@ namespace ProjectIqraFrontend
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<ConversationAudioRepository>(),
                     sp.GetRequiredService<RegionManager>(),
-                    sp.GetRequiredService<OutboundCallCampaignRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueGroupRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
                     sp.GetRequiredService<LanguagesManager>(),
                     sp.GetRequiredService<TwilioManager>(),

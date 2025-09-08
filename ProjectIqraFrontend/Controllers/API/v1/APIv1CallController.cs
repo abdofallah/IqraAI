@@ -27,9 +27,9 @@ namespace ProjectIqraFrontend.Controllers.API.v1
         [HttpPost("initiate")]
         [RequestSizeLimit(10 * 1024 * 1024)]
         [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)]
-        public async Task<FunctionReturnResult> InitiateCall([FromForm] IFormCollection formData)
+        public async Task<FunctionReturnResult<List<string?>?>> InitiateCall([FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult();
+            var result = new FunctionReturnResult<List<string?>?>();
 
             var authorizationToken = Request.Headers["Authorization"].ToString();
             var apiKey = authorizationToken.Replace("Token ", "");
@@ -139,7 +139,7 @@ namespace ProjectIqraFrontend.Controllers.API.v1
                     );
                 }
 
-                return result.SetSuccessResult();
+                return result.SetSuccessResult(forwardResult.Data);
             }
             catch (Exception ex)
             {

@@ -23,7 +23,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         public event Func<Task>? InitiateLanguageSelectionRequested;
 
         private readonly ILogger<ConversationAIAgentToolExecutor> _logger;
-        private readonly ConversationSession _conversationSession;
+        private readonly ConversationSessionOrchestrator _conversationSession;
         private readonly ConversationAIAgentState _agentState;
         private readonly ScriptExecutionManager _scriptAccessor;
         private readonly CustomToolExecutionHelper _customToolHelper;
@@ -36,7 +36,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public ConversationAIAgentToolExecutor(
             ILoggerFactory loggerFactory,
-            ConversationSession conversationSession,
+            ConversationSessionOrchestrator conversationSession,
             ConversationAIAgentState agentState,
             ScriptExecutionManager scriptAccessor,
             CustomToolExecutionHelper customToolHelper,

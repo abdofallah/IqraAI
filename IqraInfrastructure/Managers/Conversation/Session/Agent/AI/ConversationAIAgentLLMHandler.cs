@@ -52,10 +52,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _systemPromptGenerator = systemPromptGenerator;
         }
 
+        // Initalize
         public async Task InitializeAsync()
         {
-            _logger.LogInformation("LLM Handler initializing for Agent {AgentId}.", _agentState.AgentId);
-
             if (_agentState.BusinessAppAgent == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode) || _agentState.AgentConfiguration == null)
             {
                 _logger.LogError("Agent {AgentId}: Cannot initialize LLM Handler - missing required state.", _agentState.AgentId);
@@ -87,19 +86,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             // Warmup LLM
             await WarmupLLMAsync();
-
-            _logger.LogInformation("LLM Handler initialized for Agent {AgentId}.", _agentState.AgentId);
         }
-
         public async Task ReInitializeForLanguageAsync()
         {
-            _logger.LogInformation("Agent {AgentId}: Re-initializing LLM Handler for new language.", _agentState.AgentId);
             // Cancel any ongoing task first
             await CancelCurrentLLMTaskAsync();
             await InitializeAsync(); // Re-runs full init logic
         }
 
-        // Basic fallback todo will fail to speak for other langauges
+        // Warmup Initalization
         private const string PromptGenFailEndCallMessage = "ONLY RESPOND WITH: execute_system_function: end_call: \"Failed to generate base system prompt\", \"I am sorry, we are currently not able to handle your call due to an error occuring. Good bye!\"";
         private async Task GenerateAndSetBaseSystemPromptAsync()
         {
@@ -139,11 +134,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.LLMService!.SetSystemPrompt(_agentState.LLMBaseSystemPrompt);
             }        
         }
-
         private async Task WarmupLLMAsync()
         {
-            _logger.LogDebug("Warming up LLM for Agent {AgentId}.", _agentState.AgentId);
-
             // LLM warmup logic
             _agentState.LLMService!.ClearMessages();
 
@@ -198,10 +190,9 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _logger.LogDebug("LLM Warmup complete for Agent {AgentId}.", _agentState.AgentId);
         }
 
+        // Management
         public async Task ProcessUserTextAsync(string text, string? clientId, CancellationToken externalToken)
         {
-            _logger.LogInformation("Agent {AgentId} processing text: '{Text}'", _agentState.AgentId, text);
-
             if (_agentState.IsResponding || _agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
             {
                 _logger.LogWarning("Agent {AgentId}: Received text while busy (responding:{Responding}, systool:{SysTool}, custtool:{CustTool}). Behavior depends on interruption logic.",
@@ -214,11 +205,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             using var combinedCTS = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, externalToken, _agentState.MasterCancellationToken);
             await SendLLMMessageAsync(text, clientId, combinedCTS.Token);
         }
-
         public async Task ProcessSystemMessageAsync(string text, string? clientId, CancellationToken externalToken)
         {
-            _logger.LogDebug("Agent {AgentId} processing system message: '{Text}'", _agentState.AgentId, text);
-
             if (_agentState.IsExecutingSystemTool || _agentState.IsExecutingCustomTool)
             {
                 await CancelCurrentLLMTaskAsync();
@@ -229,8 +217,35 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Note: clientId is null for system messages typically
             await SendLLMMessageAsync(text, clientId, combinedCTS.Token, true); // Flag as system message
         }
+        public async Task CancelCurrentLLMTaskAsync()
+        {
+            _logger.LogInformation("Agent {AgentId}: Attempting to cancel current LLM task.", _agentState.AgentId);
+            if (!_currentLLMProcessingTaskCTS.IsCancellationRequested)
+            {
+                _currentLLMProcessingTaskCTS.Cancel();
+                _currentLLMProcessingTaskCTS.Dispose(); // Dispose old one
+            }
+            _currentLLMProcessingTaskCTS = new CancellationTokenSource(); // Create new one for next task
 
+            // Wait briefly for the task to acknowledge cancellation? Optional.
+            if (_llmTask != null && !_llmTask.IsCompleted)
+            {
+                try
+                {
+                    await Task.WhenAny(_llmTask, Task.Delay(500)); // Wait max 500ms
+                    _logger.LogDebug("Agent {AgentId}: LLM task status after cancellation attempt: {Status}", _agentState.AgentId, _llmTask.Status);
+                }
+                catch { /* Ignore potential task cancelled exceptions */ }
+            }
+            _llmTask = null;
+            ResetLLMState(); // Also reset flags etc when cancelling
+        }
+        public string GetCurrentResponseText()
+        {
+            return _responseBuffer.ToString();
+        }
 
+        // Message Processing
         private async Task SendLLMMessageAsync(string text, string? clientId, CancellationToken cancellationToken, bool isSystemMessage = false)
         {
             if (_agentState.LLMService == null)
@@ -283,7 +298,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
          
             await _llmTask;
         }
-
         private async Task<(bool isCacheable, string? cachedQuery)> IsTextCacheable(string text)
         {
             var agent = _agentState.BusinessAppAgent;
@@ -311,7 +325,18 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             return (false, null);
         }
-
+        private void ResetLLMState()
+        {
+            _responseBuffer.Clear();
+            _currentResponseBufferRead = 0;
+            _agentState.IsResponding = false;
+            _agentState.IsExecutingSystemTool = false;
+            _agentState.IsExecutingCustomTool = false;
+            // Don't reset _agentState.CurrentResponseDuration/SpeakingStarted here, AudioOutput manages that lifecycle
+            _logger.LogDebug("Agent {AgentId}: LLM state flags reset.", _agentState.AgentId);
+        }
+        
+        // Streamed Message (Event) Processing
         private async void OnLLMMessageStreamed(object? sender, ConversationAgentEventLLMStreamed eventData)
         {
             var combinedCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_currentLLMProcessingTaskCTS.Token, _agentState.MasterCancellationToken);
@@ -472,7 +497,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             }
         }
-
         private async Task HandleLLMResponseProcessingAsync(string? deltaText, bool isEndOfResponse)
         {
             if (!_agentState.IsResponding || _responseBuffer.Length <= _currentResponseBufferRead)
@@ -563,7 +587,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             }
         }
-
         private async Task HandleLLMResponseCompletedAsync(string finalResponse)
         {
             try
@@ -622,46 +645,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        public async Task CancelCurrentLLMTaskAsync()
-        {
-            _logger.LogInformation("Agent {AgentId}: Attempting to cancel current LLM task.", _agentState.AgentId);
-            if (!_currentLLMProcessingTaskCTS.IsCancellationRequested)
-            {
-                _currentLLMProcessingTaskCTS.Cancel();
-                _currentLLMProcessingTaskCTS.Dispose(); // Dispose old one
-            }
-            _currentLLMProcessingTaskCTS = new CancellationTokenSource(); // Create new one for next task
-
-            // Wait briefly for the task to acknowledge cancellation? Optional.
-            if (_llmTask != null && !_llmTask.IsCompleted)
-            {
-                try
-                {
-                    await Task.WhenAny(_llmTask, Task.Delay(500)); // Wait max 500ms
-                    _logger.LogDebug("Agent {AgentId}: LLM task status after cancellation attempt: {Status}", _agentState.AgentId, _llmTask.Status);
-                }
-                catch { /* Ignore potential task cancelled exceptions */ }
-            }
-            _llmTask = null;
-            ResetLLMState(); // Also reset flags etc when cancelling
-        }
-
-        public string GetCurrentResponseText()
-        {
-            return _responseBuffer.ToString();
-        }
-
-        private void ResetLLMState()
-        {
-            _responseBuffer.Clear();
-            _currentResponseBufferRead = 0;
-            _agentState.IsResponding = false;
-            _agentState.IsExecutingSystemTool = false;
-            _agentState.IsExecutingCustomTool = false;
-            // Don't reset _agentState.CurrentResponseDuration/SpeakingStarted here, AudioOutput manages that lifecycle
-            _logger.LogDebug("Agent {AgentId}: LLM state flags reset.", _agentState.AgentId);
-        }
-
+        // Disposal
         private void DisposeCurrentLLMService(IDisposable? service)
         {
             if (service == null) return;

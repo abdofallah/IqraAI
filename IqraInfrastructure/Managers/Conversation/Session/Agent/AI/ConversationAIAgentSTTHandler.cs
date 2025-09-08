@@ -6,8 +6,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 {
     public class ConversationAIAgentSTTHandler : IDisposable
     {
-        public event Func<string, Task>? TranscriptionReceived;
-
+        public event Action<string, bool>? TranscriptionReceived;
 
         private readonly ILogger<ConversationAIAgentSTTHandler> _logger;
         private readonly ConversationAIAgentState _agentState;
@@ -27,6 +26,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _businessManager = businessManager;
         }
 
+        // Initalize
         public async Task InitializeAsync()
         {
             if (_agentState.BusinessAppAgent == null || string.IsNullOrEmpty(_agentState.CurrentLanguageCode))
@@ -74,7 +74,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _logger.LogInformation("STT Handler initialized for Agent {AgentId} with language {Language}.", _agentState.AgentId, _agentState.CurrentLanguageCode);
         }
-
         public async Task ReInitializeForLanguageAsync()
         {
             _logger.LogInformation("Agent {AgentId}: Re-initializing STT Handler.", _agentState.AgentId);
@@ -83,21 +82,47 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             await InitializeAsync();
         }
 
-        private void OnRecognizingReceived(object? sender, object e)
+        // Management
+        public void StartTranscription()
         {
-            _agentState.IsSTTRecognizing = true;
+            _agentState.STTService?.StartTranscription();
+            _logger.LogDebug("Agent {AgentId}: STT Transcription explicitly started.", _agentState.AgentId);
+        }
+        public void StopTranscription()
+        {
+            _agentState.STTService?.StopTranscription();
+            _logger.LogDebug("Agent {AgentId}: STT Transcription explicitly stopped.", _agentState.AgentId);
         }
 
+        // Event Handlers
+        private void OnRecognizingReceived(object? sender, string text)
+        {
+            _agentState.IsSTTRecognizing = true;
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                if (TranscriptionReceived != null)
+                {
+                    try
+                    {
+                        TranscriptionReceived.Invoke(text, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Agent {AgentId}: Error invoking TranscriptionReceived event handler.", _agentState.AgentId);
+                    }
+                }
+            }
+        }
         private async void OnTranscriptionResultReceived(object? sender, string text)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
 
-            _logger.LogInformation("Agent {AgentId} received transcription: {Text}", _agentState.AgentId, text);
             if (TranscriptionReceived != null)
             {
                 try
                 {
-                    await TranscriptionReceived.Invoke(text); // Notify Orchestrator
+                    TranscriptionReceived.Invoke(text, true);
                 }
                 catch (Exception ex)
                 {
@@ -108,18 +133,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        public void StartTranscription()
-        {
-            _agentState.STTService?.StartTranscription();
-            _logger.LogDebug("Agent {AgentId}: STT Transcription explicitly started.", _agentState.AgentId);
-        }
-
-        public void StopTranscription()
-        {
-            _agentState.STTService?.StopTranscription();
-            _logger.LogDebug("Agent {AgentId}: STT Transcription explicitly stopped.", _agentState.AgentId);
-        }
-
+        // Disposal
         private void DisposeCurrentService()
         {
             if (_agentState.STTService != null)
@@ -137,7 +151,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _agentState.STTService = null;
             }
         }
-
         public void Dispose()
         {
             DisposeCurrentService();

@@ -18,18 +18,16 @@ namespace IqraCore.Entities.Conversation
         public ConversationSessionState Status { get; set; } = ConversationSessionState.Created;
 
         public DateTime StartTime { get; set; }
-        public DateTime? EndTime { get; set; }
-        public DateTime? ExpectedEndTimeAt { get; set; }
+        public DateTime ExpectedEndTimeAt { get; set; }
 
-        public DateTime LastActivityTime { get; set; }
+        public string EndReason { get; set; }
+        public DateTime? EndTime { get; set; }
 
         public List<ConversationClientInfo> Clients { get; set; } = new List<ConversationClientInfo>();
         public List<ConversationAgentInfo> Agents { get; set; } = new List<ConversationAgentInfo>();
 
         public List<ConversationMessageData> Messages { get; set; } = new List<ConversationMessageData>();
         public List<ConversationLogEntry> Logs { get; set; } = new List<ConversationLogEntry>();
-
-        public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
 
         public ConversationMetrics Metrics { get; set; } = new ConversationMetrics();
     }

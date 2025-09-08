@@ -236,12 +236,12 @@ namespace ProjectIqraBackendApp
                 );
             });
 
-            builder.Services.AddSingleton<OutboundCallCampaignRepository>(sp =>
+            builder.Services.AddSingleton<OutboundCallQueueGroupRepository>(sp =>
             {
-                return new OutboundCallCampaignRepository(
+                return new OutboundCallQueueGroupRepository(
                     sp.GetRequiredService<IMongoClient>(),
                     appConfig["MongoDatabase:OutboundCallCampaignRepositoryDatabaseName"],
-                    sp.GetRequiredService<ILogger<OutboundCallCampaignRepository>>()
+                    sp.GetRequiredService<ILogger<OutboundCallQueueGroupRepository>>()
                 );
             });
 
@@ -596,7 +596,7 @@ namespace ProjectIqraBackendApp
                     sp.GetRequiredService<ServerMetricsMonitor>(),
                     sp.GetRequiredService<InboundCallQueueRepository>(),
                     sp.GetRequiredService<OutboundCallQueueRepository>(),
-                    sp.GetRequiredService<OutboundCallCampaignRepository>(),
+                    sp.GetRequiredService<OutboundCallQueueGroupRepository>(),
                     sp.GetRequiredService<ConversationStateRepository>(),
                     sp.GetRequiredService<BusinessManager>(),
                     sp.GetRequiredService<IntegrationsManager>(),

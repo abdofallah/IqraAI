@@ -17,21 +17,20 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _agentState = agentState;
         }
 
-        public Task InitializeAsync(CancellationToken agentCTS)
+        // Initalize
+        public void InitializeAsync(CancellationToken agentCTS)
         {
             _moduleCTS = CancellationTokenSource.CreateLinkedTokenSource(agentCTS);
             _audioProcessingTask = Task.Run(() => ProcessAudioQueueAsync(_moduleCTS.Token), _moduleCTS.Token);
-            _logger.LogInformation("AudioInput module initialized for Agent {AgentId}.", _agentState.AgentId);
-            return Task.CompletedTask;
         }
 
-        public void ProcessAudioChunk(byte[] audioData, CancellationToken cancellationToken)
+        // Management
+        public void QueueAudioChunk(byte[] audioData, CancellationToken cancellationToken)
         {
             if (!_moduleCTS?.IsCancellationRequested ?? true)
             {
                 try
                 {
-                    // Use a combined token if the external one should also be able to cancel adding
                     var combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _moduleCTS.Token).Token;
                     _audioQueue.Add(audioData, combinedToken);
                 }
@@ -43,10 +42,14 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
             }
         }
+        public void StopProcessing()
+        {
+            _audioQueue.CompleteAdding();
+        }
 
+        // Background Task
         private async Task ProcessAudioQueueAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Agent {AgentId}: Audio processing task started.", _agentState.AgentId);
             try
             {
                 foreach (var audioData in _audioQueue.GetConsumingEnumerable(cancellationToken))
@@ -63,18 +66,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                             // TODO: Raise error event via orchestrator?
                         }
                     }
-                    if (_agentState.IsVadEnabled && _agentState.VadService != null)
-                    {
-                        try
-                        {
-                            _agentState.VadService.ProcessAudio(audioData);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Agent {AgentId}: Error processing audio in VAD service.", _agentState.AgentId);
-                            // TODO: Raise error event via orchestrator?
-                        }
-                    }
                 }
             }
             catch (OperationCanceledException) { /* Expected */ }
@@ -86,18 +77,13 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
-        public void StopProcessing()
-        {
-            _audioQueue.CompleteAdding();
-        }
-
+        // Disposal
         public void Dispose()
         {
             StopProcessing();
             _moduleCTS?.Dispose();
             _audioQueue?.Dispose();
             _audioProcessingTask?.Wait(TimeSpan.FromSeconds(2)); // Optional wait
-            _logger.LogDebug("AudioInput module disposed for Agent {AgentId}.", _agentState.AgentId);
         }
     }
 }

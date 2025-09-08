@@ -5,6 +5,7 @@ using IqraCore.Entities.Conversation.Context;
 using IqraCore.Entities.Conversation.Enum;
 using IqraCore.Entities.Conversation.Events;
 using IqraCore.Interfaces.Conversation;
+using IqraCore.Interfaces.VAD;
 using IqraInfrastructure.Managers.Business;
 using IqraInfrastructure.Managers.Conversation.Session.Agent.AI.Helpers;
 using IqraInfrastructure.Managers.Conversation.Session.Client.Telephony;
@@ -14,6 +15,7 @@ using IqraInfrastructure.Managers.LLM;
 using IqraInfrastructure.Managers.STT;
 using IqraInfrastructure.Managers.Telephony;
 using IqraInfrastructure.Managers.TTS;
+using IqraInfrastructure.Managers.VAD.Silero;
 using IqraInfrastructure.Repositories.Business;
 using Microsoft.Extensions.Logging;
 
@@ -27,7 +29,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAgentConfiguration _agentConfiguration;
 
         // Dependencies
-        private readonly ConversationSession _conversationSessionManager;
+        private readonly ConversationSessionOrchestrator _conversationSessionManager;
         private readonly BusinessManager _businessManager;
         private readonly SystemPromptGenerator _systemPromptGenerator;
         private readonly LanguagesManager _langaugesManager;
@@ -44,14 +46,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentLLMHandler _llmHandler;
         private readonly ConversationAIAgentToolExecutor _toolExecutor;
         private readonly ConversationAIAgentAudioOutput _audioOutputHandler;
-        private readonly ConversationAIAgentInterruptionManager _interruptionManager;
+        private readonly TurnAndInterruptionManager _turnManager;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
-        private readonly ConversationAIAgentVoicemailDetector _voicemailDetector;
 
         // Master Cancellation Token
         private CancellationTokenSource _conversationCTS = new();
+
+        // Multi Language
+        private string cachedMultiLanguagePlayMessage = string.Empty;
 
         // Public Interface
         public string AgentId => _agentState.AgentId;
@@ -71,7 +75,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
         public ConversationAIAgent(
             ILoggerFactory loggerFactory,
-            ConversationSession sessionManager,
+            ConversationSessionOrchestrator sessionManager,
             string agentId, // Agent ID passed in
             ConversationAgentConfiguration agentConfiguration,
 
@@ -117,15 +121,15 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
             _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
+            _turnManager = new TurnAndInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
-            _interruptionManager = new ConversationAIAgentInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _audioOutputHandler, _llmHandler);
-            _voicemailDetector = new ConversationAIAgentVoicemailDetector(_loggerFactory, _agentState, sttProviderManager, llmProviderManager);
-
+            
             // Wire up Events between Modules and Orchestrator
             WireUpEvents();
         }
 
+        // Initalize
         private void WireUpEvents()
         {
             // Audio Output -> Orchestrator (Public Events)
@@ -134,7 +138,16 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler.OnAudioBufferCleared += (sender, args) => ClearBufferedAudio?.Invoke(this, args);
 
             // STT Handler -> Orchestrator (Process Text)
-            _sttHandler.TranscriptionReceived += ProcessTranscriptionResultAsync;
+            _sttHandler.TranscriptionReceived += (text, isFinal) =>
+            {
+                _turnManager.ProcessTranscriptionForTurnAnalysis(text, isFinal);
+            };
+
+            // Turn End/Interruption Handler
+            _turnManager.UserTurnEnded += OnUserTurnEndedAsync;
+            _turnManager.AgentShouldPause += OnAgentShouldPauseAsync;
+            _turnManager.AgentShouldResume += OnAgentShouldResumeAsync;
+            _turnManager.VerifiedInterruptionOccurred += OnVerifiedInterruptionOccurredAsync;
 
             // LLM Handler -> Orchestrator/Other Modules
             _llmHandler.SynthesizeTextRequested += (text) => _audioOutputHandler.SynthesizeAndQueueSpeechAsync(text, CancellationToken.None); // TODO Use appropriate token
@@ -176,59 +189,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
              // NEW: DTMF Session Manager Events -> Orchestrator/LLM
              _dtmfSessionManager.SessionEnded += OnDtmfSessionEnded;
-
-            // Voicemail
-            _voicemailDetector.OnStopAgentSpeaking += OnVoicemailStopAgentSpeaking;
-            _voicemailDetector.OnEndCallorLeaveMessageRecieved += OnVoicemailEndCallorLeaveMessageRecieved;
         }
-
-        private async void OnVoicemailEndCallorLeaveMessageRecieved(object? sender, EventArgs e)
-        {
-            //if (_agentState.BusinessAppAgent.Voicemail.EndCallOnDetect)
-            //{
-            //    await _conversationSessionManager.EndAsync("Voicemail detected");
-            //}
-            //else if (_agentState.BusinessAppAgent.Voicemail.LeaveMessageOnDetect)
-            //{
-            //    string voicemailMessage = _agentState.BusinessAppAgent.Voicemail.MessageToLeave[_agentState.CurrentLanguageCode];
-
-            //    string llmHistoryMessage = "response_to_customer: " + voicemailMessage;
-            //    _agentState.LLMService?.AddAssistantMessage(llmHistoryMessage); // Add to history
-            //    AgentTextResponse?.Invoke(this, new ConversationTextGeneratedEventArgs(llmHistoryMessage, _agentState.CurrentClientId ?? "Start", false)); // Raw text event
-            //    await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(voicemailMessage, _conversationCTS.Token);
-
-            //    // TODO in future implement here a way if user joins the call while message is spoken
-            //    await Task.Delay(_agentState.BusinessAppAgent.Voicemail.WaitXMSAfterLeavingMessageToEndCall);
-            //    await _conversationSessionManager.EndAsync("Voicemail detected");
-            //}
-        }
-
-        private async void OnVoicemailStopAgentSpeaking(object? sender, EventArgs e)
-        {
-            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
-        }
-
-        private void OnSpeechPlaybackComplete()
-        {
-            // This is signaled by AudioOutput when the speech queue is empty and the last segment finished playing.
-            _logger.LogInformation("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
-            // If LLM was waiting for speech, it can now proceed (if necessary)
-            // This helps decouple LLM completion from actual audio finishing.
-
-            // Potentially signal LLM handler if it needs to wait for speech before continuing?
-            // Or use to re-enable STT input after agent speaks?
-            // If (! _agentState.IsExecutingTool && !_dtmfSessionManager.IsSessionActive) {
-            //    _agentState.IsAcceptingSTTAudio = true; // Re-enable listening? Context dependent.
-            // }
-        }
-
-        private void OnLLMResponseHandlingComplete()
-        {
-            // This is signaled by LLMHandler when it finishes processing a 'response_to_customer' stream.
-            _logger.LogInformation("Agent {AgentId}: Received signal that LLM response handling is complete.", AgentId);
-            // Usually followed by waiting for OnSpeechPlaybackComplete.
-        }
-
         public async Task InitializeAsync(BusinessApp businessAppData, ConversationSessionContext contextData, CancellationToken cancellationToken)
         {
             if (_agentState.IsInitialized)
@@ -236,7 +197,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogWarning("AI Agent {AgentId} is already initialized.", AgentId);
                 return;
             }
-            _logger.LogInformation("AI Agent {AgentId} initializing...", AgentId);
 
             _conversationCTS = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -245,14 +205,22 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 // Populate Initial State
                 _agentState.BusinessApp = businessAppData;
                 _agentState.CurrentSessionContext = contextData;
-                _agentState.CurrentConversationType = contextData.Agent.Interruption.Type;
                 _agentState.CurrentLanguageCode = contextData.Language.DefaultLanguageCode; // Initial language
                 _agentState.BusinessAppAgent = businessAppData.Agents.Find(a => a.Id == contextData.Agent.SelectedAgentId);
                 if (_agentState.BusinessAppAgent == null)
                 {
                     throw new InvalidOperationException($"Business app agent {contextData.Agent.SelectedAgentId} not found");
                 }
-                _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30)/100); // Get from config
+                _agentState.BackgroundMusicVolume = (float)((float)(_agentState.BusinessAppAgent.Settings?.BackgroundAudioVolume ?? 30) / 100); // Get from config
+
+                // Silero Vad
+                var vadOptions = new VadOptions
+                {
+                    AudioEncodingType = _agentState.AgentConfiguration.AudioEncodingType,
+                    SampleRate = _agentState.AgentConfiguration.SampleRate,
+                    BitsPerSample = _agentState.AgentConfiguration.BitsPerSample
+                };
+                _agentState.SileroVadCore = new SileroVadCore(_loggerFactory.CreateLogger<SileroVadCore>(), vadOptions, _conversationCTS.Token);
 
                 // Initialize Modules
                 await _llmHandler.InitializeAsync();
@@ -264,17 +232,10 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     _agentState.CurrentLanguageCode
                 );
                 await _toolExecutor.InitializeAsync();
-                await _interruptionManager.InitializeAsync(_conversationCTS.Token);
-                await _audioInputHandler.InitializeAsync(_conversationCTS.Token);
-
-                //if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
-                //{
-                //    await _voicemailDetector.InitializeAsync(_conversationCTS.Token);
-                //}         
-
+                await _turnManager.InitializeAsync(_conversationCTS.Token);
+                _audioInputHandler.InitializeAsync(_conversationCTS.Token);
+                
                 _agentState.IsInitialized = true;
-                _logger.LogInformation("AI Agent {AgentId} initialized successfully. Lang: {Lang}, Type: {Type}",
-                    AgentId, _agentState.CurrentLanguageCode, _agentState.CurrentConversationType);
             }
             catch (Exception ex)
             {
@@ -286,6 +247,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             }
         }
 
+        // Agent Management
         public async Task NotifyConversationStarted()
         {
             if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested)
@@ -299,24 +261,129 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             if (requiresLanguageSelection)
             {
-                //if (_agentState.BusinessAppAgent.Voicemail.IsEnabled)
-                //{
-                //    await _voicemailDetector.StartAsync();
-                //}
-
-                await SetupLanguageSelectionViaDTMFAsync(_conversationCTS.Token);
+                await SetupLanguageSelectionViaDTMFAsync();
             }
             else
             {
                 await BeginAgentConversationFlowAsync();
             }
         }
+        public async Task NotifyMaxDurationReached()
+        {
+            if (!_agentState.IsInitialized) return;
+            _logger.LogWarning("Agent {AgentId}: Maximum conversation duration reached.", AgentId);
 
-        private async Task SetupLanguageSelectionViaDTMFAsync(CancellationToken cancellationToken)
+            // Stop accepting new input
+            _agentState.IsAcceptingSTTAudio = false;
+            // TODO: Maybe stop VAD processing too?
+
+            // Cancel any ongoing agent response forcefully
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+            // Instruct LLM to end the call immediately
+            string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";
+            await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _agentState.CurrentClientId, _conversationCTS.Token); // todo this is problematic
+        }
+        public async Task ShutdownAsync(string reason)
+        {
+            if (!_agentState.IsInitialized && _conversationCTS.IsCancellationRequested)
+            {
+                _logger.LogInformation("AI Agent {AgentId} shutdown already in progress or completed.", AgentId);
+                return;
+            }
+            _logger.LogInformation("AI Agent {AgentId} shutting down. Reason: {Reason}", AgentId, reason);
+
+            // Signal shutdown start
+            _agentState.IsInitialized = false;
+            _agentState.IsAcceptingSTTAudio = false;
+            if (!_conversationCTS.IsCancellationRequested)
+            {
+                _conversationCTS.Cancel();
+            }
+
+            _audioInputHandler?.Dispose();
+
+            _turnManager.Dispose();
+
+            await (_llmHandler?.CancelCurrentLLMTaskAsync() ?? Task.CompletedTask);
+            _llmHandler?.Dispose();
+
+            _sttHandler?.StopTranscription();
+            _sttHandler?.Dispose();
+
+            _turnManager?.Dispose();
+
+            _agentState.SileroVadCore?.Dispose();
+
+            _dtmfSessionManager?.Dispose();
+
+            _audioOutputHandler?.StopSending();
+            _audioOutputHandler?.Dispose();
+
+            // Dispose Tool Executor? (If it holds resources) TODO > might need to cancel current httpclient ongoign request and dispose
+            // _toolExecutor?.Dispose(); // If it implements IDisposable
+
+            AudioGenerated = null;
+            AgentTextResponse = null;
+            ClientTextQuery = null;
+            ClearBufferedAudio = null;
+            Thinking = null;
+            ErrorOccurred = null;
+
+            _conversationCTS?.Dispose();
+
+            _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
+        }
+
+        // Agent Input Management
+        public Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
+        {
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
+
+            // Set client ID (important for multi-participant, maybe less so for 1-1)
+            // todo dont know what this is used for, might be problematic if turn by turn is not enabled?
+            // insetad of setting current client id, we should have a proper structure of client id + data being sent
+            _agentState.CurrentClientId = clientId;
+
+            // --- NEW: Feed audio to the VAD core if it exists ---
+            // This is separate from the AudioInput queue because VAD processing
+            // should happen as immediately as possible.
+            _agentState.SileroVadCore?.ProcessAudio(audioData);
+
+            // Pass to input handler
+            _audioInputHandler.QueueAudioChunk(audioData, cancellationToken);
+            return Task.CompletedTask;
+        }
+        public Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
+        {
+            if (clientId != null)
+            {
+                _agentState.CurrentClientId = clientId;
+            }
+
+            return _turnManager.ProcessDirectTextInputAsync(text, cancellationToken);
+        }
+        public Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
+        {
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
+
+            if (clientId != null) _agentState.CurrentClientId = clientId;
+
+            // Pass digit to the session manager
+            _dtmfSessionManager.ProcessDigit(digit);
+
+            // No need for language selection logic here anymore, it's handled by OnDtmfSessionEnded
+
+            return Task.CompletedTask;
+        }
+        
+        // Multi Language
+        private async Task SetupLanguageSelectionViaDTMFAsync()
         {
             try
             {
-                await HandleLanguageSelectionMessagePlaying(cancellationToken);
+                await HandleLanguageSelectionMessagePlaying();
 
                 var dtmfConfig = new DTMFSessionConfig
                 {
@@ -344,10 +411,8 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 _logger.LogError(ex, "Agent {AgentId}: Error during language selection setup. Proceeding with default.", _agentState.AgentId);
                 await BeginAgentConversationFlowAsync();
             }
-        }
-
-        private string cachedMultiLanguagePlayMessage = string.Empty;
-        private async Task HandleLanguageSelectionMessagePlaying(CancellationToken cancellationToken)
+        } 
+        private async Task HandleLanguageSelectionMessagePlaying()
         {
             if (string.IsNullOrWhiteSpace(cachedMultiLanguagePlayMessage))
             {
@@ -371,11 +436,41 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 }
 
                 cachedMultiLanguagePlayMessage = cachedMultiLanguagePlayMessage.Trim();
-            }           
+            }
 
-            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(cachedMultiLanguagePlayMessage, cancellationToken);
+            await _audioOutputHandler.SynthesizeAndPlayBlockingAsync(cachedMultiLanguagePlayMessage, _conversationCTS.Token);
+        }
+        private async Task HandleLanguageChangeRequestAsync(string newLanguageCode)
+        {
+            if (!_agentState.IsInitialized) return; // Should not happen
+
+            // Update State
+            _agentState.CurrentLanguageCode = newLanguageCode;
+            _agentState.IsAcceptingSTTAudio = false;
+
+            // Cancel ongoing operations? Optional, but safer.
+            _dtmfSessionManager.CancelSession("Language Change");
+            await _llmHandler.CancelCurrentLLMTaskAsync();
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
+
+            // Re-initialize language-dependent modules
+            try
+            {
+                await _llmHandler.ReInitializeForLanguageAsync();
+                await _sttHandler.ReInitializeForLanguageAsync();
+                await _audioOutputHandler.ReInitializeForLanguageAsync();
+                await _toolExecutor.ReInitializeForLanguageAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Failed to re-initialize modules for language {LanguageCode}", AgentId, newLanguageCode);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Failed to switch language: {ex.Message}", ex));
+                // What state are we in now? Might need to shut down. TODO, this should not happen tho
+                await ShutdownAsync("Language change failed");
+            }
         }
 
+        // Begin Conversation
         private async Task BeginAgentConversationFlowAsync()
         {
             if (_agentState.IsBackgroundMusicLoaded)
@@ -389,7 +484,6 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 string? openingMessage = null;
                 if (_agentState.BusinessAppAgent.Utterances.GreetingMessage?.TryGetValue(_agentState.CurrentLanguageCode, out openingMessage) == true && !string.IsNullOrEmpty(openingMessage))
                 {
-                    _logger.LogDebug("Agent {AgentId}: Playing agent-first opening message.", AgentId);
                     foreach (var dynamicVariable in _agentState.CurrentSessionContext.DynamicVariables ?? new Dictionary<string, string>())
                     {
                         openingMessage = openingMessage.Replace(("{{" + dynamicVariable.Key + "}}"), dynamicVariable.Value);
@@ -417,136 +511,27 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             // Enable listening after potential greeting
             _agentState.IsAcceptingSTTAudio = true;
             // TODO: Enable VAD if needed (_vadService.Start() ?)
-
-            _logger.LogInformation("Agent {AgentId}: Ready for interaction.", AgentId);
         }
 
-        private async Task HandleLanguageChangeRequestAsync(string newLanguageCode)
+        // Event Handlers
+        private void OnSpeechPlaybackComplete()
         {
-            if (!_agentState.IsInitialized) return; // Should not happen
+            // This is signaled by AudioOutput when the speech queue is empty and the last segment finished playing.
+            _logger.LogInformation("Agent {AgentId}: Received signal that speech playback is complete.", AgentId);
+            // If LLM was waiting for speech, it can now proceed (if necessary)
+            // This helps decouple LLM completion from actual audio finishing.
 
-            // Update State
-            _agentState.CurrentLanguageCode = newLanguageCode;
-            _agentState.IsAcceptingSTTAudio = false;
-
-            // Cancel ongoing operations? Optional, but safer.
-            _dtmfSessionManager.CancelSession("Language Change");
-            await _llmHandler.CancelCurrentLLMTaskAsync();
-            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
-
-            // Re-initialize language-dependent modules
-            try
-            {
-                await _llmHandler.ReInitializeForLanguageAsync();
-                await _sttHandler.ReInitializeForLanguageAsync();
-                await _audioOutputHandler.ReInitializeForLanguageAsync();
-                await _toolExecutor.ReInitializeForLanguageAsync();
-                await _interruptionManager.ReInitializeForLanguageAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Failed to re-initialize modules for language {LanguageCode}", AgentId, newLanguageCode);
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Failed to switch language: {ex.Message}", ex));
-                // What state are we in now? Might need to shut down. TODO, this should not happen tho
-                await ShutdownAsync("Language change failed");
-            }
+            // Potentially signal LLM handler if it needs to wait for speech before continuing?
+            // Or use to re-enable STT input after agent speaks?
+            // If (! _agentState.IsExecutingTool && !_dtmfSessionManager.IsSessionActive) {
+            //    _agentState.IsAcceptingSTTAudio = true; // Re-enable listening? Context dependent.
+            // }
         }
-
-        public async Task NotifyMaxDurationReached()
+        private void OnLLMResponseHandlingComplete()
         {
-            if (!_agentState.IsInitialized) return;
-            _logger.LogWarning("Agent {AgentId}: Maximum conversation duration reached.", AgentId);
-
-            // Stop accepting new input
-            _agentState.IsAcceptingSTTAudio = false;
-            // TODO: Maybe stop VAD processing too?
-
-            // Cancel any ongoing agent response forcefully
-            await _llmHandler.CancelCurrentLLMTaskAsync();
-            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
-
-            // Instruct LLM to end the call immediately
-            string endCallCommand = $"Maximum duration of {_agentState.CurrentSessionContext?.Timeout.MaxCallTimeS ?? 0} seconds reached perform end_call with reason and notifying customer why right away.";      
-            await _llmHandler.ProcessSystemMessageAsync(endCallCommand, _agentState.CurrentClientId, _conversationCTS.Token); // todo this is problematic
-        }
-
-        public Task ProcessAudioAsync(byte[] audioData, string clientId, CancellationToken cancellationToken)
-        {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
-
-            // Set client ID (important for multi-participant, maybe less so for 1-1)
-            // todo dont know what this is used for, might be problematic if turn by turn is not enabled?
-            _agentState.CurrentClientId = clientId;
-
-            // Pass to input handler
-            _audioInputHandler.ProcessAudioChunk(audioData, cancellationToken);
-            return Task.CompletedTask;
-        }
-
-        private async Task ProcessTranscriptionResultAsync(string text)
-        {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
-            _logger.LogDebug("Agent {AgentId}: Orchestrator received transcription: '{Text}'", AgentId, text);
-
-            _agentState.IsSTTRecognizing = false;
-
-            try
-            {
-                bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentBeInterrupted(text, _agentState.CurrentClientId, _conversationCTS.Token);
-                if (canAgentContinue)
-                {
-                    _logger.LogInformation("Agent {AgentId}: Text handled by interruption manager, leting agent to continue sppeaking.", AgentId);
-                    return;
-                }
-
-                string modifiedText = "";
-                if (_agentState.InterruptResponseBuffer.Length > 0)
-                {
-                    modifiedText += _agentState.InterruptResponseBuffer.ToString();
-                    _agentState.InterruptResponseBuffer.Clear();
-                }
-                if (!string.IsNullOrEmpty(_llmHandler.CurrentlyProcessingMessage))
-                {
-                    if (modifiedText.Length > 0) modifiedText += " ";
-                    modifiedText += _llmHandler.CurrentlyProcessingMessage;
-                }
-                if (modifiedText.Length > 0) modifiedText += " ";
-                modifiedText += text;
-
-                await _llmHandler.ProcessUserTextAsync(modifiedText, _agentState.CurrentClientId, _conversationCTS.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("Agent {AgentId}: Text processing cancelled.", AgentId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Agent {AgentId}: Error processing text input: {Text}", AgentId, text);
-                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Error processing text: {ex.Message}", ex));
-            }
-        }
-
-        public Task ProcessTextAsync(string text, string? clientId, CancellationToken cancellationToken)
-        {
-            if (clientId != null)
-            {
-                _agentState.CurrentClientId = clientId;
-            }
-            return ProcessTranscriptionResultAsync(text);
-        }
-
-        public Task ProcessDTMFAsync(string digit, string? clientId, CancellationToken cancellationToken)
-        {
-            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return Task.CompletedTask;
-
-            if (clientId != null) _agentState.CurrentClientId = clientId;
-
-            // Pass digit to the session manager
-            _dtmfSessionManager.ProcessDigit(digit);
-
-            // No need for language selection logic here anymore, it's handled by OnDtmfSessionEnded
-
-            return Task.CompletedTask;
+            // This is signaled by LLMHandler when it finishes processing a 'response_to_customer' stream.
+            _logger.LogInformation("Agent {AgentId}: Received signal that LLM response handling is complete.", AgentId);
+            // Usually followed by waiting for OnSpeechPlaybackComplete.
         }
         private async void OnDtmfSessionEnded(object? sender, DTMFSessionEventArgs args)
         {
@@ -581,7 +566,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                     else
                     {
                         await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Invalid Language Selection.", CancellationToken.None);
-                        await HandleLanguageSelectionMessagePlaying(CancellationToken.None);
+                        await HandleLanguageSelectionMessagePlaying();
                         _dtmfSessionManager.ResumeSession();
                         return;
                     }
@@ -589,7 +574,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 else if (args.Reason == DTMFSessionEndReason.TimeoutInterDigit)
                 {
                     await _audioOutputHandler.SynthesizeAndPlayBlockingAsync("Please choose a language.", CancellationToken.None);
-                    await HandleLanguageSelectionMessagePlaying(CancellationToken.None);
+                    await HandleLanguageSelectionMessagePlaying();
                     _dtmfSessionManager.ResumeSession();
                     return;
                 }
@@ -663,69 +648,71 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
                 await _llmHandler.ProcessSystemMessageAsync(resultMessage, args.ClientId, CancellationToken.None); // Use CancellationToken.None? Or master token?
             }
         }
-
-        public async Task ShutdownAsync(string reason)
+        private async Task OnUserTurnEndedAsync(string finalText)
         {
-            if (!_agentState.IsInitialized && _conversationCTS.IsCancellationRequested)
+            if (!_agentState.IsInitialized || _conversationCTS.IsCancellationRequested) return;
+
+            _logger.LogInformation("Agent {AgentId}: Turn Manager signaled user turn ended with text: '{Text}'", AgentId, finalText);
+
+            // Reset STT recognizing flag as the turn is over.
+            _agentState.IsSTTRecognizing = false;
+
+            // This is the CRITICAL handoff to the brain. The logic that used to be
+            // in ProcessTranscriptionResultAsync now lives here, but it's only triggered
+            // when the turn is definitively over.
+            try
             {
-                _logger.LogInformation("AI Agent {AgentId} shutdown already in progress or completed.", AgentId);
-                return;
-            }
-            _logger.LogInformation("AI Agent {AgentId} shutting down. Reason: {Reason}", AgentId, reason);
+                // The old interruption check is no longer needed here. 
+                // That logic will now live entirely within the Turn Manager.
+                // bool canAgentContinue = await _interruptionManager.CheckShouldLetAgentBeInterrupted(...); // <-- DELETE
 
-            // Signal shutdown start
-            _agentState.IsInitialized = false;
-            _agentState.IsAcceptingSTTAudio = false;
-            if (!_conversationCTS.IsCancellationRequested)
+                // The logic for handling the interrupt buffer also moves. For now, we assume
+                // the `finalText` from the event is the complete and correct text to process.
+
+                await _llmHandler.ProcessUserTextAsync(finalText, _agentState.CurrentClientId, _conversationCTS.Token);
+            }
+            catch (OperationCanceledException)
             {
-                _conversationCTS.Cancel();
+                _logger.LogInformation("Agent {AgentId}: Text processing for ended turn was cancelled.", AgentId);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Agent {AgentId}: Error processing text for ended turn: {Text}", AgentId, finalText);
+                ErrorOccurred?.Invoke(this, new ConversationAgentErrorEventArgs($"Error processing text: {ex.Message}", ex));
+            }
+        }
+        private async Task OnAgentShouldPauseAsync()
+        {
+            await _audioOutputHandler.PausePlaybackAsync();
+        }
+        private async Task OnAgentShouldResumeAsync()
+        {
+            await _audioOutputHandler.ResumePlaybackAsync();
+        }
+        private async Task OnVerifiedInterruptionOccurredAsync(string interruptingText)
+        {
+            _logger.LogInformation("Agent received signal: VerifiedInterruptionOccurred with text: '{Text}'", interruptingText);
 
-            _audioInputHandler?.Dispose();
+            // A verified interruption means we must stop everything the agent is currently doing.
+            // 1. Stop the brain (cancel any ongoing LLM generation).
+            await _llmHandler.CancelCurrentLLMTaskAsync();
 
-            await (_llmHandler?.CancelCurrentLLMTaskAsync() ?? Task.CompletedTask);
-            _llmHandler?.Dispose();
+            // 2. Stop the mouth (cancel any queued or playing audio).
+            // This also implicitly un-pauses the audio output handler for the next turn.
+            await _audioOutputHandler.CancelCurrentSpeechPlaybackAsync();
 
-            _sttHandler?.StopTranscription();
-            _sttHandler?.Dispose();
-
-            _interruptionManager?.Dispose();
-
-            _dtmfSessionManager?.Dispose();
-
-            _audioOutputHandler?.StopSending();
-            _audioOutputHandler?.Dispose();
-
-            // Dispose Tool Executor? (If it holds resources) TODO > might need to cancel current httpclient ongoign request and dispose
-            // _toolExecutor?.Dispose(); // If it implements IDisposable
-
-            UnwireEvents();
-
-            _conversationCTS?.Dispose();
-
-            _logger.LogInformation("AI Agent {AgentId} shut down complete.", AgentId);
+            // 3. Start a new thought process with the user's interrupting text.
+            // This is effectively the same as a normal turn end, but triggered mid-speech.
+            await OnUserTurnEndedAsync(interruptingText);
         }
 
-        private void UnwireEvents()
-        {
-            AudioGenerated = null;
-            AgentTextResponse = null;
-            ClientTextQuery = null;
-            ClearBufferedAudio = null;
-            Thinking = null;
-            ErrorOccurred = null;
-        }
-
+        // Disposal
         public void Dispose()
         {
-            _logger.LogDebug("Disposing ConversationAIAgent {AgentId}.", AgentId);
-
             if (_agentState.IsInitialized || !_conversationCTS.IsCancellationRequested)
             {
                 ShutdownAsync("Agent Disposed").Wait(TimeSpan.FromSeconds(5)); // Blocking wait on dispose is risky, use timeout todo why?
             }
-
-            _logger.LogDebug("ConversationAIAgent {AgentId} disposed.", AgentId);
         }
     }
 }

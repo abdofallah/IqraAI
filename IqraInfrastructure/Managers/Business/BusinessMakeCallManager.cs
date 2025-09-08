@@ -24,7 +24,7 @@ namespace IqraInfrastructure.Managers.Business
         private readonly ILogger<BusinessMakeCallManager> _logger;
         private readonly BusinessManager _parentBusinessManager;
         private readonly RegionManager _regionManager;
-        private readonly OutboundCallCampaignRepository _outboundCallQueueGroupRepository;
+        private readonly OutboundCallQueueGroupRepository _outboundCallQueueGroupRepository;
         private readonly OutboundCallQueueRepository _outboundCallQueueRepository;
         private readonly IntegrationConfigurationManager _integrationConfigurationManager;
 
@@ -32,7 +32,7 @@ namespace IqraInfrastructure.Managers.Business
             ILogger<BusinessMakeCallManager> logger,
             BusinessManager parentBusinessManager,
             RegionManager regionManager,
-            OutboundCallCampaignRepository outboundCallQueueGroupRepository,
+            OutboundCallQueueGroupRepository outboundCallQueueGroupRepository,
             OutboundCallQueueRepository outboundCallQueueRepository,
             IntegrationConfigurationManager integrationConfigurationManager
         )
