@@ -53,7 +53,7 @@ namespace IqraInfrastructure.Managers.Business
             string businessDefaultLanguage = businessData.DefaultLanguage;
             List<string> businessLanguages = businessData.Languages;
 
-            BusinessAppCampaign campaignData;
+            BusinessAppCampaignTelephony campaignData;
             var callConfigData = new MakeCallRequestDto();
             if (!formData.TryGetValue("config", out var configStringValue))
             {
@@ -106,15 +106,26 @@ namespace IqraInfrastructure.Managers.Business
                 {
                     var campaignIdValue = campaignIdElement.GetString();
                     
-                    var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetCampaignById(businessId, campaignIdValue);
-                    if (!campaignDataResult.Success)
+                    var campaignDataResult = await _parentBusinessManager.GetCampaignManager().GetTelephonyCampaignById(businessId, campaignIdValue);
+                    if (!campaignDataResult.Success && campaignDataResult.Data != null)
                     {
                         return result.SetFailureResult(
                             "QueueCallInitiationRequestAsync:CAMPAIGN_NOT_FOUND",
                             "Campaign not found in business."
                         );
                     }
-                    campaignData = campaignDataResult.Data;
+                    
+                    if (campaignDataResult.Data is BusinessAppCampaignTelephony campaignTelephony)
+                    {
+                        campaignData = campaignTelephony;
+                    }
+                    else
+                    {
+                        return result.SetFailureResult(
+                            "QueueCallInitiationRequestAsync:CAMPAIGN_INCORRECT_TYPE",
+                            "Campaign is not a telephony campaign."
+                        );
+                    }
 
                     callConfigData.CampaignId = campaignIdValue!;
                 }
@@ -381,7 +392,7 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, string queueGroupId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueSingleCall(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignBase campaignData, BusinessNumberData businessNumberData, string queueGroupId)
         {
             var result = new FunctionReturnResult<List<string?>?>();
 
@@ -410,7 +421,7 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(new List<string?>() { callQueueIdResult });
         }
 
-        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, List<OutboundBulkCallRowData> callsRows, string queueGroupId)
+        private async Task<FunctionReturnResult<List<string?>?>> QueueBulkCalls(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignTelephony campaignData, List<OutboundBulkCallRowData> callsRows, string queueGroupId)
         {
             var result = new FunctionReturnResult<List<string?>?>();
 
@@ -484,7 +495,7 @@ namespace IqraInfrastructure.Managers.Business
             return result.SetSuccessResult(callQueueIds);
         }
 
-        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaign campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData, string queueGroupId)
+        private OutboundCallQueueData BuildOutboundCallQueueData(MakeCallRequestDto callConfig, BusinessData businessData, BusinessAppCampaignBase campaignData, BusinessNumberData businessNumberData, OutboundBulkCallRowData? bulkCallRowData, string queueGroupId)
         {
             string RecipientNumber;
             if (bulkCallRowData == null || string.IsNullOrWhiteSpace(bulkCallRowData.ToNumber))
@@ -709,7 +720,7 @@ namespace IqraInfrastructure.Managers.Business
             }
         }
     
-        private FunctionReturnResult<string?> GetBusinessNumberIdForToNumber(string toNumber, BusinessAppCampaign campaignData)
+        private FunctionReturnResult<string?> GetBusinessNumberIdForToNumber(string toNumber, BusinessAppCampaignTelephony campaignData)
         {
             var result = new FunctionReturnResult<string?>();
 
@@ -731,12 +742,12 @@ namespace IqraInfrastructure.Managers.Business
                 );
             }
 
-            if (campaignData.Numbers.RouteNumberList.TryGetValue(phoneNumberRegion, out var businessNumberId))
+            if (campaignData.NumberRoute.RouteNumberList.TryGetValue(phoneNumberRegion, out var businessNumberId))
             {
                 return result.SetSuccessResult(businessNumberId);
             }
 
-            return result.SetSuccessResult(campaignData.Numbers.DefaultNumberId);
+            return result.SetSuccessResult(campaignData.NumberRoute.DefaultNumberId);
         }
     }
 }

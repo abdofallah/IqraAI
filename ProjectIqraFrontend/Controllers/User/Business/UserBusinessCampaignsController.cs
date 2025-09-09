@@ -1,4 +1,5 @@
 ﻿using IqraCore.Entities.Business;
+using IqraCore.Entities.Helper.Campaign;
 using IqraCore.Entities.Helpers;
 using IqraInfrastructure.Managers.Business;
 using Microsoft.AspNetCore.Mvc;
@@ -21,10 +22,28 @@ namespace ProjectIqraFrontend.Controllers.User.Business
             _businessManager = businessManager;
         }
 
-        [HttpPost("/app/user/business/{businessId}/campaign/save")]
-        public async Task<FunctionReturnResult<BusinessAppCampaign?>> SaveBusinessCampaign(long businessId, [FromForm] IFormCollection formData)
+        [HttpPost("/app/user/business/{businessId}/campaign/{campaignType}/save")]
+        public async Task<FunctionReturnResult<BusinessAppCampaignBase?>> SaveBusinessCampaign(long businessId, string campaignType, [FromForm] IFormCollection formData)
         {
-            var result = new FunctionReturnResult<BusinessAppCampaign?>();
+            var result = new FunctionReturnResult<BusinessAppCampaignBase?>();
+
+            // Perform URL Validation First
+            var loweredCampaignType = campaignType.ToLower();
+            BusinessAppCampaignTypeENUM currentCampaignType;
+            switch (loweredCampaignType)
+            {
+                case "telephony":
+                    currentCampaignType = BusinessAppCampaignTypeENUM.Telephony;
+                    break;
+                case "web":
+                    currentCampaignType = BusinessAppCampaignTypeENUM.Web;
+                    break;
+                default:
+                    return result.SetFailureResult(
+                        "SaveBusinessCampaign:INVALID_CAMPAIGN_TYPE",
+                        "Invalid campaign type in url specified. Can only be 'telephony' or 'web'."
+                    );
+            }
 
             // Validation
             var userSessionAndBusinessValidationResult = await _userSessionValidationHelper.ValidateUserAndBusinessSessionAsync(
@@ -79,7 +98,7 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                 }
             }
 
-            BusinessAppCampaign? existingCampaignData = null;
+            BusinessAppCampaignBase? existingCampaignData = null;
             if (postType == "new")
             {
                 if (businessData.Permission.Campaigns.DisabledAddingAt != null)
@@ -108,19 +127,34 @@ namespace ProjectIqraFrontend.Controllers.User.Business
                     );
                 }
 
-                var getCampaignResult = await _businessManager.GetCampaignManager().GetCampaignById(businessId, existingCampaignId);
-                if (!getCampaignResult.Success)
+                if (currentCampaignType == BusinessAppCampaignTypeENUM.Telephony)
                 {
-                    return result.SetFailureResult(
-                        $"SaveBusinessCampaign:{getCampaignResult.Code}",
-                        getCampaignResult.Message
-                    );
+                    var getTelephonyCampaignResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(businessId, existingCampaignId);
+                    if (!getTelephonyCampaignResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"SaveBusinessCampaign:{getTelephonyCampaignResult.Code}",
+                            getTelephonyCampaignResult.Message
+                        );
+                    }
+                    existingCampaignData = getTelephonyCampaignResult.Data;
                 }
-                existingCampaignData = getCampaignResult.Data;
+                else if (currentCampaignType == BusinessAppCampaignTypeENUM.Web)
+                {
+                    var getWebCampaignResult = await _businessManager.GetCampaignManager().GetWebCampaignById(businessId, existingCampaignId);
+                    if (!getWebCampaignResult.Success)
+                    {
+                        return result.SetFailureResult(
+                            $"SaveBusinessCampaign:{getWebCampaignResult.Code}",
+                            getWebCampaignResult.Message
+                        );
+                    }
+                    existingCampaignData = getWebCampaignResult.Data;
+                }
             }
 
             // Delegate to Manager
-            var addOrUpdateResult = await _businessManager.GetCampaignManager().AddOrUpdateCampaignAsync(businessId, formData, postType, existingCampaignData);
+            var addOrUpdateResult = await _businessManager.GetCampaignManager().AddOrUpdateCampaignAsync(businessId, formData, postType, currentCampaignType, existingCampaignData);
             if (!addOrUpdateResult.Success)
             {
                 return result.SetFailureResult(

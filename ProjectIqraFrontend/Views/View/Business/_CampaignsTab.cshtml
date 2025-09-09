@@ -2,8 +2,22 @@
     <h3 class="fw-bold tab-title mb-3"><i class='fa-regular fa-bullhorn'></i> <span>Campaigns</span></h3>
 
     <!-- Header Container -->
-    <div class="inner-header-container w-100 mb-3 fade d-none" id="campaigns-header">
-        <div class="d-flex flex-column align-items-start justify-content-between" id="campaigns-manager-header-inner">
+    <div class="inner-header-container w-100 mb-3 fade show" id="campaigns-header">
+        <!-- List View Header (Telephony/Web Filters) -->
+        <div class="fade show" id="campaigns-list-header-inner">
+            <ul class="nav" id="campaigns-list-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active me-2" id="campaigns-list-telephony-campaigns-tab" data-bs-toggle="tab" data-bs-target="#campaigns-list-telephony-campaigns" type="button" role="tab" aria-controls="campaigns-list-telephony-campaigns" aria-selected="true">Telephony</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="campaigns-list-web-campaigns-tab" data-bs-toggle="tab" data-bs-target="#campaigns-list-web-campaigns" type="button" role="tab" aria-controls="campaigns-list-web-campaigns" aria-selected="false">Web</button>
+                </li>
+            </ul>
+        </div>
+
+        
+        <!-- Manager View Header (Initially hidden) -->
+        <div class="d-flex flex-column align-items-start justify-content-between fade d-none" id="campaigns-manager-header-inner">
             <div class="mb-4 d-flex flex-row align-items-center justify-content-between w-100">
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb mb-0">
@@ -29,8 +43,11 @@
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="campaigns-manager-agent-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-agent" type="button" role="tab" aria-controls="campaigns-manager-agent" aria-selected="true">Agent</button>
                 </li>
-                <li class="nav-item me-2" role="presentation">
-                    <button class="nav-link" id="campaigns-manager-numbers-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-numbers" type="button" role="tab" aria-controls="campaigns-manager-numbers" aria-selected="true">Numbers</button>
+                <li class="nav-item me-2 d-none" role="presentation" id="campaigns-manager-numbers-tab-item">
+                    <button class="nav-link" id="campaigns-manager-numbers-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-numbers" type="button" role="tab" aria-controls="campaigns-manager-numbers" aria-selected="false">Numbers</button>
+                </li>
+                <li class="nav-item me-2 d-none" role="presentation" id="campaigns-manager-region-tab-item">
+                    <button class="nav-link" id="campaigns-manager-region-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-region" type="button" role="tab" aria-controls="campaigns-manager-region" aria-selected="false">Region</button>
                 </li>
                 <li class="nav-item me-2" role="presentation">
                     <button class="nav-link" id="campaigns-manager-configuration-tab" data-bs-toggle="pill" data-bs-target="#campaigns-manager-configuration" type="button" role="tab" aria-controls="campaigns-manager-configuration" aria-selected="true">Configuration</button>
@@ -47,23 +64,45 @@
 
     <!-- Main Container -->
     <div class="inner-container">
-        <!-- Campaigns List View -->
-        <div class="fade show w-100" id="campaignsListTab">
-            <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
-                <div style="min-width: 200px" class="me-4">
-                    <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewCampaignButton">
-                        <span>+ Add New Campaign</span>
-                    </button>
+        <div class="tab-content w-100 fade show" id="campaigns-list-tabContent">
+            <!-- Telephony Campaigns List View -->
+            <div class="tab-pane fade show active w-100" id="campaigns-list-telephony-campaigns" role="tabpanel" aria-labelledby="campaigns-list-telephony-campaigns-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewTelephonyCampaignButton">
+                            <span>+ Add New Telephony Campaign</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Telephony campaign name..." aria-label="Telephony Campaign Name" aria-describedby="searchTelephonyCampaignButton">
+                        <button class="input-group-button btn btn-primary" id="searchTelephonyCampaignButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="input-group w-100">
-                    <input type="text" class="form-control" placeholder="Campaign name" aria-label="Campaign Name" aria-describedby="searchCampaignButton">
-                    <button class="input-group-button btn btn-primary" id="searchCampaignButton">
-                        <i class='fa-regular fa-magnifying-glass'></i>
-                    </button>
+                <div class="row" id="telephonyCampaignsListTable">
+                    <!-- Dynamically Generated Telephony Campaign Cards -->
                 </div>
             </div>
-            <div class="row" id="campaignsListTable">
-                <!-- Dynamically Generated Campaign Cards -->
+
+            <!-- Web Campaigns List View -->
+            <div class="tab-pane fade w-100" id="campaigns-list-web-campaigns" role="tabpanel" aria-labelledby="campaigns-list-web-campaigns-tab" tabindex="0">
+                <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
+                    <div style="min-width: 300px" class="me-4">
+                        <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addNewWebCampaignButton">
+                            <span>+ Add New Web Campaign</span>
+                        </button>
+                    </div>
+                    <div class="input-group w-100">
+                        <input type="text" class="form-control" placeholder="Web campaign name..." aria-label="Web Campaign Name" aria-describedby="searchWebCampaignButton">
+                        <button class="input-group-button btn btn-primary" id="searchWebCampaignButton">
+                            <i class='fa-regular fa-magnifying-glass'></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="row" id="webCampaignsListTable">
+                    <!-- Dynamically Generated Web Campaign Cards -->
+                </div>
             </div>
         </div>
 
@@ -217,23 +256,17 @@
                     </div>
                 </div>
 
-                <!-- Numbers Tab -->
+                <!-- Numbers Tab (For Telephony Campaigns) -->
                 <div class="tab-pane fade w-100" id="campaigns-manager-numbers" role="tabpanel" aria-labelledby="campaigns-manager-numbers-tab" tabindex="0">
-                    <label class="form-label btn-ic-span-align mb-4">
-                        <span>Default Calling Numbers </span>
-                        <a href="#" class="d-inline-block" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true" data-bs-title="Select one or more numbers that this campaign will use to make outbound calls. The system will cycle through these numbers if multiple are provided. You can override this on a per call basis as these numbers will be used if no number is provided.">
-                            <i class="fa-regular fa-circle-question"></i>
-                        </a>
-                    </label>
                     <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                         <div style="min-width: 200px" class="me-4">
-                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="editChangeCampaignNumberButton">
-                                <span>+ Add Number</span>
+                            <button class="w-100 mb-0 text-decoration-none fw-bold btn btn-primary" id="addCampaignRegionRouteButton">
+                                <span>+ Add Region Route</span>
                             </button>
                         </div>
                         <div class="input-group w-100">
-                            <input type="text" class="form-control" placeholder="Search added numbers..." aria-label="Number" aria-describedby="searchCampaignAddedNumber">
-                            <button class="input-group-button btn btn-primary" id="searchCampaignAddedNumber">
+                            <input type="text" class="form-control" placeholder="Search added regions..." aria-label="Region" aria-describedby="searchCampaignAddedRegion">
+                            <button class="input-group-button btn btn-primary" id="searchCampaignAddedRegion">
                                 <i class="fa-regular fa-magnifying-glass"></i>
                             </button>
                         </div>
@@ -242,16 +275,75 @@
                         <table id="campaignNumbersList" class="table w-100">
                             <thead>
                                 <tr>
-                                    <th scope="col">Country Code</th>
+                                    <th scope="col">Region</th>
                                     <th scope="col">Number</th>
                                     <th scope="col">Provider</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Dynamically Generated -->
+                                <!-- Permanent Default Route Row -->
+                                <tr data-region-code="default">
+                                    <td class="fw-bold">Default</td>
+                                    <td colspan="2" data-col="number-provider">
+                                        <!-- This content will be dynamically updated by JS -->
+                                        <span class="text-muted">No default number selected.</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-sm" button-action="edit-region-route" title="Set/Change Default Number">
+                                            <i class="fa-regular fa-pencil"></i>
+                                            <span> Set Number</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <!-- Dynamically Generated Region Routes will be appended here -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Region Tab (for Web Campaigns) -->
+                <div class="tab-pane fade w-100" id="campaigns-manager-region" role="tabpanel" aria-labelledby="campaigns-manager-region-tab" tabindex="0">
+                    <div class="card card-body">
+                        <h5 class="mb-3">Default Region Routing Policy</h5>
+                        <p class="text-muted small">
+                            This setting determines which server region will handle incoming web calls if a specific region is not provided in the API request.
+                        </p>
+
+                        <!-- Policy Selection -->
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="webCampaignRegionPolicy" id="regionPolicyAutomatic" value="automatic" checked>
+                            <label class="form-check-label" for="regionPolicyAutomatic">
+                                <strong>Automatic (Recommended)</strong>
+                                <br>
+                                <span class="small text-muted">Automatically route the user to the nearest available region based on their IP address. This provides the best experience for most users.</span>
+                            </label>
+                        </div>
+
+                        <hr>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="webCampaignRegionPolicy" id="regionPolicyFixed" value="fixed">
+                            <label class="form-check-label" for="regionPolicyFixed">
+                                <strong>Fixed Region</strong>
+                                <br>
+                                <span class="small text-muted">Force all calls for this campaign to be routed to a single, specific region.</span>
+                            </label>
+                        </div>
+
+                        <!-- Fixed Region Options (shown only when 'Fixed' is selected) -->
+                        <div class="mt-3 ps-4 d-none" id="fixedRegionOptionsContainer">
+                            <label for="fixedRegionSelect" class="form-label">Select Target Region</label>
+                            <select class="form-select" id="fixedRegionSelect">
+                                <option value="" disabled selected>Select a region...</option>
+                                <!-- This will be populated dynamically from your API -->
+                                <!-- Example Options: -->
+                                <!-- <option value="uae-dubai">UAE (Dubai)</option> -->
+                                <!-- <option value="us-east-1">USA (N. Virginia)</option> -->
+                                <!-- <option value="eu-central-1">Europe (Frankfurt)</option> -->
+                            </select>
+                        </div>
+
                     </div>
                 </div>
 
@@ -322,7 +414,7 @@
                     </div>
                 </div>
 
-                <!-- *** NEW: Voicemail Detection Tab *** -->
+                <!-- Voicemail Detection Tab -->
                 <div class="tab-pane fade w-100" id="campaigns-manager-voicemail" role="tabpanel" aria-labelledby="campaigns-manager-voicemail-tab" tabindex="0">
                     <div class="card card-body mb-4">
                         <div class="d-flex align-items-center justify-content-between">
@@ -480,6 +572,28 @@
         </div>
     </div>
 
+    <!-- Add Region Modal -->
+    <div class="modal fade" id="addCampaignRegionModal" tabindex="-1" aria-labelledby="addCampaignRegionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="addCampaignRegionModalLabel">Select a Region</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="campaignRegionSelect" class="form-label">Country / Region</label>
+                    <select class="form-select" id="campaignRegionSelect">
+                        <!-- Dynamically populated with countries -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmRegionSelectionButton" disabled>Select Number</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Select Campaign Agent Modal -->
     <div class="modal fade" id="editChangeCampaignAgentModal" tabindex="-1" aria-labelledby="editChangeCampaignAgentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -500,4 +614,6 @@
             </div>
         </div>
     </div>
+
+
 </div>

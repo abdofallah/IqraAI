@@ -209,7 +209,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session
             else if (_sessionCallQueueData.Type == CallQueueTypeEnum.Outbound)
             {
                 OutboundCallQueueData outboundCallQueue = _sessionCallQueueData as OutboundCallQueueData;
-                var campaignDataResult = await _businessManager.GetCampaignManager().GetCampaignById(_sessionBusinessData.Id, outboundCallQueue.CampaignId);
+                var campaignDataResult = await _businessManager.GetCampaignManager().GetTelephonyCampaignById(_sessionBusinessData.Id, outboundCallQueue.CampaignId);
                 if (!campaignDataResult.Success)
                 {
                     _logger.LogError("Outbound call campaign data not found for business ID {BusinessId} and queue ID {RouteId}", _sessionCallQueueData.BusinessId, outboundCallQueue.Id);

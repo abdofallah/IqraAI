@@ -140,8 +140,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
                 var update = Builders<ConversationState>.Update
-                    .Set(c => c.Status, status)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Set(c => c.Status, status);
 
                 if (status == ConversationSessionState.Ended)
                 {
@@ -166,8 +165,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
                 var update = Builders<ConversationState>.Update
-                    .Push(c => c.Messages, message)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Push(c => c.Messages, message);
 
                 // Update metrics
                 if (message.Role == ConversationSenderRole.Client)
@@ -218,8 +216,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
                 var update = Builders<ConversationState>.Update
-                    .Push(c => c.Clients, clientInfo)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Push(c => c.Clients, clientInfo);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
@@ -244,8 +241,7 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var update = Builders<ConversationState>.Update
                     .Set(c => c.Clients.FirstMatchingElement().LeftAt, leftAt)
-                    .Set(c => c.Clients.FirstMatchingElement().LeaveReason, leaveReason)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Set(c => c.Clients.FirstMatchingElement().LeaveReason, leaveReason);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
@@ -265,8 +261,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
                 var update = Builders<ConversationState>.Update
-                    .Push(c => c.Agents, agentInfo)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Push(c => c.Agents, agentInfo);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
@@ -291,8 +286,7 @@ namespace IqraInfrastructure.Repositories.Conversation
 
                 var update = Builders<ConversationState>.Update
                     .Set(c => c.Agents.FirstMatchingElement().LeftAt, leftAt)
-                    .Set(c => c.Agents.FirstMatchingElement().LeaveReason, leaveReason)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Set(c => c.Agents.FirstMatchingElement().LeaveReason, leaveReason);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 
@@ -312,8 +306,7 @@ namespace IqraInfrastructure.Repositories.Conversation
             {
                 var filter = Builders<ConversationState>.Filter.Eq(c => c.Id, conversationId);
                 var update = Builders<ConversationState>.Update
-                    .Set(c => c.Metrics, metrics)
-                    .Set(c => c.LastActivityTime, DateTime.UtcNow);
+                    .Set(c => c.Metrics, metrics);
 
                 var result = await _conversationStateCollection.UpdateOneAsync(filter, update, null, cancellationToken);
 

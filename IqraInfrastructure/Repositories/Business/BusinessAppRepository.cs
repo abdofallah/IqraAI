@@ -935,61 +935,122 @@ namespace IqraInfrastructure.Repositories.Business
 
         /**
         * 
-        * Campaign
+        * Telephony Campaign
         * 
         **/
 
-        public async Task<BusinessAppCampaign?> GetBusinessCampaignById(long businessId, string existingCampaignId)
+        public async Task<BusinessAppCampaignTelephony?> GetBusinessTelephonyCampaignById(long businessId, string existingCampaignId)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, k => k.Id == existingCampaignId)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.TelephonyCampaigns, k => k.Id == existingCampaignId)
             );
 
             var projection = Builders<BusinessApp>.Projection
                 .Include(f => f.Id)
-                .Include(f => f.Campaigns.FirstMatchingElement());
+                .Include(f => f.TelephonyCampaigns.FirstMatchingElement());
 
             var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
-            return result?.Campaigns.FirstOrDefault();
+            return result?.TelephonyCampaigns.FirstOrDefault();
         }
 
-        public async Task<bool> AddBusinessAppCampaign(long businessId, BusinessAppCampaign newBusinessAppCampaignData)
+        public async Task<bool> AddBusinessAppTelephonyCampaign(long businessId, BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyData)
         {
             var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
-            var update = Builders<BusinessApp>.Update.Push(b => b.Campaigns, newBusinessAppCampaignData);
+            var update = Builders<BusinessApp>.Update.Push(b => b.TelephonyCampaigns, newBusinessAppCampaignTelephonyData);
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> UpdateBusinessAppCampaign(long businessId, BusinessAppCampaign newBusinessAppCampaignData)
+        public async Task<bool> UpdateBusinessAppTelephonyCampaign(long businessId, BusinessAppCampaignTelephony newBusinessAppCampaignTelephonyData)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, t => t.Id == newBusinessAppCampaignData.Id)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.TelephonyCampaigns, t => t.Id == newBusinessAppCampaignTelephonyData.Id)
             );
 
             var update = Builders<BusinessApp>.Update
-                .Set(b => b.Campaigns.FirstMatchingElement(), newBusinessAppCampaignData);
+                .Set(b => b.TelephonyCampaigns.FirstMatchingElement(), newBusinessAppCampaignTelephonyData);
 
             var result = await _businessAppCollection.UpdateOneAsync(filter, update);
 
             return result.IsAcknowledged;
         }
 
-        public async Task<bool> CheckCampaignExistsById(long businessId, string? campaignIdValue)
+        public async Task<bool> CheckTelephonyCampaignExistsById(long businessId, string? telephonyCampaignIdValue)
         {
             var filter = Builders<BusinessApp>.Filter.And(
                 Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
-                Builders<BusinessApp>.Filter.ElemMatch(b => b.Campaigns, k => k.Id == campaignIdValue)
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.TelephonyCampaigns, k => k.Id == telephonyCampaignIdValue)
             );
 
             var project = Builders<BusinessApp>.Projection
                 .Include(b => b.Id)
-                .Include(b => b.Campaigns.FirstMatchingElement());
+                .Include(b => b.TelephonyCampaigns.FirstMatchingElement());
                 
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
+            return result != null;
+        }
+
+        /**
+        * 
+        * Web Campaign
+        * 
+        **/
+
+        public async Task<BusinessAppCampaignWeb?> GetBusinessWebCampaignById(long businessId, string existingWebCampaignId)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.WebCampaigns, k => k.Id == existingWebCampaignId)
+            );
+
+            var projection = Builders<BusinessApp>.Projection
+                .Include(f => f.Id)
+                .Include(f => f.WebCampaigns.FirstMatchingElement());
+
+            var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(projection).FirstOrDefaultAsync();
+            return result?.WebCampaigns.FirstOrDefault();
+        }
+
+        public async Task<bool> AddBusinessAppWebCampaign(long businessId, BusinessAppCampaignWeb newBusinessAppCampaignWebData)
+        {
+            var filter = Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId);
+            var update = Builders<BusinessApp>.Update.Push(b => b.WebCampaigns, newBusinessAppCampaignWebData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> UpdateBusinessAppWebCampaign(long businessId, BusinessAppCampaignWeb newBusinessAppCampaignWebData)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.WebCampaigns, t => t.Id == newBusinessAppCampaignWebData.Id)
+            );
+
+            var update = Builders<BusinessApp>.Update
+                .Set(b => b.WebCampaigns.FirstMatchingElement(), newBusinessAppCampaignWebData);
+
+            var result = await _businessAppCollection.UpdateOneAsync(filter, update);
+
+            return result.IsAcknowledged;
+        }
+
+        public async Task<bool> CheckWebCampaignExistsById(long businessId, string? telephonyCampaignIdValue)
+        {
+            var filter = Builders<BusinessApp>.Filter.And(
+                Builders<BusinessApp>.Filter.Eq(b => b.Id, businessId),
+                Builders<BusinessApp>.Filter.ElemMatch(b => b.WebCampaigns, k => k.Id == telephonyCampaignIdValue)
+            );
+
+            var project = Builders<BusinessApp>.Projection
+                .Include(b => b.Id)
+                .Include(b => b.WebCampaigns.FirstMatchingElement());
+
             var result = await _businessAppCollection.Find(filter).Project<BusinessApp>(project).FirstOrDefaultAsync();
             return result != null;
         }

@@ -46,7 +46,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
         private readonly ConversationAIAgentLLMHandler _llmHandler;
         private readonly ConversationAIAgentToolExecutor _toolExecutor;
         private readonly ConversationAIAgentAudioOutput _audioOutputHandler;
-        private readonly TurnAndInterruptionManager _turnManager;
+        private readonly ConversationAIAgentTurnAndInterruptionManager _turnManager;
         private readonly ConversationAIAgentDTMFSessionManager _dtmfSessionManager;
         private readonly CustomToolExecutionHelper _customToolHelper;
         private readonly SendSMSToolExecutionHelper _sendSMSToolExecutionHelper;
@@ -121,7 +121,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler = new ConversationAIAgentAudioOutput(_loggerFactory, _agentState, _ttsProviderManager, _audioRepository, _businessManager, ttsAudioCacheManager);
             _llmHandler = new ConversationAIAgentLLMHandler(_loggerFactory, _agentState, _llmProviderManager, _businessManager, _systemPromptGenerator);
             _toolExecutor = new ConversationAIAgentToolExecutor(_loggerFactory, _conversationSessionManager, _agentState, _scriptAccessor, _customToolHelper, _dtmfSessionManager, _sendSMSToolExecutionHelper);
-            _turnManager = new TurnAndInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager);
+            _turnManager = new ConversationAIAgentTurnAndInterruptionManager(_loggerFactory, _agentState, _llmProviderManager, _businessManager);
             _audioInputHandler = new ConversationAIAgentAudioInput(_loggerFactory, _agentState);
             _sttHandler = new ConversationAIAgentSTTHandler(_loggerFactory, _agentState, _sttProviderManager, _businessManager);
             
@@ -136,6 +136,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
             _audioOutputHandler.AudioChunkGenerated += (sender, args) => AudioGenerated?.Invoke(this, args);
             _audioOutputHandler.SpeechPlaybackComplete += OnSpeechPlaybackComplete; // Handle completion signal
             _audioOutputHandler.OnAudioBufferCleared += (sender, args) => ClearBufferedAudio?.Invoke(this, args);
+            _audioOutputHandler.SpeechPlaybackComplete += () => _turnManager.NotifyAgentSpeechCompleted();
 
             // STT Handler -> Orchestrator (Process Text)
             _sttHandler.TranscriptionReceived += (text, isFinal) =>

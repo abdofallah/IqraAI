@@ -1,8 +1,15 @@
-﻿/** Dynamic Variables **/
+﻿const BUSINESS_APP_CAMPAIGN_TYPE = {
+	TELEPHONY: 0,
+	WEB: 1
+};
+
+/** Dynamic Variables **/
 let ManageCampaignType = null; // 'new' or 'edit'
+let ManageCampaignViewType = null; // NEW: 'telephony' or 'web' based on BUSINESS_APP_CAMPAIGN_TYPE
 let ManageCurrentCampaignData = null;
 
-let currentCampaignNumbersList = []; // Default 'call from' numbers
+let currentCampaignRouteNumberList = {};
+let currentCampaignDefaultNumberId = "";
 let currentCampaignAgentSelectedId = "";
 
 let IsSavingCampaignManageTab = false;
@@ -18,13 +25,25 @@ const campaignsTooltipTriggerList = document.querySelectorAll('#campaigns-tab [d
 /** Element Variables **/
 const campaignsTab = $("#campaigns-tab");
 const campaignsHeader = campaignsTab.find("#campaigns-header");
-const campaignsListTab = campaignsTab.find("#campaignsListTab");
-const addNewCampaignButton = campaignsListTab.find("#addNewCampaignButton");
-const campaignsListTable = campaignsListTab.find("#campaignsListTable");
-const currentCampaignName = campaignsHeader.find("#currentCampaignName");
-const switchBackToCampaignsTabButton = campaignsHeader.find("#switchBackToCampaignsTab");
-const saveCampaignButton = campaignsHeader.find("#saveCampaignButton");
+
+// List View Elements
+const campaignsListHeaderInner = campaignsHeader.find("#campaigns-list-header-inner");
+const campaignsListTabContent = campaignsTab.find("#campaigns-list-tabContent");
+const addNewTelephonyCampaignButton = campaignsListTabContent.find("#addNewTelephonyCampaignButton");
+const addNewWebCampaignButton = campaignsListTabContent.find("#addNewWebCampaignButton");
+const telephonyCampaignsListTable = campaignsListTabContent.find("#telephonyCampaignsListTable");
+const webCampaignsListTable = campaignsListTabContent.find("#webCampaignsListTable");
+
+// Manager View Elements
+const campaignsManagerHeaderInner = campaignsHeader.find("#campaigns-manager-header-inner");
 const campaignManagerTab = campaignsTab.find("#campaignManagerTab");
+const currentCampaignName = campaignsManagerHeaderInner.find("#currentCampaignName");
+const switchBackToCampaignsTabButton = campaignsManagerHeaderInner.find("#switchBackToCampaignsTab");
+const saveCampaignButton = campaignsManagerHeaderInner.find("#saveCampaignButton");
+
+// Manager Conditional Tabs
+const numbersTabItem = campaignsManagerHeaderInner.find("#campaigns-manager-numbers-tab-item");
+const regionTabItem = campaignsManagerHeaderInner.find("#campaigns-manager-region-tab-item");
 
 // General Tab
 const editCampaignIconInput = campaignManagerTab.find("#editCampaignIconInput");
@@ -41,8 +60,13 @@ const editCampaignAgentFromNumberInContextCheck = campaignManagerTab.find("#edit
 const editCampaignAgentToNumberInContextCheck = campaignManagerTab.find("#editCampaignAgentToNumberInContextCheck");
 
 // Numbers Tab
-const editChangeCampaignNumberButton = campaignManagerTab.find("#editChangeCampaignNumberButton");
+const addCampaignRegionRouteButton = campaignManagerTab.find("#addCampaignRegionRouteButton");
 const campaignNumbersListTable = campaignManagerTab.find("#campaignNumbersList");
+
+// Region Tab
+const regionPolicyRadios = campaignManagerTab.find('input[name="webCampaignRegionPolicy"]');
+const fixedRegionOptionsContainer = campaignManagerTab.find('#fixedRegionOptionsContainer');
+const fixedRegionSelect = campaignManagerTab.find('#fixedRegionSelect');
 
 // Configuration Tab
 const editCampaignRetryOnDeclineCheck = campaignManagerTab.find("#editCampaignRetryOnDeclineCheck");
@@ -101,12 +125,21 @@ const editChangeCampaignAgentModalElement = $("#editChangeCampaignAgentModal");
 let editChangeCampaignAgentModal = null;
 const campaignsManagerSelectAgentModalList = editChangeCampaignAgentModalElement.find("#campaigns-manager-select-agent-modal-list");
 const saveChangeCampaignAgentButton = editChangeCampaignAgentModalElement.find("#saveChangeCampaignAgentButton");
-
+const addCampaignRegionModalElement = $("#addCampaignRegionModal");
+let addCampaignRegionModal = null;
 
 /** API FUNCTIONS **/
 function SaveBusinessCampaign(formData, successCallback, errorCallback) {
+	var currentCampaignType;
+	if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+        currentCampaignType = "telephony";
+	}
+	else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+        currentCampaignType = "web";
+    }
+
 	$.ajax({
-		url: `/app/user/business/${CurrentBusinessId}/campaign/save`,
+		url: `/app/user/business/${CurrentBusinessId}/campaign/${currentCampaignType}/save`,
 		type: "POST",
 		data: formData,
 		processData: false,
@@ -127,29 +160,35 @@ function SaveBusinessCampaign(formData, successCallback, errorCallback) {
 /** Functions **/
 function showCampaignsListTab() {
 	campaignManagerTab.removeClass("show");
-	campaignsHeader.removeClass("show");
+	campaignsManagerHeaderInner.removeClass("show");
+
 	setTimeout(() => {
 		campaignManagerTab.addClass("d-none");
-		campaignsHeader.addClass("d-none");
-		campaignsListTab.removeClass("d-none");
-		setTimeout(() => {
-			campaignsListTab.addClass("show");
+		campaignsManagerHeaderInner.addClass("d-none");
 
+		campaignsListTabContent.removeClass("d-none");
+		campaignsListHeaderInner.removeClass("d-none");
+		setTimeout(() => {
+			campaignsListTabContent.addClass("show");
+			campaignsListHeaderInner.addClass("show");
 			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
 }
 
 function showCampaignManagerTab() {
-	campaignsListTab.removeClass("show");
+	campaignsListTabContent.removeClass("show");
+	campaignsListHeaderInner.removeClass("show");
+
 	setTimeout(() => {
-		campaignsListTab.addClass("d-none");
+		campaignsListTabContent.addClass("d-none");
+		campaignsListHeaderInner.addClass("d-none");
+
 		campaignManagerTab.removeClass("d-none");
-		campaignsHeader.removeClass("d-none");
+		campaignsManagerHeaderInner.removeClass("d-none");
 		setTimeout(() => {
 			campaignManagerTab.addClass("show");
-			campaignsHeader.addClass("show");
-
+			campaignsManagerHeaderInner.addClass("show");
 			setDynamicBodyHeight();
 		}, 10);
 	}, 300);
@@ -176,19 +215,31 @@ function createCampaignListElement(campaignData) {
 }
 
 function fillCampaignsList() {
-	const campaigns = BusinessFullData.businessApp.campaigns || [];
-	campaignsListTable.empty();
-	if (campaigns.length === 0) {
-		campaignsListTable.append('<div class="col-12"><h6 class="text-center mt-5">No campaigns created yet...</h6></div>');
+	// Telephony Campaigns
+	telephonyCampaignsListTable.empty();
+	const telephonyCampaigns = BusinessFullData.businessApp.telephonyCampaigns;
+	if (telephonyCampaigns.length === 0) {
+		telephonyCampaignsListTable.append('<div class="col-12"><h6 class="text-center mt-5">No telephony campaigns created yet...</h6></div>');
 	} else {
-		campaigns.forEach((campaign) => {
-			campaignsListTable.append($(createCampaignListElement(campaign)));
+		telephonyCampaigns.forEach(campaign => {
+			telephonyCampaignsListTable.append($(createCampaignListElement(campaign)));
+		});
+	}
+
+	// Web Campaigns
+	webCampaignsListTable.empty();
+	const webCampaigns = BusinessFullData.businessApp.webCampaigns;
+	if (webCampaigns.length === 0) {
+		webCampaignsListTable.append('<div class="col-12"><h6 class="text-center mt-5">No web campaigns created yet...</h6></div>');
+	} else {
+		webCampaigns.forEach(campaign => {
+			webCampaignsListTable.append($(createCampaignListElement(campaign)));
 		});
 	}
 }
 
 function createDefaultCampaignObject() {
-	return {
+	const baseObject = {
 		general: {
 			emoji: "📣",
 			name: "",
@@ -202,7 +253,6 @@ function createDefaultCampaignObject() {
 			fromNumberInContext: true,
 			toNumberInContext: true,
 		},
-		numbers: [], // Array of number IDs for 'call from'
 		configuration: {
 			retryOnDecline: {
 				enabled: false,
@@ -259,6 +309,24 @@ function createDefaultCampaignObject() {
 			},
 		},
 	};
+
+	if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		return {
+			...baseObject,
+			type: {
+				value: BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY
+			},
+			numberRoute: { routeNumberList: {}, defaultNumberId: "" }
+		};
+	} else if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		return {
+			...baseObject,
+			type: {
+				value: BUSINESS_APP_CAMPAIGN_TYPE.WEB
+			},
+			regionRoute: { policy: 'automatic', fixedRegion: null }
+		};
+	}
 }
 
 function resetAndEmptyCampaignManagerTab() {
@@ -283,8 +351,22 @@ function resetAndEmptyCampaignManagerTab() {
 	editCampaignAgentToNumberInContextCheck.prop("checked", true);
 
 	// Numbers
-	campaignNumbersListTable.find("tbody").empty().append('<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>');
-	currentCampaignNumbersList = [];
+	renderManagerTabs();
+	if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		updateDefaultNumberRowUI(null);
+		campaignNumbersListTable.find("tbody tr:not([data-region-code='default'])").remove();
+		currentCampaignRouteNumberList = {};
+		currentCampaignDefaultNumberId = "";
+	}
+	// Region
+	else if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		regionPolicyRadios.filter('[value="automatic"]').prop('checked', true);
+		fixedRegionOptionsContainer.addClass('d-none');
+		fixedRegionSelect.val('');
+		// TODO: Populate fixedRegionSelect with options from an API call
+		// For now, let's add dummy data for testing
+		fixedRegionSelect.empty().append('<option value="" disabled selected>Select a region...</option><option value="uae-dubai">UAE (Dubai)</option><option value="us-east-1">USA (N. Virginia)</option>');
+	}
 
 	// Configuration
 	editCampaignRetryOnDeclineCheck.prop("checked", false).change();
@@ -340,6 +422,7 @@ function resetAndEmptyCampaignManagerTab() {
 
 function fillCampaignManagerTab() {
 	const data = ManageCurrentCampaignData;
+
 	// General
 	editCampaignIconInput.text(data.general.emoji);
 	editCampaignNameInput.val(data.general.name);
@@ -365,16 +448,34 @@ function fillCampaignManagerTab() {
 	editCampaignAgentToNumberInContextCheck.prop("checked", data.agent.toNumberInContext);
 
 	// Numbers
-	campaignNumbersListTable.find("tbody").empty();
-	data.numbers.forEach(numberId => {
-		const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
-		if (numberData) {
-			campaignNumbersListTable.find("tbody").append($(createAddedCampaignNumberListElement(numberData)));
-			currentCampaignNumbersList.push(numberId);
+	if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		currentCampaignDefaultNumberId = data.numberRoute.defaultNumberId;
+		const defaultNumberData = BusinessFullData.businessApp.numbers.find(n => n.id === currentCampaignDefaultNumberId);
+		updateDefaultNumberRowUI(defaultNumberData);
+
+		currentCampaignRouteNumberList = {
+			...data.numberRoute.routeNumberList
+		};
+		campaignNumbersListTable.find("tbody tr:not([data-region-code='default'])").remove();
+		if (Object.keys(currentCampaignRouteNumberList).length > 0) {
+			for (const regionCode in currentCampaignRouteNumberList) {
+				const numberId = currentCampaignRouteNumberList[regionCode];
+				const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
+				if (numberData) {
+					const row = createCampaignRegionRowElement(regionCode, numberData);
+					campaignNumbersListTable.find("tbody").append(row);
+				}
+			}
 		}
-	});
-	if (data.numbers.length === 0) {
-		campaignNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>');
+	}
+	// Regions
+	else if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		if (data.regionRoute.policy === 'fixed') {
+			regionPolicyRadios.filter('[value="fixed"]').prop('checked', true).change(); // .change() triggers UI update
+			fixedRegionSelect.val(data.regionRoute.fixedRegion);
+		} else {
+			regionPolicyRadios.filter('[value="automatic"]').prop('checked', true).change();
+		}
 	}
 
 	// Configuration
@@ -455,7 +556,7 @@ function fillCampaignManagerTab() {
 }
 
 function checkCampaignTabHasChanges(enableDisableButton = true) {
-	if (ManageCampaignType === null || !ManageCampaignType) return {
+	if (ManageCampaignType === null || !ManageCampaignType || !ManageCampaignViewType) return {
 		hasChanges: false
 	};
 
@@ -498,13 +599,25 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 	}
 
 	function checkNumbersTab() {
-		changes.numbers = [...currentCampaignNumbersList];
+		changes.numberRoute = {
+			defaultNumberId: currentCampaignDefaultNumberId,
+			routeNumberList: currentCampaignRouteNumberList
+		};
 		if (
-			changes.numbers.length !== original.numbers.length
-			||
-			!changes.numbers.every(num => original.numbers.includes(num))
-		)
-		{
+			changes.numberRoute.defaultNumberId !== original.numberRoute.defaultNumberId ||
+			JSON.stringify(changes.numberRoute.routeNumberList) !== JSON.stringify(original.numberRoute.routeNumberList)
+		) {
+			hasChanges = true;
+		}
+	}
+
+	function checkRegionTab() {
+		changes.regionRoute = {
+			policy: regionPolicyRadios.filter(':checked').val(),
+			fixedRegion: regionPolicyRadios.filter(':checked').val() === 'fixed' ? fixedRegionSelect.val() : null
+		};
+		if (changes.regionRoute.policy !== original.regionRoute.policy ||
+			changes.regionRoute.fixedRegion !== original.regionRoute.fixedRegion) {
 			hasChanges = true;
 		}
 	}
@@ -745,7 +858,11 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 	// Execute all checks
 	checkGeneralTab();
 	checkAgentTab();
-	checkNumbersTab();
+	if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		checkNumbersTab();
+	} else if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		checkRegionTab();
+	}
 	checkConfigurationTab();
 	checkVoicemailTab();
 	checkActionsTab();
@@ -761,7 +878,7 @@ function checkCampaignTabHasChanges(enableDisableButton = true) {
 }
 
 function validateCampaignTab(onlyRemove = true) {
-	if (ManageCampaignType === null || !ManageCampaignType) return {
+	if (ManageCampaignType === null || !ManageCampaignType || !ManageCampaignViewType) return {
 		validated: true
 	};
 
@@ -864,6 +981,35 @@ function validateCampaignTab(onlyRemove = true) {
 		}
 	}
 	validateConfigurationTab();
+
+	// Numbers Tab
+	function validateNumbersTab() {
+		if (!currentCampaignDefaultNumberId) {
+			validated = false;
+			errors.push("A default calling number must be set.");
+			if (!onlyRemove) {
+				campaignNumbersListTable.find("tr[data-region-code='default']").addClass('table-danger');
+			}
+		} else {
+			campaignNumbersListTable.find("tr[data-region-code='default']").removeClass('table-danger');
+		}
+	}
+	if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		validateNumbersTab();
+	}
+
+	// Regions Tab
+	function validateRegionTab() {
+		const policy = regionPolicyRadios.filter(':checked').val();
+		if (policy === 'fixed' && !fixedRegionSelect.val()) {
+			validated = false;
+			errors.push("A fixed region must be selected when the policy is set to 'Fixed Region'.");
+			if (!onlyRemove) fixedRegionSelect.addClass('is-invalid');
+		}
+	}
+	if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		validateRegionTab();
+	}
 
 	// Voicemail
 	function validateVoicemailTab() {
@@ -1120,6 +1266,15 @@ function SetCampaignCardDynamicWidth() {
 	}
 }
 
+function renderManagerTabs() {
+	if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+		numbersTabItem.removeClass('d-none');
+		regionTabItem.addClass('d-none');
+	} else if (ManageCampaignViewType === BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+		numbersTabItem.addClass('d-none');
+		regionTabItem.removeClass('d-none');
+	}
+}
 
 /** Agent Tab **/
 function createCampaignAgentModalListElement(agentData) {
@@ -1187,15 +1342,45 @@ function initCampaignAgentEventHandlers() {
 }
 
 /** Numbers Tab **/
-function createAddedCampaignNumberListElement(numberData) {
-	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
+function updateDefaultNumberRowUI(numberData) {
+	const defaultRow = campaignNumbersListTable.find("tr[data-region-code='default']");
+	const numberCell = defaultRow.find("td[data-col='number-provider']");
+	const actionButton = defaultRow.find("button[button-action='edit-region-route']");
+
+	defaultRow.find("td[data-col='provider-only']").remove();
+
+	if (numberData) {
+		numberCell.removeAttr('colspan');
+		numberCell.html(`<span>${numberData.number}</span>`);
+
+		const providerCell = $(`<td data-col="provider-only">${numberData.provider.name}</td>`);
+		numberCell.after(providerCell);
+
+		actionButton.find('span').text(" Change");
+		actionButton.removeClass('btn-primary').addClass('btn-secondary');
+	} else {
+		numberCell.attr('colspan', '2');
+		numberCell.html(`<span class="text-muted">No default number selected.</span>`);
+
+		actionButton.find('span').text(" Set Number");
+		actionButton.removeClass('btn-secondary').addClass('btn-primary');
+	}
+}
+
+function createCampaignRegionRowElement(regionCode, numberData) {
+	const countryData = CountriesList[regionCode.toUpperCase()];
+	const regionName = countryData ? `${countryData.Country} (${countryData.phone_code})` : regionCode;
+
 	return `
-        <tr number-id="${numberData.id}">
-            <td>${countryData["Alpha-2 code"]} ${countryData.phone_code}</td>
+        <tr data-region-code="${regionCode}">
+            <td>${regionName}</td>
             <td>${numberData.number}</td>
             <td>${numberData.provider.name}</td>
             <td>
-                <button class="btn btn-danger btn-sm" button-type="remove-number-from-campaign">
+                <button class="btn btn-secondary btn-sm me-1" button-action="edit-region-route" title="Change Number">
+                    <i class="fa-regular fa-pencil"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" button-action="delete-region-route" title="Delete Route">
                     <i class="fa-regular fa-trash"></i>
                 </button>
             </td>
@@ -1203,21 +1388,7 @@ function createAddedCampaignNumberListElement(numberData) {
     `;
 }
 
-function createCampaignNumberModalListElement(numberData) {
-	const countryData = CountriesList[numberData.countryCode.toUpperCase()];
-	const isNumberActiveInCampaign = currentCampaignNumbersList.includes(numberData.id);
-
-	const elementClass = isNumberActiveInCampaign ? "disabled" : "";
-	const elementText = isNumberActiveInCampaign ? "(Already added)" : "";
-
-	return `
-        <button type="button" class="list-group-item list-group-item-action ${elementClass}" button-type="add-number-to-campaign" number-id="${numberData.id}" number-provider="${numberData.provider.value}">
-            ${countryData.phone_code} ${numberData.number} ${elementText}
-        </button>
-    `;
-}
-
-function fillCampaignNumberModalNumbersList() {
+function populateNumberSelectionModal() {
 	const modalBody = editChangeCampaignNumberModalElement.find('.modal-body');
 	modalBody.empty();
 
@@ -1228,7 +1399,12 @@ function fillCampaignNumberModalNumbersList() {
 		listGroup.append("<span>No numbers found for your business.</span>");
 	} else {
 		availableNumbers.forEach((number) => {
-			listGroup.append($(createCampaignNumberModalListElement(number)));
+			const countryData = CountriesList[number.countryCode.toUpperCase()];
+			listGroup.append(`
+                <button type="button" class="list-group-item list-group-item-action" number-id="${number.id}">
+                    ${countryData.phone_code} ${number.number}
+                </button>
+            `);
 		});
 	}
 	modalBody.append(listGroup);
@@ -1236,56 +1412,126 @@ function fillCampaignNumberModalNumbersList() {
 
 function initCampaignNumbersEventHandlers() {
 	const saveChangeCampaignNumberButton = editChangeCampaignNumberModalElement.find("#saveChangeCampaignNumberButton");
+	const campaignRegionSelect = addCampaignRegionModalElement.find('#campaignRegionSelect');
+	const confirmRegionSelectionButton = addCampaignRegionModalElement.find('#confirmRegionSelectionButton');
 
-	editChangeCampaignNumberButton.on("click", (event) => {
+	// 1. User clicks "+ Add Region Route" -> Open Region Selection Modal
+	addCampaignRegionRouteButton.on("click", (event) => {
 		event.preventDefault();
-		fillCampaignNumberModalNumbersList();
-		editChangeCampaignNumberModal.show();
-		saveChangeCampaignNumberButton.prop("disabled", true);
+		campaignRegionSelect.empty().append('<option value="" disabled selected>Select a country...</option>');
+		confirmRegionSelectionButton.prop('disabled', true);
+
+		// Populate with countries that are NOT already in the list
+		const existingRegions = Object.keys(currentCampaignRouteNumberList);
+		Object.keys(CountriesList).forEach(countryCode => {
+			if (!existingRegions.includes(countryCode)) {
+				const countryData = CountriesList[countryCode];
+				campaignRegionSelect.append(`<option value="${countryCode}">${countryData.Country} ${countryData.phone_code}</option>`);
+			}
+		});
+
+		addCampaignRegionModal.show();
 	});
 
-	editChangeCampaignNumberModalElement.on("click", "[button-type=add-number-to-campaign]", (event) => {
+	// 2. User selects a region -> Enable next step button
+	campaignRegionSelect.on('change', function () {
+		confirmRegionSelectionButton.prop('disabled', !$(this).val());
+	});
+
+	// 3. User confirms region -> Hide region modal, show number modal with context
+	confirmRegionSelectionButton.on('click', function (event) {
+		event.preventDefault();
+		const selectedRegion = campaignRegionSelect.val();
+		if (!selectedRegion) return;
+
+		addCampaignRegionModal.hide();
+
+		// Set context for the number modal and show it
+		editChangeCampaignNumberModalElement.data('context-region-code', selectedRegion);
+		populateNumberSelectionModal();
+		saveChangeCampaignNumberButton.prop('disabled', true);
+		editChangeCampaignNumberModal.show();
+	});
+
+
+	// 4. Handle number selection inside the number modal
+	editChangeCampaignNumberModalElement.on("click", ".list-group-item-action", (event) => {
 		event.preventDefault();
 		const currentElement = $(event.currentTarget);
-		// This allows for multi-select in the future if desired, for now, single select.
+		if (currentElement.hasClass('active')) return;
+
 		editChangeCampaignNumberModalElement.find('.active').removeClass('active');
 		currentElement.addClass("active");
 		saveChangeCampaignNumberButton.prop("disabled", false);
 	});
 
+
+	// 5. User saves the selected number (handles both ADD and EDIT contexts)
 	saveChangeCampaignNumberButton.on("click", (event) => {
 		event.preventDefault();
-		const selectedNumberButton = editChangeCampaignNumberModalElement.find("[button-type=add-number-to-campaign].active");
+		const selectedNumberButton = editChangeCampaignNumberModalElement.find(".list-group-item-action.active");
 		if (selectedNumberButton.length === 0) return;
 
 		const numberId = selectedNumberButton.attr("number-id");
 		const numberData = BusinessFullData.businessApp.numbers.find(n => n.id === numberId);
 
-		if (numberData && !currentCampaignNumbersList.includes(numberId)) {
-			currentCampaignNumbersList.push(numberId);
-			campaignNumbersListTable.find("tbody tr[tr-type=none-notice]").remove();
-			campaignNumbersListTable.find("tbody").append($(createAddedCampaignNumberListElement(numberData)));
+		const addRegionCode = editChangeCampaignNumberModalElement.data('context-region-code');
+		const editRegionCode = editChangeCampaignNumberModalElement.data('context-edit-region-code');
+
+		if (editRegionCode === 'default') { // Context: EDITING THE DEFAULT NUMBER
+			currentCampaignDefaultNumberId = numberId;
+			updateDefaultNumberRowUI(numberData);
+		} else if (addRegionCode) { // Context: ADDING a new route
+			currentCampaignRouteNumberList[addRegionCode] = numberId;
+			const newRow = createCampaignRegionRowElement(addRegionCode, numberData);
+			campaignNumbersListTable.find("tbody").append(newRow);
+		} else if (editRegionCode) { // Context: EDITING a region route
+			currentCampaignRouteNumberList[editRegionCode] = numberId;
+			const updatedRow = createCampaignRegionRowElement(editRegionCode, numberData);
+			campaignNumbersListTable.find(`tr[data-region-code="${editRegionCode}"]`).replaceWith(updatedRow);
 		}
 
+		// Cleanup and close
+		editChangeCampaignNumberModalElement.removeData('context-region-code');
+		editChangeCampaignNumberModalElement.removeData('context-edit-region-code');
 		editChangeCampaignNumberModal.hide();
 		checkCampaignTabHasChanges();
 		validateCampaignTab(true);
 	});
 
-	campaignNumbersListTable.on("click", "[button-type=remove-number-from-campaign]", (event) => {
+	// 6. Handle action buttons (Edit/Delete) on the region table
+	campaignNumbersListTable.on("click", "[button-action]", (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		const row = $(event.currentTarget).closest('tr');
-		const numberId = row.attr("number-id");
+		const button = $(event.currentTarget);
+		const action = button.attr("button-action");
+		const row = button.closest('tr');
+		const regionCode = row.data("region-code");
 
-		currentCampaignNumbersList = currentCampaignNumbersList.filter(id => id !== numberId);
-		row.remove();
-
-		if (campaignNumbersListTable.find("tbody").children().length === 0) {
-			campaignNumbersListTable.find("tbody").append('<tr tr-type="none-notice"><td colspan="4">No numbers added yet...</td></tr>');
+		if (action === "edit-region-route") {
+			// This now works for BOTH default and region rows
+			editChangeCampaignNumberModalElement.data('context-edit-region-code', regionCode);
+			populateNumberSelectionModal();
+			saveChangeCampaignNumberButton.prop('disabled', true);
+			editChangeCampaignNumberModal.show();
+		} else if (action === "delete-region-route") {
+			// This action is only available on non-default rows, so no special check needed
+			delete currentCampaignRouteNumberList[regionCode];
+			row.remove();
+			checkCampaignTabHasChanges();
 		}
-		checkCampaignTabHasChanges();
-		validateCampaignTab(true);
+	});
+}
+
+/** Regions Tab **/
+function initCampaignRegionEventHandlers() {
+	regionPolicyRadios.on('change', function () {
+		if ($(this).val() === 'fixed') {
+			fixedRegionOptionsContainer.removeClass('d-none');
+		} else {
+			fixedRegionOptionsContainer.addClass('d-none');
+		}
+		// The universal change handler will pick this up and enable the save button
 	});
 }
 
@@ -1491,6 +1737,7 @@ function initCampaignsTab() {
 		/** INIT MODALS **/
 		editChangeCampaignNumberModal = new bootstrap.Modal(editChangeCampaignNumberModalElement);
 		editChangeCampaignAgentModal = new bootstrap.Modal(editChangeCampaignAgentModalElement);
+		addCampaignRegionModal = new bootstrap.Modal(addCampaignRegionModalElement);
 
 		/** INIT EMOJI PICKER **/
 		new EmojiPicker({
@@ -1551,35 +1798,67 @@ function initCampaignsTab() {
 			SetCampaignCardDynamicWidth();
 		})
 
-		addNewCampaignButton.on("click", (e) => {
+		addNewTelephonyCampaignButton.on("click", (e) => {
 			e.preventDefault();
+			ManageCampaignViewType = BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY;
 			ManageCurrentCampaignData = createDefaultCampaignObject();
-			currentCampaignName.text("New Campaign");
+			currentCampaignName.text("New Telephony Campaign");
 			resetAndEmptyCampaignManagerTab();
 			ManageCampaignType = "new";
-			showCampaignManagerTab();	
+			showCampaignManagerTab();
 			updateUrlForTab("campaigns/new");
 		});
+
+		addNewWebCampaignButton.on("click", (e) => {
+			e.preventDefault();
+			ManageCampaignViewType = BUSINESS_APP_CAMPAIGN_TYPE.WEB;
+			ManageCurrentCampaignData = createDefaultCampaignObject();
+			currentCampaignName.text("New Web Campaign");
+			resetAndEmptyCampaignManagerTab();
+			ManageCampaignType = "new";
+			showCampaignManagerTab();
+			updateUrlForTab("campaigns/new");
+		});
+
 		switchBackToCampaignsTabButton.on("click", async (e) => {
 			e.preventDefault();
 			if (await canLeaveCampaignsTab(" Discard changes?")) {
 				showCampaignsListTab();
 				ManageCampaignType = null;
-				updateUrlForTab("campaigns");
+
+				if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+					updateUrlForTab("campaigns/telephony");
+				}
+				else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+					updateUrlForTab("campaigns/web");
+				}
+
+				ManageCampaignViewType = null
 			}
 		});
-		campaignsListTable.on("click", ".campaign-card", (e) => {
+
+		campaignsListTabContent.on("click", ".campaign-card", (e) => {
 			e.preventDefault();
 			const campaignId = $(e.currentTarget).attr("campaign-id");
-			ManageCurrentCampaignData = BusinessFullData.businessApp.campaigns.find(c => c.id === campaignId);
-			if (!ManageCurrentCampaignData) return;
-			currentCampaignNumbersList = [...ManageCurrentCampaignData.numbers];
+			const campaignData = JSON.parse(JSON.stringify(BusinessFullData.businessApp.campaigns.find(c => c.id === campaignId)));
+			if (!campaignData) return;
+
+			ManageCurrentCampaignData = campaignData;
 			currentCampaignName.text(ManageCurrentCampaignData.general.name);
-			resetAndEmptyCampaignManagerTab()	
+
+			ManageCampaignViewType = campaignData.type.value; // TODO what if we remove type, whats better way to know if its web or telephony
+			resetAndEmptyCampaignManagerTab();
 			fillCampaignManagerTab();
+
 			ManageCampaignType = "edit";
 			showCampaignManagerTab();
-			updateUrlForTab(`campaigns/${campaignId}`);
+
+			if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+				updateUrlForTab(`campaigns/telephony/${campaignId}`);
+			}
+            else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+                updateUrlForTab(`campaigns/web/${campaignId}`);
+            }
 		});
 
 		// Universal handler for simple inputs
@@ -1623,19 +1902,30 @@ function initCampaignsTab() {
 			SaveBusinessCampaign(formData,
 				(response) => {
 					ManageCurrentCampaignData = response.data;
-					currentCampaignNumbersList = [...ManageCurrentCampaignData.numbers];
+					currentCampaignRouteNumberList = JSON.parse(JSON.stringify(ManageCurrentCampaignData.numberRoute)); // deep copy
+
 					currentCampaignName.text(ManageCurrentCampaignData.general.name);
 
 					const existingIndex = BusinessFullData.businessApp.campaigns.findIndex(c => c.id === response.data.id);
 					if (existingIndex > -1) {
 						BusinessFullData.businessApp.campaigns[existingIndex] = response.data;
-						campaignsListTable.find(`[campaign-id="${response.data.id}"]`).parent().replaceWith(createCampaignListElement(response.data));
-					} else {
-						BusinessFullData.businessApp.campaigns.push(response.data);
-						campaignsListTable.append($(createCampaignListElement(response.data)));
-					}
 
-					if (campaignsListTable.find('.col-12 h6').length > 0) campaignsListTable.empty().append($(createCampaignListElement(response.data)));
+						if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+							telephonyCampaignsListTable.find(`[campaign-id="${response.data.id}"]`).parent().replaceWith(createCampaignListElement(response.data));
+						}
+						else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+                            webCampaignsListTable.find(`[campaign-id="${response.data.id}"]`).parent().replaceWith(createCampaignListElement(response.data));
+						}	
+					} else {
+						if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+							BusinessFullData.businessApp.telephonyCampaigns.push(response.data);
+                            telephonyCampaignsListTable.append($(createCampaignListElement(response.data)));
+                        }
+						else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+                            BusinessFullData.businessApp.webCampaigns.push(response.data);
+                            webCampaignsListTable.append($(createCampaignListElement(response.data)));
+                        }
+					}
 
 					IsSavingCampaignManageTab = false;
 					saveCampaignButton.prop("disabled", true).find('.spinner-border').addClass('d-none');
@@ -1646,7 +1936,12 @@ function initCampaignsTab() {
 					});
 					ManageCampaignType = "edit";
 
-					replaceUrlForTab(`campaigns/${ManageCurrentCampaignData.id}`);
+					if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.TELEPHONY) {
+                        updateUrlForTab(`campaigns/telephony/${ManageCurrentCampaignData.id}`);
+					}
+                    else if (ManageCampaignViewType == BUSINESS_APP_CAMPAIGN_TYPE.WEB) {
+                        updateUrlForTab(`campaigns/web/${ManageCurrentCampaignData.id}`);
+                    }
 				},
 				(error) => {
 					console.error("Error saving campaign:", error);
@@ -1667,6 +1962,7 @@ function initCampaignsTab() {
 		initCampaignAgentEventHandlers();
 		initCampaignNumbersEventHandlers();
 		initCampaignActionsEventHandlers();
+		initCampaignRegionEventHandlers();
 
 		// Init List
 		fillCampaignsList();

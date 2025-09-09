@@ -89,7 +89,7 @@ namespace IqraInfrastructure.Managers.Conversation.Session.Agent.AI
 
             _cancellationTokenSource= CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            _vadService = new SileroVadCore(_loggerFactory.CreateLogger<SileroVadCore>(), token);
+            //_vadService = new SileroVadCore(_loggerFactory.CreateLogger<SileroVadCore>(), token);
             _vadService.VoiceActivityChanged += OnVADResultRecieved;
 
             _voicemailMLModel = new BlandAIOnnxVoicemailDetectModel();

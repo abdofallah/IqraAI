@@ -16,6 +16,7 @@ namespace IqraCore.Entities.Business
         public List<BusinessAppRoute> Routings { get; set; } = new List<BusinessAppRoute>();
         public List<BusinessNumberData> Numbers { get; set; } = new List<BusinessNumberData>();
         public List<BusinessAppKnowledgeBase> KnowledgeBases { get; set; } = new List<BusinessAppKnowledgeBase>();
-        public List<BusinessAppCampaign> Campaigns { get; set; } = new List<BusinessAppCampaign>();
+        public List<BusinessAppCampaignTelephony> TelephonyCampaigns { get; set; } = new List<BusinessAppCampaignTelephony>();
+        public List<BusinessAppCampaignWeb> WebCampaigns { get; set; } = new List<BusinessAppCampaignWeb>();
     }
 }
