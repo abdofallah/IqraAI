@@ -360,7 +360,7 @@ function checkWebCampaignChanges(enableDisableButton = true) {
     function checkActionsTab() {
         function collectToolArguments(selectElement) {
             const args = {};
-            const argumentsList = selectElement.closest('div').find('.custom-tool-input-arguments [id$="InputArgumentsList"]');
+            const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
             argumentsList.find(".input-group input").each((_, el) => {
                 const input = $(el);
                 args[input.attr("input_arguement")] = input.val().trim();
@@ -588,11 +588,12 @@ function createWebCampaignAgentModalListElement(agentData) {
 function handleWebCampaignActionToolChange(event) {
     const selectElement = $(event.currentTarget);
     const selectedToolId = selectElement.val();
-    const container = selectElement.closest('div');
+    const container = selectElement.closest('div'); // This is the parent div.mb-3
     const argumentsContainer = container.find('.custom-tool-input-arguments');
     const argumentsSelect = argumentsContainer.find('select');
-    const argumentsList = argumentsContainer.find('[id$="InputArgumentsList"]');
+    const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
 
+    // Reset the arguments section
     argumentsList.empty();
     argumentsSelect.empty().append('<option value="" disabled selected>Add Input Argument</option>');
 
@@ -607,8 +608,8 @@ function handleWebCampaignActionToolChange(event) {
             });
         }
     }
-    checkWebCampaignChanges();
-    validateWebCampaign(true);
+    checkTelephonyCampaignChanges();
+    validateTelephonyCampaign(true);
 }
 
 function handleWebCampaignActionAddArgument(event) {
@@ -617,9 +618,9 @@ function handleWebCampaignActionAddArgument(event) {
     if (!selectedArgumentId) return;
 
     const container = selectElement.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.closest('div').find('select').first();
+    const mainToolSelect = container.parent().parent().find('select').first(); // Go up to parent div and find main tool select
     const selectedToolId = mainToolSelect.val();
-    const argumentsList = container.find('[id$="InputArgumentsList"]');
+    const argumentsList = container.find('[id$="-arguments-list"]');
 
     const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
     const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
@@ -637,8 +638,8 @@ function handleWebCampaignActionAddArgument(event) {
         selectElement.find(`option[value="${selectedArgumentId}"]`).remove();
         selectElement.val("");
     }
-    checkWebCampaignChanges();
-    validateWebCampaign(true);
+    checkTelephonyCampaignChanges();
+    validateTelephonyCampaign(true);
 }
 
 function handleWebCampaignActionRemoveArgument(event) {
@@ -647,7 +648,7 @@ function handleWebCampaignActionRemoveArgument(event) {
     const argumentIdToRemove = removeButton.attr('input_arguement');
     const inputGroup = removeButton.closest('.input-group');
     const container = removeButton.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.closest('div').find('select').first();
+    const mainToolSelect = container.parent().parent().find('select').first();
     const argumentsSelect = container.find('select');
     const selectedToolId = mainToolSelect.val();
 
@@ -659,8 +660,8 @@ function handleWebCampaignActionRemoveArgument(event) {
     }
 
     inputGroup.remove();
-    checkWebCampaignChanges();
-    validateWebCampaign(true);
+    checkTelephonyCampaignChanges();
+    validateTelephonyCampaign(true);
 }
 
 /** EVENT HANDLER INITIALIZERS **/

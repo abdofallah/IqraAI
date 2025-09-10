@@ -305,12 +305,12 @@ function resetTelephonyManager() {
     telephonyCampaignRetryOnDeclineCheck.prop("checked", false).change();
     telephonyCampaignRetryDeclineCountInput.val(3);
     telephonyCampaignRetryDeclineDelayInput.val(10);
-    telephonyCampaignRetryDeclineUnitSelect.val(1); // Assuming 1 is minutes TODO
+    telephonyCampaignRetryDeclineUnitSelect.val(1);
 
     telephonyCampaignRetryOnMissCheck.prop("checked", false).change();
     telephonyCampaignRetryMissCountInput.val(3);
     telephonyCampaignRetryMissDelayInput.val(10);
-    telephonyCampaignRetryMissUnitSelect.val(1); // Assuming 1 is minutes TODO
+    telephonyCampaignRetryMissUnitSelect.val(1);
 
     telephonyCampaignPickupDelayInput.val(0);
     telephonyCampaignSilenceNotifyInput.val(10000);
@@ -590,7 +590,7 @@ function checkTelephonyCampaignChanges(enableDisableButton = true) {
     function checkActionsTab() {
         function collectToolArguments(selectElement) {
             const args = {};
-            const argumentsList = selectElement.closest('div').find('.custom-tool-input-arguments [id$="InputArgumentsList"]');
+            const argumentsList = selectElement.siblings('.custom-tool-input-arguments').find('[id$="-arguments-list"]');
             argumentsList.find(".input-group input").each((_, el) => {
                 const input = $(el);
                 args[input.attr("input_arguement")] = input.val().trim();
@@ -999,11 +999,12 @@ function fillTelephonyCampaignVoicemailTab() {
 function handleTelephonyCampaignActionToolChange(event) {
     const selectElement = $(event.currentTarget);
     const selectedToolId = selectElement.val();
-    const container = selectElement.closest('div');
+    const container = selectElement.closest('div'); // This is the parent div.mb-3
     const argumentsContainer = container.find('.custom-tool-input-arguments');
     const argumentsSelect = argumentsContainer.find('select');
-    const argumentsList = argumentsContainer.find('[id$="InputArgumentsList"]');
+    const argumentsList = argumentsContainer.find('[id$="-arguments-list"]');
 
+    // Reset the arguments section
     argumentsList.empty();
     argumentsSelect.empty().append('<option value="" disabled selected>Add Input Argument</option>');
 
@@ -1028,9 +1029,9 @@ function handleTelephonyCampaignActionAddArgument(event) {
     if (!selectedArgumentId) return;
 
     const container = selectElement.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.closest('div').find('select').first();
+    const mainToolSelect = container.parent().parent().find('select').first(); // Go up to parent div and find main tool select
     const selectedToolId = mainToolSelect.val();
-    const argumentsList = container.find('[id$="InputArgumentsList"]');
+    const argumentsList = container.find('[id$="-arguments-list"]');
 
     const toolData = BusinessFullData.businessApp.tools.find(tool => tool.id === selectedToolId);
     const argumentData = toolData.configuration.inputSchemea.find(arg => arg.id === selectedArgumentId);
@@ -1058,7 +1059,7 @@ function handleTelephonyCampaignActionRemoveArgument(event) {
     const argumentIdToRemove = removeButton.attr('input_arguement');
     const inputGroup = removeButton.closest('.input-group');
     const container = removeButton.closest('.custom-tool-input-arguments');
-    const mainToolSelect = container.closest('div').find('select').first();
+    const mainToolSelect = container.parent().parent().find('select').first();
     const argumentsSelect = container.find('select');
     const selectedToolId = mainToolSelect.val();
 
@@ -1074,58 +1075,58 @@ function handleTelephonyCampaignActionRemoveArgument(event) {
     validateTelephonyCampaign(true);
 }
 
-
 /** EVENT HANDLER INITIALIZERS **/
-);
+function initTelephonyAgentEventHandlers() {
+    const selectAgentButton = telephonyCampaignsManagerView.find('button[data-bs-target="#telephony-campaign-select-agent-modal"]');
 
-selectAgentButton.on('click', () => {
-    telephonyCampaignsManagerSelectAgentModalList.empty();
-    const listGroup = $('<div class="list-group"></div>');
-    BusinessFullData.businessApp.agents.forEach(agent => {
-        const element = $(createTelephonyCampaignAgentModalListElement(agent));
-        if (agent.id === currentTelephonyCampaignAgentSelectedId) {
-            element.addClass('active');
-        }
-        listGroup.append(element);
-    });
-    telephonyCampaignsManagerSelectAgentModalList.append(listGroup);
-    telephonyCampaignSaveAgentButton.prop('disabled', true);
-});
-
-telephonyCampaignsManagerSelectAgentModalList.on("click", "button", (event) => {
-    event.preventDefault();
-    const clickedButton = $(event.currentTarget);
-    if (clickedButton.hasClass("active")) return;
-    telephonyCampaignsManagerSelectAgentModalList.find("button.active").removeClass("active");
-    clickedButton.addClass("active");
-    const selectedAgentId = clickedButton.data("agent-id");
-    telephonyCampaignSaveAgentButton.prop("disabled", selectedAgentId === currentTelephonyCampaignAgentSelectedId);
-});
-
-telephonyCampaignSaveAgentButton.on("click", (event) => {
-    event.preventDefault();
-    const selectedAgentButton = telephonyCampaignsManagerSelectAgentModalList.find("button.active");
-    if (selectedAgentButton.length === 0) return;
-
-    const newAgentId = selectedAgentButton.data("agent-id");
-    if (newAgentId === currentTelephonyCampaignAgentSelectedId) return;
-
-    currentTelephonyCampaignAgentSelectedId = newAgentId;
-    const agentData = BusinessFullData.businessApp.agents.find(agent => agent.id === newAgentId);
-
-    telephonyCampaignAgentIconSpan.text(agentData.general.emoji);
-    telephonyCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
-
-    telephonyCampaignAgentScriptSelect.prop("disabled", false).empty();
-    telephonyCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
-    agentData.scripts.forEach(script => {
-        telephonyCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
+    selectAgentButton.on('click', () => {
+        telephonyCampaignsManagerSelectAgentModalList.empty();
+        const listGroup = $('<div class="list-group"></div>');
+        BusinessFullData.businessApp.agents.forEach(agent => {
+            const element = $(createTelephonyCampaignAgentModalListElement(agent));
+            if (agent.id === currentTelephonyCampaignAgentSelectedId) {
+                element.addClass('active');
+            }
+            listGroup.append(element);
+        });
+        telephonyCampaignsManagerSelectAgentModalList.append(listGroup);
+        telephonyCampaignSaveAgentButton.prop('disabled', true);
     });
 
-    telephonyCampaignSelectAgentModal.hide();
-    checkTelephonyCampaignChanges();
-    validateTelephonyCampaign(true);
-});
+    telephonyCampaignsManagerSelectAgentModalList.on("click", "button", (event) => {
+        event.preventDefault();
+        const clickedButton = $(event.currentTarget);
+        if (clickedButton.hasClass("active")) return;
+        telephonyCampaignsManagerSelectAgentModalList.find("button.active").removeClass("active");
+        clickedButton.addClass("active");
+        const selectedAgentId = clickedButton.data("agent-id");
+        telephonyCampaignSaveAgentButton.prop("disabled", selectedAgentId === currentTelephonyCampaignAgentSelectedId);
+    });
+
+    telephonyCampaignSaveAgentButton.on("click", (event) => {
+        event.preventDefault();
+        const selectedAgentButton = telephonyCampaignsManagerSelectAgentModalList.find("button.active");
+        if (selectedAgentButton.length === 0) return;
+
+        const newAgentId = selectedAgentButton.data("agent-id");
+        if (newAgentId === currentTelephonyCampaignAgentSelectedId) return;
+
+        currentTelephonyCampaignAgentSelectedId = newAgentId;
+        const agentData = BusinessFullData.businessApp.agents.find(agent => agent.id === newAgentId);
+
+        telephonyCampaignAgentIconSpan.text(agentData.general.emoji);
+        telephonyCampaignAgentNameInput.val(agentData.general.name[BusinessDefaultLanguage]);
+
+        telephonyCampaignAgentScriptSelect.prop("disabled", false).empty();
+        telephonyCampaignAgentScriptSelect.append(`<option value="" disabled selected>Select Script</option>`);
+        agentData.scripts.forEach(script => {
+            telephonyCampaignAgentScriptSelect.append(`<option value="${script.id}">${script.general.name[BusinessDefaultLanguage]}</option>`);
+        });
+
+        telephonyCampaignSelectAgentModal.hide();
+        checkTelephonyCampaignChanges();
+        validateTelephonyCampaign(true);
+    });
 }
 
 function initTelephonyNumbersEventHandlers() {
@@ -1227,17 +1228,47 @@ function initTelephonyNumbersEventHandlers() {
 
 function initTelephonyConfigurationEventHandlers() {
     telephonyCampaignRetryOnDeclineCheck.on('change', function () {
-        telephonyCampaignRetryOnDeclineOptions.toggleClass('show', $(this).is(':checked'));
+        const isChecked = $(this).is(':checked');
+
+        if (isChecked) {
+            telephonyCampaignRetryOnDeclineOptions.toggleClass('d-none', !isChecked);
+            setTimeout(() => {
+                telephonyCampaignRetryOnDeclineOptions.toggleClass('show', isChecked);
+            }, 10);
+        }
+        else {
+            telephonyCampaignRetryOnDeclineOptions.toggleClass('show', isChecked);
+            setTimeout(() => {
+                telephonyCampaignRetryOnDeclineOptions.toggleClass('d-none', !isChecked);
+            }, 300);
+        }
     });
     telephonyCampaignRetryOnMissCheck.on('change', function () {
-        telephonyCampaignRetryOnMissOptions.toggleClass('show', $(this).is(':checked'));
+        const isChecked = $(this).is(':checked');
+
+        if (isChecked) {
+            telephonyCampaignRetryOnMissOptions.toggleClass('d-none', !isChecked);
+            setTimeout(() => {
+                telephonyCampaignRetryOnMissOptions.toggleClass('show', isChecked);
+            }, 10);
+        }
+        else {
+            telephonyCampaignRetryOnMissOptions.toggleClass('show', isChecked);
+            setTimeout(() => {
+                telephonyCampaignRetryOnMissOptions.toggleClass('d-none', !isChecked);
+            }, 300);
+        }
     });
 }
 
 function initTelephonyVoicemailDetectionEventHandlers() {
     telephonyCampaignVoicemailIsEnabledCheck.on('change', function () {
         const isEnabled = $(this).is(':checked');
-        telephonyCampaignVoicemailSettingsContainer.toggleClass('disabled-container', !isEnabled);
+        telephonyCampaignVoicemailSettingsContainer.css({
+            opacity: isEnabled ? 1 : 0.5,
+            pointerEvents: isEnabled ? 'auto' : 'none'
+        });
+        telephonyCampaignVoicemailSettingsContainer.find('input, select, textarea').prop('disabled', !isEnabled);
     });
 
     telephonyCampaignVoicemailAdvancedVerificationCheck.on('change', function () {
@@ -1267,8 +1298,8 @@ function initTelephonyActionsEventHandlers() {
     telephonyCampaignActionToolCallAnsweredSelect.on('change', handleTelephonyCampaignActionToolChange);
     telephonyCampaignActionToolCallEndedSelect.on('change', handleTelephonyCampaignActionToolChange);
 
-    // Add argument dropdown change handler
-    telephonyCampaignsManagerView.on('change', '.custom-tool-input-arguments > select', handleTelephonyCampaignActionAddArgument);
+    // Add argument dropdown change handler (uses event delegation on the tab content)
+    telephonyCampaignActionsTab.on('change', '.custom-tool-input-arguments > select', handleTelephonyCampaignActionAddArgument);
 
     // Remove argument button click handler
     telephonyCampaignActionsTab.on('click', '[btn-action="remove-campaign-action-tool-argument"]', handleTelephonyCampaignActionRemoveArgument);

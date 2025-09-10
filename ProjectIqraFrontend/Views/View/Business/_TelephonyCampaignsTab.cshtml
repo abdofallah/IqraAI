@@ -3,7 +3,7 @@
 
     <!-- TELEPHONY CAMPAIGNS: LIST VIEW -->
     <div class="fade show" id="telephony-campaigns-list-view">
-        <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-phone-volume'></i> <span>Telephony Campaigns</span></h3>
+        <h3 class="fw-bold tab-title mb-3"><i class='fa-solid fa-megaphone'></i> <span>Telephony Campaigns</span></h3>
         <div class="inner-container">
             <div class="mb-4 d-flex flex-row align-items-center justify-content-between">
                 <div style="min-width: 300px" class="me-4">
@@ -112,7 +112,83 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-agent-timezone-select">Timezone</label>
-                        <select class="form-select" id="telephony-campaign-agent-timezone-select"></select>
+                        <select class="form-select" id="telephony-campaign-agent-timezone-select">
+                            <option value="" selected disabled>Select Timezone</option>
+                            <option value="-12:00">(GMT -12:00) Eniwetok, Kwajalein</option>
+                            <option value="-11:00">(GMT -11:00) Midway Island, Samoa</option>
+                            <option value="-10:00">(GMT -10:00) Hawaii</option>
+                            <option value="-09:50">(GMT -9:30) Taiohae</option>
+                            <option value="-09:00">(GMT -9:00) Alaska</option>
+                            <option value="-08:00">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
+                            <option value="-07:00">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
+                            <option value="-06:00">
+                                (GMT -6:00) Central Time (US &amp; Canada), Mexico
+                                City
+                            </option>
+                            <option value="-05:00">
+                                (GMT -5:00) Eastern Time (US &amp; Canada), Bogota,
+                                Lima
+                            </option>
+                            <option value="-04:50">(GMT -4:30) Caracas</option>
+                            <option value="-04:00">
+                                (GMT -4:00) Atlantic Time (Canada), Caracas, La Paz
+                            </option>
+                            <option value="-03:50">(GMT -3:30) Newfoundland</option>
+                            <option value="-03:00">
+                                (GMT -3:00) Brazil, Buenos Aires, Georgetown
+                            </option>
+                            <option value="-02:00">(GMT -2:00) Mid-Atlantic</option>
+                            <option value="-01:00">(GMT -1:00) Azores, Cape Verde Islands</option>
+                            <option value="+00:00">
+                                (GMT 0/UTC) Western Europe Time,
+                                London, Lisbon, Casablanca
+                            </option>
+                            <option value="+01:00">
+                                (GMT +1:00) Brussels, Copenhagen, Madrid, Paris
+                            </option>
+                            <option value="+02:00">(GMT +2:00) Kaliningrad, South Africa</option>
+                            <option value="+03:00">
+                                (GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg
+                            </option>
+                            <option value="+03:50">(GMT +3:30) Tehran</option>
+                            <option value="+04:00">
+                                (GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi
+                            </option>
+                            <option value="+04:50">(GMT +4:30) Kabul</option>
+                            <option value="+05:00">
+                                (GMT +5:00) Ekaterinburg, Islamabad, Karachi,
+                                Tashkent
+                            </option>
+                            <option value="+05:50">
+                                (GMT +5:30) Bombay, Calcutta, Madras, New Delhi
+                            </option>
+                            <option value="+05:75">(GMT +5:45) Kathmandu, Pokhara</option>
+                            <option value="+06:00">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+                            <option value="+06:50">(GMT +6:30) Yangon, Mandalay</option>
+                            <option value="+07:00">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+                            <option value="+08:00">
+                                (GMT +8:00) Beijing, Perth, Singapore, Hong Kong
+                            </option>
+                            <option value="+08:75">(GMT +8:45) Eucla</option>
+                            <option value="+09:00">
+                                (GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk
+                            </option>
+                            <option value="+09:50">(GMT +9:30) Adelaide, Darwin</option>
+                            <option value="+10:00">
+                                (GMT +10:00) Eastern Australia, Guam, Vladivostok
+                            </option>
+                            <option value="+10:50">(GMT +10:30) Lord Howe Island</option>
+                            <option value="+11:00">
+                                (GMT +11:00) Magadan, Solomon Islands, New Caledonia
+                            </option>
+                            <option value="+11:50">(GMT +11:30) Norfolk Island</option>
+                            <option value="+12:00">
+                                (GMT +12:00) Auckland, Wellington, Fiji, Kamchatka
+                            </option>
+                            <option value="+12:75">(GMT +12:45) Chatham Islands</option>
+                            <option value="+13:00">(GMT +13:00) Apia, Nukualofa</option>
+                            <option value="+14:00">(GMT +14:00) Line Islands, Tokelau</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <div class="form-check form-switch">
@@ -156,7 +232,6 @@
 
                 <!-- Configuration Tab -->
                 <div class="tab-pane fade w-100" id="telephony-campaign-manager-configuration" role="tabpanel" aria-labelledby="telephony-campaign-manager-configuration-tab" tabindex="0">
-                    <h5 class="mb-3">Retry Logic</h5>
                     <div class="mb-3 p-3 border rounded bg-dark">
                         <div class="form-check form-switch">
                             <input type="checkbox" role="switch" class="form-check-input" id="telephony-campaign-retry-on-decline-check">
@@ -177,7 +252,12 @@
                                     <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-decline-delay-input" value="10" min="1">
                                 </div>
                                 <div class="col-auto">
-                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-decline-unit-select"></select>
+                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-decline-unit-select">
+                                        <option value="0">Seconds</option>
+                                        <option value="1" selected>Minutes</option>
+                                        <option value="2">Hours</option>
+                                        <option value="3">Days</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -202,12 +282,16 @@
                                     <input type="number" class="form-control form-control-sm" id="telephony-campaign-retry-miss-delay-input" value="10" min="1">
                                 </div>
                                 <div class="col-auto">
-                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-miss-unit-select"></select>
+                                    <select class="form-select form-select-sm" id="telephony-campaign-retry-miss-unit-select">
+                                        <option value="0">Seconds</option>
+                                        <option value="1" selected>Minutes</option>
+                                        <option value="2">Hours</option>
+                                        <option value="3">Days</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <h5 class="mb-3">Timeouts</h5>
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-pickup-delay-input">Pick up delay (ms)</label>
                         <input type="number" class="form-control" id="telephony-campaign-pickup-delay-input" value="0">
@@ -355,35 +439,77 @@
 
                 <!-- Actions Tab -->
                 <div class="tab-pane fade w-100" id="telephony-campaign-manager-actions" role="tabpanel" aria-labelledby="telephony-campaign-manager-actions-tab" tabindex="0">
+                    <!-- On Call Initiation Failure Action -->
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-action-tool-call-initiation-failure-select">On Call Initiation Failure Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-initiation-failure-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-initiation-failure-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-initiation-failure-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-initiation-failure-arguments-list"></div>
+                        </div>
                     </div>
+                    <!-- On Call Initiated Action -->
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-action-tool-call-initiated-select">On Call Initiated Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-initiated-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-initiated-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-initiated-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-initiated-arguments-list"></div>
+                        </div>
                     </div>
+                    <!-- On Call Declined Action -->
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-action-tool-call-declined-select">On Call Declined Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-declined-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-declined-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-declined-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-declined-arguments-list"></div>
+                        </div>
                     </div>
+                    <!-- On Call Missed Action -->
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-action-tool-call-missed-select">On Call Missed Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-missed-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-missed-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-missed-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-missed-arguments-list"></div>
+                        </div>
                     </div>
+                    <!-- On Call Answered Action -->
                     <div class="mb-3">
                         <label class="form-label" for="telephony-campaign-action-tool-call-answered-select">On Call Answered Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-answered-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-answered-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-answered-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-answered-arguments-list"></div>
+                        </div>
                     </div>
+                    <!-- On Call Ended Action -->
                     <div class="">
                         <label class="form-label" for="telephony-campaign-action-tool-call-ended-select">On Call Ended Action</label>
                         <select class="form-select" id="telephony-campaign-action-tool-call-ended-select"></select>
-                        <div class="custom-tool-input-arguments d-none"></div>
+                        <div class="custom-tool-input-arguments d-none p-3 border rounded bg-dark">
+                            <label class="form-label d-block" for="telephony-campaign-action-tool-call-ended-arguments-select">Input Arguments</label>
+                            <select class="form-select mb-2" id="telephony-campaign-action-tool-call-ended-arguments-select">
+                                <option value="" selected disabled>Add Input Argument</option>
+                            </select>
+                            <div class="mt-1" id="telephony-campaign-action-tool-call-ended-arguments-list"></div>
+                        </div>
                     </div>
                 </div>
             </div>
